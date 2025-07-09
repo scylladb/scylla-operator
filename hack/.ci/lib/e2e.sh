@@ -13,6 +13,18 @@ source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 # It is used in multi-datacenter setups.
 declare -A WORKER_KUBECONFIGS
 
+# WORKER_OBJECT_STORAGE_BUCKETS is an associative array that maps worker cluster identifiers to their object storage
+# bucket names. It is used in multi-datacenter setups.
+declare -A WORKER_OBJECT_STORAGE_BUCKETS
+
+# WORKER_S3_CREDENTIALS_PATHS is an associative array that maps worker cluster identifiers to their S3 credentials
+# file paths. It is used in multi-datacenter setups.
+declare -A WORKER_S3_CREDENTIALS_PATHS
+
+# WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS is an associative array that maps worker cluster identifiers to their
+# GCS service account credentials file paths. It is used in multi-datacenter setups.
+declare -A WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS
+
 # KUBECONFIG is the kubeconfig file used to connect to the cluster.
 # In multi-datacenter setups, it is the control plane cluster kubeconfig.
 if [ -z "${KUBECONFIG+x}" ]; then
@@ -323,6 +335,44 @@ function run-e2e {
     kubectl create -n=e2e secret generic s3-credentials --dry-run=client -o=yaml | kubectl_create -f=-
   fi
 
+  # Build a comma-separated string following a `<cluster_identifier>=<bucket_name>` format expected by `--worker-object-storage-buckets` flag.
+  worker_object_storage_buckets=$(
+    res=()
+    for key in "${!WORKER_OBJECT_STORAGE_BUCKETS[@]}"; do
+      res+=( "${key}=${WORKER_OBJECT_STORAGE_BUCKETS[$key]}" )
+    done
+    IFS=','
+    echo "${res[*]}"
+  )
+
+  # Create a Secret including workers' S3 credentials files.
+  kubectl create -n=e2e secret generic worker-s3-credentials ${WORKER_S3_CREDENTIALS_PATHS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  # Build a comma-separated string following a `<cluster_identifier>=<s3_credentials_path_in_container>` format expected by `--worker-s3-credentials-file-paths` flag.
+  worker_gcs_sa_in_container_paths=$(
+    res=()
+    for key in "${!WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS[@]}"; do
+      basename="${WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS[$key]##*/}"
+      in_container_path="/var/run/secrets/worker-gcs-service-account-credentials/${basename}"
+      res+=( "${key}=${in_container_path}" )
+    done
+    IFS=','
+    echo "${res[*]}"
+  )
+
+  # Create a Secret including workers' GCS service account credentials files.
+  kubectl create -n=e2e secret generic worker-gcs-service-account-credentials ${WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  # Build a comma-separated string following a `<cluster_identifier>=<gcs_service_account_path_in_container>` format expected by `--worker-gcs-service-account-key-paths` flag.
+  worker_s3_credentials_in_container_paths=$(
+    res=()
+    for key in "${!WORKER_S3_CREDENTIALS_PATHS[@]}"; do
+      basename="${WORKER_S3_CREDENTIALS_PATHS[$key]##*/}"
+      in_container_path="/var/run/secrets/worker-s3-credentials/${basename}"
+      res+=( "${key}=${in_container_path}" )
+    done
+    IFS=','
+    echo "${res[*]}"
+  )
+
   ingress_class_name='haproxy'
   ingress_custom_annotations='haproxy.org/ssl-passthrough=true,route.openshift.io/termination=passthrough'
   ingress_controller_address="$( kubectl -n=haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' ):9142"
@@ -355,6 +405,18 @@ function run-e2e {
 
   if [[ -n "${worker_kubeconfigs_in_container_paths}" ]]; then
     e2e_command_args+=( "--worker-kubeconfigs=${worker_kubeconfigs_in_container_paths}" )
+  fi
+
+  if [[ -n "${worker_gcs_sa_in_container_paths}" ]]; then
+    e2e_command_args+=( "--worker-gcs-service-account-key-paths=${worker_gcs_sa_in_container_paths}" )
+  fi
+
+  if [[ -n "${worker_s3_credentials_in_container_paths}" ]]; then
+    e2e_command_args+=( "--worker-s3-credentials-file-paths=${worker_s3_credentials_in_container_paths}" )
+  fi
+
+  if [[ -n "${worker_object_storage_buckets}" ]]; then
+    e2e_command_args+=( "--worker-object-storage-buckets=${worker_object_storage_buckets}" )
   fi
 
   kubectl_create -n=e2e -f=- <<EOF
@@ -398,6 +460,12 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
     - name: worker-kubeconfigs
       mountPath: /var/run/secrets/worker-kubeconfigs
       readOnly: true
+    - name: worker-gcs-service-account-credentials
+      mountPath: /var/run/secrets/worker-gcs-service-account-credentials
+      readOnly: true
+    - name: worker-s3-credentials
+      mountPath: /var/run/secrets/worker-s3-credentials
+      readOnly: true
   volumes:
   - name: artifacts
     emptyDir: {}
@@ -416,6 +484,12 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
   - name: worker-kubeconfigs
     secret:
       secretName: worker-kubeconfigs
+  - name : worker-gcs-service-account-credentials
+    secret:
+      secretName: worker-gcs-service-account-credentials
+  - name: worker-s3-credentials
+    secret:
+      secretName: worker-s3-credentials
 EOF
   kubectl -n=e2e wait --for=condition=Ready pod/e2e
 

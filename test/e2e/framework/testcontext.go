@@ -47,18 +47,16 @@ type TestContextType struct {
 	// It also represents the "meta" or "control-plane" cluster in multi-datacenter setups.
 	RestConfig *restclient.Config
 	// WorkerRestConfigs contains a map of restclient.Configs for each worker cluster, keyed by the cluster identifier. Used in multi-datacenter setups.
-	WorkerRestConfigs           map[string]*restclient.Config
-	ArtifactsDir                string
-	CleanupPolicy               CleanupPolicyType
-	IngressController           *IngressController
-	ScyllaClusterOptions        *ScyllaClusterOptions
-	ObjectStorageType           ObjectStorageType
-	ObjectStorageBucket         string
-	GCSServiceAccountKey        []byte
-	S3CredentialsFile           []byte
-	ScyllaDBVersion             string
-	ScyllaDBManagerVersion      string
-	ScyllaDBManagerAgentVersion string
-	ScyllaDBUpdateFrom          string
-	ScyllaDBUpgradeFrom         string
+	WorkerRestConfigs                  map[string]*restclient.Config
+	ArtifactsDir                       string
+	CleanupPolicy                      CleanupPolicyType
+	IngressController                  *IngressController
+	ScyllaClusterOptions               *ScyllaClusterOptions
+	ScyllaDBVersion                    string
+	ScyllaDBManagerVersion             string
+	ScyllaDBManagerAgentVersion        string
+	ScyllaDBUpdateFrom                 string
+	ScyllaDBUpgradeFrom                string
+	WorkerClusterObjectStorageSettings map[string]ClusterObjectStorageSettings
+	ClusterObjectStorageSettings       *ClusterObjectStorageSettings
 }

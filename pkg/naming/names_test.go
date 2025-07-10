@@ -5,7 +5,6 @@ package naming
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -129,32 +128,81 @@ func Test_generateTruncatedHashedName(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "not truncated",
-			maxLength:   64,
-			parts:       []string{"a", "b", "c"},
-			expected:    "a-b-c-i79jb",
-			expectedErr: nil,
-		},
-		{
-			name:        "truncated, single element",
-			maxLength:   64,
-			parts:       []string{strings.Repeat("a", 64)},
-			expected:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-3eemq",
-			expectedErr: nil,
-		},
-		{
-			name:        "truncated, multiple elements",
-			maxLength:   64,
-			parts:       []string{strings.Repeat("a", 32), strings.Repeat("b", 32)},
-			expected:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbbbbbbbbbbb-37s7n",
-			expectedErr: nil,
-		},
-		{
-			name:        "max length lower than name suffix hash length",
-			maxLength:   0,
-			parts:       []string{"a", "b", "c"},
+			name:        "no parts",
+			maxLength:   7,
+			parts:       []string{},
 			expected:    "",
-			expectedErr: fmt.Errorf("maximum length cannot be lower than the length of the name suffix hash: 5"),
+			expectedErr: fmt.Errorf("parts cannot be empty"),
+		},
+		{
+			name:        "single empty part",
+			maxLength:   7,
+			parts:       []string{""},
+			expected:    "",
+			expectedErr: fmt.Errorf("parts cannot be empty"),
+		},
+		{
+			name:        "multiple empty parts",
+			maxLength:   7,
+			parts:       []string{"", ""},
+			expected:    "",
+			expectedErr: fmt.Errorf("parts cannot be empty"),
+		},
+		{
+			name:        "empty and non-empty parts, not truncated",
+			maxLength:   8,
+			parts:       []string{"a", ""},
+			expected:    "a-2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "single part, not truncated",
+			maxLength:   8,
+			parts:       []string{"a"},
+			expected:    "a-2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "single part, no name",
+			maxLength:   5,
+			parts:       []string{"a"},
+			expected:    "2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "single part, no name with remaining length, no leading hyphen",
+			maxLength:   6,
+			parts:       []string{"a"},
+			expected:    "2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "multiple parts, not truncated",
+			maxLength:   10,
+			parts:       []string{"a", "b"},
+			expected:    "a-b-dma5s",
+			expectedErr: nil,
+		},
+		{
+			name:        "multiple parts, truncated, no separator",
+			maxLength:   7,
+			parts:       []string{"a", "b"},
+			expected:    "a-dma5s",
+			expectedErr: nil,
+		},
+		{
+			name:        "multiple parts, truncated, with separator",
+			maxLength:   8,
+			parts:       []string{"a", "b"},
+			expected:    "a--dma5s",
+			expectedErr: nil,
+		},
+		{
+			name:        "maxLength lower than name suffix hash length",
+			maxLength:   0,
+			parts:       []string{"a"},
+			expected:    "",
+			expectedErr: fmt.Errorf("maxLength cannot be lower than the length of the name suffix hash: 5"),
 		},
 	}
 

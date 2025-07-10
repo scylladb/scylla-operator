@@ -2,6 +2,7 @@ package naming
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -303,19 +304,38 @@ func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, kind, name)
 }
 
+// generateTruncatedHashedName generates a name that is suffixed with a hash and truncated to fit within the specified maxLength.
+// Empty parts are ignored in name creation. At least one non-empty part must be provided.
+// Leading hyphens are avoided to ensure the name is a valid DNS subdomain (RFC 1123).
 func generateTruncatedHashedName(maxLength int, parts ...string) (string, error) {
-	nameSuffix, err := GenerateNameHash(parts...)
+	nonEmptyParts := slices.DeleteFunc(parts, func(part string) bool {
+		return len(part) == 0
+	})
+	if len(nonEmptyParts) == 0 {
+		return "", fmt.Errorf("parts cannot be empty")
+	}
+
+	nameSuffix, err := GenerateNameHash(nonEmptyParts...)
 	if err != nil {
 		return "", fmt.Errorf("can't generate name hash: %w", err)
 	}
 
 	if len(nameSuffix) > maxLength {
-		return "", fmt.Errorf("maximum length cannot be lower than the length of the name suffix hash: %d", len(nameSuffix))
+		return "", fmt.Errorf("maxLength cannot be lower than the length of the name suffix hash: %d", len(nameSuffix))
 	}
 
-	fullName := strings.ToLower(strings.Join(parts, "-"))
-	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), maxLength-len(nameSuffix)-1)], nameSuffix)
-	return fullNameWithSuffix, nil
+	// Account for the suffix and a hyphen.
+	truncatedNameMaxLength := maxLength - len(nameSuffix) - 1
+	truncatedName := ""
+	// Avoid returning a name with leading hyphen even if it means underutilizing max length.
+	// Return a valid DNS subdomain (RFC 1123).
+	if truncatedNameMaxLength > 0 {
+		name := strings.ToLower(strings.Join(nonEmptyParts, "-"))
+		truncatedName = name[:min(len(name), truncatedNameMaxLength)] + "-"
+	}
+
+	fullName := truncatedName + nameSuffix
+	return fullName, nil
 }
 
 func RemoteNamespaceName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) (string, error) {

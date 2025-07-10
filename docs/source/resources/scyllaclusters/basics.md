@@ -218,47 +218,47 @@ Here is a quick example of how you'd use them to spread your racks across differ
 :::{include} ../../.internal/rf-warning.md
 :::
 
-```{eval-rst}
-.. tabs::
+:::::{tabs}
 
-   .. group-tab:: GKE
+::::{group-tab} GKE
+:::{code} yaml
+spec:
+  datacenter:
+    name: <dc_name>
+    racks:
+    - name: <rack_name>
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: failure-domain.beta.kubernetes.io/zone
+                operator: In
+                values:
+                - <gcp_zone>
+:::
+::::
 
-      .. code-block:: yaml
+::::{group-tab} EKS
+:::{code} yaml
+spec:
+  datacenter:
+    name: <dc_name>
+    racks:
+    - name: <rack_name>
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - <aws_zone>
+:::
+::::
 
-         spec:
-           datacenter:
-             name: <dc_name>
-             racks:
-             - name: <rack_name>
-               placement:
-                 nodeAffinity:
-                   requiredDuringSchedulingIgnoredDuringExecution:
-                     nodeSelectorTerms:
-                     - matchExpressions:
-                       - key: failure-domain.beta.kubernetes.io/zone
-                         operator: In
-                         values:
-                         - <gcp_zone>
-
-   .. group-tab:: EKS
-
-      .. code-block:: yaml
-
-         spec:
-           datacenter:
-             name: <dc_name>
-             racks:
-             - name: <rack_name>
-               placement:
-                 nodeAffinity:
-                   requiredDuringSchedulingIgnoredDuringExecution:
-                     nodeSelectorTerms:
-                     - matchExpressions:
-                       - key: topology.kubernetes.io/zone
-                         operator: In
-                         values:
-                         - <aws_zone>
-```
+:::::
 
 ## Next steps
 

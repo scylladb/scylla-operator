@@ -25,21 +25,20 @@ data:
 
 Every ScyllaDB node has an integrated `cqlsh` available. Here is an example of how it can be used:
 
-```{eval-rst}
-.. tabs::
 
-   .. group-tab:: Any ScyllaDB Node
-
-      .. code-block:: bash
-
-         kubectl exec -it service/<sc-name>-client -c scylla -- cqlsh -u <user>
-
-   .. group-tab:: Specific ScyllaDB Node
-
-      .. code-block:: bash
-
-         kubectl exec -it pod/<sc-name>-<datacenter>-<node-index> -c scylla -- cqlsh -u <user>
+::::{tabs}
+:::{group-tab} Any ScyllaDB Node
+```bash
+kubectl exec -it service/<sc-name>-client -c scylla -- cqlsh -u <user>
 ```
+:::
+:::{group-tab} Specific ScyllaDB Node
+```bash
+kubectl exec -it pod/<sc-name>-<datacenter>-<node-index> -c scylla -- cqlsh -u <user>
+```
+:::
+::::
+
 ```text
 Password: 
 Connected to scylla at 127.0.0.1:9042
@@ -101,33 +100,31 @@ userkey=${SCYLLADB_CONFIG}/admin.key
 EOF
 ```
 
-```{eval-rst}
-.. tabs::
 
-   .. group-tab:: Native
-
-      .. code-block:: bash
-
-         cqlsh --cqlshrc="${SCYLLADB_CONFIG}/cqlshrc"
-
-   .. group-tab:: Podman
-
-      .. code-block:: bash
-
-         podman run -it --rm --entrypoint=cqlsh \
-         -v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro,Z" \
-         -v="${SCYLLADB_CONFIG}/cqlshrc:/root/.cassandra/cqlshrc:ro,Z" \
-         docker.io/scylladb/scylla:5.4.3
-
-   .. group-tab:: Docker
-
-      .. code-block:: bash
-
-         docker run -it --rm --entrypoint=cqlsh \
-         -v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro" \
-         -v="${SCYLLADB_CONFIG}/cqlshrc:/root/.cassandra/cqlshrc:ro" \
-         docker.io/scylladb/scylla:5.4.3
+::::{tabs}
+:::{group-tab} Native
+```bash
+cqlsh --cqlshrc="${SCYLLADB_CONFIG}/cqlshrc"
 ```
+:::
+:::{group-tab} Podman
+```bash
+podman run -it --rm --entrypoint=cqlsh \
+-v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro,Z" \
+-v="${SCYLLADB_CONFIG}/cqlshrc:/root/.cassandra/cqlshrc:ro,Z" \
+docker.io/scylladb/scylla:5.4.3
+```
+:::
+:::{group-tab} Docker
+```bash
+docker run -it --rm --entrypoint=cqlsh \
+-v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro" \
+-v="${SCYLLADB_CONFIG}/cqlshrc:/root/.cassandra/cqlshrc:ro" \
+docker.io/scylladb/scylla:5.4.3
+```
+:::
+::::
+
 ```text
 Connected to scylla at <CLUSTER_IP>:9142
 [cqlsh 6.2.0 | Scylla 5.4.0-0.20231205.58a89e7a4231 | CQL spec 3.3.1 | Native protocol v4]

@@ -117,54 +117,41 @@ The following step heavily depends on the platform that you use, the machine typ
 Please review the [NodeConfig](../resources/nodeconfigs.md) and adjust it for your platform!
 :::
 
-```{eval-rst}
-.. tabs::
+:::::{tabs}
 
-   .. group-tab:: GKE (NVMe)
+::::{group-tab} GKE (NVMe)
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/gke/nodeconfig-alpha.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
+::::
 
-      .. code-block:: shell
-         :substitutions:
+::::{group-tab} EKS (NVMe)
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/eks/nodeconfig-alpha.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
+::::
 
-         % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
-         {{"""
-         BEGIN_CODE_BLOCK
-         kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/gke/nodeconfig-alpha.yaml
-         END_CODE_BLOCK
-         """.replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
+::::{group-tab} Any platform (Loop devices)
+:::{caution}
+This NodeConfig sets up loop devices instead of NVMe disks and is only intended for development purposes when you don't have the NVMe disks available.
+Do not expect meaningful performance with this setup.
+:::
 
-   .. group-tab:: EKS (NVMe)
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/generic/nodeconfig-alpha.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
+::::
 
-      .. code-block:: shell
-         :substitutions:
-
-         % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
-         {{"""
-         BEGIN_CODE_BLOCK
-         kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/eks/nodeconfig-alpha.yaml
-         END_CODE_BLOCK
-         """.replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
-         ::::
-
-         kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/eks/nodeconfig-alpha.yaml
-
-   .. group-tab:: Any platform (Loop devices)
-
-      .. caution::
-         This NodeConfig sets up loop devices instead of NVMe disks and is only intended for development purposes when you don't have the NVMe disks available.
-         Do not expect meaningful performance with this setup.
-
-      .. code-block:: shell
-         :substitutions:
-
-         % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
-         {{"""
-         BEGIN_CODE_BLOCK
-         kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/examples/generic/nodeconfig-alpha.yaml
-         END_CODE_BLOCK
-         """.replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
-         ::::
-
-```
+:::::
 
 :::{note}
 Performance tuning is enabled for all nodes that are selected by [NodeConfig](../resources/nodeconfigs.md) by default, unless opted-out.
@@ -194,36 +181,31 @@ kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-cs
 :::{include} ../.internal/manager-license-note.md
 :::
 
-```{eval-rst}
-.. tabs::
+:::::{tabs}
 
-   .. group-tab:: Production (sized)
+::::{group-tab} Production (sized)
 
-      .. code-block:: shell
-         :substitutions:
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-prod.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 
-         % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
-         {{"""
-         BEGIN_CODE_BLOCK
-         kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-prod.yaml
-         END_CODE_BLOCK
-         """.replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
-         
-         ::::
+::::
 
-   .. group-tab:: Development (sized)
+::::{group-tab} Development (sized)
 
-      .. code-block:: shell
-         :substitutions:
+% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
+{{"""
+BEGIN_CODE_BLOCK
+kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-dev.yaml
+END_CODE_BLOCK
+""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 
-         % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
-         {{"""
-         BEGIN_CODE_BLOCK
-         kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/REPO/BRANCH/deploy/manager-dev.yaml
-         END_CODE_BLOCK
-         """.replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
+::::
 
-```
+:::::
 
 :::{code-block} shell
 # Wait for it to deploy.

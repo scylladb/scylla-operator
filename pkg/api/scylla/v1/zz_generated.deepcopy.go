@@ -639,6 +639,11 @@ func (in *RepairTaskSpec) DeepCopyInto(out *RepairTaskSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.IgnoreDownHosts != nil {
+		in, out := &in.IgnoreDownHosts, &out.IgnoreDownHosts
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -689,6 +694,11 @@ func (in *RepairTaskStatus) DeepCopyInto(out *RepairTaskStatus) {
 	if in.Host != nil {
 		in, out := &in.Host, &out.Host
 		*out = new(string)
+		**out = **in
+	}
+	if in.IgnoreDownHosts != nil {
+		in, out := &in.IgnoreDownHosts, &out.IgnoreDownHosts
+		*out = new(bool)
 		**out = **in
 	}
 	return

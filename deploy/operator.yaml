@@ -5169,6 +5169,9 @@ spec:
                       host:
                         description: host specifies a host to repair. If empty, all hosts are repaired.
                         type: string
+                      ignoreDownHosts:
+                        description: ignoreDownHosts indicates that the nodes in down state should be ignored during repair.
+                        type: boolean
                       intensity:
                         default: "1"
                         description: |-
@@ -5483,6 +5486,9 @@ spec:
                       id:
                         description: id reflects identification number of the repair task.
                         type: string
+                      ignoreDownHosts:
+                        description: ignoreDownHosts reflects whether the nodes in down state are ignored during repair.
+                        type: boolean
                       intensity:
                         description: intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1.
                         type: string
@@ -43916,6 +43922,9 @@ spec:
                         When used in conjunction with `dc`, the node must belong to the specified datacenters.
                         If not set, all hosts are repaired.
                       type: string
+                    ignoreDownHosts:
+                      description: ignoreDownHosts indicates that the nodes in down state should be ignored during repair.
+                      type: boolean
                     intensity:
                       description: |-
                         intensity specifies the number of token ranges to repair in a single ScyllaDB node at the same time.

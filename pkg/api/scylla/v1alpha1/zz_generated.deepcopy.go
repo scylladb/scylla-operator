@@ -2178,6 +2178,11 @@ func (in *ScyllaDBManagerRepairTaskOptions) DeepCopyInto(out *ScyllaDBManagerRep
 		*out = new(string)
 		**out = **in
 	}
+	if in.IgnoreDownHosts != nil {
+		in, out := &in.IgnoreDownHosts, &out.IgnoreDownHosts
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Intensity != nil {
 		in, out := &in.Intensity, &out.Intensity
 		*out = new(int64)

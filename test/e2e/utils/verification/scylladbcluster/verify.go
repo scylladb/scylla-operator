@@ -56,6 +56,31 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 				condType: scyllav1alpha1.DegradedCondition,
 				status:   metav1.ConditionFalse,
 			},
+			// Controller conditions
+			{
+				condType: internalapi.MakeKindControllerCondition("Service", scyllav1alpha1.ProgressingCondition),
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: internalapi.MakeKindControllerCondition("Service", scyllav1alpha1.DegradedCondition),
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: internalapi.MakeKindControllerCondition("EndpointSlice", scyllav1alpha1.ProgressingCondition),
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: internalapi.MakeKindControllerCondition("EndpointSlice", scyllav1alpha1.DegradedCondition),
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: internalapi.MakeKindControllerCondition("Endpoints", scyllav1alpha1.ProgressingCondition),
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: internalapi.MakeKindControllerCondition("Endpoints", scyllav1alpha1.DegradedCondition),
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		for _, dc := range sc.Spec.Datacenters {

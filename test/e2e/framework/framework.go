@@ -79,7 +79,7 @@ func NewFramework(namePrefix string) *Framework {
 		clusterE2EArtifactsDir,
 		TestContext.RestConfig,
 		func(ctx context.Context, adminClient kubernetes.Interface, adminClientConfig *restclient.Config) (*corev1.Namespace, Client) {
-			return CreateUserNamespace(ctx, clusterName, f.CommonLabels(), adminClient, adminClientConfig)
+			return createUserNamespace(ctx, clusterName, f.CommonLabels(), adminClient, adminClientConfig)
 		},
 	)
 	f.FullClient.AdminClient.Config = f.cluster.AdminClientConfig()
@@ -99,7 +99,7 @@ func NewFramework(namePrefix string) *Framework {
 			workerClusterE2EArtifactsDir,
 			workerClusterRestConfig,
 			func(ctx context.Context, adminClient kubernetes.Interface, adminClientConfig *restclient.Config) (*corev1.Namespace, Client) {
-				return CreateUserNamespace(ctx, workerClusterName, f.CommonLabels(), adminClient, adminClientConfig)
+				return createUserNamespace(ctx, workerClusterName, f.CommonLabels(), adminClient, adminClientConfig)
 			},
 		)
 	}
@@ -236,31 +236,17 @@ func (f *Framework) CreateUserNamespace(ctx context.Context) (*corev1.Namespace,
 	return f.cluster.CreateUserNamespace(ctx)
 }
 
-func (f *Framework) GetObjectStorageType() ObjectStorageType {
-	return TestContext.ObjectStorageType
-}
-
-func (f *Framework) GetObjectStorageProvider() string {
-	switch TestContext.ObjectStorageType {
-	case ObjectStorageTypeGCS:
-		return "gcs"
-	case ObjectStorageTypeS3:
-		return "s3"
-	default:
-		return ""
+func (f *Framework) GetClusterObjectStorageSettings() (ClusterObjectStorageSettings, bool) {
+	if TestContext.ClusterObjectStorageSettings == nil {
+		return ClusterObjectStorageSettings{}, false
 	}
+	return *TestContext.ClusterObjectStorageSettings, true
 }
 
-func (f *Framework) GetObjectStorageBucket() string {
-	return TestContext.ObjectStorageBucket
-}
-
-func (f *Framework) GetGCSServiceAccountKey() []byte {
-	return TestContext.GCSServiceAccountKey
-}
-
-func (f *Framework) GetS3CredentialsFile() []byte {
-	return TestContext.S3CredentialsFile
+func (f *Framework) GetObjectStorageSettingsForWorkerCluster(workerName string) ClusterObjectStorageSettings {
+	settings, ok := TestContext.WorkerClusterObjectStorageSettings[workerName]
+	o.Expect(ok).To(o.BeTrue(), fmt.Sprintf("no object storage configured for worker %q", workerName))
+	return settings
 }
 
 func (f *Framework) beforeEach(ctx context.Context) {
@@ -308,7 +294,7 @@ func (f *Framework) afterEach(ctx context.Context) {
 	}
 }
 
-func CreateUserNamespace(ctx context.Context, clusterName string, labels map[string]string, adminClient kubernetes.Interface, adminClientConfig *restclient.Config) (*corev1.Namespace, Client) {
+func createUserNamespace(ctx context.Context, clusterName string, labels map[string]string, adminClient kubernetes.Interface, adminClientConfig *restclient.Config) (*corev1.Namespace, Client) {
 	g.By("Creating a new namespace")
 	var ns *corev1.Namespace
 	generateName := func() string {

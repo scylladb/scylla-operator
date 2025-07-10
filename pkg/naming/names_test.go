@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -110,6 +112,112 @@ func Test_ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(t *testing
 
 			if !reflect.DeepEqual(name, tc.expectedName) {
 				t.Errorf("expected name: %s, got: %s", tc.expectedName, name)
+			}
+		})
+	}
+}
+
+func Test_generateTruncatedHashedName(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name        string
+		maxLength   int
+		parts       []string
+		expected    string
+		expectedErr error
+	}{
+		{
+			name:        "no parts",
+			maxLength:   7,
+			parts:       []string{},
+			expected:    "",
+			expectedErr: fmt.Errorf("parts cannot be empty"),
+		},
+		{
+			name:        "single empty part",
+			maxLength:   7,
+			parts:       []string{""},
+			expected:    "",
+			expectedErr: fmt.Errorf("parts cannot be empty"),
+		},
+		{
+			name:        "multiple empty parts",
+			maxLength:   7,
+			parts:       []string{"", ""},
+			expected:    "",
+			expectedErr: fmt.Errorf("parts cannot be empty"),
+		},
+		{
+			name:        "empty and non-empty parts, not truncated",
+			maxLength:   8,
+			parts:       []string{"a", ""},
+			expected:    "a-2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "single part, not truncated",
+			maxLength:   8,
+			parts:       []string{"a"},
+			expected:    "a-2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "single part, no name",
+			maxLength:   5,
+			parts:       []string{"a"},
+			expected:    "2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "single part, no name with remaining length, no leading hyphen",
+			maxLength:   6,
+			parts:       []string{"a"},
+			expected:    "2kfnt",
+			expectedErr: nil,
+		},
+		{
+			name:        "multiple parts, not truncated",
+			maxLength:   10,
+			parts:       []string{"a", "b"},
+			expected:    "a-b-dma5s",
+			expectedErr: nil,
+		},
+		{
+			name:        "multiple parts, truncated, no separator",
+			maxLength:   7,
+			parts:       []string{"a", "b"},
+			expected:    "a-dma5s",
+			expectedErr: nil,
+		},
+		{
+			name:        "multiple parts, truncated, with separator",
+			maxLength:   8,
+			parts:       []string{"a", "b"},
+			expected:    "a--dma5s",
+			expectedErr: nil,
+		},
+		{
+			name:        "maxLength lower than name suffix hash length",
+			maxLength:   0,
+			parts:       []string{"a"},
+			expected:    "",
+			expectedErr: fmt.Errorf("maxLength cannot be lower than the length of the name suffix hash: 5"),
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			name, err := generateTruncatedHashedName(tc.maxLength, tc.parts...)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ: %s", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
+			}
+
+			if !reflect.DeepEqual(name, tc.expected) {
+				t.Errorf("expected name: %s, got: %s", tc.expected, name)
 			}
 		})
 	}

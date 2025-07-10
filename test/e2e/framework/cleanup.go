@@ -106,6 +106,32 @@ func NewNamespaceCleanerCollector(restConfig *rest.Config, client kubernetes.Int
 	}
 }
 
+type NotFoundTolerantNamespaceCollector struct {
+	*namespaceCollector
+}
+
+func NewNotFoundTolerantNamespaceCollector(restConfig *rest.Config, client kubernetes.Interface, dynamicClient dynamic.Interface, namespace string) *NotFoundTolerantNamespaceCollector {
+	return &NotFoundTolerantNamespaceCollector{
+		namespaceCollector: &namespaceCollector{
+			RestConfig:    restConfig,
+			Client:        client,
+			DynamicClient: dynamicClient,
+			NamespaceName: namespace,
+		},
+	}
+}
+
+func (nc *NotFoundTolerantNamespaceCollector) Collect(ctx context.Context, artifactsDir string, _ string) {
+	By("Collecting dumps from namespace %q.", nc.NamespaceName)
+
+	err := DumpNamespace(ctx, nc.RestConfig, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
+	if apierrors.IsNotFound(err) {
+		klog.InfoS("Namespace doesn't exists, it won't be collected.", "Namespace", nc.NamespaceName)
+		return
+	}
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 type RestoreStrategy string
 
 const (

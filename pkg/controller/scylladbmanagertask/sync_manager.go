@@ -596,6 +596,10 @@ func makeScyllaDBManagerClientRepairTaskProperties(options *scyllav1alpha1.Scyll
 		managerClientTaskProperties["host"] = *options.Host
 	}
 
+	if options.IgnoreDownHosts != nil {
+		managerClientTaskProperties["ignore_down_hosts"] = *options.IgnoreDownHosts
+	}
+
 	if options.Intensity != nil {
 		managerClientTaskProperties["intensity"] = *options.Intensity
 	}

@@ -139,6 +139,9 @@ spec:
                         When used in conjunction with `dc`, the node must belong to the specified datacenters.
                         If not set, all hosts are repaired.
                       type: string
+                    ignoreDownHosts:
+                      description: ignoreDownHosts indicates that the nodes in down state should be ignored during repair.
+                      type: boolean
                     intensity:
                       description: |-
                         intensity specifies the number of token ranges to repair in a single ScyllaDB node at the same time.

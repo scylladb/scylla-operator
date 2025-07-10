@@ -576,11 +576,12 @@ func migrateV1RepairTaskSpecToV1Alpha1ScyllaDBManagerTask(sc *scyllav1.ScyllaClu
 				Cron:       repairTaskSpec.TaskSpec.SchedulerTaskSpec.Cron,
 				NumRetries: repairTaskSpec.TaskSpec.SchedulerTaskSpec.NumRetries,
 			},
-			DC:       repairTaskSpec.DC,
-			Keyspace: repairTaskSpec.Keyspace,
-			FailFast: pointer.Ptr(repairTaskSpec.FailFast),
-			Host:     repairTaskSpec.Host,
-			Parallel: pointer.Ptr(repairTaskSpec.Parallel),
+			DC:              repairTaskSpec.DC,
+			Keyspace:        repairTaskSpec.Keyspace,
+			FailFast:        pointer.Ptr(repairTaskSpec.FailFast),
+			Host:            repairTaskSpec.Host,
+			IgnoreDownHosts: repairTaskSpec.IgnoreDownHosts,
+			Parallel:        pointer.Ptr(repairTaskSpec.Parallel),
 		}
 	}
 

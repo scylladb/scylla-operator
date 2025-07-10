@@ -173,6 +173,9 @@ object
    * - host
      - string
      - host specifies the IPv4 or IPv6 address of a node to repair. Specifying this field limits repair to token ranges replicated by a given node. When used in conjunction with `dc`, the node must belong to the specified datacenters. If not set, all hosts are repaired.
+   * - ignoreDownHosts
+     - boolean
+     - ignoreDownHosts indicates that the nodes in down state should be ignored during repair.
    * - intensity
      - integer
      - intensity specifies the number of token ranges to repair in a single ScyllaDB node at the same time. Changing the intensity impacts the repair granularity in case it is resumed. The higher the value, the more work on resumption. When set to zero, the number of token ranges is adjusted to the maximum supported number. When set to a value greater than the maximum supported by the node, intensity is capped at the maximum supported value. Refer to repair documentation for details.

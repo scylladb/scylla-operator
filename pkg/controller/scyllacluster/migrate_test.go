@@ -965,6 +965,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(t *testing.T) {
 							Intensity:           nil,
 							Parallel:            pointer.Ptr[int64](2),
 							SmallTableThreshold: nil,
+							IgnoreDownHosts:     pointer.Ptr(false),
 						},
 					},
 				},
@@ -1237,7 +1238,8 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(t *testing
 "failFast": false,
 "intensity": "0.5",
 "parallel": 2,
-"smallTableThreshold": "1GiB"
+"smallTableThreshold": "1GiB",
+"ignoreDownHosts": false
 }`)
 
 	tests := []struct {
@@ -1328,6 +1330,7 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(t *testing
 				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
 				SmallTableThreshold: pointer.Ptr("1GiB"),
 				Host:                pointer.Ptr("10.0.0.1"),
+				IgnoreDownHosts:     pointer.Ptr(false),
 			},
 			expectedOK:  true,
 			expectedErr: nil,
@@ -1378,6 +1381,7 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(t *testing
 				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
 				SmallTableThreshold: pointer.Ptr("1GiB"),
 				Host:                pointer.Ptr("10.0.0.1"),
+				IgnoreDownHosts:     pointer.Ptr(false),
 			},
 			expectedOK:  true,
 			expectedErr: nil,
@@ -1480,6 +1484,7 @@ func newScyllaV1RepairTaskSpec() scyllav1.RepairTaskSpec {
 		Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
 		SmallTableThreshold: "1GiB",
 		Host:                pointer.Ptr("10.0.0.1"),
+		IgnoreDownHosts:     pointer.Ptr(false),
 	}
 }
 
@@ -1587,6 +1592,7 @@ func newRepairScyllaDBManagerTask() *scyllav1alpha1.ScyllaDBManagerTask {
 				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
 				FailFast:            pointer.Ptr(false),
 				Host:                pointer.Ptr("10.0.0.1"),
+				IgnoreDownHosts:     pointer.Ptr(false),
 				Intensity:           nil,
 				Parallel:            pointer.Ptr[int64](2),
 				SmallTableThreshold: nil,

@@ -2,6 +2,7 @@ package naming
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -69,6 +70,10 @@ func MemberServiceNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaC
 
 func PodNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, idx int) string {
 	return MemberServiceNameForScyllaCluster(r, sc, idx)
+}
+
+func LocalIdentityServiceName(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1035LabelMaxLength, sc.Name, "client")
 }
 
 func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
@@ -296,12 +301,48 @@ func ScyllaDBManagerClusterRegistrationNameForScyllaDBManagerTask(smt *scyllav1a
 }
 
 func scyllaDBManagerClusterRegistrationName(kind, name string) (string, error) {
-	nameSuffix, err := GenerateNameHash(kind, name)
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, kind, name)
+}
+
+// generateTruncatedHashedName generates a name that is suffixed with a hash and truncated to fit within the specified maxLength.
+// Empty parts are ignored in name creation. At least one non-empty part must be provided.
+// Leading hyphens are avoided to ensure the name is a valid DNS subdomain (RFC 1123).
+func generateTruncatedHashedName(maxLength int, parts ...string) (string, error) {
+	nonEmptyParts := slices.DeleteFunc(parts, func(part string) bool {
+		return len(part) == 0
+	})
+	if len(nonEmptyParts) == 0 {
+		return "", fmt.Errorf("parts cannot be empty")
+	}
+
+	nameSuffix, err := GenerateNameHash(nonEmptyParts...)
 	if err != nil {
 		return "", fmt.Errorf("can't generate name hash: %w", err)
 	}
 
-	fullName := strings.ToLower(fmt.Sprintf("%s-%s", kind, name))
-	fullNameWithSuffix := fmt.Sprintf("%s-%s", fullName[:min(len(fullName), apimachineryutilvalidation.DNS1123SubdomainMaxLength-len(nameSuffix)-1)], nameSuffix)
-	return fullNameWithSuffix, nil
+	if len(nameSuffix) > maxLength {
+		return "", fmt.Errorf("maxLength cannot be lower than the length of the name suffix hash: %d", len(nameSuffix))
+	}
+
+	// Account for the suffix and a hyphen.
+	truncatedNameMaxLength := maxLength - len(nameSuffix) - 1
+	truncatedName := ""
+	// Avoid returning a name with leading hyphen even if it means underutilizing max length.
+	// Return a valid DNS subdomain (RFC 1123).
+	if truncatedNameMaxLength > 0 {
+		name := strings.ToLower(strings.Join(nonEmptyParts, "-"))
+		truncatedName = name[:min(len(name), truncatedNameMaxLength)] + "-"
+	}
+
+	fullName := truncatedName + nameSuffix
+	return fullName, nil
+}
+
+func RemoteNamespaceName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) (string, error) {
+	suffix, err := GenerateNameHash(sc.Namespace, dc.Name)
+	if err != nil {
+		return "", fmt.Errorf("can't generate namespace name suffix: %w", err)
+	}
+
+	return fmt.Sprintf("%s-%s", sc.Namespace, suffix), nil
 }

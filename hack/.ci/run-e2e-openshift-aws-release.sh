@@ -31,6 +31,11 @@ export SO_SKIPPED_TESTS
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig-openshift-aws.yaml}"
 export SO_NODECONFIG_PATH
 
+# TODO: When https://github.com/scylladb/scylla-operator/issues/2490 is completed,
+# we should make sure we have all required CRDs in the OpenShift cluster.
+SO_DISABLE_PROMETHEUS_OPERATOR="${SO_DISABLE_PROMETHEUS_OPERATOR:-true}"
+export SO_DISABLE_PROMETHEUS_OPERATOR
+
 run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy-release.sh"
 
 apply-e2e-workarounds

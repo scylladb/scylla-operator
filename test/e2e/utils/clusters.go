@@ -8,7 +8,6 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
-	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	corev1 "k8s.io/api/core/v1"
@@ -235,23 +234,12 @@ func RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx context.Context, sc
 	for _, dc := range sc.Spec.Datacenters {
 		cluster := rkcClusterMap[dc.RemoteKubernetesClusterName]
 
-		dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(status scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
-			return status.Name == dc.Name
-		})
-		if !ok {
-			return fmt.Errorf("can't find Datacenter %q in ScyllaDBCluster %q status", dc.Name, naming.ObjRef(sc))
-		}
-
-		if dcStatus.RemoteNamespaceName == nil || len(*dcStatus.RemoteNamespaceName) == 0 {
-			return fmt.Errorf("empty remote Namespace name of Datacenter %q in ScyllaDBCluster %q status", dc.Name, naming.ObjRef(sc))
-		}
-
-		dcNs, err := cluster.KubeAdminClient().CoreV1().Namespaces().Get(ctx, *dcStatus.RemoteNamespaceName, metav1.GetOptions{})
+		remoteNamespaceName, err := naming.RemoteNamespaceName(sc, &dc)
 		if err != nil {
-			return fmt.Errorf("can't get remote Namespace %q: %w", *dcStatus.RemoteNamespaceName, err)
+			return fmt.Errorf("can't get remote namespace name: %w", err)
 		}
 
-		cluster.AddCollectors(framework.NewNamespaceCleanerCollector(cluster.AdminClientConfig(), cluster.KubeAdminClient(), cluster.DynamicAdminClient(), dcNs))
+		cluster.AddCollectors(framework.NewNotFoundTolerantNamespaceCollector(cluster.AdminClientConfig(), cluster.KubeAdminClient(), cluster.DynamicAdminClient(), remoteNamespaceName))
 	}
 
 	return nil

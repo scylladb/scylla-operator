@@ -15,8 +15,8 @@ import (
 )
 
 func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.ClusterInterface, sc *scyllav1alpha1.ScyllaDBCluster) error {
-	allBroadcastAddresses := map[string][]string{}
-	var sortedAllBroadcastAddresses []string
+	allHostIDs := map[string][]string{}
+	var sortedAllHostIDs []string
 
 	var errs []error
 	for _, dc := range sc.Spec.Datacenters {
@@ -42,19 +42,19 @@ func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.C
 			continue
 		}
 
-		hosts, err := utilsv1alpha1.GetBroadcastAddresses(ctx, clusterClient.KubeAdminClient().CoreV1(), sdc)
+		hostIDs, err := utilsv1alpha1.GetHostIDs(ctx, clusterClient.KubeAdminClient().CoreV1(), sdc)
 		if err != nil {
 			return fmt.Errorf("can't get broadcast addresses for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
 		}
-		allBroadcastAddresses[dc.Name] = hosts
-		sortedAllBroadcastAddresses = append(sortedAllBroadcastAddresses, hosts...)
+		allHostIDs[dc.Name] = hostIDs
+		sortedAllHostIDs = append(sortedAllHostIDs, hostIDs...)
 	}
 	err := errors.Join(errs...)
 	if err != nil {
 		return err
 	}
 
-	sort.Strings(sortedAllBroadcastAddresses)
+	sort.Strings(sortedAllHostIDs)
 
 	for _, dc := range sc.Spec.Datacenters {
 		clusterClient, ok := rkcClusterMap[dc.RemoteKubernetesClusterName]
@@ -79,7 +79,7 @@ func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.C
 			continue
 		}
 
-		err = utilsv1alpha1.WaitForFullQuorum(ctx, clusterClient.KubeAdminClient().CoreV1(), sdc, sortedAllBroadcastAddresses)
+		err = utilsv1alpha1.WaitForFullQuorum(ctx, clusterClient.KubeAdminClient().CoreV1(), sdc, sortedAllHostIDs)
 		if err != nil {
 			errs = append(errs, err)
 		}

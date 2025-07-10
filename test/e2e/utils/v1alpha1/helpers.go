@@ -18,7 +18,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	appsv1 "k8s.io/api/apps/v1"
@@ -68,7 +67,7 @@ func GetMemberServiceSelector(sdc *scyllav1alpha1.ScyllaDBDatacenter) labels.Sel
 	}.AsSelector()
 }
 
-func GetBroadcastRPCAddresses(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]string, error) {
+func collectFromEachNode[T any](ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, f func(*corev1.Pod, *corev1.Service) (T, error)) ([]T, error) {
 	serviceList, err := client.Services(sdc.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: GetMemberServiceSelector(sdc).String(),
 	})
@@ -76,17 +75,34 @@ func GetBroadcastRPCAddresses(ctx context.Context, client corev1client.CoreV1Int
 		return nil, err
 	}
 
-	var broadcastRPCAddresses []string
+	var values []T
 	for _, svc := range serviceList.Items {
-		broadcastRPCAddress, err := GetBroadcastRPCAddress(ctx, client, sdc, &svc)
+		podName := naming.PodNameFromService(&svc)
+		pod, err := client.Pods(sdc.Namespace).Get(ctx, podName, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
+		}
+
+		v, err := f(pod, &svc)
 		if err != nil {
 			return nil, fmt.Errorf("can't get broadcast rpc address for service %q: %w", naming.ObjRef(&svc), err)
 		}
 
-		broadcastRPCAddresses = append(broadcastRPCAddresses, broadcastRPCAddress)
+		values = append(values, v)
 	}
 
-	return broadcastRPCAddresses, err
+	return values, nil
+}
+
+func GetBroadcastRPCAddresses(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]string, error) {
+	broadcastRPCAddresses, err := collectFromEachNode(ctx, client, sdc, func(pod *corev1.Pod, service *corev1.Service) (string, error) {
+		return GetBroadcastRPCAddress(ctx, client, sdc, service)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't get broadcast rpc addresses: %w", err)
+	}
+
+	return broadcastRPCAddresses, nil
 }
 
 func GetBroadcastRPCAddress(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service) (string, error) {
@@ -131,31 +147,45 @@ func GetScyllaConfigClient(ctx context.Context, client corev1client.CoreV1Interf
 	return configClient, nil
 }
 
-func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]string, error) {
-	serviceList, err := client.Services(sdc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: GetMemberServiceSelector(sdc).String(),
+func GetHostIDs(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]string, error) {
+	hostIDs, err := collectFromEachNode(ctx, client, sdc, func(pod *corev1.Pod, svc *corev1.Service) (string, error) {
+		return GetHostID(ctx, client, sdc, svc, pod)
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't get host IDs: %w", err)
 	}
 
-	var broadcastAddresses []string
-	for _, svc := range oslices.ConvertSlice(serviceList.Items, pointer.Ptr[corev1.Service]) {
-		podName := naming.PodNameFromService(svc)
-		pod, err := client.Pods(sdc.Namespace).Get(ctx, podName, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
-		}
+	return hostIDs, nil
+}
 
-		broadcastAddress, err := GetBroadcastAddress(ctx, client, sdc, svc, pod)
-		if err != nil {
-			return nil, fmt.Errorf("can't get broadcast address of Service %q: %w", naming.ObjRef(svc), err)
-		}
-
-		broadcastAddresses = append(broadcastAddresses, broadcastAddress)
+func GetBroadcastAddresses(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]string, error) {
+	broadcastAddresses, err := collectFromEachNode(ctx, client, sdc, func(pod *corev1.Pod, svc *corev1.Service) (string, error) {
+		return GetBroadcastAddress(ctx, client, sdc, svc, pod)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't get broadcast addresses: %w", err)
 	}
 
 	return broadcastAddresses, nil
+}
+
+func GetHostID(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+	scyllaClient, _, err := GetScyllaClient(ctx, client, sdc)
+	if err != nil {
+		return "", fmt.Errorf("can't get scylla client: %w", err)
+	}
+
+	host, err := controllerhelpers.GetScyllaHost(sdc, svc, pod)
+	if err != nil {
+		return "", fmt.Errorf("can't get Scylla host for Service %q: %w", naming.ObjRef(svc), err)
+	}
+
+	hostID, err := scyllaClient.GetLocalHostId(ctx, host, false)
+	if err != nil {
+		return "", fmt.Errorf("can't get hots ID from host %q: %w", host, err)
+	}
+
+	return hostID, nil
 }
 
 func GetBroadcastAddress(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, pod *corev1.Pod) (string, error) {
@@ -174,7 +204,6 @@ func GetBroadcastAddress(ctx context.Context, client corev1client.CoreV1Interfac
 	}
 
 	return broadcastAddress, nil
-
 }
 
 func ContextForRollout(parent context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (context.Context, context.CancelFunc) {
@@ -277,7 +306,7 @@ func GetPodsForStatefulSet(ctx context.Context, client corev1client.CoreV1Interf
 }
 
 // TODO: Should be unified with function coming from test/helpers once e2e's there starts using ScyllaDBDatacenter API.
-func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, sortedExpectedHosts []string) error {
+func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, sortedExpectedHostIDs []string) error {
 	scyllaClient, hosts, err := GetScyllaClient(ctx, client, sdc)
 	if err != nil {
 		return fmt.Errorf("can't get scylla client: %w", err)
@@ -297,13 +326,13 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 				return true, fmt.Errorf("can't get scylla status on node %q: %w", h, err)
 			}
 
-			sHosts := s.Hosts()
-			sort.Strings(sHosts)
-			if !reflect.DeepEqual(sHosts, sortedExpectedHosts) {
-				errs = append(errs, fmt.Errorf("node %q thinks the cluster consists of different nodes: %s", h, sHosts))
+			sHostIDs := s.HostIDs()
+			sort.Strings(sHostIDs)
+			if !reflect.DeepEqual(sHostIDs, sortedExpectedHostIDs) {
+				errs = append(errs, fmt.Errorf("node %q thinks the cluster consists of different nodes: got %s, expected %s", h, sHostIDs, sortedExpectedHostIDs))
 			}
 
-			downHosts := s.DownHosts()
+			downHosts := s.DownHostIDs()
 			infoMessages = append(infoMessages, fmt.Sprintf("Node %q, down: %q, up: %q", h, strings.Join(downHosts, "\n"), strings.Join(s.LiveHosts(), ",")))
 
 			if len(downHosts) != 0 {

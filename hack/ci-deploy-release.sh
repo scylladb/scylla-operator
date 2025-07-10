@@ -40,9 +40,17 @@ if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
   ARTIFACTS_DEPLOY_DIR="${ARTIFACTS}/deploy"
 fi
 
-mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,manager}
+SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:-false}
 
-kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
+mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"operator
+
+# Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping prometheus-operator deployment"
+else
+  kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
+fi
+
 kubectl_create -n=haproxy-ingress -f="${source_url}/${revision}/examples/third-party/haproxy-ingress.yaml"
 
 kubectl_create -f="${source_url}/${revision}/examples/third-party/cert-manager.yaml"
@@ -236,15 +244,20 @@ else
   echo "Skipping CSI driver creation"
 fi
 
-cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
+if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" == "true" ]]; then
+  echo "Skipping ScyllaDBManager deployment"
+else
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}/manager"
+
+  cat > "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" << EOF
 resources:
 - ${source_url}/${revision}/deploy/manager-prod.yaml
 EOF
 
-if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
-  # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and nonempty.
-  cat << EOF | \
-yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+  if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
+    # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and nonempty.
+    cat << EOF | \
+    yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
 - patch: |-
     - op: replace
       path: /spec/datacenter/racks/0/storage/storageClassName
@@ -255,10 +268,10 @@ yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as 
     kind: ScyllaCluster
     name: scylla-manager-cluster
 EOF
-elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
-  # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and empty.
-  cat << EOF | \
-yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+  elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+    # SO_SCYLLACLUSTER_STORAGECLASS_NAME is set and empty.
+    cat << EOF | \
+    yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
 - patch: |-
     - op: remove
       path: /spec/datacenter/racks/0/storage/storageClassName
@@ -268,11 +281,11 @@ yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as 
     kind: ScyllaCluster
     name: scylla-manager-cluster
 EOF
-fi
+  fi
 
-if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
-  cat << EOF | \
-  yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
+    cat << EOF | \
+    yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
 - patch: |-
     - op: replace
       path: /spec/version
@@ -283,11 +296,11 @@ if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
     kind: ScyllaCluster
     name: scylla-manager-cluster
 EOF
-fi
+  fi
 
-if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
-  cat << EOF | \
-  yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
+    cat << EOF | \
+    yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/image
@@ -298,11 +311,11 @@ if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
     kind: Deployment
     name: scylla-manager
 EOF
-fi
+  fi
 
-if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
-  cat << EOF | \
-  yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
+    cat << EOF | \
+    yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
 - patch: |-
     - op: replace
       path: /spec/agentVersion
@@ -313,16 +326,22 @@ if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
     kind: ScyllaCluster
     name: scylla-manager-cluster
 EOF
+  fi
+
+  kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
+
+  kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+  kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+  kubectl -n=scylla-manager wait --timeout=5m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
+  kubectl -n=scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager
 fi
-
-kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
-
-kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n=scylla-manager wait --timeout=5m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n=scylla-manager wait --timeout=5m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
-kubectl -n=scylla-manager rollout status --timeout=5m deployment.apps/scylla-manager
 
 kubectl -n=haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
 
 kubectl wait --for condition=established crd/{scyllaoperatorconfigs,scylladbmonitorings}.scylla.scylladb.com
-kubectl wait --for condition=established crd/{prometheuses,prometheusrules,servicemonitors}.monitoring.coreos.com
+
+if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
+  echo "Skipping waiting for prometheus-operator"
+else
+  kubectl wait --for condition=established crd/{prometheuses,prometheusrules,servicemonitors}.monitoring.coreos.com
+fi

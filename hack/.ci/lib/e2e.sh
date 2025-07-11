@@ -181,6 +181,12 @@ function gracefully-shutdown-e2es {
   kubectl_cp -n=e2e e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}" || true
 }
 
+function apply-e2e-workarounds-in-all-clusters {
+  for name in "${!WORKER_KUBECONFIGS[@]}"; do
+    KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" apply-e2e-workarounds
+  done
+}
+
 function apply-e2e-workarounds {
   if [ -z "${SO_IMAGE+x}" ]; then
     echo "SO_IMAGE can't be empty" > /dev/stderr

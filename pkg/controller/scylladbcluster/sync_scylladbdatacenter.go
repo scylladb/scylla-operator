@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
@@ -19,6 +20,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 	ctx context.Context,
 	sc *scyllav1alpha1.ScyllaDBCluster,
 	dc *scyllav1alpha1.ScyllaDBClusterDatacenter,
+	status *scyllav1alpha1.ScyllaDBClusterStatus,
 	remoteNamespace *corev1.Namespace,
 	remoteController metav1.Object,
 	remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter,
@@ -60,35 +62,31 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 				break
 			}
 			previousDCSpec := sc.Spec.Datacenters[i]
-			previousDCSDCName := naming.ScyllaDBDatacenterName(sc, &previousDCSpec)
-			previousDCSDC, ok := remoteScyllaDBDatacenters[previousDCSpec.RemoteKubernetesClusterName][previousDCSDCName]
-			if !ok {
-				klog.V(4).InfoS("Waiting for datacenter to be created", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", previousDCSpec.Name)
+			isScyllaDBDatacenterControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(previousDCSpec.Name))
+			if isScyllaDBDatacenterControllerProgressing {
+				klog.V(4).InfoS("Waiting for ScyllaDBDatacenter controller for previous datacenter to finish progressing", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", dc.Name, "PreviousDatacenter", previousDCSpec.Name)
 				progressingConditions = append(progressingConditions, metav1.Condition{
 					Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
 					Status:             metav1.ConditionTrue,
-					Reason:             "WaitingForScyllaDBDatacenterCreation",
-					Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter %q to be created.", previousDCSDCName),
-					ObservedGeneration: sc.Generation,
-				})
-
-				return progressingConditions, nil
-			}
-
-			rolledOut, err := controllerhelpers.IsScyllaDBDatacenterRolledOut(previousDCSDC)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't check if scylladbdatacenter %q is rolled out: %w", naming.ObjRef(previousDCSDC), err)
-			}
-			if !rolledOut {
-				klog.V(4).InfoS("Waiting for datacenter to roll out", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", previousDCSpec.Name)
-				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
-					Status:             metav1.ConditionTrue,
-					Reason:             "WaitingForScyllaDBDatacenterRollout",
-					Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter %q to roll out.", naming.ObjRef(previousDCSDC)),
+					Reason:             "WaitingForScyllaDBDatacenterController",
+					Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter controller for %q datacenter to finish progressing", previousDCSpec.Name),
 					ObservedGeneration: sc.Generation,
 				})
 			}
+		}
+
+		// Scylla cannot start without connecting to seeds. Before we create new DC, make sure seed service and endpoints behind it are already reconciled.
+		isEndpointSliceControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name))
+		isServiceControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteServiceControllerDatacenterProgressingCondition(dc.Name))
+		if isEndpointSliceControllerProgressing || isServiceControllerProgressing {
+			klog.V(4).InfoS("Waiting until EndpointSlice and Service controllers are no longer progressing", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", dc.Name)
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForEndpointSliceServiceController",
+				Message:            fmt.Sprintf("Waiting for EndpointSlice and Service controller for %q datacenter to finish progressing", dc.Name),
+				ObservedGeneration: sc.Generation,
+			})
 		}
 	}
 

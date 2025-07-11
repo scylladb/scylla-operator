@@ -25,5 +25,5 @@ export SO_NODECONFIG_PATH
 
 run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy-release.sh"
 
-apply-e2e-workarounds
+apply-e2e-workarounds-in-all-clusters
 run-e2e

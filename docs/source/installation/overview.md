@@ -42,7 +42,7 @@ You can learn more about the APIs in [resources section](../resources/overview.m
 ### ScyllaDB Manager
 
 ScyllaDB Manager is a global deployment that is responsible for operating all [ScyllaClusters](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) and runs inside `scylla-manager` namespace.
-There is a corresponding controller running in {{productName}} that syncs the [ScyllaCluster](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) metadata, [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) and [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) tasks into the manager (and vice versa) and avoids accessing the shared instance by users. Unfortunately, at this point, other task like restoring from a backup require executing into the shared ScyllaDB Manager deployment which effectively needs administrator privileges. 
+{{productName}} syncs the [ScyllaCluster](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) metadata, [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) and [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) tasks into the manager (and vice versa). This way it allows avoiding direct access to the shared instance by users. Unfortunately, at this point, other task like restoring from a backup require executing into the shared ScyllaDB Manager deployment which effectively needs administrator privileges. 
 
 ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends on the {{productName}} deployment and the CRD it provides.
 

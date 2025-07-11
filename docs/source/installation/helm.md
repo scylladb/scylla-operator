@@ -181,7 +181,7 @@ Scylla Operator will provision this cluster on your K8s environment.
 ## Scylla Manager Helm Chart
 
 Scylla Manager Chart allows to customize and deploy Scylla Manager in K8s environment.
-Scylla Manager consist of two applications (Scylla Manager itself and Scylla Manager Controller) and additional Scylla cluster.
+Besides Scylla Manager, it deploys an additional Scylla cluster for the Manager’s needs.
 
 To read more about Scylla Manager see [Manager guide](../architecture/manager.md).
 
@@ -203,28 +203,6 @@ resources:
   requests:
     cpu: 500m
     memory: 500Mi
-```
-
-### Scylla Manager Controller 
-
-Similarly Scylla Manager Controller image can be customized:
-
-```yaml
-controllerImage:
-  repository: scylladb
-  pullPolicy: IfNotPresent
-  tag: ""
-```
-
-And allocated resources:
-```yaml
-controllerResources:
-  limits:
-    cpu: 100m
-    memory: 30Mi
-  requests:
-    cpu: 100m
-    memory: 20Mi
 ```
 
 ### Scylla
@@ -275,8 +253,6 @@ $ kubectl -n scylla-manager get all
 
 NAME                                             READY   STATUS    RESTARTS   AGE
 pod/scylla-manager-669db64dd-bcm4v               1/1     Running   0          89s
-pod/scylla-manager-controller-844ccc56c4-drbth   1/1     Running   0          89s
-pod/scylla-manager-controller-844ccc56c4-rhwqx   1/1     Running   0          89s
 
 NAME                            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE
 service/scylla-manager          ClusterIP   10.105.231.53   <none>        80/TCP,5090/TCP     89s
@@ -284,11 +260,9 @@ service/scylla-manager-client   ClusterIP   None            <none>        9180/T
 
 NAME                                        READY   UP-TO-DATE   AVAILABLE   AGE
 deployment.apps/scylla-manager              1/1     1            1           89s
-deployment.apps/scylla-manager-controller   2/2     2            2           89s
 
 NAME                                                   DESIRED   CURRENT   READY   AGE
 replicaset.apps/scylla-manager-669db64dd               1         1         1       89s
-replicaset.apps/scylla-manager-controller-844ccc56c4   2         2         2       89s
 
 
 ```

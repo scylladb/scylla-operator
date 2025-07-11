@@ -696,6 +696,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.scyllaClient,
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		kubeInformers.Core().V1().Namespaces(),
 	)
 	if err != nil {
@@ -707,6 +708,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.scyllaClient,
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		kubeInformers.Core().V1().Secrets(),
 		kubeInformers.Core().V1().Namespaces(),
 	)

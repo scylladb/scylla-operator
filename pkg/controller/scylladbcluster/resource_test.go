@@ -484,7 +484,9 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
 					"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 				},
-				Annotations:     map[string]string{},
+				Annotations: map[string]string{
+					"internal.scylla-operator.scylladb.com/scylladb-manager-agent-auth-token-override-secret-ref": "cluster-auth-token-2s75a",
+				},
 				OwnerReferences: newBasicOwnerReference(namespace),
 			},
 			Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{

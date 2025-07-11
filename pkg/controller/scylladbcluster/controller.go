@@ -213,10 +213,18 @@ func NewController(
 		},
 	)
 
-	// Local ConfigMap and Secret handlers are skipped to optimize number of syncs which doesn't do anything.
+	secretInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addSecret,
+			UpdateFunc: scc.updateSecret,
+			DeleteFunc: scc.deleteSecret,
+		},
+	)
+
+	// Local ConfigMap handlers are skipped to optimize number of syncs which doesn't do anything.
 	// Applying configuration change requires rolling restart of ScyllaDBCluster, so these resources will be synced upon
 	// ScyllaDBCluster update.
-	// These could be added once ConfigMaps and Secrets would require immediate sync.
+	// These could be added once ConfigMaps would require immediate sync.
 
 	// TODO: add error handling once these start returning errors
 	remoteRemoteOwnerInformer.Informer().AddEventHandler(
@@ -707,6 +715,29 @@ func (scc *Controller) updateEndpoints(old, cur interface{}) {
 }
 
 func (scc *Controller) deleteEndpoints(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) addSecret(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*corev1.Secret),
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) updateSecret(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*corev1.Secret),
+		cur.(*corev1.Secret),
+		scc.handlers.EnqueueOwner,
+		scc.deleteSecret,
+	)
+}
+
+func (scc *Controller) deleteSecret(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.handlers.EnqueueOwner,

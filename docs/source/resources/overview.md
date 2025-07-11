@@ -15,33 +15,39 @@ kubectl explain --api-version='scylla.scylladb.com/v1alpha1' NodeConfig.spec
 
 ## Namespaced resources
 
-::::{grid} 1 1 2 3
-:gutter: 4
+````{grid}
+:type: default
 
-:::{grid-item-card} {material-regular}`storage;2em` ScyllaClusters
+```{topic-box}
+:title: ScyllaClusters
+:icon: icon-database
+:link: scyllaclusters/basics
+:anchor: Learn more »
+:class: large-6
 
 ScyllaCluster defines a **single datacenter** ScyllaDB cluster and manages the racks within.
-+++
-[Learn more »](scyllaclusters/basics)
-:::
+```
 
-:::{grid-item-card} {material-regular}`storage;2em` ScyllaDBClusters
+```{topic-box}
+:title: ScyllaDBClusters
+:icon: icon-database
+:link: scylladbclusters/scylladbclusters
+:anchor: Learn more »
+:class: large-6
 
 ScyllaDBCluster defines a **multi datacenter** ScyllaDB cluster spanned across multiple Kubernetes clusters and manages the datacenters and racks within.
-+++
-[Learn more »](scylladbclusters/scylladbclusters)
-:::
+```
 
-
-:::{grid-item-card} {material-round}`insights;2em` ScyllaDBMonitorings
+```{topic-box}
+:title: ScyllaDBMonitorings
+:icon: icon-monitoring
+:link: scylladbmonitorings
+:anchor: Learn more »
+:class: large-6
 
 ScyllaDBMonitoring defines and manages a ScyllaDB monitoring stack.
-+++
-[Learn more »](scylladbmonitorings)
-:::
-
-
-::::
+```
+````
 
 ## Cluster scoped resources
 
@@ -50,28 +56,36 @@ Therefore, working with these resources requires elevated privileges.
 
 Generally, there can be multiple instances of these resources but for some of them, like for [ScyllaOperatorConfigs](./scyllaoperatorconfigs.md), it only makes sense to have one instance. We call them *singletons* and the single instance is named `cluster`.
 
-::::{grid} 1 1 2 3
-:gutter: 4
+````{grid}
+:type: default
 
-:::{grid-item-card} {material-regular}`bolt;2em` NodeConfigs
+```{topic-box}
+:title: NodeConfigs
+:icon: icon-tune
+:link: nodeconfigs
+:anchor: Learn more »
+:class: large-6
 
 NodeConfig manages setup and tuning for a set of Kubernetes nodes.
-+++
-[Learn more »](nodeconfigs)
-:::
+```
 
-:::{grid-item-card} {material-regular}`settings;2em` ScyllaOperatorConfigs
+```{topic-box}
+:title: ScyllaOperatorConfigs
+:icon: icon-settings
+:link: scyllaoperatorconfigs
+:anchor: Learn more »
+:class: large-6
 
 ScyllaOperatorConfig configures the {{productName}} deployment and reports the status.
-+++
-[Learn more »](scyllaoperatorconfigs)
-:::
+```
 
-:::{grid-item-card} {material-regular}`settings;2em` RemoteKubernetesClusters
+```{topic-box}
+:title: RemoteKubernetesClusters
+:icon: icon-server-3
+:link: remotekubernetesclusters
+:anchor: Learn more »
+:class: large-6
 
 RemoteKubernetesCluster configures the access for {{productName}} to remotely deployed Kubernetes clusters.
-+++
-[Learn more »](remotekubernetesclusters)
-:::
-
-::::
+```
+````

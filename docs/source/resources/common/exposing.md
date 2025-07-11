@@ -12,8 +12,8 @@ A ScyllaDB cluster can be exposed in various network configurations, independent
 `exposeOptions` specifies configuration options for exposing ScyllaCluster's. 
 A ScyllaCluster created without any `exposeOptions` is equivalent to the following:
 
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -28,7 +28,7 @@ spec:
         type: ServiceClusterIP
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -44,8 +44,6 @@ spec:
 ```
 :::
 ::::
-
-
 The following sections cover what every field controls and what the configuration options are.
 
 ### Node Service Template
@@ -64,8 +62,8 @@ This type of Service is useful when ScyllaDB cluster nodes broadcast PodIPs to c
 
 Example:
 
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -75,7 +73,7 @@ spec:
       type: Headless
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -87,7 +85,6 @@ spec:
 :::
 ::::
 
-
 #### ClusterIP Type
 
 For `ClusterIP` type, Scylla Operator creates a ClusterIP Service backed by a specific node in the ScyllaDB cluster.
@@ -95,8 +92,9 @@ For `ClusterIP` type, Scylla Operator creates a ClusterIP Service backed by a sp
 These IP addresses are only routable within the same Kubernetes cluster, so it's a good fit, if you don't want to expose them to other networks.
 
 Example:
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -106,7 +104,7 @@ spec:
       type: ClusterIP
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```{include} ../../.internal/scylladbcluster-cluster-ip-exposure-caution.md
 ```
 ```yaml
@@ -119,6 +117,7 @@ spec:
 ```
 :::
 ::::
+
 #### LoadBalancer Type
 
 For the `LoadBalancer` type, Scylla Operator generates a LoadBalancer Service that directs traffic to a specific node within the ScyllaCluster. 
@@ -129,8 +128,8 @@ Customizations are usually managed via Service annotations, key-value pairs prov
 LoadBalancer Services should be configured to pass through entire traffic.  
 For example, to expose LoadBalancer only to internal network use the following annotations:
 
-::::{tab-set}
-:::{tab-item} ScyllaCluster EKS
+::::{tabs}
+:::{group-tab} ScyllaCluster EKS
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -143,7 +142,7 @@ spec:
        service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
 ```
 :::
-:::{tab-item} ScyllaCluster GKE
+:::{group-tab} ScyllaCluster GKE
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -155,7 +154,7 @@ spec:
        networking.gke.io/load-balancer-type: Internal
 ```
 :::
-:::{tab-item} ScyllaDBCluster EKS
+:::{group-tab} ScyllaDBCluster EKS
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -168,7 +167,7 @@ spec:
        service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
 ```
 :::
-:::{tab-item} ScyllaDBCluster GKE
+:::{group-tab} ScyllaDBCluster GKE
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -194,8 +193,9 @@ They can be configured using the following fields, which propagate to every node
 Check [Kubernetes Service documentation](https://kubernetes.io/docs/concepts/services-networking/service) to learn more about these options.
 
 Example:
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -206,7 +206,7 @@ spec:
       loadBalancerClass: my-custom-load-balancer-class
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -218,7 +218,7 @@ spec:
 ```
 :::
 ::::
----
+
 
 ### Broadcast Options
 
@@ -233,8 +233,9 @@ By default, the address is taken from Pod's `status.PodIP` field.
 Because a Pod can use multiple address, you may want to provide source options by specifying `podIP.source`.
 
 Example:
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -247,7 +248,7 @@ spec:
           source: Status
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -261,7 +262,6 @@ spec:
 ```
 :::
 ::::
-
 #### ServiceClusterIP Type
 
 Address broadcasted to clients or nodes is taken from `spec.ClusterIP` field of a node's dedicated Service.
@@ -269,8 +269,9 @@ Address broadcasted to clients or nodes is taken from `spec.ClusterIP` field of 
 In order to configure it, the `nodeService` template must specify a Service having a ClusterIP assigned.
 
 Example:
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -281,7 +282,7 @@ spec:
         type: ServiceClusterIP
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```{include} ../../.internal/scylladbcluster-cluster-ip-exposure-caution.md
 ```
 ```yaml
@@ -303,8 +304,9 @@ Address broadcasted to clients/nodes is taken from the node dedicated Service, f
 In order to configure it, the `nodeService` template must specify the LoadBalancer Service.
 
 Example:
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -317,7 +319,7 @@ spec:
           source: Status
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -335,9 +337,11 @@ spec:
 ## Deployment Examples
 
 The following section contains several specific examples of various network scenarios and explains how nodes and clients communicate with one another.
+
 ### In-cluster only
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -352,7 +356,7 @@ spec:
         type: ServiceClusterIP
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```{include} ../../.internal/scylladbcluster-cluster-ip-exposure-caution.md
 ```
 ```yaml
@@ -379,8 +383,8 @@ Because ClusterIP Services are only routable within the same Kubernetes cluster,
 
 ### In-cluster node-to-node, VPC clients-to-nodes
 
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -395,7 +399,7 @@ spec:
         type: ServiceClusterIP
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```{include} ../../.internal/scylladbcluster-cluster-ip-exposure-caution.md
 ```
 ```yaml
@@ -414,7 +418,6 @@ spec:
 :::
 ::::
 
-
 In this scenario, we assume that the Pod IP subnet is routable within a VPC. 
 Clients within the VPC network can communicate directly with ScyllaCluster nodes using PodIPs.
 Nodes communicate with each other exclusively within the same Kubernetes cluster.
@@ -423,8 +426,8 @@ Nodes communicate with each other exclusively within the same Kubernetes cluster
 
 ### Multi VPC
 
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+::::{tabs}
+:::{group-tab} ScyllaCluster
 
 Both ScyllaDB datacenters use the same `exposeOptions`, nodes broadcast their Pod IP addresses, enabling them to establish connections with one another.
 Check [dedicated documentation page](../scyllaclusters/multidc/multidc.md) to know how to connect two ScyllaClusters into one logical cluster.
@@ -443,7 +446,7 @@ spec:
         type: PodIP
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBCluster
@@ -471,8 +474,8 @@ Since there is no requirement for any address other than the Pod IP, the `Headle
 
 ### Internet
 
-::::{tab-set}
-:::{tab-item} ScyllaCluster
+::::{tabs}
+:::{group-tab} ScyllaCluster
 ```yaml
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
@@ -487,7 +490,7 @@ spec:
         type: ClusterIP 
 ```
 :::
-:::{tab-item} ScyllaDBCluster
+:::{group-tab} ScyllaDBCluster
 ```{include} ../../.internal/scylladbcluster-cluster-ip-exposure-caution.md
 ```
 ```yaml
@@ -505,7 +508,6 @@ spec:
 ```
 :::
 ::::
-
 
 We assume that a Kubernetes cluster has been deployed in a cloud provider environment that supports external load balancers. 
 By specifying the LoadBalancer type in the nodeService template, the Scylla Operator generates a dedicated LB Service for each node. 

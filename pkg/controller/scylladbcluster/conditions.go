@@ -34,6 +34,8 @@ var (
 	endpointSliceControllerDegradedCondition    = internalapi.MakeKindControllerCondition("EndpointSlice", scyllav1alpha1.DegradedCondition)
 	endpointsControllerProgressingCondition     = internalapi.MakeKindControllerCondition("Endpoints", scyllav1alpha1.ProgressingCondition)
 	endpointsControllerDegradedCondition        = internalapi.MakeKindControllerCondition("Endpoints", scyllav1alpha1.DegradedCondition)
+	secretControllerProgressingCondition        = internalapi.MakeKindControllerCondition("Secret", scyllav1alpha1.ProgressingCondition)
+	secretControllerDegradedCondition           = internalapi.MakeKindControllerCondition("Secret", scyllav1alpha1.DegradedCondition)
 )
 
 // MakeRemoteKindControllerDatacenterConditionFunc returns a format string for a remote kind controller datacenter condition.

@@ -43695,7 +43695,7 @@ spec:
                 scyllaDBClusterRef:
                   description: |-
                     scyllaDBClusterRef specifies the typed reference to the local ScyllaDB cluster.
-                    Supported kind is ScyllaDBDatacenter in scylla.scylladb.com group.
+                    Supported kinds are ScyllaDBCluster and ScyllaDBDatacenter in scylla.scylladb.com group.
                   properties:
                     kind:
                       description: kind specifies the type of the resource.

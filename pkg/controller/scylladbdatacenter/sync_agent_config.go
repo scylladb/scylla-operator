@@ -15,19 +15,11 @@ import (
 )
 
 func (sdcc *Controller) getAgentTokenFromAgentConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
-	if len(sdc.Spec.Racks) == 0 {
-		return "", nil
-	}
-
-	if sdc.Spec.RackTemplate != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent == nil {
-		return "", nil
-	}
-
 	var configSecret *string
 	if sdc.Spec.RackTemplate != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
 		configSecret = sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef
 	}
-	if sdc.Spec.Racks[0].ScyllaDBManagerAgent != nil && sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+	if len(sdc.Spec.Racks) > 0 && sdc.Spec.Racks[0].ScyllaDBManagerAgent != nil && sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
 		configSecret = sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef
 	}
 	if configSecret == nil {
@@ -37,7 +29,7 @@ func (sdcc *Controller) getAgentTokenFromAgentConfig(sdc *scyllav1alpha1.ScyllaD
 	secretName := *configSecret
 	secret, err := sdcc.secretLister.Secrets(sdc.Namespace).Get(secretName)
 	if err != nil {
-		return "", fmt.Errorf("can't get secret %s/%s: %w", sdc.Namespace, secretName, err)
+		return "", fmt.Errorf("can't get secret %q: %w", naming.ManualRef(sdc.Namespace, secretName), err)
 	}
 
 	return helpers.GetAgentAuthTokenFromAgentConfigSecret(secret)

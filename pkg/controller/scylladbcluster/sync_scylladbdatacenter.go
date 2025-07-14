@@ -54,7 +54,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 		return progressingConditions, fmt.Errorf("can't prune scylladbdatacenter(s) in %q Datacenter of %q ScyllaDBCluster: %w", dc.Name, naming.ObjRef(sc), err)
 	}
 
-	_, sdcExists := remoteScyllaDBDatacenters[dc.RemoteKubernetesClusterName][requiredScyllaDBDatacenter.Name]
+	existingSDC, sdcExists := remoteScyllaDBDatacenters[dc.RemoteKubernetesClusterName][requiredScyllaDBDatacenter.Name]
 	if !sdcExists {
 		klog.V(4).InfoS("Required ScyllaDBDatacenter doesn't exists, awaiting all previous DC to finish bootstrapping", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter))
 		for i := range sc.Spec.Datacenters {
@@ -103,7 +103,14 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name), sdc, "apply", sc.Generation)
 	}
 
-	rolledOut, err := controllerhelpers.IsScyllaDBDatacenterRolledOut(sdc)
+	// Use existingSDC coming from cache to validate the rollout state instead of a freshly fetched SDC,
+	// because the state of the required object depends on the state of other DCs (e.g., seed calculation).
+	// Using a fresh SDC could result in evaluating different state than an outdated state due to cache staleness,
+	// leading us to incorrectly mark the ScyllaCluster as fully rolled out while pending changes still exist.
+	if !sdcExists {
+		existingSDC = sdc
+	}
+	rolledOut, err := controllerhelpers.IsScyllaDBDatacenterRolledOut(existingSDC)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't check if scylladbdatacenter is rolled out: %w", err)
 	}
@@ -117,8 +124,6 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 			Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter %q to roll out.", naming.ObjRef(sdc)),
 			ObservedGeneration: sc.Generation,
 		})
-
-		return progressingConditions, nil
 	}
 
 	return progressingConditions, nil

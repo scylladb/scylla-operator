@@ -13,7 +13,7 @@ type LocalScyllaDBReference struct {
 
 type ScyllaDBManagerClusterRegistrationSpec struct {
 	// scyllaDBClusterRef specifies the typed reference to the local ScyllaDB cluster.
-	// Supported kind is ScyllaDBDatacenter in scylla.scylladb.com group.
+	// Supported kinds are ScyllaDBCluster and ScyllaDBDatacenter in scylla.scylladb.com group.
 	ScyllaDBClusterRef LocalScyllaDBReference `json:"scyllaDBClusterRef"`
 }
 

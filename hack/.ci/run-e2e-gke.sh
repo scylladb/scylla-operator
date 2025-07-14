@@ -32,5 +32,5 @@ fi
 
 run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy.sh"
 
-apply-e2e-workarounds
+apply-e2e-workarounds-in-all-clusters
 run-e2e

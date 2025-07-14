@@ -77,7 +77,7 @@ object
      - Description
    * - :ref:`scyllaDBClusterRef<api-scylla.scylladb.com-scylladbmanagerclusterregistrations-v1alpha1-.spec.scyllaDBClusterRef>`
      - object
-     - scyllaDBClusterRef specifies the typed reference to the local ScyllaDB cluster. Supported kind is ScyllaDBDatacenter in scylla.scylladb.com group.
+     - scyllaDBClusterRef specifies the typed reference to the local ScyllaDB cluster. Supported kinds are ScyllaDBCluster and ScyllaDBDatacenter in scylla.scylladb.com group.
 
 .. _api-scylla.scylladb.com-scylladbmanagerclusterregistrations-v1alpha1-.spec.scyllaDBClusterRef:
 
@@ -86,7 +86,7 @@ object
 
 Description
 """""""""""
-scyllaDBClusterRef specifies the typed reference to the local ScyllaDB cluster. Supported kind is ScyllaDBDatacenter in scylla.scylladb.com group.
+scyllaDBClusterRef specifies the typed reference to the local ScyllaDB cluster. Supported kinds are ScyllaDBCluster and ScyllaDBDatacenter in scylla.scylladb.com group.
 
 Type
 """"

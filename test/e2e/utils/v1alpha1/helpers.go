@@ -206,11 +206,11 @@ func GetBroadcastAddress(ctx context.Context, client corev1client.CoreV1Interfac
 	return broadcastAddress, nil
 }
 
-func ContextForRollout(parent context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, RolloutTimeoutForScyllaDBDatacenter(sdc))
+func ContextForScyllaDBDatacenterRollout(parent context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, rolloutTimeoutForScyllaDBDatacenter(sdc))
 }
 
-func RolloutTimeoutForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) time.Duration {
+func rolloutTimeoutForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) time.Duration {
 	return SyncTimeout + time.Duration(GetNodeCount(sdc))*memberRolloutTimeout + cleanupJobTimeout
 }
 

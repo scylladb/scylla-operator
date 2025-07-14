@@ -41,7 +41,7 @@ var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for ScyllaDBDatacenter to roll out (RV=%s)", sdc.ResourceVersion)
-		rolloutCtx, rolloutCtxCancel := utilsv1alpha1.ContextForRollout(ctx, sdc)
+		rolloutCtx, rolloutCtxCancel := utilsv1alpha1.ContextForScyllaDBDatacenterRollout(ctx, sdc)
 		defer rolloutCtxCancel()
 		sdc, err = controllerhelpers.WaitForScyllaDBDatacenterState(rolloutCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name), sdc.Name, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBDatacenterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())

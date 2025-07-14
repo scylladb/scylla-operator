@@ -112,7 +112,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		const scyllaDBManagerAgentRackAuthToken = "eeee"
 		scyllaDBManagerAgentDatacenterRackSecret := makeScyllaDBManagerAgentSecret("rack", scyllaDBManagerAgentRackAuthToken)
 
-		scyllaDBManagerAgentSecrets := []*corev1.Secret{
+		userManagedScyllaDBManagerAgentSecrets := []*corev1.Secret{
 			scyllaDBManagerAgentDatacenterTemplateSecret,
 			scyllaDBManagerAgentDatacenterTemplateRackTemplateSecret,
 			scyllaDBManagerAgentDatacenterRackTemplateSecret,
@@ -138,7 +138,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 
 		userManagedSecrets := slices.Concat(
 			userManagedVolumesSecrets,
-			scyllaDBManagerAgentSecrets,
+			userManagedScyllaDBManagerAgentSecrets,
 		)
 
 		for _, cm := range scyllaDBConfigMaps {
@@ -218,6 +218,28 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		err = scylladbclusterverification.WaitForFullQuorum(ctx, rkcClusterMap, sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		framework.By("Collecting operator-managed Secrets which should be mirrored into remote datacenters")
+		var operatorManagedScyllaDBManagerAgentSecrets []*corev1.Secret
+
+		scyllaDBManagerAgentAuthTokenSecretName, err := naming.ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		operatorManagedScyllaDBManagerAgentSecrets = append(operatorManagedScyllaDBManagerAgentSecrets, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      scyllaDBManagerAgentAuthTokenSecretName,
+				Namespace: sc.Namespace,
+			},
+		})
+
+		operatorManagedSecrets := slices.Concat(
+			operatorManagedScyllaDBManagerAgentSecrets,
+		)
+
+		expectedMirroredSecrets := slices.Concat(
+			userManagedSecrets,
+			operatorManagedSecrets,
+		)
+
 		for _, dc := range sc.Spec.Datacenters {
 			framework.By("Verifying if ConfigMaps and Secrets referenced by ScyllaDBCluster %q are mirrored in %q Datacenter", sc.Name, dc.Name)
 
@@ -235,7 +257,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 				o.Expect(mirroredCM.Data).To(o.Equal(cm.Data))
 			}
 
-			for _, secret := range userManagedSecrets {
+			for _, secret := range expectedMirroredSecrets {
 				mirroredSecret, err := clusterClient.KubeAdminClient().CoreV1().Secrets(*dcStatus.RemoteNamespaceName).Get(ctx, secret.Name, metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 

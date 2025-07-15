@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
@@ -89,6 +90,20 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 					ObservedGeneration: sc.Generation,
 				})
 			}
+		}
+
+		// Scylla cannot start without connecting to seeds. Before we create new DC, make sure seed service and endpoints behind it are already reconciled.
+		isEndpointSliceControllerProgressing := meta.IsStatusConditionTrue(sc.Status.Conditions, makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name))
+		isServiceControllerProgressing := meta.IsStatusConditionTrue(sc.Status.Conditions, makeRemoteServiceControllerDatacenterProgressingCondition(dc.Name))
+		if isEndpointSliceControllerProgressing || isServiceControllerProgressing {
+			klog.V(4).InfoS("Waiting until EndpointSlice and Service controllers are no longer progressing", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", dc.Name)
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForEndpointSliceServiceController",
+				Message:            fmt.Sprintf("Waiting for EndpointSlice and Service controller to finish progressing"),
+				ObservedGeneration: sc.Generation,
+			})
 		}
 	}
 

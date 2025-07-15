@@ -1005,3 +1005,173 @@ func TestGetNodeCount(t *testing.T) {
 		})
 	}
 }
+
+func TestIsScyllaDBDatacenterRolledOut(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name              string
+		sdc               *scyllav1alpha1.ScyllaDBDatacenter
+		expectedRolledOut bool
+		expectedError     error
+	}{
+		{
+			name:              "nil ScyllaDBDatacenter",
+			sdc:               nil,
+			expectedRolledOut: false,
+		},
+		{
+			name: "empty conditions",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{},
+				},
+			},
+			expectedRolledOut: false,
+		},
+		{
+			name: "available condition not true",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:   scyllav1alpha1.AvailableCondition,
+							Status: metav1.ConditionFalse,
+						},
+					},
+				},
+			},
+			expectedRolledOut: false,
+		},
+		{
+			name: "progressing condition true",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:   scyllav1alpha1.AvailableCondition,
+							Status: metav1.ConditionTrue,
+						},
+						{
+							Type:   scyllav1alpha1.ProgressingCondition,
+							Status: metav1.ConditionTrue,
+						},
+					},
+				},
+			},
+			expectedRolledOut: false,
+		},
+		{
+			name: "degraded condition true",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:   scyllav1alpha1.AvailableCondition,
+							Status: metav1.ConditionTrue,
+						},
+						{
+							Type:   scyllav1alpha1.ProgressingCondition,
+							Status: metav1.ConditionFalse,
+						},
+						{
+							Type:   scyllav1alpha1.DegradedCondition,
+							Status: metav1.ConditionTrue,
+						},
+					},
+				},
+			},
+			expectedRolledOut: false,
+		},
+		{
+			name: "all conditions satisfied",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:   scyllav1alpha1.AvailableCondition,
+							Status: metav1.ConditionTrue,
+						},
+						{
+							Type:   scyllav1alpha1.ProgressingCondition,
+							Status: metav1.ConditionFalse,
+						},
+						{
+							Type:   scyllav1alpha1.DegradedCondition,
+							Status: metav1.ConditionFalse,
+						},
+					},
+				},
+			},
+			expectedRolledOut: true,
+		},
+		{
+			name: "available condition not present",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:   scyllav1alpha1.ProgressingCondition,
+							Status: metav1.ConditionFalse,
+						},
+						{
+							Type:   scyllav1alpha1.DegradedCondition,
+							Status: metav1.ConditionFalse,
+						},
+					},
+				},
+			},
+			expectedRolledOut: false,
+		},
+		{
+			name: "progressing condition not present",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:   scyllav1alpha1.AvailableCondition,
+							Status: metav1.ConditionTrue,
+						},
+						{
+							Type:   scyllav1alpha1.DegradedCondition,
+							Status: metav1.ConditionFalse,
+						},
+					},
+				},
+			},
+			expectedRolledOut: false,
+		},
+		{
+			name: "degraded condition not present",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:   scyllav1alpha1.AvailableCondition,
+							Status: metav1.ConditionTrue,
+						},
+						{
+							Type:   scyllav1alpha1.ProgressingCondition,
+							Status: metav1.ConditionFalse,
+						},
+					},
+				},
+			},
+			expectedRolledOut: false,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotRolledOut, err := IsScyllaDBDatacenterRolledOut(tc.sdc)
+			if !reflect.DeepEqual(err, tc.expectedError) {
+				t.Errorf("expected error %v, got %v", tc.expectedError, err)
+			}
+			if gotRolledOut != tc.expectedRolledOut {
+				t.Errorf("expected %v, got %v", tc.expectedRolledOut, gotRolledOut)
+			}
+		})
+	}
+}

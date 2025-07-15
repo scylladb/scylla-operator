@@ -296,6 +296,10 @@ func GetRackNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string) (
 }
 
 func IsScyllaDBDatacenterRolledOut(sdc *scyllav1alpha1.ScyllaDBDatacenter) (bool, error) {
+	if sdc == nil || len(sdc.Status.Conditions) == 0 {
+		return false, nil
+	}
+
 	if !helpers.IsStatusConditionPresentAndTrue(sdc.Status.Conditions, scyllav1alpha1.AvailableCondition, sdc.Generation) {
 		return false, nil
 	}

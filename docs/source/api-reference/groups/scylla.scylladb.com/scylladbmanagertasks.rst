@@ -83,7 +83,7 @@ object
      - repair specifies the options for a repair task.
    * - :ref:`scyllaDBClusterRef<api-scylla.scylladb.com-scylladbmanagertasks-v1alpha1-.spec.scyllaDBClusterRef>`
      - object
-     - scyllaDBClusterRef is a typed reference to the target cluster in the same namespace. Supported kind is ScyllaDBDatacenter in scylla.scylladb.com group.
+     - scyllaDBClusterRef is a typed reference to the target cluster in the same namespace. Supported kinds are ScyllaDBCluster and ScyllaDBDatacenter in scylla.scylladb.com group.
    * - type
      - string
      - type specifies the type of the task.
@@ -202,7 +202,7 @@ object
 
 Description
 """""""""""
-scyllaDBClusterRef is a typed reference to the target cluster in the same namespace. Supported kind is ScyllaDBDatacenter in scylla.scylladb.com group.
+scyllaDBClusterRef is a typed reference to the target cluster in the same namespace. Supported kinds are ScyllaDBCluster and ScyllaDBDatacenter in scylla.scylladb.com group.
 
 Type
 """"

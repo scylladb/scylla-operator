@@ -3,6 +3,8 @@ package scylladbcluster
 import (
 	"fmt"
 	"reflect"
+	"slices"
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -4420,6 +4422,240 @@ func Test_mergePortSpecSlices(t *testing.T) {
 			got := mergeAndCompactPortSpecSlices(tc.xs...)
 			if !reflect.DeepEqual(got, tc.expected) {
 				t.Errorf("expected and got port specs differ: %s", cmp.Diff(tc.expected, got, cmpopts.EquateComparable(portSpec{})))
+			}
+		})
+	}
+}
+
+func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name     string
+		sc       *scyllav1alpha1.ScyllaDBCluster
+		expected []string
+	}{
+		{
+			name:     "No secrets to mirror",
+			sc:       &scyllav1alpha1.ScyllaDBCluster{},
+			expected: []string{},
+		},
+		{
+			name: "All possible secrets from CustomConfigSecretRef",
+			sc: &scyllav1alpha1.ScyllaDBCluster{
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+							CustomConfigSecretRef: pointer.Ptr("scyllaDBManagerAgent.customConfigSecretRef"),
+						},
+						RackTemplate: &scyllav1alpha1.RackTemplate{
+							ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+								CustomConfigSecretRef: pointer.Ptr("rackTemplate.scyllaDBManagerAgent.customConfigSecretRef"),
+							},
+						},
+					},
+				},
+			},
+			expected: []string{
+				"scyllaDBManagerAgent.customConfigSecretRef",
+				"rackTemplate.scyllaDBManagerAgent.customConfigSecretRef",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := getSecretsToMirrorForAllDCs(tc.sc)
+
+			// Sort before comparison to ensure order does not affect the test.
+			sort.Strings(tc.expected)
+			sort.Strings(got)
+
+			if !slices.Equal(got, tc.expected) {
+				t.Errorf("expected and got secrets differ: %s", cmp.Diff(got, tc.expected))
+			}
+		})
+	}
+}
+
+func Test_getSecretsToMirrorForDC(t *testing.T) {
+	t.Parallel()
+
+	makeVolumesReferringSecret := func(secretName string) []corev1.Volume {
+		return []corev1.Volume{
+			{
+				Name: "test-volume",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: secretName,
+					},
+				},
+			},
+		}
+	}
+
+	tt := []struct {
+		name     string
+		dc       *scyllav1alpha1.ScyllaDBClusterDatacenter
+		expected []string
+	}{
+		{
+			name:     "No secrets to mirror",
+			dc:       &scyllav1alpha1.ScyllaDBClusterDatacenter{},
+			expected: []string{},
+		},
+		{
+			name: "All possible secrets from Volumes",
+			dc: &scyllav1alpha1.ScyllaDBClusterDatacenter{
+				ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Volumes: makeVolumesReferringSecret("scylladb.volumes"),
+					},
+					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+						Volumes: makeVolumesReferringSecret("scyllaDBManagerAgent.volumes"),
+					},
+					RackTemplate: &scyllav1alpha1.RackTemplate{
+						ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+							Volumes: makeVolumesReferringSecret("rackTemplate.scyllaDB.volumes"),
+						},
+						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+							Volumes: makeVolumesReferringSecret("rackTemplate.scyllaDBManagerAgent.volumes"),
+						},
+					},
+					Racks: []scyllav1alpha1.RackSpec{
+						{
+							RackTemplate: scyllav1alpha1.RackTemplate{
+								ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+									Volumes: makeVolumesReferringSecret("racks[].scyllaDB.volumes"),
+								},
+								ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+									Volumes: makeVolumesReferringSecret("racks[].scyllaDBManagerAgent.volumes"),
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{
+				"scylladb.volumes",
+				"scyllaDBManagerAgent.volumes",
+				"rackTemplate.scyllaDB.volumes",
+				"rackTemplate.scyllaDBManagerAgent.volumes",
+				"racks[].scyllaDB.volumes",
+				"racks[].scyllaDBManagerAgent.volumes",
+			},
+		},
+		{
+			name: "All possible secrets from CustomConfigSecretRef",
+			dc: &scyllav1alpha1.ScyllaDBClusterDatacenter{
+				ScyllaDBClusterDatacenterTemplate: scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+						CustomConfigSecretRef: pointer.Ptr("scyllaDBManagerAgent.customConfigSecretRef"),
+					},
+					RackTemplate: &scyllav1alpha1.RackTemplate{
+						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+							CustomConfigSecretRef: pointer.Ptr("rackTemplate.scyllaDBManagerAgent.customConfigSecretRef"),
+						},
+					},
+					Racks: []scyllav1alpha1.RackSpec{
+						{
+							RackTemplate: scyllav1alpha1.RackTemplate{
+								ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+									CustomConfigSecretRef: pointer.Ptr("racks[].scyllaDBManagerAgent.customConfigSecretRef"),
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{
+				"scyllaDBManagerAgent.customConfigSecretRef",
+				"rackTemplate.scyllaDBManagerAgent.customConfigSecretRef",
+				"racks[].scyllaDBManagerAgent.customConfigSecretRef",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := getSecretsToMirrorForDC(tc.dc)
+
+			// Sort before comparison to ensure order does not affect the test.
+			sort.Strings(tc.expected)
+			sort.Strings(got)
+
+			if !slices.Equal(got, tc.expected) {
+				t.Errorf("expected and got secrets differ: %s", cmp.Diff(got, tc.expected))
+			}
+		})
+	}
+}
+
+func Test_collectSecretNamesFromVolumes(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name     string
+		volumes  []corev1.Volume
+		expected []string
+	}{
+		{
+			name:     "No volumes",
+			volumes:  []corev1.Volume{},
+			expected: []string{},
+		},
+		{
+			name: "Volumes with secret",
+			volumes: []corev1.Volume{
+				{
+					Name: "test-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "s1",
+						},
+					},
+				},
+				{
+					Name: "test-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "s2",
+						},
+					},
+				},
+			},
+			expected: []string{"s1", "s2"},
+		},
+		{
+			name: "Volume with no secret",
+			volumes: []corev1.Volume{
+				{
+					Name: "test-volume",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			},
+			expected: []string{},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := collectSecretNamesFromVolumes(tc.volumes)
+
+			// Sort before comparison to ensure order does not affect the test.
+			sort.Strings(tc.expected)
+			sort.Strings(got)
+
+			if !slices.Equal(got, tc.expected) {
+				t.Errorf("expected and got secret names differ: %s", cmp.Diff(tc.expected, got))
 			}
 		})
 	}

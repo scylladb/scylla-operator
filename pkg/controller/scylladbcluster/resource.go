@@ -1085,29 +1085,10 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 	var progressingConditions []metav1.Condition
 	var requiredRemoteSecrets []*corev1.Secret
 
-	var secretsToMirror []string
-
-	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
-	}
-
-	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
-	}
-
-	if dc.ScyllaDBManagerAgent != nil && dc.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		secretsToMirror = append(secretsToMirror, *dc.ScyllaDBManagerAgent.CustomConfigSecretRef)
-	}
-
-	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil && dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		secretsToMirror = append(secretsToMirror, *dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
-	}
-
-	for _, rack := range dc.Racks {
-		if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-			secretsToMirror = append(secretsToMirror, *rack.ScyllaDBManagerAgent.CustomConfigSecretRef)
-		}
-	}
+	secretsToMirror := slices.Concat(
+		getSecretsToMirrorForAllDCs(sc),
+		getSecretsToMirrorForDC(dc),
+	)
 
 	var errs []error
 	for _, secretName := range secretsToMirror {
@@ -1147,6 +1128,77 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 	}
 
 	return progressingConditions, requiredRemoteSecrets, nil
+}
+
+// getSecretsToMirrorForAllDCs collects the names of Secrets to mirror for all Datacenters in the ScyllaDBCluster.
+func getSecretsToMirrorForAllDCs(sc *scyllav1alpha1.ScyllaDBCluster) []string {
+	var secretsToMirror []string
+
+	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	return secretsToMirror
+}
+
+// getSecretsToMirrorForDC collects the names of Secrets to mirror for a specific Datacenter.
+func getSecretsToMirrorForDC(dc *scyllav1alpha1.ScyllaDBClusterDatacenter) []string {
+	var secretsToMirror []string
+
+	if dc.ScyllaDBManagerAgent != nil && dc.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *dc.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil && dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil {
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.RackTemplate.ScyllaDBManagerAgent.Volumes)...)
+	}
+
+	if dc.ScyllaDBManagerAgent != nil {
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.ScyllaDBManagerAgent.Volumes)...)
+	}
+
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil {
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.RackTemplate.ScyllaDB.Volumes)...)
+	}
+
+	if dc.ScyllaDB != nil {
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.ScyllaDB.Volumes)...)
+	}
+
+	for _, rack := range dc.Racks {
+		if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			secretsToMirror = append(secretsToMirror, *rack.ScyllaDBManagerAgent.CustomConfigSecretRef)
+		}
+
+		if rack.ScyllaDBManagerAgent != nil {
+			secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(rack.ScyllaDBManagerAgent.Volumes)...)
+		}
+
+		if rack.ScyllaDB != nil {
+			secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(rack.ScyllaDB.Volumes)...)
+		}
+	}
+
+	return secretsToMirror
+}
+
+// collectSecretNamesFromVolumes collects the names of Secrets from the given Volumes.
+func collectSecretNamesFromVolumes(volumes []corev1.Volume) []string {
+	var secretNames []string
+	for _, volume := range volumes {
+		if volume.Secret != nil && volume.Secret.SecretName != "" {
+			secretNames = append(secretNames, volume.Secret.SecretName)
+		}
+	}
+	return secretNames
 }
 
 // makeLocalServices creates a slice of control-plane Services for the ScyllaDBCluster.

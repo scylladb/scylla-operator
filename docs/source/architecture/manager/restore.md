@@ -1,12 +1,12 @@
 # Restore from backup
 
-This procedure will describe how to restore from backup taken using [Scylla Manager](../../../architecture/manager.md) to a fresh **empty** cluster of any size.
+This procedure will describe how to restore from backup taken using [Scylla Manager](./overview.md) to a fresh **empty** cluster of any size.
 
 :::{warning}
 Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management` isn’t supported.
 
 When creating the `target` ScyllaDB cluster, configure it with `consistent_cluster_management: false`.
-Refer to [API Reference](../../../api-reference/index.rst) to learn how to customize ScyllaDB configuration files.
+Refer to [API Reference](../../api-reference/index.rst) to learn how to customize ScyllaDB configuration files.
 
 When following the steps for schema restore, ensure you follow the additional steps dedicated to affected ScyllaDB versions.
 :::
@@ -167,7 +167,7 @@ scyllacluster.scylla.scylladb.com/target condition met
 ### Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management`
 
 After you've followed the above steps with a ScyllaDB target cluster with `consistent_cluster_management` disabled, you'll need to enable Raft by configuring the target cluster with `consistent_cluster_management: true`.
-Refer to [API Reference](../../../api-reference/index.rst) to learn how to customize ScyllaDB configuration files.
+Refer to [API Reference](../../api-reference/index.rst) to learn how to customize ScyllaDB configuration files.
 
 You will then need to execute a rolling restart of the ScyllaCluster for the change to take effect.
 ```console

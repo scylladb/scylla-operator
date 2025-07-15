@@ -31,10 +31,6 @@ var (
 )
 
 var (
-	scyllaDBManagerTaskSupportedLocalScyllaDBReferenceKinds = []string{
-		scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
-	}
-
 	supportedScyllaDBManagerTaskTypes = []scyllav1alpha1.ScyllaDBManagerTaskType{
 		scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
 		scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
@@ -188,7 +184,7 @@ func validateScyllaDBManagerTaskObjectMetaAnnotations(annotations map[string]str
 func validateScyllaDBManagerTaskSpec(spec *scyllav1alpha1.ScyllaDBManagerTaskSpec, flags *validateScyllaDBManagerTaskSpecFlags, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
-	allErrs = append(allErrs, ValidateLocalScyllaDBReference(&spec.ScyllaDBClusterRef, scyllaDBManagerTaskSupportedLocalScyllaDBReferenceKinds, fldPath.Child("scyllaDBClusterRef"))...)
+	allErrs = append(allErrs, ValidateLocalScyllaDBReference(&spec.ScyllaDBClusterRef, fldPath.Child("scyllaDBClusterRef"))...)
 
 	switch spec.Type {
 	case scyllav1alpha1.ScyllaDBManagerTaskTypeBackup:

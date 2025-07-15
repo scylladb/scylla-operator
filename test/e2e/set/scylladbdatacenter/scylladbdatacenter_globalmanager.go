@@ -29,7 +29,7 @@ var _ = g.Describe("ScyllaDBDatacenter integration with global ScyllaDB Manager"
 		return oslices.ContainsItem(smcr.Finalizers, naming.ScyllaDBManagerClusterRegistrationFinalizer), nil
 	}
 
-	g.It("should register labeled ScyllaDBDatacenter and deregister it when it's unlabeled", func(ctx g.SpecContext) {
+	g.DescribeTable("should register labeled ScyllaDBDatacenter and deregister it", func(ctx g.SpecContext, deregistrationHook func(ctx context.Context, client framework.Client, sdc *scyllav1alpha1.ScyllaDBDatacenter)) {
 		ns, nsClient, ok := f.DefaultNamespaceIfAny()
 		o.Expect(ok).To(o.BeTrue())
 
@@ -83,21 +83,7 @@ var _ = g.Describe("ScyllaDBDatacenter integration with global ScyllaDB Manager"
 		o.Expect(managerCluster.Labels).NotTo(o.BeNil())
 		o.Expect(managerCluster.Labels[naming.OwnerUIDLabel]).To(o.Equal(string(smcr.UID)))
 
-		framework.By(`Removing the global ScyllaDB Manager registration label from ScyllaDBDatacenter`)
-		sdcCopy := sdc.DeepCopy()
-		delete(sdcCopy.Labels, naming.GlobalScyllaDBManagerRegistrationLabel)
-
-		patch, err := controllerhelpers.GenerateMergePatch(sdc, sdcCopy)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		sdc, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Patch(
-			ctx,
-			sdc.Name,
-			types.MergePatchType,
-			patch,
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		deregistrationHook(ctx, nsClient, sdc)
 
 		framework.By(`Waiting for ScyllaDBManagerClusterRegistration to be deleted`)
 		deletionCtx, deletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
@@ -116,91 +102,37 @@ var _ = g.Describe("ScyllaDBDatacenter integration with global ScyllaDB Manager"
 		_, err = managerClient.GetCluster(ctx, managerClusterID)
 		o.Expect(err).To(o.HaveOccurred())
 		o.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
-	})
+	},
+		g.Entry("when unlabeled", func(ctx context.Context, client framework.Client, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+			framework.By(`Removing the global ScyllaDB Manager registration label from ScyllaDBDatacenter`)
+			sdcCopy := sdc.DeepCopy()
+			delete(sdcCopy.Labels, naming.GlobalScyllaDBManagerRegistrationLabel)
 
-	g.It("should register labeled ScyllaDBDatacenter and deregister it when it's deleted", func(ctx g.SpecContext) {
-		ns, nsClient, ok := f.DefaultNamespaceIfAny()
-		o.Expect(ok).To(o.BeTrue())
+			patch, err := controllerhelpers.GenerateMergePatch(sdc, sdcCopy)
+			o.Expect(err).NotTo(o.HaveOccurred())
 
-		sdc := f.GetDefaultScyllaDBDatacenter()
-		metav1.SetMetaDataLabel(&sdc.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueTrue)
-
-		framework.By(`Creating a ScyllaDBDatacenter with the global ScyllaDB Manager registration label`)
-		sdc, err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Create(ctx, sdc, metav1.CreateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for ScyllaDBDatacenter to roll out (RV=%s)", sdc.ResourceVersion)
-		rolloutCtx, rolloutCtxCancel := utilsv1alpha1.ContextForRollout(ctx, sdc)
-		defer rolloutCtxCancel()
-		sdc, err = controllerhelpers.WaitForScyllaDBDatacenterState(rolloutCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name), sdc.Name, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBDatacenterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), sdc)
-		scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), sdc)
-
-		hosts, err := utilsv1alpha1.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sdc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(1))
-		di := verification.InsertAndVerifyCQLData(ctx, hosts)
-		defer di.Close()
-
-		smcrName, err := naming.ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for ScyllaDBDatacenter to register with global ScyllaDB Manager instance")
-		registrationCtx, registrationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
-		defer registrationCtxCancel()
-		smcr, err := controllerhelpers.WaitForScyllaDBManagerClusterRegistrationState(
-			registrationCtx,
-			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerClusterRegistrations(ns.Name),
-			smcrName,
-			controllerhelpers.WaitForStateOptions{},
-			utilsv1alpha1.IsScyllaDBManagerClusterRegistrationRolledOut,
-			hasDeletionFinalizer,
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(smcr.Status.ClusterID).NotTo(o.BeNil())
-		o.Expect(*smcr.Status.ClusterID).NotTo(o.BeEmpty())
-		managerClusterID := *smcr.Status.ClusterID
-
-		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Verifying that ScyllaDBDatacenter was registered with global ScyllaDB Manager")
-		managerCluster, err := managerClient.GetCluster(ctx, *smcr.Status.ClusterID)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(managerCluster.Labels).NotTo(o.BeNil())
-		o.Expect(managerCluster.Labels[naming.OwnerUIDLabel]).To(o.Equal(string(smcr.UID)))
-
-		framework.By(`Deleting ScyllaDBDatacenter`)
-		err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Delete(
-			ctx,
-			sdc.Name,
-			metav1.DeleteOptions{
-				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
-				Preconditions: &metav1.Preconditions{
-					UID: &sdc.UID,
+			sdc, err = client.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(sdc.Namespace).Patch(
+				ctx,
+				sdc.Name,
+				types.MergePatchType,
+				patch,
+				metav1.PatchOptions{},
+			)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}),
+		g.Entry("when deleted", func(ctx context.Context, client framework.Client, sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+			framework.By(`Deleting ScyllaDBDatacenter`)
+			err := client.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(sdc.Namespace).Delete(
+				ctx,
+				sdc.Name,
+				metav1.DeleteOptions{
+					PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
+					Preconditions: &metav1.Preconditions{
+						UID: &sdc.UID,
+					},
 				},
-			},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By(`Waiting for ScyllaDBManagerClusterRegistration to be deleted`)
-		deletionCtx, deletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
-		defer deletionCtxCancel()
-		err = framework.WaitForObjectDeletion(
-			deletionCtx,
-			f.DynamicClient(),
-			scyllav1alpha1.GroupVersion.WithResource("scylladbmanagerclusterregistrations"),
-			smcr.Namespace,
-			smcr.Name,
-			pointer.Ptr(smcr.UID),
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Verifying that the cluster was removed from the global ScyllaDB Manager state")
-		_, err = managerClient.GetCluster(ctx, managerClusterID)
-		o.Expect(err).To(o.HaveOccurred())
-		o.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
-	})
+			)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		}),
+	)
 })

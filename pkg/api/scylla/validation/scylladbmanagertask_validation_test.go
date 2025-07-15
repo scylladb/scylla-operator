@@ -1812,10 +1812,10 @@ func TestValidateScyllaDBManagerTask(t *testing.T) {
 					Type:     field.ErrorTypeNotSupported,
 					Field:    "spec.scyllaDBClusterRef.kind",
 					BadValue: "ScyllaCluster",
-					Detail:   `supported values: "ScyllaDBDatacenter"`,
+					Detail:   `supported values: "ScyllaDBDatacenter", "ScyllaDBCluster"`,
 				},
 			},
-			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter"`,
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter", "ScyllaDBCluster"`,
 		},
 		{
 			name: "repair with unsupported scyllaDBClusterRef kind",
@@ -1837,10 +1837,10 @@ func TestValidateScyllaDBManagerTask(t *testing.T) {
 					Type:     field.ErrorTypeNotSupported,
 					Field:    "spec.scyllaDBClusterRef.kind",
 					BadValue: "ScyllaCluster",
-					Detail:   `supported values: "ScyllaDBDatacenter"`,
+					Detail:   `supported values: "ScyllaDBDatacenter", "ScyllaDBCluster"`,
 				},
 			},
-			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter"`,
+			expectedErrorString: `spec.scyllaDBClusterRef.kind: Unsupported value: "ScyllaCluster": supported values: "ScyllaDBDatacenter", "ScyllaDBCluster"`,
 		},
 	}
 

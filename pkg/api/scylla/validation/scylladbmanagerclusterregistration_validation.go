@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	scyllaDBManagerClusterRegistrationSupportedLocalScyllaDBReferenceKinds = []string{
+	supportedLocalScyllaDBReferenceKinds = []string{
 		scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
 		scyllav1alpha1.ScyllaDBClusterGVK.Kind,
 	}
@@ -45,12 +45,12 @@ func ValidateScyllaDBManagerClusterRegistrationObjectMeta(objectMeta *metav1.Obj
 func ValidateScyllaDBManagerClusterRegistrationSpec(spec *scyllav1alpha1.ScyllaDBManagerClusterRegistrationSpec, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
-	allErrs = append(allErrs, ValidateLocalScyllaDBReference(&spec.ScyllaDBClusterRef, scyllaDBManagerClusterRegistrationSupportedLocalScyllaDBReferenceKinds, fldPath.Child("scyllaDBClusterRef"))...)
+	allErrs = append(allErrs, ValidateLocalScyllaDBReference(&spec.ScyllaDBClusterRef, fldPath.Child("scyllaDBClusterRef"))...)
 
 	return allErrs
 }
 
-func ValidateLocalScyllaDBReference(localScyllaDBReference *scyllav1alpha1.LocalScyllaDBReference, supportedLocalScyllaDBReferenceKinds []string, fldPath *field.Path) field.ErrorList {
+func ValidateLocalScyllaDBReference(localScyllaDBReference *scyllav1alpha1.LocalScyllaDBReference, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
 	if len(localScyllaDBReference.Name) == 0 {

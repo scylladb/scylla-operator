@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"slices"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -64,6 +65,32 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 			}
 		}
 
+		makeGenericSecret := func(name string) *corev1.Secret {
+			return &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: userNS.Name,
+				},
+				StringData: map[string]string{
+					"key": "value",
+				},
+			}
+		}
+
+		makeVolumesWithSecretRef := func(secret *corev1.Secret) []corev1.Volume {
+			return []corev1.Volume{
+				{
+					Name: secret.Name,
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: secret.Name,
+						},
+					},
+				},
+			}
+		}
+
+		framework.By("Creating all ConfigMaps to be referred from ScyllaDBCluster")
 		scyllaDBDatacenterTemplateConfigMap := makeScyllaDBConfigMap("datacenter-template", "1111")
 		scyllaDBDatacenterTemplateRackTemplateConfigMap := makeScyllaDBConfigMap("datacenter-template-rack-template", "2222")
 		scyllaDBDatacenterRackTemplateConfigMap := makeScyllaDBConfigMap("datacenter-rack-template", "3333")
@@ -79,27 +106,64 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 			scyllaDBDatacenterRackConfigMap,
 		}
 
-		scyllaDBManagerAgentDatacenterTemplateSecret := makeScyllaDBManagerAgentSecret("datacenter-template", "aaaa")
-		scyllaDBManagerAgentDatacenterTemplateRackTemplateSecret := makeScyllaDBManagerAgentSecret("datacenter-template-rack-template", "bbbb")
-		scyllaDBManagerAgentDatacenterRackTemplateSecret := makeScyllaDBManagerAgentSecret("datacenter-rack-template", "cccc")
-		scyllaDBManagerAgentDatacenterSecret := makeScyllaDBManagerAgentSecret("datacenter", "dddd")
-		const scyllaDBManagerAgentRackAuthToken = "eeee"
-		scyllaDBManagerAgentDatacenterRackSecret := makeScyllaDBManagerAgentSecret("rack", scyllaDBManagerAgentRackAuthToken)
-
-		scyllaDBManagerAgentSecrets := []*corev1.Secret{
-			scyllaDBManagerAgentDatacenterTemplateSecret,
-			scyllaDBManagerAgentDatacenterTemplateRackTemplateSecret,
-			scyllaDBManagerAgentDatacenterRackTemplateSecret,
-			scyllaDBManagerAgentDatacenterSecret,
-			scyllaDBManagerAgentDatacenterRackSecret,
-		}
-
 		for _, cm := range scyllaDBConfigMaps {
 			_, err := userClient.KubeClient().CoreV1().ConfigMaps(cm.Namespace).Create(ctx, cm, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
-		for _, secret := range scyllaDBManagerAgentSecrets {
+		framework.By("Creating all Secrets to be referred from ScyllaDBCluster.Spec.DatacenterTemplate (to be mirrored to all DCs)")
+		allDCsScyllaDBManagerAgentCustomConfigSecret := makeScyllaDBManagerAgentSecret("all-dcs-scylladbmanageragent-customconfig", "aaaa")
+		allDCsScyllaDBManagerAgentVolumesSecret := makeGenericSecret("all-dcs-scylladbmanageragent-volumes")
+		allDCsRackTemplateScyllaDBManagerAgentCustomConfigSecret := makeScyllaDBManagerAgentSecret("all-dcs-racktemplate-scylladbmanageragent-customconfig", "bbbb")
+		allDCsRackTemplateScyllaDBManagerAgentVolumesSecret := makeGenericSecret("all-dcs-racktemplate-scylladbmanageragent-volumes")
+		allDCsRackTemplateScyllaDBVolumesSecret := makeGenericSecret("all-dcs-racktemplate-scylladb-volumes")
+		allDCsScyllaDBVolumesSecret := makeGenericSecret("all-dcs-scylladb-volumes")
+		const scyllaDBManagerAgentRackAuthToken = "eeee"
+		allDCsRacksScyllaDBManagerAgentCustomConfigSecret := makeScyllaDBManagerAgentSecret("all-dcs-racks-scylladbmanageragent-customconfig", scyllaDBManagerAgentRackAuthToken)
+		allDCsRacksScyllaDBManagerAgentVolumesSecret := makeGenericSecret("all-dcs-racks-scylladbmanageragent-volumes")
+		allDCsRacksScyllaDBVolumesSecret := makeGenericSecret("all-dcs-racks-scylladb-volumes")
+
+		secretsToBeMirroredToAllDCs := []*corev1.Secret{
+			allDCsScyllaDBManagerAgentCustomConfigSecret,
+			allDCsScyllaDBManagerAgentVolumesSecret,
+			allDCsRackTemplateScyllaDBManagerAgentCustomConfigSecret,
+			allDCsRackTemplateScyllaDBManagerAgentVolumesSecret,
+			allDCsRackTemplateScyllaDBVolumesSecret,
+			allDCsScyllaDBVolumesSecret,
+			allDCsRacksScyllaDBManagerAgentCustomConfigSecret,
+			allDCsRacksScyllaDBManagerAgentVolumesSecret,
+			allDCsRacksScyllaDBVolumesSecret,
+		}
+
+		framework.By("Creating all Secrets to be referred from ScyllaDBCluster.Spec.DatacenterTemplate.Datacenters (to be mirrored to a specific DC)")
+		dcScyllaDBManagerAgentCustomConfigSecret := makeScyllaDBManagerAgentSecret("dc-scylladbmanageragent-customconfig", scyllaDBManagerAgentRackAuthToken)
+		dcScyllaDBManagerAgentVolumesSecret := makeGenericSecret("dc-scylladbmanageragent-volumes")
+		dcRackTemplateScyllaDBManagerAgentCustomConfigSecret := makeScyllaDBManagerAgentSecret("dc-racktemplate-scylladbmanageragent-customconfig", scyllaDBManagerAgentRackAuthToken)
+		dcRackTemplateScyllaDBManagerAgentVolumesSecret := makeGenericSecret("dc-racktemplate-scylladbmanageragent-volumes")
+		dcRackTemplateScyllaDBVolumesSecret := makeGenericSecret("dc-racktemplate-scylladb-volumes")
+		dcScyllaDBVolumesSecret := makeGenericSecret("dc-scylladb-volumes")
+		dcRacksScyllaDBManagerAgentCustomConfigSecret := makeScyllaDBManagerAgentSecret("dc-racks-scylladbmanageragent-customconfig", scyllaDBManagerAgentRackAuthToken)
+		dcRacksScyllaDBManagerAgentVolumesSecret := makeGenericSecret("dc-racks-scylladbmanageragent-volumes")
+		dcRacksScyllaDBVolumesSecret := makeGenericSecret("dc-racks-scylladb-volumes")
+
+		secretsToBeMirroredToSpecificDC := []*corev1.Secret{
+			dcScyllaDBManagerAgentCustomConfigSecret,
+			dcScyllaDBManagerAgentVolumesSecret,
+			dcRackTemplateScyllaDBManagerAgentCustomConfigSecret,
+			dcRackTemplateScyllaDBManagerAgentVolumesSecret,
+			dcRackTemplateScyllaDBVolumesSecret,
+			dcScyllaDBVolumesSecret,
+			dcRacksScyllaDBManagerAgentCustomConfigSecret,
+			dcRacksScyllaDBManagerAgentVolumesSecret,
+			dcRacksScyllaDBVolumesSecret,
+		}
+
+		secretsToBeMirrored := slices.Concat(
+			secretsToBeMirroredToAllDCs,
+			secretsToBeMirroredToSpecificDC,
+		)
+
+		for _, secret := range secretsToBeMirrored {
 			_, err := userClient.KubeClient().CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
@@ -107,41 +171,69 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		framework.By("Creating ScyllaDBCluster")
 		sc := f.GetDefaultScyllaDBCluster(rkcs)
 
-		sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr(scyllaDBDatacenterTemplateConfigMap.Name)
 		sc.Spec.DatacenterTemplate.ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-			CustomConfigSecretRef: pointer.Ptr(scyllaDBManagerAgentDatacenterTemplateSecret.Name),
+			CustomConfigSecretRef: pointer.Ptr(allDCsScyllaDBManagerAgentCustomConfigSecret.Name),
+			Volumes:               makeVolumesWithSecretRef(allDCsScyllaDBManagerAgentVolumesSecret),
+		}
+		sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+			CustomConfigSecretRef: pointer.Ptr(allDCsRackTemplateScyllaDBManagerAgentCustomConfigSecret.Name),
+			Volumes:               makeVolumesWithSecretRef(allDCsRackTemplateScyllaDBManagerAgentVolumesSecret),
 		}
 		sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB = &scyllav1alpha1.ScyllaDBTemplate{
 			CustomConfigMapRef: pointer.Ptr(scyllaDBDatacenterTemplateRackTemplateConfigMap.Name),
+			Volumes:            makeVolumesWithSecretRef(allDCsRackTemplateScyllaDBVolumesSecret),
 		}
-		sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-			CustomConfigSecretRef: pointer.Ptr(scyllaDBManagerAgentDatacenterTemplateRackTemplateSecret.Name),
+		sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef = pointer.Ptr(scyllaDBDatacenterTemplateConfigMap.Name)
+		sc.Spec.DatacenterTemplate.ScyllaDB.Volumes = makeVolumesWithSecretRef(allDCsScyllaDBVolumesSecret)
+
+		sc.Spec.DatacenterTemplate.Racks = []scyllav1alpha1.RackSpec{
+			{
+				Name: "a",
+				RackTemplate: scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						CustomConfigMapRef: pointer.Ptr(scyllaDBDatacenterRackTemplateConfigMap.Name),
+						Volumes:            makeVolumesWithSecretRef(allDCsRacksScyllaDBVolumesSecret),
+					},
+					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+						CustomConfigSecretRef: pointer.Ptr(allDCsRacksScyllaDBManagerAgentCustomConfigSecret.Name),
+						Volumes:               makeVolumesWithSecretRef(allDCsRacksScyllaDBManagerAgentVolumesSecret),
+					},
+				},
+			},
 		}
+
 		o.Expect(len(sc.Spec.Datacenters)).To(o.BeNumerically(">", 0))
 		for idx := range sc.Spec.Datacenters {
 			sc.Spec.Datacenters[idx].ScyllaDB = &scyllav1alpha1.ScyllaDBTemplate{
 				CustomConfigMapRef: pointer.Ptr(scyllaDBDatacenterDatacenterConfigMap.Name),
+				Volumes:            makeVolumesWithSecretRef(dcScyllaDBVolumesSecret),
 			}
 			sc.Spec.Datacenters[idx].ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-				CustomConfigSecretRef: pointer.Ptr(scyllaDBManagerAgentDatacenterSecret.Name),
+				CustomConfigSecretRef: pointer.Ptr(dcScyllaDBManagerAgentCustomConfigSecret.Name),
+				Volumes:               makeVolumesWithSecretRef(dcScyllaDBManagerAgentVolumesSecret),
 			}
 			sc.Spec.Datacenters[idx].RackTemplate = &scyllav1alpha1.RackTemplate{
 				ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
 					CustomConfigMapRef: pointer.Ptr(scyllaDBDatacenterRackTemplateConfigMap.Name),
+					Volumes:            makeVolumesWithSecretRef(dcRackTemplateScyllaDBVolumesSecret),
 				},
 				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-					CustomConfigSecretRef: pointer.Ptr(scyllaDBManagerAgentDatacenterRackTemplateSecret.Name),
+					CustomConfigSecretRef: pointer.Ptr(dcRackTemplateScyllaDBManagerAgentCustomConfigSecret.Name),
+					Volumes:               makeVolumesWithSecretRef(dcRackTemplateScyllaDBManagerAgentVolumesSecret),
 				},
 			}
+
 			sc.Spec.Datacenters[idx].Racks = []scyllav1alpha1.RackSpec{
 				{
 					Name: "a",
 					RackTemplate: scyllav1alpha1.RackTemplate{
 						ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
 							CustomConfigMapRef: pointer.Ptr(scyllaDBDatacenterRackConfigMap.Name),
+							Volumes:            makeVolumesWithSecretRef(dcRacksScyllaDBVolumesSecret),
 						},
 						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-							CustomConfigSecretRef: pointer.Ptr(scyllaDBManagerAgentDatacenterRackSecret.Name),
+							CustomConfigSecretRef: pointer.Ptr(dcRacksScyllaDBManagerAgentCustomConfigSecret.Name),
+							Volumes:               makeVolumesWithSecretRef(dcRacksScyllaDBManagerAgentVolumesSecret),
 						},
 					},
 				},
@@ -181,7 +273,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 				o.Expect(mirroredCM.Data).To(o.Equal(cm.Data))
 			}
 
-			for _, secret := range scyllaDBManagerAgentSecrets {
+			for _, secret := range secretsToBeMirrored {
 				mirroredSecret, err := clusterClient.KubeAdminClient().CoreV1().Secrets(*dcStatus.RemoteNamespaceName).Get(ctx, secret.Name, metav1.GetOptions{})
 				o.Expect(err).NotTo(o.HaveOccurred())
 

@@ -439,7 +439,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				progressingCondition: makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
 				degradedCondition:    makeRemoteScyllaDBDatacenterControllerDatacenterDegradedCondition(dc.Name),
 				syncFn: func(remoteNamespace *corev1.Namespace, remoteController metav1.Object) ([]metav1.Condition, error) {
-					return scc.syncRemoteScyllaDBDatacenters(ctx, sc, &dc, remoteNamespace, remoteController, remoteScyllaDBDatacenterMap, managingClusterDomain)
+					return scc.syncRemoteScyllaDBDatacenters(ctx, sc, &dc, status, remoteNamespace, remoteController, remoteScyllaDBDatacenterMap, managingClusterDomain)
 				},
 			},
 		}

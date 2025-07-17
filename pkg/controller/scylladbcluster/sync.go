@@ -73,7 +73,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		},
 	)
 	if err != nil {
-		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get services: %w", err))
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local services: %w", err))
 	}
 
 	localEndpointSlicesMap, err := controllerhelpers.GetObjects[localCT, *discoveryv1.EndpointSlice](
@@ -88,7 +88,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		},
 	)
 	if err != nil {
-		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get endpointslices: %w", err))
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local endpointslices: %w", err))
 	}
 
 	localEndpointsMap, err := controllerhelpers.GetObjects[localCT, *corev1.Endpoints](
@@ -103,11 +103,31 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		},
 	)
 	if err != nil {
-		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get endpoints: %w", err))
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local endpoints: %w", err))
 	}
 
 	if err = apimachineryutilerrors.NewAggregate(localObjectErrs); err != nil {
 		return err
+	}
+
+	localSecretMap, err := controllerhelpers.GetObjects[localCT, *corev1.Secret](
+		ctx,
+		sc,
+		scyllav1alpha1.ScyllaDBClusterGVK,
+		scLocalSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Secret]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.secretLister.Secrets(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().Secrets(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local secrets: %w", err))
+	}
+
+	localObjectErr := apimachineryutilerrors.NewAggregate(localObjectErrs)
+	if localObjectErr != nil {
+		return localObjectErr
 	}
 
 	scRemoteSelector := naming.ScyllaDBClusterRemoteSelector(sc)
@@ -481,6 +501,14 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 			degradedCondition:    endpointsControllerDegradedCondition,
 			syncFn: func() ([]metav1.Condition, error) {
 				return scc.syncLocalEndpoints(ctx, sc, localEndpointsMap, remoteNamespaces)
+			},
+		},
+		{
+			kind:                 "Secret",
+			progressingCondition: secretControllerProgressingCondition,
+			degradedCondition:    secretControllerDegradedCondition,
+			syncFn: func() ([]metav1.Condition, error) {
+				return scc.syncLocalSecrets(ctx, sc, localSecretMap)
 			},
 		},
 	}

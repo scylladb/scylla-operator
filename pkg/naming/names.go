@@ -60,6 +60,10 @@ func AgentAuthTokenSecretNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string
 	})
 }
 
+func ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, sc.Name, "auth-token")
+}
+
 func MemberServiceName(r scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, idx int) string {
 	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, sdc), idx)
 }

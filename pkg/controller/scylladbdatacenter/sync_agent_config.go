@@ -10,30 +10,10 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 )
-
-func (sdcc *Controller) getAgentTokenFromAgentConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
-	var configSecret *string
-	if sdc.Spec.RackTemplate != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		configSecret = sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef
-	}
-	if len(sdc.Spec.Racks) > 0 && sdc.Spec.Racks[0].ScyllaDBManagerAgent != nil && sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		configSecret = sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef
-	}
-	if configSecret == nil {
-		return "", nil
-	}
-
-	secretName := *configSecret
-	secret, err := sdcc.secretLister.Secrets(sdc.Namespace).Get(secretName)
-	if err != nil {
-		return "", fmt.Errorf("can't get secret %q: %w", naming.ManualRef(sdc.Namespace, secretName), err)
-	}
-
-	return helpers.GetAgentAuthTokenFromAgentConfigSecret(secret)
-}
 
 func (sdcc *Controller) syncAgentToken(
 	ctx context.Context,
@@ -42,33 +22,20 @@ func (sdcc *Controller) syncAgentToken(
 ) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	token, tokenErr := sdcc.getAgentTokenFromAgentConfig(sdc)
-	if tokenErr != nil {
-		tokenErr = fmt.Errorf("can't get agent token: %w", tokenErr)
-		sdcc.eventRecorder.Eventf(sdc, corev1.EventTypeWarning, "InvalidManagerAgentConfig", "Can't gent agent token: %s", tokenErr.Error())
+	agentAuthTokenProgressingConditions, agentAuthToken, err := controllerhelpers.GetScyllaDBManagerAgentAuthToken(
+		getOptionalAgentAuthTokenFromCustomConfigFunc(sdc, sdcc.secretLister),
+		getOptionalAgentAuthTokenOverrideFunc(sdc, sdcc.secretLister),
+		getOptionalExistingAgentAuthTokenFunc(sdc, secrets),
+	)
+	progressingConditions = append(progressingConditions, agentAuthTokenProgressingConditions...)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't get ScyllaDB Manager agent auth token config: %w", err)
 	}
-	// If we can't read a token we still need to secure the manager agent by creating a random one.
-	// We handle the error at the end.
-
-	// First we try to retain an already generated token.
-	if len(token) == 0 {
-		tokenSecretName := naming.AgentAuthTokenSecretName(sdc)
-		tokenSecret, exists := secrets[tokenSecretName]
-		if exists {
-			var err error
-			token, err = helpers.GetAgentAuthTokenFromSecret(tokenSecret)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't read token from secret %q: %w", naming.ObjRef(tokenSecret), err)
-			}
-		}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
 	}
 
-	// If we still don't have the token, we generate a random one.
-	if len(token) == 0 {
-		token = apimachineryutilrand.String(128)
-	}
-
-	secret, err := MakeAgentAuthTokenSecret(sdc, token)
+	secret, err := makeAgentAuthTokenSecret(sdc, agentAuthToken)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make auth token secret: %w", err)
 	}
@@ -84,5 +51,100 @@ func (sdcc *Controller) syncAgentToken(
 		return progressingConditions, fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(secret), err)
 	}
 
-	return progressingConditions, tokenErr
+	return progressingConditions, nil
+}
+
+func getOptionalAgentAuthTokenFromCustomConfigFunc(sdc *scyllav1alpha1.ScyllaDBDatacenter, secretLister corev1listers.SecretLister) func() ([]metav1.Condition, string, error) {
+	return func() ([]metav1.Condition, string, error) {
+		var progressingConditions []metav1.Condition
+
+		var configSecret *string
+		if sdc.Spec.RackTemplate != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent != nil && sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			configSecret = sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef
+		}
+		if len(sdc.Spec.Racks) > 0 && sdc.Spec.Racks[0].ScyllaDBManagerAgent != nil && sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			configSecret = sdc.Spec.Racks[0].ScyllaDBManagerAgent.CustomConfigSecretRef
+		}
+		if configSecret == nil {
+			return progressingConditions, "", nil
+		}
+
+		secretName := *configSecret
+		secret, err := secretLister.Secrets(sdc.Namespace).Get(secretName)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return progressingConditions, "", fmt.Errorf("can't get secret %q: %w", naming.ManualRef(sdc.Namespace, secretName), err)
+			}
+
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               agentTokenControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForSecret",
+				Message:            fmt.Sprintf("Waiting for Secret %q to exist.", naming.ManualRef(sdc.Namespace, secretName)),
+				ObservedGeneration: sdc.Generation,
+			})
+
+			return progressingConditions, "", nil
+		}
+
+		authToken, err := helpers.GetAgentAuthTokenFromAgentConfigSecret(secret)
+		if err != nil {
+			return progressingConditions, "", fmt.Errorf("can't get agent auth token from agent config: %w", err)
+		}
+
+		return progressingConditions, authToken, nil
+	}
+}
+
+func getOptionalAgentAuthTokenOverrideFunc(sdc *scyllav1alpha1.ScyllaDBDatacenter, secretLister corev1listers.SecretLister) func() ([]metav1.Condition, string, error) {
+	return func() ([]metav1.Condition, string, error) {
+		var progressingConditions []metav1.Condition
+
+		agentAuthTokenOverrideSecretRefAnnotationValue, ok := sdc.Annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation]
+		if !ok {
+			return progressingConditions, "", nil
+		}
+
+		secret, err := secretLister.Secrets(sdc.Namespace).Get(agentAuthTokenOverrideSecretRefAnnotationValue)
+		if err != nil {
+			if !apierrors.IsNotFound(err) {
+				return progressingConditions, "", fmt.Errorf("can't get Secret %q: %w", naming.ManualRef(sdc.Namespace, agentAuthTokenOverrideSecretRefAnnotationValue), err)
+			}
+
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               agentTokenControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForSecret",
+				Message:            fmt.Sprintf("Waiting for Secret %q to exist.", naming.ManualRef(sdc.Namespace, agentAuthTokenOverrideSecretRefAnnotationValue)),
+				ObservedGeneration: sdc.Generation,
+			})
+
+			return progressingConditions, "", nil
+		}
+
+		authToken, err := helpers.GetAgentAuthTokenFromSecret(secret)
+		if err != nil {
+			return progressingConditions, "", fmt.Errorf("can't get agent auth token from Secret %q: %w", naming.ObjRef(secret), err)
+		}
+
+		return progressingConditions, authToken, nil
+	}
+}
+
+func getOptionalExistingAgentAuthTokenFunc(sdc *scyllav1alpha1.ScyllaDBDatacenter, secrets map[string]*corev1.Secret) func() ([]metav1.Condition, string, error) {
+	return func() ([]metav1.Condition, string, error) {
+		var progressingConditions []metav1.Condition
+
+		secret, ok := secrets[naming.AgentAuthTokenSecretName(sdc)]
+		if !ok {
+			return progressingConditions, "", nil
+		}
+
+		authToken, err := helpers.GetAgentAuthTokenFromSecret(secret)
+		if err != nil {
+			return progressingConditions, "", fmt.Errorf("can't get agent auth token from Secret %q: %w", naming.ObjRef(secret), err)
+		}
+
+		return progressingConditions, authToken, nil
+	}
 }

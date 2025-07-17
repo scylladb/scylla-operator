@@ -123,7 +123,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		allDCsRacksScyllaDBManagerAgentVolumesSecret := makeGenericSecret("all-dcs-racks-scylladbmanageragent-volumes")
 		allDCsRacksScyllaDBVolumesSecret := makeGenericSecret("all-dcs-racks-scylladb-volumes")
 
-		secretsToBeMirroredToAllDCs := []*corev1.Secret{
+		userManagedSecretsToBeMirroredToAllDCs := []*corev1.Secret{
 			allDCsScyllaDBManagerAgentCustomConfigSecret,
 			allDCsScyllaDBManagerAgentVolumesSecret,
 			allDCsRackTemplateScyllaDBManagerAgentCustomConfigSecret,
@@ -146,7 +146,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		dcRacksScyllaDBManagerAgentVolumesSecret := makeGenericSecret("dc-racks-scylladbmanageragent-volumes")
 		dcRacksScyllaDBVolumesSecret := makeGenericSecret("dc-racks-scylladb-volumes")
 
-		secretsToBeMirroredToSpecificDC := []*corev1.Secret{
+		userManagedSecretsToBeMirroredToSpecificDC := []*corev1.Secret{
 			dcScyllaDBManagerAgentCustomConfigSecret,
 			dcScyllaDBManagerAgentVolumesSecret,
 			dcRackTemplateScyllaDBManagerAgentCustomConfigSecret,
@@ -158,12 +158,12 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 			dcRacksScyllaDBVolumesSecret,
 		}
 
-		secretsToBeMirrored := slices.Concat(
-			secretsToBeMirroredToAllDCs,
-			secretsToBeMirroredToSpecificDC,
+		userManagedSecretsToBeMirrored := slices.Concat(
+			userManagedSecretsToBeMirroredToAllDCs,
+			userManagedSecretsToBeMirroredToSpecificDC,
 		)
 
-		for _, secret := range secretsToBeMirrored {
+		for _, secret := range userManagedSecretsToBeMirrored {
 			_, err := userClient.KubeClient().CoreV1().Secrets(secret.Namespace).Create(ctx, secret, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
@@ -255,6 +255,28 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 		scylladbclusterverification.Verify(ctx, sc, rkcClusterMap)
 		err = scylladbclusterverification.WaitForFullQuorum(ctx, rkcClusterMap, sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Collecting operator-managed Secrets which should be mirrored into remote datacenters")
+		var operatorManagedScyllaDBManagerAgentSecrets []*corev1.Secret
+
+		scyllaDBManagerAgentAuthTokenSecretName, err := naming.ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		operatorManagedScyllaDBManagerAgentSecrets = append(operatorManagedScyllaDBManagerAgentSecrets, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      scyllaDBManagerAgentAuthTokenSecretName,
+				Namespace: sc.Namespace,
+			},
+		})
+
+		operatorManagedSecretsToBeMirrored := slices.Concat(
+			operatorManagedScyllaDBManagerAgentSecrets,
+		)
+
+		secretsToBeMirrored := slices.Concat(
+			userManagedSecretsToBeMirrored,
+			operatorManagedSecretsToBeMirrored,
+		)
 
 		for _, dc := range sc.Spec.Datacenters {
 			framework.By("Verifying if ConfigMaps and Secrets referenced by ScyllaDBCluster %q are mirrored in %q Datacenter", sc.Name, dc.Name)

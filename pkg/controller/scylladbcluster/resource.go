@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -159,12 +160,21 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 		return nil, fmt.Errorf("can't calculate seeds for datacenter %q: %w", dc.Name, err)
 	}
 
+	agentAuthTokenSecretName, err := naming.ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get agent auth token secret name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	annotations := naming.ScyllaDBClusterDatacenterAnnotations(sc, dcSpec)
+	// Set the agent auth token override secret name annotation to share the generated auth token between ScyllaDBDatacenters.
+	annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation] = agentAuthTokenSecretName
+
 	return &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            naming.ScyllaDBDatacenterName(sc, dcSpec),
 			Namespace:       remoteNamespace.Name,
 			Labels:          naming.ScyllaDBClusterDatacenterLabels(sc, dcSpec, managingClusterDomain),
-			Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dcSpec),
+			Annotations:     annotations,
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
 		},
 		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
@@ -1084,11 +1094,16 @@ func MakeRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.Sc
 func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, []*corev1.Secret, error) {
 	var progressingConditions []metav1.Condition
 	var requiredRemoteSecrets []*corev1.Secret
+	var secretsToMirror []string
 
-	secretsToMirror := slices.Concat(
-		getSecretsToMirrorForAllDCs(sc),
-		getSecretsToMirrorForDC(&dc.ScyllaDBClusterDatacenterTemplate),
-	)
+	secretsToMirrorForAllDCs, err := getSecretsToMirrorForAllDCs(sc)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't get secrets to mirror for all DCs for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+	secretsToMirror = append(secretsToMirror, secretsToMirrorForAllDCs...)
+
+	secretsToMirrorForDC := getSecretsToMirrorForDC(&dc.ScyllaDBClusterDatacenterTemplate)
+	secretsToMirror = append(secretsToMirror, secretsToMirrorForDC...)
 
 	var errs []error
 	for _, secretName := range secretsToMirror {
@@ -1122,7 +1137,7 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 		})
 	}
 
-	err := apimachineryutilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, requiredRemoteSecrets, fmt.Errorf("can't make mirrored Secrets: %w", err)
 	}
@@ -1131,12 +1146,20 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 }
 
 // getSecretsToMirrorForAllDCs collects the names of Secrets to mirror for all Datacenters in the ScyllaDBCluster.
-func getSecretsToMirrorForAllDCs(sc *scyllav1alpha1.ScyllaDBCluster) []string {
-	if sc.Spec.DatacenterTemplate == nil {
-		return nil
+func getSecretsToMirrorForAllDCs(sc *scyllav1alpha1.ScyllaDBCluster) ([]string, error) {
+	var secretsToMirror []string
+
+	agentAuthTokenSecretName, err := naming.ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get agent auth token secret name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+	secretsToMirror = append(secretsToMirror, agentAuthTokenSecretName)
+
+	if sc.Spec.DatacenterTemplate != nil {
+		secretsToMirror = append(secretsToMirror, getSecretsToMirrorForDC(sc.Spec.DatacenterTemplate)...)
 	}
 
-	return getSecretsToMirrorForDC(sc.Spec.DatacenterTemplate)
+	return secretsToMirror, nil
 }
 
 // getSecretsToMirrorForDC collects the names of Secrets to mirror for a specific Datacenter.
@@ -1371,4 +1394,62 @@ func makeEndpointSliceForLocalIdentityService(sc *scyllav1alpha1.ScyllaDBCluster
 	}
 
 	return progressingConditions, es, nil
+}
+
+func makeLocalSecrets(sc *scyllav1alpha1.ScyllaDBCluster, scyllaDBManagerAgentAuthToken string) ([]*corev1.Secret, error) {
+	var localSecrets []*corev1.Secret
+
+	scyllaDBManagerAgentAuthTokenSecret, err := makeLocalScyllaDBManagerAgentAuthTokenSecret(sc, scyllaDBManagerAgentAuthToken)
+	if err != nil {
+		return nil, fmt.Errorf("can't make local ScyllaDB Manager agent auth token secret: %w", err)
+	}
+	localSecrets = append(localSecrets, scyllaDBManagerAgentAuthTokenSecret)
+
+	return localSecrets, nil
+}
+
+func makeLocalScyllaDBManagerAgentAuthTokenSecret(sc *scyllav1alpha1.ScyllaDBCluster, authToken string) (*corev1.Secret, error) {
+	agentAuthTokenSecretName, err := naming.ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get ScyllaDB Manager agent auth token secret name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	authTokenConfig, err := helpers.GetAgentAuthTokenConfig(authToken)
+	if err != nil {
+		return nil, fmt.Errorf("can't get agent auth token config for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      agentAuthTokenSecretName,
+			Namespace: sc.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sc, scyllav1alpha1.ScyllaDBClusterGVK),
+			},
+			Labels: func() map[string]string {
+				labels := make(map[string]string)
+
+				if sc.Spec.Metadata != nil {
+					maps.Copy(labels, sc.Spec.Metadata.Labels)
+				}
+
+				maps.Copy(labels, naming.ScyllaDBClusterLocalSelectorLabels(sc))
+
+				return labels
+			}(),
+			Annotations: func() map[string]string {
+				annotations := make(map[string]string)
+
+				if sc.Spec.Metadata != nil {
+					maps.Copy(annotations, sc.Spec.Metadata.Annotations)
+				}
+
+				return annotations
+			}(),
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			naming.ScyllaAgentAuthTokenFileName: authTokenConfig,
+		},
+	}, nil
 }

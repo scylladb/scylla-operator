@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
@@ -486,7 +487,9 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 					"scylla-operator.scylladb.com/managed-by-cluster":                     "test-cluster.local",
 					"app.kubernetes.io/managed-by":                                        "remote.scylla-operator.scylladb.com",
 				},
-				Annotations:     map[string]string{},
+				Annotations: map[string]string{
+					"internal.scylla-operator.scylladb.com/scylladb-manager-agent-auth-token-override-secret-ref": "cluster-auth-token-2s75a",
+				},
 				OwnerReferences: newBasicOwnerReference(namespace),
 			},
 			Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
@@ -4431,18 +4434,29 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 	t.Parallel()
 
 	tt := []struct {
-		name     string
-		sc       *scyllav1alpha1.ScyllaDBCluster
-		expected []string
+		name        string
+		sc          *scyllav1alpha1.ScyllaDBCluster
+		expected    []string
+		expectedErr error
 	}{
 		{
-			name:     "No secrets to mirror",
-			sc:       &scyllav1alpha1.ScyllaDBCluster{},
-			expected: []string{},
+			name: "Operator-managed secrets to mirror only",
+			sc: &scyllav1alpha1.ScyllaDBCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "scylla",
+				},
+			},
+			expected: []string{
+				"scylla-auth-token-1lt9p",
+			},
+			expectedErr: nil,
 		},
 		{
 			name: "All possible secrets from CustomConfigSecretRef",
 			sc: &scyllav1alpha1.ScyllaDBCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "scylla",
+				},
 				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
 					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
 						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
@@ -4457,6 +4471,7 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 				},
 			},
 			expected: []string{
+				"scylla-auth-token-1lt9p",
 				"scyllaDBManagerAgent.customConfigSecretRef",
 				"rackTemplate.scyllaDBManagerAgent.customConfigSecretRef",
 			},
@@ -4464,6 +4479,9 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 		{
 			name: "All possible secrets from Volumes",
 			sc: &scyllav1alpha1.ScyllaDBCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "scylla",
+				},
 				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
 					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
 						ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
@@ -4496,6 +4514,7 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 				},
 			},
 			expected: []string{
+				"scylla-auth-token-1lt9p",
 				"scylladb.volumes",
 				"scyllaDBManagerAgent.volumes",
 				"rackTemplate.scyllaDB.volumes",
@@ -4510,7 +4529,11 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := getSecretsToMirrorForAllDCs(tc.sc)
+			got, err := getSecretsToMirrorForAllDCs(tc.sc)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ: %s", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
+			}
 
 			// Sort before comparison to ensure order does not affect the test.
 			sort.Strings(tc.expected)
@@ -4697,5 +4720,153 @@ func makeVolumesReferringSecret(secretName string) []corev1.Volume {
 				},
 			},
 		},
+	}
+}
+
+func Test_makeLocalScyllaDBManagerAgentAuthTokenSecret(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name        string
+		sc          *scyllav1alpha1.ScyllaDBCluster
+		authToken   string
+		expected    *corev1.Secret
+		expectedErr error
+	}{
+		{
+			name:      "basic",
+			sc:        newBasicScyllaDBCluster(),
+			authToken: "test-auth-token",
+			expected: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-auth-token-2s75a",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":                            "scylla.scylladb.com",
+						"app.kubernetes.io/managed-by":                      "scylla-operator.scylladb.com",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Type: corev1.SecretTypeOpaque,
+				Data: map[string][]byte{
+					"auth-token.yaml": []byte("auth_token: test-auth-token\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "with custom labels",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Labels: map[string]string{
+						"custom-label1": "value1",
+						"custom-label2": "value2",
+					},
+				}
+				return sc
+			}(),
+			authToken: "test-auth-token",
+			expected: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-auth-token-2s75a",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":                            "scylla.scylladb.com",
+						"app.kubernetes.io/managed-by":                      "scylla-operator.scylladb.com",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+						"custom-label1":                                     "value1",
+						"custom-label2":                                     "value2",
+					},
+					Annotations: map[string]string{},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Type: corev1.SecretTypeOpaque,
+				Data: map[string][]byte{
+					"auth-token.yaml": []byte("auth_token: test-auth-token\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "with custom annotations",
+			sc: func() *scyllav1alpha1.ScyllaDBCluster {
+				sc := newBasicScyllaDBCluster()
+				sc.Spec.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Annotations: map[string]string{
+						"custom-annotation1": "value1",
+						"custom-annotation2": "value2",
+					},
+				}
+				return sc
+			}(),
+			authToken: "test-auth-token",
+			expected: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster-auth-token-2s75a",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app.kubernetes.io/name":                            "scylla.scylladb.com",
+						"app.kubernetes.io/managed-by":                      "scylla-operator.scylladb.com",
+						"scylla-operator.scylladb.com/scylladbcluster-name": "cluster",
+					},
+					Annotations: map[string]string{
+						"custom-annotation1": "value1",
+						"custom-annotation2": "value2",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBCluster",
+							Name:               "cluster",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Type: corev1.SecretTypeOpaque,
+				Data: map[string][]byte{
+					"auth-token.yaml": []byte("auth_token: test-auth-token\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := makeLocalScyllaDBManagerAgentAuthTokenSecret(tc.sc, tc.authToken)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ:\n%s\n", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
+			}
+
+			if !apiequality.Semantic.DeepEqual(got, tc.expected) {
+				t.Errorf("expected and got secret differ:\n%s\n", cmp.Diff(tc.expected, got))
+			}
+		})
 	}
 }

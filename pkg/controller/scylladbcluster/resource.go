@@ -1011,34 +1011,20 @@ func MakeRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1
 }
 
 func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, localConfigMapLister corev1listers.ConfigMapLister, managingClusterDomain string) ([]metav1.Condition, []*corev1.ConfigMap, error) {
-	var errs []error
 	var progressingConditions []metav1.Condition
 	var requiredRemoteConfigMaps []*corev1.ConfigMap
-
 	var configMapsToMirror []string
 
-	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef != nil {
-		configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.ScyllaDB.CustomConfigMapRef)
+	configMapsToMirrorForAllDCs, _, err := getConfigMapsAndSecretsToMirrorForAllDCs(sc)
+	if err != nil {
+		return progressingConditions, requiredRemoteConfigMaps, fmt.Errorf("can't make mirrored configmaps: %w", err)
 	}
+	configMapsToMirror = append(configMapsToMirror, configMapsToMirrorForAllDCs...)
 
-	if sc.Spec.DatacenterTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB != nil && sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
-		configMapsToMirror = append(configMapsToMirror, *sc.Spec.DatacenterTemplate.RackTemplate.ScyllaDB.CustomConfigMapRef)
-	}
+	configMapsToMirrorForDC, _ := getConfigMapsAndSecretsToMirrorForDC(&dc.ScyllaDBClusterDatacenterTemplate)
+	configMapsToMirror = append(configMapsToMirror, configMapsToMirrorForDC...)
 
-	if dc.ScyllaDB != nil && dc.ScyllaDB.CustomConfigMapRef != nil {
-		configMapsToMirror = append(configMapsToMirror, *dc.ScyllaDB.CustomConfigMapRef)
-	}
-
-	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil && dc.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
-		configMapsToMirror = append(configMapsToMirror, *dc.RackTemplate.ScyllaDB.CustomConfigMapRef)
-	}
-
-	for _, rack := range dc.Racks {
-		if rack.ScyllaDB != nil && rack.ScyllaDB.CustomConfigMapRef != nil {
-			configMapsToMirror = append(configMapsToMirror, *rack.ScyllaDB.CustomConfigMapRef)
-		}
-	}
-
+	var errs []error
 	for _, cmName := range configMapsToMirror {
 		localConfigMap, err := localConfigMapLister.ConfigMaps(sc.Namespace).Get(cmName)
 		if err != nil {
@@ -1070,12 +1056,141 @@ func makeMirroredRemoteConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, dc *scylla
 		})
 	}
 
-	err := apimachineryutilerrors.NewAggregate(errs)
+	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, requiredRemoteConfigMaps, fmt.Errorf("can't make mirrored ConfigMaps: %w", err)
 	}
 
 	return progressingConditions, requiredRemoteConfigMaps, nil
+}
+
+// getConfigMapsToMirrorForAllDCs collects the names of ConfigMaps to mirror for all Datacenters in the ScyllaDBCluster.
+func getConfigMapsAndSecretsToMirrorForAllDCs(sc *scyllav1alpha1.ScyllaDBCluster) ([]string, []string, error) {
+	var configMapsToMirror []string
+	var secretsToMirror []string
+
+	agentAuthTokenSecretName, err := naming.ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't get agent auth token secret name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+	secretsToMirror = append(secretsToMirror, agentAuthTokenSecretName)
+
+	if sc.Spec.DatacenterTemplate != nil {
+		dcConfigMaps, dcSecrets := getConfigMapsAndSecretsToMirrorForDC(sc.Spec.DatacenterTemplate)
+
+		configMapsToMirror = append(configMapsToMirror, dcConfigMaps...)
+		secretsToMirror = append(secretsToMirror, dcSecrets...)
+	}
+
+	return configMapsToMirror, secretsToMirror, nil
+}
+
+// getConfigMapsToMirrorForDC collects the names of ConfigMaps to mirror for a specific Datacenter.
+func getConfigMapsAndSecretsToMirrorForDC(dc *scyllav1alpha1.ScyllaDBClusterDatacenterTemplate) ([]string, []string) {
+	var configMapsToMirror []string
+	var secretsToMirror []string
+
+	// ScyllaDB.CustomConfigMapRef.
+	if dc.ScyllaDB != nil && dc.ScyllaDB.CustomConfigMapRef != nil {
+		configMapsToMirror = append(configMapsToMirror, *dc.ScyllaDB.CustomConfigMapRef)
+	}
+
+	// ScyllaDBManagerAgent.CustomConfigSecretRef.
+	if dc.ScyllaDBManagerAgent != nil && dc.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *dc.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	// RackTemplate.ScyllaDB.CustomConfigMapRef.
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil && dc.RackTemplate.ScyllaDB.CustomConfigMapRef != nil {
+		configMapsToMirror = append(configMapsToMirror, *dc.RackTemplate.ScyllaDB.CustomConfigMapRef)
+	}
+
+	// RackTemplate.ScyllaDB.Volumes.
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil {
+		configMapsToMirror = append(configMapsToMirror, collectConfigMapNamesFromVolumes(dc.RackTemplate.ScyllaDB.Volumes)...)
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.RackTemplate.ScyllaDB.Volumes)...)
+	}
+
+	// RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef.
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil && dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+		secretsToMirror = append(secretsToMirror, *dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
+	}
+
+	// RackTemplate.ScyllaDBManagerAgent.Volumes.
+	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil {
+		configMapsToMirror = append(configMapsToMirror, collectConfigMapNamesFromVolumes(dc.RackTemplate.ScyllaDBManagerAgent.Volumes)...)
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.RackTemplate.ScyllaDBManagerAgent.Volumes)...)
+	}
+
+	// ScyllaDB.Volumes.
+	if dc.ScyllaDB != nil {
+		configMapsToMirror = append(configMapsToMirror, collectConfigMapNamesFromVolumes(dc.ScyllaDB.Volumes)...)
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.ScyllaDB.Volumes)...)
+	}
+
+	// ScyllaDBManagerAgent.Volumes.
+	if dc.ScyllaDBManagerAgent != nil {
+		configMapsToMirror = append(configMapsToMirror, collectConfigMapNamesFromVolumes(dc.ScyllaDBManagerAgent.Volumes)...)
+		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.ScyllaDBManagerAgent.Volumes)...)
+	}
+
+	for _, rack := range dc.Racks {
+		// Racks[].ScyllaDB.CustomConfigMapRef.
+		if rack.ScyllaDB != nil && rack.ScyllaDB.CustomConfigMapRef != nil {
+			configMapsToMirror = append(configMapsToMirror, *rack.ScyllaDB.CustomConfigMapRef)
+		}
+
+		// Racks[].ScyllaDBManagerAgent.CustomConfigSecretRef.
+		if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+			secretsToMirror = append(secretsToMirror, *rack.ScyllaDBManagerAgent.CustomConfigSecretRef)
+		}
+
+		// Racks[].ScyllaDB.Volumes.
+		if rack.ScyllaDB != nil {
+			configMapsToMirror = append(configMapsToMirror, collectConfigMapNamesFromVolumes(rack.ScyllaDB.Volumes)...)
+			secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(rack.ScyllaDB.Volumes)...)
+		}
+
+		// Racks[].ScyllaDBManagerAgent.Volumes.
+		if rack.ScyllaDBManagerAgent != nil {
+			configMapsToMirror = append(configMapsToMirror, collectConfigMapNamesFromVolumes(rack.ScyllaDBManagerAgent.Volumes)...)
+			secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(rack.ScyllaDBManagerAgent.Volumes)...)
+		}
+	}
+
+	return configMapsToMirror, secretsToMirror
+}
+
+func isEmptyString(v string) bool {
+	return len(v) == 0
+}
+
+func getConfigMapVolumeName(volume corev1.Volume) string {
+	if volume.ConfigMap != nil {
+		return volume.ConfigMap.Name
+	}
+	return ""
+}
+
+func getSecretVolumeName(volume corev1.Volume) string {
+	if volume.Secret != nil {
+		return volume.Secret.SecretName
+	}
+	return ""
+}
+
+// collectConfigMapNamesFromVolumes collects the names of ConfigMaps from the given Volumes.
+func collectConfigMapNamesFromVolumes(volumes []corev1.Volume) []string {
+	return collectFromVolumes(volumes, getConfigMapVolumeName, isEmptyString)
+}
+
+// collectSecretNamesFromVolumes collects the names of Secrets from the given Volumes.
+func collectSecretNamesFromVolumes(volumes []corev1.Volume) []string {
+	return collectFromVolumes(volumes, getSecretVolumeName, isEmptyString)
+}
+
+func collectFromVolumes[T any](volumes []corev1.Volume, extractFunc func(corev1.Volume) T, filterOutPredicate func(T) bool) []T {
+	return oslices.FilterOut(oslices.ConvertSlice(volumes, extractFunc), filterOutPredicate)
 }
 
 func MakeRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteNamespace *corev1.Namespace, remoteController metav1.Object, localSecretLister corev1listers.SecretLister, managingClusterDomain string) ([]metav1.Condition, []*corev1.Secret, error) {
@@ -1102,7 +1217,7 @@ func makeMirroredRemoteSecrets(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1a
 	}
 	secretsToMirror = append(secretsToMirror, secretsToMirrorForAllDCs...)
 
-	secretsToMirrorForDC := getSecretsToMirrorForDC(&dc.ScyllaDBClusterDatacenterTemplate)
+	_, secretsToMirrorForDC := getConfigMapsAndSecretsToMirrorForDC(&dc.ScyllaDBClusterDatacenterTemplate)
 	secretsToMirror = append(secretsToMirror, secretsToMirrorForDC...)
 
 	var errs []error
@@ -1156,75 +1271,11 @@ func getSecretsToMirrorForAllDCs(sc *scyllav1alpha1.ScyllaDBCluster) ([]string, 
 	secretsToMirror = append(secretsToMirror, agentAuthTokenSecretName)
 
 	if sc.Spec.DatacenterTemplate != nil {
-		secretsToMirror = append(secretsToMirror, getSecretsToMirrorForDC(sc.Spec.DatacenterTemplate)...)
+		_, dcSecrets := getConfigMapsAndSecretsToMirrorForDC(sc.Spec.DatacenterTemplate)
+		secretsToMirror = append(secretsToMirror, dcSecrets...)
 	}
 
 	return secretsToMirror, nil
-}
-
-// getSecretsToMirrorForDC collects the names of Secrets to mirror for a specific Datacenter.
-func getSecretsToMirrorForDC(dc *scyllav1alpha1.ScyllaDBClusterDatacenterTemplate) []string {
-	var secretsToMirror []string
-
-	// ScyllaDBManagerAgent.CustomConfigSecretRef.
-	if dc.ScyllaDBManagerAgent != nil && dc.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		secretsToMirror = append(secretsToMirror, *dc.ScyllaDBManagerAgent.CustomConfigSecretRef)
-	}
-
-	// ScyllaDBManagerAgent.Volumes.
-	if dc.ScyllaDBManagerAgent != nil {
-		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.ScyllaDBManagerAgent.Volumes)...)
-	}
-
-	// RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef.
-	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil && dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-		secretsToMirror = append(secretsToMirror, *dc.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef)
-	}
-
-	// RackTemplate.ScyllaDBManagerAgent.Volumes.
-	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDBManagerAgent != nil {
-		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.RackTemplate.ScyllaDBManagerAgent.Volumes)...)
-	}
-
-	// RackTemplate.ScyllaDB.Volumes.
-	if dc.RackTemplate != nil && dc.RackTemplate.ScyllaDB != nil {
-		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.RackTemplate.ScyllaDB.Volumes)...)
-	}
-
-	// ScyllaDB.Volumes.
-	if dc.ScyllaDB != nil {
-		secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(dc.ScyllaDB.Volumes)...)
-	}
-
-	for _, rack := range dc.Racks {
-		// Racks[].ScyllaDBManagerAgent.CustomConfigSecretRef.
-		if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
-			secretsToMirror = append(secretsToMirror, *rack.ScyllaDBManagerAgent.CustomConfigSecretRef)
-		}
-
-		// Racks[].ScyllaDBManagerAgent.Volumes.
-		if rack.ScyllaDBManagerAgent != nil {
-			secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(rack.ScyllaDBManagerAgent.Volumes)...)
-		}
-
-		// Racks[].ScyllaDB.Volumes.
-		if rack.ScyllaDB != nil {
-			secretsToMirror = append(secretsToMirror, collectSecretNamesFromVolumes(rack.ScyllaDB.Volumes)...)
-		}
-	}
-
-	return secretsToMirror
-}
-
-// collectSecretNamesFromVolumes collects the names of Secrets from the given Volumes.
-func collectSecretNamesFromVolumes(volumes []corev1.Volume) []string {
-	var secretNames []string
-	for _, volume := range volumes {
-		if volume.Secret != nil && volume.Secret.SecretName != "" {
-			secretNames = append(secretNames, volume.Secret.SecretName)
-		}
-	}
-	return secretNames
 }
 
 // makeLocalServices creates a slice of control-plane Services for the ScyllaDBCluster.

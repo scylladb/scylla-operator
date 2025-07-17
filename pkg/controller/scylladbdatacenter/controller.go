@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -403,7 +404,7 @@ func (sdcc *Controller) deleteService(obj interface{}) {
 func (sdcc *Controller) addSecret(obj interface{}) {
 	sdcc.handlers.HandleAdd(
 		obj.(*corev1.Secret),
-		sdcc.handlers.EnqueueOwner,
+		sdcc.enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotationOrOwner,
 	)
 }
 
@@ -411,7 +412,7 @@ func (sdcc *Controller) updateSecret(old, cur interface{}) {
 	sdcc.handlers.HandleUpdate(
 		old.(*corev1.Secret),
 		cur.(*corev1.Secret),
-		sdcc.handlers.EnqueueOwner,
+		sdcc.enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotationOrOwner,
 		sdcc.deleteSecret,
 	)
 }
@@ -419,7 +420,7 @@ func (sdcc *Controller) updateSecret(old, cur interface{}) {
 func (sdcc *Controller) deleteSecret(obj interface{}) {
 	sdcc.handlers.HandleDelete(
 		obj,
-		sdcc.handlers.EnqueueOwner,
+		sdcc.enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotationOrOwner,
 	)
 }
 
@@ -628,4 +629,17 @@ func (sdcc *Controller) deleteJob(obj interface{}) {
 		obj,
 		sdcc.handlers.EnqueueOwner,
 	)
+}
+
+func (sdcc *Controller) enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotationOrOwner(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
+	secret := obj.(*corev1.Secret)
+
+	sdcc.enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation(secret)(depth+1, secret, op)
+	sdcc.handlers.EnqueueOwner(depth+1, obj, op)
+}
+
+func (sdcc *Controller) enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation(secret *corev1.Secret) controllerhelpers.EnqueueFuncType {
+	return sdcc.handlers.EnqueueAllFunc(sdcc.handlers.EnqueueWithFilterFunc(func(sdc *scyllav1alpha1.ScyllaDBDatacenter) bool {
+		return secret.Namespace == sdc.Namespace && sdc.Annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation] == secret.Name
+	}))
 }

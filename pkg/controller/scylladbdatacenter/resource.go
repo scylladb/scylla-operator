@@ -1451,16 +1451,16 @@ func MakeIngresses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*
 	return ingresses
 }
 
-func MakeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, authToken string) (*corev1.Secret, error) {
-	data, err := helpers.GetAgentAuthTokenConfig(authToken)
-	if err != nil {
-		return nil, err
-	}
-
+func makeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, agentAuthToken string) (*corev1.Secret, error) {
 	labels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)
 	maps.Copy(labels, naming.ClusterLabels(sdc))
 
 	annotations := cloneMapExcludingKeysOrEmpty(sdc.Annotations, nonPropagatedAnnotationKeys)
+
+	agentAuthTokenConfig, err := helpers.GetAgentAuthTokenConfig(agentAuthToken)
+	if err != nil {
+		return nil, fmt.Errorf("can't get agent auth token config for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+	}
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1474,7 +1474,7 @@ func MakeAgentAuthTokenSecret(sdc *scyllav1alpha1.ScyllaDBDatacenter, authToken 
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			naming.ScyllaAgentAuthTokenFileName: data,
+			naming.ScyllaAgentAuthTokenFileName: agentAuthTokenConfig,
 		},
 	}, nil
 }

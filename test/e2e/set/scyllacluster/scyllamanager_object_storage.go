@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -212,18 +211,18 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sourceManagerClusterID := *sourceSC.Status.ManagerID
 		o.Expect(sourceManagerClusterID).NotTo(o.BeEmpty())
 
-		var backupProgress managerclient.BackupProgress
-		framework.By("Waiting for backup to finish")
-		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
-			backupProgress, err = managerClient.BackupProgress(ctx, sourceManagerClusterID, backupTask.ID, "latest")
-			if err != nil {
-				return false, err
-			}
+		framework.By("Waiting for the backup task to finish")
+		o.Eventually(verification.VerifyScyllaDBManagerBackupTaskCompleted).
+			WithContext(ctx).
+			WithTimeout(3*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, sourceManagerClusterID, backupTask.ID).
+			Should(o.Succeed())
 
-			return backupProgress.Run.Status == managerclient.TaskStatusDone, nil
-		})
+		backupProgress, err := managerClient.BackupProgress(ctx, sourceManagerClusterID, backupTask.ID, "latest")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(backupProgress.Progress.SnapshotTag).NotTo(o.BeEmpty())
+		snapshotTag := backupProgress.Progress.SnapshotTag
+		o.Expect(snapshotTag).NotTo(o.BeEmpty())
 
 		framework.By("Deleting the backup task for source ScyllaCluster")
 		sourceSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -367,7 +366,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				"restore",
 				fmt.Sprintf("--cluster=%s", targetManagerClusterID),
 				fmt.Sprintf("--location=%s", objectStorageLocation),
-				fmt.Sprintf("--snapshot-tag=%s", backupProgress.Progress.SnapshotTag),
+				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-schema",
 			},
 			Namespace:     scyllaManagerPod.Namespace,
@@ -381,20 +380,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		_, schemaRestoreTaskID, err := managerClient.TaskSplit(ctx, targetManagerClusterID, strings.TrimSpace(stdout))
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		isRestoreTaskStatusDone := func(g o.Gomega, ctx context.Context, restoreTaskID string) bool {
-			restoreProgress, err := managerClient.RestoreProgress(ctx, targetManagerClusterID, restoreTaskID, "latest")
-			g.Expect(err).NotTo(o.HaveOccurred())
-
-			return restoreProgress.Run.Status == managerclient.TaskStatusDone
-		}
-
 		framework.By("Waiting for schema restore to finish")
-		o.Eventually(isRestoreTaskStatusDone).
+		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10 * time.Minute).
-			WithPolling(5 * time.Second).
-			WithArguments(schemaRestoreTaskID.String()).
-			Should(o.BeTrue())
+			WithTimeout(10*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
+			Should(o.Succeed())
 
 		framework.By("Initiating a rolling restart of the target ScyllaCluster")
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -426,7 +418,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				"restore",
 				fmt.Sprintf("--cluster=%s", targetManagerClusterID),
 				fmt.Sprintf("--location=%s", objectStorageLocation),
-				fmt.Sprintf("--snapshot-tag=%s", backupProgress.Progress.SnapshotTag),
+				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-tables",
 			},
 			Namespace:     scyllaManagerPod.Namespace,
@@ -441,12 +433,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for tables restore to finish")
-		o.Eventually(isRestoreTaskStatusDone).
+		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10 * time.Minute).
-			WithPolling(5 * time.Second).
-			WithArguments(tablesRestoreTaskID.String()).
-			Should(o.BeTrue())
+			WithTimeout(10*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, targetManagerClusterID, tablesRestoreTaskID.String()).
+			Should(o.Succeed())
 
 		framework.By("Validating that the data restored from source cluster backup is available in target cluster")
 		targetHosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), targetSC)

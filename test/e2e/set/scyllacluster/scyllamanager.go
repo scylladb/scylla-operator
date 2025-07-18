@@ -11,7 +11,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
@@ -22,7 +21,6 @@ import (
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 )
 
 var _ = g.Describe("Scylla Manager integration", func() {
@@ -260,15 +258,12 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(*sc.Status.Repairs[0].Parallel))
 
 		framework.By("Waiting for repair to finish")
-		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
-			repairProgress, err := managerClient.RepairProgress(ctx, managerClusterID, repairTask.ID, "latest")
-			if err != nil {
-				return false, err
-			}
-
-			return repairProgress.Run.Status == managerclient.TaskStatusDone, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
+			WithContext(ctx).
+			WithTimeout(10*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, managerClusterID, repairTask.ID).
+			Should(o.Succeed())
 
 		framework.By("Deleting the repair task")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	utilsv1alpha1 "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
@@ -15,8 +15,13 @@ import (
 )
 
 func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.ClusterInterface, sc *scyllav1alpha1.ScyllaDBCluster) error {
-	allHostIDs := map[string][]string{}
-	var sortedAllHostIDs []string
+	allHostIDs, err := utilsv1alpha1.GetHostIDsForScyllaDBCluster(ctx, rkcClusterMap, sc)
+	if err != nil {
+		return fmt.Errorf("can't get host IDs for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	sortedAllHostIDs := slices.Concat(slices.Collect(maps.Values(allHostIDs))...)
+	slices.Sort(sortedAllHostIDs)
 
 	var errs []error
 	for _, dc := range sc.Spec.Datacenters {
@@ -26,54 +31,13 @@ func WaitForFullQuorum(ctx context.Context, rkcClusterMap map[string]framework.C
 			continue
 		}
 
-		dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
-			return dcStatus.Name == dc.Name
-		})
-		if !ok {
-			return fmt.Errorf("can't find %q datacenter status", dc.Name)
-		}
-		if dcStatus.RemoteNamespaceName == nil {
-			return fmt.Errorf("unexpected nil remote namespace name in %q datacenter status", dc.Name)
-		}
-
-		sdc, err := clusterClient.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBDatacenters(*dcStatus.RemoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, &dc), metav1.GetOptions{})
+		remoteNamespaceName, err := naming.RemoteNamespaceName(sc, &dc)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", dc.Name, err))
+			errs = append(errs, fmt.Errorf("can't get remote namespace name for DC %q of ScyllaDBCluster %q: %w", dc.Name, naming.ObjRef(sc), err))
 			continue
 		}
 
-		hostIDs, err := utilsv1alpha1.GetHostIDs(ctx, clusterClient.KubeAdminClient().CoreV1(), sdc)
-		if err != nil {
-			return fmt.Errorf("can't get broadcast addresses for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
-		}
-		allHostIDs[dc.Name] = hostIDs
-		sortedAllHostIDs = append(sortedAllHostIDs, hostIDs...)
-	}
-	err := errors.Join(errs...)
-	if err != nil {
-		return err
-	}
-
-	sort.Strings(sortedAllHostIDs)
-
-	for _, dc := range sc.Spec.Datacenters {
-		clusterClient, ok := rkcClusterMap[dc.RemoteKubernetesClusterName]
-		if !ok {
-			errs = append(errs, fmt.Errorf("cluster client is missing for DC %q of ScyllaDBCluster %q", dc.Name, naming.ObjRef(sc)))
-			continue
-		}
-
-		dcStatus, _, ok := oslices.Find(sc.Status.Datacenters, func(dcStatus scyllav1alpha1.ScyllaDBClusterDatacenterStatus) bool {
-			return dcStatus.Name == dc.Name
-		})
-		if !ok {
-			return fmt.Errorf("can't find %q datacenter status", dc.Name)
-		}
-		if dcStatus.RemoteNamespaceName == nil {
-			return fmt.Errorf("unexpected nil remote namespace name in %q datacenter status", dc.Name)
-		}
-
-		sdc, err := clusterClient.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBDatacenters(*dcStatus.RemoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, &dc), metav1.GetOptions{})
+		sdc, err := clusterClient.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBDatacenters(remoteNamespaceName).Get(ctx, naming.ScyllaDBDatacenterName(sc, &dc), metav1.GetOptions{})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", dc.Name, err))
 			continue

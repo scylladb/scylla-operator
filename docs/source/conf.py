@@ -60,7 +60,7 @@ myst_substitutions = {
   "imageTag": "2025.1.2",
   "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
   "enterpriseImageTag": "2024.1.12",
-  "agentVersion": "3.5.0",
+  "agentVersion": "3.5.1",
 }
 
 # -- Options for not found extension

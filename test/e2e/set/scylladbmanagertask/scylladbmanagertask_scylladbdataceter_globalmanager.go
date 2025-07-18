@@ -23,13 +23,12 @@ import (
 	scylladbdatacenterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbdatacenter"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 )
 
-var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager", func() {
+var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", func() {
 	f := framework.NewFramework("scylladbmanagertask")
 
-	g.It("should synchronise a repair task for ScyllaDBDatacenter", func(ctx g.SpecContext) {
+	g.It("should synchronise a repair task", func(ctx g.SpecContext) {
 		ns, nsClient, ok := f.DefaultNamespaceIfAny()
 		o.Expect(ok).To(o.BeTrue())
 
@@ -155,15 +154,12 @@ var _ = g.Describe("ScyllaDBManagerTask integration with global ScyllaDB Manager
 		o.Expect(managerTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(*smt.Spec.Repair.Parallel))
 
 		framework.By("Waiting for the repair task to finish")
-		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 3*time.Minute, true, func(context.Context) (done bool, err error) {
-			repairProgress, err := managerClient.RepairProgress(ctx, managerClusterID, managerTask.ID, "latest")
-			if err != nil {
-				return false, err
-			}
-
-			return repairProgress.Run.Status == managerclient.TaskStatusDone, nil
-		})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
+			WithContext(ctx).
+			WithTimeout(10*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, managerClusterID, managerTask.ID).
+			Should(o.Succeed())
 
 		framework.By("Deleting ScyllaDBManagerTask")
 		err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name).Delete(

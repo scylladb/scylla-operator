@@ -116,7 +116,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 			smt.Name,
 			controllerhelpers.WaitForStateOptions{},
 			utilsv1alpha1.IsScyllaDBManagerTaskRolledOut,
-			scyllaDBManagerTaskHasDeletionFinalizer,
+			utilsv1alpha1.ScyllaDBManagerTaskHasDeletionFinalizer,
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(smt.Status.TaskID).NotTo(o.BeNil())

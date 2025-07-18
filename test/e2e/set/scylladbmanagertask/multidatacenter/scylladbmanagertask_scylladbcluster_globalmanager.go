@@ -1,10 +1,11 @@
 // Copyright (C) 2025 ScyllaDB
 
-package scylladbmanagertask
+package multidatacenter
 
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"slices"
 	"time"
 
@@ -20,38 +21,49 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	utilsv1alpha1 "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
-	scylladbdatacenterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbdatacenter"
+	scylladbclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbcluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", func() {
+var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with global ScyllaDB Manager", framework.MultiDatacenter, func() {
 	f := framework.NewFramework("scylladbmanagertask")
 
 	g.It("should synchronise a repair task", func(ctx g.SpecContext) {
-		ns, nsClient, ok := f.DefaultNamespaceIfAny()
-		o.Expect(ok).To(o.BeTrue())
+		ns, nsClient := f.CreateUserNamespace(ctx)
 
-		sdc := f.GetDefaultScyllaDBDatacenter()
-		metav1.SetMetaDataLabel(&sdc.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueTrue)
+		workerClusters := f.WorkerClusters()
+		o.Expect(workerClusters).NotTo(o.BeEmpty(), "At least 1 worker cluster is required")
 
-		framework.By(`Creating a ScyllaDBDatacenter with the global ScyllaDB Manager registration label`)
-		sdc, err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Create(ctx, sdc, metav1.CreateOptions{})
+		rkcMap, rkcClusterMap, err := utils.SetUpRemoteKubernetesClusters(ctx, f, workerClusters)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		framework.By("Waiting for ScyllaDBDatacenter to roll out (RV=%s)", sdc.ResourceVersion)
-		rolloutCtx, rolloutCtxCancel := utilsv1alpha1.ContextForRollout(ctx, sdc)
+		sc := f.GetDefaultScyllaDBCluster(rkcMap)
+		metav1.SetMetaDataLabel(&sc.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueTrue)
+
+		framework.By(`Creating a ScyllaDBCluster with the global ScyllaDB Manager registration label`)
+		sc, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(ns.Name).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		err = utils.RegisterCollectionOfRemoteScyllaDBClusterNamespaces(ctx, sc, rkcClusterMap)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaDBCluster %q roll out (RV=%s)", sc.Name, sc.ResourceVersion)
+		rolloutCtx, rolloutCtxCancel := utils.ContextForMultiDatacenterScyllaDBClusterRollout(ctx, sc)
 		defer rolloutCtxCancel()
-		sdc, err = controllerhelpers.WaitForScyllaDBDatacenterState(rolloutCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name), sdc.Name, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBDatacenterRolledOut)
+		sc, err = controllerhelpers.WaitForScyllaDBClusterState(rolloutCtx, f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaDBClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), sdc)
-		scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), sdc)
-
-		hosts, err := utilsv1alpha1.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sdc)
+		scylladbclusterverification.Verify(ctx, sc, rkcClusterMap)
+		err = scylladbclusterverification.WaitForFullQuorum(ctx, rkcClusterMap, sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(1))
-		di := verification.InsertAndVerifyCQLData(ctx, hosts)
+
+		hostsByDC, err := utilsv1alpha1.GetBroadcastRPCAddressesForScyllaDBCluster(ctx, rkcClusterMap, sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		allHosts := slices.Concat(slices.Collect(maps.Values(hostsByDC))...)
+		o.Expect(allHosts).To(o.HaveLen(int(controllerhelpers.GetScyllaDBClusterNodeCount(sc))))
+
+		di := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
 		defer di.Close()
 
 		smt := &scyllav1alpha1.ScyllaDBManagerTask{
@@ -61,8 +73,8 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 			},
 			Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
 				ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
-					Kind: scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
-					Name: sdc.Name,
+					Kind: scyllav1alpha1.ScyllaDBClusterGVK.Kind,
+					Name: sc.Name,
 				},
 				Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
 				Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
@@ -75,11 +87,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		}
 
 		framework.By("Creating a ScyllaDBManagerTask of type 'Repair'")
-		smt, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name).Create(
-			ctx,
-			smt,
-			metav1.CreateOptions{},
-		)
+		smt, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name).Create(ctx, smt, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for ScyllaDBManagerTask to register with global ScyllaDB Manager instance")
@@ -99,7 +107,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		managerTaskID, err := uuid.Parse(*smt.Status.TaskID)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		smcrName, err := naming.ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc)
+		smcrName, err := naming.ScyllaDBManagerClusterRegistrationNameForScyllaDBCluster(sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		smcr, err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerClusterRegistrations(ns.Name).Get(ctx, smcrName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -156,7 +164,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		framework.By("Waiting for the repair task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10*time.Minute).
+			WithTimeout(5*time.Minute).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, managerClusterID, managerTask.ID).
 			Should(o.Succeed())
@@ -179,7 +187,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		defer deletionCtxCancel()
 		err = framework.WaitForObjectDeletion(
 			deletionCtx,
-			f.DynamicClient(),
+			nsClient.DynamicClient(),
 			scyllav1alpha1.GroupVersion.WithResource("scylladbmanagertasks"),
 			smt.Namespace,
 			smt.Name,

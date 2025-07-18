@@ -4430,14 +4430,15 @@ func Test_mergePortSpecSlices(t *testing.T) {
 	}
 }
 
-func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
+func Test_getConfigMapsAndSecretsToMirrorForAllDCs(t *testing.T) {
 	t.Parallel()
 
 	tt := []struct {
-		name        string
-		sc          *scyllav1alpha1.ScyllaDBCluster
-		expected    []string
-		expectedErr error
+		name                   string
+		sc                     *scyllav1alpha1.ScyllaDBCluster
+		expectedSecretNames    []string
+		expectedConfigMapNames []string
+		expectedErr            error
 	}{
 		{
 			name: "Operator-managed secrets to mirror only",
@@ -4446,38 +4447,14 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 					Name: "scylla",
 				},
 			},
-			expected: []string{
+			expectedSecretNames: []string{
 				"scylla-auth-token-1lt9p",
 			},
-			expectedErr: nil,
+			expectedConfigMapNames: []string{},
+			expectedErr:            nil,
 		},
 		{
-			name: "All possible secrets from CustomConfigSecretRef",
-			sc: &scyllav1alpha1.ScyllaDBCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "scylla",
-				},
-				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
-					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
-						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-							CustomConfigSecretRef: pointer.Ptr("scyllaDBManagerAgent.customConfigSecretRef"),
-						},
-						RackTemplate: &scyllav1alpha1.RackTemplate{
-							ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-								CustomConfigSecretRef: pointer.Ptr("rackTemplate.scyllaDBManagerAgent.customConfigSecretRef"),
-							},
-						},
-					},
-				},
-			},
-			expected: []string{
-				"scylla-auth-token-1lt9p",
-				"scyllaDBManagerAgent.customConfigSecretRef",
-				"rackTemplate.scyllaDBManagerAgent.customConfigSecretRef",
-			},
-		},
-		{
-			name: "All possible secrets from Volumes",
+			name: "All possible secrets and configmaps from custom config",
 			sc: &scyllav1alpha1.ScyllaDBCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "scylla",
@@ -4485,27 +4462,27 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
 					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
 						ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
-							Volumes: makeVolumesReferringSecret("scylladb.volumes"),
+							CustomConfigMapRef: pointer.Ptr("configmap-datacenterTemplate.scyllaDB.customConfigMapRef"),
 						},
 						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-							Volumes: makeVolumesReferringSecret("scyllaDBManagerAgent.volumes"),
+							CustomConfigSecretRef: pointer.Ptr("secret-datacenterTemplate.scyllaDBManagerAgent.customConfigSecretRef"),
 						},
 						RackTemplate: &scyllav1alpha1.RackTemplate{
 							ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
-								Volumes: makeVolumesReferringSecret("rackTemplate.scyllaDB.volumes"),
+								CustomConfigMapRef: pointer.Ptr("configmap-datacenterTemplate.rackTemplate.scyllaDB.customConfigMapRef"),
 							},
 							ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-								Volumes: makeVolumesReferringSecret("rackTemplate.scyllaDBManagerAgent.volumes"),
+								CustomConfigSecretRef: pointer.Ptr("secret-datacenterTemplate.rackTemplate.scyllaDBManagerAgent.customConfigSecretRef"),
 							},
 						},
 						Racks: []scyllav1alpha1.RackSpec{
 							{
 								RackTemplate: scyllav1alpha1.RackTemplate{
 									ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
-										Volumes: makeVolumesReferringSecret("racks[].scyllaDB.volumes"),
+										CustomConfigMapRef: pointer.Ptr("configmap-datacenterTemplate.racks[].scyllaDB.customConfigMapRef"),
 									},
 									ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-										Volumes: makeVolumesReferringSecret("racks[].scyllaDBManagerAgent.volumes"),
+										CustomConfigSecretRef: pointer.Ptr("secret-datacenterTemplate.racks[].scyllaDBManagerAgent.customConfigSecretRef"),
 									},
 								},
 							},
@@ -4513,14 +4490,89 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 					},
 				},
 			},
-			expected: []string{
+			expectedSecretNames: []string{
 				"scylla-auth-token-1lt9p",
-				"scylladb.volumes",
-				"scyllaDBManagerAgent.volumes",
-				"rackTemplate.scyllaDB.volumes",
-				"rackTemplate.scyllaDBManagerAgent.volumes",
-				"racks[].scyllaDB.volumes",
-				"racks[].scyllaDBManagerAgent.volumes",
+				"secret-datacenterTemplate.scyllaDBManagerAgent.customConfigSecretRef",
+				"secret-datacenterTemplate.rackTemplate.scyllaDBManagerAgent.customConfigSecretRef",
+				"secret-datacenterTemplate.racks[].scyllaDBManagerAgent.customConfigSecretRef",
+			},
+			expectedConfigMapNames: []string{
+				"configmap-datacenterTemplate.scyllaDB.customConfigMapRef",
+				"configmap-datacenterTemplate.rackTemplate.scyllaDB.customConfigMapRef",
+				"configmap-datacenterTemplate.racks[].scyllaDB.customConfigMapRef",
+			},
+		},
+		{
+			name: "All possible secrets and configmaps from Volumes",
+			sc: &scyllav1alpha1.ScyllaDBCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "scylla",
+				},
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					DatacenterTemplate: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+						ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+							Volumes: slices.Concat(
+								makeVolumesReferringSecret("secret-scylladb.volumes"),
+								makeVolumesReferringConfigMap("configmap-scylladb.volumes"),
+							),
+						},
+						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+							Volumes: slices.Concat(
+								makeVolumesReferringSecret("secret-scyllaDBManagerAgent.volumes"),
+								makeVolumesReferringConfigMap("configmap-scyllaDBManagerAgent.volumes"),
+							),
+						},
+						RackTemplate: &scyllav1alpha1.RackTemplate{
+							ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+								Volumes: slices.Concat(
+									makeVolumesReferringSecret("secret-rackTemplate.scyllaDB.volumes"),
+									makeVolumesReferringConfigMap("configmap-rackTemplate.scyllaDB.volumes"),
+								),
+							},
+							ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+								Volumes: slices.Concat(
+									makeVolumesReferringSecret("secret-rackTemplate.scyllaDBManagerAgent.volumes"),
+									makeVolumesReferringConfigMap("configmap-rackTemplate.scyllaDBManagerAgent.volumes"),
+								),
+							},
+						},
+						Racks: []scyllav1alpha1.RackSpec{
+							{
+								RackTemplate: scyllav1alpha1.RackTemplate{
+									ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+										Volumes: slices.Concat(
+											makeVolumesReferringSecret("secret-racks[].scyllaDB.volumes"),
+											makeVolumesReferringConfigMap("configmap-racks[].scyllaDB.volumes"),
+										),
+									},
+									ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+										Volumes: slices.Concat(
+											makeVolumesReferringSecret("secret-racks[].scyllaDBManagerAgent.volumes"),
+											makeVolumesReferringConfigMap("configmap-racks[].scyllaDBManagerAgent.volumes"),
+										),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedSecretNames: []string{
+				"scylla-auth-token-1lt9p",
+				"secret-scylladb.volumes",
+				"secret-scyllaDBManagerAgent.volumes",
+				"secret-rackTemplate.scyllaDB.volumes",
+				"secret-rackTemplate.scyllaDBManagerAgent.volumes",
+				"secret-racks[].scyllaDB.volumes",
+				"secret-racks[].scyllaDBManagerAgent.volumes",
+			},
+			expectedConfigMapNames: []string{
+				"configmap-scylladb.volumes",
+				"configmap-scyllaDBManagerAgent.volumes",
+				"configmap-rackTemplate.scyllaDB.volumes",
+				"configmap-rackTemplate.scyllaDBManagerAgent.volumes",
+				"configmap-racks[].scyllaDB.volumes",
+				"configmap-racks[].scyllaDBManagerAgent.volumes",
 			},
 		},
 	}
@@ -4529,18 +4581,24 @@ func Test_getSecretsToMirrorForAllDCs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := getSecretsToMirrorForAllDCs(tc.sc)
+			gotConfigMapNames, gotSecretNames, err := getConfigMapsAndSecretsToMirrorForAllDCs(tc.sc)
 
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected and got errors differ: %s", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
 			}
 
 			// Sort before comparison to ensure order does not affect the test.
-			sort.Strings(tc.expected)
-			sort.Strings(got)
+			sort.Strings(tc.expectedConfigMapNames)
+			sort.Strings(tc.expectedSecretNames)
+			sort.Strings(gotConfigMapNames)
+			sort.Strings(gotSecretNames)
 
-			if !slices.Equal(got, tc.expected) {
-				t.Errorf("expected and got secrets differ: %s", cmp.Diff(got, tc.expected))
+			if !slices.Equal(gotConfigMapNames, tc.expectedConfigMapNames) {
+				t.Errorf("expected and got config map names differ: %s", cmp.Diff(gotConfigMapNames, tc.expectedConfigMapNames))
+			}
+
+			if !slices.Equal(gotSecretNames, tc.expectedSecretNames) {
+				t.Errorf("expected and got secret names differ: %s", cmp.Diff(gotSecretNames, tc.expectedSecretNames))
 			}
 		})
 	}
@@ -4550,79 +4608,135 @@ func Test_getSecretsToMirrorForDC(t *testing.T) {
 	t.Parallel()
 
 	tt := []struct {
-		name     string
-		dc       *scyllav1alpha1.ScyllaDBClusterDatacenterTemplate
-		expected []string
+		name                   string
+		dc                     *scyllav1alpha1.ScyllaDBClusterDatacenterTemplate
+		expectedSecretNames    []string
+		expectedConfigMapNames []string
 	}{
 		{
-			name:     "No secrets to mirror",
-			dc:       &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{},
-			expected: nil,
+			name:                "No secrets nor configmaps to mirror",
+			dc:                  &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{},
+			expectedSecretNames: nil,
 		},
 		{
-			name: "All possible secrets from Volumes",
+			name: "All possible secrets and configmaps from Volumes",
 			dc: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
 				ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
-					Volumes: makeVolumesReferringSecret("scylladb.volumes"),
+					Volumes: slices.Concat(
+						makeVolumesReferringSecret("secret-scylladb.volumes"),
+						makeVolumesReferringConfigMap("configmap-scylladb.volumes"),
+					),
 				},
 				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-					Volumes: makeVolumesReferringSecret("scyllaDBManagerAgent.volumes"),
+					Volumes: slices.Concat(
+						makeVolumesReferringSecret("secret-scyllaDBManagerAgent.volumes"),
+						makeVolumesReferringConfigMap("configmap-scyllaDBManagerAgent.volumes"),
+					),
 				},
 				RackTemplate: &scyllav1alpha1.RackTemplate{
 					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
-						Volumes: makeVolumesReferringSecret("rackTemplate.scyllaDB.volumes"),
+						Volumes: slices.Concat(
+							makeVolumesReferringSecret("secret-rackTemplate.scyllaDB.volumes"),
+							makeVolumesReferringConfigMap("configmap-rackTemplate.scyllaDB.volumes"),
+						),
 					},
 					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-						Volumes: makeVolumesReferringSecret("rackTemplate.scyllaDBManagerAgent.volumes"),
+						Volumes: slices.Concat(
+							makeVolumesReferringSecret("secret-rackTemplate.scyllaDBManagerAgent.volumes"),
+							makeVolumesReferringConfigMap("configmap-rackTemplate.scyllaDBManagerAgent.volumes"),
+						),
 					},
 				},
 				Racks: []scyllav1alpha1.RackSpec{
 					{
 						RackTemplate: scyllav1alpha1.RackTemplate{
 							ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
-								Volumes: makeVolumesReferringSecret("racks[].scyllaDB.volumes"),
+								Volumes: slices.Concat(
+									makeVolumesReferringSecret("secret-racks[].scyllaDB.volumes"),
+									makeVolumesReferringConfigMap("configmap-racks[].scyllaDB.volumes"),
+								),
 							},
 							ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-								Volumes: makeVolumesReferringSecret("racks[].scyllaDBManagerAgent.volumes"),
+								Volumes: slices.Concat(
+									makeVolumesReferringSecret("secret-racks[].scyllaDBManagerAgent.volumes"),
+									makeVolumesReferringConfigMap("configmap-racks[].scyllaDBManagerAgent.volumes"),
+								),
 							},
 						},
 					},
 				},
 			},
-			expected: []string{
-				"scylladb.volumes",
-				"scyllaDBManagerAgent.volumes",
-				"rackTemplate.scyllaDB.volumes",
-				"rackTemplate.scyllaDBManagerAgent.volumes",
-				"racks[].scyllaDB.volumes",
-				"racks[].scyllaDBManagerAgent.volumes",
+			expectedSecretNames: []string{
+				"secret-scylladb.volumes",
+				"secret-scyllaDBManagerAgent.volumes",
+				"secret-rackTemplate.scyllaDB.volumes",
+				"secret-rackTemplate.scyllaDBManagerAgent.volumes",
+				"secret-racks[].scyllaDB.volumes",
+				"secret-racks[].scyllaDBManagerAgent.volumes",
+			},
+			expectedConfigMapNames: []string{
+				"configmap-scylladb.volumes",
+				"configmap-scyllaDBManagerAgent.volumes",
+				"configmap-rackTemplate.scyllaDB.volumes",
+				"configmap-rackTemplate.scyllaDBManagerAgent.volumes",
+				"configmap-racks[].scyllaDB.volumes",
+				"configmap-racks[].scyllaDBManagerAgent.volumes",
 			},
 		},
 		{
 			name: "All possible secrets from CustomConfigSecretRef",
 			dc: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
 				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-					CustomConfigSecretRef: pointer.Ptr("scyllaDBManagerAgent.customConfigSecretRef"),
+					CustomConfigSecretRef: pointer.Ptr("secret-scyllaDBManagerAgent.customConfigSecretRef"),
 				},
 				RackTemplate: &scyllav1alpha1.RackTemplate{
 					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-						CustomConfigSecretRef: pointer.Ptr("rackTemplate.scyllaDBManagerAgent.customConfigSecretRef"),
+						CustomConfigSecretRef: pointer.Ptr("secret-rackTemplate.scyllaDBManagerAgent.customConfigSecretRef"),
 					},
 				},
 				Racks: []scyllav1alpha1.RackSpec{
 					{
 						RackTemplate: scyllav1alpha1.RackTemplate{
 							ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
-								CustomConfigSecretRef: pointer.Ptr("racks[].scyllaDBManagerAgent.customConfigSecretRef"),
+								CustomConfigSecretRef: pointer.Ptr("secret-racks[].scyllaDBManagerAgent.customConfigSecretRef"),
 							},
 						},
 					},
 				},
 			},
-			expected: []string{
-				"scyllaDBManagerAgent.customConfigSecretRef",
-				"rackTemplate.scyllaDBManagerAgent.customConfigSecretRef",
-				"racks[].scyllaDBManagerAgent.customConfigSecretRef",
+			expectedSecretNames: []string{
+				"secret-scyllaDBManagerAgent.customConfigSecretRef",
+				"secret-rackTemplate.scyllaDBManagerAgent.customConfigSecretRef",
+				"secret-racks[].scyllaDBManagerAgent.customConfigSecretRef",
+			},
+			expectedConfigMapNames: []string{},
+		},
+		{
+			name: "All possible configmaps from CustomConfigMapRef",
+			dc: &scyllav1alpha1.ScyllaDBClusterDatacenterTemplate{
+				ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+					CustomConfigMapRef: pointer.Ptr("configmap-scyllaDB.customConfigMapRef"),
+				},
+				RackTemplate: &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						CustomConfigMapRef: pointer.Ptr("configmap-rackTemplate.scyllaDB.customConfigMapRef"),
+					},
+				},
+				Racks: []scyllav1alpha1.RackSpec{
+					{
+						RackTemplate: scyllav1alpha1.RackTemplate{
+							ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+								CustomConfigMapRef: pointer.Ptr("configmap-racks[].scyllaDB.customConfigMapRef"),
+							},
+						},
+					},
+				},
+			},
+			expectedSecretNames: []string{},
+			expectedConfigMapNames: []string{
+				"configmap-scyllaDB.customConfigMapRef",
+				"configmap-rackTemplate.scyllaDB.customConfigMapRef",
+				"configmap-racks[].scyllaDB.customConfigMapRef",
 			},
 		},
 	}
@@ -4631,14 +4745,19 @@ func Test_getSecretsToMirrorForDC(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := getSecretsToMirrorForDC(tc.dc)
+			gotConfigMapNames, gotSecretNames := getConfigMapsAndSecretsToMirrorForDC(tc.dc)
 
 			// Sort before comparison to ensure order does not affect the test.
-			sort.Strings(tc.expected)
-			sort.Strings(got)
+			sort.Strings(tc.expectedConfigMapNames)
+			sort.Strings(tc.expectedSecretNames)
+			sort.Strings(gotConfigMapNames)
+			sort.Strings(gotSecretNames)
 
-			if !slices.Equal(got, tc.expected) {
-				t.Errorf("expected and got secrets differ: %s", cmp.Diff(got, tc.expected))
+			if !slices.Equal(gotConfigMapNames, tc.expectedConfigMapNames) {
+				t.Errorf("expected and got config map names differ: %s", cmp.Diff(gotConfigMapNames, tc.expectedConfigMapNames))
+			}
+			if !slices.Equal(gotSecretNames, tc.expectedSecretNames) {
+				t.Errorf("expected and got secret names differ: %s", cmp.Diff(gotSecretNames, tc.expectedSecretNames))
 			}
 		})
 	}
@@ -4717,6 +4836,21 @@ func makeVolumesReferringSecret(secretName string) []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: secretName,
+				},
+			},
+		},
+	}
+}
+
+func makeVolumesReferringConfigMap(configMapName string) []corev1.Volume {
+	return []corev1.Volume{
+		{
+			Name: "test-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: configMapName,
+					},
 				},
 			},
 		},

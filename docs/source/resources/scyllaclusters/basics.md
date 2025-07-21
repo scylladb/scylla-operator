@@ -61,7 +61,7 @@ metadata:
 spec:
   repository: {{imageRepository}}
   version: {{imageTag}}
-  agentVersion: {{agentVersion}}
+  agentVersion: 3.5.1
   developerMode: false
   automaticOrphanedNodeCleanup: true
   sysctls:

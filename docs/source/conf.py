@@ -52,6 +52,9 @@ todo_include_todos = True
 
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution"]
 myst_heading_anchors = 6
+
+# MyST substitutions are broken with multiversion docs. Versions specified in the main branch are used for all versions.
+# DO NOT USE OR CHANGE THESE VERSIONS!
 myst_substitutions = {
   "productName": "Scylla Operator",
   "repository": "scylladb/scylla-operator",

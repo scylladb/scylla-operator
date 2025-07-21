@@ -323,8 +323,12 @@ func MigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(sc *scyllav1.ScyllaClust
 				}
 			}
 
-			// Register the underlying ScyllaDBDatacenter with global ScyllaDB Manager instance for backward compatibility.
-			objectMeta.Labels[naming.GlobalScyllaDBManagerRegistrationLabel] = naming.LabelValueTrue
+			if isGlobalScyllaDBManagerIntegrationDisabled(sc) {
+				objectMeta.Labels[naming.GlobalScyllaDBManagerRegistrationLabel] = naming.LabelValueFalse
+			} else {
+				// If the ScyllaDBManager integration is not disabled explicitly, we set the label to true to keep backward compatibility.
+				objectMeta.Labels[naming.GlobalScyllaDBManagerRegistrationLabel] = naming.LabelValueTrue
+			}
 
 			// Override the ScyllaDB Manager cluster name for backward compatibility.
 			objectMeta.Annotations[naming.ScyllaDBManagerClusterRegistrationNameOverrideAnnotation] = naming.ManagerClusterName(sc)
@@ -476,6 +480,11 @@ func migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc *scyllav
 func MigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(sc *scyllav1.ScyllaCluster) ([]*scyllav1alpha1.ScyllaDBManagerTask, error) {
 	var scyllaDBManagerTasks []*scyllav1alpha1.ScyllaDBManagerTask
 	var errs []error
+
+	// If the annotation disabling global manager integration is set to true, we skip migration of tasks.
+	if sc.Annotations != nil && sc.Annotations[naming.DisableGlobalScyllaDBManagerIntegrationAnnotation] == naming.LabelValueTrue {
+		return scyllaDBManagerTasks, nil
+	}
 
 	for i := range sc.Spec.Backups {
 		smt, err := migrateV1BackupTaskSpecToV1Alpha1ScyllaDBManagerTask(sc, &sc.Spec.Backups[i])
@@ -696,4 +705,14 @@ func migrateV1Alpha1ScyllaDBManagerTaskStatusToV1TaskStatus[T scyllav1.BackupTas
 	}
 
 	return taskStatus, true, nil
+}
+
+func isGlobalScyllaDBManagerIntegrationDisabled(sc *scyllav1.ScyllaCluster) bool {
+	if sc.Annotations == nil {
+		// If there are no annotations, the default behavior is to enable global ScyllaDB Manager integration.
+		return false
+	}
+
+	// If the annotation disabling global manager integration is set to true, we skip migration of tasks.
+	return sc.Annotations[naming.DisableGlobalScyllaDBManagerIntegrationAnnotation] == naming.LabelValueTrue
 }

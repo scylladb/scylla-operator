@@ -1,10 +1,10 @@
 operator:
-  scyllaDBVersion: "2025.1.2"
+  scyllaDBVersion: "2025.3.0-rc1"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.
   scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.11"
-  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2025.1.2@sha256:84e914792c61a7703ff616bf6ee6d4becbcf68845221bd2458fcab10ef64302c"
+  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2025.3.0-rc1@sha256:8e50cbe4e354dfa5a0594b629ea683ea4a850840182cae59a60d8751fa3c67bb"
   scyllaDBManagerVersion: "3.5.0@sha256:c38c7f741e46ba5da3914eec9113b615bab779586ba4767605f0a3ebd494bcd2"
   scyllaDBManagerAgentVersion: "3.5.0@sha256:12755969f1b3258572c520aa82c2f18db52287b3dc7055a977072284f234da16"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
@@ -13,6 +13,6 @@ operator:
   prometheusVersion: "v3.1.0" # Tracks scylla-monitoring/versions.sh PROMETHEUS_VERSION
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "2025.1.1" # One patch lower than .operator.scyllaDBVersion
-    upgradeFrom: "6.2.3" # One minor lower than .operator.scyllaDBVersion
+    updateFrom: "2025.3.0-rc0" # One patch lower than .operator.scyllaDBVersion
+    upgradeFrom: "2025.2.0" # One minor lower than .operator.scyllaDBVersion
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.4@sha256:8d77b91db6cffb40337e3db9c9a2f73f190eda9f9e547a752f0beab8aea322ef"

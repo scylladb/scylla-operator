@@ -20,7 +20,7 @@ scylla:
   fullnameOverride: scylla-manager-cluster
   scyllaImage:
     repository: docker.io/scylladb/scylla
-    tag: 2025.1.2
+    tag: 2025.3.0-rc1
   agentImage:
     tag: 3.5.0@sha256:12755969f1b3258572c520aa82c2f18db52287b3dc7055a977072284f234da16
     repository: docker.io/scylladb/scylla-manager-agent

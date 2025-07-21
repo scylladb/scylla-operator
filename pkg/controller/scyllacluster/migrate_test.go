@@ -284,6 +284,33 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 				DataSnapshotTag:   "data-snapshot-tag",
 			},
 		},
+		{
+			name: "global manager integration disabled with the annotation",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				metav1.SetMetaDataAnnotation(&sc.ObjectMeta, naming.DisableGlobalScyllaDBManagerIntegrationAnnotation, naming.LabelValueTrue)
+				return sc
+			}(),
+			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sd := newBasicScyllaDBDatacenterWithNoStatus()
+				metav1.SetMetaDataLabel(&sd.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueFalse)
+				metav1.SetMetaDataAnnotation(&sd.ObjectMeta, naming.DisableGlobalScyllaDBManagerIntegrationAnnotation, naming.LabelValueTrue)
+				return sd
+			}(),
+		},
+		{
+			name: "global manager integration annotation explicitly not disabled with the annotation",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				metav1.SetMetaDataAnnotation(&sc.ObjectMeta, naming.DisableGlobalScyllaDBManagerIntegrationAnnotation, naming.LabelValueFalse)
+				return sc
+			}(),
+			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sd := newBasicScyllaDBDatacenterWithNoStatus()
+				metav1.SetMetaDataAnnotation(&sd.ObjectMeta, naming.DisableGlobalScyllaDBManagerIntegrationAnnotation, naming.LabelValueFalse)
+				return sd
+			}(),
+		},
 	}
 
 	for _, tc := range tt {
@@ -833,6 +860,130 @@ func newBasicScyllaDBTemplate() scyllav1alpha1.ScyllaDBTemplate {
 func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(t *testing.T) {
 	t.Parallel()
 
+	newScyllaClusterWithBackupAndRepairTasks := func() *scyllav1.ScyllaCluster {
+		sc := newBasicScyllaCluster()
+		sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+			newScyllaV1BackupTaskSpec(),
+		}
+		sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+			newScyllaV1RepairTaskSpec(),
+		}
+		return sc
+	}
+	newExpectedScyllaDBManagerTasks := func() []*scyllav1alpha1.ScyllaDBManagerTask {
+		return []*scyllav1alpha1.ScyllaDBManagerTask{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "simple-cluster-backup-task1-1a8wu",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "simple-cluster",
+					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override":                        "task1",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-missing-owner-uid-force-adopt":        "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-interval-override":           "5m",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-start-date-override":         "now+3d2h10m",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-timezone-override":           "CET",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-dc-no-validate":                "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-keyspace-no-validate":          "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-location-no-validate":          "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-rate-limit-no-validate":        "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-retention-no-validate":         "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-snapshot-parallel-no-validate": "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-upload-parallel-no-validate":   "",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "simple-cluster",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+					Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Name: "simple-cluster",
+						Kind: "ScyllaDBDatacenter",
+					},
+					Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
+						ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+							Cron:       pointer.Ptr("0 23 * * SAT"),
+							NumRetries: pointer.Ptr[int64](3),
+						},
+						DC:               []string{"dc1", "!otherdc*"},
+						Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
+						Location:         []string{"s3:bucket.domain", "dc:s3:otherbucket.otherdomain"},
+						RateLimit:        []string{"dc1:100", "dc2:200"},
+						Retention:        pointer.Ptr[int64](3),
+						SnapshotParallel: []string{"dc1:1", "dc2:2"},
+						UploadParallel:   []string{"dc3:3", "dc4:4"},
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "simple-cluster-repair-task1-1ml5z",
+					Namespace: "scylla",
+					Labels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "simple-cluster",
+					},
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override":                         "task1",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-missing-owner-uid-force-adopt":         "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-interval-override":            "7d",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-start-date-override":          "now+4d3h20m",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-timezone-override":            "Europe/Warsaw",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-dc-no-validate":                 "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override":             "0.5",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-keyspace-no-validate":           "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-parallel-no-validate":           "",
+						"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override": "1GiB",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1",
+							Kind:               "ScyllaCluster",
+							Name:               "simple-cluster",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+					Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
+					ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+						Name: "simple-cluster",
+						Kind: "ScyllaDBDatacenter",
+					},
+					Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
+						ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+							Cron:       pointer.Ptr("0 5 * * *"),
+							NumRetries: pointer.Ptr[int64](1),
+						},
+						DC:                  []string{"dc1", "!otherdc*"},
+						Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
+						FailFast:            pointer.Ptr(false),
+						Host:                pointer.Ptr("10.0.0.1"),
+						Intensity:           nil,
+						Parallel:            pointer.Ptr[int64](2),
+						SmallTableThreshold: nil,
+						IgnoreDownHosts:     pointer.Ptr(false),
+					},
+				},
+			},
+		}
+	}
+
 	tt := []struct {
 		name                         string
 		scyllaCluster                *scyllav1.ScyllaCluster
@@ -846,131 +997,34 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(t *testing.T) {
 			expectedErr:                  nil,
 		},
 		{
-			name: "cluster with backup and repair tasks",
+			name:                         "cluster with backup and repair tasks",
+			scyllaCluster:                newScyllaClusterWithBackupAndRepairTasks(),
+			expectedScyllaDBManagerTasks: newExpectedScyllaDBManagerTasks(),
+			expectedErr:                  nil,
+		},
+		{
+			name: "disabled global manager integration",
 			scyllaCluster: func() *scyllav1.ScyllaCluster {
-				sc := newBasicScyllaCluster()
-
-				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
-					newScyllaV1BackupTaskSpec(),
+				sc := newScyllaClusterWithBackupAndRepairTasks()
+				sc.Annotations = map[string]string{
+					naming.DisableGlobalScyllaDBManagerIntegrationAnnotation: naming.LabelValueTrue,
 				}
-				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
-					newScyllaV1RepairTaskSpec(),
-				}
-
 				return sc
 			}(),
-			expectedScyllaDBManagerTasks: []*scyllav1alpha1.ScyllaDBManagerTask{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "simple-cluster-backup-task1-1a8wu",
-						Namespace: "scylla",
-						Labels: map[string]string{
-							"app":                          "scylla",
-							"app.kubernetes.io/managed-by": "scylla-operator",
-							"app.kubernetes.io/name":       "scylla",
-							"scylla/cluster":               "simple-cluster",
-						},
-						Annotations: map[string]string{
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override":                        "task1",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-missing-owner-uid-force-adopt":        "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-interval-override":           "5m",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-start-date-override":         "now+3d2h10m",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-timezone-override":           "CET",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-dc-no-validate":                "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-keyspace-no-validate":          "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-location-no-validate":          "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-rate-limit-no-validate":        "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-retention-no-validate":         "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-snapshot-parallel-no-validate": "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-backup-upload-parallel-no-validate":   "",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
-								Name:               "simple-cluster",
-								Controller:         pointer.Ptr(true),
-								BlockOwnerDeletion: pointer.Ptr(true),
-							},
-						},
-					},
-					Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
-						Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
-						ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
-							Name: "simple-cluster",
-							Kind: "ScyllaDBDatacenter",
-						},
-						Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
-							ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
-								Cron:       pointer.Ptr("0 23 * * SAT"),
-								NumRetries: pointer.Ptr[int64](3),
-							},
-							DC:               []string{"dc1", "!otherdc*"},
-							Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
-							Location:         []string{"s3:bucket.domain", "dc:s3:otherbucket.otherdomain"},
-							RateLimit:        []string{"dc1:100", "dc2:200"},
-							Retention:        pointer.Ptr[int64](3),
-							SnapshotParallel: []string{"dc1:1", "dc2:2"},
-							UploadParallel:   []string{"dc3:3", "dc4:4"},
-						},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "simple-cluster-repair-task1-1ml5z",
-						Namespace: "scylla",
-						Labels: map[string]string{
-							"app":                          "scylla",
-							"app.kubernetes.io/managed-by": "scylla-operator",
-							"app.kubernetes.io/name":       "scylla",
-							"scylla/cluster":               "simple-cluster",
-						},
-						Annotations: map[string]string{
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-name-override":                         "task1",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-missing-owner-uid-force-adopt":         "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-interval-override":            "7d",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-start-date-override":          "now+4d3h20m",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-schedule-timezone-override":            "Europe/Warsaw",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-dc-no-validate":                 "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override":             "0.5",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-keyspace-no-validate":           "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-parallel-no-validate":           "",
-							"internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override": "1GiB",
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion:         "scylla.scylladb.com/v1",
-								Kind:               "ScyllaCluster",
-								Name:               "simple-cluster",
-								Controller:         pointer.Ptr(true),
-								BlockOwnerDeletion: pointer.Ptr(true),
-							},
-						},
-					},
-					Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
-						Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
-						ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
-							Name: "simple-cluster",
-							Kind: "ScyllaDBDatacenter",
-						},
-						Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
-							ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
-								Cron:       pointer.Ptr("0 5 * * *"),
-								NumRetries: pointer.Ptr[int64](1),
-							},
-							DC:                  []string{"dc1", "!otherdc*"},
-							Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
-							FailFast:            pointer.Ptr(false),
-							Host:                pointer.Ptr("10.0.0.1"),
-							Intensity:           nil,
-							Parallel:            pointer.Ptr[int64](2),
-							SmallTableThreshold: nil,
-							IgnoreDownHosts:     pointer.Ptr(false),
-						},
-					},
-				},
-			},
-			expectedErr: nil,
+			expectedScyllaDBManagerTasks: nil,
+			expectedErr:                  nil,
+		},
+		{
+			name: "global manager integration not disabled by explicit false annotation",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newScyllaClusterWithBackupAndRepairTasks()
+				sc.Annotations = map[string]string{
+					naming.DisableGlobalScyllaDBManagerIntegrationAnnotation: naming.LabelValueFalse,
+				}
+				return sc
+			}(),
+			expectedScyllaDBManagerTasks: newExpectedScyllaDBManagerTasks(),
+			expectedErr:                  nil,
 		},
 	}
 

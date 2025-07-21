@@ -59,6 +59,11 @@ func (scmc *Controller) calculateStatus(
 
 	migratedStatus := migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc, configMaps, services)
 
+	if isGlobalScyllaDBManagerIntegrationDisabled(sc) {
+		klog.V(4).InfoS("ScyllaDBManager integration is disabled, skipping migration of repair and backup tasks' statuses", "ScyllaCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(sdc))
+		return migratedStatus
+	}
+
 	smcr, ok, err := getScyllaDBManagerClusterRegistration(sdc, scyllaDBManagerClusterRegistrations)
 	if err != nil {
 		klog.ErrorS(err, "Can't get ScyllaDBManagerClusterRegistration for ScyllaDBDatacenter", "ScyllaCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(sdc))

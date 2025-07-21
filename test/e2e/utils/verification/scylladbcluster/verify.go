@@ -306,18 +306,24 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 					Port:     pointer.Ptr(int32(9142)),
 				},
 			}))
-			o.Expect(seedServiceEndpointSlice.Endpoints).To(o.HaveLen(1))
 
-			o.Expect(seedServiceEndpointSlice.Endpoints[0].Addresses).To(o.HaveLen(int(dcNodeCount)))
+			otherDCNodeCount := controllerhelpers.GetScyllaDBClusterDatacenterNodeCount(sc, otherDC)
+			o.Expect(seedServiceEndpointSlice.Endpoints).To(o.HaveLen(int(otherDCNodeCount)))
 
-			o.Expect(seedServiceEndpointSlice.Endpoints[0].Conditions.Ready).ToNot(o.BeNil())
-			o.Expect(*seedServiceEndpointSlice.Endpoints[0].Conditions.Ready).To(o.BeTrue())
+			for _, endpoint := range seedServiceEndpointSlice.Endpoints {
+				o.Expect(endpoint.Addresses).To(o.HaveLen(1))
 
-			o.Expect(seedServiceEndpointSlice.Endpoints[0].Conditions.Serving).ToNot(o.BeNil())
-			o.Expect(*seedServiceEndpointSlice.Endpoints[0].Conditions.Serving).To(o.BeTrue())
+				o.Expect(endpoint.Conditions).ToNot(o.BeNil())
 
-			o.Expect(seedServiceEndpointSlice.Endpoints[0].Conditions.Terminating).ToNot(o.BeNil())
-			o.Expect(*seedServiceEndpointSlice.Endpoints[0].Conditions.Terminating).To(o.BeFalse())
+				o.Expect(endpoint.Conditions.Ready).ToNot(o.BeNil())
+				o.Expect(*endpoint.Conditions.Ready).To(o.BeTrue())
+
+				o.Expect(endpoint.Conditions.Serving).ToNot(o.BeNil())
+				o.Expect(*endpoint.Conditions.Serving).To(o.BeTrue())
+
+				o.Expect(endpoint.Conditions.Terminating).ToNot(o.BeNil())
+				o.Expect(*endpoint.Conditions.Terminating).To(o.BeFalse())
+			}
 		}
 	}
 }

@@ -52,6 +52,11 @@ todo_include_todos = True
 
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution"]
 myst_heading_anchors = 6
+
+# DEPRECATION NOTICE
+# MyST substitutions work counterintuitively with multiversion docs. Versions specified in the main branch are used for all versions.
+# These variables have no effect if set on branches other than master.
+# https://github.com/scylladb/scylla-operator/issues/2795
 myst_substitutions = {
   "productName": "Scylla Operator",
   "repository": "scylladb/scylla-operator",

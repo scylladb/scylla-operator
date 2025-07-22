@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// From https://github.com/prometheus-operator/prometheus-operator/blob/56cc9eea5f8bffedbc4a77ae08555dd5f510ed76/pkg/apis/monitoring/v1/probe_types.go.
-
 package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -27,9 +26,8 @@ const (
 	ProbeKindKey = "probe"
 )
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
+// +k8s:openapi-gen=true
 // +kubebuilder:resource:categories="prometheus-operator",shortName="prb"
 
 // The `Probe` custom resource definition (CRD) defines how to scrape metrics from prober exporters such as the [blackbox exporter](https://github.com/prometheus/blackbox_exporter).
@@ -46,7 +44,13 @@ type Probe struct {
 	Spec ProbeSpec `json:"spec"`
 }
 
+// DeepCopyObject implements the runtime.Object interface.
+func (l *Probe) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
+}
+
 // ProbeSpec contains specification parameters for a Probe.
+// +k8s:openapi-gen=true
 type ProbeSpec struct {
 	// The job name assigned to scraped metrics by default.
 	JobName string `json:"jobName,omitempty"`
@@ -133,6 +137,7 @@ type ProbeSpec struct {
 // ProbeTargets defines how to discover the probed targets.
 // One of the `staticConfig` or `ingress` must be defined.
 // If both are defined, `staticConfig` takes precedence.
+// +k8s:openapi-gen=true
 type ProbeTargets struct {
 	// staticConfig defines the static list of targets to probe and the
 	// relabeling configuration.
@@ -145,7 +150,28 @@ type ProbeTargets struct {
 	Ingress *ProbeTargetIngress `json:"ingress,omitempty"`
 }
 
+// Validate semantically validates the given ProbeTargets.
+func (it *ProbeTargets) Validate() error {
+	if it.StaticConfig == nil && it.Ingress == nil {
+		return &ProbeTargetsValidationError{"at least one of .spec.targets.staticConfig and .spec.targets.ingress is required"}
+	}
+
+	return nil
+}
+
+// ProbeTargetsValidationError is returned by ProbeTargets.Validate()
+// on semantically invalid configurations.
+// +k8s:openapi-gen=false
+type ProbeTargetsValidationError struct {
+	err string
+}
+
+func (e *ProbeTargetsValidationError) Error() string {
+	return e.err
+}
+
 // ProbeTargetStaticConfig defines the set of static targets considered for probing.
+// +k8s:openapi-gen=true
 type ProbeTargetStaticConfig struct {
 	// The list of hosts to probe.
 	Targets []string `json:"static,omitempty"`
@@ -159,6 +185,7 @@ type ProbeTargetStaticConfig struct {
 
 // ProbeTargetIngress defines the set of Ingress objects considered for probing.
 // The operator configures a target for each host/path combination of each ingress object.
+// +k8s:openapi-gen=true
 type ProbeTargetIngress struct {
 	// Selector to select the Ingress objects.
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
@@ -175,6 +202,7 @@ type ProbeTargetIngress struct {
 }
 
 // ProberSpec contains specification parameters for the Prober used for probing.
+// +k8s:openapi-gen=true
 type ProberSpec struct {
 	// Mandatory URL of the prober.
 	URL string `json:"url"`
@@ -187,14 +215,13 @@ type ProberSpec struct {
 	// Defaults to `/probe`.
 	// +kubebuilder:default:="/probe"
 	Path string `json:"path,omitempty"`
-	// Optional ProxyURL.
-	ProxyURL string `json:"proxyUrl,omitempty"`
+
+	// +optional
+	ProxyConfig `json:",inline"`
 }
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ProbeList is a list of Probes.
+// +k8s:openapi-gen=true
 type ProbeList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
@@ -202,4 +229,9 @@ type ProbeList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// List of Probes
 	Items []Probe `json:"items"`
+}
+
+// DeepCopyObject implements the runtime.Object interface.
+func (l *ProbeList) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
 }

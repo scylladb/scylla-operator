@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// From https://github.com/prometheus-operator/prometheus-operator/blob/56cc9eea5f8bffedbc4a77ae08555dd5f510ed76/pkg/apis/monitoring/v1/prometheusrule_types.go.
-
 package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -27,9 +26,8 @@ const (
 	PrometheusRuleKindKey = "prometheusrule"
 )
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
+// +k8s:openapi-gen=true
 // +kubebuilder:resource:categories="prometheus-operator",shortName="promrule"
 
 // The `PrometheusRule` custom resource definition (CRD) defines [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) and [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules to be evaluated by `Prometheus` or `ThanosRuler` objects.
@@ -42,7 +40,13 @@ type PrometheusRule struct {
 	Spec PrometheusRuleSpec `json:"spec"`
 }
 
+// DeepCopyObject implements the runtime.Object interface.
+func (f *PrometheusRule) DeepCopyObject() runtime.Object {
+	return f.DeepCopy()
+}
+
 // PrometheusRuleSpec contains specification parameters for a Rule.
+// +k8s:openapi-gen=true
 type PrometheusRuleSpec struct {
 	// Content of Prometheus rule file
 	// +listType=map
@@ -54,6 +58,7 @@ type PrometheusRuleSpec struct {
 // upstream Prometheus struct definitions don't have json struct tags.
 
 // RuleGroup is a list of sequentially evaluated recording and alerting rules.
+// +k8s:openapi-gen=true
 type RuleGroup struct {
 	// Name of the rule group.
 	// +kubebuilder:validation:MinLength=1
@@ -91,6 +96,7 @@ type RuleGroup struct {
 
 // Rule describes an alerting or recording rule
 // See Prometheus documentation: [alerting](https://www.prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) or [recording](https://www.prometheus.io/docs/prometheus/latest/configuration/recording_rules/#recording-rules) rule
+// +k8s:openapi-gen=true
 type Rule struct {
 	// Name of the time series to output to. Must be a valid metric name.
 	// Only one of `record` and `alert` must be set.
@@ -113,10 +119,8 @@ type Rule struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // PrometheusRuleList is a list of PrometheusRules.
+// +k8s:openapi-gen=true
 type PrometheusRuleList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
@@ -124,4 +128,9 @@ type PrometheusRuleList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// List of Rules
 	Items []PrometheusRule `json:"items"`
+}
+
+// DeepCopyObject implements the runtime.Object interface.
+func (l *PrometheusRuleList) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
 }

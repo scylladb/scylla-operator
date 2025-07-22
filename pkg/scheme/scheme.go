@@ -30,7 +30,7 @@ var (
 		scyllav1.Install,
 		scyllav1alpha1.Install,
 		cqlclientv1alpha1.Install,
-		monitoringv1.Install,
+		monitoringv1.AddToScheme,
 	}
 
 	AddToScheme = localSchemeBuilder.AddToScheme

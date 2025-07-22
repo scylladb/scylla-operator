@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// From https://github.com/prometheus-operator/prometheus-operator/blob/56cc9eea5f8bffedbc4a77ae08555dd5f510ed76/pkg/apis/monitoring/v1/servicemonitor_types.go.
-
 package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -26,10 +25,10 @@ const (
 	ServiceMonitorKindKey = "servicemonitor"
 )
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
+// +k8s:openapi-gen=true
 // +kubebuilder:resource:categories="prometheus-operator",shortName="smon"
+// +kubebuilder:subresource:status
 
 // The `ServiceMonitor` custom resource definition (CRD) defines how `Prometheus` and `PrometheusAgent` can scrape metrics from a group of services.
 // Among other things, it allows to specify:
@@ -45,9 +44,23 @@ type ServiceMonitor struct {
 	// Specification of desired Service selection for target discovery by
 	// Prometheus.
 	Spec ServiceMonitorSpec `json:"spec"`
+	// This Status subresource is under active development and is updated only when the
+	// "StatusForConfigurationResources" feature gate is enabled.
+	//
+	// Most recent observed status of the ServiceMonitor. Read-only.
+	// More info:
+	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+	// +optional
+	Status ConfigResourceStatus `json:"status,omitempty"`
+}
+
+// DeepCopyObject implements the runtime.Object interface.
+func (l *ServiceMonitor) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
 }
 
 // ServiceMonitorSpec defines the specification parameters for a ServiceMonitor.
+// +k8s:openapi-gen=true
 type ServiceMonitorSpec struct {
 	// `jobLabel` selects the label from the associated Kubernetes `Service`
 	// object which will be used as the `job` label for all metrics.
@@ -174,10 +187,8 @@ type ServiceMonitorSpec struct {
 	BodySizeLimit *ByteSize `json:"bodySizeLimit,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ServiceMonitorList is a list of ServiceMonitors.
+// +k8s:openapi-gen=true
 type ServiceMonitorList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
@@ -185,4 +196,9 @@ type ServiceMonitorList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// List of ServiceMonitors
 	Items []ServiceMonitor `json:"items"`
+}
+
+// DeepCopyObject implements the runtime.Object interface.
+func (l *ServiceMonitorList) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
 }

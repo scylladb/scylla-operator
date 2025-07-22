@@ -1,4 +1,4 @@
-// Copyright 2018 The prometheus-operator Authors
+// Copyright 2024 The prometheus-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,9 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-// From https://github.com/prometheus-operator/prometheus-operator/blob/56cc9eea5f8bffedbc4a77ae08555dd5f510ed76/pkg/apis/monitoring/v1/dns_types.go.
-
 package v1
 
 // PodDNSConfig defines the DNS parameters of a pod in addition to

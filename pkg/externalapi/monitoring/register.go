@@ -1,4 +1,4 @@
-// Copyright 2017 The prometheus-operator Authors
+// Copyright 2018 The prometheus-operator Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +k8s:deepcopy-gen=package
-// +groupName=monitoring.coreos.com
+package monitoring
 
-package v1
+// GroupName is set to var instead of const, since this provides the ability for clients importing the module -
+// github.com/prometheus-operator/prometheus-operator/pkg/apis to manage the operator's objects in a different
+// API group
+//
+// Use `ldflags` in the client side, e.g.:
+// go run -ldflags="-s -X github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring.GroupName=monitoring.example.com" ./example/client/.
+var (
+	GroupName = "monitoring.coreos.com"
+)

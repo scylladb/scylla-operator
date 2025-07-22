@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// From https://github.com/prometheus-operator/prometheus-operator/blob/56cc9eea5f8bffedbc4a77ae08555dd5f510ed76/pkg/apis/monitoring/v1/thanos_types.go.
-
 package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -27,9 +26,8 @@ const (
 	ThanosRulerKindKey = "thanosrulers"
 )
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
+// +k8s:openapi-gen=true
 // +kubebuilder:resource:categories="prometheus-operator",shortName="ruler"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of Thanos Ruler"
 // +kubebuilder:printcolumn:name="Replicas",type="integer",JSONPath=".spec.replicas",description="The number of desired replicas"
@@ -57,10 +55,8 @@ type ThanosRuler struct {
 	Status ThanosRulerStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ThanosRulerList is a list of ThanosRulers.
+// +k8s:openapi-gen=true
 type ThanosRulerList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
@@ -72,6 +68,7 @@ type ThanosRulerList struct {
 
 // ThanosRulerSpec is a specification of the desired behavior of the ThanosRuler. More info:
 // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+// +k8s:openapi-gen=true
 type ThanosRulerSpec struct {
 	// Version of Thanos to be deployed.
 	// +optional
@@ -90,10 +87,12 @@ type ThanosRulerSpec struct {
 
 	// Thanos container image URL.
 	Image string `json:"image,omitempty"`
+
 	// Image pull policy for the 'thanos', 'init-config-reloader' and 'config-reloader' containers.
 	// See https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy for more details.
 	// +kubebuilder:validation:Enum="";Always;Never;IfNotPresent
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
 	// An optional list of references to secrets in the same namespace
 	// to use for pulling thanos images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
@@ -119,9 +118,11 @@ type ThanosRulerSpec struct {
 	// If specified, the pod's scheduling constraints.
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
 	// If specified, the pod's tolerations.
 	// +optional
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
 	// If specified, the pod's topology spread constraints.
 	// +optional
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
@@ -140,8 +141,21 @@ type ThanosRulerSpec struct {
 	// +optional
 	DNSConfig *PodDNSConfig `json:"dnsConfig,omitempty"`
 
+	// Indicates whether information about services should be injected into pod's environment variables
+	// +optional
+	EnableServiceLinks *bool `json:"enableServiceLinks,omitempty"`
+
 	// Priority class assigned to the Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+
+	// The name of the service name used by the underlying StatefulSet(s) as the governing service.
+	// If defined, the Service  must be created before the ThanosRuler resource in the same namespace and it must define a selector that matches the pod labels.
+	// If empty, the operator will create and manage a headless service named `thanos-ruler-operated` for ThanosRuler resources.
+	// When deploying multiple ThanosRuler resources in the same namespace, it is recommended to specify a different value for each.
+	// See https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#stable-network-id for more details.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	ServiceName *string `json:"serviceName,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// Thanos Ruler Pods.
@@ -150,6 +164,7 @@ type ThanosRulerSpec struct {
 	// Storage spec to specify how storage shall be used.
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
+
 	// Volumes allows configuration of additional volumes on the output StatefulSet definition. Volumes specified will
 	// be appended to other volumes that are generated as a result of StorageSpec objects.
 	// +optional
@@ -272,8 +287,30 @@ type ThanosRulerSpec struct {
 	// +kubebuilder:default:="15s"
 	EvaluationInterval Duration `json:"evaluationInterval,omitempty"`
 
-	// Time duration ThanosRuler shall retain data for. Default is '24h',
-	// and must match the regular expression `[0-9]+(ms|s|m|h|d|w|y)` (milliseconds seconds minutes hours days weeks years).
+	// Max time to tolerate prometheus outage for restoring "for" state of alert.
+	// It requires Thanos >= v0.30.0.
+	// +optional
+	RuleOutageTolerance *Duration `json:"ruleOutageTolerance,omitempty"`
+
+	// The default rule group's query offset duration to use.
+	// It requires Thanos >= v0.38.0.
+	// +optional
+	RuleQueryOffset *Duration `json:"ruleQueryOffset,omitempty"`
+
+	// How many rules can be evaluated concurrently.
+	// It requires Thanos >= v0.37.0.
+	// +kubebuilder:validation:Minimum=1
+	//
+	// +optional
+	RuleConcurrentEval *int32 `json:"ruleConcurrentEval,omitempty"`
+
+	// Time duration ThanosRuler shall retain data for. Default is '24h', and
+	// must match the regular expression `[0-9]+(ms|s|m|h|d|w|y)` (milliseconds
+	// seconds minutes hours days weeks years).
+	//
+	// The field has no effect when remote-write is configured since the Ruler
+	// operates in stateless mode.
+	//
 	// +kubebuilder:default:="24h"
 	Retention Duration `json:"retention,omitempty"`
 
@@ -409,9 +446,29 @@ type ThanosRulerSpec struct {
 	// Defines the configuration of the ThanosRuler web server.
 	// +optional
 	Web *ThanosRulerWebSpec `json:"web,omitempty"`
+
+	// Defines the list of remote write configurations.
+	//
+	// When the list isn't empty, the ruler is configured with stateless mode.
+	//
+	// It requires Thanos >= 0.24.0.
+	//
+	// +optional
+	RemoteWrite []RemoteWriteSpec `json:"remoteWrite,omitempty"`
+
+	// Optional duration in seconds the pod needs to terminate gracefully.
+	// Value must be non-negative integer. The value zero indicates stop immediately via
+	// the kill signal (no opportunity to shut down) which may lead to data corruption.
+	//
+	// Defaults to 120 seconds.
+	//
+	// +kubebuilder:validation:Minimum:=0
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 }
 
 // ThanosRulerWebSpec defines the configuration of the ThanosRuler web server.
+// +k8s:openapi-gen=true
 type ThanosRulerWebSpec struct {
 	WebConfigFileFields `json:",inline"`
 }
@@ -419,6 +476,7 @@ type ThanosRulerWebSpec struct {
 // ThanosRulerStatus is the most recent observed status of the ThanosRuler. Read-only.
 // More info:
 // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+// +k8s:openapi-gen=true
 type ThanosRulerStatus struct {
 	// Represents whether any actions on the underlying managed objects are
 	// being performed. Only delete actions will be performed.
@@ -439,4 +497,26 @@ type ThanosRulerStatus struct {
 	// +listMapKey=type
 	// +optional
 	Conditions []Condition `json:"conditions,omitempty"`
+}
+
+func (tr *ThanosRuler) ExpectedReplicas() int {
+	if tr.Spec.Replicas == nil {
+		return 1
+	}
+	return int(*tr.Spec.Replicas)
+}
+
+func (tr *ThanosRuler) SetReplicas(i int)            { tr.Status.Replicas = int32(i) }
+func (tr *ThanosRuler) SetUpdatedReplicas(i int)     { tr.Status.UpdatedReplicas = int32(i) }
+func (tr *ThanosRuler) SetAvailableReplicas(i int)   { tr.Status.AvailableReplicas = int32(i) }
+func (tr *ThanosRuler) SetUnavailableReplicas(i int) { tr.Status.UnavailableReplicas = int32(i) }
+
+// DeepCopyObject implements the runtime.Object interface.
+func (l *ThanosRuler) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
+}
+
+// DeepCopyObject implements the runtime.Object interface.
+func (l *ThanosRulerList) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
 }

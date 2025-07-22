@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// From https://github.com/prometheus-operator/prometheus-operator/blob/56cc9eea5f8bffedbc4a77ae08555dd5f510ed76/pkg/apis/monitoring/v1/podmonitor_types.go.
-
 package v1
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -28,9 +27,8 @@ const (
 	PodMonitorKindKey = "podmonitor"
 )
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
+// +k8s:openapi-gen=true
 // +kubebuilder:resource:categories="prometheus-operator",shortName="pmon"
 
 // The `PodMonitor` custom resource definition (CRD) defines how `Prometheus` and `PrometheusAgent` can scrape metrics from a group of pods.
@@ -48,7 +46,13 @@ type PodMonitor struct {
 	Spec PodMonitorSpec `json:"spec"`
 }
 
+// DeepCopyObject implements the runtime.Object interface.
+func (l *PodMonitor) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
+}
+
 // PodMonitorSpec contains specification parameters for a PodMonitor.
+// +k8s:openapi-gen=true
 type PodMonitorSpec struct {
 	// The label to use to retrieve the job name from.
 	// `jobLabel` selects the label from the associated Kubernetes `Pod`
@@ -169,10 +173,8 @@ type PodMonitorSpec struct {
 	BodySizeLimit *ByteSize `json:"bodySizeLimit,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // PodMonitorList is a list of PodMonitors.
+// +k8s:openapi-gen=true
 type PodMonitorList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
@@ -182,8 +184,15 @@ type PodMonitorList struct {
 	Items []PodMonitor `json:"items"`
 }
 
+// DeepCopyObject implements the runtime.Object interface.
+func (l *PodMonitorList) DeepCopyObject() runtime.Object {
+	return l.DeepCopy()
+}
+
 // PodMetricsEndpoint defines an endpoint serving Prometheus metrics to be scraped by
 // Prometheus.
+//
+// +k8s:openapi-gen=true
 type PodMetricsEndpoint struct {
 	// The `Pod` port name which exposes the endpoint.
 	//
@@ -309,11 +318,8 @@ type PodMetricsEndpoint struct {
 	// +optional
 	RelabelConfigs []RelabelConfig `json:"relabelings,omitempty"`
 
-	// `proxyURL` configures the HTTP Proxy URL (e.g.
-	// "http://proxyserver:2195") to go through when scraping the target.
-	//
 	// +optional
-	ProxyURL *string `json:"proxyUrl,omitempty"`
+	ProxyConfig `json:",inline"`
 
 	// `followRedirects` defines whether the scrape requests should follow HTTP
 	// 3xx redirects.

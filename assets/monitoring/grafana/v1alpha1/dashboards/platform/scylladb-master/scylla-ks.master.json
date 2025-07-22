@@ -213,12 +213,118 @@
             ],
             "datasource": "prometheus",
             "fieldConfig": {
+                "decimals": 0,
                 "defaults": {
                     "custom": {
                         "align": null,
                         "filterable": true
                     }
-                }
+                },
+                "mappings": [],
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Disk space"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "decbytes"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "W P95"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "W P99"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "R P95"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "R P99"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "writes/s"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "sishort"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "reads/s"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "sishort"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "keyspace"
+                        },
+                        "properties": [
+                            {
+                                "id": "links",
+                                "value": [
+                                    {
+                                        "title": "",
+                                        "url": "/d/${__dashboard.uid}/${__dashboard.slug}?from=${__from}&to=${__to}&var-cluster=${cluster}&var-dc=${dc}&var-node=${node}&var-shard=${shard}&var-func=${func}&var-ks=${__value.text}"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "unit": "short"
             },
             "fontSize": "100%",
             "gridPos": {
@@ -228,6 +334,363 @@
                 "y": 3
             },
             "id": 2,
+            "links": [],
+            "options": {
+                "cellHeight": "sm",
+                "footer": {
+                    "countRows": false,
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true
+            },
+            "pageSize": null,
+            "scroll": true,
+            "showHeader": true,
+            "sort": {
+                "col": 0,
+                "desc": true
+            },
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "sum(scylla_column_family_live_sstable{}) by(ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "A"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "sum(rate(scylla_column_family_write_latency_count{ks=\"$ks\"}[1m])) by( ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "B"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "avg(wlatencyp95ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "C"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "avg(wlatencyp99ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "D"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "sum(rate(scylla_column_family_read_latency_count{cluster=\"$cluster\"}[1m])) by( ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "E"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "avg(rlatencyp95ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "F"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "avg(rlatencyp99ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "G"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "sum(scylla_column_family_total_disk_space{cluster=\"$cluster\"}) by (ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "H"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "max_over_time(sum(rate(scylla_column_family_write_latency_count{cluster=\"$cluster\"}[1m])) by(ks)[24h:])",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "I"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "max_over_time(sum(rate(scylla_column_family_read_latency_count{cluster=\"$cluster\"}[1m])) by(ks)[24h:])",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "J"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "count(count(scylla_column_family_cache_hit_rate{cluster=\"$cluster\"}) by(cf, ks)) by (ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "K"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "count((sum by (ks, cf) (rate(scylla_column_family_read_latency_count{cluster=\"$cluster\"}[1h])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\"}*0) + sum by (ks, cf) (rate(scylla_column_family_write_latency_count{cluster=\"$cluster\"}[1h])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\"}*0))>0) by (ks)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "L"
+                }
+            ],
+            "title": "Keyspaces",
+            "transform": "table",
+            "transformations": [
+                {
+                    "id": "joinByField",
+                    "options": {
+                        "byField": "ks",
+                        "mode": "outer"
+                    }
+                },
+                {
+                    "id": "filterFieldsByName",
+                    "options": {
+                        "include": {
+                            "names": [
+                                "Value #A",
+                                "Value #B",
+                                "Value #C",
+                                "Value #D",
+                                "Value #E",
+                                "Value #F",
+                                "Value #G",
+                                "Value #H",
+                                "Value #I",
+                                "Value #J",
+                                "Value #K",
+                                "Value #L",
+                                "ks"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {},
+                        "includeByName": {},
+                        "indexByName": {
+                            "Value #A": 4,
+                            "Value #B": 5,
+                            "Value #C": 7,
+                            "Value #D": 8,
+                            "Value #E": 9,
+                            "Value #F": 11,
+                            "Value #G": 12,
+                            "Value #H": 3,
+                            "Value #I": 6,
+                            "Value #J": 10,
+                            "Value #K": 1,
+                            "Value #L": 2,
+                            "ks": 0
+                        },
+                        "renameByName": {
+                            "Value #A": "sstables",
+                            "Value #B": "writes/s",
+                            "Value #C": "W P95",
+                            "Value #D": "W P99",
+                            "Value #E": "reads/s",
+                            "Value #F": "R P95",
+                            "Value #G": "R P99",
+                            "Value #H": "Disk space",
+                            "Value #I": "24h Max W",
+                            "Value #J": "24h Max R",
+                            "Value #K": "# Tables",
+                            "Value #L": "# Active Tables",
+                            "ks": "keyspace"
+                        }
+                    }
+                }
+            ],
+            "type": "table"
+        },
+        {
+            "class": "keyspace_tables_table",
+            "columns": [
+                {
+                    "text": "Avg",
+                    "value": "avg"
+                }
+            ],
+            "datasource": "prometheus",
+            "fieldConfig": {
+                "decimals": 0,
+                "defaults": {
+                    "custom": {
+                        "align": null,
+                        "filterable": true
+                    }
+                },
+                "mappings": [],
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Disk space"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "decbytes"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "W P95"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "W P99"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "R P95"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "R P99"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "writes/s"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "sishort"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "reads/s"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "sishort"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "table"
+                        },
+                        "properties": [
+                            {
+                                "id": "links",
+                                "value": [
+                                    {
+                                        "title": "",
+                                        "url": "/d/${__dashboard.uid}/${__dashboard.slug}?from=${__from}&to=${__to}&var-cluster=${cluster}&var-dc=${dc}&var-node=${node}&var-shard=${shard}&var-func=${func}&var-table=${__value.text}&var-ks=${ks}"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                "unit": "short"
+            },
+            "fontSize": "100%",
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 11
+            },
+            "id": 3,
             "links": [],
             "options": {
                 "cellHeight": "sm",
@@ -336,9 +799,31 @@
                     "legendFormat": "__auto",
                     "range": false,
                     "refId": "H"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "max_over_time(sum(rate(scylla_column_family_write_latency_count{ks=\"$ks\", cf=~\"$table\"}[1m])) by(cf)[24h:])",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "I"
+                },
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "max_over_time(sum(rate(scylla_column_family_read_latency_count{ks=\"$ks\", cf=~\"$table\"}[1m])) by(cf)[24h:])",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "J"
                 }
             ],
-            "title": "Keyspace tables",
+            "title": "Tables",
             "transform": "table",
             "transformations": [
                 {
@@ -353,7 +838,6 @@
                     "options": {
                         "include": {
                             "names": [
-                                "ks 1",
                                 "Value #A",
                                 "Value #B",
                                 "Value #C",
@@ -362,6 +846,8 @@
                                 "Value #F",
                                 "Value #G",
                                 "Value #H",
+                                "Value #I",
+                                "Value #J",
                                 "cf"
                             ]
                         }
@@ -373,26 +859,29 @@
                         "excludeByName": {},
                         "includeByName": {},
                         "indexByName": {
-                            "Value #A": 3,
-                            "Value #B": 4,
+                            "Value #A": 2,
+                            "Value #B": 3,
                             "Value #C": 5,
                             "Value #D": 6,
                             "Value #E": 7,
-                            "Value #F": 8,
-                            "Value #G": 9,
-                            "Value #H": 2,
-                            "cf": 1,
-                            "ks 1": 0
+                            "Value #F": 9,
+                            "Value #G": 10,
+                            "Value #H": 1,
+                            "Value #I": 4,
+                            "Value #J": 8,
+                            "cf": 0
                         },
                         "renameByName": {
                             "Value #A": "sstables",
-                            "Value #B": "writes/2",
+                            "Value #B": "writes/s",
                             "Value #C": "W P95",
                             "Value #D": "W P99",
-                            "Value #E": "reads/2",
+                            "Value #E": "reads/s",
                             "Value #F": "R P95",
                             "Value #G": "R P99",
                             "Value #H": "Disk space",
+                            "Value #I": "24h Max W",
+                            "Value #J": "24h Max R",
                             "cf": "table",
                             "ks 1": "keyspace"
                         }
@@ -409,9 +898,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 11
+                "y": 19
             },
-            "id": 3,
+            "id": 4,
             "panels": [],
             "repeat": "table",
             "title": "$ks:$table",
@@ -467,9 +956,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 12
+                "y": 20
             },
-            "id": 4,
+            "id": 5,
             "isNew": true,
             "links": [],
             "options": {
@@ -547,9 +1036,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 12
+                "y": 20
             },
-            "id": 5,
+            "id": 6,
             "isNew": true,
             "links": [],
             "options": {
@@ -630,9 +1119,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 12
+                "y": 20
             },
-            "id": 6,
+            "id": 7,
             "isNew": true,
             "links": [],
             "options": {
@@ -714,9 +1203,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 12
+                "y": 20
             },
-            "id": 7,
+            "id": 8,
             "isNew": true,
             "links": [],
             "options": {
@@ -798,9 +1287,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 18
+                "y": 26
             },
-            "id": 8,
+            "id": 9,
             "isNew": true,
             "links": [],
             "options": {
@@ -878,9 +1367,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 18
+                "y": 26
             },
-            "id": 9,
+            "id": 10,
             "isNew": true,
             "links": [],
             "options": {
@@ -961,9 +1450,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 18
+                "y": 26
             },
-            "id": 10,
+            "id": 11,
             "isNew": true,
             "links": [],
             "options": {
@@ -1045,9 +1534,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 18
+                "y": 26
             },
-            "id": 11,
+            "id": 12,
             "isNew": true,
             "links": [],
             "options": {
@@ -1130,9 +1619,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 24
+                "y": 32
             },
-            "id": 12,
+            "id": 13,
             "isNew": true,
             "links": [],
             "options": {
@@ -1211,9 +1700,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 24
+                "y": 32
             },
-            "id": 13,
+            "id": 14,
             "isNew": true,
             "links": [],
             "options": {
@@ -1292,9 +1781,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 24
+                "y": 32
             },
-            "id": 14,
+            "id": 15,
             "isNew": true,
             "links": [],
             "options": {
@@ -1373,9 +1862,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 24
+                "y": 32
             },
-            "id": 15,
+            "id": 16,
             "isNew": true,
             "links": [],
             "options": {
@@ -1457,9 +1946,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 30
+                "y": 38
             },
-            "id": 16,
+            "id": 17,
             "isNew": true,
             "links": [],
             "options": {
@@ -1512,9 +2001,9 @@
                 "h": 13,
                 "w": 24,
                 "x": 0,
-                "y": 36
+                "y": 44
             },
-            "id": 17,
+            "id": 18,
             "isNew": true,
             "links": [],
             "options": {
@@ -1628,9 +2117,9 @@
                 "h": 6,
                 "w": 24,
                 "x": 0,
-                "y": 49
+                "y": 57
             },
-            "id": 18,
+            "id": 19,
             "isNew": true,
             "links": [],
             "options": {
@@ -1676,9 +2165,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 55
+                "y": 63
             },
-            "id": 19,
+            "id": 20,
             "panels": [],
             "repeat": "",
             "title": "",
@@ -1699,9 +2188,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 56
+                "y": 64
             },
-            "id": 20,
+            "id": 21,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -1766,9 +2255,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 58
+                "y": 66
             },
-            "id": 21,
+            "id": 22,
             "isNew": true,
             "links": [],
             "options": {
@@ -1841,9 +2330,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 58
+                "y": 66
             },
-            "id": 22,
+            "id": 23,
             "isNew": true,
             "links": [],
             "options": {
@@ -1867,6 +2356,7 @@
         },
         {
             "class": "plain_text",
+            "dashproductreject": "no-your-pannels",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -1880,14 +2370,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 64
+                "y": 72
             },
-            "id": 23,
+            "id": 24,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -1897,7 +2387,7 @@
             "type": "text"
         }
     ],
-    "refresh": "30s",
+    "refresh": "5m",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
@@ -2103,16 +2593,13 @@
                 "allValue": ".*",
                 "class": "template_variable_all",
                 "current": {
-                    "selected": true,
-                    "text": [
-                        "All"
-                    ],
+                    "text": "All",
                     "value": [
                         "$__all"
                     ]
                 },
                 "datasource": "prometheus",
-                "definition": "",
+                "definition": "query_result(topk(20, sum by (cf) (rate(scylla_column_family_read_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0) + sum by (cf) (rate(scylla_column_family_write_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0)))",
                 "error": null,
                 "hide": 0,
                 "includeAll": true,
@@ -2120,11 +2607,14 @@
                 "multi": true,
                 "name": "table",
                 "options": [],
-                "query": "label_values(scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"},cf)",
+                "query": {
+                    "qryType": 3,
+                    "query": "query_result(topk(20, sum by (cf) (rate(scylla_column_family_read_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0) + sum by (cf) (rate(scylla_column_family_write_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0)))"
+                },
                 "refresh": 2,
-                "regex": "",
+                "regex": "/.*cf=\"([^\"]+)\".*/",
                 "skipUrlSync": false,
-                "sort": 3,
+                "sort": 1,
                 "tagValuesQuery": "",
                 "tags": [],
                 "tagsQuery": "",
@@ -2208,8 +2698,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.9.4",
-                    "value": "4.9.4"
+                    "text": "4.11.0",
+                    "value": "4.11.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -2220,11 +2710,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.9.4",
-                        "value": "4.9.4"
+                        "text": "4.11.0",
+                        "value": "4.11.0"
                     }
                 ],
-                "query": "4.9.4",
+                "query": "4.11.0",
                 "skipUrlSync": false,
                 "type": "custom"
             },

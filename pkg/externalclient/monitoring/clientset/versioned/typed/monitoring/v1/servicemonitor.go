@@ -23,6 +23,8 @@ type ServiceMonitorsGetter interface {
 type ServiceMonitorInterface interface {
 	Create(ctx context.Context, serviceMonitor *monitoringv1.ServiceMonitor, opts metav1.CreateOptions) (*monitoringv1.ServiceMonitor, error)
 	Update(ctx context.Context, serviceMonitor *monitoringv1.ServiceMonitor, opts metav1.UpdateOptions) (*monitoringv1.ServiceMonitor, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, serviceMonitor *monitoringv1.ServiceMonitor, opts metav1.UpdateOptions) (*monitoringv1.ServiceMonitor, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*monitoringv1.ServiceMonitor, error)

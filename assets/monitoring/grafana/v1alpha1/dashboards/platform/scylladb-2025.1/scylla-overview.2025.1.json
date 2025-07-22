@@ -978,7 +978,7 @@
             "pluginVersion": "7.1.3",
             "targets": [
                 {
-                    "expr": "avg(scylla_reactor_utilization{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} )",
+                    "expr": "sum(avg(rate(scylla_scheduler_runtime_ms{group=~\"sl:.*|commitlog\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[1m])) by (group)/10)",
                     "instant": true,
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -1560,9 +1560,9 @@
             "type": "bargauge"
         },
         {
-            "class": "bytes_panel",
+            "class": "percentunit_panel",
             "datasource": "prometheus",
-            "description": "The average Disk usage per [[by]].\n\n The dashed line represent the total size.",
+            "description": "The average Disk usage per [[by]]",
             "editable": true,
             "error": false,
             "fieldConfig": {
@@ -1574,6 +1574,7 @@
                     "custom": {
                         "axisLabel": "",
                         "axisPlacement": "auto",
+                        "axisSoftMax": 1,
                         "axisSoftMin": 0,
                         "barAlignment": 0,
                         "class": "fieldConfig_defaults_custom",
@@ -1602,32 +1603,9 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "bytes"
+                    "unit": "percentunit"
                 },
-                "overrides": [
-                    {
-                        "matcher": {
-                            "id": "byFrameRefID",
-                            "options": "B"
-                        },
-                        "properties": [
-                            {
-                                "id": "custom.lineStyle",
-                                "value": {
-                                    "dash": [
-                                        10,
-                                        10
-                                    ],
-                                    "fill": "dash"
-                                }
-                            },
-                            {
-                                "id": "custom.lineWidth",
-                                "value": 2
-                            }
-                        ]
-                    }
-                ]
+                "overrides": []
             },
             "gridPos": {
                 "h": 6,
@@ -1639,12 +1617,10 @@
             "isNew": true,
             "links": [],
             "options": {
-                "class": "desc_tooltip_options",
                 "legend": {
                     "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": false
+                    "displayMode": "hidden",
+                    "placement": "bottom"
                 },
                 "tooltip": {
                     "maxHeight": 600,
@@ -1655,18 +1631,12 @@
             "span": 5,
             "targets": [
                 {
-                    "expr": "Avg(node_filesystem_size_bytes{mountpoint=\"$mount_point\", dc=~\"$dc\", instance=~\"$node\"}) by ([[by]])-avg(node_filesystem_avail_bytes{mountpoint=\"$mount_point\",  dc=~\"$dc\", instance=~\"$node\"}) by ([[by]])",
+                    "expr": "1-avg(node_filesystem_avail_bytes{mountpoint=\"$mount_point\",  dc=~\"$dc\", instance=~\"$node\"}) by ([[by]])/Avg(node_filesystem_size_bytes{mountpoint=\"$mount_point\", dc=~\"$dc\", instance=~\"$node\"}) by ([[by]])",
                     "intervalFactor": 1,
-                    "legendFormat": "Avg Usage {{instance}} {{shard}}",
+                    "legendFormat": "Avg Usage {{instance}}",
                     "metric": "",
                     "refId": "A",
                     "step": 1
-                },
-                {
-                    "expr": "avg(node_filesystem_size_bytes{mountpoint=\"$mount_point\", dc=~\"$dc\", instance=~\"$node\"}) by ([[by]])",
-                    "interval": "",
-                    "legendFormat": "Size {{instance}} {{shard}}",
-                    "refId": "B"
                 }
             ],
             "title": "Average Disk Usage",
@@ -2285,6 +2255,26 @@
                                 "value": "percent"
                             }
                         ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Value #F"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 120
+                            },
+                            {
+                                "id": "displayName",
+                                "value": "Disk Usage"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "percent"
+                            }
+                        ]
                     }
                 ]
             },
@@ -2347,7 +2337,7 @@
                     "refId": "E"
                 },
                 {
-                    "expr": "sum(scylla_gossip_live{cluster=\"$cluster\"})by (instance)",
+                    "expr": "100-100*node_filesystem_avail_bytes{mountpoint=\"$mount_point\",  dc=~\"$dc\", instance=~\"$node\"}/node_filesystem_size_bytes{mountpoint=\"$mount_point\", dc=~\"$dc\", instance=~\"$node\"}",
                     "format": "table",
                     "instant": true,
                     "interval": "",
@@ -3328,6 +3318,7 @@
         },
         {
             "class": "plain_text",
+            "dashproductreject": "no-your-pannels",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -3348,7 +3339,7 @@
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -3358,7 +3349,7 @@
             "type": "text"
         }
     ],
-    "refresh": "30s",
+    "refresh": "5m",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
@@ -3756,8 +3747,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.9.4",
-                    "value": "4.9.4"
+                    "text": "4.11.0",
+                    "value": "4.11.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -3768,11 +3759,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.9.4",
-                        "value": "4.9.4"
+                        "text": "4.11.0",
+                        "value": "4.11.0"
                     }
                 ],
-                "query": "4.9.4",
+                "query": "4.11.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

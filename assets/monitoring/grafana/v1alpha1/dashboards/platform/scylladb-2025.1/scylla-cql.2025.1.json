@@ -845,7 +845,7 @@
         {
             "class": "graph_panel",
             "datasource": "prometheus",
-            "description": "Number of Logged CQL batches command, each batched command is counted once.\n\nIs used to make sure that multiple mutations across multiple partitions happen atomically, that is, all the included mutations will eventually succeed. However, there is a performance penalty imposed by atomicity guarantee.",
+            "description": "Number of CQL batches command, each batched command is counted once.\n\nIs generally used to group mutations for a single partition and do not suffer from the performance penalty imposed by logged batches, but there is no atomicity guarantee for multi-partition updates.",
             "editable": true,
             "error": false,
             "fieldConfig": {
@@ -896,89 +896,6 @@
                 "y": 19
             },
             "id": 13,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "hidden",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "maxHeight": 600,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "pointradius": 1,
-            "span": 3,
-            "targets": [
-                {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "metric": "",
-                    "refId": "A",
-                    "step": 30
-                }
-            ],
-            "title": "CQL Logged Batches by [[by]]",
-            "type": "timeseries"
-        },
-        {
-            "class": "graph_panel",
-            "datasource": "prometheus",
-            "description": "Number of CQL batches command, each batched command is counted once.\n\nIs generally used to group mutations for a single partition and do not suffer from the performance penalty imposed by logged batches, but there is no atomicity guarantee for multi-partition updates.",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "class": "fieldConfig_defaults",
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "axisSoftMin": 0,
-                        "barAlignment": 0,
-                        "class": "fieldConfig_defaults_custom",
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "never",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "unit": "short"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 6,
-                "y": 19
-            },
-            "id": 14,
             "isNew": true,
             "links": [],
             "options": {
@@ -1058,10 +975,10 @@
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 12,
+                "x": 6,
                 "y": 19
             },
-            "id": 15,
+            "id": 14,
             "isNew": true,
             "links": [],
             "options": {
@@ -1141,10 +1058,10 @@
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 18,
+                "x": 12,
                 "y": 19
             },
-            "id": 16,
+            "id": 15,
             "isNew": true,
             "links": [],
             "options": {
@@ -1224,10 +1141,10 @@
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 0,
-                "y": 25
+                "x": 18,
+                "y": 19
             },
-            "id": 17,
+            "id": 16,
             "isNew": true,
             "links": [],
             "options": {
@@ -1307,10 +1224,10 @@
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 6,
+                "x": 0,
                 "y": 25
             },
-            "id": 18,
+            "id": 17,
             "isNew": true,
             "links": [],
             "options": {
@@ -1357,7 +1274,7 @@
                 "x": 0,
                 "y": 31
             },
-            "id": 19,
+            "id": 18,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -1381,7 +1298,7 @@
                 "x": 0,
                 "y": 34
             },
-            "id": 20,
+            "id": 19,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1422,7 +1339,7 @@
                         "x": 0,
                         "y": 35
                     },
-                    "id": 21,
+                    "id": 20,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1462,7 +1379,7 @@
                 "x": 0,
                 "y": 41
             },
-            "id": 22,
+            "id": 21,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1516,7 +1433,7 @@
                         "x": 0,
                         "y": 42
                     },
-                    "id": 23,
+                    "id": 22,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1556,7 +1473,7 @@
                 "x": 0,
                 "y": 48
             },
-            "id": 24,
+            "id": 23,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1610,7 +1527,7 @@
                         "x": 0,
                         "y": 49
                     },
-                    "id": 25,
+                    "id": 24,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1650,7 +1567,7 @@
                 "x": 0,
                 "y": 55
             },
-            "id": 26,
+            "id": 25,
             "panels": [
                 {
                     "class": "single_value_table",
@@ -1704,7 +1621,7 @@
                         "x": 0,
                         "y": 56
                     },
-                    "id": 27,
+                    "id": 26,
                     "links": [],
                     "options": {
                         "showHeader": true
@@ -1720,8 +1637,12 @@
                     "targets": [
                         {
                             "allHosts": true,
+                            "dashversion": [
+                                ">6.0",
+                                ">2024.2"
+                            ],
                             "queryHost": "$node",
-                            "queryText": "select keyspace_name, table_name,partition_key, partition_size, compaction_time, rows from system.large_partitions",
+                            "queryText": "select keyspace_name, table_name, partition_key, partition_size, compaction_time, rows, dead_rows, range_tombstones from system.large_partitions",
                             "refId": "A"
                         }
                     ],
@@ -1744,7 +1665,7 @@
                 "x": 0,
                 "y": 62
             },
-            "id": 28,
+            "id": 27,
             "panels": [
                 {
                     "class": "text_panel",
@@ -1763,7 +1684,7 @@
                         "x": 0,
                         "y": 63
                     },
-                    "id": 29,
+                    "id": 28,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -1830,7 +1751,7 @@
                         "x": 0,
                         "y": 65
                     },
-                    "id": 30,
+                    "id": 29,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -1915,7 +1836,7 @@
                         "x": 6,
                         "y": 65
                     },
-                    "id": 31,
+                    "id": 30,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -2000,7 +1921,7 @@
                         "x": 12,
                         "y": 65
                     },
-                    "id": 32,
+                    "id": 31,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -2085,7 +2006,7 @@
                         "x": 18,
                         "y": 65
                     },
-                    "id": 33,
+                    "id": 32,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -2132,7 +2053,7 @@
                 "x": 0,
                 "y": 71
             },
-            "id": 34,
+            "id": 33,
             "panels": [],
             "repeat": "",
             "title": "LWT",
@@ -2155,7 +2076,7 @@
                 "x": 0,
                 "y": 72
             },
-            "id": 35,
+            "id": 34,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2222,7 +2143,7 @@
                 "x": 0,
                 "y": 74
             },
-            "id": 36,
+            "id": 35,
             "isNew": true,
             "links": [],
             "options": {
@@ -2307,7 +2228,7 @@
                 "x": 6,
                 "y": 74
             },
-            "id": 37,
+            "id": 36,
             "isNew": true,
             "links": [],
             "options": {
@@ -2392,7 +2313,7 @@
                 "x": 12,
                 "y": 74
             },
-            "id": 38,
+            "id": 37,
             "isNew": true,
             "links": [],
             "options": {
@@ -2477,7 +2398,7 @@
                 "x": 18,
                 "y": 74
             },
-            "id": 39,
+            "id": 38,
             "isNew": true,
             "links": [],
             "options": {
@@ -2517,7 +2438,7 @@
                 "x": 0,
                 "y": 80
             },
-            "id": 40,
+            "id": 39,
             "panels": [],
             "repeat": "",
             "title": "Optimization",
@@ -2540,7 +2461,7 @@
                 "x": 0,
                 "y": 81
             },
-            "id": 41,
+            "id": 40,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2604,7 +2525,7 @@
                 "x": 0,
                 "y": 83
             },
-            "id": 42,
+            "id": 41,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -2689,7 +2610,7 @@
                 "x": 2,
                 "y": 83
             },
-            "id": 43,
+            "id": 42,
             "isNew": true,
             "links": [],
             "options": {
@@ -2770,7 +2691,7 @@
                 "x": 8,
                 "y": 83
             },
-            "id": 44,
+            "id": 43,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -2855,7 +2776,7 @@
                 "x": 10,
                 "y": 83
             },
-            "id": 45,
+            "id": 44,
             "isNew": true,
             "links": [],
             "options": {
@@ -2936,7 +2857,7 @@
                 "x": 16,
                 "y": 83
             },
-            "id": 46,
+            "id": 45,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3019,7 +2940,7 @@
                 "x": 18,
                 "y": 83
             },
-            "id": 47,
+            "id": 46,
             "isNew": true,
             "links": [],
             "options": {
@@ -3040,11 +2961,20 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "(sum(rate(scylla_storage_proxy_coordinator_reads_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]])) + (sum(rate(scylla_storage_proxy_coordinator_writes_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]]))",
+                    "expr": "(sum(rate(scylla_storage_proxy_coordinator_reads_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]]))",
                     "format": "time_series",
                     "hide": false,
                     "intervalFactor": 2,
+                    "legendFormat": "Reads {{dc}} {{instance}} {{shard}}",
                     "refId": "A"
+                },
+                {
+                    "expr": "(sum(rate(scylla_storage_proxy_coordinator_writes_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]]))",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "legendFormat": "Writes {{dc}} {{instance}} {{shard}}",
+                    "refId": "B"
                 }
             ],
             "title": "Non-Token Aware Queries",
@@ -3100,7 +3030,7 @@
                 "x": 0,
                 "y": 89
             },
-            "id": 48,
+            "id": 47,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3185,7 +3115,7 @@
                 "x": 2,
                 "y": 89
             },
-            "id": 49,
+            "id": 48,
             "isNew": true,
             "links": [],
             "options": {
@@ -3266,7 +3196,7 @@
                 "x": 8,
                 "y": 89
             },
-            "id": 50,
+            "id": 49,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3349,7 +3279,7 @@
                 "x": 10,
                 "y": 89
             },
-            "id": 51,
+            "id": 50,
             "isNew": true,
             "links": [],
             "options": {
@@ -3427,7 +3357,7 @@
                 "x": 16,
                 "y": 89
             },
-            "id": 52,
+            "id": 51,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3512,7 +3442,7 @@
                 "x": 18,
                 "y": 89
             },
-            "id": 53,
+            "id": 52,
             "isNew": true,
             "links": [],
             "options": {
@@ -3607,7 +3537,7 @@
                 "x": 0,
                 "y": 95
             },
-            "id": 54,
+            "id": 53,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3692,7 +3622,7 @@
                 "x": 2,
                 "y": 95
             },
-            "id": 55,
+            "id": 54,
             "isNew": true,
             "links": [],
             "options": {
@@ -3773,7 +3703,7 @@
                 "x": 8,
                 "y": 95
             },
-            "id": 56,
+            "id": 55,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -3858,7 +3788,7 @@
                 "x": 10,
                 "y": 95
             },
-            "id": 57,
+            "id": 56,
             "isNew": true,
             "links": [],
             "options": {
@@ -3939,7 +3869,7 @@
                 "x": 16,
                 "y": 95
             },
-            "id": 58,
+            "id": 57,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -4024,7 +3954,7 @@
                 "x": 18,
                 "y": 95
             },
-            "id": 59,
+            "id": 58,
             "isNew": true,
             "links": [],
             "options": {
@@ -4056,6 +3986,172 @@
             "type": "timeseries"
         },
         {
+            "cacheTimeout": null,
+            "class": "gauge_errors_panel",
+            "datasource": "prometheus",
+            "description": "Using a multi partition Logged BATCH is considered bad practice.\n\nIt does not provide atomicity guarantees, and reduces performance, as a request sent to a random node, not the right replica or shard.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {},
+                    "mappings": [
+                        {
+                            "id": 0,
+                            "op": "=",
+                            "text": "N/A",
+                            "type": 1,
+                            "value": "null"
+                        }
+                    ],
+                    "max": 100,
+                    "min": 0,
+                    "nullValueMode": "connected",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "#299c46",
+                                "value": null
+                            },
+                            {
+                                "color": "rgba(237, 129, 40, 0.89)",
+                                "value": 4
+                            },
+                            {
+                                "color": "#d44a3a",
+                                "value": 10
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 0,
+                "y": 101
+            },
+            "id": 59,
+            "links": [],
+            "options": {
+                "orientation": "horizontal",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showThresholdLabels": false,
+                "showThresholdMarkers": true
+            },
+            "pluginVersion": "7.3.5",
+            "span": 1,
+            "targets": [
+                {
+                    "expr": "(100 *sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A"
+                }
+            ],
+            "title": "Multi partition BATCH",
+            "transparent": true,
+            "type": "gauge"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Using a multi partition Logged BATCH is considered bad practice.\n\nIt does not provide atomicity guarantees, and reduces performance, as a request sent to a random node, not the right replica or shard.",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "si:ops/s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 2,
+                "y": 101
+            },
+            "id": 60,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                    "format": "time_series",
+                    "hide": false,
+                    "intervalFactor": 2,
+                    "refId": "A"
+                }
+            ],
+            "title": "Multi partition BATCH",
+            "type": "timeseries"
+        },
+        {
             "class": "text_panel",
             "datasource": null,
             "editable": true,
@@ -4070,9 +4166,9 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 101
+                "y": 107
             },
-            "id": 60,
+            "id": 61,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4134,9 +4230,9 @@
                 "h": 6,
                 "w": 2,
                 "x": 0,
-                "y": 104
+                "y": 110
             },
-            "id": 61,
+            "id": 62,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -4219,9 +4315,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 2,
-                "y": 104
+                "y": 110
             },
-            "id": 62,
+            "id": 63,
             "isNew": true,
             "links": [],
             "options": {
@@ -4300,9 +4396,9 @@
                 "h": 6,
                 "w": 2,
                 "x": 8,
-                "y": 104
+                "y": 110
             },
-            "id": 63,
+            "id": 64,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -4385,9 +4481,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 10,
-                "y": 104
+                "y": 110
             },
-            "id": 64,
+            "id": 65,
             "isNew": true,
             "links": [],
             "options": {
@@ -4466,9 +4562,9 @@
                 "h": 6,
                 "w": 4,
                 "x": 0,
-                "y": 110
+                "y": 116
             },
-            "id": 65,
+            "id": 66,
             "links": [],
             "options": {
                 "orientation": "horizontal",
@@ -4499,6 +4595,7 @@
         },
         {
             "class": "plain_text",
+            "dashproductreject": "no-your-pannels",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -4512,14 +4609,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 116
+                "y": 122
             },
-            "id": 66,
+            "id": 67,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4529,7 +4626,7 @@
             "type": "text"
         }
     ],
-    "refresh": "30s",
+    "refresh": "5m",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
@@ -4894,8 +4991,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.9.4",
-                    "value": "4.9.4"
+                    "text": "4.11.0",
+                    "value": "4.11.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -4906,11 +5003,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.9.4",
-                        "value": "4.9.4"
+                        "text": "4.11.0",
+                        "value": "4.11.0"
                     }
                 ],
-                "query": "4.9.4",
+                "query": "4.11.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

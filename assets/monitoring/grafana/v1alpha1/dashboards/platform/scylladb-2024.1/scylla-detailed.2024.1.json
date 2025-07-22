@@ -3285,6 +3285,12 @@
                 }
             ],
             "title": "Compressed Bytes Sent by Algorithm",
+            "transformations": [
+                {
+                    "id": "calculateField",
+                    "options": {}
+                }
+            ],
             "type": "timeseries"
         },
         {
@@ -5751,6 +5757,255 @@
             "type": "timeseries"
         },
         {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "The number of entries currently in the querier cache.\n\nscylla_database_querier_cache_population",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 120
+            },
+            "id": 77,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_database_querier_cache_population{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Querier cache population",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Counts querier cache lookups (paging queries)\n\nscylla_database_querier_cache_lookups",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "si:ops/s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 120
+            },
+            "id": 78,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_database_querier_cache_lookups{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Querier Cache Lookups",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Counts querier cache lookups that failed to find a cached querier\n\nscylla_database_querier_cache_misses",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "si:ops/s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 126
+            },
+            "id": 79,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_database_querier_cache_misses{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Querier Cache Misses",
+            "type": "timeseries"
+        },
+        {
             "class": "collapsible_row_panel",
             "collapsed": true,
             "datasource": null,
@@ -5758,9 +6013,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 126
+                "y": 132
             },
-            "id": 77,
+            "id": 80,
             "panels": [
                 {
                     "class": "text_panel",
@@ -5778,9 +6033,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 127
+                        "y": 133
                     },
-                    "id": 78,
+                    "id": 81,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -5842,9 +6097,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 129
+                        "y": 135
                     },
-                    "id": 79,
+                    "id": 82,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -5923,9 +6178,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 129
+                        "y": 135
                     },
-                    "id": 80,
+                    "id": 83,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6004,9 +6259,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 129
+                        "y": 135
                     },
-                    "id": 81,
+                    "id": 84,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6085,9 +6340,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 129
+                        "y": 135
                     },
-                    "id": 82,
+                    "id": 85,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6169,9 +6424,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 135
+                        "y": 141
                     },
-                    "id": 83,
+                    "id": 86,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6250,9 +6505,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 135
+                        "y": 141
                     },
-                    "id": 84,
+                    "id": 87,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6293,9 +6548,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 141
+                "y": 147
             },
-            "id": 85,
+            "id": 88,
             "panels": [
                 {
                     "class": "rps_panel",
@@ -6348,9 +6603,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 142
+                        "y": 148
                     },
-                    "id": 86,
+                    "id": 89,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6429,9 +6684,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 142
+                        "y": 148
                     },
-                    "id": 87,
+                    "id": 90,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6510,9 +6765,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 142
+                        "y": 148
                     },
-                    "id": 88,
+                    "id": 91,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6591,9 +6846,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 142
+                        "y": 148
                     },
-                    "id": 89,
+                    "id": 92,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6624,7 +6879,7 @@
                 {
                     "class": "wps_panel",
                     "datasource": "prometheus",
-                    "description": "Amount of tombstones writes.",
+                    "description": "The number of tombstones found in SSTables. This number is updated by an SSTable update after flush, compaction, or streaming operations.",
                     "editable": true,
                     "error": false,
                     "fieldConfig": {
@@ -6672,9 +6927,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 148
+                        "y": 154
                     },
-                    "id": 90,
+                    "id": 93,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6699,13 +6954,13 @@
                             "step": 10
                         }
                     ],
-                    "title": "Tombstones Writes",
+                    "title": "Tombstones found in SSTables",
                     "type": "timeseries"
                 },
                 {
                     "class": "wps_panel",
                     "datasource": "prometheus",
-                    "description": "Amount of range tombstones writes.",
+                    "description": "The number of range tombstones found in SSTables. This number is updated by an SSTable update after flush, compaction, or streaming operations.",
                     "editable": true,
                     "error": false,
                     "fieldConfig": {
@@ -6753,9 +7008,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 148
+                        "y": 154
                     },
-                    "id": 91,
+                    "id": 94,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6780,13 +7035,13 @@
                             "step": 10
                         }
                     ],
-                    "title": "Range Tombstones Writes",
+                    "title": "Range Tombstones found in SSTables",
                     "type": "timeseries"
                 },
                 {
                     "class": "wps_panel",
                     "datasource": "prometheus",
-                    "description": "Amount of Cell Tombstones Writes.",
+                    "description": "The number of Cell Tombstones found in SSTables. This number is updated by an SSTable update after flush, compaction, or streaming operations.",
                     "editable": true,
                     "error": false,
                     "fieldConfig": {
@@ -6834,9 +7089,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 148
+                        "y": 154
                     },
-                    "id": 92,
+                    "id": 95,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6861,7 +7116,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Cell Tombstones Writes",
+                    "title": "Cell Tombstones found in SSTables",
                     "type": "timeseries"
                 }
             ],
@@ -6877,9 +7132,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 154
+                "y": 160
             },
-            "id": 93,
+            "id": 96,
             "panels": [
                 {
                     "class": "text_panel",
@@ -6897,9 +7152,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 155
+                        "y": 161
                     },
-                    "id": 94,
+                    "id": 97,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -6961,9 +7216,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 157
+                        "y": 163
                     },
-                    "id": 95,
+                    "id": 98,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7042,9 +7297,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 157
+                        "y": 163
                     },
-                    "id": 96,
+                    "id": 99,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7126,9 +7381,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 157
+                        "y": 163
                     },
-                    "id": 97,
+                    "id": 100,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7210,9 +7465,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 157
+                        "y": 163
                     },
-                    "id": 98,
+                    "id": 101,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7291,9 +7546,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 163
+                        "y": 169
                     },
-                    "id": 99,
+                    "id": 102,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7372,9 +7627,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 163
+                        "y": 169
                     },
-                    "id": 100,
+                    "id": 103,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7456,9 +7711,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 163
+                        "y": 169
                     },
-                    "id": 101,
+                    "id": 104,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7540,9 +7795,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 163
+                        "y": 169
                     },
-                    "id": 102,
+                    "id": 105,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7621,9 +7876,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 169
+                        "y": 175
                     },
-                    "id": 103,
+                    "id": 106,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7705,9 +7960,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 169
+                        "y": 175
                     },
-                    "id": 104,
+                    "id": 107,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7786,9 +8041,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 169
+                        "y": 175
                     },
-                    "id": 105,
+                    "id": 108,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7831,9 +8086,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 169
+                        "y": 175
                     },
-                    "id": 106,
+                    "id": 109,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -7896,9 +8151,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 175
+                        "y": 181
                     },
-                    "id": 107,
+                    "id": 110,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7977,9 +8232,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 175
+                        "y": 181
                     },
-                    "id": 108,
+                    "id": 111,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8058,9 +8313,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 175
+                        "y": 181
                     },
-                    "id": 109,
+                    "id": 112,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8139,9 +8394,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 175
+                        "y": 181
                     },
-                    "id": 110,
+                    "id": 113,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8220,9 +8475,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 181
+                        "y": 187
                     },
-                    "id": 111,
+                    "id": 114,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8301,9 +8556,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 181
+                        "y": 187
                     },
-                    "id": 112,
+                    "id": 115,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8382,9 +8637,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 181
+                        "y": 187
                     },
-                    "id": 113,
+                    "id": 116,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8463,9 +8718,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 181
+                        "y": 187
                     },
-                    "id": 114,
+                    "id": 117,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8544,9 +8799,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 187
+                        "y": 193
                     },
-                    "id": 115,
+                    "id": 118,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8625,9 +8880,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 187
+                        "y": 193
                     },
-                    "id": 116,
+                    "id": 119,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8709,9 +8964,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 187
+                        "y": 193
                     },
-                    "id": 117,
+                    "id": 120,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8755,9 +9010,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 193
+                "y": 199
             },
-            "id": 118,
+            "id": 121,
             "panels": [
                 {
                     "class": "text_panel",
@@ -8775,9 +9030,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 194
+                        "y": 200
                     },
-                    "id": 119,
+                    "id": 122,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -8839,9 +9094,9 @@
                         "h": 6,
                         "w": 8,
                         "x": 0,
-                        "y": 196
+                        "y": 202
                     },
-                    "id": 120,
+                    "id": 123,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8923,9 +9178,9 @@
                         "h": 6,
                         "w": 8,
                         "x": 8,
-                        "y": 196
+                        "y": 202
                     },
-                    "id": 121,
+                    "id": 124,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8969,9 +9224,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 202
+                "y": 208
             },
-            "id": 122,
+            "id": 125,
             "panels": [],
             "repeat": "",
             "title": "Memory",
@@ -8993,9 +9248,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 203
+                "y": 209
             },
-            "id": 123,
+            "id": 126,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -9057,9 +9312,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 205
+                "y": 211
             },
-            "id": 124,
+            "id": 127,
             "isNew": true,
             "links": [],
             "options": {
@@ -9138,9 +9393,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 205
+                "y": 211
             },
-            "id": 125,
+            "id": 128,
             "isNew": true,
             "links": [],
             "options": {
@@ -9220,9 +9475,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 205
+                "y": 211
             },
-            "id": 126,
+            "id": 129,
             "isNew": true,
             "links": [],
             "options": {
@@ -9258,9 +9513,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 211
+                "y": 217
             },
-            "id": 127,
+            "id": 130,
             "panels": [],
             "repeat": "",
             "title": "Compaction",
@@ -9282,9 +9537,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 212
+                "y": 218
             },
-            "id": 128,
+            "id": 131,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -9346,9 +9601,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 214
+                "y": 220
             },
-            "id": 129,
+            "id": 132,
             "isNew": true,
             "links": [],
             "options": {
@@ -9428,9 +9683,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 214
+                "y": 220
             },
-            "id": 130,
+            "id": 133,
             "isNew": true,
             "links": [],
             "options": {
@@ -9513,9 +9768,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 214
+                "y": 220
             },
-            "id": 131,
+            "id": 134,
             "isNew": true,
             "links": [],
             "options": {
@@ -9550,9 +9805,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 220
+                "y": 226
             },
-            "id": 132,
+            "id": 135,
             "panels": [],
             "repeat": "sg",
             "title": "Latencies - $sg",
@@ -9609,9 +9864,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 221
+                "y": 227
             },
-            "id": 133,
+            "id": 136,
             "isNew": true,
             "links": [],
             "options": {
@@ -9689,9 +9944,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 221
+                "y": 227
             },
-            "id": 134,
+            "id": 137,
             "isNew": true,
             "links": [],
             "options": {
@@ -9779,9 +10034,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 221
+                "y": 227
             },
-            "id": 135,
+            "id": 138,
             "isNew": true,
             "links": [],
             "options": {
@@ -9870,9 +10125,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 221
+                "y": 227
             },
-            "id": 136,
+            "id": 139,
             "isNew": true,
             "links": [],
             "options": {
@@ -9962,9 +10217,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 227
+                "y": 233
             },
-            "id": 137,
+            "id": 140,
             "isNew": true,
             "links": [],
             "options": {
@@ -10042,9 +10297,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 227
+                "y": 233
             },
-            "id": 138,
+            "id": 141,
             "isNew": true,
             "links": [],
             "options": {
@@ -10132,9 +10387,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 227
+                "y": 233
             },
-            "id": 139,
+            "id": 142,
             "isNew": true,
             "links": [],
             "options": {
@@ -10223,9 +10478,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 227
+                "y": 233
             },
-            "id": 140,
+            "id": 143,
             "isNew": true,
             "links": [],
             "options": {
@@ -10319,9 +10574,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 233
+                "y": 239
             },
-            "id": 141,
+            "id": 144,
             "isNew": true,
             "links": [],
             "options": {
@@ -10405,9 +10660,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 233
+                "y": 239
             },
-            "id": 142,
+            "id": 145,
             "isNew": true,
             "links": [],
             "options": {
@@ -10491,9 +10746,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 233
+                "y": 239
             },
-            "id": 143,
+            "id": 146,
             "isNew": true,
             "links": [],
             "options": {
@@ -10577,9 +10832,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 233
+                "y": 239
             },
-            "id": 144,
+            "id": 147,
             "isNew": true,
             "links": [],
             "options": {
@@ -10663,9 +10918,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 239
+                "y": 245
             },
-            "id": 145,
+            "id": 148,
             "isNew": true,
             "links": [],
             "options": {
@@ -10749,9 +11004,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 239
+                "y": 245
             },
-            "id": 146,
+            "id": 149,
             "isNew": true,
             "links": [],
             "options": {
@@ -10789,9 +11044,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 245
+                "y": 251
             },
-            "id": 147,
+            "id": 150,
             "panels": [],
             "repeat": "",
             "title": "Your panels",
@@ -10812,9 +11067,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 246
+                "y": 252
             },
-            "id": 148,
+            "id": 151,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -10879,9 +11134,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 248
+                "y": 254
             },
-            "id": 149,
+            "id": 152,
             "isNew": true,
             "links": [],
             "options": {
@@ -10954,9 +11209,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 248
+                "y": 254
             },
-            "id": 150,
+            "id": 153,
             "isNew": true,
             "links": [],
             "options": {
@@ -10980,6 +11235,7 @@
         },
         {
             "class": "plain_text",
+            "dashproductreject": "no-your-pannels",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -10993,14 +11249,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 254
+                "y": 260
             },
-            "id": 151,
+            "id": 154,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -11010,7 +11266,7 @@
             "type": "text"
         }
     ],
-    "refresh": "30s",
+    "refresh": "5m",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
@@ -11430,8 +11686,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.9.4",
-                    "value": "4.9.4"
+                    "text": "4.11.0",
+                    "value": "4.11.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -11442,11 +11698,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.9.4",
-                        "value": "4.9.4"
+                        "text": "4.11.0",
+                        "value": "4.11.0"
                     }
                 ],
-                "query": "4.9.4",
+                "query": "4.11.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

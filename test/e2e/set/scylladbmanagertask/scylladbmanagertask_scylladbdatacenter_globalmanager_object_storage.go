@@ -349,25 +349,6 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
 
-		framework.By("Initiating a rolling restart of the target ScyllaDBDatacenter")
-		targetSDC, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Patch(
-			ctx,
-			targetSDC.Name,
-			types.MergePatchType,
-			[]byte(`{"spec": {"forceRedeploymentReason": "schema restored"}}`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the target ScyllaDBDatacenter to roll out (RV=%s)", targetSDC.ResourceVersion)
-		targetSDCRolloutAfterForcedRedeploymentCtx, targetSDCRolloutAfterForcedRedeploymentCtxCancel := utilsv1alpha1.ContextForRollout(ctx, targetSDC)
-		defer targetSDCRolloutAfterForcedRedeploymentCtxCancel()
-		targetSDC, err = controllerhelpers.WaitForScyllaDBDatacenterState(targetSDCRolloutAfterForcedRedeploymentCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name), targetSDC.Name, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBDatacenterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), targetSDC)
-		scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), targetSDC)
-
 		if e.postSchemaRestoreHook != nil {
 			e.postSchemaRestoreHook(ctx, ns.Name, nsClient, targetSDC)
 		}
@@ -422,6 +403,25 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 			},
 			postSchemaRestoreHook: func(ctx context.Context, ns string, nsClient framework.Client, targetSDC *scyllav1alpha1.ScyllaDBDatacenter) {
 				var err error
+
+				framework.By("Initiating a rolling restart of the target ScyllaDBDatacenter")
+				targetSDC, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns).Patch(
+					ctx,
+					targetSDC.Name,
+					types.MergePatchType,
+					[]byte(`{"spec": {"forceRedeploymentReason": "schema restored"}}`),
+					metav1.PatchOptions{},
+				)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				framework.By("Waiting for the target ScyllaDBDatacenter to roll out (RV=%s)", targetSDC.ResourceVersion)
+				targetSDCRolloutAfterForcedRedeploymentCtx, targetSDCRolloutAfterForcedRedeploymentCtxCancel := utilsv1alpha1.ContextForRollout(ctx, targetSDC)
+				defer targetSDCRolloutAfterForcedRedeploymentCtxCancel()
+				targetSDC, err = controllerhelpers.WaitForScyllaDBDatacenterState(targetSDCRolloutAfterForcedRedeploymentCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns), targetSDC.Name, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBDatacenterRolledOut)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), targetSDC)
+				scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), targetSDC)
 
 				framework.By("Enabling raft in target cluster")
 				targetSDC, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns).Patch(

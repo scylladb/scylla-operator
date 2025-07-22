@@ -361,25 +361,6 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
 
-		framework.By("Initiating a rolling restart of the target ScyllaCluster")
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			targetSC.Name,
-			types.MergePatchType,
-			[]byte(`{"spec": {"forceRedeploymentReason": "schema restored"}}`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the target ScyllaCluster to roll out")
-		postSchemaRestoreTargetRolloutCtx, postSchemaRestoreTargetRolloutCtxCancel := utils.ContextForRollout(ctx, targetSC)
-		defer postSchemaRestoreTargetRolloutCtxCancel()
-		targetSC, err = controllerhelpers.WaitForScyllaClusterState(postSchemaRestoreTargetRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), targetSC)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
-
 		if e.postSchemaRestoreHook != nil {
 			e.postSchemaRestoreHook(ctx, f, targetSC)
 		}
@@ -432,8 +413,29 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				targetCluster.Spec.ScyllaArgs = "--consistent-cluster-management=false"
 			},
 			postSchemaRestoreHook: func(ctx context.Context, f *framework.Framework, targetSC *scyllav1.ScyllaCluster) {
+				var err error
+
+				framework.By("Initiating a rolling restart of the target ScyllaCluster")
+				targetSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+					ctx,
+					targetSC.Name,
+					types.MergePatchType,
+					[]byte(`{"spec": {"forceRedeploymentReason": "schema restored"}}`),
+					metav1.PatchOptions{},
+				)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				framework.By("Waiting for the target ScyllaCluster to roll out")
+				postSchemaRestoreTargetRolloutCtx, postSchemaRestoreTargetRolloutCtxCancel := utils.ContextForRollout(ctx, targetSC)
+				defer postSchemaRestoreTargetRolloutCtxCancel()
+				targetSC, err = controllerhelpers.WaitForScyllaClusterState(postSchemaRestoreTargetRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+				o.Expect(err).NotTo(o.HaveOccurred())
+
+				scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), targetSC)
+				scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
+
 				framework.By("Enabling raft in target cluster")
-				_, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+				_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
 					ctx,
 					targetSC.Name,
 					types.JSONPatchType,

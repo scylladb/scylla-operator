@@ -6,5 +6,5 @@
 overview
 storage/index
 tuning
-manager
+manager/index
 :::

@@ -13,3 +13,8 @@ func LocationForScyllaManager(s framework.ClusterObjectStorageSettings) string {
 		return ""
 	}
 }
+
+// LocationForScyllaManagerWithDC returns a `<dc>:<provider>:<location>` string for Scylla Manager configuration.
+func LocationForScyllaManagerWithDC(s framework.ClusterObjectStorageSettings, dc string) string {
+	return dc + ":" + LocationForScyllaManager(s)
+}

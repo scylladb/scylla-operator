@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -52,23 +51,9 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		}
 
 		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
-		if !ok {
-			g.Fail("cluster object storage settings are not configured")
-		}
-		switch objectStorageSettings.Type() {
-		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
-			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
+		o.Expect(ok).To(o.BeTrue(), "cluster object storage settings must be configured for this test")
 
-			sourceSC = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), sourceSC, f.Namespace(), gcServiceAccountKey)
-		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
-			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
-
-			sourceSC = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), sourceSC, f.Namespace(), s3CredentialsFile)
-		default:
-			g.Fail("unsupported object storage type")
-		}
+		setUpObjectStorageCredentials(ctx, f.Namespace(), f.Client, sourceSC, objectStorageSettings)
 
 		objectStorageLocation := utils.LocationForScyllaManager(objectStorageSettings)
 
@@ -212,18 +197,18 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sourceManagerClusterID := *sourceSC.Status.ManagerID
 		o.Expect(sourceManagerClusterID).NotTo(o.BeEmpty())
 
-		var backupProgress managerclient.BackupProgress
-		framework.By("Waiting for backup to finish")
-		err = apimachineryutilwait.PollUntilContextTimeout(ctx, 5*time.Second, 10*time.Minute, true, func(context.Context) (done bool, err error) {
-			backupProgress, err = managerClient.BackupProgress(ctx, sourceManagerClusterID, backupTask.ID, "latest")
-			if err != nil {
-				return false, err
-			}
+		framework.By("Waiting for the backup task to finish")
+		o.Eventually(verification.VerifyScyllaDBManagerBackupTaskCompleted).
+			WithContext(ctx).
+			WithTimeout(3*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, sourceManagerClusterID, backupTask.ID).
+			Should(o.Succeed())
 
-			return backupProgress.Run.Status == managerclient.TaskStatusDone, nil
-		})
+		backupProgress, err := managerClient.BackupProgress(ctx, sourceManagerClusterID, backupTask.ID, "latest")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(backupProgress.Progress.SnapshotTag).NotTo(o.BeEmpty())
+		snapshotTag := backupProgress.Progress.SnapshotTag
+		o.Expect(snapshotTag).NotTo(o.BeEmpty())
 
 		framework.By("Deleting the backup task for source ScyllaCluster")
 		sourceSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -295,20 +280,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			e.preTargetClusterCreateHook(targetSC)
 		}
 
-		switch objectStorageSettings.Type() {
-		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
-			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
-
-			targetSC = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), targetSC, f.Namespace(), gcServiceAccountKey)
-		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
-			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
-
-			targetSC = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), targetSC, f.Namespace(), s3CredentialsFile)
-		default:
-			g.Fail("unsupported object storage type")
-		}
+		setUpObjectStorageCredentials(ctx, f.Namespace(), f.Client, targetSC, objectStorageSettings)
 
 		framework.By("Creating target ScyllaCluster")
 		targetSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, targetSC, metav1.CreateOptions{})
@@ -367,7 +339,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				"restore",
 				fmt.Sprintf("--cluster=%s", targetManagerClusterID),
 				fmt.Sprintf("--location=%s", objectStorageLocation),
-				fmt.Sprintf("--snapshot-tag=%s", backupProgress.Progress.SnapshotTag),
+				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-schema",
 			},
 			Namespace:     scyllaManagerPod.Namespace,
@@ -381,20 +353,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		_, schemaRestoreTaskID, err := managerClient.TaskSplit(ctx, targetManagerClusterID, strings.TrimSpace(stdout))
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		isRestoreTaskStatusDone := func(g o.Gomega, ctx context.Context, restoreTaskID string) bool {
-			restoreProgress, err := managerClient.RestoreProgress(ctx, targetManagerClusterID, restoreTaskID, "latest")
-			g.Expect(err).NotTo(o.HaveOccurred())
-
-			return restoreProgress.Run.Status == managerclient.TaskStatusDone
-		}
-
 		framework.By("Waiting for schema restore to finish")
-		o.Eventually(isRestoreTaskStatusDone).
+		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10 * time.Minute).
-			WithPolling(5 * time.Second).
-			WithArguments(schemaRestoreTaskID.String()).
-			Should(o.BeTrue())
+			WithTimeout(10*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
+			Should(o.Succeed())
 
 		framework.By("Initiating a rolling restart of the target ScyllaCluster")
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -426,7 +391,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				"restore",
 				fmt.Sprintf("--cluster=%s", targetManagerClusterID),
 				fmt.Sprintf("--location=%s", objectStorageLocation),
-				fmt.Sprintf("--snapshot-tag=%s", backupProgress.Progress.SnapshotTag),
+				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-tables",
 			},
 			Namespace:     scyllaManagerPod.Namespace,
@@ -441,12 +406,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for tables restore to finish")
-		o.Eventually(isRestoreTaskStatusDone).
+		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10 * time.Minute).
-			WithPolling(5 * time.Second).
-			WithArguments(tablesRestoreTaskID.String()).
-			Should(o.BeTrue())
+			WithTimeout(10*time.Minute).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, targetManagerClusterID, tablesRestoreTaskID.String()).
+			Should(o.Succeed())
 
 		framework.By("Validating that the data restored from source cluster backup is available in target cluster")
 		targetHosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), targetSC)
@@ -496,19 +461,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
 		o.Expect(ok).To(o.BeTrue(), "cluster object storage settings must be configured for this test")
 
-		o.Expect(objectStorageSettings.Type()).To(o.BeElementOf(framework.ObjectStorageTypeGCS, framework.ObjectStorageTypeS3))
-		switch objectStorageSettings.Type() {
-		case framework.ObjectStorageTypeGCS:
-			gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
-			o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
-
-			sc = setUpGCSCredentials(ctx, f.KubeClient().CoreV1(), sc, f.Namespace(), gcServiceAccountKey)
-		case framework.ObjectStorageTypeS3:
-			s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
-			o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
-
-			sc = setUpS3Credentials(ctx, f.KubeClient().CoreV1(), sc, f.Namespace(), s3CredentialsFile)
-		}
+		setUpObjectStorageCredentials(ctx, f.Namespace(), f.Client, sc, objectStorageSettings)
 
 		validObjectStorageLocation := utils.LocationForScyllaManager(objectStorageSettings)
 
@@ -804,8 +757,28 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 	})
 })
 
-func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, namespace string, serviceAccountKey []byte) *scyllav1.ScyllaCluster {
-	scCopy := sc.DeepCopy()
+func setUpObjectStorageCredentials(ctx context.Context, ns string, nsClient framework.Client, sc *scyllav1.ScyllaCluster, objectStorageSettings framework.ClusterObjectStorageSettings) {
+	g.GinkgoHelper()
+
+	o.Expect(objectStorageSettings.Type()).To(o.BeElementOf(framework.ObjectStorageTypeGCS, framework.ObjectStorageTypeS3))
+	switch objectStorageSettings.Type() {
+	case framework.ObjectStorageTypeGCS:
+		gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
+		o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
+
+		setUpGCSCredentials(ctx, nsClient.KubeClient().CoreV1(), sc, ns, gcServiceAccountKey)
+
+	case framework.ObjectStorageTypeS3:
+		s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
+		o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
+
+		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sc, ns, s3CredentialsFile)
+
+	}
+}
+
+func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, namespace string, serviceAccountKey []byte) {
+	g.GinkgoHelper()
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -819,8 +792,8 @@ func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Inte
 	secret, err := coreClient.Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	for i := range scCopy.Spec.Datacenter.Racks {
-		scCopy.Spec.Datacenter.Racks[i].Volumes = append(scCopy.Spec.Datacenter.Racks[i].Volumes, corev1.Volume{
+	for i := range sc.Spec.Datacenter.Racks {
+		sc.Spec.Datacenter.Racks[i].Volumes = append(sc.Spec.Datacenter.Racks[i].Volumes, corev1.Volume{
 			Name: "gcs-service-account",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -834,19 +807,17 @@ func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Inte
 				},
 			},
 		})
-		scCopy.Spec.Datacenter.Racks[i].AgentVolumeMounts = append(scCopy.Spec.Datacenter.Racks[i].AgentVolumeMounts, corev1.VolumeMount{
+		sc.Spec.Datacenter.Racks[i].AgentVolumeMounts = append(sc.Spec.Datacenter.Racks[i].AgentVolumeMounts, corev1.VolumeMount{
 			Name:      "gcs-service-account",
 			ReadOnly:  true,
 			MountPath: "/etc/scylla-manager-agent/gcs-service-account.json",
 			SubPath:   "gcs-service-account.json",
 		})
 	}
-
-	return scCopy
 }
 
-func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, namespace string, s3CredentialsFile []byte) *scyllav1.ScyllaCluster {
-	scCopy := sc.DeepCopy()
+func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, namespace string, s3CredentialsFile []byte) {
+	g.GinkgoHelper()
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -860,8 +831,8 @@ func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Inter
 	secret, err := coreClient.Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	for i := range scCopy.Spec.Datacenter.Racks {
-		scCopy.Spec.Datacenter.Racks[i].Volumes = append(scCopy.Spec.Datacenter.Racks[i].Volumes, corev1.Volume{
+	for i := range sc.Spec.Datacenter.Racks {
+		sc.Spec.Datacenter.Racks[i].Volumes = append(sc.Spec.Datacenter.Racks[i].Volumes, corev1.Volume{
 			Name: "aws-credentials",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -875,13 +846,11 @@ func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Inter
 				},
 			},
 		})
-		scCopy.Spec.Datacenter.Racks[i].AgentVolumeMounts = append(scCopy.Spec.Datacenter.Racks[i].AgentVolumeMounts, corev1.VolumeMount{
+		sc.Spec.Datacenter.Racks[i].AgentVolumeMounts = append(sc.Spec.Datacenter.Racks[i].AgentVolumeMounts, corev1.VolumeMount{
 			Name:      "aws-credentials",
 			ReadOnly:  true,
 			MountPath: "/var/lib/scylla-manager/.aws/credentials",
 			SubPath:   "credentials",
 		})
 	}
-
-	return scCopy
 }

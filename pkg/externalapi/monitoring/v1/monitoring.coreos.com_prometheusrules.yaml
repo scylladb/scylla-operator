@@ -134,14 +134,20 @@ spec:
                                 Name of the time series to output to. Must be a valid metric name.
                                 Only one of `record` and `alert` must be set.
                               type: string
+                          required:
+                            - expr
                           type: object
                         type: array
+                    required:
+                      - name
                     type: object
                   type: array
                   x-kubernetes-list-map-keys:
                     - name
                   x-kubernetes-list-type: map
               type: object
+          required:
+            - spec
           type: object
       served: true
       storage: true

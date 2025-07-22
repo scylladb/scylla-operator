@@ -4666,7 +4666,7 @@
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "2024.2"
+        "2025.2"
     ],
     "templating": {
         "list": [
@@ -5116,8 +5116,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2024.2",
-                    "value": "2024.2"
+                    "text": "2025.2",
+                    "value": "2025.2"
                 },
                 "error": null,
                 "hide": 2,
@@ -5128,11 +5128,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2024.2",
-                        "value": "2024.2"
+                        "text": "2025.2",
+                        "value": "2025.2"
                     }
                 ],
-                "query": "2024.2",
+                "query": "2025.2",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -5194,6 +5194,6 @@
     },
     "timezone": "utc",
     "title": "Advanced",
-    "uid": "advanced-2024-2",
+    "uid": "advanced-2025-2",
     "version": 5
 }

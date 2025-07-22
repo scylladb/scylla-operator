@@ -865,7 +865,7 @@
             "pluginVersion": "7.1.3",
             "targets": [
                 {
-                    "expr": "avg(scylla_reactor_utilization{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} )",
+                    "expr": "sum(avg(rate(scylla_scheduler_runtime_ms{group=~\"sl:.*|commitlog\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[1m])) by (group)/10)",
                     "instant": true,
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -2350,14 +2350,49 @@
             "type": "timeseries"
         },
         {
-            "class": "text_panel",
-            "content": "##  ",
-            "datasource": null,
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "Number of Stalls per seconds.",
             "editable": true,
             "error": false,
             "fieldConfig": {
                 "defaults": {
-                    "custom": {}
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
                 },
                 "overrides": []
             },
@@ -2370,13 +2405,32 @@
             "id": 39,
             "isNew": true,
             "links": [],
-            "mode": "markdown",
-            "options": {},
+            "options": {
+                "class": "desc_tooltip_options",
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
             "span": 4,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_stall_detector_reported{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 30
+                }
+            ],
+            "title": "Stall per seconds by [[by]]",
+            "type": "timeseries"
         },
         {
             "class": "rps_panel",
@@ -3006,14 +3060,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_disk_total_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_disk_total_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Avg reserved disk space by [[by]]",
+            "title": "$func reserved disk space by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3089,14 +3143,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_disk_active_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_disk_active_bytes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Avg used disk space by [[by]]",
+            "title": "$func used disk space by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3175,20 +3229,20 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_commitlog_flush{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_commitlog_flush{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Avg flush by [[by]]",
+            "title": "$func flush by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "ops_panel",
             "datasource": "prometheus",
-            "description": "Holds the current number of segments",
+            "description": "Holds the current number of commit log segments",
             "editable": true,
             "error": false,
             "fieldConfig": {
@@ -3261,14 +3315,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Segments by [[by]]",
+            "title": "$func Segments by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3347,14 +3401,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(rate(scylla_commitlog_flush_limit_exceeded{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_commitlog_flush_limit_exceeded{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Avg flush limit exceeded by [[by]]",
+            "title": "$func flush limit exceeded by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3433,14 +3487,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_pending_allocations{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_pending_allocations{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Pending allocations by [[by]]",
+            "title": "$func Pending allocations by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3519,14 +3573,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_pending_flushes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_pending_flushes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Pending flush by [[by]]",
+            "title": "$func Pending flush by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3605,14 +3659,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_unused_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_unused_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Unused segments by [[by]]",
+            "title": "$func Unused segments by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3691,14 +3745,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_commitlog_allocating_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_allocating_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 30
                 }
             ],
-            "title": "Allocating segments by [[by]]",
+            "title": "$func Allocating segments by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4286,6 +4340,91 @@
                     ],
                     "title": "RPC Wait for Reply by [[by]]",
                     "type": "timeseries"
+                },
+                {
+                    "class": "us_panel",
+                    "datasource": "prometheus",
+                    "description": "The total time it takes an RPC message to travel back and forth between verb caller and server.\n\nscylla_rpc_client_delay_samples",
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "class": "fieldConfig_defaults",
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "class": "fieldConfig_defaults_custom",
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "unit": "\u00b5s"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 6,
+                        "w": 4,
+                        "x": 4,
+                        "y": 86
+                    },
+                    "id": 65,
+                    "isNew": true,
+                    "links": [],
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "hidden",
+                            "placement": "bottom"
+                        },
+                        "tooltip": {
+                            "maxHeight": 600,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "seriesOverrides": [
+                        {}
+                    ],
+                    "span": 2,
+                    "targets": [
+                        {
+                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_rpc_client_delay_samples{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}[$__rate_interval])>0) by ([[by]],domain))",
+                            "intervalFactor": 1,
+                            "legendFormat": "",
+                            "metric": "",
+                            "refId": "A",
+                            "step": 1
+                        }
+                    ],
+                    "title": "RPC Delay [[by]]",
+                    "type": "timeseries"
                 }
             ],
             "repeat": "domain",
@@ -4303,7 +4442,7 @@
                 "x": 0,
                 "y": 92
             },
-            "id": 65,
+            "id": 66,
             "panels": [],
             "repeat": "",
             "title": "Your panels",
@@ -4326,7 +4465,7 @@
                 "x": 0,
                 "y": 93
             },
-            "id": 66,
+            "id": 67,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4393,7 +4532,7 @@
                 "x": 0,
                 "y": 95
             },
-            "id": 67,
+            "id": 68,
             "isNew": true,
             "links": [],
             "options": {
@@ -4468,7 +4607,7 @@
                 "x": 12,
                 "y": 95
             },
-            "id": 68,
+            "id": 69,
             "isNew": true,
             "links": [],
             "options": {
@@ -4492,6 +4631,7 @@
         },
         {
             "class": "plain_text",
+            "dashproductreject": "no-your-pannels",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -4507,12 +4647,12 @@
                 "x": 0,
                 "y": 101
             },
-            "id": 69,
+            "id": 70,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4522,7 +4662,7 @@
             "type": "text"
         }
     ],
-    "refresh": "30s",
+    "refresh": "5m",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
@@ -5000,8 +5140,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.9.4",
-                    "value": "4.9.4"
+                    "text": "4.11.0",
+                    "value": "4.11.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -5012,11 +5152,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.9.4",
-                        "value": "4.9.4"
+                        "text": "4.11.0",
+                        "value": "4.11.0"
                     }
                 ],
-                "query": "4.9.4",
+                "query": "4.11.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

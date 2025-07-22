@@ -2127,7 +2127,7 @@
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "2024.1"
+        "2025.2"
     ],
     "templating": {
         "list": [
@@ -2410,8 +2410,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2024.1",
-                    "value": "2024.1"
+                    "text": "2025.2",
+                    "value": "2025.2"
                 },
                 "error": null,
                 "hide": 2,
@@ -2422,11 +2422,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2024.1",
-                        "value": "2024.1"
+                        "text": "2025.2",
+                        "value": "2025.2"
                     }
                 ],
-                "query": "2024.1",
+                "query": "2025.2",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -2510,6 +2510,6 @@
     },
     "timezone": "utc",
     "title": "Keyspace",
-    "uid": "ks-2024-1",
+    "uid": "ks-2025-2",
     "version": 5
 }

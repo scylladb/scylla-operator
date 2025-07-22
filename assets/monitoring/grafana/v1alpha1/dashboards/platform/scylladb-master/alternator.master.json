@@ -2119,7 +2119,7 @@
             "gridPos": {
                 "h": 1,
                 "w": 10,
-                "x": 14,
+                "x": 0,
                 "y": 29
             },
             "id": 24,
@@ -2149,12 +2149,12 @@
             "id": 25,
             "panels": [],
             "repeat": "",
-            "title": "Data Plane Actions",
+            "title": "Cluster wide Data Plane Actions",
             "type": "row"
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Data Plane Actions</h1>",
+            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Cluster wide Data Plane Actions</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -3198,52 +3198,9 @@
             "type": "timeseries"
         },
         {
-            "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Data Plane Latencies</h1>",
-            "datasource": null,
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 2,
-                "w": 24,
-                "x": 0,
-                "y": 57
-            },
-            "id": 39,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {},
-            "span": 12,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
-        },
-        {
-            "collapsed": false,
-            "datasource": null,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 59
-            },
-            "id": 40,
-            "panels": [],
-            "repeat": "alternator_latency_ops",
-            "title": "$alternator_latency_ops",
-            "type": "row"
-        },
-        {
             "class": "ops_panel",
             "datasource": "prometheus",
+            "description": "The number of items deleted by their TTL",
             "editable": true,
             "error": false,
             "fieldConfig": {
@@ -3289,11 +3246,11 @@
             },
             "gridPos": {
                 "h": 6,
-                "w": 6,
+                "w": 8,
                 "x": 0,
-                "y": 60
+                "y": 57
             },
-            "id": 41,
+            "id": 39,
             "isNew": true,
             "links": [],
             "options": {
@@ -3311,268 +3268,17 @@
             "seriesOverrides": [
                 {}
             ],
-            "span": 3,
+            "span": 4,
             "targets": [
                 {
-                    "expr": "$func(rate(scylla_alternator_op_latency_summary_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"}[$__rate_interval])) by ([[by]]) or on () $func(rate(scylla_alternator_op_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"}[$__rate_interval])) by ([[by]])",
+                    "expr": "$func(rate(scylla_expiration_items_deleted{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]])",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 1
                 }
             ],
-            "title": "Completed $alternator_latency_ops",
-            "type": "timeseries"
-        },
-        {
-            "class": "us_panel",
-            "datasource": "prometheus",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "class": "fieldConfig_defaults",
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "axisSoftMin": 0,
-                        "barAlignment": 0,
-                        "class": "fieldConfig_defaults_custom",
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "never",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "unit": "\u00b5s"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 6,
-                "y": 60
-            },
-            "id": 42,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "hidden",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "maxHeight": 600,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "seriesOverrides": [
-                {}
-            ],
-            "span": 3,
-            "targets": [
-                {
-                    "expr": "scylla_alternator_op_latency_summary{quantile=\"0.5\", by=\"$by\", instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"} or on () $func(rate(scylla_alternator_op_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_alternator_op_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"}[$__rate_interval])) by ([[by]]) + 1)",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 1
-                }
-            ],
-            "title": "Average $alternator_latency_ops latency by [[by]]",
-            "type": "timeseries"
-        },
-        {
-            "class": "us_panel",
-            "datasource": "prometheus",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "class": "fieldConfig_defaults",
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "axisSoftMin": 0,
-                        "barAlignment": 0,
-                        "class": "fieldConfig_defaults_custom",
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "never",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "unit": "\u00b5s"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 12,
-                "y": 60
-            },
-            "id": 43,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "hidden",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "maxHeight": 600,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "seriesOverrides": [
-                {}
-            ],
-            "span": 3,
-            "targets": [
-                {
-                    "expr": "scylla_alternator_op_latency_summary{quantile=\"0.95\", by=\"$by\", instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"} or on() histogram_quantile(0.95, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"}[$__rate_interval])) by ([[by]], le))",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "metric": "",
-                    "refId": "A",
-                    "step": 1
-                }
-            ],
-            "title": "95th percentile $alternator_latency_ops latency by [[by]]",
-            "type": "timeseries"
-        },
-        {
-            "class": "us_panel",
-            "datasource": "prometheus",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "class": "fieldConfig_defaults",
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "axisSoftMin": 0,
-                        "barAlignment": 0,
-                        "class": "fieldConfig_defaults_custom",
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "never",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "unit": "\u00b5s"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 6,
-                "w": 6,
-                "x": 18,
-                "y": 60
-            },
-            "id": 44,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "hidden",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "maxHeight": 600,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "seriesOverrides": [
-                {}
-            ],
-            "span": 3,
-            "targets": [
-                {
-                    "expr": "scylla_alternator_op_latency_summary{quantile=\"0.99\", by=\"$by\", instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"} or on() histogram_quantile(0.99, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$alternator_latency_ops\"}[$__rate_interval])) by ([[by]], le))",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "metric": "",
-                    "refId": "A",
-                    "step": 1
-                }
-            ],
-            "title": "99th percentile $alternator_latency_ops latency by [[by]]",
+            "title": "Expired Item Deleted by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3583,9 +3289,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 66
+                "y": 63
             },
-            "id": 45,
+            "id": 40,
             "panels": [],
             "repeat": "",
             "title": "Streams",
@@ -3607,9 +3313,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 67
+                "y": 64
             },
-            "id": 46,
+            "id": 41,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -3670,9 +3376,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 69
+                "y": 66
             },
-            "id": 47,
+            "id": 42,
             "isNew": true,
             "links": [],
             "options": {
@@ -3753,9 +3459,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 69
+                "y": 66
             },
-            "id": 48,
+            "id": 43,
             "isNew": true,
             "links": [],
             "options": {
@@ -3836,9 +3542,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 69
+                "y": 66
             },
-            "id": 49,
+            "id": 44,
             "isNew": true,
             "links": [],
             "options": {
@@ -3919,9 +3625,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 75
+                "y": 72
             },
-            "id": 50,
+            "id": 45,
             "isNew": true,
             "links": [],
             "options": {
@@ -3968,9 +3674,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 81
+                "y": 78
             },
-            "id": 51,
+            "id": 46,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -3988,9 +3694,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 83
+                "y": 80
             },
-            "id": 52,
+            "id": 47,
             "panels": [],
             "repeat": "alternator_streams_latency_ops",
             "title": "$alternator_streams_latency_ops",
@@ -4046,9 +3752,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 84
+                "y": 81
             },
-            "id": 53,
+            "id": 48,
             "isNew": true,
             "links": [],
             "options": {
@@ -4129,9 +3835,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 84
+                "y": 81
             },
-            "id": 54,
+            "id": 49,
             "isNew": true,
             "links": [],
             "options": {
@@ -4212,9 +3918,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 84
+                "y": 81
             },
-            "id": 55,
+            "id": 50,
             "isNew": true,
             "links": [],
             "options": {
@@ -4296,9 +4002,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 84
+                "y": 81
             },
-            "id": 56,
+            "id": 51,
             "isNew": true,
             "links": [],
             "options": {
@@ -4338,9 +4044,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 90
+                "y": 87
             },
-            "id": 57,
+            "id": 52,
             "panels": [],
             "repeat": "",
             "title": "Control plane",
@@ -4362,9 +4068,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 91
+                "y": 88
             },
-            "id": 58,
+            "id": 53,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4425,9 +4131,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 93
+                "y": 90
             },
-            "id": 59,
+            "id": 54,
             "isNew": true,
             "links": [],
             "options": {
@@ -4508,9 +4214,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 93
+                "y": 90
             },
-            "id": 60,
+            "id": 55,
             "isNew": true,
             "links": [],
             "options": {
@@ -4591,9 +4297,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 93
+                "y": 90
             },
-            "id": 61,
+            "id": 56,
             "isNew": true,
             "links": [],
             "options": {
@@ -4674,9 +4380,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 99
+                "y": 96
             },
-            "id": 62,
+            "id": 57,
             "isNew": true,
             "links": [],
             "options": {
@@ -4757,9 +4463,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 99
+                "y": 96
             },
-            "id": 63,
+            "id": 58,
             "isNew": true,
             "links": [],
             "options": {
@@ -4791,90 +4497,6 @@
             "type": "timeseries"
         },
         {
-            "class": "ops_panel",
-            "datasource": "prometheus",
-            "description": "The number of items deleted by their TTL",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "class": "fieldConfig_defaults",
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "axisSoftMin": 0,
-                        "barAlignment": 0,
-                        "class": "fieldConfig_defaults_custom",
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "never",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "unit": "si:ops/s"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 6,
-                "w": 8,
-                "x": 16,
-                "y": 99
-            },
-            "id": 64,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "hidden",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "maxHeight": 600,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "seriesOverrides": [
-                {}
-            ],
-            "span": 4,
-            "targets": [
-                {
-                    "expr": "$func(rate(scylla_expiration_items_deleted{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]])",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "A",
-                    "step": 1
-                }
-            ],
-            "title": "Expired Item Deleted by [[by]]",
-            "type": "timeseries"
-        },
-        {
             "class": "plain_text",
             "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Cache</h1>",
             "datasource": null,
@@ -4890,9 +4512,9 @@
                 "h": 2,
                 "w": 12,
                 "x": 0,
-                "y": 105
+                "y": 102
             },
-            "id": 65,
+            "id": 59,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4919,9 +4541,9 @@
                 "h": 2,
                 "w": 12,
                 "x": 12,
-                "y": 105
+                "y": 102
             },
-            "id": 66,
+            "id": 60,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4983,9 +4605,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 107
+                "y": 104
             },
-            "id": 67,
+            "id": 61,
             "isNew": true,
             "links": [],
             "options": {
@@ -5067,9 +4689,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 107
+                "y": 104
             },
-            "id": 68,
+            "id": 62,
             "isNew": true,
             "links": [],
             "options": {
@@ -5151,9 +4773,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 107
+                "y": 104
             },
-            "id": 69,
+            "id": 63,
             "isNew": true,
             "links": [],
             "options": {
@@ -5232,9 +4854,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 107
+                "y": 104
             },
-            "id": 70,
+            "id": 64,
             "isNew": true,
             "links": [],
             "options": {
@@ -5263,6 +4885,169 @@
             "type": "timeseries"
         },
         {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "The current number of opened connections",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 110
+            },
+            "id": 65,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$func(scylla_httpd_connections_total{service=\"http-alternator\", instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 10
+                }
+            ],
+            "title": "HTTP Opened connections by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "rpm_panel",
+            "datasource": "prometheus",
+            "description": "Rate of new HTTP connections creation. High number may indicate a problem",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "decimals": 0,
+                    "mappings": [],
+                    "unit": "si:C/s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 110
+            },
+            "id": 66,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "round($func(rate(scylla_httpd_connections_total{service=\"http-alternator\", instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 10
+                }
+            ],
+            "title": "HTTP New connections by [[by]]",
+            "type": "timeseries"
+        },
+        {
             "class": "plain_text",
             "datasource": null,
             "editable": true,
@@ -5277,9 +5062,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 113
+                "y": 116
             },
-            "id": 71,
+            "id": 67,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -5344,9 +5129,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 115
+                "y": 118
             },
-            "id": 72,
+            "id": 68,
             "isNew": true,
             "links": [],
             "options": {
@@ -5419,9 +5204,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 115
+                "y": 118
             },
-            "id": 73,
+            "id": 69,
             "isNew": true,
             "links": [],
             "options": {
@@ -5445,6 +5230,7 @@
         },
         {
             "class": "plain_text",
+            "dashproductreject": "no-your-pannels",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -5458,14 +5244,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 121
+                "y": 124
             },
-            "id": 74,
+            "id": 70,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.9.4</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -5475,7 +5261,7 @@
             "type": "text"
         }
     ],
-    "refresh": "30s",
+    "refresh": "5m",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
@@ -5776,8 +5562,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.9.4",
-                    "value": "4.9.4"
+                    "text": "4.11.0",
+                    "value": "4.11.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -5788,69 +5574,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.9.4",
-                        "value": "4.9.4"
+                        "text": "4.11.0",
+                        "value": "4.11.0"
                     }
                 ],
-                "query": "4.9.4",
-                "skipUrlSync": false,
-                "type": "custom"
-            },
-            {
-                "allValue": null,
-                "class": "template_variable_custom",
-                "current": {
-                    "text": "All",
-                    "value": "$__all"
-                },
-                "dashversion": [
-                    ">6.0",
-                    ">2024.1"
-                ],
-                "error": null,
-                "hide": 2,
-                "includeAll": true,
-                "label": null,
-                "multi": true,
-                "name": "alternator_latency_ops",
-                "options": [
-                    {
-                        "selected": true,
-                        "text": "All",
-                        "value": "$__all"
-                    },
-                    {
-                        "selected": false,
-                        "text": "GetItem",
-                        "value": "GetItem"
-                    },
-                    {
-                        "selected": false,
-                        "text": "PutItem",
-                        "value": "PutItem"
-                    },
-                    {
-                        "selected": false,
-                        "text": "UpdateItem",
-                        "value": "UpdateItem"
-                    },
-                    {
-                        "selected": false,
-                        "text": "DeleteItem",
-                        "value": "DeleteItem"
-                    },
-                    {
-                        "selected": false,
-                        "text": "BatchWriteItem",
-                        "value": "BatchWriteItem"
-                    },
-                    {
-                        "selected": false,
-                        "text": "BatchGetItem",
-                        "value": "BatchGetItem"
-                    }
-                ],
-                "query": "GetItem,PutItem,UpdateItem,DeleteItem,BatchWriteItem,BatchGetItem",
+                "query": "4.11.0",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -5882,38 +5610,6 @@
                 "query": "GetRecords",
                 "skipUrlSync": false,
                 "type": "custom"
-            },
-            {
-                "allValue": ".+",
-                "class": "template_variable_all",
-                "current": {
-                    "selected": true,
-                    "text": [
-                        "All"
-                    ],
-                    "value": [
-                        "$__all"
-                    ]
-                },
-                "datasource": "prometheus",
-                "definition": "",
-                "error": null,
-                "hide": 0,
-                "includeAll": true,
-                "label": "ops",
-                "multi": true,
-                "name": "ops",
-                "options": [],
-                "query": "label_values(scylla_alternator_operation{cluster=~\"$cluster|$\"},op)",
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 3,
-                "tagValuesQuery": "",
-                "tags": [],
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
             },
             {
                 "allValue": null,

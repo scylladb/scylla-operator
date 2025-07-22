@@ -4652,7 +4652,7 @@
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - master</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4662,11 +4662,11 @@
             "type": "text"
         }
     ],
-    "refresh": "5m",
+    "refresh": "",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "2024.2"
+        "2025.3.0"
     ],
     "templating": {
         "list": [
@@ -5116,8 +5116,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2024.2",
-                    "value": "2024.2"
+                    "text": "2025.3.0",
+                    "value": "2025.3.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -5128,11 +5128,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2024.2",
-                        "value": "2024.2"
+                        "text": "2025.3.0",
+                        "value": "2025.3.0"
                     }
                 ],
-                "query": "2024.2",
+                "query": "2025.3.0",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -5140,8 +5140,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.11.0",
-                    "value": "4.11.0"
+                    "text": "master",
+                    "value": "master"
                 },
                 "error": null,
                 "hide": 2,
@@ -5152,11 +5152,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.11.0",
-                        "value": "4.11.0"
+                        "text": "master",
+                        "value": "master"
                     }
                 ],
-                "query": "4.11.0",
+                "query": "master",
                 "skipUrlSync": false,
                 "type": "custom"
             }
@@ -5194,6 +5194,6 @@
     },
     "timezone": "utc",
     "title": "Advanced",
-    "uid": "advanced-2024-2",
+    "uid": "advanced-2025-3-0",
     "version": 5
 }

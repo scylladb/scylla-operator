@@ -8,9 +8,9 @@ operator:
   scyllaDBManagerVersion: "3.5.0@sha256:c38c7f741e46ba5da3914eec9113b615bab779586ba4767605f0a3ebd494bcd2"
   scyllaDBManagerAgentVersion: "3.5.0@sha256:12755969f1b3258572c520aa82c2f18db52287b3dc7055a977072284f234da16"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
-  grafanaImage: "docker.io/grafana/grafana:11.4.3@sha256:95eb8900c1e40e89b3e907094383b1c76c0c166ad5ec85e635de86f114aa7184" # Tracks scylla-monitoring/versions.sh GRAFANA_VERSION
+  grafanaImage: "docker.io/grafana/grafana:12.0.2-security-01@sha256:40e468f95e84cfcb68b1de2e0638f73377b59c3ac566283c8c973697f48deaca" # Tracks scylla-monitoring/versions.sh GRAFANA_VERSION
   grafanaDefaultPlatformDashboard: "scylladb-2025.1/scylla-overview.2025.1.json"
-  prometheusVersion: "v3.1.0" # Tracks scylla-monitoring/versions.sh PROMETHEUS_VERSION
+  prometheusVersion: "v3.5.0" # Tracks scylla-monitoring/versions.sh PROMETHEUS_VERSION
 operatorTests:
   scyllaDBVersions:
     updateFrom: "2025.1.1" # One patch lower than .operator.scyllaDBVersion

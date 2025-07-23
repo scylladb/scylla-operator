@@ -33,7 +33,7 @@ _This procedure is for replacing one dead node. To replace more than one dead no
     ```
 1. Drain node which we would like to replace using. **This command may delete your data from local disks attached to given node!**
     ```bash
-    kubectl drain gke-scylla-demo-default-pool-b4b390a1-6j12 --ignore-daemonsets --delete-local-data
+    kubectl drain gke-scylla-demo-default-pool-b4b390a1-6j12 --ignore-daemonsets --delete-emptydir-data
     ```
 
    Pod which will be replaced should enter the `Pending` state

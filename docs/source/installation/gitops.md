@@ -117,9 +117,9 @@ The following step heavily depends on the platform that you use, the machine typ
 Please review the [NodeConfig](../resources/nodeconfigs.md) and adjust it for your platform!
 :::
 
-:::::{tab-set}
+:::::{tabs}
 
-::::{tab-item} GKE (NVMe)
+::::{group-tab} GKE (NVMe)
 % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
@@ -128,7 +128,7 @@ END_CODE_BLOCK
 """.replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 ::::
 
-::::{tab-item} EKS (NVMe)
+::::{group-tab} EKS (NVMe)
 % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
 BEGIN_CODE_BLOCK
@@ -137,7 +137,7 @@ END_CODE_BLOCK
 """.replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} shell").replace("END_CODE_BLOCK", ":::")}}
 ::::
 
-::::{tab-item} Any platform (Loop devices)
+::::{group-tab} Any platform (Loop devices)
 :::{caution}
 This NodeConfig sets up loop devices instead of NVMe disks and is only intended for development purposes when you don't have the NVMe disks available.
 Do not expect meaningful performance with this setup.
@@ -181,9 +181,9 @@ kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-cs
 :::{include} ../.internal/manager-license-note.md
 :::
 
-:::::{tab-set}
+:::::{tabs}
 
-::::{tab-item} Production (sized)
+::::{group-tab} Production (sized)
 
 % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""
@@ -194,7 +194,7 @@ END_CODE_BLOCK
 
 ::::
 
-::::{tab-item} Development (sized)
+::::{group-tab} Development (sized)
 
 % The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
 {{"""

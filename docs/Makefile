@@ -87,3 +87,10 @@ redirects:
 setup:
 	$(POETRY) install
 .PHONY: setup
+
+verify-poetry:
+	$(POETRY) check --lock --strict
+.PHONY: verify-poetry
+
+verify: verify-poetry
+.PHONY: verify

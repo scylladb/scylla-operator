@@ -618,6 +618,10 @@ verify-monitoring: submodules
 	$(diff) -r '$(tmp_dir)'/ ./assets/monitoring
 .PHONY: verify-monitoring
 
+verify-docs:
+	@$(MAKE) -C ./docs verify
+.PHONY: verify-docs
+
 # $1 - extra flags
 define run-update-docs
 	$(GO) run ./cmd/gen-api-reference/ --templates-dir ./docs/source/api-reference/templates $(1) $(CRD_FILES)
@@ -643,7 +647,7 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-docs
 .PHONY: verify
 
 update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring

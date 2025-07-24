@@ -21,3 +21,11 @@ updates:
   labels:
   - priority/important-longterm
   - kind/dependency-bump
+- package-ecosystem: pip
+  directory: /docs
+  schedule:
+    interval: daily
+    time: '05:00' # UTC
+  allow:
+  - dependency-name: sphinx-scylladb-theme
+  - dependency-name: sphinx-multiversion-scylla

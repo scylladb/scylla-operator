@@ -31,7 +31,7 @@ helm install scylla scylla/scylla --create-namespace --namespace scylla
 This step is optional if you want to use your own certificate. 
 If you don't have one, make sure to not disable autogeneration using Scylla Operator Helm Chart.
 
-First deploy Cert Manager, you can either follow [upsteam instructions](https://cert-manager.io/docs/installation/kubernetes/) or use following command:
+First deploy Cert Manager, you can either follow [upstream instructions](https://cert-manager.io/docs/installation/kubernetes/) or use the following command:
 
 ```console
 kubectl apply -f examples/common/cert-manager.yaml

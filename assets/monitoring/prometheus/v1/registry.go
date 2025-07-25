@@ -4,8 +4,8 @@ import (
 	"embed"
 	_ "embed"
 
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/scylladb/scylla-operator/pkg/assets"
-	monitoringv1 "github.com/scylladb/scylla-operator/pkg/externalapi/monitoring/v1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/util/lazy"

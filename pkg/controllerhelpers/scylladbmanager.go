@@ -16,11 +16,12 @@ import (
 	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
+var httpDefaultTransport = http.DefaultTransport.(*http.Transport).Clone()
+
 func GetScyllaDBManagerClient(_ context.Context, _ *scyllav1alpha1.ScyllaDBManagerClusterRegistration) (*managerclient.Client, error) {
 	url := fmt.Sprintf("http://%s.%s.svc/api/v1", naming.ScyllaManagerServiceName, naming.ScyllaManagerNamespace)
 	managerClient, err := managerclient.NewClient(url, func(httpClient *http.Client) {
-		// FIXME: https://github.com/scylladb/scylla-operator/issues/2693
-		httpClient.Transport = http.DefaultTransport
+		httpClient.Transport = httpDefaultTransport
 		// Limit manager calls by default to a higher bound.
 		// Individual calls can still be further limited using context.
 		// Manager is prone to extremely long calls because it (unfortunately) retries errors internally.

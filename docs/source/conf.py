@@ -3,6 +3,12 @@ from datetime import date
 
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
 
+import os
+import sys
+
+# Add custom extensions
+sys.path.append(os.path.abspath("./_ext"))
+
 # -- General configuration
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -18,6 +24,9 @@ extensions = [
     "sphinx_sitemap",
     "sphinx_design",
     "myst_parser",
+
+    # from ./_ext
+    "myst_multiversion_substitutions",
 ]
 
 # The suffix(es) of source filenames.
@@ -53,19 +62,40 @@ todo_include_todos = True
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution"]
 myst_heading_anchors = 6
 
-# DEPRECATION NOTICE
-# MyST substitutions work counterintuitively with multiversion docs. Versions specified in the main branch are used for all versions.
-# These variables have no effect if set on branches other than master.
-# https://github.com/scylladb/scylla-operator/issues/2795
+# Global substitutions
 myst_substitutions = {
   "productName": "Scylla Operator",
   "repository": "scylladb/scylla-operator",
-  "revision": "master",
   "imageRepository": "docker.io/scylladb/scylla",
-  "imageTag": "2025.1.2",
   "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-  "enterpriseImageTag": "2024.1.12",
-  "agentVersion": "3.5.0",
+}
+
+# Multiversion substitutions, merged with global substitutions but only when given documentation branch is being built.
+myst_multiversion_substitutions = {
+    "master": {
+        "revision": "master",
+        "agentVersion": "3.5.1",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
+    "v1.18": {
+        "revision": "v1.18",
+        "agentVersion": "3.5.1",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
+    "v1.17": {
+        "revision": "v1.17",
+        "agentVersion": "3.5.1",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
+    "v1.16": {
+        "revision": "v1.16",
+        "agentVersion": "3.4.2",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
 }
 
 # -- Options for not found extension

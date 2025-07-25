@@ -115,7 +115,7 @@ spec:
   scyllaDB:
     image: {{imageRepository}}:{{imageTag}}
   scyllaDBManagerAgent:
-    image: docker.io/scylladb/scylla-manager-agent:3.5.1
+    image: docker.io/scylladb/scylla-manager-agent:{{agentVersion}}
   datacenterTemplate:
     placement:
       nodeAffinity:

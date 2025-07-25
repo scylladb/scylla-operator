@@ -139,11 +139,11 @@ Versions of images used in the cluster can be set via `scyllaImage` and `agentIm
 ```yaml
 scyllaImage:
   repository: scylladb/scylla
-  tag: 4.3.0
+  tag: {{ imageTag }}
 
 agentImage:
   repository: scylladb/scylla-manager-agent
-  tag: 2.2.1
+  tag: {{agentVersion}}
 ```
 
 A minimal Scylla cluster can be expressed as:
@@ -192,7 +192,7 @@ To set version of used Scylla Manager you can use `image` field:
 image:
   repository: scylladb
   pullPolicy: IfNotPresent
-  tag: 2.2.1
+  tag: {{agentVersion}}
 ```
 To control how many resources are allocated for Scylla Manager use `resource` field:
 ```yaml

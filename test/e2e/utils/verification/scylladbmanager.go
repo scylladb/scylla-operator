@@ -15,7 +15,7 @@ func VerifyScyllaDBManagerRestoreTaskCompleted(eo o.Gomega, ctx context.Context,
 
 	eo.Expect(restoreProgress.Errors).To(o.BeEmpty())
 	eo.Expect(restoreProgress.Run).NotTo(o.BeNil())
-	eo.Expect(restoreProgress.Run.Status).To(o.Equal(managerclient.TaskStatusDone), "Restore task is not done, status: %q, cause: %q.", taskID, restoreProgress.Run.Status, restoreProgress.Run.Cause)
+	eo.Expect(restoreProgress.Run.Status).To(o.Equal(managerclient.TaskStatusDone), "Restore task %q is not done, status: %q, cause: %q.", taskID, restoreProgress.Run.Status, restoreProgress.Run.Cause)
 }
 
 func VerifyScyllaDBManagerRepairTaskCompleted(eo o.Gomega, ctx context.Context, managerClient *managerclient.Client, clusterID, taskID string) {
@@ -23,7 +23,7 @@ func VerifyScyllaDBManagerRepairTaskCompleted(eo o.Gomega, ctx context.Context, 
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	eo.Expect(repairProgress.Run).NotTo(o.BeNil())
-	eo.Expect(repairProgress.Run.Status).To(o.Equal(managerclient.TaskStatusDone), "Repair task is not done, status: %q, cause: %q.", taskID, repairProgress.Run.Status, repairProgress.Run.Cause)
+	eo.Expect(repairProgress.Run.Status).To(o.Equal(managerclient.TaskStatusDone), "Repair task %q is not done, status: %q, cause: %q.", taskID, repairProgress.Run.Status, repairProgress.Run.Cause)
 }
 
 func VerifyScyllaDBManagerBackupTaskCompleted(eo o.Gomega, ctx context.Context, managerClient *managerclient.Client, clusterID, taskID string) {
@@ -31,5 +31,5 @@ func VerifyScyllaDBManagerBackupTaskCompleted(eo o.Gomega, ctx context.Context, 
 	eo.Expect(err).NotTo(o.HaveOccurred())
 
 	eo.Expect(backupProgress.Run).NotTo(o.BeNil())
-	eo.Expect(backupProgress.Run.Status).To(o.Equal(managerclient.TaskStatusDone), "Backup task is not done, status: %q, cause: %q.", taskID, backupProgress.Run.Status, backupProgress.Run.Cause)
+	eo.Expect(backupProgress.Run.Status).To(o.Equal(managerclient.TaskStatusDone), "Backup task %q is not done, status: %q, cause: %q.", taskID, backupProgress.Run.Status, backupProgress.Run.Cause)
 }

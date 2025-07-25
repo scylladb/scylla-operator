@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: scylla-operator
-  namespace: scylla-operator
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "scylla-operator.labels" . | nindent 4 }}
 spec:

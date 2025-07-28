@@ -547,6 +547,7 @@ func migrateV1BackupTaskSpecToV1Alpha1ScyllaDBManagerTask(sc *scyllav1.ScyllaClu
 			ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
 				Cron:       backupTaskSpec.TaskSpec.SchedulerTaskSpec.Cron,
 				NumRetries: backupTaskSpec.TaskSpec.SchedulerTaskSpec.NumRetries,
+				RetryWait:  backupTaskSpec.TaskSpec.SchedulerTaskSpec.RetryWait,
 			},
 			DC:               backupTaskSpec.DC,
 			Keyspace:         backupTaskSpec.Keyspace,
@@ -584,6 +585,7 @@ func migrateV1RepairTaskSpecToV1Alpha1ScyllaDBManagerTask(sc *scyllav1.ScyllaClu
 			ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
 				Cron:       repairTaskSpec.TaskSpec.SchedulerTaskSpec.Cron,
 				NumRetries: repairTaskSpec.TaskSpec.SchedulerTaskSpec.NumRetries,
+				RetryWait:  repairTaskSpec.TaskSpec.SchedulerTaskSpec.RetryWait,
 			},
 			DC:              repairTaskSpec.DC,
 			Keyspace:        repairTaskSpec.Keyspace,

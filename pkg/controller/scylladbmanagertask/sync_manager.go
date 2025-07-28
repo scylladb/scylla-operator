@@ -483,6 +483,10 @@ func makeScyllaDBManagerClientSchedule(scyllaDBManagerTaskSchedule *scyllav1alph
 		managerClientSchedule.NumRetries = *scyllaDBManagerTaskSchedule.NumRetries
 	}
 
+	if scyllaDBManagerTaskSchedule.RetryWait != nil {
+		managerClientSchedule.RetryWait = scyllaDBManagerTaskSchedule.RetryWait.Duration.String()
+	}
+
 	var errs []error
 	for _, optionOverrideFunc := range overrideOptions {
 		err := optionOverrideFunc(managerClientSchedule)
@@ -732,9 +736,14 @@ func makeScyllaV1TaskStatusAnnotationValue(t *managerclient.TaskListItem) (strin
 }
 
 func newScyllaV1BackupTaskStatus(t *managerclient.TaskListItem) (*scyllav1.BackupTaskStatus, error) {
-	bts := &scyllav1.BackupTaskStatus{}
+	taskStatus, err := newScyllaV1TaskStatus(t)
+	if err != nil {
+		return nil, fmt.Errorf("can't make scyllav1 task status: %w", err)
+	}
 
-	bts.TaskStatus = newScyllaV1TaskStatus(t)
+	bts := &scyllav1.BackupTaskStatus{
+		TaskStatus: *taskStatus,
+	}
 
 	if t.Properties != nil {
 		props := t.Properties.(map[string]interface{})
@@ -747,9 +756,14 @@ func newScyllaV1BackupTaskStatus(t *managerclient.TaskListItem) (*scyllav1.Backu
 }
 
 func newScyllaV1RepairTaskStatus(t *managerclient.TaskListItem) (*scyllav1.RepairTaskStatus, error) {
-	rts := &scyllav1.RepairTaskStatus{}
+	taskStatus, err := newScyllaV1TaskStatus(t)
+	if err != nil {
+		return nil, fmt.Errorf("can't make scyllav1 task status: %w", err)
+	}
 
-	rts.TaskStatus = newScyllaV1TaskStatus(t)
+	rts := &scyllav1.RepairTaskStatus{
+		TaskStatus: *taskStatus,
+	}
 
 	if t.Properties != nil {
 		props := t.Properties.(map[string]interface{})
@@ -761,25 +775,42 @@ func newScyllaV1RepairTaskStatus(t *managerclient.TaskListItem) (*scyllav1.Repai
 	return rts, nil
 }
 
-func newScyllaV1TaskStatus(t *managerclient.TaskListItem) scyllav1.TaskStatus {
-	taskStatus := scyllav1.TaskStatus{
-		SchedulerTaskStatus: scyllav1.SchedulerTaskStatus{},
+func newScyllaV1TaskStatus(t *managerclient.TaskListItem) (*scyllav1.TaskStatus, error) {
+	schedulerTaskStatus, err := newScyllaV1SchedulerTaskStatus(t.Schedule)
+	if err != nil {
+		return nil, fmt.Errorf("can't make scyllav1 scheduler task status: %w", err)
+	}
+
+	taskStatus := &scyllav1.TaskStatus{
+		SchedulerTaskStatus: *schedulerTaskStatus,
 		Name:                t.Name,
 		Labels:              maps.Clone(t.Labels),
 		ID:                  pointer.Ptr(t.ID),
 	}
-
-	taskStatus.SchedulerTaskStatus = newScyllaV1SchedulerTaskStatus(t.Schedule)
-
-	return taskStatus
+	return taskStatus, nil
 }
 
-func newScyllaV1SchedulerTaskStatus(schedule *managerclient.Schedule) scyllav1.SchedulerTaskStatus {
-	return scyllav1.SchedulerTaskStatus{
+func newScyllaV1SchedulerTaskStatus(schedule *managerclient.Schedule) (*scyllav1.SchedulerTaskStatus, error) {
+	var retryWait *metav1.Duration
+	if len(schedule.RetryWait) > 0 {
+		retryWaitDuration, err := time.ParseDuration(schedule.RetryWait)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse retry wait: %w", err)
+		}
+
+		retryWait = &metav1.Duration{
+			Duration: retryWaitDuration,
+		}
+	}
+
+	schedulerTaskStatus := &scyllav1.SchedulerTaskStatus{
 		StartDate:  pointer.Ptr(schedule.StartDate.String()),
 		Interval:   pointer.Ptr(schedule.Interval),
 		NumRetries: pointer.Ptr(schedule.NumRetries),
+		RetryWait:  retryWait,
 		Cron:       pointer.Ptr(schedule.Cron),
 		Timezone:   pointer.Ptr(schedule.Timezone),
 	}
+
+	return schedulerTaskStatus, nil
 }

@@ -301,6 +301,19 @@ func withScheduleStartDateNowSyntaxRetention(existingStartDate strfmt.DateTime) 
 }
 
 func makeScyllaDBManagerClientTask(smt *scyllav1alpha1.ScyllaDBManagerTask, clusterID string, overrideOptions ...scyllaDBManagerClientTaskOverrideOption) (*managerclient.Task, error) {
+	getManagedHash := func(t *managerclient.Task) (string, error) {
+		return hashutil.HashObjects(t)
+	}
+
+	requiredManagerTask, err := makeScyllaDBManagerClientTaskWithManagedHashFunc(smt, clusterID, getManagedHash, overrideOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("can't make ScyllaDB Manager client task without operator metadata: %w", err)
+	}
+
+	return requiredManagerTask, nil
+}
+
+func makeScyllaDBManagerClientTaskWithManagedHashFunc(smt *scyllav1alpha1.ScyllaDBManagerTask, clusterID string, getManagedHash func(*managerclient.Task) (string, error), overrideOptions ...scyllaDBManagerClientTaskOverrideOption) (*managerclient.Task, error) {
 	var err error
 	var managerClientTaskType string
 
@@ -385,7 +398,7 @@ func makeScyllaDBManagerClientTask(smt *scyllav1alpha1.ScyllaDBManagerTask, clus
 		optionOverrideFunc(smt, requiredManagerTask)
 	}
 
-	managedHash, err := hashutil.HashObjects(requiredManagerTask)
+	managedHash, err := getManagedHash(requiredManagerTask)
 	if err != nil {
 		return nil, fmt.Errorf("can't calculate managed hash: %w", err)
 	}

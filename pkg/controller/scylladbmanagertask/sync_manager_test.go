@@ -31,78 +31,6 @@ var (
 func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 	t.Parallel()
 
-	newBackupScyllaDBManagerTaskWithScyllaDBDatacenterRef := func() *scyllav1alpha1.ScyllaDBManagerTask {
-		return &scyllav1alpha1.ScyllaDBManagerTask{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "backup",
-				Namespace: "scylla",
-				UID:       "uid",
-			},
-			Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
-				ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
-					Kind: scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
-					Name: "basic",
-				},
-				Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
-				Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
-					ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
-						Cron:       pointer.Ptr("0 23 * * SAT"),
-						NumRetries: pointer.Ptr[int64](3),
-						StartDate:  pointer.Ptr(metav1.NewTime(validTime)),
-					},
-					DC:       []string{"dc1", "!otherdc*"},
-					Keyspace: []string{"keyspace", "!keyspace.table_prefix_*"},
-					Location: []string{"gcs:test"},
-					RateLimit: []string{
-						"dc1:1",
-						"2",
-					},
-					Retention: pointer.Ptr[int64](3),
-					SnapshotParallel: []string{
-						"dc1:2",
-						"3",
-					},
-					UploadParallel: []string{
-						"dc1:3",
-						"4",
-					},
-				},
-			},
-		}
-	}
-
-	newRepairScyllaDBManagerTaskWithScyllaDBDatacenterRef := func() *scyllav1alpha1.ScyllaDBManagerTask {
-		return &scyllav1alpha1.ScyllaDBManagerTask{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "repair",
-				Namespace: "scylla",
-				UID:       "uid",
-			},
-			Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
-				ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
-					Kind: scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
-					Name: "basic",
-				},
-				Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
-				Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
-					ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
-						Cron:       pointer.Ptr("0 23 * * SAT"),
-						NumRetries: pointer.Ptr[int64](3),
-						StartDate:  pointer.Ptr(metav1.NewTime(validTime)),
-					},
-					DC:                  []string{"dc1", "!otherdc*"},
-					Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
-					FailFast:            pointer.Ptr(true),
-					Host:                pointer.Ptr("10.0.0.1"),
-					IgnoreDownHosts:     pointer.Ptr(false),
-					Intensity:           pointer.Ptr[int64](1),
-					Parallel:            pointer.Ptr[int64](1),
-					SmallTableThreshold: pointer.Ptr(resource.MustParse("1Gi")),
-				},
-			},
-		}
-	}
-
 	tt := []struct {
 		name            string
 		smt             *scyllav1alpha1.ScyllaDBManagerTask
@@ -112,7 +40,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 		expectedErr     error
 	}{
 		{
-			name:            "backup, sdc ref",
+			name:            "basic backup",
 			smt:             newBackupScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
 			clusterID:       "cluster-id",
 			overrideOptions: nil,
@@ -122,6 +50,117 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				ID:        "",
 				Labels: map[string]string{
 					"scylla-operator.scylladb.com/managed-hash": "p2WwP2A/kXBvlMZMordNbf2iKDUvZpSBtUViRMA/s8t+jOAgpZtTevJ8LfudtdfGUz+6CVoZYJJVnxsVT5rXQg==",
+					"scylla-operator.scylladb.com/owner-uid":    "uid",
+				},
+				Name: "backup",
+				Properties: map[string]any{
+					"dc":                []string{"dc1", "!otherdc*"},
+					"keyspace":          []string{"keyspace", "!keyspace.table_prefix_*"},
+					"location":          []string{"gcs:test"},
+					"rate_limit":        []string{"dc1:1", "2"},
+					"retention":         pointer.Ptr[int64](3),
+					"snapshot_parallel": []string{"dc1:2", "3"},
+					"upload_parallel":   []string{"dc1:3", "4"},
+				},
+				Schedule: &managerclient.Schedule{
+					Cron:       "0 23 * * SAT",
+					Interval:   "",
+					NumRetries: 3,
+					RetryWait:  "",
+					StartDate:  pointer.Ptr(strfmt.DateTime(validTime)),
+					Timezone:   "",
+					Window:     nil,
+				},
+				Tags: nil,
+				Type: "backup",
+			},
+			expectedErr: nil,
+		},
+		{
+			name:            "basic repair",
+			smt:             newRepairScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
+			clusterID:       "cluster-id",
+			overrideOptions: nil,
+			expected: &managerclient.Task{
+				ClusterID: "cluster-id",
+				Enabled:   true,
+				ID:        "",
+				Labels: map[string]string{
+					"scylla-operator.scylladb.com/managed-hash": "JAEIVbaryJJMMKzZgsuM8621a7pfe3X3rTT/CuIw9rjF4i+w3zagkB+uRMypYYofhmlWPYLsu5eKJG/hf88FMA==",
+					"scylla-operator.scylladb.com/owner-uid":    "uid",
+				},
+				Name: "repair",
+				Properties: map[string]any{
+					"dc":                    []string{"dc1", "!otherdc*"},
+					"keyspace":              []string{"keyspace", "!keyspace.table_prefix_*"},
+					"fail_fast":             true,
+					"host":                  "10.0.0.1",
+					"ignore_down_hosts":     false,
+					"intensity":             int64(1),
+					"parallel":              int64(1),
+					"small_table_threshold": int64(1073741824),
+				},
+				Schedule: &managerclient.Schedule{
+					Cron:       "0 23 * * SAT",
+					Interval:   "",
+					NumRetries: 3,
+					RetryWait:  "",
+					StartDate:  pointer.Ptr(strfmt.DateTime(validTime)),
+					Timezone:   "",
+					Window:     nil,
+				},
+				Tags: nil,
+				Type: "repair",
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := makeScyllaDBManagerClientTask(tc.smt, tc.clusterID, tc.overrideOptions...)
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ:\n%s\n", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
+			}
+
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("expected and got ScyllaDB Manager client tasks differ:\n%s\n", cmp.Diff(tc.expected, got))
+			}
+		})
+	}
+}
+
+func Test_makeRequiredScyllaDBManagerClientTaskWithManagedHashFunc(t *testing.T) {
+	t.Parallel()
+
+	const mockManagedHash = "mock-managed-hash"
+	getMockManagedHash := func(_ *managerclient.Task) (string, error) {
+		return mockManagedHash, nil
+	}
+
+	tt := []struct {
+		name            string
+		smt             *scyllav1alpha1.ScyllaDBManagerTask
+		clusterID       string
+		managedHashFunc func(*managerclient.Task) (string, error)
+		overrideOptions []scyllaDBManagerClientTaskOverrideOption
+		expected        *managerclient.Task
+		expectedErr     error
+	}{
+		{
+			name:            "backup, sdc ref",
+			smt:             newBackupScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
+			overrideOptions: nil,
+			expected: &managerclient.Task{
+				ClusterID: "cluster-id",
+				Enabled:   true,
+				ID:        "",
+				Labels: map[string]string{
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -160,13 +199,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "T5G8Gq6d57eDIXsPFZ+dwmW4nlU23DRApSj0alnkhsMs500IBuOOmj7EGUxaMtrcmMqGKOUHCUufq4HULj5rfQ==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -189,13 +229,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "NvWFWX5rjnaNd+DUOGXY51GXeGti2DN3MqYPfLS6xYc/2Nd2A8wyaDDyZMSXQHBLJ9BFGPdxJsn7iikMC2WLKA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "override",
@@ -232,13 +273,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "6HnivVqLpVb16NDTYjM+RzWHeqGo1ujZxzd6Qrxy/cpmU7fvRO6NvVP6zJ/24b85knGJYL3nprGJZz6APsgb8w==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -275,13 +317,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "GhcaxI4G+qbAK0XwbKsc4u+NwaDThEG1JbI4WWAyhejDAbdv160RicxioPyeieR+gl0G6R+fGUHOjVYx9gYREw==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -318,6 +361,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected:        nil,
 			expectedErr:     fmt.Errorf("can't make ScyllaDB Manager client schedule: %w", apimachineryutilerrors.NewAggregate([]error{fmt.Errorf("can't parse start date: %w", fmt.Errorf("can't parse duration: %w", errors.New("time: invalid duration +invalid")))})),
@@ -331,7 +375,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -347,7 +392,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -356,7 +402,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "4UTdVpY6eSf5DWFXRAYX0LiCxQBSiGV1qjC15OxNl48QkVby2U/+PIUwLvwE58DbV8GcMsitfH875MO6ESDCtA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -392,7 +438,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -401,7 +448,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "4UTdVpY6eSf5DWFXRAYX0LiCxQBSiGV1qjC15OxNl48QkVby2U/+PIUwLvwE58DbV8GcMsitfH875MO6ESDCtA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -437,7 +484,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -446,7 +494,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "GhcaxI4G+qbAK0XwbKsc4u+NwaDThEG1JbI4WWAyhejDAbdv160RicxioPyeieR+gl0G6R+fGUHOjVYx9gYREw==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -474,9 +522,10 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:      "backup, sdc ref, without startDate override annotation and with start date retention override option",
-			smt:       newBackupScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
-			clusterID: "cluster-id",
+			name:            "backup, sdc ref, without startDate override annotation and with start date retention override option",
+			smt:             newBackupScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -485,7 +534,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "p2WwP2A/kXBvlMZMordNbf2iKDUvZpSBtUViRMA/s8t+jOAgpZtTevJ8LfudtdfGUz+6CVoZYJJVnxsVT5rXQg==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -521,7 +570,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -530,7 +580,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "SbJqyEOwN8IFq0DEOXcvNwViISRjQu4PDhRppECp6LfFT8kR4SFTLTk4wuY1UTs6GLYcil3bVbHUzewt4XVa3g==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "backup",
@@ -561,13 +611,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 			name:            "repair, sdc ref",
 			smt:             newRepairScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "JAEIVbaryJJMMKzZgsuM8621a7pfe3X3rTT/CuIw9rjF4i+w3zagkB+uRMypYYofhmlWPYLsu5eKJG/hf88FMA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -605,13 +656,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "79j/e7ztL7q+/SWGxBRj63WOxorQUF3eMsEywS1j9i8cmMEUoXj2lClfmBAruNAIsFBIHBCVjZ3KK6bUO3Q2rg==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name:       "repair",
@@ -632,13 +684,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "ZKEvVFcGsPTIRpeclYVsJ2DPmLTHxENuCVftSjycR7NXgs+LKYnOH7S8fe2YnH5X4rH030UxrabVTpeLhDFiPQ==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "override",
@@ -676,13 +729,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "4ZOInUPa3E7PkVB2fgBqesC6W1sppwvfwS9YMg3Whem+omr7NxsnA/aKAEzXryVGU6VRox1vBccnE4VWxeT8vA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -720,6 +774,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected:        nil,
 			expectedErr:     fmt.Errorf("can't make ScyllaDB Manager client repair task properties: %w", apimachineryutilerrors.NewAggregate([]error{fmt.Errorf("can't parse intensity override: %w", &strconv.NumError{Func: "ParseFloat", Num: "invalid", Err: strconv.ErrSyntax})})),
@@ -734,13 +789,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "DcZlMnmOpZHy0y+370hOkQMe6eefjUYKd+jtWW2ty+JIxxHygvgEboifad3XHlbL4CfrvYEDVEGLh1169ErVTQ==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -778,13 +834,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "4vrW/tV5b9w3ubYCpPoojR/O+yblKq/xe1GMsKi2Srx+K+ewrhN4Eott+HqwXAbpG/9OuxKQ78WfgbdD4/McOw==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -822,6 +879,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected:        nil,
 			expectedErr:     fmt.Errorf("can't make ScyllaDB Manager client schedule: %w", apimachineryutilerrors.NewAggregate([]error{fmt.Errorf("can't parse start date: %w", fmt.Errorf("can't parse duration: %w", errors.New("time: invalid duration +invalid")))})),
@@ -835,7 +893,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -851,7 +910,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -860,7 +920,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "iYCYfjNAi5WuDhmmXmfC1pf8w+INQddwkMvMjlD/Np8FG7A6XWYiUHzoC/TWH5dqM2N4G3q0b8Uwh2FJ/I+bow==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -897,7 +957,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -906,7 +967,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "iYCYfjNAi5WuDhmmXmfC1pf8w+INQddwkMvMjlD/Np8FG7A6XWYiUHzoC/TWH5dqM2N4G3q0b8Uwh2FJ/I+bow==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -943,7 +1004,8 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 
 				return smt
 			}(),
-			clusterID: "cluster-id",
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -952,7 +1014,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "4vrW/tV5b9w3ubYCpPoojR/O+yblKq/xe1GMsKi2Srx+K+ewrhN4Eott+HqwXAbpG/9OuxKQ78WfgbdD4/McOw==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -981,9 +1043,10 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:      "repair, sdc ref, without startDate override annotation and with start date retention override option",
-			smt:       newRepairScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
-			clusterID: "cluster-id",
+			name:            "repair, sdc ref, without startDate override annotation and with start date retention override option",
+			smt:             newRepairScyllaDBManagerTaskWithScyllaDBDatacenterRef(),
+			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: []scyllaDBManagerClientTaskOverrideOption{
 				withScheduleStartDateNowSyntaxRetention(helpers.Must(strfmt.ParseDateTime("2021-01-01T11:11:11Z"))),
 			},
@@ -992,7 +1055,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "JAEIVbaryJJMMKzZgsuM8621a7pfe3X3rTT/CuIw9rjF4i+w3zagkB+uRMypYYofhmlWPYLsu5eKJG/hf88FMA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -1030,13 +1093,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "fbDfLMRbkNlk4PpuHrYa7ODYBOC2QHK1RboaZarFVWhpd/3+0qixq8DFOivGRzGsHUbqIrt7qCg3wS6+VvBGGA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -1074,13 +1138,14 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected: &managerclient.Task{
 				ClusterID: "cluster-id",
 				Enabled:   true,
 				ID:        "",
 				Labels: map[string]string{
-					"scylla-operator.scylladb.com/managed-hash": "/BndrPEvueC5dCJumN+0mOFp6SbPIdOV0ja7qLtEFAP/BObXz2K8qSy0D9diHa2MGC1H2AKzcZwJSASrpboarA==",
+					"scylla-operator.scylladb.com/managed-hash": mockManagedHash,
 					"scylla-operator.scylladb.com/owner-uid":    "uid",
 				},
 				Name: "repair",
@@ -1118,6 +1183,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				return smt
 			}(),
 			clusterID:       "cluster-id",
+			managedHashFunc: getMockManagedHash,
 			overrideOptions: nil,
 			expected:        nil,
 			expectedErr:     fmt.Errorf("can't make ScyllaDB Manager client repair task properties: %w", apimachineryutilerrors.NewAggregate([]error{fmt.Errorf("can't parse small table threshold override: %w", fmt.Errorf("invalid byte size string %q, it must be real number with unit suffix %q", "invalid size", "B,KiB,MiB,GiB,TiB,PiB,EiB"))})),
@@ -1128,7 +1194,7 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := makeScyllaDBManagerClientTask(tc.smt, tc.clusterID, tc.overrideOptions...)
+			got, err := makeScyllaDBManagerClientTaskWithManagedHashFunc(tc.smt, tc.clusterID, tc.managedHashFunc, tc.overrideOptions...)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected and got errors differ:\n%s\n", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
 			}
@@ -1137,6 +1203,78 @@ func Test_makeRequiredScyllaDBManagerClientTask(t *testing.T) {
 				t.Errorf("expected and got ScyllaDB Manager client tasks differ:\n%s\n", cmp.Diff(tc.expected, got))
 			}
 		})
+	}
+}
+
+func newBackupScyllaDBManagerTaskWithScyllaDBDatacenterRef() *scyllav1alpha1.ScyllaDBManagerTask {
+	return &scyllav1alpha1.ScyllaDBManagerTask{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "backup",
+			Namespace: "scylla",
+			UID:       "uid",
+		},
+		Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+			ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+				Kind: scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
+				Name: "basic",
+			},
+			Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
+			Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
+				ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+					Cron:       pointer.Ptr("0 23 * * SAT"),
+					NumRetries: pointer.Ptr[int64](3),
+					StartDate:  pointer.Ptr(metav1.NewTime(validTime)),
+				},
+				DC:       []string{"dc1", "!otherdc*"},
+				Keyspace: []string{"keyspace", "!keyspace.table_prefix_*"},
+				Location: []string{"gcs:test"},
+				RateLimit: []string{
+					"dc1:1",
+					"2",
+				},
+				Retention: pointer.Ptr[int64](3),
+				SnapshotParallel: []string{
+					"dc1:2",
+					"3",
+				},
+				UploadParallel: []string{
+					"dc1:3",
+					"4",
+				},
+			},
+		},
+	}
+}
+
+func newRepairScyllaDBManagerTaskWithScyllaDBDatacenterRef() *scyllav1alpha1.ScyllaDBManagerTask {
+	return &scyllav1alpha1.ScyllaDBManagerTask{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "repair",
+			Namespace: "scylla",
+			UID:       "uid",
+		},
+		Spec: scyllav1alpha1.ScyllaDBManagerTaskSpec{
+			ScyllaDBClusterRef: scyllav1alpha1.LocalScyllaDBReference{
+				Kind: scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
+				Name: "basic",
+			},
+			Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
+			Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
+				ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
+					Cron:       pointer.Ptr("0 23 * * SAT"),
+					NumRetries: pointer.Ptr[int64](3),
+					StartDate:  pointer.Ptr(metav1.NewTime(validTime)),
+				},
+				DC:                  []string{"dc1", "!otherdc*"},
+				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
+				FailFast:            pointer.Ptr(true),
+				Host:                pointer.Ptr("10.0.0.1"),
+				IgnoreDownHosts:     pointer.Ptr(false),
+				Intensity:           pointer.Ptr[int64](1),
+				Parallel:            pointer.Ptr[int64](1),
+				SmallTableThreshold: pointer.Ptr(resource.MustParse("1Gi")),
+			},
+		},
 	}
 }
 

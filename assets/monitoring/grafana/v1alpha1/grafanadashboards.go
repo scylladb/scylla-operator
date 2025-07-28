@@ -9,18 +9,10 @@ import (
 	"io/fs"
 	"path/filepath"
 	"regexp"
-	"slices"
 )
 
 var (
 	grafanaDashboardsFileRegex = regexp.MustCompile(`^[^/]+\.json$`)
-
-	// FIXME: remove the exclusions and fix https://github.com/scylladb/scylla-operator/issues/2822
-	// before supporting ScyllaDB 2025.3.
-	platformDashboardsToExclude = []string{
-		"scylladb-2025.3.0",
-		"scylladb-2025.3",
-	}
 )
 
 func gzipMapData(uncompressedMap map[string]string) (map[string]string, error) {
@@ -68,13 +60,6 @@ func NewGrafanaDashboardsFromFS(filesystem embed.FS, root string) (GrafanaDashbo
 	grafanaDashboardsFoldersMap := GrafanaDashboardsFoldersMap{}
 	for _, e := range topEntries {
 		if !e.IsDir() {
-			continue
-		}
-
-		// Exclude platform dashboards that are known to cause https://github.com/scylladb/scylla-operator/issues/2822.
-		// TODO: get rid of this exclusion once the root cause is fixed.
-		directoryName := filepath.Base(e.Name())
-		if slices.Contains(platformDashboardsToExclude, directoryName) {
 			continue
 		}
 

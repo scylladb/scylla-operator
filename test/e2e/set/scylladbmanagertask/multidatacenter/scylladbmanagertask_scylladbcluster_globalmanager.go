@@ -79,7 +79,10 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 				Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
 				Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
 					ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
-						NumRetries: pointer.Ptr[int64](1),
+						NumRetries: pointer.Ptr[int64](utils.ScyllaDBManagerTaskNumRetries),
+						RetryWait: &metav1.Duration{
+							Duration: utils.ScyllaDBManagerTaskRetryWait,
+						},
 					},
 					Parallel: pointer.Ptr[int64](2),
 				},
@@ -164,7 +167,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		framework.By("Waiting for the repair task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(5*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerMultiDatacenterTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, managerClusterID, managerTask.ID).
 			Should(o.Succeed())

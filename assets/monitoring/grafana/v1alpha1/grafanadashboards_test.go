@@ -23,13 +23,6 @@ func TestNewGrafanaDashboardsFromFS(t *testing.T) {
 			validateFunc: func(t *testing.T, dfs GrafanaDashboardsFoldersMap) {
 				t.Helper()
 
-				// TODO: get rid of this once the root cause is fixed (https://github.com/scylladb/scylla-operator/issues/2822).
-				for _, v := range platformDashboardsToExclude {
-					if _, ok := dfs[v]; ok {
-						t.Errorf("expected to not find %s platform dashboards as we explicitly exclude them", v)
-					}
-				}
-
 				if len(dfs) == 0 {
 					t.Errorf("no platform dashboards found")
 				}

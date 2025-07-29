@@ -3,7 +3,7 @@
 ## Disclaimer
 
 The following commands reference manifests that come from the same repository as the source code is being built from.
-This means we can't have a pinned reference to the latest release as that is a [chicken-egg problem](https://en.wikipedia.org/wiki/Chicken_or_the_egg). Therefore, we use a rolling tag for the particular branch in our manifests.
+This means we can't have a pinned reference to the latest release as that is a [chicken-egg problem](https://en.wikipedia.org/wiki/Chicken_or_the_egg). Therefore, we use a rolling tag (e.g., `{major}.{minor}` or `latest`) for the particular branch in our manifests.
 :::{caution}
 For production deployment, you should always replace the {{productName}} image in all the manifests that contain it with a stable (full version) reference.
 We'd encourage you to use a sha reference, although using full-version tags is also fine.

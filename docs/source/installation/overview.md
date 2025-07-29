@@ -102,7 +102,4 @@ For details, please see the [dedicated section describing the deployment using H
 
 ## Upgrades
 
-{{productName}} supports N+1 upgrades only.
-That means to you can only update by 1 minor version at the time and wait for it to successfully roll out and then update all ScyllaClusters that also run using the image that's being updated. ({{productName}} injects it as a sidecar to help run and manage ScyllaDB.)
-
-We value the stability of our APIs and all API changes are backwards compatible.
+Please see the [dedicated section describing the upgrade process](./upgrade.md).

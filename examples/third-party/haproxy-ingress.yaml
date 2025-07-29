@@ -12,6 +12,9 @@ metadata:
   name: haproxy-ingress
 
 ---
+# Sources:
+# https://github.com/haproxytech/kubernetes-ingress/blob/v1.10.16/deploy/haproxy-ingress.yaml
+# https://github.com/haproxytech/kubernetes-ingress/blob/v1.10.16/documentation/gateway-api.md
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -65,6 +68,23 @@ rules:
   - core.haproxy.org
   resources:
   - '*'
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - "discovery.k8s.io"
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - customresourcedefinitions
   verbs:
   - get
   - list
@@ -337,7 +357,7 @@ spec:
       serviceAccountName: haproxy-ingress
       containers:
       - name: haproxy-ingress
-        image: docker.io/haproxytech/kubernetes-ingress:1.10.1@sha256:39eb1a1443e42dc4dc9883bbc764b21f7c7d507af277656551af39ff3faf7635
+        image: docker.io/haproxytech/kubernetes-ingress:1.10.16@sha256:30a51796be80f987a59b5dfc520b7955fe30eee9a411a05daff3157a1c137a25
         args:
         - --disable-ipv6
         - --ipv4-bind-address=0.0.0.0

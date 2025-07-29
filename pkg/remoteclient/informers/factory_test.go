@@ -176,7 +176,8 @@ func TestDynamicSharedInformerFactory_EventHandlers(t *testing.T) {
 func TestDynamicSharedInformerFactory_EventHandles_MultipleClusters(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	const testTimeout = 20 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
 	testObject := newPod("ns", "name", "foo")
@@ -241,6 +242,11 @@ func TestDynamicSharedInformerFactory_EventHandles_MultipleClusters(t *testing.T
 		},
 	}
 
+	// Set chDrainingTimeout to be a bit less than the total test timeout divided by the number of test cases to ensure
+	// we still have time left for other operations to complete.
+	const timeReservedForOtherOperations = time.Second * 10
+	chDrainingTimeout := time.Duration(int(testTimeout-timeReservedForOtherOperations) / len(tss))
+
 	for i, ts := range tss {
 		if err := remoteClient.UpdateCluster(ts.cluster, nil); err != nil {
 			t.Fatal(err)
@@ -272,7 +278,7 @@ func TestDynamicSharedInformerFactory_EventHandles_MultipleClusters(t *testing.T
 			t.Error(err)
 		}
 
-		observedObjects := drainChannel(ctx, informerUpdateObjCh, time.Second)
+		observedObjects := drainChannel(ctx, informerUpdateObjCh, chDrainingTimeout)
 		if !equality.Semantic.DeepEqual(ts.expectedInformerObjects, observedObjects) {
 			t.Fatalf("expected %v, got: %v, diff: %s", ts.expectedInformerObjects, observedObjects, cmp.Diff(ts.expectedInformerObjects, observedObjects))
 		}

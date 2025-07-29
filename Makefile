@@ -51,10 +51,9 @@ CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
 
 api_groups :=$(patsubst %/,%,$(wildcard ./pkg/api/*/))
-external_api_groups :=$(patsubst %/.,%,$(wildcard ./pkg/externalapi/*/.))
 nonrest_api_groups :=$(patsubst %/.,%,$(wildcard ./pkg/scylla/api/*/.))
 
-api_package_dirs :=$(api_groups) $(external_api_groups)
+api_package_dirs :=$(api_groups)
 api_packages =$(call expand_go_packages_with_spaces,$(addsuffix /...,$(api_package_dirs)))
 
 HELM ?=helm
@@ -282,9 +281,8 @@ define run-client-generators
 endef
 
 define run-update-codegen
-	$(call run-deepcopy-gen,$(addsuffix /...,$(api_groups) $(nonrest_api_groups) $(external_api_groups)))
+	$(call run-deepcopy-gen,$(addsuffix /...,$(api_groups) $(nonrest_api_groups)))
 	$(foreach group,$(api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_spaces,$(group)/...),pkg/client))
-	$(foreach group,$(external_api_groups),$(call run-client-generators,$(notdir $(group)),$(call expand_go_packages_with_spaces,$(group)/...),pkg/externalclient))
 
 endef
 
@@ -304,15 +302,13 @@ verify-codegen:
 	cp -R -H ./ "$(tmp_dir)/original"
 
 	cp -R -H ./ "$(tmp_dir)/generated"
-	find $(foreach group,$(api_groups) $(nonrest_api_groups) $(external_api_groups),"$(tmp_dir)/generated/$(group)") -name 'zz_generated.deepcopy.go' -delete
+	find $(foreach group,$(api_groups) $(nonrest_api_groups),"$(tmp_dir)/generated/$(group)") -name 'zz_generated.deepcopy.go' -delete
 	$(RM) -r "$(tmp_dir)/generated/pkg/client"
-	$(RM) -r "$(tmp_dir)/generated/pkg/externalclient"
 
 	+$(MAKE) -C "$(tmp_dir)/generated" update-codegen
 
-	$(foreach group,$(api_groups) $(nonrest_api_groups) $(external_api_groups),$(call verify-group-deepcopy-gen,"$(tmp_dir)/original/$(group)","$(tmp_dir)/generated/$(group)"))
+	$(foreach group,$(api_groups) $(nonrest_api_groups),$(call verify-group-deepcopy-gen,"$(tmp_dir)/original/$(group)","$(tmp_dir)/generated/$(group)"))
 	$(diff) -r "$(tmp_dir)/"{original,generated}/pkg/client
-	$(diff) -r "$(tmp_dir)/"{original,generated}/pkg/externalclient
 
 .PHONY: verify-codegen
 

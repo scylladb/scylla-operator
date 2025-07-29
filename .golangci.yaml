@@ -29,6 +29,8 @@ linters:
           alias: metav1validation
         - pkg: github.com/scylladb/scylla-operator/pkg/helpers/slices
           alias: oslices
+        - pkg: github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1
+          alias: monitoringv1
 formatters:
   enable:
     - gofmt

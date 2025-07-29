@@ -130,6 +130,9 @@ object
    * - retention
      - integer
      - retention specifies the number of backups to store.
+   * - retryWait
+     - string
+     - retryWait specifies the initial exponential backoff duration for task retries. For instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`. If not set, the default values is left to ScyllaDB Manager to decide.
    * - snapshotParallel
      - array (string)
      - snapshotParallel specifies a list of snapshot parallelism limits in the following format:  `[<dc>:]<limit>`. `<dc>:` is optional and allows for specifying different limits in selected datacenters. If `<dc>:` is not set, the limit is global. For instance, `[]string{"dc1:2", "5"}` corresponds to two parallel nodes in `dc1` datacenter and five parallel nodes in the other datacenters.
@@ -188,6 +191,9 @@ object
    * - parallel
      - integer
      - parallel specifies the maximum number of ScyllaDB repair jobs that can run at the same time (on different token ranges and replicas). Each node can take part in at most one repair at any given moment. By default, or when set to zero, the maximum possible parallelism is used. The maximal effective parallelism depends on keyspace replication strategy and cluster topology. When set to a value greater than the maximum supported by the node, parallel is capped at the maximum supported value. Refer to repair documentation for details.
+   * - retryWait
+     - string
+     - retryWait specifies the initial exponential backoff duration for task retries. For instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`. If not set, the default values is left to ScyllaDB Manager to decide.
    * - smallTableThreshold
      - 
      - smallTableThreshold enables small table optimization for tables of size lower than the given threshold.

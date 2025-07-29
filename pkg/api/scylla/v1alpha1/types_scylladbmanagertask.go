@@ -24,6 +24,12 @@ type ScyllaDBManagerTaskSchedule struct {
 	// +optional
 	NumRetries *int64 `json:"numRetries,omitempty"`
 
+	// retryWait specifies the initial exponential backoff duration for task retries.
+	// For instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`.
+	// If not set, the default values is left to ScyllaDB Manager to decide.
+	// +optional
+	RetryWait *metav1.Duration `json:"retryWait,omitempty"`
+
 	// startDate specifies the start date of the task.
 	// It is represented in RFC3339 form and is in UTC.
 	// If not set, the task is started immediately.

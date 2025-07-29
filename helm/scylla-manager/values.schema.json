@@ -199,6 +199,10 @@
                 "format": "int64",
                 "type": "integer"
               },
+              "retryWait": {
+                "description": "retryWait specifies the initial exponential backoff duration for task retries.\nFor instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`.\nIf not set, the default values is left to ScyllaDB Manager to decide.",
+                "type": "string"
+              },
               "snapshotParallel": {
                 "description": "snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>.\nThe <dc>: part is optional and allows for specifying different limits in selected datacenters.\nIf The <dc>: part is not set, the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1)\nand n nodes in all the other datacenters.",
                 "items": {
@@ -546,6 +550,10 @@
                 "description": "parallel is the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).\nEach node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used.\nThe effective parallelism depends on a keyspace replication factor (RF) and the number of nodes.\nThe formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.",
                 "format": "int64",
                 "type": "integer"
+              },
+              "retryWait": {
+                "description": "retryWait specifies the initial exponential backoff duration for task retries.\nFor instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`.\nIf not set, the default values is left to ScyllaDB Manager to decide.",
+                "type": "string"
               },
               "smallTableThreshold": {
                 "default": "1GiB",

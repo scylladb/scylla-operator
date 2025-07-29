@@ -2290,6 +2290,11 @@ func (in *ScyllaDBManagerTaskSchedule) DeepCopyInto(out *ScyllaDBManagerTaskSche
 		*out = new(int64)
 		**out = **in
 	}
+	if in.RetryWait != nil {
+		in, out := &in.RetryWait, &out.RetryWait
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	if in.StartDate != nil {
 		in, out := &in.StartDate, &out.StartDate
 		*out = (*in).DeepCopy()

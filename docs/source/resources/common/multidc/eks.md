@@ -101,7 +101,7 @@ To be able to route the traffic between the two VPC networks, you need to create
 
 ### Create VPC peering
 
-Refer to [Create a VPC peering connection](https://docs.aws.amazon.com/vpc/latest/peering/create-vpc-peering-connection.html#create-vpc-peering-connection-local) in AWS documentation for instructions on creating a VPC peering connection between the two earlier created VPCs.
+Refer to [Create a VPC peering connection](https://docs.aws.amazon.com/vpc/latest/peering/create-vpc-peering-connection.html) in AWS documentation for instructions on creating a VPC peering connection between the two earlier created VPCs.
 
 In this example, the ID of the created VPC peering connection is `pcx-08077dcc008fbbab6`.
 

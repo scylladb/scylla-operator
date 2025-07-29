@@ -1,8 +1,15 @@
 ---
 sd_hide_title: true
+full-width:
+landing:
+hide-secondary-sidebar:
+hide-version-warning:
+hide-pre-content:
+hide-post-content:
 ---
 
-# Scylla Operator Documentation
+```{title} Scylla Operator Documentation
+```
 
 :::{toctree}
 :hidden:
@@ -16,91 +23,106 @@ support/index
 api-reference/index
 :::
 
-## Scylla Operator
-
-::::{grid} 1 1 1 2
-:reverse:
-
-:::{grid-item}
-:columns: 12 12 12 4
-
-```{image} logo.svg
-:width: 150pt
-:class: sd-m-auto
-:name: landing-page-logo
-```
-
-:::
-
-:::{grid-item}
-:child-align: justify
-:columns: 12 12 12 8
-:class: sd-d-flex-column
+```{hero-box}
+:title: Scylla Operator
+:image: /_static/mascots/logo.svg
 
 {{productName}} project helps users to run ScyllaDB on Kubernetes. 
-It extends the Kubernetes APIs using [CustomResourceDefinitions(CRDs)](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/) and runs controllers that reconcile the desired state declared  using these APIs.
+It extends the Kubernetes APIs using [CustomResourceDefinitions(CRDs)](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/) and runs controllers that reconcile the desired state declared using these APIs.
+```
 
+```{raw} html
+<div class="topics-grid">
+```
+
+```{note}
 {{productName}} works with both ScyllaDB Open Source and ScyllaDB Enterprise. By default, our examples use ScyllaDB Open Source. To make the switch to ScyllaDB Enterprise, you only have to [change the ScyllaCluster image repository](#scyllacluster-enterprise) and [adjust the ScyllaDB utils image using ScyllaOperatorConfig](resources/scyllaoperatorconfigs.md#tuning-with-scylladb-enterprise).
+```
 
-Here is a subset of items to start with.
-You can also navigate through the documentation using the menu.
+```{raw} html
+</div>
+```
 
-:::
+```{raw} html
+<div class="topics-grid topics-grid--products">
+    <h2 class="topics-grid__title">Topics</h2>
+    <p class="topics-grid__text">Here is a subset of items to start with. You can also navigate through the documentation using the menu.</p>
+```
 
-::::
+````{grid}
+:type: default
 
-
-::::{grid} 1 1 2 3
-:gutter: 4
-
-:::{grid-item-card} {material-regular}`architecture;2em` Architecture
+```{topic-box}
+:title: Architecture
+:icon: icon-apartment
+:link: architecture/overview
+:anchor: Learn more »
+:class: large-4
 
 Learn about the components of Scylla Operator and how they fit together.
-+++
-[Learn more »](architecture/overview)
-:::
+```
 
-:::{grid-item-card} {material-regular}`electric_bolt;2em` Installation
+```{topic-box}
+:title: Installation
+:icon: icon-download
+:link: installation/overview
+:anchor: Learn more »
+:class: large-4
 
 Configure your Kubernetes platform, install prerequisites and all components of {{productName}}.
-+++
-[Learn more »](installation/overview)
-:::
+```
 
-:::{grid-item-card} {material-regular}`storage;2em` Working with Resources
+```{topic-box}
+:title: Working with Resources
+:icon: icon-database
+:link: resources/overview
+:anchor: Learn more »
+:class: large-4
 
-Learn about the APIs that {{productName}} provides. ScyllaClusters, ScyllaDBMonitorings and more.  
-+++
-[Learn more »](resources/overview)
-:::
+Learn about the APIs that {{productName}} provides. ScyllaClusters, ScyllaDBMonitorings and more.
+```
 
-:::{grid-item-card} {material-regular}`explore;2em` Quickstarts
+```{topic-box}
+:title: Quickstarts
+:icon: icon-rocket
+:link: quickstarts/index
+:anchor: Learn more »
+:class: large-4
 
 Get it running right now. Simple GKE and EKS setups.
+```
 
-+++
-[Learn more »](quickstarts/index)
-:::
+```{topic-box}
+:title: Performance Tuning
+:icon: icon-tune
+:link: architecture/tuning
+:anchor: Learn more »
+:class: large-4
 
-:::{grid-item-card} {material-regular}`fitness_center;2em` Performance Tuning
+Tune your infra and ScyllaDB cluster for the best performance and low latency.
+```
 
-Tune your infra and ScyllaDB cluster for the best performance and low latency. 
-+++
-[Learn more »](architecture/tuning)
-:::
+```{topic-box}
+:title: Support
+:icon: icon-support
+:link: support/overview
+:anchor: Learn more »
+:class: large-4
 
-:::{grid-item-card} {material-regular}`build;2em` Support
+FAQs, support matrix, must-gather and more.
+```
 
-FAQs, support matrix, must-gather and more. 
-+++
-[Learn more »](support/overview)
-:::
-
-:::{grid-item-card} {material-regular}`menu_book;2em` API Rererence
+```{topic-box}
+:title: API Reference
+:icon: icon-docs-commands
+:link: api-reference/index
+:anchor: Learn more »
+:class: large-4
 
 Visit the automatically generated API reference for all our APIs.
-+++
-[Learn more »](api-reference/index)
-:::
+```
+````
 
-::::
+```{raw} html
+</div>
+```

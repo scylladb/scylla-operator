@@ -1,0 +1,8 @@
+.layout--full-width .hero {
+    margin-bottom: 2em;
+}
+
+.dark .highlight .hll {
+    background-color: var(--gray-950);
+    color: var(--white);
+}

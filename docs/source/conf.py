@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
+import os
 from datetime import date
+import sys
 
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
-
-import os
-import sys
 
 # Add custom extensions
 sys.path.append(os.path.abspath("./_ext"))
@@ -22,12 +21,12 @@ extensions = [
     'sphinx_scylladb_theme',
     'sphinx_multiversion',
     "sphinx_sitemap",
-    "sphinx_design",
     "myst_parser",
 
     # from ./_ext
     "myst_multiversion_substitutions",
 ]
+
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -58,7 +57,6 @@ pygments_style = 'sphinx'
 todo_include_todos = True
 
 # -- Options for myst parser
-
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution"]
 myst_heading_anchors = 6
 
@@ -131,6 +129,7 @@ smv_released_pattern = r'^tags/.*$'
 # Format for versioned output directories inside the build directory
 smv_outputdir_format = '{ref.name}'
 
+
 # -- Options for HTML output
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -174,7 +173,21 @@ html_context = {'html_baseurl': html_baseurl}
 # Add the _static directory to the static path
 html_static_path = ['_static']
 
+# Add custom CSS files
+
+html_css_files = ['custom.css']
 # Add custom JavaScript files
-html_js_files = ['fix-cards.js']
+html_js_files = []
 
 sitemap_url_scheme = "/stable/{link}"
+
+# Sphinx design configuration
+# Conditionally add sphinx_design based on version
+# to keep compatibility with older versions.
+SPHINX_DESIGN_VERSIONS = ['v1.16', 'v1.17', 'v1.18']
+current_version = os.environ.get('SPHINX_MULTIVERSION_NAME', 'master')
+
+
+if current_version in SPHINX_DESIGN_VERSIONS:
+    extensions.append("sphinx_design")
+    html_js_files = ['fix-cards.js']

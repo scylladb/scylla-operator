@@ -276,6 +276,8 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters/finalizers
+  - scylladbclusters/finalizers
+  - remotekubernetesclusters/finalizers
   - scylladbdatacenters/finalizers
   - scylladbmonitorings/finalizers
   - scylladbmanagerclusterregistrations/finalizers
@@ -366,7 +368,9 @@ rules:
   - scylla.scylladb.com
   resources:
   - scylladbdatacenters
+  - scylladbdatacenters/finalizers
   - remoteowners
+  - remoteowners/finalizers
   verbs:
   - create
   - delete
@@ -390,6 +394,7 @@ rules:
   - discovery.k8s.io
   resources:
   - endpointslices
+  - endpointslices/finalizers
   verbs:
   - create
   - delete
@@ -402,10 +407,15 @@ rules:
   - ""
   resources:
   - endpoints
+  - endpoints/finalizers
   - namespaces
+  - namespaces/finalizers
   - services
+  - services/finalizers
   - secrets
+  - secrets/finalizers
   - configmaps
+  - configmaps/finalizers
   verbs:
   - create
   - delete

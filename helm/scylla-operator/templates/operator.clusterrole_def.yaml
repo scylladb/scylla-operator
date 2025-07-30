@@ -260,6 +260,8 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters/finalizers
+  - scylladbclusters/finalizers
+  - remotekubernetesclusters/finalizers
   - scylladbdatacenters/finalizers
   - scylladbmonitorings/finalizers
   - scylladbmanagerclusterregistrations/finalizers

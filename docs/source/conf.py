@@ -50,7 +50,7 @@ todo_include_todos = True
 
 # -- Options for myst parser
 
-myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution"]
+myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_block"]
 myst_heading_anchors = 6
 
 # DEPRECATION NOTICE

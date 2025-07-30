@@ -108,7 +108,7 @@ func (di *DataInserter) SetClientEndpoints(hosts []string) error {
 	return nil
 }
 
-func (di *DataInserter) Insert() error {
+func (di *DataInserter) Insert(ctx context.Context) error {
 	ss := make([]string, 0, len(di.replicationFactor))
 	for dc, rf := range di.replicationFactor {
 		ss = append(ss, fmt.Sprintf("'%s': %d", dc, rf))
@@ -132,6 +132,12 @@ func (di *DataInserter) Insert() error {
 	))
 	if err != nil {
 		return fmt.Errorf("can't create table: %w", err)
+	}
+
+	framework.Infof("Awaiting schema agreement")
+	err = di.session.AwaitSchemaAgreement(ctx)
+	if err != nil {
+		return fmt.Errorf("can't await schema agreement: %w", err)
 	}
 
 	framework.Infof("Inserting data into table %s", di.table.Name())

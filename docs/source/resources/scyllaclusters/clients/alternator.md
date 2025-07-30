@@ -18,7 +18,7 @@ Alternator protocol is based on HTTP and you can also expose the service "manual
 
 Scylla Operator enables Alternator authorization by default. 
 Here is a quick example of how to get the token for accessing Alternator API.
-To find out more, please refer to [ScyllaDB Alternator documentation](https://opensource.docs.scylladb.com/stable/alternator/compatibility.html#authorization).
+To find out more, please refer to [ScyllaDB Alternator documentation](https://docs.scylladb.com/manual/stable/alternator/compatibility.html#authentication-and-authorization).
 
 :::{caution}
 The `salted_hash` is only present if password authentication for CQL is set up.
@@ -48,7 +48,7 @@ At the time of writing this document `kubectl exec -i` echoes passwords into the
 It can be avoided by manually running `kubectl exec -it` and copying the output into a file / variable.
 Because using `kubectl exec` with `-t` option merges standard and error outputs, we can't use it in the scripts bellow.
 
-See <https://github.com/kubernetes/kubernetes/issues/123913> for more details.
+See <https://github.com/kubernetes/kubectl/issues/1579> for more details.
 :::
 
 ```bash

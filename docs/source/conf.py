@@ -191,3 +191,19 @@ current_version = os.environ.get('SPHINX_MULTIVERSION_NAME', 'master')
 if current_version in SPHINX_DESIGN_VERSIONS:
     extensions.append("sphinx_design")
     html_js_files = ['fix-cards.js']
+
+linkcheck_ignore = [
+    # Ignore links that originate from the Kubernetes objects' documentation we have no control over.
+    'http://kubernetes.io/docs/user-guide/annotations',
+    'http://kubernetes.io/docs/user-guide/labels',
+    'https://examples.k8s.io/mysql-cinder-pd/README.md',
+    'https://examples.k8s.io/volumes/cephfs/README.md',
+    'https://examples.k8s.io/volumes/glusterfs/README.md',
+    'https://examples.k8s.io/volumes/iscsi/README.md',
+    'https://examples.k8s.io/volumes/rbd/README.md',
+    'https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources',
+    'https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds',
+
+    # Ignore an anchor that works as expected in the browser (probably a matter of the JS page rendering).
+    'https://www.scylladb.com/product/support/#enterprise-support',
+]

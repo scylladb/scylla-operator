@@ -25,18 +25,20 @@ data:
 
 Every ScyllaDB node has an integrated `cqlsh` available. Here is an example of how it can be used:
 
-::::{tab-set}
-:::{tab-item} Any ScyllaDB Node
+
+::::{tabs}
+:::{group-tab} Any ScyllaDB Node
 ```bash
 kubectl exec -it service/<sc-name>-client -c scylla -- cqlsh -u <user>
 ```
 :::
-:::{tab-item} Specific ScyllaDB Node
+:::{group-tab} Specific ScyllaDB Node
 ```bash
 kubectl exec -it pod/<sc-name>-<datacenter>-<node-index> -c scylla -- cqlsh -u <user>
 ```
 :::
 ::::
+
 ```text
 Password: 
 Connected to scylla at 127.0.0.1:9042
@@ -98,13 +100,14 @@ userkey=${SCYLLADB_CONFIG}/admin.key
 EOF
 ```
 
-::::{tab-set}
-:::{tab-item} Native
+
+::::{tabs}
+:::{group-tab} Native
 ```bash
 cqlsh --cqlshrc="${SCYLLADB_CONFIG}/cqlshrc"
 ```
 :::
-:::{tab-item} Podman
+:::{group-tab} Podman
 ```bash
 podman run -it --rm --entrypoint=cqlsh \
 -v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro,Z" \
@@ -112,7 +115,7 @@ podman run -it --rm --entrypoint=cqlsh \
 docker.io/scylladb/scylla:5.4.3
 ```
 :::
-:::{tab-item} Docker
+:::{group-tab} Docker
 ```bash
 docker run -it --rm --entrypoint=cqlsh \
 -v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro" \
@@ -121,6 +124,7 @@ docker.io/scylladb/scylla:5.4.3
 ```
 :::
 ::::
+
 ```text
 Connected to scylla at <CLUSTER_IP>:9142
 [cqlsh 6.2.0 | Scylla 5.4.0-0.20231205.58a89e7a4231 | CQL spec 3.3.1 | Native protocol v4]

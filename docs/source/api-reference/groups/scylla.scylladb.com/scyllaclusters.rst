@@ -317,6 +317,9 @@ object
    * - retention
      - integer
      - retention is the number of backups which are to be stored.
+   * - retryWait
+     - string
+     - retryWait specifies the initial exponential backoff duration for task retries. For instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`. If not set, the default values is left to ScyllaDB Manager to decide.
    * - snapshotParallel
      - array (string)
      - snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. 'dc1:2,5') the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.
@@ -4803,6 +4806,9 @@ object
    * - parallel
      - integer
      - parallel is the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas). Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used. The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes. The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.
+   * - retryWait
+     - string
+     - retryWait specifies the initial exponential backoff duration for task retries. For instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`. If not set, the default values is left to ScyllaDB Manager to decide.
    * - smallTableThreshold
      - string
      - smallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB].
@@ -4925,6 +4931,9 @@ object
    * - retention
      - integer
      - retention reflects the number of backups which are to be stored.
+   * - retryWait
+     - string
+     - retryWait reflects the initial exponential backoff duration for task retries.
    * - snapshotParallel
      - array (string)
      - snapshotParallel reflects a list of snapshot parallelism limits in the format [<dc>:]<limit>.
@@ -5069,6 +5078,9 @@ object
    * - parallel
      - integer
      - parallel reflects the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).
+   * - retryWait
+     - string
+     - retryWait reflects the initial exponential backoff duration for task retries.
    * - smallTableThreshold
      - string
      - smallTableThreshold reflects whether small table optimization for tables, of size lower than given threshold, are enabled.

@@ -31,7 +31,7 @@ helm install scylla scylla/scylla --create-namespace --namespace scylla
 This step is optional if you want to use your own certificate. 
 If you don't have one, make sure to not disable autogeneration using Scylla Operator Helm Chart.
 
-First deploy Cert Manager, you can either follow [upstream instructions](https://cert-manager.io/docs/installation/kubernetes/) or use the following command:
+First deploy Cert Manager, you can either follow [upstream instructions](https://cert-manager.io/docs/installation/) or use the following command:
 
 ```console
 kubectl apply -f examples/common/cert-manager.yaml
@@ -139,11 +139,11 @@ Versions of images used in the cluster can be set via `scyllaImage` and `agentIm
 ```yaml
 scyllaImage:
   repository: scylladb/scylla
-  tag: 4.3.0
+  tag: {{ imageTag }}
 
 agentImage:
   repository: scylladb/scylla-manager-agent
-  tag: 2.2.1
+  tag: {{agentVersion}}
 ```
 
 A minimal Scylla cluster can be expressed as:
@@ -192,7 +192,7 @@ To set version of used Scylla Manager you can use `image` field:
 image:
   repository: scylladb
   pullPolicy: IfNotPresent
-  tag: 2.2.1
+  tag: {{agentVersion}}
 ```
 To control how many resources are allocated for Scylla Manager use `resource` field:
 ```yaml
@@ -304,27 +304,11 @@ Change `create` to `true` and update your current deployment using:
 helm upgrade --install scylla --namespace scylla scylla/scylla -f examples/helm/values.cluster.yaml
 ```
 
-Helm should notice the difference, install the ServiceMonitor, and then Prometheous will be able to scrape metrics.
+Helm should notice the difference, install the ServiceMonitor, and then Prometheus will be able to scrape metrics.
 
-## Upgrade via Helm
+## Upgrade
 
-Replace `<release_name>` with the name of your Helm release for Scylla Operator and replace `<version>` with the version number you want to install:
-1. Make sure Helm chart repository is up-to-date:
-   ```
-   helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts/stable
-   helm repo update
-   ```
-2. Update CRD resources. We recommend using `--server-side` flag for `kubectl apply`, if your version supports it.
-   ```
-   tmpdir=$( mktemp -d ) \
-     && helm pull scylla-operator/scylla-operator --version <version> --untar --untardir "${tmpdir}" \
-     && find "${tmpdir}"/scylla-operator/crds/ -name '*.yaml' -printf '-f=%p ' \
-     | xargs kubectl apply
-   ``` 
-3. Update Scylla Operator
-   ```
-   helm upgrade --version <version> <release_name> scylla-operator/scylla-operator
-   ```
+Please refer to the [upgrade guide](./upgrade.md#upgrade-via-helm) to learn how to upgrade your Helm installations.
 
 ## Cleanup
 

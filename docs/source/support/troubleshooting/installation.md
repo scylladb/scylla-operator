@@ -31,4 +31,4 @@ There are some workarounds where you can reconfigure the webhook to use Ingress 
 #### Private clusters
 
 If you use GKE private clusters you need to manually configure the firewall to allow webhook traffic.
-You can find more information on how to do that in [GKE private clusters docs](https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules).
+You can find more information on how to do that in [GKE private clusters docs](https://cloud.google.com/kubernetes-engine/docs/how-to/latest/network-isolation#add_firewall_rules).

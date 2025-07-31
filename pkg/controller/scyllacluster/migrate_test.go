@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -916,6 +917,9 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(t *testing.T) {
 						ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
 							Cron:       pointer.Ptr("0 23 * * SAT"),
 							NumRetries: pointer.Ptr[int64](3),
+							RetryWait: &metav1.Duration{
+								Duration: 1 * time.Minute,
+							},
 						},
 						DC:               []string{"dc1", "!otherdc*"},
 						Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
@@ -969,6 +973,9 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBManagerTasks(t *testing.T) {
 						ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
 							Cron:       pointer.Ptr("0 5 * * *"),
 							NumRetries: pointer.Ptr[int64](1),
+							RetryWait: &metav1.Duration{
+								Duration: 1 * time.Minute,
+							},
 						},
 						DC:                  []string{"dc1", "!otherdc*"},
 						Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},
@@ -1053,6 +1060,7 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1BackupTaskStatus(t *testing
 "startDate":"2025-06-12T21:44:34.694Z",
 "interval":"5m",
 "numRetries":3,
+"retryWait":"1m0s",
 "cron":"{\"spec\":\"0 23 * * SAT\",\"start_date\":\"0001-01-01T00:00:00Z\"}",
 "timezone":"CET",
 "name":"task1",
@@ -1140,8 +1148,11 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1BackupTaskStatus(t *testing
 						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
 						Interval:   pointer.Ptr("5m"),
 						NumRetries: pointer.Ptr[int64](3),
-						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
-						Timezone:   pointer.Ptr("CET"),
+						RetryWait: &metav1.Duration{
+							Duration: 1 * time.Minute,
+						},
+						Cron:     pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone: pointer.Ptr("CET"),
 					},
 					Name: "task1",
 					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
@@ -1190,8 +1201,11 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1BackupTaskStatus(t *testing
 						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
 						Interval:   pointer.Ptr("5m"),
 						NumRetries: pointer.Ptr[int64](3),
-						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
-						Timezone:   pointer.Ptr("CET"),
+						RetryWait: &metav1.Duration{
+							Duration: 1 * time.Minute,
+						},
+						Cron:     pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone: pointer.Ptr("CET"),
 					},
 					Name: "task1",
 					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
@@ -1278,6 +1292,7 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(t *testing
 "startDate":"2025-06-12T21:44:34.694Z",
 "interval":"5m",
 "numRetries":3,
+"retryWait":"1m0s",
 "cron":"{\"spec\":\"0 23 * * SAT\",\"start_date\":\"0001-01-01T00:00:00Z\"}",
 "timezone":"CET",
 "name":"task1",
@@ -1366,8 +1381,11 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(t *testing
 						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
 						Interval:   pointer.Ptr("5m"),
 						NumRetries: pointer.Ptr[int64](3),
-						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
-						Timezone:   pointer.Ptr("CET"),
+						RetryWait: &metav1.Duration{
+							Duration: 1 * time.Minute,
+						},
+						Cron:     pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone: pointer.Ptr("CET"),
 					},
 					Name: "task1",
 					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
@@ -1417,8 +1435,11 @@ func TestMigrateV1Alpha1ScyllaDBManagerTaskStatusToV1RepairTaskStatus(t *testing
 						StartDate:  pointer.Ptr("2025-06-12T21:44:34.694Z"),
 						Interval:   pointer.Ptr("5m"),
 						NumRetries: pointer.Ptr[int64](3),
-						Cron:       pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
-						Timezone:   pointer.Ptr("CET"),
+						RetryWait: &metav1.Duration{
+							Duration: 1 * time.Minute,
+						},
+						Cron:     pointer.Ptr(`{"spec":"0 23 * * SAT","start_date":"0001-01-01T00:00:00Z"}`),
+						Timezone: pointer.Ptr("CET"),
 					},
 					Name: "task1",
 					ID:   pointer.Ptr("1856aa51-5712-4b39-a7a5-41cee77ac50f"),
@@ -1505,8 +1526,11 @@ func newScyllaV1BackupTaskSpec() scyllav1.BackupTaskSpec {
 				StartDate:  pointer.Ptr("now+3d2h10m"),
 				Interval:   pointer.Ptr("5m"),
 				NumRetries: pointer.Ptr[int64](3),
-				Cron:       pointer.Ptr("0 23 * * SAT"),
-				Timezone:   pointer.Ptr("CET"),
+				RetryWait: &metav1.Duration{
+					Duration: 1 * time.Minute,
+				},
+				Cron:     pointer.Ptr("0 23 * * SAT"),
+				Timezone: pointer.Ptr("CET"),
 			},
 		},
 		DC:               []string{"dc1", "!otherdc*"},
@@ -1527,8 +1551,11 @@ func newScyllaV1RepairTaskSpec() scyllav1.RepairTaskSpec {
 				StartDate:  pointer.Ptr("now+4d3h20m"),
 				Interval:   pointer.Ptr("7d"),
 				NumRetries: pointer.Ptr[int64](1),
-				Cron:       pointer.Ptr("0 5 * * *"),
-				Timezone:   pointer.Ptr("Europe/Warsaw"),
+				RetryWait: &metav1.Duration{
+					Duration: 1 * time.Minute,
+				},
+				Cron:     pointer.Ptr("0 5 * * *"),
+				Timezone: pointer.Ptr("Europe/Warsaw"),
 			},
 		},
 		DC:                  []string{"dc1", "!otherdc*"},
@@ -1586,6 +1613,9 @@ func newBackupScyllaDBManagerTask() *scyllav1alpha1.ScyllaDBManagerTask {
 				ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
 					Cron:       pointer.Ptr("0 23 * * SAT"),
 					NumRetries: pointer.Ptr[int64](3),
+					RetryWait: &metav1.Duration{
+						Duration: 1 * time.Minute,
+					},
 				},
 				DC:               []string{"dc1", "!otherdc*"},
 				Keyspace:         []string{"keyspace", "!keyspace.table_prefix_*"},
@@ -1641,6 +1671,9 @@ func newRepairScyllaDBManagerTask() *scyllav1alpha1.ScyllaDBManagerTask {
 				ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
 					Cron:       pointer.Ptr("0 5 * * *"),
 					NumRetries: pointer.Ptr[int64](1),
+					RetryWait: &metav1.Duration{
+						Duration: 1 * time.Minute,
+					},
 				},
 				DC:                  []string{"dc1", "!otherdc*"},
 				Keyspace:            []string{"keyspace", "!keyspace.table_prefix_*"},

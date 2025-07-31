@@ -92,6 +92,12 @@ spec:
                       description: retention specifies the number of backups to store.
                       format: int64
                       type: integer
+                    retryWait:
+                      description: |-
+                        retryWait specifies the initial exponential backoff duration for task retries.
+                        For instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`.
+                        If not set, the default values is left to ScyllaDB Manager to decide.
+                      type: string
                     snapshotParallel:
                       description: |-
                         snapshotParallel specifies a list of snapshot parallelism limits in the following format:  `[<dc>:]<limit>`.
@@ -171,6 +177,12 @@ spec:
                         Refer to repair documentation for details.
                       format: int64
                       type: integer
+                    retryWait:
+                      description: |-
+                        retryWait specifies the initial exponential backoff duration for task retries.
+                        For instance, if set to 10 minutes, the first retry will be attempted after 10 minutes, the second after 20 minutes, the third after 40 minutes, and so on, up to the number of retries specified in `numRetries`.
+                        If not set, the default values is left to ScyllaDB Manager to decide.
+                      type: string
                     smallTableThreshold:
                       anyOf:
                         - type: integer

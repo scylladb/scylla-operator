@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
+import os
 from datetime import date
+import sys
 
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
+
+# Add custom extensions
+sys.path.append(os.path.abspath("./_ext"))
 
 # -- General configuration
 
@@ -16,9 +21,12 @@ extensions = [
     'sphinx_scylladb_theme',
     'sphinx_multiversion',
     "sphinx_sitemap",
-    "sphinx_design",
     "myst_parser",
+
+    # from ./_ext
+    "myst_multiversion_substitutions",
 ]
+
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -49,23 +57,43 @@ pygments_style = 'sphinx'
 todo_include_todos = True
 
 # -- Options for myst parser
-
-myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution"]
+myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_block"]
 myst_heading_anchors = 6
 
-# DEPRECATION NOTICE
-# MyST substitutions work counterintuitively with multiversion docs. Versions specified in the main branch are used for all versions.
-# These variables have no effect if set on branches other than master.
-# https://github.com/scylladb/scylla-operator/issues/2795
+# Global substitutions
 myst_substitutions = {
   "productName": "Scylla Operator",
   "repository": "scylladb/scylla-operator",
-  "revision": "master",
   "imageRepository": "docker.io/scylladb/scylla",
-  "imageTag": "2025.1.2",
   "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-  "enterpriseImageTag": "2024.1.12",
-  "agentVersion": "3.5.0",
+}
+
+# Multiversion substitutions, merged with global substitutions but only when given documentation branch is being built.
+myst_multiversion_substitutions = {
+    "master": {
+        "revision": "master",
+        "agentVersion": "3.5.1",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
+    "v1.18": {
+        "revision": "v1.18",
+        "agentVersion": "3.5.1",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
+    "v1.17": {
+        "revision": "v1.17",
+        "agentVersion": "3.5.1",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
+    "v1.16": {
+        "revision": "v1.16",
+        "agentVersion": "3.4.2",
+        "enterpriseImageTag": "2025.1.5",
+        "imageTag": "2025.1.5",
+    },
 }
 
 # -- Options for not found extension
@@ -100,6 +128,7 @@ smv_remote_whitelist = r"^origin$"
 smv_released_pattern = r'^tags/.*$'
 # Format for versioned output directories inside the build directory
 smv_outputdir_format = '{ref.name}'
+
 
 # -- Options for HTML output
 
@@ -144,7 +173,37 @@ html_context = {'html_baseurl': html_baseurl}
 # Add the _static directory to the static path
 html_static_path = ['_static']
 
+# Add custom CSS files
+
+html_css_files = ['custom.css']
 # Add custom JavaScript files
-html_js_files = ['fix-cards.js']
+html_js_files = []
 
 sitemap_url_scheme = "/stable/{link}"
+
+# Sphinx design configuration
+# Conditionally add sphinx_design based on version
+# to keep compatibility with older versions.
+SPHINX_DESIGN_VERSIONS = ['v1.16', 'v1.17', 'v1.18']
+current_version = os.environ.get('SPHINX_MULTIVERSION_NAME', 'master')
+
+
+if current_version in SPHINX_DESIGN_VERSIONS:
+    extensions.append("sphinx_design")
+    html_js_files = ['fix-cards.js']
+
+linkcheck_ignore = [
+    # Ignore links that originate from the Kubernetes objects' documentation we have no control over.
+    'http://kubernetes.io/docs/user-guide/annotations',
+    'http://kubernetes.io/docs/user-guide/labels',
+    'https://examples.k8s.io/mysql-cinder-pd/README.md',
+    'https://examples.k8s.io/volumes/cephfs/README.md',
+    'https://examples.k8s.io/volumes/glusterfs/README.md',
+    'https://examples.k8s.io/volumes/iscsi/README.md',
+    'https://examples.k8s.io/volumes/rbd/README.md',
+    'https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources',
+    'https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds',
+
+    # Ignore an anchor that works as expected in the browser (probably a matter of the JS page rendering).
+    'https://www.scylladb.com/product/support/#enterprise-support',
+]

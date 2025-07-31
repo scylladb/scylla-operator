@@ -29,7 +29,7 @@ func InsertAndVerifyCQLDataByDC(ctx context.Context, hosts map[string][]string) 
 
 func InsertAndVerifyCQLDataUsingDataInserter(ctx context.Context, di *utils.DataInserter) *utils.DataInserter {
 	framework.By("Inserting data")
-	err := di.Insert()
+	err := di.Insert(ctx)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	VerifyCQLData(ctx, di)

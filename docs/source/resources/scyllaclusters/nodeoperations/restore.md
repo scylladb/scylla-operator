@@ -13,16 +13,17 @@ When following the steps for schema restore, ensure you follow the additional st
 
 In the following example, the ScyllaCluster, which was used to take the backup, is called `source`. Backup will be restored into the ScyllaCluster named `target`.
 
-::::{tab-set}
-:::{tab-item} Source ScyllaCluster
-```yaml
+:::::{tabs}
+::::{group-tab} Source ScyllaCluster
+:::{code-block} yaml
+:substitutions:
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: source
 spec:
-  agentVersion: 3.5.1
-  version: 2025.1.2
+  agentVersion: {{agentVersion}}
+  version: {{imageTag}}
   developerMode: true
   backups:
   - name: foo
@@ -41,17 +42,18 @@ spec:
         limits:
           cpu: 1
           memory: 1Gi
-```
 :::
-:::{tab-item} Target ScyllaCluster
-```yaml
+::::
+::::{group-tab} Target ScyllaCluster
+:::{code-block} yaml
+:substitutions:
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: target
 spec:
-  agentVersion: 3.5.1
-  version: 2025.1.2
+  agentVersion: {{agentVersion}}
+  version: {{imageTag}}
   developerMode: true
   datacenter:
     name: us-east-1
@@ -64,9 +66,9 @@ spec:
         limits:
           cpu: 1
           memory: 1Gi
-```
 :::
 ::::
+:::::
 
 Make sure your target cluster is already registered in Scylla Manager. To get a list of all registered clusters, execute the following command:
 ```console

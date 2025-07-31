@@ -732,6 +732,11 @@ func (in *SchedulerTaskSpec) DeepCopyInto(out *SchedulerTaskSpec) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.RetryWait != nil {
+		in, out := &in.RetryWait, &out.RetryWait
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	if in.Cron != nil {
 		in, out := &in.Cron, &out.Cron
 		*out = new(string)
@@ -771,6 +776,11 @@ func (in *SchedulerTaskStatus) DeepCopyInto(out *SchedulerTaskStatus) {
 	if in.NumRetries != nil {
 		in, out := &in.NumRetries, &out.NumRetries
 		*out = new(int64)
+		**out = **in
+	}
+	if in.RetryWait != nil {
+		in, out := &in.RetryWait, &out.RetryWait
+		*out = new(metav1.Duration)
 		**out = **in
 	}
 	if in.Cron != nil {

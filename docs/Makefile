@@ -92,5 +92,5 @@ verify-poetry:
 	$(POETRY) check --lock --strict
 .PHONY: verify-poetry
 
-verify: verify-poetry
+verify: verify-poetry linkcheck
 .PHONY: verify

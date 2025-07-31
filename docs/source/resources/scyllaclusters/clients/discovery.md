@@ -54,15 +54,15 @@ Services configure internal load balancer using provider-specific annotations, s
 To learn more about exposing ScyllaClusters, visit our dedicated documentation [page](../../common/exposing.md).
 :::
 
-::::{tab-set}
-:::{tab-item} GKE
+::::{tabs}
+:::{group-tab} GKE
 ```bash
 kubectl patch service/<sc-name>-client -p '{"metadata": {"annotations": {"networking.gke.io/load-balancer-type": "Internal"}}, "spec": {"type": "LoadBalancer"}}'
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<sc-name>-client
 kubectl get service/<sc-name>-client -o='jsonpath={.status.loadBalancer.ingress[0].ip}'
 ```
 :::
-:::{tab-item} EKS
+:::{group-tab} EKS
 ```bash
 kubectl patch service/<sc-name>-client -p '{"metadata": {"annotations": {"service.beta.kubernetes.io/aws-load-balancer-scheme": "internal", "service.beta.kubernetes.io/aws-load-balancer-backend-protocol": "tcp"}}, "spec": {"type": "LoadBalancer"}}'
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<sc-name>-client

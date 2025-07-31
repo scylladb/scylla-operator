@@ -61,7 +61,7 @@ metadata:
 spec:
   repository: {{imageRepository}}
   version: {{imageTag}}
-  agentVersion: 3.5.1
+  agentVersion: {{agentVersion}}
   developerMode: false
   automaticOrphanedNodeCleanup: true
   sysctls:
@@ -218,9 +218,9 @@ Here is a quick example of how you'd use them to spread your racks across differ
 :::{include} ../../.internal/rf-warning.md
 :::
 
-:::::{tab-set}
+:::::{tabs}
 
-::::{tab-item} GKE
+::::{group-tab} GKE
 :::{code} yaml
 spec:
   datacenter:
@@ -239,7 +239,7 @@ spec:
 :::
 ::::
 
-::::{tab-item} EKS
+::::{group-tab} EKS
 :::{code} yaml
 spec:
   datacenter:

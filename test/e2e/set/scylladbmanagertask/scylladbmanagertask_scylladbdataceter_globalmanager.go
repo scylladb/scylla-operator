@@ -67,7 +67,10 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 				Type: scyllav1alpha1.ScyllaDBManagerTaskTypeRepair,
 				Repair: &scyllav1alpha1.ScyllaDBManagerRepairTaskOptions{
 					ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
-						NumRetries: pointer.Ptr[int64](1),
+						NumRetries: pointer.Ptr[int64](3),
+						RetryWait: &metav1.Duration{
+							Duration: 30 * time.Second,
+						},
 					},
 					Parallel: pointer.Ptr[int64](2),
 				},
@@ -156,7 +159,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		framework.By("Waiting for the repair task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, managerClusterID, managerTask.ID).
 			Should(o.Succeed())

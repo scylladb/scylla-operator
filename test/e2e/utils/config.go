@@ -26,4 +26,10 @@ const (
 
 	baseManagerSyncTimeout = 3 * time.Minute
 	managerTaskSyncTimeout = 30 * time.Second
+
+	ScyllaDBManagerTaskNumRetries = 3
+	ScyllaDBManagerTaskRetryWait  = 30 * time.Second
+
+	ScyllaDBManagerTaskCompletionTimeout                = 10 * time.Minute
+	ScyllaDBManagerMultiDatacenterTaskCompletionTimeout = 15 * time.Minute
 )

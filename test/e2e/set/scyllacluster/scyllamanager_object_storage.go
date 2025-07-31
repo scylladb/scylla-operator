@@ -80,6 +80,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		sourceSCCopy := sourceSC.DeepCopy()
 		sourceSCCopy.Spec.Backups = append(sourceSCCopy.Spec.Backups, scyllav1.BackupTaskSpec{
 			TaskSpec: scyllav1.TaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					NumRetries: pointer.Ptr[int64](utils.ScyllaDBManagerTaskNumRetries),
+					RetryWait: &metav1.Duration{
+						Duration: utils.ScyllaDBManagerTaskRetryWait,
+					},
+				},
 				Name: "backup",
 			},
 			Location:  []string{objectStorageLocation},
@@ -200,7 +206,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		framework.By("Waiting for the backup task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerBackupTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(3*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, sourceManagerClusterID, backupTask.ID).
 			Should(o.Succeed())
@@ -341,6 +347,8 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				fmt.Sprintf("--location=%s", objectStorageLocation),
 				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-schema",
+				fmt.Sprintf("--num-retries=%d", utils.ScyllaDBManagerTaskNumRetries),
+				fmt.Sprintf("--retry-wait=%s", utils.ScyllaDBManagerTaskRetryWait),
 			},
 			Namespace:     scyllaManagerPod.Namespace,
 			PodName:       scyllaManagerPod.Name,
@@ -356,7 +364,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		framework.By("Waiting for schema restore to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
@@ -374,6 +382,8 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 				fmt.Sprintf("--location=%s", objectStorageLocation),
 				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-tables",
+				fmt.Sprintf("--num-retries=%d", utils.ScyllaDBManagerTaskNumRetries),
+				fmt.Sprintf("--retry-wait=%s", utils.ScyllaDBManagerTaskRetryWait),
 			},
 			Namespace:     scyllaManagerPod.Namespace,
 			PodName:       scyllaManagerPod.Name,
@@ -389,7 +399,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		framework.By("Waiting for tables restore to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, tablesRestoreTaskID.String()).
 			Should(o.Succeed())
@@ -582,6 +592,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		scCopy.Spec.Backups = []scyllav1.BackupTaskSpec{
 			{
 				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+						NumRetries: pointer.Ptr[int64](utils.ScyllaDBManagerTaskNumRetries),
+						RetryWait: &metav1.Duration{
+							Duration: utils.ScyllaDBManagerTaskRetryWait,
+						},
+					},
 					Name: "backup",
 				},
 				Location: []string{validObjectStorageLocation},
@@ -590,6 +606,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		scCopy.Spec.Repairs = []scyllav1.RepairTaskSpec{
 			{
 				TaskSpec: scyllav1.TaskSpec{
+					SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+						NumRetries: pointer.Ptr[int64](utils.ScyllaDBManagerTaskNumRetries),
+						RetryWait: &metav1.Duration{
+							Duration: utils.ScyllaDBManagerTaskRetryWait,
+						},
+					},
 					Name: "repair",
 				},
 			},

@@ -32,11 +32,6 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-const (
-	scyllaDBManagerRestoreNumRetries = 3
-	scyllaDBManagerRestoreRetryWait  = time.Minute
-)
-
 var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with global ScyllaDB Manager", framework.MultiDatacenter, func() {
 	f := framework.NewFramework("scylladbmanagertask")
 
@@ -99,7 +94,10 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 				Type: scyllav1alpha1.ScyllaDBManagerTaskTypeBackup,
 				Backup: &scyllav1alpha1.ScyllaDBManagerBackupTaskOptions{
 					ScyllaDBManagerTaskSchedule: scyllav1alpha1.ScyllaDBManagerTaskSchedule{
-						NumRetries: pointer.Ptr[int64](1),
+						NumRetries: pointer.Ptr[int64](utils.ScyllaDBManagerTaskNumRetries),
+						RetryWait: &metav1.Duration{
+							Duration: utils.ScyllaDBManagerTaskRetryWait,
+						},
 					},
 					Location:  backupLocations,
 					Retention: pointer.Ptr[int64](2),
@@ -186,7 +184,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		framework.By("Waiting for the backup task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerBackupTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(3*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerMultiDatacenterTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, sourceManagerClusterID, managerTask.ID).
 			Should(o.Succeed())
@@ -341,8 +339,8 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 				fmt.Sprintf("--location=%s", restoreLocation),
 				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-schema",
-				fmt.Sprintf("--num-retries=%d", scyllaDBManagerRestoreNumRetries),
-				fmt.Sprintf("--retry-wait=%s", scyllaDBManagerRestoreRetryWait),
+				fmt.Sprintf("--num-retries=%d", utils.ScyllaDBManagerTaskNumRetries),
+				fmt.Sprintf("--retry-wait=%s", utils.ScyllaDBManagerTaskRetryWait),
 			},
 			Namespace:     globalScyllaDBManagerInstancePod.Namespace,
 			PodName:       globalScyllaDBManagerInstancePod.Name,
@@ -358,7 +356,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		framework.By("Waiting for the schema restore task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(15*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
@@ -374,8 +372,8 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 				fmt.Sprintf("--location=%s", restoreLocation),
 				fmt.Sprintf("--snapshot-tag=%s", snapshotTag),
 				"--restore-tables",
-				fmt.Sprintf("--num-retries=%d", scyllaDBManagerRestoreNumRetries),
-				fmt.Sprintf("--retry-wait=%s", scyllaDBManagerRestoreRetryWait),
+				fmt.Sprintf("--num-retries=%d", utils.ScyllaDBManagerTaskNumRetries),
+				fmt.Sprintf("--retry-wait=%s", utils.ScyllaDBManagerTaskRetryWait),
 			},
 			Namespace:     globalScyllaDBManagerInstancePod.Namespace,
 			PodName:       globalScyllaDBManagerInstancePod.Name,
@@ -391,7 +389,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		framework.By("Waiting for the tables restore task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(15*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerMultiDatacenterTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, tablesRestoreTaskID.String()).
 			Should(o.Succeed())

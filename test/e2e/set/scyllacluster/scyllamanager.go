@@ -171,6 +171,12 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		scCopy := sc.DeepCopy()
 		scCopy.Spec.Repairs = append(scCopy.Spec.Repairs, scyllav1.RepairTaskSpec{
 			TaskSpec: scyllav1.TaskSpec{
+				SchedulerTaskSpec: scyllav1.SchedulerTaskSpec{
+					NumRetries: pointer.Ptr[int64](3),
+					RetryWait: &metav1.Duration{
+						Duration: 30 * time.Second,
+					},
+				},
 				Name: "repair",
 			},
 			Parallel: 2,
@@ -288,7 +294,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		framework.By("Waiting for repair to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
 			WithContext(ctx).
-			WithTimeout(10*time.Minute).
+			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, managerClusterID, repairTask.ID).
 			Should(o.Succeed())

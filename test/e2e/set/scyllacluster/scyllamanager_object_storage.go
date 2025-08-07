@@ -14,7 +14,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
-	configassests "github.com/scylladb/scylla-operator/assets/config"
+	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -417,8 +417,8 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		// Restoring schema with ScyllaDB OS 5.4.X or ScyllaDB Enterprise 2024.1.X and consistent_cluster_management isn’t supported.
 		// This test validates a workaround explained in the docs - https://operator.docs.scylladb.com/stable/nodeoperations/restore.html
 		g.Entry("using workaround for consistent_cluster_management for ScyllaDB Enterprise", entry{
-			scyllaRepository: "docker.io/scylladb/scylla-enterprise",
-			scyllaVersion:    configassests.Project.Operator.ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride,
+			scyllaRepository: configassets.ScyllaDBEnterpriseImageRepository,
+			scyllaVersion:    configassets.Project.Operator.ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride,
 			preTargetClusterCreateHook: func(targetCluster *scyllav1.ScyllaCluster) {
 				targetCluster.Spec.ScyllaArgs = "--consistent-cluster-management=false"
 			},

@@ -5,8 +5,8 @@ operator:
   # In the future, enterprise versions should be run as a different config instance in its own run.
   scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.11"
   scyllaDBUtilsImage: "docker.io/scylladb/scylla:2025.2.1@sha256:620f800e4ece9c3ebd56fdf46e78142a8bd253641f1809971c8c884b304a55f5"
-  scyllaDBManagerVersion: "3.5.1@sha256:6986ecfc8c925c3d59b65bbcb9763d62f7591a00bb30242842aada115929e816"
-  scyllaDBManagerAgentVersion: "3.5.1@sha256:d1b57d08b9949c8faad2048fdf4dc7c502dae81da856c3c6b3a77dd347d5c7fc"
+  scyllaDBManagerVersion: "3.6.0-0.20250806.70ae70d6c"
+  scyllaDBManagerAgentVersion: "3.6.0-0.20250806.70ae70d6c"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
   grafanaImage: "docker.io/grafana/grafana:12.0.2-security-01@sha256:9047b1d7ec7bfad6a7e6542e7f1782b2337e18af8ebf4f21cf5327e903dac830" # Tracks scylla-monitoring/versions.sh GRAFANA_VERSION
   grafanaDefaultPlatformDashboard: "scylladb-2025.1/scylla-overview.2025.1.json"

@@ -13,7 +13,7 @@ resources:
 scylla:
   developerMode: true
   scyllaImage:
-    tag: 2025.2.1
+    tag: 2025.1.2
   agentImage:
     tag: 3.5.1@sha256:d1b57d08b9949c8faad2048fdf4dc7c502dae81da856c3c6b3a77dd347d5c7fc
   datacenter: manager-dc

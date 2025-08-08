@@ -12,10 +12,10 @@ spec:
       clients:
         type: {{ .clientsBroadcastAddressType }}
   scyllaDB:
-    image: "docker.io/scylladb/scylla:{{ .scyllaDBVersion }}"
+    image: "{{ .scyllaDBRepository }}:{{ .scyllaDBVersion }}"
     enableDeveloperMode: true
   scyllaDBManagerAgent:
-    image: "docker.io/scylladb/scylla-manager-agent:{{ .scyllaDBManagerVersion }}"
+    image: "{{ .scyllaDBManagerAgentRepository }}:{{ .scyllaDBManagerVersion }}"
   datacenterTemplate:
     scyllaDB:
       resources:

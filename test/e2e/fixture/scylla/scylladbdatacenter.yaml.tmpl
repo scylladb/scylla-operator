@@ -10,10 +10,10 @@ spec:
   clusterName: basic
   datacenterName: us-east-1
   scyllaDB:
-    image: "docker.io/scylladb/scylla:{{ .scyllaDBVersion }}"
+    image: "{{ .scyllaDBRepository }}:{{ .scyllaDBVersion }}"
     enableDeveloperMode: true
   scyllaDBManagerAgent:
-    image: "docker.io/scylladb/scylla-manager-agent:{{ .scyllaDBManagerVersion }}"
+    image: "{{ .scyllaDBManagerAgentRepository }}:{{ .scyllaDBManagerVersion }}"
   exposeOptions:
     nodeService:
       type: {{ .nodeServiceType }}

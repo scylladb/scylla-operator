@@ -255,6 +255,7 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 		types.UID(o.NodeConfigUID),
 		o.ScyllaImage,
 		o.OperatorImage,
+		o.DisableOptimizations,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create node config instance controller: %w", err)

@@ -4,7 +4,7 @@ metadata:
   name: scylla
 spec:
   agentVersion: 3.5.1@sha256:d1b57d08b9949c8faad2048fdf4dc7c502dae81da856c3c6b3a77dd347d5c7fc
-  version: 2025.2.1
+  version: 2025.1.5
   developerMode: true
   automaticOrphanedNodeCleanup: true
   sysctls:

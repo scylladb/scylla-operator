@@ -229,9 +229,9 @@ type NodeConfigSpec struct {
 	// +kubebuilder:validation:Required
 	Placement NodeConfigPlacement `json:"placement"`
 
-	// disableOptimizations controls if nodes matching placement requirements
-	// are going to be optimized. Turning off optimizations on already optimized
-	// Nodes does not revert changes.
+	// disableOptimizations controls if nodes matching placement requirements are going to be optimized for performance.
+	// Turning off optimizations on already optimized Nodes does not revert changes.
+	// See https://operator.docs.scylladb.com/stable/architecture/tuning.html for details.
 	DisableOptimizations bool `json:"disableOptimizations"`
 
 	// localDiskSetup contains options of automatic local disk setup.

@@ -72,7 +72,7 @@ myst_substitutions = {
 myst_multiversion_substitutions = {
     "master": {
         "revision": "master",
-        "agentVersion": "3.5.1",
+        "agentVersion": "3.6.0",
         "enterpriseImageTag": "2025.1.5",
         "imageTag": "2025.1.5",
     },

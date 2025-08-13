@@ -5,4 +5,5 @@
 
 scylladbclusters
 ../common/exposing
+../common/upgrade-scylladb
 :::

@@ -8,4 +8,5 @@ clients/index
 nodeoperations/index
 multidc/index
 ../common/exposing
+../common/upgrade-scylladb
 :::

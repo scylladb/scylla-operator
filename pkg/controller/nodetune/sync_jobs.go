@@ -28,12 +28,17 @@ import (
 )
 
 func (ncdc *Controller) makeJobsForNode(ctx context.Context) ([]*batchv1.Job, error) {
+	var jobs []*batchv1.Job
+
+	if ncdc.disableOptimizations {
+		klog.V(2).InfoS("NodeConfig's optimizations are disabled, skipping perftune Job creation for node")
+		return jobs, nil
+	}
+
 	pod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get self Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
 	}
-
-	var jobs []*batchv1.Job
 
 	cr, err := ncdc.newOwningDSControllerRef()
 	if err != nil {
@@ -214,6 +219,11 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.J
 
 		runningScyllaPods = append(runningScyllaPods, scyllaPod)
 
+		if ncdc.disableOptimizations {
+			klog.V(4).Infof("NodeConfig's optimizations are disabled, Pod %q isn't considered for optimizations", naming.ObjRef(scyllaPod))
+			continue
+		}
+
 		if !controllerhelpers.IsPodTunable(scyllaPod) {
 			klog.V(4).Infof("Pod %q isn't a subject for optimizations", naming.ObjRef(scyllaPod))
 			continue
@@ -229,9 +239,14 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.J
 		return nil, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
 	}
 
-	perftuneJob, err := ncdc.makePerftuneJobForContainers(ctx, &selfPod.Spec, optimizablePods, optimizableScyllaContainerIDs)
-	if err != nil {
-		return nil, fmt.Errorf("can't make perftune jobs: %w", err)
+	var perftuneJob *batchv1.Job
+	if ncdc.disableOptimizations {
+		klog.V(2).InfoS("NodeConfig's optimizations are disabled, skipping perftune Job creation for containers")
+	} else {
+		perftuneJob, err = ncdc.makePerftuneJobForContainers(ctx, &selfPod.Spec, optimizablePods, optimizableScyllaContainerIDs)
+		if err != nil {
+			return nil, fmt.Errorf("can't make perftune jobs: %w", err)
+		}
 	}
 
 	resourceLimitsJobs, err := ncdc.makeResourceLimitJobsForContainers(ctx, &selfPod.Spec, runningScyllaPods)

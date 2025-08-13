@@ -77,7 +77,7 @@ object
      - Description
    * - disableOptimizations
      - boolean
-     - disableOptimizations controls if nodes matching placement requirements are going to be optimized. Turning off optimizations on already optimized Nodes does not revert changes.
+     - disableOptimizations controls if nodes matching placement requirements are going to be optimized for performance. Turning off optimizations on already optimized Nodes does not revert changes. See https://operator.docs.scylladb.com/stable/architecture/tuning.html for details.
    * - :ref:`localDiskSetup<api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.localDiskSetup>`
      - object
      - localDiskSetup contains options of automatic local disk setup.

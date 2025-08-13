@@ -9,6 +9,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	configassets "github.com/scylladb/scylla-operator/assets/config"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -23,11 +24,6 @@ import (
 
 var _ = g.Describe("ScyllaCluster", func() {
 	f := framework.NewFramework("scyllacluster")
-
-	const (
-		scyllaOSImageRepository         = "docker.io/scylladb/scylla"
-		scyllaEnterpriseImageRepository = "docker.io/scylladb/scylla-enterprise"
-	)
 
 	validateReplaceViaHostID := func(ctx context.Context, configClient *scyllaclient.ConfigClient, preReplaceService *corev1.Service) error {
 		replaceNodeFirstBoot, err := configClient.ReplaceNodeFirstBoot(ctx)
@@ -171,12 +167,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	},
 		g.Entry(describeEntry, &entry{
-			scyllaImageRepository: scyllaOSImageRepository,
+			scyllaImageRepository: configassets.ScyllaDBImageRepository,
 			scyllaVersion:         framework.TestContext.ScyllaDBVersion,
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),
 		g.Entry(describeEntry, &entry{
-			scyllaImageRepository: scyllaEnterpriseImageRepository,
+			scyllaImageRepository: configassets.ScyllaDBEnterpriseImageRepository,
 			scyllaVersion:         "2023.1.0",
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),

@@ -199,11 +199,8 @@ EOF
 
 ::::
 
-:::{code-block} bash
-# Wait for it to deploy.
-kubectl wait --for='condition=Progressing=False' scyllacluster.scylla.scylladb.com/scylladb
-kubectl wait --for='condition=Degraded=False' scyllacluster.scylla.scylladb.com/scylladb
-kubectl wait --for='condition=Available=True' scyllacluster.scylla.scylladb.com/scylladb
+Wait for it to deploy by watching status conditions.
+:::{include} ./../../.internal/wait-for-status-conditions.scyllacluster.code-block.md
 :::
 
 ## Forcing a rolling restart

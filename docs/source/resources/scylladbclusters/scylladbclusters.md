@@ -170,10 +170,7 @@ Similarly, the tolerations will differ depending on how and whether you set up d
 
 Wait for it to deploy, by watching status conditions.
 
-:::{code-block} bash
-kubectl --context=${CONTROL_PLANE_CONTEXT} wait --for='condition=Progressing=False' scylladbcluster.scylla.scylladb.com/dev-cluster
-kubectl --context=${CONTROL_PLANE_CONTEXT} wait --for='condition=Degraded=False' scylladbcluster.scylla.scylladb.com/dev-cluster
-kubectl --context=${CONTROL_PLANE_CONTEXT} wait --for='condition=Available=True' scylladbcluster.scylla.scylladb.com/dev-cluster
+:::{include} ./../../.internal/wait-for-status-conditions.scylladbcluster.code-block.md
 :::
 
 Datacenters in Worker clusters are reconciled in unique namespaces. Their names are visible in `ScyllaDBCluster.status.datacenters`.

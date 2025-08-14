@@ -79,3 +79,11 @@ func ValidateScyllaOperatorConfigUpdate(new, old *scyllav1alpha1.ScyllaOperatorC
 
 	return allErrs
 }
+
+func GetWarningsOnScyllaOperatorConfigCreate(soc *scyllav1alpha1.ScyllaOperatorConfig) []string {
+	return nil
+}
+
+func GetWarningsOnScyllaOperatorConfigUpdate(new, old *scyllav1alpha1.ScyllaOperatorConfig) []string {
+	return nil
+}

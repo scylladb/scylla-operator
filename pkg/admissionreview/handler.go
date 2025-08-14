@@ -26,7 +26,8 @@ func init() {
 	codecs = serializer.NewCodecFactory(scheme)
 }
 
-type HandleFunc func(*admissionv1.AdmissionReview) error
+// HandleFunc is a function type that processes an AdmissionReview request and returns warnings and a validation error.
+type HandleFunc func(*admissionv1.AdmissionReview) ([]string, error)
 
 type handler struct {
 	f HandleFunc
@@ -79,7 +80,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		funcErr := h.f(requestedAdmissionReview)
+		funcWarnings, funcErr := h.f(requestedAdmissionReview)
 		if funcErr != nil {
 			klog.V(2).InfoS("Review failed", "Error", err)
 		}
@@ -105,6 +106,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					}(),
 				}
 			}(),
+			Warnings: funcWarnings,
 		}
 		responseObj = responseAdmissionReview
 

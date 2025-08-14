@@ -422,3 +422,11 @@ func ValidateScyllaDBClusterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBCluster,
 
 	return allErrs
 }
+
+func GetWarningsOnScyllaDBClusterCreate(sc *scyllav1alpha1.ScyllaDBCluster) []string {
+	return nil
+}
+
+func GetWarningsOnScyllaDBClusterUpdate(new, old *scyllav1alpha1.ScyllaDBCluster) []string {
+	return nil
+}

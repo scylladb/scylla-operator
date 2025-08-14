@@ -576,3 +576,11 @@ func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.
 
 	return allErrs
 }
+
+func GetWarningsOnScyllaDBDatacenterCreate(sdc *scyllav1alpha1.ScyllaDBDatacenter) []string {
+	return nil
+}
+
+func GetWarningsOnScyllaDBDatacenterUpdate(new, old *scyllav1alpha1.ScyllaDBDatacenter) []string {
+	return nil
+}

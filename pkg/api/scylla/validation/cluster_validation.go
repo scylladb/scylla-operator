@@ -501,3 +501,11 @@ func isRackStatusUpToDate(sc *scyllav1.ScyllaCluster, rack string) bool {
 		sc.Status.Racks[rack].Stale != nil &&
 		!*sc.Status.Racks[rack].Stale
 }
+
+func GetWarningsOnScyllaClusterCreate(sc *scyllav1.ScyllaCluster) []string {
+	return nil
+}
+
+func GetWarningsOnScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) []string {
+	return nil
+}

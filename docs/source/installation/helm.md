@@ -140,16 +140,18 @@ By default Scylla Helm charts deploys working Scylla cluster, but of course we c
 
 ### Customization
 
-Versions of images used in the cluster can be set via `scyllaImage` and `agentImage`
-```yaml
+Versions of images used in the cluster can be set via `scyllaImage` and `agentImage`:
+
+:::{code-block} yaml
+:substitutions:
 scyllaImage:
   repository: scylladb/scylla
-  tag: {{ imageTag }}
+  tag: {{imageTag}}
 
 agentImage:
   repository: scylladb/scylla-manager-agent
-  tag: {{ agentVersion }}
-```
+  tag: {{agentVersion}}
+:::
 
 A minimal Scylla cluster can be expressed as:
 ```yaml
@@ -201,12 +203,14 @@ To read more about Scylla Manager see [Manager guide](../architecture/manager.md
 ### Scylla Manager
 
 To set version of used Scylla Manager you can use `image` field:
-```yaml
+:::{code-block} yaml
+:substitutions:
 image:
   repository: scylladb
   pullPolicy: IfNotPresent
   tag: {{agentVersion}}
-```
+:::
+
 To control how many resources are allocated for Scylla Manager use `resource` field:
 ```yaml
 resources:

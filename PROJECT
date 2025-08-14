@@ -1,7 +1,6 @@
 domain: scylla.scylladb.com
+layout:
+- go.kubebuilder.io/v4
+projectName: scylla-operator
 repo: github.com/scylladb/scylla-operator
-resources:
-- group: scylla
-  kind: ScyllaCluster
-  version: v1
-version: "2"
+version: "3"

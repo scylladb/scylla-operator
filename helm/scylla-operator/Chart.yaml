@@ -14,4 +14,4 @@ sources:
 maintainers:
   - name: Maciej Zimnoch
     email: maciej@scylladb.com
-icon: https://github.com/scylladb/scylla-operator/raw/master/logo.png
+icon: https://github.com/scylladb/scylla-operator/raw/master/logo.svg

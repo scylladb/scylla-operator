@@ -28,8 +28,9 @@ spec:
         args:
         - run-webhook-server
         - --loglevel=2
-        - --tls-cert-file=/tmp/serving-certs/tls.crt
-        - --tls-private-key-file=/tmp/serving-certs/tls.key
+        - --tls-cert-file=/tmp/k8s-webhook-server/serving-certs/tls.crt
+        - --tls-private-key-file=/tmp/k8s-webhook-server/serving-certs/tls.key
+        - --port=5000
         livenessProbe:
           httpGet:
             path: /readyz
@@ -57,7 +58,7 @@ spec:
             cpu: 10m
             memory: 20Mi
         volumeMounts:
-        - mountPath: /tmp/serving-certs
+        - mountPath: /tmp/k8s-webhook-server/serving-certs/
           name: cert
           readOnly: true
       terminationGracePeriodSeconds: 75

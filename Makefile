@@ -654,6 +654,12 @@ define fix-bundle-manifests-filenames
 	done
 endef
 
+# $1 - path to clusterserviceversion
+define fix-bundle-webhook-certificate-volume
+	$(YQ) -i e 'del( .spec.install.spec.deployments.[] | select( .name == "webhook-server" ) | .spec.template.spec.volumes.[] | select( .name == "cert" ) )' $(1)
+	$(YQ) -i e 'del( .spec.install.spec.deployments.[] | select( .name == "webhook-server" ) | .spec.template.spec.containers.[] | select( .name == "webhook-server" ) | .volumeMounts.[] | select( .name == "cert"  ) )' $(1)
+endef
+
 # $1 - logo path
 # $2 - logo patch path
 define update-bundle-patches-logo
@@ -683,6 +689,12 @@ define apply-bundle-fixes
 
 	# Workaround for https://github.com/operator-framework/operator-registry/issues/1741
 	$(call fix-bundle-manifests-filenames, $(1)/manifests)
+
+	# OLM Bundles enforces their certificate, we cannot use custom source of it
+	# https://olm.operatorframework.io/docs/advanced-tasks/adding-admission-and-conversion-webhooks/#deploying-an-operator-with-webhooks-using-olm
+	# Hence we cannot require our own copy coming from secret in webhook-server deployment.
+	# Delete volume and related volume mount and use only what OLM provides.
+	$(call fix-bundle-webhook-certificate-volume, $(1)/manifests/scylla-operator.clusterserviceversion.yaml)
 endef
 
 update-bundle:

@@ -546,8 +546,6 @@ endef
 
 update-examples:
 update-examples:
-	$(call update-scylla-helm-versions,./examples/helm/values.cluster.yaml)
-	$(call update-scylla-manager-helm-versions,./examples/helm/values.manager.yaml)
 	$(call replace-scyllacluster-versions,./examples/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),./examples/third-party/haproxy-ingress.yaml)
@@ -558,8 +556,6 @@ verify-examples: tmp_dir :=$(shell mktemp -d)
 verify-examples:
 	cp -r ./examples/. $(tmp_dir)/
 
-	$(call update-scylla-helm-versions,$(tmp_dir)/helm/values.cluster.yaml)
-	$(call update-scylla-manager-helm-versions,$(tmp_dir)/helm/values.manager.yaml)
 	$(call replace-scyllacluster-versions,$(tmp_dir)/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),$(tmp_dir)/third-party/haproxy-ingress.yaml)

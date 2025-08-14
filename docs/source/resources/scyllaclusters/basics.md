@@ -68,100 +68,100 @@ spec:
   - fs.aio-max-nr=30000000
   datacenter:
     name: us-east-1
-  racks:
-  - name: us-east-1a
-    members: 1
-    scyllaConfig: scylladb-config
-    storage:
-      capacity: 100Gi
-      storageClassName: scylladb-local-xfs
-    resources:
-      requests:
-        cpu: 1
-        memory: 8Gi
-      limits:
-        cpu: 1
-        memory: 8Gi
-    placement:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: topology.kubernetes.io/zone
-              operator: In
-              values:
-              - us-east-1a 
-            - key: scylla.scylladb.com/node-type
-              operator: In
-              values:
-              - scylla
-      tolerations:
-      - key: scylla-operator.scylladb.com/dedicated
-        operator: Equal
-        value: scyllaclusters
-        effect: NoSchedule
-  - name: us-east-1b
-    members: 1
-    scyllaConfig: scylladb-config
-    storage:
-      capacity: 100Gi
-      storageClassName: scylladb-local-xfs
-    resources:
-      requests:
-        cpu: 1
-        memory: 8Gi
-      limits:
-        cpu: 1
-        memory: 8Gi
-    placement:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: topology.kubernetes.io/zone
-              operator: In
-              values:
-              - us-east-1b
-            - key: scylla.scylladb.com/node-type
-              operator: In
-              values:
-              - scylla
-      tolerations:
-      - key: scylla-operator.scylladb.com/dedicated
-        operator: Equal
-        value: scyllaclusters
-        effect: NoSchedule
-  - name: us-east-1c
-    members: 1
-    scyllaConfig: scylladb-config
-    storage:
-      capacity: 100Gi
-      storageClassName: scylladb-local-xfs
-    resources:
-      requests:
-        cpu: 1
-        memory: 8Gi
-      limits:
-        cpu: 1
-        memory: 8Gi
-    placement:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: topology.kubernetes.io/zone
-              operator: In
-              values:
-              - us-east-1c
-            - key: scylla.scylladb.com/node-type
-              operator: In
-              values:
-              - scylla
-      tolerations:
-      - key: scylla-operator.scylladb.com/dedicated
-        operator: Equal
-        value: scyllaclusters
-        effect: NoSchedule
+    racks:
+    - name: us-east-1a
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        capacity: 100Gi
+        storageClassName: scylladb-local-xfs
+      resources:
+        requests:
+          cpu: 1
+          memory: 8Gi
+        limits:
+          cpu: 1
+          memory: 8Gi
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1a 
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+          effect: NoSchedule
+    - name: us-east-1b
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        capacity: 100Gi
+        storageClassName: scylladb-local-xfs
+      resources:
+        requests:
+          cpu: 1
+          memory: 8Gi
+        limits:
+          cpu: 1
+          memory: 8Gi
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1b
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+          effect: NoSchedule
+    - name: us-east-1c
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        capacity: 100Gi
+        storageClassName: scylladb-local-xfs
+      resources:
+        requests:
+          cpu: 1
+          memory: 8Gi
+        limits:
+          cpu: 1
+          memory: 8Gi
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1c
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+          effect: NoSchedule
 EOF
 :::
 

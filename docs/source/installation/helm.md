@@ -308,7 +308,7 @@ Helm should notice the difference, install the ServiceMonitor, and then Promethe
 
 ## Upgrade
 
-Please refer to the [upgrade guide](./upgrade.md#upgrade-via-helm) to learn how to upgrade your Helm installations.
+Please refer to the [upgrade guide](./../management/upgrading/upgrade.md#upgrade-via-helm) to learn how to upgrade your Helm installations.
 
 ## Cleanup
 

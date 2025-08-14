@@ -1,4 +1,4 @@
-# Upgrade
+# Upgrading {{productName}}
 
 {{productName}} supports N+1 upgrades only.
 That means to you can only update by 1 minor version at the time and wait for it to successfully roll out and then update
@@ -13,7 +13,7 @@ If any additional steps are required for a specific version upgrade, they will b
 ## Upgrade via GitOps (kubectl)
 
 A typical upgrade flow using GitOps (kubectl) requires re-applying the manifests using ones from the release you want to upgrade to.
-Please refer to the [GitOps installation instructions](./gitops.md) for details.
+Please refer to the [GitOps installation instructions](./../../installation/gitops.md) for details.
 
 ## Upgrade via Helm
 

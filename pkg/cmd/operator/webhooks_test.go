@@ -25,6 +25,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -217,6 +218,51 @@ func TestWebhookOptionsRunWithReload(t *testing.T) {
 	err = apimachineryutilwait.PollImmediate(pollInterval, pollTimeout, hasExpectedCertificate(updatedCertSerialNumber))
 	if err != nil {
 		t.Errorf("certificate wasn't updated: %v", err)
+	}
+}
+
+func TestPortFlag(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name          string
+		portFlag      string
+		expectedValue int
+		expectedError error
+	}{
+		{
+			name:          "port number",
+			portFlag:      "1234",
+			expectedValue: 1234,
+			expectedError: nil,
+		},
+		{
+			name:          "string with tcp://host:port format",
+			portFlag:      "tcp://host:1234",
+			expectedValue: 1234,
+			expectedError: nil,
+		},
+		{
+			name:          "string with tcp://ip:port format",
+			portFlag:      "tcp://127.0.0.1:4321",
+			expectedValue: 4321,
+			expectedError: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			pf := portFlag(0)
+			gotErr := pf.Set(tc.portFlag)
+			if !equality.Semantic.DeepEqual(gotErr, tc.expectedError) {
+				t.Errorf("expected error %v, got %v", tc.expectedError, gotErr)
+			}
+			if int(pf) != tc.expectedValue {
+				t.Errorf("expected value %v, got %v", tc.expectedValue, pf)
+			}
+		})
 	}
 }
 

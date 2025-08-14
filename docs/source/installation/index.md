@@ -7,5 +7,4 @@ overview
 kubernetes/index
 gitops
 helm
-upgrade
 :::

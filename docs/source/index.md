@@ -17,6 +17,7 @@ hide-post-content:
 
 architecture/index
 installation/index
+management/index
 resources/index
 quickstarts/index
 support/index
@@ -70,6 +71,16 @@ Learn about the components of Scylla Operator and how they fit together.
 :class: large-4
 
 Configure your Kubernetes platform, install prerequisites and all components of {{productName}}.
+```
+
+```{topic-box}
+:title: Management
+:icon: icon-operations
+:link: management/overview
+:anchor: Learn more »
+:class: large-4
+
+Manage your ScyllaDB clusters using {{productName}}. 
 ```
 
 ```{topic-box}

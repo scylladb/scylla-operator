@@ -49,4 +49,3 @@ spec:
       type: MultiNamespace
     - supported: true
       type: AllNamespaces
-

@@ -1,0 +1,78 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  labels:
+    rbac.operator.scylladb.com/aggregate-to-scylla-operator-remote: "true"
+  name: scylladb:controller:aggregate-to-operator-remote
+rules:
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scylladbdatacenters
+  - scylladbdatacenters/finalizers
+  - remoteowners
+  - remoteowners/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scylladbdatacenters/status
+  - remoteowners/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  - endpointslices/finalizers
+  - endpointslices/restricted
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  - endpoints/finalizers
+  - endpoints/restricted
+  - namespaces
+  - namespaces/finalizers
+  - services
+  - services/finalizers
+  - secrets
+  - secrets/finalizers
+  - configmaps
+  - configmaps/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch

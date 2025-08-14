@@ -37,6 +37,7 @@ spec:
         - --loglevel=2
         - --tls-cert-file=/tmp/k8s-webhook-server/serving-certs/tls.crt
         - --tls-private-key-file=/tmp/k8s-webhook-server/serving-certs/tls.key
+        - --port=5000
         livenessProbe:
           httpGet:
             path: /readyz

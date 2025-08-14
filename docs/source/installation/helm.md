@@ -116,16 +116,21 @@ webhook:
 
 ### Customization
 
-You can customize all these fields and others by providing file containing desired values.
-Content of this file will overwrite default values.
+You can customize all these fields and others by providing file containing desired values. 
+Please refer to the {{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla-operator/values.yaml)'.format(repository, revision) }} file in Scylla Operator repository for all available fields.
 
-You can find an example in Scylla Operator repository under `examples/helm/values.operator.yaml`
+You can copy the default `values.yaml` file and modify it to your needs.
 
 ### Installation
 
-To deploy Scylla Operator using customized values file execute the following:
+To deploy Scylla Operator using default values execute the following command:
 ```
-helm install scylla-operator scylla/scylla-operator --values examples/helm/values.operator.yaml --create-namespace --namespace scylla-operator
+helm install scylla-operator scylla/scylla-operator --create-namespace --namespace scylla-operator
+```
+
+To deploy Scylla Operator using customized values file (as described in the [Customization](#customization) section), execute the following command:
+```
+helm install scylla-operator scylla/scylla-operator --values <path-to-values-file> --create-namespace --namespace scylla-operator
 ```
 
 ## Scylla Helm Chart
@@ -143,7 +148,7 @@ scyllaImage:
 
 agentImage:
   repository: scylladb/scylla-manager-agent
-  tag: {{agentVersion}}
+  tag: {{ agentVersion }}
 ```
 
 A minimal Scylla cluster can be expressed as:
@@ -163,17 +168,25 @@ racks:
       memory: 1Gi
 ```
 
-Above cluster will use 4.3.0 Scylla, 2.2.1 Scylla Manager Agent sidecar and will have a single rack having 2 nodes. 
+Above cluster will use {{ imageTag }} Scylla, {{ agentVersion }} Scylla Manager Agent sidecar and will have a single rack having 2 nodes. 
 Each node will have a single CPU and 1 GiB of memory.
 
-For other customizable fields, please refer to [ScyllaCluster CRD](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
-CRD Rack Spec and Helm Chart Rack should have the same fields.
+For other customizable fields, please refer to chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla/values.yaml)'.format(repository, revision) }}) in Scylla Operator repository
+and [ScyllaCluster CRD](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
+The CRD's `spec.rack` and Helm chart `rack` should have the same fields.
+
+You can copy the default `values.yaml` file and modify it to your needs.
 
 ### Installation
 
+To deploy Scylla cluster using default values execute the following command:
+```
+helm install scylla scylla/scylla --create-namespace --namespace scylla
+```
+
 To deploy Scylla cluster using customzied values file execute the following command:
 ```
-helm install scylla scylla/scylla --values examples/helm/values.cluster.yaml --create-namespace --namespace scylla
+helm install scylla scylla/scylla --values <path-to-values-file> --create-namespace --namespace scylla
 ```
 
 Scylla Operator will provision this cluster on your K8s environment.
@@ -210,15 +223,19 @@ resources:
 To customize internal Scylla instance dedicated to Scylla Manager, see guide above customizing Scylla Helm Chart.
 It's definition should land as a `scylla` field.
 
-### Customization
-
-All others customizable fields can be looked up in Chart source in Scylla Operator repository.
+All others customizable fields can be looked up in Chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla-manager/values.yaml)'.format(repository, revision) }}) in Scylla Operator repository.
+You can copy the default `values.yaml` file and modify it to your needs.
 
 ### Installation
 
+To deploy Scylla Manager using default values execute the following command:
+```
+helm install scylla-manager scylla/scylla-manager --create-namespace --namespace scylla-manager
+```
+
 To deploy Scylla Manager using customized values file execute the following command:
 ```
-helm install scylla-manager scylla/scylla-manager --values examples/helm/values.manager.yaml --create-namespace --namespace scylla-manager
+helm install scylla-manager scylla/scylla-manager --values <path-to-values-file> --create-namespace --namespace scylla-manager
 ```
 
 ## Results
@@ -293,15 +310,15 @@ Two running nodes, exactly what we were asking for.
 To spin up a Prometheus monitoring refer to [monitoring guide](../resources/scylladbmonitorings.md).
 
 Helm charts can create ServiceMonitors needed to observe Scylla Manager and Scylla. 
-Both of these Helm Charts allows to specify whether you want to create a ServiceMonitor:
+Both of these Helm Charts allow specifying whether you want to create a ServiceMonitor:
 ```yaml
 serviceMonitor:
   create: false
 ```
 
-Change `create` to `true` and update your current deployment using:
+Change `create` to `true` in your `values.yaml` file and update your current deployment using:
 ```shell
-helm upgrade --install scylla --namespace scylla scylla/scylla -f examples/helm/values.cluster.yaml
+helm upgrade --install scylla --namespace scylla scylla/scylla -f <path-to-values-file> 
 ```
 
 Helm should notice the difference, install the ServiceMonitor, and then Prometheus will be able to scrape metrics.

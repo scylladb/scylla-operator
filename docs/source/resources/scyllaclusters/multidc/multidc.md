@@ -103,15 +103,16 @@ For more information see [Create a ScyllaDB Cluster - Multi Data Centers (DC)](h
 :::
 
 Save the ScyllaCluster manifest in `dc1.yaml`:
-```yaml
+:::{code-block} yaml
+:substitutions:
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.5.1
-  version: 2025.1.2
+  agentVersion: {{agentVersion}}
+  version: {{imageTag}}
   cpuset: true
   sysctls:
   - "fs.aio-max-nr=2097152"
@@ -259,7 +260,7 @@ spec:
           key: scylla-operator.scylladb.com/dedicated
           operator: Equal
           value: scyllaclusters
-```
+:::
 
 Apply the manifest:
 ```shell
@@ -357,15 +358,17 @@ For this guide, let's assume that the second cluster is running in `us-east-2` r
 :::
 
 Having configured it, save the manifest as `dc2.yaml`:
-```yaml
+:::{code-block} yaml
+:substitutions:
+
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  agentVersion: 3.5.1
-  version: 2025.1.2
+  agentVersion: {{ agentVersion }}
+  version: {{ imageTag }}
   cpuset: true
   sysctls:
   - "fs.aio-max-nr=2097152"
@@ -517,7 +520,7 @@ spec:
           key: scylla-operator.scylladb.com/dedicated
           operator: Equal
           value: scyllaclusters
-```
+:::
 
 To apply the manifest, run:
 ```shell

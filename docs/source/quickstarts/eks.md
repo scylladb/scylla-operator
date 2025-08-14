@@ -15,12 +15,10 @@ If you don't have those already, or are not available through your package manag
 ## Creating an EKS cluster
 
 First, let's create a declarative config to used with eksctl
-% The form of this code block is a workaround to allow resolution of smv_current_version - https://github.com/scylladb/scylla-operator/issues/2752
-{{"""
-BEGIN_CODE_BLOCK
-curl --fail --retry 5 --retry-all-errors -o 'clusterconfig.eksctl.yaml' -L https://raw.githubusercontent.com/REPO/BRANCH/examples/eks/clusterconfig.eksctl.yaml
-END_CODE_BLOCK
-""".replace("REPO", repository).replace("BRANCH", env.config.smv_current_version).replace("BEGIN_CODE_BLOCK", ":::{code-block} bash").replace("END_CODE_BLOCK", ":::")}}
+:::{code-block} shell
+:substitutions:
+curl --fail --retry 5 --retry-all-errors -o 'clusterconfig.eksctl.yaml' -L https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/eks/clusterconfig.eksctl.yaml
+:::
 
 With the config ready, we can easily create an EKS cluster by running
 

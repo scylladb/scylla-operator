@@ -91,11 +91,11 @@ spec:
       containers:
       - name: scylla-operator
         # ...
-        image: docker.io/scylladb/scylla-operator:1.14.0@sha256:8c75c5780e2283f0a8f9734925352716f37e0e7f41007e50ce9b1d9924046fa1
+        image: docker.io/scylladb/scylla-operator:1.18.0@sha256:ea1d287c2699efdfdb040b4a8c35be74a12d19b292541d8a4204f7a079731ca6
         env:
           # ...
         - name: SCYLLA_OPERATOR_IMAGE
-          value: docker.io/scylladb/scylla-operator:1.14.0@sha256:8c75c5780e2283f0a8f9734925352716f37e0e7f41007e50ce9b1d9924046fa1
+          value: docker.io/scylladb/scylla-operator:1.18.0@sha256:ea1d287c2699efdfdb040b4a8c35be74a12d19b292541d8a4204f7a079731ca6
 :::
 The {{productName}} image value and the `SCYLLA_OPERATOR_IMAGE` shall always match.
 Be careful not to use a rolling tag for any of them to avoid an accidental skew!

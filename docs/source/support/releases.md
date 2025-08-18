@@ -98,7 +98,8 @@ The following platforms are known **not to work correctly** at this time.
 :::{table}
 | Platform         | OS Image     | Details |
 |:-----------------|:-------------| :------ |
-| GKE              | Container OS |         |
+| GKE              | Container OS | Lack of XFS support |
+| GKE >= 1.32      | Ubuntu       | See [#2579](https://github.com/scylladb/scylla-operator/issues/2579) |
 | EKS              | Bottlerocket | Suspected kernel/cgroups issue that breaks available memory detection for ScyllaDB |
 :::
 :::

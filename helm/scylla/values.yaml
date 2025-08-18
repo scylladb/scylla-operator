@@ -36,8 +36,7 @@ hostNetworking: false
 # Whether Scylla Operator should perform automatic cleanup of orphaned Pods
 automaticOrphanedNodeCleanup: false
 # Sysctl properties to be applied during initialization given as a list of key=value pairs
-sysctls:
-  - fs.aio-max-nr=30000000
+sysctls: []
 # Scylla Manager Backups task definition
 backups: []
 # Scylla Manager Repair task definition

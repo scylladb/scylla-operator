@@ -102,4 +102,4 @@ For details, please see the [dedicated section describing the deployment using H
 
 ## Upgrades
 
-Please see the [dedicated section describing the upgrade process](./upgrade.md).
+Please see the [dedicated section describing the upgrade process](./../management/upgrading/upgrade.md).

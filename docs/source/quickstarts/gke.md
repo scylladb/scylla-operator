@@ -7,7 +7,7 @@ This is by no means a complete guide, and you should always consult your Kuberne
 
 ## Creating a GKE cluster
 
-First, we need to create a kubelet config to configure [static CPU policy](../installation/kubernetes/generic.md#static-cpu-policy)
+First, we need to create a kubelet config to configure [static CPU policy](../installation/kubernetes-prerequisites.md#static-cpu-policy):
 :::{code} bash
 :number-lines:
 

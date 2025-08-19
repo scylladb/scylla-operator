@@ -1,4 +1,4 @@
-# Generic
+# Kubernetes prerequisites
 
 Because {{productName}} aims to leverage the best performance available, there are a few extra steps that need to be configured on your Kubernetes cluster.
 
@@ -14,8 +14,39 @@ To get the best performance and latency ScyllaDB Pods should run under [static C
 
 :::{note}
 Configuring kubelet options is provider specific.
-We provide a few examples for the major ones later in this section, otherwise please consult the documentation for your Kubernetes platform.
+We provide a few examples for the major ones in this section, otherwise please consult the documentation for your Kubernetes platform.
 :::
+
+:::::{tabs}
+
+::::{group-tab} GKE
+
+GKE allows you to set static CPU policy using a [node system configuration](https://cloud.google.com/kubernetes-engine/docs/how-to/node-system-config):
+:::{code} yaml
+:number-lines:
+kubeletConfig:
+  cpuManagerPolicy: static
+:::
+
+::::
+
+::::{group-tab} EKS
+`eksctl` allows you to set static CPU policy for each node pool like:
+
+:::{code} yaml
+:number-lines:
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+# ...
+nodeGroups:
+- name: scylla-pool
+  kubeletExtraConfig:
+    cpuManagerPolicy: static
+:::
+
+::::
+
+:::::
 
 ## Nodes
 

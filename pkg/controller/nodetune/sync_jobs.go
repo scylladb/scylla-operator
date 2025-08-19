@@ -27,32 +27,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (ncdc *Controller) makeJobsForNode(ctx context.Context) ([]*batchv1.Job, error) {
-	pod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
-	if err != nil {
-		return nil, fmt.Errorf("can't get self Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
-	}
-
-	var jobs []*batchv1.Job
-
-	cr, err := ncdc.newOwningDSControllerRef()
-	if err != nil {
-		return nil, fmt.Errorf("can't get controller ref: %w", err)
-	}
-
-	jobs = append(jobs, makePerftuneJobForNode(
-		cr,
-		ncdc.namespace,
-		ncdc.nodeConfigName,
-		ncdc.nodeName,
-		ncdc.nodeUID,
-		ncdc.scyllaImage,
-		&pod.Spec,
-	))
-
-	return jobs, nil
-}
-
 func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpec *corev1.PodSpec, optimizablePods []*corev1.Pod, scyllaContainerIDs []string) (*batchv1.Job, error) {
 	if len(optimizablePods) == 0 {
 		klog.V(2).InfoS("No optimizable pod found on this node")
@@ -253,7 +227,17 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.J
 func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeConfig, jobs map[string]*batchv1.Job, nodeStatus *scyllav1alpha1.NodeConfigNodeStatus) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	requiredForNode, err := ncdc.makeJobsForNode(ctx)
+	selfPod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get self Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
+	}
+
+	cr, err := ncdc.newOwningDSControllerRef()
+	if err != nil {
+		return nil, fmt.Errorf("can't get controller ref: %w", err)
+	}
+
+	requiredForNode, err := makeJobsForNode(ctx, nc, cr, ncdc.namespace, ncdc.nodeName, ncdc.nodeUID, ncdc.scyllaImage, selfPod)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make Jobs for node: %w", err)
 	}

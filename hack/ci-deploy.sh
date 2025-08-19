@@ -26,8 +26,15 @@ if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
 fi
 
 SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:-false}
+SO_INSTALL_XFSPROGS_ON_NODES="${SO_INSTALL_XFSPROGS_ON_NODES:-}"
 
 mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,prometheus-operator,haproxy-ingress}
+
+if [[ -n "${SO_INSTALL_XFSPROGS_ON_NODES:-}" ]]; then
+  cp ./examples/gke/install-xfsprogs.daemonset.yaml "${ARTIFACTS_DEPLOY_DIR}/"
+else
+  echo "Skipping installing xfsprogs on all nodes"
+fi
 
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
   echo "Skipping copying prometheus-operator manifests to ${ARTIFACTS_DEPLOY_DIR}"
@@ -88,6 +95,10 @@ if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
   echo "Skipping prometheus-operator deployment"
 else
   kubectl_create -n prometheus-operator -f "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
+fi
+
+if [[ -n ${SO_INSTALL_XFSPROGS_ON_NODES:-} ]]; then
+  kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/install-xfsprogs.daemonset.yaml
 fi
 
 kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
@@ -165,4 +176,10 @@ if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
 else
   kubectl wait --for condition=established $( find "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator/" -name '*.crd.yaml' -printf '-f=%p\n' )
   kubectl -n=prometheus-operator rollout status deploy/prometheus-operator
+fi
+
+if [[ -n "${SO_INSTALL_XFSPROGS_ON_NODES:-}" ]]; then
+  kubectl -n=kube-system rollout status --timeout=5m daemonset.apps/install-xfsprogs
+else
+  echo "Skipping waiting for xfsprogs daemonset"
 fi

@@ -115,6 +115,11 @@ Please review the [NodeConfig](../resources/nodeconfigs.md) and adjust it for yo
 
 ::::{group-tab} GKE (NVMe)
 
+:::{caution}
+:::{include} ../.internal/gke-1-32-xfsprogs.md
+:::
+:::
+
 :::{code-block} shell
 :substitutions:
 kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/nodeconfig-alpha.yaml

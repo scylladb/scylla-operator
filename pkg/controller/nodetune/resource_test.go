@@ -190,6 +190,22 @@ func Test_makeJobsForNode(t *testing.T) {
 			},
 			expectedErr: nil,
 		},
+		{
+			name: "optimizations disabled",
+			nc: func() *scyllav1alpha1.NodeConfig {
+				nc := getTestNodeConfig()
+				nc.Spec.DisableOptimizations = true
+				return nc
+			}(),
+			controllerRef: getTestControllerRef(),
+			namespace:     testNamespace,
+			nodeName:      testNodeName,
+			nodeUID:       testNodeUID,
+			scyllaImage:   testScyllaImage,
+			selfPod:       testSelfPod,
+			expected:      nil,
+			expectedErr:   nil,
+		},
 	}
 
 	for _, tc := range tt {

@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -38,6 +39,11 @@ func makeJobsForNode(
 	selfPod *corev1.Pod,
 ) ([]*batchv1.Job, error) {
 	var jobs []*batchv1.Job
+
+	if nc.Spec.DisableOptimizations {
+		klog.V(2).InfoS("NodeConfig's optimizations are disabled, skipping perftune Job creation for node")
+		return jobs, nil
+	}
 
 	jobs = append(jobs, makePerftuneJobForNode(
 		controllerRef,

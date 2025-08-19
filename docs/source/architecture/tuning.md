@@ -1,7 +1,7 @@
 # Tuning
 
 ScyllaDB works best when it's pinned to the CPUs and not interrupted.
-To get the best performance and latency we recommend you set up your ScyllaDB with [cpu pinning using the static CPU policy](../installation/kubernetes/generic.md#static-cpu-policy).
+To get the best performance and latency we recommend you set up your ScyllaDB with [cpu pinning using the static CPU policy](../installation/kubernetes-prerequisites.md#static-cpu-policy).
 
 One of the most common causes of context-switching are network interrupts.
 Packets coming to a Kubernetes node need to be processed which requires using CPU shares.  

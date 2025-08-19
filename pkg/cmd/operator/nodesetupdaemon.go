@@ -35,13 +35,12 @@ type NodeSetupDaemonOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
 
-	PodName              string
-	NodeName             string
-	NodeConfigName       string
-	NodeConfigUID        string
-	ScyllaImage          string
-	OperatorImage        string
-	DisableOptimizations bool
+	PodName        string
+	NodeName       string
+	NodeConfigName string
+	NodeConfigUID  string
+	ScyllaImage    string
+	OperatorImage  string
 
 	CRIEndpoints                []string
 	KubeletPodResourcesEndpoint string
@@ -101,7 +100,6 @@ func NewNodeSetupCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().StringVarP(&o.NodeConfigName, "node-config-name", "", o.NodeConfigName, "Name of the NodeConfig that owns this subcontroller.")
 	cmd.Flags().StringVarP(&o.NodeConfigUID, "node-config-uid", "", o.NodeConfigUID, "UID of the NodeConfig that owns this subcontroller.")
 	cmd.Flags().StringVarP(&o.ScyllaImage, "scylla-image", "", o.ScyllaImage, "Scylla image used for running perftune.")
-	cmd.Flags().BoolVarP(&o.DisableOptimizations, "disable-optimizations", "", o.DisableOptimizations, "Controls if optimizations are disabled")
 	cmd.Flags().StringArrayVarP(&o.CRIEndpoints, "cri-endpoint", "", o.CRIEndpoints, "CRI endpoint to connect to. It will try to connect to any of them, in the given order.")
 	cmd.Flags().StringVarP(&o.KubeletPodResourcesEndpoint, "kubelet-pod-resources-endpoint", "", o.KubeletPodResourcesEndpoint, "Endpoint to kubelet PodResources API server")
 	cmd.Flags().StringVarP(&o.OperatorImage, "operator-image", "", o.OperatorImage, "Operator image used for running tuning.")

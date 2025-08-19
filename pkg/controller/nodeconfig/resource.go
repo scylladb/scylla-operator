@@ -395,7 +395,6 @@ exec chroot ./ /scylla-operator/usr/bin/scylla-operator node-setup-daemon \
 --node-config-uid=` + fmt.Sprintf("%q", nc.UID) + ` \
 --scylla-image=` + fmt.Sprintf("%q", scyllaImage) + ` \
 --operator-image=` + fmt.Sprintf("%q", operatorImage) + ` \
---disable-optimizations=` + fmt.Sprintf("%t", nc.Spec.DisableOptimizations) + ` \
 ` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + `
 							`},
 							Env: []corev1.EnvVar{

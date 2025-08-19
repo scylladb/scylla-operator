@@ -56,6 +56,13 @@ node-pools create 'scyllaclusters' \
 --node-taints='scylla-operator.scylladb.com/dedicated=scyllaclusters:NoSchedule'
 :::
 
+## Installing Kubernetes prerequisites
+
+### xfsprogs
+
+::::{include} ../.internal/gke-1-32-xfsprogs.md
+::::
+
 ## Deploying {{productName}}
 
 To deploy {{productName}} follow the [installation guide](../installation/overview.md).

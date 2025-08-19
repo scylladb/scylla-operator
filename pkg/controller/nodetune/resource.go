@@ -1,12 +1,14 @@
 package nodetune
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
 	"os"
 	"path"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -16,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -24,6 +27,36 @@ const (
 )
 
 // TODO: set anti affinities so config jobs don't run on the same node at the same time
+
+func makeJobsForNode(
+	ctx context.Context,
+	nc *scyllav1alpha1.NodeConfig,
+	controllerRef *metav1.OwnerReference,
+	namespace string,
+	nodeName string,
+	nodeUID types.UID,
+	scyllaImage string,
+	selfPod *corev1.Pod,
+) ([]*batchv1.Job, error) {
+	var jobs []*batchv1.Job
+
+	if nc.Spec.DisableOptimizations {
+		klog.V(2).InfoS("NodeConfig's optimizations are disabled, skipping perftune Job creation for node")
+		return jobs, nil
+	}
+
+	jobs = append(jobs, makePerftuneJobForNode(
+		controllerRef,
+		namespace,
+		nc.Name,
+		nodeName,
+		nodeUID,
+		scyllaImage,
+		&selfPod.Spec,
+	))
+
+	return jobs, nil
+}
 
 func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec) *batchv1.Job {
 	podSpec = podSpec.DeepCopy()

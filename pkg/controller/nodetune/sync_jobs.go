@@ -27,32 +27,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (ncdc *Controller) makeJobsForNode(ctx context.Context) ([]*batchv1.Job, error) {
-	pod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
-	if err != nil {
-		return nil, fmt.Errorf("can't get self Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
-	}
-
-	var jobs []*batchv1.Job
-
-	cr, err := ncdc.newOwningDSControllerRef()
-	if err != nil {
-		return nil, fmt.Errorf("can't get controller ref: %w", err)
-	}
-
-	jobs = append(jobs, makePerftuneJobForNode(
-		cr,
-		ncdc.namespace,
-		ncdc.nodeConfigName,
-		ncdc.nodeName,
-		ncdc.nodeUID,
-		ncdc.scyllaImage,
-		&pod.Spec,
-	))
-
-	return jobs, nil
-}
-
 func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpec *corev1.PodSpec, optimizablePods []*corev1.Pod, scyllaContainerIDs []string) (*batchv1.Job, error) {
 	if len(optimizablePods) == 0 {
 		klog.V(2).InfoS("No optimizable pod found on this node")
@@ -180,7 +154,7 @@ func (ncdc *Controller) makeResourceLimitJobsForContainers(ctx context.Context, 
 	return rlimitsJobs, nil
 }
 
-func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.Job, error) {
+func (ncdc *Controller) makeJobsForContainers(ctx context.Context, nc *scyllav1alpha1.NodeConfig) ([]*batchv1.Job, error) {
 	localScyllaPods, err := ncdc.localScyllaPodsLister.List(naming.ScyllaSelector())
 	if err != nil {
 		return nil, fmt.Errorf("can't list local scylla pods: %w", err)
@@ -214,6 +188,11 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.J
 
 		runningScyllaPods = append(runningScyllaPods, scyllaPod)
 
+		if nc.Spec.DisableOptimizations {
+			klog.V(4).Infof("NodeConfig's optimizations are disabled, Pod %q isn't considered for optimizations", naming.ObjRef(scyllaPod))
+			continue
+		}
+
 		if !controllerhelpers.IsPodTunable(scyllaPod) {
 			klog.V(4).Infof("Pod %q isn't a subject for optimizations", naming.ObjRef(scyllaPod))
 			continue
@@ -229,9 +208,14 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.J
 		return nil, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
 	}
 
-	perftuneJob, err := ncdc.makePerftuneJobForContainers(ctx, &selfPod.Spec, optimizablePods, optimizableScyllaContainerIDs)
-	if err != nil {
-		return nil, fmt.Errorf("can't make perftune jobs: %w", err)
+	var perftuneJob *batchv1.Job
+	if nc.Spec.DisableOptimizations {
+		klog.V(2).InfoS("NodeConfig's optimizations are disabled, skipping perftune Job creation for containers")
+	} else {
+		perftuneJob, err = ncdc.makePerftuneJobForContainers(ctx, &selfPod.Spec, optimizablePods, optimizableScyllaContainerIDs)
+		if err != nil {
+			return nil, fmt.Errorf("can't make perftune jobs: %w", err)
+		}
 	}
 
 	resourceLimitsJobs, err := ncdc.makeResourceLimitJobsForContainers(ctx, &selfPod.Spec, runningScyllaPods)
@@ -253,12 +237,22 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context) ([]*batchv1.J
 func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeConfig, jobs map[string]*batchv1.Job, nodeStatus *scyllav1alpha1.NodeConfigNodeStatus) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	requiredForNode, err := ncdc.makeJobsForNode(ctx)
+	selfPod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get self Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
+	}
+
+	cr, err := ncdc.newOwningDSControllerRef()
+	if err != nil {
+		return nil, fmt.Errorf("can't get controller ref: %w", err)
+	}
+
+	requiredForNode, err := makeJobsForNode(ctx, nc, cr, ncdc.namespace, ncdc.nodeName, ncdc.nodeUID, ncdc.scyllaImage, selfPod)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make Jobs for node: %w", err)
 	}
 
-	requiredForContainers, err := ncdc.makeJobsForContainers(ctx)
+	requiredForContainers, err := ncdc.makeJobsForContainers(ctx, nc)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make Jobs for containers: %w", err)
 	}

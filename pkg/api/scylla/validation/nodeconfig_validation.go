@@ -110,3 +110,11 @@ func ValidateNodeConfigSpecUpdate(new, old *scyllav1alpha1.NodeConfig, fldPath *
 
 	return allErrs
 }
+
+func GetWarningsOnNodeConfigCreate(nc *scyllav1alpha1.NodeConfig) []string {
+	return nil
+}
+
+func GetWarningsOnNodeConfigUpdate(new, old *scyllav1alpha1.NodeConfig) []string {
+	return nil
+}

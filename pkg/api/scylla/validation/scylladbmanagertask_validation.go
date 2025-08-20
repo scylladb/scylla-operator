@@ -446,3 +446,11 @@ func validateDCLimit(s string, fldPath *field.Path) field.ErrorList {
 
 	return allErrs
 }
+
+func GetWarningsOnScyllaDBManagerTaskCreate(smt *scyllav1alpha1.ScyllaDBManagerTask) []string {
+	return nil
+}
+
+func GetWarningsOnScyllaDBManagerTaskUpdate(new, old *scyllav1alpha1.ScyllaDBManagerTask) []string {
+	return nil
+}

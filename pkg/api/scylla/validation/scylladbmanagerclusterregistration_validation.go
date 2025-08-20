@@ -96,3 +96,11 @@ func ValidateScyllaDBManagerClusterRegistrationSpecUpdate(newSpec, oldSpec *scyl
 
 	return allErrs
 }
+
+func GetWarningsOnScyllaDBManagerClusterRegistrationCreate(smcr *scyllav1alpha1.ScyllaDBManagerClusterRegistration) []string {
+	return nil
+}
+
+func GetWarningsOnScyllaDBManagerClusterRegistrationUpdate(new, old *scyllav1alpha1.ScyllaDBManagerClusterRegistration) []string {
+	return nil
+}

@@ -66,7 +66,7 @@ The support matrix table shows version requirements for a particular **Scylla Op
 :::{table}
 | Component         | master                       | v1.18                        | v1.17                                 |
 |:-----------------:|:----------------------------:|:----------------------------:|:-------------------------------------:|
-| Kubernetes        | `>=1.30`                     | `>=1.30`                     | `>=1.25`                              |
+| Kubernetes        | `>=1.30 && <=1.33`           | `>=1.30 && <=1.33`           | `>=1.25 && <=1.31`                    |
 | CRI API           | `v1`                         | `v1`                         | `v1`                                  |
 | ScyllaDB          | `2024.1 ... 2025.1`          | `2024.1 ... 2025.1`          | `>=6.0`, `2023.1 ... 2025.1`          |
 | Scylla Manager    | `>=3.5.0 && <=3.5.1`         | `>=3.5.0 && <=3.5.1`         | `>=3.3.3 && <=3.5`                    |
@@ -99,7 +99,6 @@ The following platforms are known **not to work correctly** at this time.
 | Platform         | OS Image     | Details |
 |:-----------------|:-------------| :------ |
 | GKE              | Container OS | Lack of XFS support |
-| GKE >= 1.32      | Ubuntu       | See [#2579](https://github.com/scylladb/scylla-operator/issues/2579) |
 | EKS              | Bottlerocket | Suspected kernel/cgroups issue that breaks available memory detection for ScyllaDB |
 :::
 :::

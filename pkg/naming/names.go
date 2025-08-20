@@ -363,3 +363,7 @@ func RemoteNamespaceName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.
 
 	return fmt.Sprintf("%s-%s", sc.Namespace, suffix), nil
 }
+
+func NodeConfigSysctlsJobForNodeName(nodeUID string) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, "sysctls", "node", nodeUID)
+}

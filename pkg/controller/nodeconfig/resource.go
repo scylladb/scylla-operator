@@ -51,6 +51,18 @@ func makePerftuneServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
+func makeSysctlsServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.SysctlsServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+	}
+}
+
 func makeRlimitsServiceAccount() *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -148,6 +160,26 @@ func makePerftuneRole() *rbacv1.Role {
 	}
 }
 
+func makeSysctlsRole() *rbacv1.Role {
+	return &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.SysctlsServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				Resources:     []string{"securitycontextconstraints"},
+				ResourceNames: []string{"privileged"},
+				Verbs:         []string{"use"},
+			},
+		},
+	}
+}
+
 func makeRlimitsRole() *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
@@ -211,6 +243,30 @@ func makePerftuneRoleBinding() *rbacv1.RoleBinding {
 				Kind:      "ServiceAccount",
 				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 				Name:      naming.PerftuneServiceAccountName,
+			},
+		},
+	}
+}
+
+func makeSysctlsRoleBinding() *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.SysctlsServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     naming.SysctlsServiceAccountName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Name:      naming.SysctlsServiceAccountName,
 			},
 		},
 	}

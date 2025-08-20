@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path"
+	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
@@ -36,29 +37,49 @@ func makeJobsForNode(
 	nodeName string,
 	nodeUID types.UID,
 	scyllaImage string,
+	operatorImage string,
 	selfPod *corev1.Pod,
 ) ([]*batchv1.Job, error) {
 	var jobs []*batchv1.Job
 
-	if nc.Spec.DisableOptimizations {
-		klog.V(2).InfoS("NodeConfig's optimizations are disabled, skipping perftune Job creation for node")
-		return jobs, nil
-	}
-
-	jobs = append(jobs, makePerftuneJobForNode(
+	perftuneJob, ok := makePerftuneJobForNode(
+		nc,
 		controllerRef,
 		namespace,
-		nc.Name,
 		nodeName,
 		nodeUID,
 		scyllaImage,
 		&selfPod.Spec,
-	))
+	)
+	if ok {
+		jobs = append(jobs, perftuneJob)
+	}
+
+	sysctlsJob, ok, err := makeSysctlsJobForNode(
+		nc,
+		controllerRef,
+		namespace,
+		nodeName,
+		nodeUID,
+		operatorImage,
+		&selfPod.Spec,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't create sysctls job for node %q: %w", nodeName, err)
+	}
+	if ok {
+		jobs = append(jobs, sysctlsJob)
+	}
 
 	return jobs, nil
 }
 
-func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec) *batchv1.Job {
+func makePerftuneJobForNode(nc *scyllav1alpha1.NodeConfig, controllerRef *metav1.OwnerReference, namespace, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec) (*batchv1.Job, bool) {
+	if nc.Spec.DisableOptimizations {
+		klog.V(2).InfoS("NodeConfig's optimizations are disabled, skipping perftune Job for node")
+		return nil, false
+	}
+
 	podSpec = podSpec.DeepCopy()
 
 	args := []string{
@@ -66,15 +87,8 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 		"--tune-clock",
 	}
 
-	labels := map[string]string{
-		naming.NodeConfigNameLabel:          nodeConfigName,
-		naming.NodeConfigJobForNodeUIDLabel: string(nodeUID),
-		naming.NodeConfigJobTypeLabel:       string(naming.NodeConfigJobTypeNode),
-	}
-
-	annotations := map[string]string{
-		naming.NodeConfigJobForNodeKey: nodeName,
-	}
+	labels := labelsForNodeConfigJob(nc.GetName(), nodeUID, naming.NodeConfigJobTypeNodePerftune)
+	annotations := annotationsForNodeConfigJob(nodeName)
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -138,7 +152,77 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 		},
 	}
 
-	return job
+	return job, true
+}
+
+// makeSysctlsJobForNode makes a Job that applies sysctls on the specified node.
+func makeSysctlsJobForNode(nc *scyllav1alpha1.NodeConfig, controllerRef *metav1.OwnerReference, namespace, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec) (*batchv1.Job, bool, error) {
+	if len(nc.Spec.Sysctls) == 0 {
+		klog.V(2).InfoS("NodeConfig has no sysctls to apply, skipping sysctls Job for node")
+		return nil, false, nil
+	}
+
+	labels := labelsForNodeConfigJob(nc.GetName(), nodeUID, naming.NodeConfigJobTypeNodeSysctls)
+	annotations := annotationsForNodeConfigJob(nodeName)
+
+	name, err := naming.NodeConfigSysctlsJobForNodeName(string(nodeUID))
+	if err != nil {
+		return nil, false, fmt.Errorf("can't create sysctls job name: %w", err)
+	}
+
+	var sysctlArgs []string
+	for _, s := range nc.Spec.Sysctls {
+		sysctlArgs = append(sysctlArgs, fmt.Sprintf("%s=%s", s.Name, s.Value))
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       namespace,
+			Name:            name,
+			OwnerReferences: []metav1.OwnerReference{*controllerRef},
+			Labels:          labels,
+			Annotations:     annotations,
+		},
+		Spec: batchv1.JobSpec{
+			// TODO: handle failed jobs and retry.
+			BackoffLimit: pointer.Ptr(int32(math.MaxInt32)),
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      labels,
+					Annotations: annotations,
+				},
+				Spec: corev1.PodSpec{
+					Tolerations:        podSpec.Tolerations,
+					NodeName:           nodeName,
+					RestartPolicy:      corev1.RestartPolicyOnFailure,
+					ServiceAccountName: naming.SysctlsServiceAccountName,
+					Containers: []corev1.Container{
+						{
+							Name:            naming.SysctlsContainerName,
+							Image:           image,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/bin/sh",
+								"-c",
+								fmt.Sprintf("sysctl -w %s", strings.Join(sysctlArgs, " ")),
+							},
+							SecurityContext: &corev1.SecurityContext{
+								Privileged: pointer.Ptr(true),
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return job, true, nil
 }
 
 func makeRlimitsJobForContainer(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image string, podSpec *corev1.PodSpec, scyllaPod *corev1.Pod, scyllaHostPID int) (*batchv1.Job, error) {
@@ -386,4 +470,18 @@ func makeHostDirVolume(name, hostPath string) corev1.Volume {
 func makeHostFileVolume(name, hostPath string) corev1.Volume {
 	volumeType := corev1.HostPathFile
 	return makeHostVolume(name, hostPath, &volumeType)
+}
+
+func labelsForNodeConfigJob(nodeConfigName string, nodeUID types.UID, jobType naming.NodeConfigJobType) map[string]string {
+	return map[string]string{
+		naming.NodeConfigNameLabel:          nodeConfigName,
+		naming.NodeConfigJobForNodeUIDLabel: string(nodeUID),
+		naming.NodeConfigJobTypeLabel:       string(jobType),
+	}
+}
+
+func annotationsForNodeConfigJob(nodeName string) map[string]string {
+	return map[string]string{
+		naming.NodeConfigJobForNodeKey: nodeName,
+	}
 }

@@ -94,7 +94,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		nodeJobList, err := f.KubeAdminClient().BatchV1().Jobs(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set{
 				naming.NodeConfigNameLabel:    nc.Name,
-				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeNode),
+				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeNodePerftune),
 			}).String(),
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())

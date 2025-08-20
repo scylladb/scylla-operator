@@ -17,4 +17,6 @@ const (
 	roleBindingControllerDegradedCondition           = "RoleBindingControllerDegraded"
 	daemonSetControllerProgressingCondition          = "DaemonSetControllerProgressing"
 	daemonSetControllerDegradedCondition             = "DaemonSetControllerDegraded"
+	configMapControllerProgressingCondition          = "ConfigMapControllerProgressing"
+	configMapControllerDegradedCondition             = "ConfigMapControllerDegraded"
 )

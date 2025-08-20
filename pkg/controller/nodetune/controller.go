@@ -66,6 +66,7 @@ type Controller struct {
 	namespacedDaemonSetLister appsv1listers.DaemonSetLister
 	namespacedJobLister       batchv1listers.JobLister
 	selfPodLister             corev1listers.PodLister
+	namespacedConfigMapLister corev1listers.ConfigMapLister
 
 	namespace      string
 	podName        string
@@ -92,6 +93,7 @@ func NewController(
 	localScyllaPodsInformer corev1informers.PodInformer,
 	namespacedDaemonSetInformer appsv1informers.DaemonSetInformer,
 	namespacedJobInformer batchv1informers.JobInformer,
+	namespacedConfigMapInformer corev1informers.ConfigMapInformer,
 	selfPodInformer corev1informers.PodInformer,
 	namespace string,
 	podName string,
@@ -116,6 +118,7 @@ func NewController(
 		localScyllaPodsLister:     localScyllaPodsInformer.Lister(),
 		namespacedDaemonSetLister: namespacedDaemonSetInformer.Lister(),
 		namespacedJobLister:       namespacedJobInformer.Lister(),
+		namespacedConfigMapLister: namespacedConfigMapInformer.Lister(),
 		selfPodLister:             selfPodInformer.Lister(),
 
 		namespace:      namespace,
@@ -132,6 +135,7 @@ func NewController(
 			localScyllaPodsInformer.Informer().HasSynced,
 			namespacedDaemonSetInformer.Informer().HasSynced,
 			namespacedJobInformer.Informer().HasSynced,
+			namespacedConfigMapInformer.Informer().HasSynced,
 			selfPodInformer.Informer().HasSynced,
 		},
 
@@ -160,6 +164,12 @@ func NewController(
 		AddFunc:    snc.addJob,
 		UpdateFunc: snc.updateJob,
 		DeleteFunc: snc.deleteJob,
+	})
+
+	namespacedConfigMapInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    snc.addConfigMap,
+		UpdateFunc: snc.updateConfigMap,
+		DeleteFunc: snc.deleteConfigMap,
 	})
 
 	// Start right away, Scylla might not be scheduled yet, but Node can already be tuned.
@@ -412,6 +422,72 @@ func (ncdc *Controller) deleteJob(obj interface{}) {
 	ncdc.enqueue()
 }
 
+func (ncdc *Controller) addConfigMap(obj interface{}) {
+	cm, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		return
+	}
+
+	if !ncdc.isControlledByNodeConfig(cm) {
+		return
+	}
+
+	klog.V(4).InfoS("Observed addition of ConfigMap", "ConfigMap", klog.KObj(cm), "RV", cm.ResourceVersion)
+	ncdc.enqueue()
+}
+
+func (ncdc *Controller) updateConfigMap(old, cur interface{}) {
+	oldCM := old.(*corev1.ConfigMap)
+	currentCM := cur.(*corev1.ConfigMap)
+
+	if currentCM.UID != oldCM.UID {
+		key, err := keyFunc(oldCM)
+		if err != nil {
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldCM, err))
+			return
+		}
+		ncdc.deleteConfigMap(cache.DeletedFinalStateUnknown{
+			Key: key,
+			Obj: oldCM,
+		})
+	}
+
+	if !ncdc.isControlledByNodeConfig(currentCM) {
+		return
+	}
+
+	klog.V(4).InfoS(
+		"Observed update of ConfigMap",
+		"ConfigMap", klog.KObj(currentCM),
+		"RV", fmt.Sprintf("%s->%s", oldCM.ResourceVersion, currentCM.ResourceVersion),
+		"UID", fmt.Sprintf("%s->%s", oldCM.UID, currentCM.UID),
+	)
+	ncdc.enqueue()
+}
+
+func (ncdc *Controller) deleteConfigMap(obj interface{}) {
+	cm, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		cm, ok = tombstone.Obj.(*corev1.ConfigMap)
+		if !ok {
+			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ConfigMap %#v", obj))
+			return
+		}
+	}
+
+	if !ncdc.isControlledByNodeConfig(cm) {
+		return
+	}
+
+	klog.V(4).InfoS("Observed deletion of ConfigMap", "ConfigMap", klog.KObj(cm), "RV", cm.ResourceVersion)
+	ncdc.enqueue()
+}
+
 func (ncdc *Controller) newOwningDSControllerRef() (*metav1.OwnerReference, error) {
 	pod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
 	if err != nil {
@@ -452,4 +528,12 @@ func (ncdc *Controller) newNodeConfigObjectRef() *corev1.ObjectReference {
 
 func (ncdc *Controller) isNodeConfigControlled(nc *scyllav1alpha1.NodeConfig) bool {
 	return nc.Name == ncdc.nodeConfigName && nc.UID == ncdc.nodeConfigUID
+}
+
+func (ncdc *Controller) isControlledByNodeConfig(obj metav1.Object) bool {
+	ref := metav1.GetControllerOfNoCopy(obj)
+	if ref == nil {
+		return false
+	}
+	return ref.UID == ncdc.nodeConfigUID
 }

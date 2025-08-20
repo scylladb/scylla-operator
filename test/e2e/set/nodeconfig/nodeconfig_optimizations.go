@@ -94,7 +94,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		nodeJobList, err := f.KubeAdminClient().BatchV1().Jobs(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set{
 				naming.NodeConfigNameLabel:    nc.Name,
-				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeNode),
+				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeNodePerftune),
 			}).String(),
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -455,5 +455,77 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(src.ContainerID).NotTo(o.BeEmpty())
 		o.Expect(src.MatchingNodeConfigs).NotTo(o.BeEmpty())
 		o.Expect(src.BlockingNodeConfigs).To(o.BeEmpty())
+	})
+
+	g.It("should configure kernel parameters (sysctls)", func(ctx g.SpecContext) {
+		const (
+			fsAioMaxNRVar          = "fs.aio-max-nr"
+			fsAioMaxNrInitialValue = "2097152"
+			fsAioMaxNrTargetValue  = "30000000"
+		)
+
+		nc := ncTemplate.DeepCopy()
+		nc.Spec.Sysctls = []corev1.Sysctl{
+			{
+				Name:  fsAioMaxNRVar,
+				Value: fsAioMaxNrTargetValue,
+			},
+		}
+
+		framework.By("Creating a client Pod")
+		clientPod := newClientPod(nc)
+		clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		clientPodCreationCtx, clientPodCreationCtxCancel := utils.ContextForPodStartup(ctx)
+		defer clientPodCreationCtxCancel()
+		clientPod, err = controllerhelpers.WaitForPodState(clientPodCreationCtx, f.KubeClient().CoreV1().Pods(clientPod.Namespace), clientPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Writing an initial value for fs.aio-max-nr sysctl")
+		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "sysctl", "-w", fmt.Sprintf("%s=%s", fsAioMaxNRVar, fsAioMaxNrInitialValue))
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+
+		framework.By("Verifying fs.aio-max-nr sysctl is set to the initial value")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "sysctl", "-n", fsAioMaxNRVar)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+		o.Expect(strings.TrimSpace(stdout)).To(o.Equal(fsAioMaxNrInitialValue))
+
+		rc := framework.NewRestoringCleaner(
+			ctx,
+			f.AdminClientConfig(),
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			nodeConfigResourceInfo,
+			nc.Namespace,
+			nc.Name,
+			framework.RestoreStrategyRecreate,
+		)
+		f.AddCleaners(rc)
+		rc.DeleteObject(ctx, true)
+
+		g.By("Creating a NodeConfig with sysctls configured")
+		nc, err = f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for NodeConfig to deploy")
+		nodeConfigRolloutCtx, nodeConfigRolloutCtxCancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer nodeConfigRolloutCtxCancel()
+		o.Expect(matchingNodes).NotTo(o.BeEmpty())
+		nc, err = controllerhelpers.WaitForNodeConfigState(
+			nodeConfigRolloutCtx,
+			f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(),
+			nc.Name,
+			controllerhelpers.WaitForStateOptions{TolerateDelete: false},
+			utils.IsNodeConfigRolledOut,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
+
+		framework.By("Verifying fs.aio-max-nr sysctl is set to the target value")
+		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "sysctl", "-n", fsAioMaxNRVar)
+		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+		o.Expect(strings.TrimSpace(stdout)).To(o.Equal(fsAioMaxNrTargetValue))
 	})
 })

@@ -41,8 +41,15 @@ if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
 fi
 
 SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:-false}
+SO_INSTALL_XFSPROGS_ON_NODES="${SO_INSTALL_XFSPROGS_ON_NODES:-}"
 
 mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"operator
+
+if [[ -n "${SO_INSTALL_XFSPROGS_ON_NODES:-}" ]]; then
+  kubectl_create -n=kube-system -f="${source_url}/${revision}/examples/gke/install-xfsprogs.daemonset.yaml"
+else
+  echo "Skipping installing xfsprogs on all nodes"
+fi
 
 # Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
@@ -344,4 +351,10 @@ if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
   echo "Skipping waiting for prometheus-operator"
 else
   kubectl wait --for condition=established crd/{prometheuses,prometheusrules,servicemonitors}.monitoring.coreos.com
+fi
+
+if [[ -n "${SO_INSTALL_XFSPROGS_ON_NODES:-}" ]]; then
+  kubectl -n=kube-system rollout status --timeout=5m daemonset.apps/install-xfsprogs
+else
+  echo "Skipping waiting for xfsprogs daemonset"
 fi

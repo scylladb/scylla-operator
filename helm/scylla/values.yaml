@@ -2,6 +2,8 @@
 nameOverride: ""
 # Allows to override names used in Scylla k8s objects.
 fullnameOverride: ""
+# Allows to customize ScyllaCluster object metadata.annotations.
+annotations: {}
 # Allows to customize Scylla image
 scyllaImage:
   repository: scylladb/scylla

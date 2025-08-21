@@ -31,6 +31,9 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 scylla:
+  annotations:
+    # Disable the manager's ScyllaCluster integration with the manager itself as it is not needed.
+    scylla-operator.scylladb.com/disable-global-scylladb-manager-integration: "true"
   developerMode: true
   scyllaImage:
     tag: 2025.1.5

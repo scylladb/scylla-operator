@@ -3,6 +3,10 @@ kind: ScyllaCluster
 metadata:
   name: {{ include "scylla.fullname" . }}
   namespace: {{ .Release.Namespace }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   {{- with .Values.podMetadata }}
   podMetadata:

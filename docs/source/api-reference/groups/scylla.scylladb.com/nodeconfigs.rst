@@ -84,6 +84,9 @@ object
    * - :ref:`placement<api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.placement>`
      - object
      - placement contains scheduling rules for NodeConfig Pods.
+   * - :ref:`sysctls<api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.sysctls[]>`
+     - array (object)
+     - sysctls specifies a list of sysctls to configure on the node. Removing parameters from this list does not revert already applied configurations.
 
 .. _api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.localDiskSetup:
 
@@ -1525,6 +1528,34 @@ object
    * - value
      - string
      - Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.
+
+.. _api-scylla.scylladb.com-nodeconfigs-v1alpha1-.spec.sysctls[]:
+
+.spec.sysctls[]
+^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+Sysctl defines a kernel parameter to be set
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - name
+     - string
+     - Name of a property to set
+   * - value
+     - string
+     - Value of a property to set
 
 .. _api-scylla.scylladb.com-nodeconfigs-v1alpha1-.status:
 

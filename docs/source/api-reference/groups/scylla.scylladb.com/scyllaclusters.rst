@@ -143,7 +143,7 @@ object
      - scyllaArgs will be appended to Scylla binary during startup. This is supported from 4.2.0 Scylla version.
    * - sysctls
      - array (string)
-     - sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs. Example: fs.aio-max-nr=232323
+     - sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs. Example: fs.aio-max-nr=232323 Deprecated: `sysctls` is deprecated. Use NodeConfig to configure sysctls instead. See NodeConfig resource reference for details.
    * - version
      - string
      - version is a version tag of Scylla to use.

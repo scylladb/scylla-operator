@@ -11,6 +11,8 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
@@ -91,9 +93,37 @@ type Validator interface {
 	GetWarningsOnUpdate(obj, oldObj runtime.Object) []string
 }
 
+// Container runtime may set env var (SCYLLA_OPERATOR_PORT) to either number or "tcp://<service-host>:<service-port>"
+var portFlagRe = regexp.MustCompile(`^(?:tcp://[^:]+:)?(\d+)$`)
+
+type portFlag int
+
+func (pf *portFlag) String() string {
+	return fmt.Sprintf("%d", pf)
+}
+
+func (pf *portFlag) Set(v string) error {
+	matches := portFlagRe.FindStringSubmatch(v)
+	if len(matches) < 2 {
+		return fmt.Errorf("invalid port format %q", v)
+	}
+
+	port, err := strconv.ParseInt(matches[1], 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid port %q", matches[1])
+	}
+
+	*pf = portFlag(port)
+	return nil
+}
+
+func (pf *portFlag) Type() string {
+	return "int"
+}
+
 type WebhookOptions struct {
 	TLSCertFile, TLSKeyFile        string
-	Port                           int
+	Port                           portFlag
 	InsecureGenerateLocalhostCerts bool
 
 	Validators map[schema.GroupVersionResource]Validator
@@ -149,7 +179,7 @@ func NewWebhookCmd(streams genericclioptions.IOStreams, validators map[schema.Gr
 
 	cmd.Flags().StringVarP(&o.TLSCertFile, "tls-cert-file", "", o.TLSCertFile, "File containing the default x509 Certificate for HTTPS. (CA cert, if any, concatenated after server cert).")
 	cmd.Flags().StringVarP(&o.TLSKeyFile, "tls-private-key-file", "", o.TLSKeyFile, "File containing the default x509 private key for matching cert file.")
-	cmd.Flags().IntVarP(&o.Port, "port", "", o.Port, "Secure port that the webhook listens on.")
+	cmd.Flags().VarP(&o.Port, "port", "", "Secure port that the webhook listens on.")
 
 	cmd.Flags().BoolVarP(&o.InsecureGenerateLocalhostCerts, "insecure-generate-localhost-cert", "", o.InsecureGenerateLocalhostCerts, "This will automatically generate self-signed certificate valid for localhost. Do not use this in production!")
 	return cmd

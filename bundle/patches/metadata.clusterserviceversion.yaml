@@ -1,0 +1,51 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    capabilities: Full Lifecycle
+    categories: Database,Developer Tools,Integration & Delivery
+    description: Kubernetes Operator for ScyllaDB
+    support: ScyllaDB
+    operatorframework.io/suggested-namespace: scylla-operator
+    operators.openshift.io/valid-subscription: ""
+    features.operators.openshift.io/disconnected: "false"
+    features.operators.openshift.io/fips-compliant: "false"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
+    features.operators.openshift.io/cnf: "false"
+    features.operators.openshift.io/cni: "false"
+    features.operators.openshift.io/csi: "false"
+spec:
+  displayName: Scylla Operator
+  description: |
+    [Scylla Operator](https://github.com/scylladb/scylla-operator) is a Kubernetes Operator for managing and automating tasks related to managing ScyllaDB clusters.
+
+    [ScyllaDB](https://www.scylladb.com) is a close-to-the-hardware rewrite of Cassandra in C++. It features a shared nothing architecture that enables true linear scaling and major hardware optimizations that achieve ultra-low latencies and extreme throughput. It is a drop-in replacement for Cassandra and uses the same interfaces.
+  keywords:
+    - scylla-operator
+    - kubernetes
+    - scylladb
+  links:
+    - name: Scylla Operator Documentation
+      url: https://operator.docs.scylladb.com
+    - name: ScyllaDB Documentation
+      url: https://docs.scylladb.com
+  maintainers:
+    - email: support@scylladb.com
+      name: ScyllaDB
+  maturity: alpha
+  provider:
+    name: ScyllaDB
+    url: https://scylladb.com
+  installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces

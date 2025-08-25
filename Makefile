@@ -6,6 +6,7 @@ comma :=,
 
 IMAGE_TAG ?= latest
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
+BUNDLE_IMAGE_REF ?= docker.io/scylladb/scylla-operator-bundle:$(IMAGE_TAG)
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
 
@@ -49,6 +50,8 @@ GOLANGCI_LINT ?=golangci-lint
 
 CODEGEN_PKG ?=./vendor/k8s.io/code-generator
 CODEGEN_HEADER_FILE ?=/dev/null
+
+OPERATOR_SDK ?=operator-sdk
 
 api_groups :=$(patsubst %/,%,$(wildcard ./pkg/api/*/))
 nonrest_api_groups :=$(patsubst %/.,%,$(wildcard ./pkg/scylla/api/*/.))
@@ -635,10 +638,85 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring
+# $1 - path to the target being patched
+# $2 - glob pattern for patch files
+define patch-bundle
+	for f in $(2); do \
+		$(YQ) -i -e '. *= load("'"$$f"'")' $(1); \
+	done
+endef
+
+# $1 - path to manifests directory
+define fix-bundle-manifests-filenames
+	find $(1) -type f -name '*:*' | while read file; do \
+		newfile=$$(echo "$$file" | sed 's/:/-/g'); \
+		mv "$$file" "$$newfile"; \
+	done
+endef
+
+# $1 - path to clusterserviceversion
+define fix-bundle-webhook-certificate-volume
+	$(YQ) -i e 'del( .spec.install.spec.deployments.[] | select( .name == "webhook-server" ) | .spec.template.spec.volumes.[] | select( .name == "cert" ) )' $(1)
+	$(YQ) -i e 'del( .spec.install.spec.deployments.[] | select( .name == "webhook-server" ) | .spec.template.spec.containers.[] | select( .name == "webhook-server" ) | .volumeMounts.[] | select( .name == "cert"  ) )' $(1)
+endef
+
+# $1 - logo path
+# $2 - logo patch path
+define update-bundle-patches-logo
+	$(YQ) -i ".spec.icon[0].base64data = \"$$( base64 -w 0 '$(1)' )\"" '$(2)'
+	$(YQ) -i ".spec.icon[0].mediatype = \"$$( file --mime-type -b '$(1)' )\"" '$(2)'
+endef
+
+# $1 - metadata file
+# $2 - patch file
+define update-bundle-patches-versions
+	$(YQ) eval-all -i -P '\
+	select(fi==0).spec.minKubeVersion = ( select(fi==1) | .operator.minKubernetesVersion ) | \
+	select(fi==0).metadata.annotations."com.redhat.openshift.versions" = ( select(fi==1) | "v" + .operator.minOpenShiftVersion + "-v" + .operator.maxOpenShiftVersion ) | \
+	select(fi==0)' \
+	'$(2)' '$(1)'
+endef
+
+# $1 - bundle path
+define update-bundle-patches
+	$(call update-bundle-patches-logo,./logo.svg,$(1)/patches/logo.clusterserviceversion.yaml)
+	$(call update-bundle-patches-versions,assets/metadata/metadata.yaml,$(1)/patches/versions.clusterserviceversion.yaml)
+endef
+
+# $1 - path to bundle
+define apply-bundle-fixes
+	$(call patch-bundle,$(1)/manifests/scylla-operator.clusterserviceversion.yaml,$(1)/patches/*.clusterserviceversion.yaml)
+
+	# Workaround for https://github.com/operator-framework/operator-registry/issues/1741
+	$(call fix-bundle-manifests-filenames, $(1)/manifests)
+
+	# OLM Bundles enforces their certificate, we cannot use custom source of it
+	# https://olm.operatorframework.io/docs/advanced-tasks/adding-admission-and-conversion-webhooks/#deploying-an-operator-with-webhooks-using-olm
+	# Hence we cannot require our own copy coming from secret in webhook-server deployment.
+	# Delete volume and related volume mount and use only what OLM provides.
+	$(call fix-bundle-webhook-certificate-volume, $(1)/manifests/scylla-operator.clusterserviceversion.yaml)
+endef
+
+update-bundle:
+	$(call update-bundle-patches,./bundle)
+	$(OPERATOR_SDK) generate bundle --deploy-dir deploy/operator/ --manifests --output-dir bundle --overwrite
+	$(call apply-bundle-fixes,./bundle)
+.PHONY: update-bundle
+
+verify-bundle: tmp_dir :=$(shell mktemp -d)
+verify-bundle:
+	cp -r ./bundle/. $(tmp_dir)/
+	$(call update-bundle-patches,$(tmp_dir))
+	$(OPERATOR_SDK) generate bundle --deploy-dir deploy/operator/ --manifests --output-dir $(tmp_dir) --overwrite
+	$(call apply-bundle-fixes,$(tmp_dir))
+
+	$(diff) -r '$(tmp_dir)'/ ./bundle
+.PHONY: verify-bundle
+
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle
 .PHONY: verify
 
-update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring
+update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle
 .PHONY: update
 
 test-unit:

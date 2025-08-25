@@ -1,0 +1,7 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    com.redhat.openshift.versions: v4.19-v4.19
+spec:
+  minKubeVersion: 1.30.0

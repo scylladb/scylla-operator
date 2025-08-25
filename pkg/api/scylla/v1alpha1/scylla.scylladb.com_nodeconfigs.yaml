@@ -1070,6 +1070,24 @@ spec:
                   required:
                     - nodeSelector
                   type: object
+                sysctls:
+                  description: |-
+                    sysctls specifies a list of sysctls to configure on the node.
+                    Removing parameters from this list does not revert already applied configurations.
+                  items:
+                    description: Sysctl defines a kernel parameter to be set
+                    properties:
+                      name:
+                        description: Name of a property to set
+                        type: string
+                      value:
+                        description: Value of a property to set
+                        type: string
+                    required:
+                      - name
+                      - value
+                    type: object
+                  type: array
               required:
                 - placement
               type: object

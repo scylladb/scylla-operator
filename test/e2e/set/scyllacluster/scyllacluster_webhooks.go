@@ -3,6 +3,7 @@
 package scyllacluster
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -18,10 +19,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/storage/names"
+	restclient "k8s.io/client-go/rest"
 )
 
 var _ = g.Describe("ScyllaCluster webhook", func() {
+	var warningBuf bytes.Buffer
+	warningWriter := restclient.NewWarningWriter(&warningBuf, restclient.WarningWriterOptions{
+		Deduplicate: false,
+	})
+
+	verifyWarning := func(expected string) {
+		g.GinkgoHelper()
+
+		// Sanity check
+		o.Expect(warningBuf).NotTo(o.BeNil())
+		warning := warningBuf.String()
+		warningBuf.Reset()
+		o.Expect(warning).To(o.Equal(expected))
+	}
+
 	f := framework.NewFramework("scyllacluster")
+	f.AdminClient.Config.WarningHandler = warningWriter
 
 	g.It("should forbid invalid requests", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -30,8 +48,18 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 		validSC := f.GetDefaultScyllaCluster()
 		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
 
+		// Set a deprecated field to ensure the webhook returns a warning on every request.
+		validSC.Spec.Sysctls = []string{
+			"fs.aio-max-nr=30000000",
+		}
+
+		verifySysctlDeprecationWarning := func() {
+			verifyWarning("Warning: spec.sysctls: deprecated; use nodeConfig.spec.sysctls instead\n")
+		}
+
 		framework.By("Rejecting a creation of ScyllaCluster with duplicated racks")
 		duplicateRacksSC := validSC.DeepCopy()
+
 		duplicateRacksSC.Spec.Datacenter.Racks = append(duplicateRacksSC.Spec.Datacenter.Racks, *duplicateRacksSC.Spec.Datacenter.Racks[0].DeepCopy())
 		_, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, duplicateRacksSC, metav1.CreateOptions{})
 		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
@@ -53,6 +81,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			},
 			Code: 422,
 		}}))
+		verifySysctlDeprecationWarning()
 
 		framework.By("Rejecting a creation of ScyllaCluster with invalid intensity in repair task spec")
 		invalidIntensitySC := validSC.DeepCopy()
@@ -79,10 +108,12 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			},
 			Code: 422,
 		}}))
+		verifySysctlDeprecationWarning()
 
 		framework.By("Accepting a creation of valid ScyllaCluster")
 		validSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, validSC, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
+		verifySysctlDeprecationWarning()
 
 		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", validSC.ResourceVersion)
 		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, validSC)
@@ -126,6 +157,7 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			},
 			Code: 422,
 		}}))
+		verifySysctlDeprecationWarning()
 
 		framework.By("Rejecting an update of ScyllaCluster's dcName")
 		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace).Patch(
@@ -154,5 +186,6 @@ var _ = g.Describe("ScyllaCluster webhook", func() {
 			},
 			Code: 422,
 		}}))
+		verifySysctlDeprecationWarning()
 	})
 })

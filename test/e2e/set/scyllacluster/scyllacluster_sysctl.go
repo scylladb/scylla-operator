@@ -3,28 +3,58 @@
 package scyllacluster
 
 import (
-	"context"
 	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/tools"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var _ = g.Describe("ScyllaCluster sysctl", func() {
+// Despite the sysctl configuration being a part of ScyllaCluster's API, it configures kernel parameters on the host.
+// Therefore, the test is disruptive and needs to run serially.
+var _ = g.Describe("ScyllaCluster sysctl", framework.Serial, func() {
 	f := framework.NewFramework("scyllacluster")
 
-	g.It("should set container sysctl", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+	// Delete any NodeConfigs before each test to ensure we don't race against NodeConfig's sysctl functionality.
+	// NodeConfigs are restored after the test.
+	g.JustBeforeEach(func(ctx g.SpecContext) {
+		ncs, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().List(ctx, metav1.ListOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
 
+		for _, nc := range ncs.Items {
+			rc := framework.NewRestoringCleaner(
+				ctx,
+				f.AdminClientConfig(),
+				f.KubeAdminClient(),
+				f.DynamicAdminClient(),
+				collect.ResourceInfo{
+					Resource: schema.GroupVersionResource{
+						Group:    "scylla.scylladb.com",
+						Version:  "v1alpha1",
+						Resource: "nodeconfigs",
+					},
+					Scope: meta.RESTScopeRoot,
+				},
+				nc.Namespace,
+				nc.Name,
+				framework.RestoreStrategyRecreate,
+			)
+			f.AddCleaners(rc)
+			rc.DeleteObject(ctx, false)
+		}
+	})
+
+	g.It("should set container sysctl", func(ctx g.SpecContext) {
 		sc := f.GetDefaultScyllaCluster()
 		fsAIOMaxNRKey := "fs.aio-max-nr"
 		fsAIOMaxNRValue := 2424242 // A unique value.

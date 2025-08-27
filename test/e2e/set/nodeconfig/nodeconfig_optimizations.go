@@ -120,11 +120,19 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(jobNodeNames).To(o.BeEquivalentTo(matchingNodeNames))
 	})
 
-	g.It("should set Scylla process nofile rlimit to maximum", func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+	g.It("should set Scylla process nofile rlimit to maximum", func(ctx g.SpecContext) {
+		const (
+			nrOpenVar   = "fs.nr_open"
+			nrOpenLimit = "12345678"
+		)
 
 		nc := ncTemplate.DeepCopy()
+		nc.Spec.Sysctls = []corev1.Sysctl{
+			{
+				Name:  nrOpenVar,
+				Value: nrOpenLimit,
+			},
+		}
 
 		ncRC := framework.NewRestoringCleaner(
 			ctx,
@@ -139,26 +147,26 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		f.AddCleaners(ncRC)
 		ncRC.DeleteObject(ctx, true)
 
-		g.By("Creating a NodeConfig")
+		framework.By("Creating a NodeConfig with fs.nr_open sysctl configured")
 		nc, err := f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs().Create(ctx, nc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		const (
-			nrOpenLimit = "12345678"
-		)
+		framework.By("Waiting for NodeConfig to roll out (RV=%s)", nc.ResourceVersion)
+		nodeConfigRolloutCtx, nodeConfigRolloutCtxCancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
+		defer nodeConfigRolloutCtxCancel()
+		nc, err = controllerhelpers.WaitForNodeConfigState(nodeConfigRolloutCtx, f.ScyllaAdminClient().ScyllaV1alpha1().NodeConfigs(), nc.Name, controllerhelpers.WaitForStateOptions{TolerateDelete: false}, utils.IsNodeConfigRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		sc := f.GetDefaultScyllaCluster()
-		sc.Spec.Sysctls = []string{
-			fmt.Sprintf("fs.nr_open=%s", nrOpenLimit),
-		}
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		ctx1, ctx1Cancel := utils.ContextForRollout(ctx, sc)
-		defer ctx1Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(ctx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		scyllaClusterRolloutCtx, scyllaClusterRolloutCtxCancel := utils.ContextForRollout(ctx, sc)
+		defer scyllaClusterRolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(scyllaClusterRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)

@@ -39,3 +39,4 @@ webhooks:
     - scylladbclusters
     - scylladbmanagerclusterregistrations
     - scylladbmanagertasks
+    - scylladbmonitorings

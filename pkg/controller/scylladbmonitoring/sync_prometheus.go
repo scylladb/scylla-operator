@@ -294,38 +294,9 @@ func (smc *Controller) syncPrometheus(
 	}
 
 	// Render manifests.
-	var renderErrors []error
-
-	requiredPrometheusSA, _, err := makePrometheusSA(sm)
-	renderErrors = append(renderErrors, err)
-
-	requiredPrometheusRoleBinding, _, err := makePrometheusRoleBinding(sm)
-	renderErrors = append(renderErrors, err)
-
-	requiredPrometheusService, _, err := makePrometheusService(sm)
-	renderErrors = append(renderErrors, err)
-
-	requiredIngress, _, err := makePrometheusIngress(sm)
-	renderErrors = append(renderErrors, err)
-
-	requiredPrometheus, _, err := makePrometheus(sm, soc)
-	renderErrors = append(renderErrors, err)
-
-	requiredLatencyPrometheusRule, _, err := makeLatencyPrometheusRule(sm)
-	renderErrors = append(renderErrors, err)
-
-	requiredAlertsPrometheusRule, _, err := makeAlertsPrometheusRule(sm)
-	renderErrors = append(renderErrors, err)
-
-	requiredTablePrometheusRule, _, err := makeTablePrometheusRule(sm)
-	renderErrors = append(renderErrors, err)
-
-	requiredScyllaDBServiceMonitor, _, err := makeScyllaDBServiceMonitor(sm)
-	renderErrors = append(renderErrors, err)
-
-	renderError := apimachineryutilerrors.NewAggregate(renderErrors)
-	if renderError != nil {
-		return progressingConditions, renderError
+	requiredResources, err := makeRequiredPrometheusResources(sm, soc)
+	if err != nil {
+		return progressingConditions, err
 	}
 
 	// Prune objects.
@@ -333,7 +304,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		oslices.ToSlice(requiredPrometheusSA),
+		oslices.FilterOutNil(oslices.ToSlice(requiredResources.ServiceAccount)),
 		serviceAccounts,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
@@ -344,7 +315,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		oslices.ToSlice(requiredPrometheusService),
+		oslices.FilterOutNil(oslices.ToSlice(requiredResources.Service)),
 		services,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
@@ -355,7 +326,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		oslices.ToSlice(requiredPrometheusRoleBinding),
+		oslices.FilterOutNil(oslices.ToSlice(requiredResources.RoleBinding)),
 		roleBindings,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
@@ -366,7 +337,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		oslices.ToSlice(requiredPrometheus),
+		oslices.FilterOutNil(oslices.ToSlice(requiredResources.Prometheus)),
 		prometheuses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.Prometheuses(sm.Namespace).Delete,
@@ -377,7 +348,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		oslices.FilterOutNil(oslices.ToSlice(requiredIngress)),
+		oslices.FilterOutNil(oslices.ToSlice(requiredResources.Ingress)),
 		ingresses,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
@@ -388,7 +359,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		oslices.ToSlice(requiredLatencyPrometheusRule, requiredAlertsPrometheusRule, requiredTablePrometheusRule),
+		oslices.FilterOutNil(oslices.ToSlice(requiredResources.AlertsPrometheusRule, requiredResources.LatencyPrometheusRule, requiredResources.TablePrometheusRule)),
 		prometheusRules,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
@@ -399,7 +370,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		oslices.ToSlice(requiredScyllaDBServiceMonitor),
+		oslices.FilterOutNil(oslices.ToSlice(requiredResources.ScyllaDBServiceMonitor)),
 		serviceMonitors,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.monitoringClient.ServiceMonitors(sm.Namespace).Delete,
@@ -410,7 +381,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		certChainConfigs.GetMetaSecrets(),
+		oslices.FilterOutNil(certChainConfigs.GetMetaSecrets()),
 		secrets,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().Secrets(sm.Namespace).Delete,
@@ -421,7 +392,7 @@ func (smc *Controller) syncPrometheus(
 
 	err = controllerhelpers.Prune(
 		ctx,
-		certChainConfigs.GetMetaConfigMaps(),
+		oslices.FilterOutNil(certChainConfigs.GetMetaConfigMaps()),
 		configMaps,
 		&controllerhelpers.PruneControlFuncs{
 			DeleteFunc: smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
@@ -437,25 +408,31 @@ func (smc *Controller) syncPrometheus(
 
 	// Apply required objects.
 	var applyErrors []error
-	applyConfigurations := []resourceapply.ApplyConfigUntyped{
-		resourceapply.ApplyConfig[*corev1.ServiceAccount]{
-			Required: requiredPrometheusSA,
+	var applyConfigurations []resourceapply.ApplyConfigUntyped
+	if requiredResources.ServiceAccount != nil {
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*corev1.ServiceAccount]{
+			Required: requiredResources.ServiceAccount,
 			Control: resourceapply.ApplyControlFuncs[*corev1.ServiceAccount]{
 				GetCachedFunc: smc.serviceAccountLister.ServiceAccounts(sm.Namespace).Get,
 				CreateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Create,
 				UpdateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Update,
 				DeleteFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
 			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*corev1.Service]{
-			Required: requiredPrometheusService,
+		}.ToUntyped())
+	}
+	if requiredResources.Service != nil {
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*corev1.Service]{
+			Required: requiredResources.Service,
 			Control: resourceapply.ApplyControlFuncs[*corev1.Service]{
 				GetCachedFunc: smc.serviceLister.Services(sm.Namespace).Get,
 				CreateFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Create,
 				UpdateFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Update,
 			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*rbacv1.RoleBinding]{
+		}.ToUntyped())
+	}
+	if requiredResources.RoleBinding != nil {
+		requiredPrometheusRoleBinding := requiredResources.RoleBinding
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*rbacv1.RoleBinding]{
 			Required: requiredPrometheusRoleBinding,
 			Control: resourceapply.ApplyControlFuncs[*rbacv1.RoleBinding]{
 				GetCachedFunc: smc.roleBindingLister.RoleBindings(sm.Namespace).Get,
@@ -463,8 +440,11 @@ func (smc *Controller) syncPrometheus(
 				UpdateFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Update,
 				DeleteFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
 			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*monitoringv1.Prometheus]{
+		}.ToUntyped())
+	}
+	if requiredResources.Prometheus != nil {
+		requiredPrometheus := requiredResources.Prometheus
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.Prometheus]{
 			Required: requiredPrometheus,
 			Control: resourceapply.ApplyControlFuncs[*monitoringv1.Prometheus]{
 				GetCachedFunc: smc.prometheusLister.Prometheuses(sm.Namespace).Get,
@@ -472,8 +452,11 @@ func (smc *Controller) syncPrometheus(
 				UpdateFunc:    smc.monitoringClient.Prometheuses(sm.Namespace).Update,
 				DeleteFunc:    smc.monitoringClient.Prometheuses(sm.Namespace).Delete,
 			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*monitoringv1.ServiceMonitor]{
+		}.ToUntyped())
+	}
+	if requiredResources.ScyllaDBServiceMonitor != nil {
+		requiredScyllaDBServiceMonitor := requiredResources.ScyllaDBServiceMonitor
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.ServiceMonitor]{
 			Required: requiredScyllaDBServiceMonitor,
 			Control: resourceapply.ApplyControlFuncs[*monitoringv1.ServiceMonitor]{
 				GetCachedFunc: smc.serviceMonitorLister.ServiceMonitors(sm.Namespace).Get,
@@ -481,8 +464,11 @@ func (smc *Controller) syncPrometheus(
 				UpdateFunc:    smc.monitoringClient.ServiceMonitors(sm.Namespace).Update,
 				DeleteFunc:    smc.monitoringClient.ServiceMonitors(sm.Namespace).Delete,
 			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
+		}.ToUntyped())
+	}
+	if requiredResources.LatencyPrometheusRule != nil {
+		requiredLatencyPrometheusRule := requiredResources.LatencyPrometheusRule
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
 			Required: requiredLatencyPrometheusRule,
 			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
 				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
@@ -490,8 +476,11 @@ func (smc *Controller) syncPrometheus(
 				UpdateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Update,
 				DeleteFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
 			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
+		}.ToUntyped())
+	}
+	if requiredResources.AlertsPrometheusRule != nil {
+		requiredAlertsPrometheusRule := requiredResources.AlertsPrometheusRule
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
 			Required: requiredAlertsPrometheusRule,
 			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
 				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
@@ -499,8 +488,11 @@ func (smc *Controller) syncPrometheus(
 				UpdateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Update,
 				DeleteFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
 			},
-		}.ToUntyped(),
-		resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
+		}.ToUntyped())
+	}
+	if requiredResources.TablePrometheusRule != nil {
+		requiredTablePrometheusRule := requiredResources.TablePrometheusRule
+		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
 			Required: requiredTablePrometheusRule,
 			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
 				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
@@ -508,10 +500,10 @@ func (smc *Controller) syncPrometheus(
 				UpdateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Update,
 				DeleteFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
 			},
-		}.ToUntyped(),
+		}.ToUntyped())
 	}
-
-	if requiredIngress != nil {
+	if requiredResources.Ingress != nil {
+		requiredIngress := requiredResources.Ingress
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*networkingv1.Ingress]{
 			Required: requiredIngress,
 			Control: resourceapply.ApplyControlFuncs[*networkingv1.Ingress]{
@@ -583,4 +575,69 @@ func (smc *Controller) syncPrometheus(
 	}
 
 	return progressingConditions, nil
+}
+
+// requiredPrometheusResources holds all resources required for Prometheus deployment.
+// Some of them may be nil, depending on the Prometheus mode.
+type requiredPrometheusResources struct {
+	ServiceAccount         *corev1.ServiceAccount
+	RoleBinding            *rbacv1.RoleBinding
+	Service                *corev1.Service
+	Ingress                *networkingv1.Ingress
+	Prometheus             *monitoringv1.Prometheus
+	LatencyPrometheusRule  *monitoringv1.PrometheusRule
+	AlertsPrometheusRule   *monitoringv1.PrometheusRule
+	TablePrometheusRule    *monitoringv1.PrometheusRule
+	ScyllaDBServiceMonitor *monitoringv1.ServiceMonitor
+}
+
+func makeRequiredPrometheusResources(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1alpha1.ScyllaOperatorConfig) (requiredPrometheusResources, error) {
+	var renderErrors []error
+	var resources requiredPrometheusResources
+
+	var err error
+	switch prometheusMode(sm) {
+	case scyllav1alpha1.PrometheusModeManaged:
+		resources.ServiceAccount, _, err = makePrometheusSA(sm)
+		renderErrors = append(renderErrors, err)
+
+		resources.RoleBinding, _, err = makePrometheusRoleBinding(sm)
+		renderErrors = append(renderErrors, err)
+
+		resources.Service, _, err = makePrometheusService(sm)
+		renderErrors = append(renderErrors, err)
+
+		resources.Ingress, _, err = makePrometheusIngress(sm)
+		renderErrors = append(renderErrors, err)
+
+		resources.Prometheus, _, err = makePrometheus(sm, soc)
+		renderErrors = append(renderErrors, err)
+	case scyllav1alpha1.PrometheusModeExternal:
+		// No resources required.
+	default:
+		return requiredPrometheusResources{}, fmt.Errorf("unknown Prometheus mode %q", prometheusMode(sm))
+	}
+
+	resources.LatencyPrometheusRule, _, err = makeLatencyPrometheusRule(sm)
+	renderErrors = append(renderErrors, err)
+
+	resources.AlertsPrometheusRule, _, err = makeAlertsPrometheusRule(sm)
+	renderErrors = append(renderErrors, err)
+
+	resources.TablePrometheusRule, _, err = makeTablePrometheusRule(sm)
+	renderErrors = append(renderErrors, err)
+
+	resources.ScyllaDBServiceMonitor, _, err = makeScyllaDBServiceMonitor(sm)
+	renderErrors = append(renderErrors, err)
+
+	return resources, apimachineryutilerrors.NewAggregate(renderErrors)
+}
+
+func prometheusMode(sm *scyllav1alpha1.ScyllaDBMonitoring) scyllav1alpha1.PrometheusMode {
+	if sm.Spec.Components.Prometheus != nil {
+		return sm.Spec.Components.Prometheus.Mode
+	}
+
+	// By default, Prometheus is managed by the ScyllaDB Operator.
+	return scyllav1alpha1.PrometheusModeManaged
 }

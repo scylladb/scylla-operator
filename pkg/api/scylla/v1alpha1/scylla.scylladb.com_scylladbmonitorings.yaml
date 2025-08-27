@@ -65,6 +65,96 @@ spec:
                               description: insecureEnableAnonymousAccess allows access to Grafana without authentication.
                               type: boolean
                           type: object
+                        datasources:
+                          description: |-
+                            datasources is a list of Grafana datasources to configure.
+                            It's expected to be set when using Prometheus component in `External` mode.
+                            At most one datasource is allowed for now (only Prometheus is supported).
+                          items:
+                            properties:
+                              name:
+                                default: prometheus
+                                description: |-
+                                  name is the name of the datasource as it will appear in Grafana.
+                                  Only "prometheus" is supported as that's the datasource name expected by the ScyllaDB monitoring stack dashboards.
+                                enum:
+                                  - prometheus
+                                type: string
+                              prometheusOptions:
+                                description: prometheusOptions defines Prometheus-specific options.
+                                properties:
+                                  auth:
+                                    description: auth holds authentication options for connecting to Prometheus.
+                                    properties:
+                                      bearerTokenOptions:
+                                        description: bearerToken holds options for Bearer token authentication.
+                                        properties:
+                                          secretRef:
+                                            description: secretRef is a reference to a key in a Secret holding a Bearer token to use to authenticate with Prometheus.
+                                            properties:
+                                              key:
+                                                description: key within the selected object.
+                                                minLength: 1
+                                                type: string
+                                              name:
+                                                description: name of the selected object.
+                                                minLength: 1
+                                                type: string
+                                            type: object
+                                        type: object
+                                      type:
+                                        default: NoAuthentication
+                                        description: type is the type of authentication to use.
+                                        type: string
+                                    type: object
+                                  tls:
+                                    description: tls holds TLS configuration for connecting to Prometheus over HTTPS.
+                                    properties:
+                                      caCertConfigMapRef:
+                                        description: |-
+                                          caCert is a reference to a key within the CA bundle ConfigMap. The key should hold the CA cert in PEM format.
+                                          When not specified, system CAs are used.
+                                        properties:
+                                          key:
+                                            description: key within the selected object.
+                                            minLength: 1
+                                            type: string
+                                          name:
+                                            description: name of the selected object.
+                                            minLength: 1
+                                            type: string
+                                        type: object
+                                      clientTLSKeyPairSecretRef:
+                                        description: |-
+                                          clientTLSKeyPairSecretRef is a reference to a Secret holding client TLS certificate and key for mTLS authentication.
+                                          It's expected to be a standard Kubernetes TLS Secret with `tls.crt` and `tls.key` keys.
+                                        properties:
+                                          name:
+                                            description: Name of the referent.
+                                            type: string
+                                        type: object
+                                      insecureSkipVerify:
+                                        default: false
+                                        description: insecureSkipVerify controls whether to skip server certificate verification.
+                                        type: boolean
+                                    type: object
+                                type: object
+                              type:
+                                allOf:
+                                  - enum:
+                                      - Prometheus
+                                  - enum:
+                                      - Prometheus
+                                default: Prometheus
+                                description: type is the type of the datasource. Only "prometheus" is supported.
+                                type: string
+                              url:
+                                description: url is the URL of the datasource.
+                                minLength: 1
+                                type: string
+                            type: object
+                          maxItems: 1
+                          type: array
                         exposeOptions:
                           description: exposeOptions specifies options for exposing Grafana UI.
                           properties:
@@ -1104,6 +1194,13 @@ spec:
                                   type: object
                               type: object
                           type: object
+                        mode:
+                          default: Managed
+                          description: mode defines the mode of the Prometheus instance.
+                          enum:
+                            - Managed
+                            - External
+                          type: string
                         placement:
                           description: placement describes restrictions for the nodes Prometheus is scheduled on.
                           properties:

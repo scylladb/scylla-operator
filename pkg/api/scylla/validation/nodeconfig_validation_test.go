@@ -11,6 +11,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -118,6 +119,76 @@ func TestValidateNodeConfig(t *testing.T) {
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
+		},
+		{
+			name: "empty sysctl name",
+			nodeConfig: func() *scyllav1alpha1.NodeConfig {
+				nc := validNodeConfig.DeepCopy()
+				nc.Spec.Sysctls = []corev1.Sysctl{
+					{
+						Name:  "",
+						Value: "1",
+					},
+				}
+				return nc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeRequired,
+					Field:    "spec.sysctls[0].name",
+					BadValue: "",
+					Detail:   "",
+				},
+			},
+			expectedErrorString: `spec.sysctls[0].name: Required value`,
+		},
+		{
+			name: "invalid sysctl name",
+			nodeConfig: func() *scyllav1alpha1.NodeConfig {
+				nc := validNodeConfig.DeepCopy()
+				nc.Spec.Sysctls = []corev1.Sysctl{
+					{
+						Name:  "invalid..name",
+						Value: "1",
+					},
+				}
+				return nc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.sysctls[0].name",
+					BadValue: "invalid..name",
+					Detail:   `must have at most 253 characters and match regex ^([a-z0-9]([-_a-z0-9]*[a-z0-9])?[\./])*[a-z0-9]([-_a-z0-9]*[a-z0-9])?$`,
+				},
+			},
+			expectedErrorString: `spec.sysctls[0].name: Invalid value: "invalid..name": must have at most 253 characters and match regex ^([a-z0-9]([-_a-z0-9]*[a-z0-9])?[\./])*[a-z0-9]([-_a-z0-9]*[a-z0-9])?$`,
+		},
+		{
+			name: "duplicated sysctl name",
+			nodeConfig: func() *scyllav1alpha1.NodeConfig {
+				nc := validNodeConfig.DeepCopy()
+				nc.Spec.Sysctls = []corev1.Sysctl{
+					{
+						Name:  "fs.aio-max-nr",
+						Value: "30000000",
+					},
+					{
+						Name:  "fs.aio-max-nr",
+						Value: "2097152",
+					},
+				}
+				return nc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeDuplicate,
+					Field:    "spec.sysctls[1].name",
+					BadValue: "fs.aio-max-nr",
+					Detail:   "",
+				},
+			},
+			expectedErrorString: `spec.sysctls[1].name: Duplicate value: "fs.aio-max-nr"`,
 		},
 	}
 

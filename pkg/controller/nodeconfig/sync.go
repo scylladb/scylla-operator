@@ -102,6 +102,21 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
+	configMaps, err := controllerhelpers.GetObjects[CT, *corev1.ConfigMap](
+		ctx,
+		nc,
+		nodeConfigControllerGVK,
+		ncSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
+			GetControllerUncachedFunc: ncc.scyllaClient.NodeConfigs().Get,
+			ListObjectsFunc:           ncc.configMapLister.ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).List,
+			PatchObjectFunc:           ncc.kubeClient.CoreV1().ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).Patch,
+		},
+	)
+	if err != nil {
+		objectErrs = append(objectErrs, fmt.Errorf("can't get config maps: %w", err))
+	}
+
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
@@ -210,6 +225,19 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 	)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync DaemonSet(s): %w", err))
+	}
+
+	err = controllerhelpers.RunSync(
+		&statusConditions,
+		configMapControllerProgressingCondition,
+		configMapControllerDegradedCondition,
+		nc.Generation,
+		func() ([]metav1.Condition, error) {
+			return ncc.syncConfigMaps(ctx, nc, configMaps)
+		},
+	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync ConfigMap(s): %w", err))
 	}
 
 	// Aggregate conditions.

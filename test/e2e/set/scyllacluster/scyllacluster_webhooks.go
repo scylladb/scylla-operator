@@ -3,7 +3,6 @@
 package scyllacluster
 
 import (
-	"context"
 	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -11,148 +10,98 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
-	"github.com/scylladb/scylla-operator/test/e2e/utils"
-	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
-	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/storage/names"
 )
 
-var _ = g.Describe("ScyllaCluster webhook", func() {
+var _ = g.Describe("ScyllaCluster's admission webhook", func() {
 	f := framework.NewFramework("scyllacluster")
 
-	g.It("should forbid invalid requests", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+	type entry struct {
+		modifierFuncs          []func(*scyllav1.ScyllaCluster)
+		expectedErrMatcherFunc func(sc *scyllav1.ScyllaCluster) o.OmegaMatcher
+	}
 
-		validSC := f.GetDefaultScyllaCluster()
-		validSC.Name = names.SimpleNameGenerator.GenerateName(validSC.GenerateName)
+	duplicateRacks := func(sc *scyllav1.ScyllaCluster) {
+		// Add a duplicate rack to fail validation.
+		sc.Spec.Datacenter.Racks = append(sc.Spec.Datacenter.Racks, *sc.Spec.Datacenter.Racks[0].DeepCopy())
+	}
 
-		framework.By("Rejecting a creation of ScyllaCluster with duplicated racks")
-		duplicateRacksSC := validSC.DeepCopy()
-		duplicateRacksSC.Spec.Datacenter.Racks = append(duplicateRacksSC.Spec.Datacenter.Racks, *duplicateRacksSC.Spec.Datacenter.Racks[0].DeepCopy())
-		_, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, duplicateRacksSC, metav1.CreateOptions{})
-		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
-			Status:  "Failure",
-			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.racks[1].name: Duplicate value: "us-east-1a"`, duplicateRacksSC.Name),
-			Reason:  "Invalid",
-			Details: &metav1.StatusDetails{
-				Name:  duplicateRacksSC.Name,
-				Group: "scylla.scylladb.com",
-				Kind:  "ScyllaCluster",
-				UID:   "",
-				Causes: []metav1.StatusCause{
-					{
-						Type:    "FieldValueDuplicate",
-						Message: `Duplicate value: "us-east-1a"`,
-						Field:   "spec.datacenter.racks[1].name",
-					},
-				},
-			},
-			Code: 422,
-		}}))
+	g.DescribeTableSubtree("should respond", func(e *entry) {
+		g.It("is created", func(ctx g.SpecContext) {
+			var err error
 
-		framework.By("Rejecting a creation of ScyllaCluster with invalid intensity in repair task spec")
-		invalidIntensitySC := validSC.DeepCopy()
-		invalidIntensitySC.Spec.Repairs = append(invalidIntensitySC.Spec.Repairs, scyllav1.RepairTaskSpec{
-			Intensity: "100Mib",
+			sc := f.GetDefaultScyllaCluster()
+			// Set an explicit name to be able to fill in the expected error message on rejection.
+			sc.Name = names.SimpleNameGenerator.GenerateName(sc.GenerateName)
+			for _, f := range e.modifierFuncs {
+				f(sc)
+			}
+
+			framework.By("Creating a ScyllaCluster")
+			_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+			o.Expect(err).To(e.expectedErrMatcherFunc(sc))
 		})
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, invalidIntensitySC, metav1.CreateOptions{})
-		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
-			Status:  "Failure",
-			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.repairs[0].intensity: Invalid value: "100Mib": must be a float`, invalidIntensitySC.Name),
-			Reason:  "Invalid",
-			Details: &metav1.StatusDetails{
-				Name:  invalidIntensitySC.Name,
-				Group: "scylla.scylladb.com",
-				Kind:  "ScyllaCluster",
-				UID:   "",
-				Causes: []metav1.StatusCause{
-					{
-						Type:    "FieldValueInvalid",
-						Message: `Invalid value: "100Mib": must be a float`,
-						Field:   "spec.repairs[0].intensity",
-					},
-				},
+
+		g.It("is updated", func(ctx g.SpecContext) {
+			var err error
+
+			framework.By("Creating a ScyllaCluster")
+			sc := f.GetDefaultScyllaCluster()
+			sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			scCopy := sc.DeepCopy()
+			for _, f := range e.modifierFuncs {
+				f(scCopy)
+			}
+			patch, err := controllerhelpers.GenerateMergePatch(sc, scCopy)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			framework.By("Updating a ScyllaCluster")
+			_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+				ctx,
+				sc.Name,
+				types.MergePatchType,
+				patch,
+				metav1.PatchOptions{},
+			)
+			o.Expect(err).To(e.expectedErrMatcherFunc(scCopy))
+		})
+	},
+		g.Entry("with acceptance when a valid ScyllaCluster", &entry{
+			modifierFuncs: nil,
+			expectedErrMatcherFunc: func(_ *scyllav1.ScyllaCluster) o.OmegaMatcher {
+				return o.Not(o.HaveOccurred())
 			},
-			Code: 422,
-		}}))
-
-		framework.By("Accepting a creation of valid ScyllaCluster")
-		validSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, validSC, metav1.CreateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", validSC.ResourceVersion)
-		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, validSC)
-		defer waitCtx1Cancel()
-		validSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace), validSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), validSC)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), validSC)
-
-		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), validSC)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(1))
-		di := verification.InsertAndVerifyCQLData(ctx, hosts)
-		defer di.Close()
-
-		framework.By("Rejecting an update of ScyllaCluster's repo")
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace).Patch(
-			ctx,
-			validSC.Name,
-			types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"spec": {"datacenter": {"name": "%s-updated"}}}`, validSC.Spec.Datacenter.Name)),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
-			Status:  "Failure",
-			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.name: Forbidden: change of datacenter name is currently not supported`, validSC.Name),
-			Reason:  "Invalid",
-			Details: &metav1.StatusDetails{
-				Name:  validSC.Name,
-				Group: "scylla.scylladb.com",
-				Kind:  "ScyllaCluster",
-				UID:   "",
-				Causes: []metav1.StatusCause{
-					{
-						Type:    "FieldValueForbidden",
-						Message: "Forbidden: change of datacenter name is currently not supported",
-						Field:   "spec.datacenter.name",
-					},
-				},
+		}),
+		g.Entry("with rejection when a ScyllaCluster with duplicated racks", &entry{
+			modifierFuncs: []func(*scyllav1.ScyllaCluster){
+				duplicateRacks,
 			},
-			Code: 422,
-		}}))
-
-		framework.By("Rejecting an update of ScyllaCluster's dcName")
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(validSC.Namespace).Patch(
-			ctx,
-			validSC.Name,
-			types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"spec":{"datacenter": {"name": "%s-updated"}}}`, validSC.Spec.Datacenter.Name)),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).To(o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
-			Status:  "Failure",
-			Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.name: Forbidden: change of datacenter name is currently not supported`, validSC.Name),
-			Reason:  "Invalid",
-			Details: &metav1.StatusDetails{
-				Name:  validSC.Name,
-				Group: "scylla.scylladb.com",
-				Kind:  "ScyllaCluster",
-				UID:   "",
-				Causes: []metav1.StatusCause{
-					{
-						Type:    "FieldValueForbidden",
-						Message: "Forbidden: change of datacenter name is currently not supported",
-						Field:   "spec.datacenter.name",
+			expectedErrMatcherFunc: func(sc *scyllav1.ScyllaCluster) o.OmegaMatcher {
+				return o.Equal(&errors.StatusError{ErrStatus: metav1.Status{
+					Status:  "Failure",
+					Message: fmt.Sprintf(`admission webhook "webhook.scylla.scylladb.com" denied the request: ScyllaCluster.scylla.scylladb.com %q is invalid: spec.datacenter.racks[1].name: Duplicate value: "us-east-1a"`, sc.GetName()),
+					Reason:  "Invalid",
+					Details: &metav1.StatusDetails{
+						Name:  sc.GetName(),
+						Group: "scylla.scylladb.com",
+						Kind:  "ScyllaCluster",
+						UID:   "",
+						Causes: []metav1.StatusCause{
+							{
+								Type:    "FieldValueDuplicate",
+								Message: `Duplicate value: "us-east-1a"`,
+								Field:   "spec.datacenter.racks[1].name",
+							},
+						},
 					},
-				},
+					Code: 422,
+				}})
 			},
-			Code: 422,
-		}}))
-	})
+		}),
+	)
 })

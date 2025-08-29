@@ -42,6 +42,7 @@ func TestMustGatherOptions_Run(t *testing.T) {
 				{Name: "nodes", Namespaced: false, Kind: "Node", Verbs: []string{"list"}},
 				{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: []string{"list"}},
 				{Name: "secrets", Namespaced: true, Kind: "Secret", Verbs: []string{"list"}},
+				{Name: "componentstatuses", Namespaced: false, Kind: "ComponentStatus", Verbs: []string{"list"}},
 			},
 		},
 		{
@@ -418,6 +419,44 @@ spec:
     racks: null
   network: {}
   version: ""
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "scylla-operator-must-gather.log",
+					},
+				},
+			},
+		},
+		{
+			name:      "gathers all resources but excludes deprecated componentstatuses",
+			namespace: corev1.NamespaceAll,
+			existingObjects: []runtime.Object{
+				&apiserverinternalv1alpha1.StorageVersion{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-non-standard-resource",
+					},
+				},
+				&corev1.ComponentStatus{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "deprecated-component",
+					},
+				},
+			},
+			allResources:  true,
+			expectedError: nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
+					{
+						Name: "namespaces/storageversions.internal.apiserver.k8s.io/my-non-standard-resource.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: internal.apiserver.k8s.io/v1alpha1
+kind: StorageVersion
+metadata:
+  creationTimestamp: null
+  name: my-non-standard-resource
+spec: {}
 status: {}
 `, "\n"),
 					},

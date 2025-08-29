@@ -182,6 +182,15 @@ func ReplaceIsometricResourceInfosIfPresent(resourceInfos []*ResourceInfo) ([]*R
 		},
 	}
 
+	// Resources to exclude from discovery (deprecated APIs without replacement)
+	excludedResources := []schema.GroupVersionResource{
+		{
+			Group:    "",
+			Version:  "v1",
+			Resource: "componentstatuses",
+		},
+	}
+
 	resourceInfosMap := make(map[schema.GroupVersionResource]*ResourceInfo, len(resourceInfos))
 	for _, m := range resourceInfos {
 		resourceInfosMap[m.Resource] = m
@@ -192,6 +201,11 @@ func ReplaceIsometricResourceInfosIfPresent(resourceInfos []*ResourceInfo) ([]*R
 		if found {
 			delete(resourceInfosMap, replacement.old)
 		}
+	}
+
+	// Remove deprecated resources that have no replacement
+	for _, excluded := range excludedResources {
+		delete(resourceInfosMap, excluded)
 	}
 
 	return helpers.GetMapValues(resourceInfosMap), nil

@@ -10,9 +10,11 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect/testhelpers"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
 	kubefakeclient "k8s.io/client-go/kubernetes/fake"
@@ -762,6 +764,199 @@ metadata:
 			diff := cmp.Diff(tc.expectedDump, got)
 			if len(diff) != 0 {
 				t.Errorf("expected and got filesystems differ:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestReplaceIsometricResourceInfosIfPresent(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name     string
+		input    []*ResourceInfo
+		expected []*ResourceInfo
+	}{
+		{
+			name: "filters out deprecated componentstatuses",
+			input: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "namespaces",
+					},
+				},
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "componentstatuses",
+					},
+				},
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "nodes",
+					},
+				},
+			},
+			expected: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "namespaces",
+					},
+				},
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "nodes",
+					},
+				},
+			},
+		},
+		{
+			name: "replaces old events with new events.k8s.io API when both are present",
+			input: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "events.k8s.io",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+			},
+			expected: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "events.k8s.io",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+			},
+		},
+		{
+			name: "keeps old events when new events.k8s.io API is not present",
+			input: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+			},
+			expected: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+			},
+		},
+		{
+			name: "filters componentstatuses and replaces events in same operation",
+			input: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "componentstatuses",
+					},
+				},
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "events.k8s.io",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "nodes",
+					},
+				},
+			},
+			expected: []*ResourceInfo{
+				{
+					Scope: meta.RESTScopeNamespace,
+					Resource: schema.GroupVersionResource{
+						Group:    "events.k8s.io",
+						Version:  "v1",
+						Resource: "events",
+					},
+				},
+				{
+					Scope: meta.RESTScopeRoot,
+					Resource: schema.GroupVersionResource{
+						Group:    "",
+						Version:  "v1",
+						Resource: "nodes",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := ReplaceIsometricResourceInfosIfPresent(tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Sort both slices to ensure consistent comparison since order may vary
+			expectedSet := make(map[schema.GroupVersionResource]*ResourceInfo)
+			for _, ri := range tc.expected {
+				expectedSet[ri.Resource] = ri
+			}
+
+			gotSet := make(map[schema.GroupVersionResource]*ResourceInfo)
+			for _, ri := range got {
+				gotSet[ri.Resource] = ri
+			}
+
+			if !reflect.DeepEqual(expectedSet, gotSet) {
+				t.Errorf("expected %+v, got %+v", expectedSet, gotSet)
 			}
 		})
 	}

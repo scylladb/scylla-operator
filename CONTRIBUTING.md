@@ -37,7 +37,7 @@ Follow these guidelines for writing and structuring your code:
 * [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
 * [API changes](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api_changes.md)
 * [API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md)
-
+* [ScyllaDB Operator API design conventions](./API_CONVENTIONS.md)
 
 In cases where the existing code doesn't fully follow these conventions, try to be consistent with what's already there. Make sure to familiarize yourself with these resources before making changes.
 

@@ -26,6 +26,9 @@ it's up to the developer to ensure they are available in the environment:
 - [jq](https://github.com/jqlang/jq)
 - [helm](https://github.com/helm/helm)
 - [golangci-lint](https://github.com/golangci/golangci-lint)
+- [operator-sdk](https://sdk.operatorframework.io/docs/installation/)
+  (**Note:** Until [#6978](https://github.com/operator-framework/operator-sdk/pull/6978) is merged and released, you
+  need to use `operator-sdk` from the PR branch; `quay.io/scylladb/scylla-operator-images:golang-1.24` image has it preinstalled)
 
 ## Coding convention
 

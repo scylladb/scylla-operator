@@ -110,6 +110,11 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1a
 		return nil, "", fmt.Errorf("dashboardsCMs can't be empty")
 	}
 
+	prometheusDatasourceSpec, err := makeGrafanaPrometheusDatasourceSpec(sm)
+	if err != nil {
+		return nil, "", fmt.Errorf("can't make Prometheus datasource spec: %w", err)
+	}
+
 	return grafanav1alpha1assets.GrafanaDeploymentTemplate.Get().RenderObject(map[string]any{
 		"grafanaImage":           grafanaImage,
 		"bashToolsImage":         bashToolsImage,
@@ -120,6 +125,8 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1a
 		"resources":              resources,
 		"restartTriggerHash":     restartTriggerHash,
 		"dashboardsCMs":          dashboardsCMs,
+		"prometheusTLSSpec":      prometheusDatasourceSpec.TLS,
+		"prometheusAuthSpec":     prometheusDatasourceSpec.Auth,
 	})
 }
 
@@ -170,7 +177,7 @@ func makeGrafanaConfigs(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMa
 	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
 		defaultDashboard = "scylladb-latest/overview.json"
 	default:
-		return nil, "", fmt.Errorf("unkown monitoring type: %q", t)
+		return nil, "", fmt.Errorf("unknown monitoring type: %q", t)
 	}
 
 	return grafanav1alpha1assets.GrafanaConfigsTemplate.Get().RenderObject(map[string]any{
@@ -213,9 +220,17 @@ func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) ([]*corev1.Con
 }
 
 func makeGrafanaProvisionings(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
-	return grafanav1alpha1assets.GrafanaProvisioningConfigMapTemplate.Get().RenderObject(map[string]any{
+	prometheusDatasourceSpec, err := makeGrafanaPrometheusDatasourceSpec(sm)
+	if err != nil {
+		return nil, "", fmt.Errorf("can't make Prometheus datasource spec: %w", err)
+	}
+
+	datasourceConfig := map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
-	})
+		"prometheusDatasource":   prometheusDatasourceSpec,
+	}
+
+	return grafanav1alpha1assets.GrafanaProvisioningConfigMapTemplate.Get().RenderObject(datasourceConfig)
 }
 
 func makeGrafanaService(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.Service, string, error) {

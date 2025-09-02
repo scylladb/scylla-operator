@@ -215,10 +215,15 @@ func (smc *Controller) syncPrometheus(
 ) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
+	managedPrometheusServiceCAConfigMapName, err := naming.ManagedPrometheusServingCAConfigMapName(sm)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't get managed Prometheus serving CA config map name: %w", err)
+	}
+
 	prometheusServingCertChainConfig := &okubecrypto.CertChainConfig{
 		CAConfig: &okubecrypto.CAConfig{
 			MetaConfig: okubecrypto.MetaConfig{
-				Name:   fmt.Sprintf("%s-prometheus-serving-ca", sm.Name),
+				Name:   managedPrometheusServiceCAConfigMapName,
 				Labels: getPrometheusLabels(sm),
 			},
 			Validity: 10 * 365 * 24 * time.Hour,
@@ -226,7 +231,7 @@ func (smc *Controller) syncPrometheus(
 		},
 		CABundleConfig: &okubecrypto.CABundleConfig{
 			MetaConfig: okubecrypto.MetaConfig{
-				Name:   fmt.Sprintf("%s-prometheus-serving-ca", sm.Name),
+				Name:   managedPrometheusServiceCAConfigMapName,
 				Labels: getPrometheusLabels(sm),
 			},
 		},
@@ -255,6 +260,11 @@ func (smc *Controller) syncPrometheus(
 		},
 	}
 
+	managedPrometheusClientGrafanaSecretName, err := naming.ManagedPrometheusClientGrafanaSecretName(sm)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't get managed Prometheus client Grafana secret name: %w", err)
+	}
+
 	prometheusClientCertChainConfig := &okubecrypto.CertChainConfig{
 		CAConfig: &okubecrypto.CAConfig{
 			MetaConfig: okubecrypto.MetaConfig{
@@ -273,7 +283,7 @@ func (smc *Controller) syncPrometheus(
 		CertConfigs: []*okubecrypto.CertificateConfig{
 			{
 				MetaConfig: okubecrypto.MetaConfig{
-					Name:   fmt.Sprintf("%s-prometheus-client-grafana", sm.Name),
+					Name:   managedPrometheusClientGrafanaSecretName,
 					Labels: getPrometheusLabels(sm),
 				},
 				Validity: 10 * 365 * 24 * time.Hour,

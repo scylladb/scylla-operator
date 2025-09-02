@@ -6,12 +6,10 @@ aliases:
   - czeslavo
   - mflendrich
   - rzetelskik
-  - zimnx
   operator-review-autoassignees:
   # Subset of operator-team that will be automatically requested for reviews in PRs.
   - czeslavo
   - rzetelskik
-  - zimnx
   operator-approvers:
   # Subset of operator-team that has "approve" rights.
   # Rule for adding new members:
@@ -19,4 +17,3 @@ aliases:
   # over a period of at least 6 months, OR a team lead.
   - mflendrich
   - rzetelskik
-  - zimnx

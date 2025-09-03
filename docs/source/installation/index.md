@@ -4,7 +4,7 @@
 :maxdepth: 1
 
 overview
-kubernetes/index
+kubernetes-prerequisites
 gitops
 helm
 upgrade

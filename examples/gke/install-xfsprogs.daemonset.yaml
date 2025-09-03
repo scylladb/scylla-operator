@@ -1,0 +1,51 @@
+# This DaemonSet installs xfsprogs on all nodes in the GKE cluster. Without this, ScyllaDB Operator will not be able to
+# create XFS filesystems required for ScyllaDB data volumes.
+#
+# It should be applied if you're using GKE version >= 1.32.1-gke.1002000 (when OS image was changed to Ubuntu 24.04).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: install-xfsprogs
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: install-xfsprogs
+  template:
+    metadata:
+      labels:
+        app: install-xfsprogs
+    spec:
+      nodeSelector:
+        scylla.scylladb.com/node-type: scylla
+      tolerations:
+        - key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+          effect: NoSchedule
+      containers:
+        - name: installer
+          image: ubuntu:24.04
+          imagePullPolicy: IfNotPresent
+          command:
+            - "/bin/bash"
+            - "-euExo"
+            - "pipefail"
+            - "-O"
+            - "inherit_errexit"
+            - "-c"
+            - |
+              echo "Installing xfsprogs on host..."
+              chroot /host bash -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y xfsprogs"
+              echo "Done. Sleeping to keep container alive."
+              sleep infinity
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host
+              mountPath: /host
+      volumes:
+        - name: host
+          hostPath:
+            path: /
+      restartPolicy: Always

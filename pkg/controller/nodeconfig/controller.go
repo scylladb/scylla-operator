@@ -64,6 +64,7 @@ type Controller struct {
 	namespaceLister            corev1listers.NamespaceLister
 	nodeLister                 corev1listers.NodeLister
 	serviceAccountLister       corev1listers.ServiceAccountLister
+	configMapLister            corev1listers.ConfigMapLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -92,6 +93,7 @@ func NewController(
 	namespaceInformer corev1informers.NamespaceInformer,
 	nodeInformer corev1informers.NodeInformer,
 	serviceAccountInformer corev1informers.ServiceAccountInformer,
+	configMapInformer corev1informers.ConfigMapInformer,
 	operatorImage string,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
@@ -112,6 +114,7 @@ func NewController(
 		namespaceLister:            namespaceInformer.Lister(),
 		nodeLister:                 nodeInformer.Lister(),
 		serviceAccountLister:       serviceAccountInformer.Lister(),
+		configMapLister:            configMapInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			nodeConfigInformer.Informer().HasSynced,
@@ -124,6 +127,7 @@ func NewController(
 			namespaceInformer.Informer().HasSynced,
 			nodeInformer.Informer().HasSynced,
 			serviceAccountInformer.Informer().HasSynced,
+			configMapInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "NodeConfig-controller"}),
@@ -216,6 +220,12 @@ func NewController(
 		AddFunc:    ncc.addNamespace,
 		UpdateFunc: ncc.updateNamespace,
 		DeleteFunc: ncc.deleteNamespace,
+	})
+
+	configMapInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    ncc.addConfigMap,
+		UpdateFunc: ncc.updateConfigMap,
+		DeleteFunc: ncc.deleteConfigMap,
 	})
 
 	return ncc, nil
@@ -425,6 +435,29 @@ func (ncc *Controller) deleteScyllaOperatorConfig(obj interface{}) {
 	ncc.handlers.HandleDelete(
 		obj,
 		ncc.handlers.EnqueueAll,
+	)
+}
+
+func (ncc *Controller) addConfigMap(obj interface{}) {
+	ncc.handlers.HandleAdd(
+		obj.(*corev1.ConfigMap),
+		ncc.handlers.EnqueueOwner,
+	)
+}
+
+func (ncc *Controller) updateConfigMap(old, cur interface{}) {
+	ncc.handlers.HandleUpdate(
+		old.(*corev1.ConfigMap),
+		cur.(*corev1.ConfigMap),
+		ncc.handlers.EnqueueOwner,
+		ncc.deleteConfigMap,
+	)
+}
+
+func (ncc *Controller) deleteConfigMap(obj interface{}) {
+	ncc.handlers.HandleDelete(
+		obj,
+		ncc.handlers.EnqueueOwner,
 	)
 }
 

@@ -1305,3 +1305,86 @@ func storageChanged(c *scyllav1.ScyllaCluster) *scyllav1.ScyllaCluster {
 	c.Spec.Datacenter.Racks[0].Storage.Capacity = "15Gi"
 	return c
 }
+
+func TestGetWarningsOnScyllaClusterCreate(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name             string
+		cluster          *scyllav1.ScyllaCluster
+		expectedWarnings []string
+	}{
+		{
+			name:             "no warnings",
+			cluster:          unit.NewSingleRackCluster(3),
+			expectedWarnings: nil,
+		},
+		{
+			name: "sysctls deprecation warning",
+			cluster: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Sysctls = []string{
+					"fs.aio-max-nr=30000000",
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"spec.sysctls: deprecated; use NodeConfig's .spec.sysctls instead",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			warnings := validation.GetWarningsOnScyllaClusterCreate(tc.cluster)
+			if !reflect.DeepEqual(tc.expectedWarnings, warnings) {
+				t.Errorf("expected and actual warnings differ: %s", cmp.Diff(tc.expectedWarnings, warnings))
+			}
+		})
+	}
+}
+
+func TestGetWarningsOnScyllaClusterUpdate(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name             string
+		oldSC            *scyllav1.ScyllaCluster
+		newSC            *scyllav1.ScyllaCluster
+		expectedWarnings []string
+	}{
+		{
+			name:             "no warnings",
+			oldSC:            unit.NewSingleRackCluster(3),
+			newSC:            unit.NewSingleRackCluster(3),
+			expectedWarnings: nil,
+		},
+		{
+			name:  "sysctls deprecation warning",
+			oldSC: unit.NewSingleRackCluster(3),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Sysctls = []string{
+					"fs.aio-max-nr=30000000",
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"spec.sysctls: deprecated; use NodeConfig's .spec.sysctls instead",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			warnings := validation.GetWarningsOnScyllaClusterUpdate(tc.newSC, tc.oldSC)
+			if !reflect.DeepEqual(tc.expectedWarnings, warnings) {
+				t.Errorf("expected and actual warnings differ: %s", cmp.Diff(tc.expectedWarnings, warnings))
+			}
+		})
+	}
+}

@@ -62,10 +62,7 @@ scylladb-pool-1   True        False         False      37d
 
 or programmatically wait for it:
 
-:::{code-block}
-kubectl wait --timeout=10m --for='condition=Progressing=False' nodeconfigs.scylla.scylladb.com/scylladb-pool-1
-kubectl wait --timeout=10m --for='condition=Degraded=False' nodeconfigs.scylla.scylladb.com/scylladb-pool-1
-kubectl wait --timeout=10m --for='condition=Available=True' nodeconfigs.scylla.scylladb.com/scylladb-pool-1
+:::{include} ./../.internal/wait-for-status-conditions.nodeconfig.code-block.md
 :::
 
 If the NodeConfig doesn't reach the expected state, look at the fine-grained conditions in its status to find the cause.

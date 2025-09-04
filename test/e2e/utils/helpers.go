@@ -218,6 +218,10 @@ func IsScyllaDBClusterDegraded(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error)
 	return helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1alpha1.DegradedCondition, sc.Generation), nil
 }
 
+func IsScyllaDBClusterProgressing(sc *scyllav1alpha1.ScyllaDBCluster) (bool, error) {
+	return helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1alpha1.ProgressingCondition, sc.Generation), nil
+}
+
 func RunEphemeralContainerAndCollectLogs(ctx context.Context, client corev1client.PodInterface, podName string, ec *corev1.EphemeralContainer) (*corev1.Pod, []byte, error) {
 	pod, err := RunEphemeralContainerAndWaitForCompletion(ctx, client, podName, ec)
 	if err != nil {

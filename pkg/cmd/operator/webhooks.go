@@ -81,6 +81,12 @@ var (
 			GetWarningsOnCreateFunc: validation.GetWarningsOnScyllaDBManagerTaskCreate,
 			GetWarningsOnUpdateFunc: validation.GetWarningsOnScyllaDBManagerTaskUpdate,
 		},
+		scyllav1alpha1.GroupVersion.WithResource("scylladbmonitorings"): &GenericValidator[*scyllav1alpha1.ScyllaDBMonitoring]{
+			ValidateCreateFunc:      validation.ValidateScyllaDBMonitoring,
+			ValidateUpdateFunc:      validation.ValidateScyllaDBMonitoringUpdate,
+			GetWarningsOnCreateFunc: validation.GetWarningsOnScyllaDBMonitoringCreate,
+			GetWarningsOnUpdateFunc: validation.GetWarningsOnScyllaDBMonitoringUpdate,
+		},
 	}
 )
 

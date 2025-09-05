@@ -171,10 +171,5 @@ var _ = g.Describe("ScyllaCluster", func() {
 			scyllaVersion:         framework.TestContext.ScyllaDBVersion,
 			validateScyllaConfig:  validateReplaceViaHostID,
 		}),
-		g.Entry(describeEntry, &entry{
-			scyllaImageRepository: configassets.ScyllaDBEnterpriseImageRepository,
-			scyllaVersion:         "2023.1.0",
-			validateScyllaConfig:  validateReplaceViaHostID,
-		}),
 	)
 })

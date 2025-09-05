@@ -160,6 +160,10 @@ func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {
 	return true, nil
 }
 
+func IsScyllaClusterProgressing(sc *scyllav1.ScyllaCluster) (bool, error) {
+	return helpers.IsStatusConditionPresentAndTrue(sc.Status.Conditions, scyllav1.ProgressingCondition, sc.Generation), nil
+}
+
 func IsScyllaDBMonitoringRolledOut(sm *scyllav1alpha1.ScyllaDBMonitoring) (bool, error) {
 	if !helpers.IsStatusConditionPresentAndTrue(sm.Status.Conditions, scyllav1alpha1.AvailableCondition, sm.Generation) {
 		return false, nil
@@ -508,6 +512,25 @@ func GetBroadcastRPCAddressesAndUUIDs(ctx context.Context, client corev1client.C
 	}
 
 	return broadcastRPCAddresses, uuids, nil
+}
+
+func GetHostID(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+	scyllaClient, _, err := GetScyllaClient(ctx, client, sc)
+	if err != nil {
+		return "", fmt.Errorf("can't get scylla client: %w", err)
+	}
+
+	host, err := controllerhelpers.GetScyllaHostForScyllaCluster(sc, svc, pod)
+	if err != nil {
+		return "", fmt.Errorf("can't get Scylla host for Service %q: %w", naming.ObjRef(svc), err)
+	}
+
+	hostID, err := scyllaClient.GetLocalHostId(ctx, host, false)
+	if err != nil {
+		return "", fmt.Errorf("can't get hots ID from host %q: %w", host, err)
+	}
+
+	return hostID, nil
 }
 
 func GetBroadcastRPCAddress(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, svc *corev1.Service) (string, error) {

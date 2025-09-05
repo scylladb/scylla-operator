@@ -1,0 +1,28 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBMonitoring
+metadata:
+  name: scylla-monitoring
+  namespace: scylla
+spec:
+  type: Platform
+  endpointsSelector:
+    matchLabels:
+      app.kubernetes.io/name: scylla
+      scylla-operator.scylladb.com/scylla-service-type: member
+      scylla/cluster: scylla
+  components:
+    prometheus:
+      mode: External
+    grafana:
+      datasources:
+        - type: Prometheus
+          url: "http://prometheus-operated:9090"
+          prometheusOptions: {}
+      exposeOptions:
+        webInterface:
+          ingress:
+            ingressClassName: haproxy
+            dnsDomains:
+              - example-grafana.test.svc.cluster.local
+            annotations:
+              haproxy-ingress.github.io/ssl-passthrough: "true"

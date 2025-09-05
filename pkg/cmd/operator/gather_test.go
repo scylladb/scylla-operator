@@ -107,7 +107,6 @@ kind: Namespace
 metadata:
   annotations:
     annotation-key: annotation-value
-  creationTimestamp: null
   name: my-namespace
 spec: {}
 status: {}
@@ -121,7 +120,6 @@ data:
   secret-key: PHJlZGFjdGVkPg==
 kind: Secret
 metadata:
-  creationTimestamp: null
   name: my-secret
   namespace: my-namespace
 `, "\n"),

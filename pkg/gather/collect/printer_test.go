@@ -46,7 +46,6 @@ func TestOmitManagedFieldsPrinter_PrintObj(t *testing.T) {
 			},
 			expectedString: strings.TrimPrefix(`
 metadata:
-  creationTimestamp: null
   name: my-namespace
 spec: {}
 status: {}

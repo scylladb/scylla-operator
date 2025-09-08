@@ -455,7 +455,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalDNSNames", BadValue: []string{"[not a domain]"}, Detail: `a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`},
 			},
-			expectedErrorString: `spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalDNSNames: Invalid value: []string{"[not a domain]"}: a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
+			expectedErrorString: `spec.scyllaDB.alternator.servingCertificate.operatorManagedOptions.additionalDNSNames: Invalid value: ["[not a domain]"]: a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')`,
 		},
 		{
 			name: "alternator cluster with valid additional IP addresses",
@@ -2465,7 +2465,7 @@ func TestValidateScyllaDBCluster(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.placement.tolerations[0].operator", BadValue: corev1.Toleration{Key: "foo", Operator: "Exists", Value: "bar", Effect: "NoSchedule"}, Detail: "value must be empty when `operator` is 'Exists'"},
 			},
-			expectedErrorString: "spec.datacenterTemplate.placement.tolerations[0].operator: Invalid value: v1.Toleration{Key:\"foo\", Operator:\"Exists\", Value:\"bar\", Effect:\"NoSchedule\", TolerationSeconds:(*int64)(nil)}: value must be empty when `operator` is 'Exists'",
+			expectedErrorString: "spec.datacenterTemplate.placement.tolerations[0].operator: Invalid value: {\"key\":\"foo\",\"operator\":\"Exists\",\"value\":\"bar\",\"effect\":\"NoSchedule\"}: value must be empty when `operator` is 'Exists'",
 		},
 		{
 			name: "invalid toleration having invalid operator when key is empty in datacenter template placement",
@@ -2811,7 +2811,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.scyllaDB.storage", BadValue: (*scyllav1alpha1.StorageOptions)(nil), Detail: `field is immutable`},
 			},
-			expectedErrorString: `spec.datacenterTemplate.scyllaDB.storage: Invalid value: "null": field is immutable`,
+			expectedErrorString: `spec.datacenterTemplate.scyllaDB.storage: Invalid value: null: field is immutable`,
 		},
 		{
 			name: "storage specified in datacenter template rack template is immutable",
@@ -2842,7 +2842,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.rackTemplate.scyllaDB.storage", BadValue: (*scyllav1alpha1.StorageOptions)(nil), Detail: `field is immutable`},
 			},
-			expectedErrorString: `spec.datacenterTemplate.rackTemplate.scyllaDB.storage: Invalid value: "null": field is immutable`,
+			expectedErrorString: `spec.datacenterTemplate.rackTemplate.scyllaDB.storage: Invalid value: null: field is immutable`,
 		},
 		{
 			name: "storage specified in datacenter template rack is immutable",
@@ -2883,7 +2883,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenterTemplate.racks[0].scyllaDB.storage", BadValue: (*scyllav1alpha1.StorageOptions)(nil), Detail: `field is immutable`},
 			},
-			expectedErrorString: `spec.datacenterTemplate.racks[0].scyllaDB.storage: Invalid value: "null": field is immutable`,
+			expectedErrorString: `spec.datacenterTemplate.racks[0].scyllaDB.storage: Invalid value: null: field is immutable`,
 		},
 		{
 			name: "storage specified in datacenter is immutable",
@@ -2906,7 +2906,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].scyllaDB.storage", BadValue: (*scyllav1alpha1.StorageOptions)(nil), Detail: `field is immutable`},
 			},
-			expectedErrorString: `spec.datacenters[0].scyllaDB.storage: Invalid value: "null": field is immutable`,
+			expectedErrorString: `spec.datacenters[0].scyllaDB.storage: Invalid value: null: field is immutable`,
 		},
 		{
 			name: "storage specified in datacenter rack template is immutable",
@@ -2934,7 +2934,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].rackTemplate.scyllaDB.storage", BadValue: (*scyllav1alpha1.StorageOptions)(nil), Detail: `field is immutable`},
 			},
-			expectedErrorString: `spec.datacenters[0].rackTemplate.scyllaDB.storage: Invalid value: "null": field is immutable`,
+			expectedErrorString: `spec.datacenters[0].rackTemplate.scyllaDB.storage: Invalid value: null: field is immutable`,
 		},
 		{
 			name: "storage specified in datacenter rack is immutable",
@@ -2958,7 +2958,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.datacenters[0].racks[0].scyllaDB.storage", BadValue: (*scyllav1alpha1.StorageOptions)(nil), Detail: `field is immutable`},
 			},
-			expectedErrorString: `spec.datacenters[0].racks[0].scyllaDB.storage: Invalid value: "null": field is immutable`,
+			expectedErrorString: `spec.datacenters[0].racks[0].scyllaDB.storage: Invalid value: null: field is immutable`,
 		},
 		{
 			name: "node service type cannot be unset",
@@ -2979,7 +2979,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 			expectedErrorList: field.ErrorList{
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.exposeOptions.nodeService.type", BadValue: (*scyllav1alpha1.NodeServiceType)(nil), Detail: `field is immutable`},
 			},
-			expectedErrorString: `spec.exposeOptions.nodeService.type: Invalid value: "null": field is immutable`,
+			expectedErrorString: `spec.exposeOptions.nodeService.type: Invalid value: null: field is immutable`,
 		},
 		{
 			name: "node service type cannot be changed",

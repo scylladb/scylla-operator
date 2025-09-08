@@ -270,7 +270,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 				}
 				return false, nil
 			})
-			if errors.Is(err, apimachineryutilwait.ErrWaitTimeout) && errors.Is(provisionerCtx.Err(), context.Canceled) {
+			if apimachineryutilwait.Interrupted(err) && errors.Is(provisionerCtx.Err(), context.Canceled) {
 				return
 			}
 			o.Expect(err).NotTo(o.HaveOccurred())

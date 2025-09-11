@@ -18,6 +18,10 @@ func indexScyllaDBMonitoringBySecret(obj interface{}) ([]string, error) {
 		return nil, fmt.Errorf("expected *scyllav1alpha1.ScyllaDBMonitoring, got %T", obj)
 	}
 
+	return getScyllaDBMonitoringGrafanaSecretReferences(sdm), nil
+}
+
+func getScyllaDBMonitoringGrafanaSecretReferences(sdm *scyllav1alpha1.ScyllaDBMonitoring) []string {
 	var secretNames []string
 
 	if sdm.Spec.Components != nil && sdm.Spec.Components.Grafana != nil {
@@ -35,7 +39,7 @@ func indexScyllaDBMonitoringBySecret(obj interface{}) ([]string, error) {
 		}
 	}
 
-	return secretNames, nil
+	return secretNames
 }
 
 // indexScyllaDBMonitoringByConfigMap indexes ScyllaDBMonitoring resources by the names of ConfigMaps it references.
@@ -45,6 +49,10 @@ func indexScyllaDBMonitoringByConfigMap(obj interface{}) ([]string, error) {
 		return nil, fmt.Errorf("expected *scyllav1alpha1.ScyllaDBMonitoring, got %T", obj)
 	}
 
+	return getScyllaDBMonitoringGrafanaConfigMapReferences(sdm), nil
+}
+
+func getScyllaDBMonitoringGrafanaConfigMapReferences(sdm *scyllav1alpha1.ScyllaDBMonitoring) []string {
 	var configMapNames []string
 
 	if sdm.Spec.Components != nil && sdm.Spec.Components.Grafana != nil {
@@ -59,5 +67,5 @@ func indexScyllaDBMonitoringByConfigMap(obj interface{}) ([]string, error) {
 		}
 	}
 
-	return configMapNames, nil
+	return configMapNames
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/template"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -21,6 +22,7 @@ var TemplateFuncs template.FuncMap = template.FuncMap{
 	"repeat":               Repeat,
 	"isTrue":               IsTrue,
 	"sanitizeDNSSubdomain": SanitizeDNSSubdomain,
+	"deref":                Deref,
 }
 
 func MarshalYAML(v any) (string, error) {
@@ -64,6 +66,16 @@ func ToBase64(data []byte) string {
 
 func IsTrue(v *bool) bool {
 	return v != nil && *v
+}
+
+func Deref(v interface{}) interface{} {
+	if v == nil {
+		return nil
+	}
+	if ptr, ok := v.(*corev1.IPFamily); ok && ptr != nil {
+		return string(*ptr)
+	}
+	return v
 }
 
 func SanitizeDNSSubdomain(s string) string {

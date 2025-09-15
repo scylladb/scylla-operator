@@ -48,7 +48,7 @@ func GetScyllaHostForScyllaCluster(sc *scyllav1.ScyllaCluster, svc *corev1.Servi
 	return GetScyllaBroadcastAddress(scyllav1alpha1.BroadcastAddressType(nodeBroadcastAddressType), svc, pod)
 }
 
-func GetScyllaBroadcastAddress(broadcastAddressType scyllav1alpha1.BroadcastAddressType, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+func GetScyllaBroadcastAddress(broadcastAddressType scyllav1alpha1.BroadcastAddressType, svc *corev1.Service, pod *corev1.Pod, ipFamily ...*corev1.IPFamily) (string, error) {
 	switch broadcastAddressType {
 	case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
 		if len(svc.Status.LoadBalancer.Ingress) < 1 {
@@ -70,13 +70,56 @@ func GetScyllaBroadcastAddress(broadcastAddressType scyllav1alpha1.BroadcastAddr
 			return "", fmt.Errorf("service %q does not have a ClusterIP address", naming.ObjRef(svc))
 		}
 
+		// For IPv6 addresses, make sure that they are formatted correctly for ScyllaDB
+		if ip, err := helpers.ParseIP(svc.Spec.ClusterIP); err == nil && helpers.IsIPv6(ip) {
+			return ip.String(), nil
+		}
 		return svc.Spec.ClusterIP, nil
 
 	case scyllav1alpha1.BroadcastAddressTypePodIP:
+		// If IP family is specified, prefer the pod IP of that family
+		if len(ipFamily) > 0 && ipFamily[0] != nil {
+			preferredFamily := *ipFamily[0]
+
+			// Look for an IP of the preferred family in PodIPs
+			for _, podIP := range pod.Status.PodIPs {
+				ip, err := helpers.ParseIP(podIP.IP)
+				if err != nil {
+					continue // Skip invalid IPs
+				}
+				if helpers.GetIPFamily(ip) == preferredFamily {
+					// For IPv6 addresses, make sure that they are formatted correctly for ScyllaDB
+					// ScyllaDB expects IPv6 addresses to be enclosed in square brackets for URL contexts
+					// but as bare addresses for configuration parameters
+					if helpers.IsIPv6(ip) {
+						// Return the canonical IPv6 address representation
+						return ip.String(), nil
+					}
+					return podIP.IP, nil
+				}
+			}
+
+			// Fallback to primary PodIP if no matching family found
+			if len(pod.Status.PodIP) == 0 {
+				return "", fmt.Errorf("pod %q does not have a PodIP address", naming.ObjRef(pod))
+			}
+
+			// Parse and format the fallback IP as well
+			if ip, err := helpers.ParseIP(pod.Status.PodIP); err == nil && helpers.IsIPv6(ip) {
+				return ip.String(), nil
+			}
+			return pod.Status.PodIP, nil
+		}
+
+		// Default behavior: use primary PodIP
 		if len(pod.Status.PodIP) == 0 {
 			return "", fmt.Errorf("pod %q does not have a PodIP address", naming.ObjRef(pod))
 		}
 
+		// Parse and format the primary IP as well
+		if ip, err := helpers.ParseIP(pod.Status.PodIP); err == nil && helpers.IsIPv6(ip) {
+			return ip.String(), nil
+		}
 		return pod.Status.PodIP, nil
 
 	default:
@@ -138,8 +181,18 @@ func NewScyllaClientFromToken(hosts []string, authToken string) (*scyllaclient.C
 	return NewScyllaClient(cfg)
 }
 
-func NewScyllaClientForLocalhost() (*scyllaclient.Client, error) {
-	cfg := scyllaclient.DefaultConfig("", "localhost")
+// NewScyllaClientForLocalhost creates a ScyllaDB client configured for
+// localhost with the specified IP family (IPv4 or IPv6).
+func NewScyllaClientForLocalhost(ipFamily corev1.IPFamily) (*scyllaclient.Client, error) {
+	var host string
+	switch ipFamily {
+	case corev1.IPv6Protocol:
+		host = "::1" // IPv6 localhost
+	default:
+		host = "127.0.0.1" // IPv4 localhost
+	}
+
+	cfg := scyllaclient.DefaultConfig("", host)
 	cfg.Scheme = "http"
 	cfg.Port = fmt.Sprintf("%d", naming.ScyllaAPIPort)
 	t := scyllaclient.DefaultTransport()

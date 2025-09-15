@@ -223,6 +223,15 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              ipFamily:
+                default: IPv4
+                description: |-
+                  IPFamily specifies the IP family for this datacenter.
+                  All services, broadcast addresses, and pod IPs will use this IP family.
+                enum:
+                - IPv4
+                - IPv6
+                type: string
               metadata:
                 description: metadata controls shared metadata for all pods created
                   based on this spec.

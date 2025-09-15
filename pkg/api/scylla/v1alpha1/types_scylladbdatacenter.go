@@ -49,6 +49,13 @@ type ScyllaDBDatacenterSpec struct {
 	// +optional
 	ForceRedeploymentReason *string `json:"forceRedeploymentReason,omitempty"`
 
+	// IPFamily specifies the IP family for this datacenter.
+	// All services, broadcast addresses, and pod IPs will use this IP family.
+	// +kubebuilder:validation:Enum=IPv4;IPv6
+	// +kubebuilder:default="IPv4"
+	// +optional
+	IPFamily *corev1.IPFamily `json:"ipFamily,omitempty"`
+
 	// exposeOptions specifies parameters related to exposing ScyllaDBDatacenter backends.
 	// +optional
 	ExposeOptions *ExposeOptions `json:"exposeOptions,omitempty"`

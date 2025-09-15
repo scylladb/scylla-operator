@@ -1984,6 +1984,11 @@ func (in *ScyllaDBDatacenterSpec) DeepCopyInto(out *ScyllaDBDatacenterSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.IPFamily != nil {
+		in, out := &in.IPFamily, &out.IPFamily
+		*out = new(v1.IPFamily)
+		**out = **in
+	}
 	if in.ExposeOptions != nil {
 		in, out := &in.ExposeOptions, &out.ExposeOptions
 		*out = new(ExposeOptions)

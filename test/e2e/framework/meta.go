@@ -9,6 +9,7 @@ import (
 const (
 	SerialLabelName          = "Serial"
 	MultiDatacenterLabelName = "MultiDatacenter"
+	IPv6LabelName            = "IPv6"
 
 	RequiresClusterIPLabelName     = "RequiresClusterIP"
 	RequiresObjectStorageLabelName = "RequiresObjectStorage"

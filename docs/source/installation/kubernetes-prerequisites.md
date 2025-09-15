@@ -23,7 +23,7 @@ We provide a few examples for the major ones in this section, otherwise please c
 
 GKE allows you to set static CPU policy using a [node system configuration](https://cloud.google.com/kubernetes-engine/docs/how-to/node-system-config):
 :::{code} yaml
-:number-lines:
+
 kubeletConfig:
   cpuManagerPolicy: static
 :::
@@ -34,7 +34,7 @@ kubeletConfig:
 `eksctl` allows you to set static CPU policy for each node pool like:
 
 :::{code} yaml
-:number-lines:
+
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 # ...

@@ -6,7 +6,33 @@ metadata:
 data:
   {{ .ManagedConfigName | printf "%q" }}: |
     cluster_name: "{{ .ClusterName }}"
+    {{- if .Spec.IPFamily }}
+    {{- if eq (deref .Spec.IPFamily) "IPv6" }}
+    rpc_address: "::"
+    api_address: "::1"
+    listen_address: "::"
+    seed_provider:
+      - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+        parameters:
+          - seeds: "::1"
+    {{- else }}    
     rpc_address: "0.0.0.0"
+    api_address: "127.0.0.1"
+    listen_address: "0.0.0.0"
+    seed_provider:
+      - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+        parameters:
+          - seeds: "127.0.0.1"
+    {{- end }}
+    {{- else }}
+    rpc_address: "0.0.0.0"
+    api_address: "127.0.0.1"
+    listen_address: "0.0.0.0"
+    seed_provider:
+      - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+        parameters:
+          - seeds: "127.0.0.1"
+    {{- end }}
     endpoint_snitch: "GossipingPropertyFileSnitch"
     internode_compression: "all"
 

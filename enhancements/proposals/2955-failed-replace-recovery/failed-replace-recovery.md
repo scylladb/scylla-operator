@@ -167,6 +167,12 @@ As a general precaution, the guide includes a step to capture a must-gather snap
 
 #### User mistake - cascading deletion of the StatefulSet
 
+The guide builds upon the [promises of `StatefulSet` semantics](https://kubernetes.io/docs/tasks/run-application/delete-stateful-set/):
+
+> If you want to delete only the StatefulSet and not the Pods, use `--cascade=orphan`.
+
+> Deleting the Pods in a StatefulSet will not delete the associated volumes. This is to ensure that you have the chance to copy data off the volume before deleting it. Deleting the PVC after the pods have terminated might trigger deletion of the backing Persistent Volumes depending on the storage class and reclaim policy.
+
 If the user forgets to `--cascade=orphan` when deleting the `StatefulSet` as part of the procedure, it will cause downtime: the pods of the rack will be deleted, resulting in (reversible) unavailability.
 
 Since deletion of a `StatefulSet` [does not cause the deletion of the associated PVCs](https://kubernetes.io/docs/tasks/run-application/delete-stateful-set/#persistent-volumes) by itself, this operation should not cause data loss by itself.

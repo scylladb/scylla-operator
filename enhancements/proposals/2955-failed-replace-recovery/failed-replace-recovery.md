@@ -84,11 +84,13 @@ Follow the [_Step One: Determining Host IDs of Ghost Members_](https://docs.scyl
 **WARNING**: This deletes the node's data.
 
 ```console
-$ # Note: This command will put the PVC in the "Terminating" state and block until the pod gets deleted by the later step.
-$ kubectl delete persistentvolumeclaim -n scylla scylla-exampledc-examplerack-1
-
 $ # Stop the node that is failing to join the cluster.
+$ # The StatefulSet does not exist, so it will not recreate the Pod.
 $ kubectl delete pod -n examplens scylla-exampledc-examplerack-1
+
+$ # WARNING: This causes data loss.
+$ # Delete the PersistentVolumeClaim for the data volume held by the culprit node.
+$ kubectl delete persistentvolumeclaim -n scylla scylla-exampledc-examplerack-1
 
 $ # Delete the service associated with the node.
 $ # Operator interprets this as a need to provision a brand new node instead of attempting to replace the old one in the rack.

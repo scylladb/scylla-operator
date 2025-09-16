@@ -16,6 +16,7 @@ the options are mutually exclusive.
 - The configuration options fields should be pointers and marked as `+optional` in the comments, to allow them to be omitted when not used.
 - The configuration option fields should be marked with `omitempty` in the JSON tags, to avoid cluttering the serialized output.
 - The validating server should validate that the configuration options corresponding to the chosen type are provided.
+- The validating server should validate that no configuration options for other types are provided.
 
 **Example:**
 ```go

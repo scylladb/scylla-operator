@@ -18,6 +18,7 @@ No well-defined recovery path in scenarios where Operator gets stuck for unhandl
 ### Non-Goals
 
 - Add more automation to Operator
+- Try to solve for situations where other nodes are unhealthy or there are unrelated topology changes ongoing in the cluster.
 
 ## Proposal
 
@@ -40,6 +41,7 @@ DN 10.152.183.214 466.12 KB 256    ?    09d815de-6f6d-4394-8439-bd8d34231835 exa
 UN 10.152.183.43  456.25 KB 256    ?    ac4e578d-cc82-4b71-9ba1-0f40aede9e8d examplerack
 ```
 
+The guide assumes that the rest of the cluster is healthy.
 
 #### Back up your data
 

@@ -173,7 +173,9 @@ As an additional (proactive) mitigation, the guide includes a warning box as par
 
 Once scaled up to a positive number of replicas, Operator will restore the original declarative state (recreate the `StatefulSet`) automatically. In the event that Operator is non-functional for whatever reason (environmental, bug, unhandled case), the StatefulSet can be recreated manually from its configuration in the must-gather archive collected.
 
-## Test Plan
+## Design Details
+
+### Test Plan
 
 #### Acceptance Test
 
@@ -183,6 +185,14 @@ Verify that the failure modes: accidental cascading deletion of the StatefulSet,
 #### Regression Test - Optional
 
 Create an SCT case covering this procedure and expecting it to result in a healed cluster without data loss.
+
+### Upgrade/Downgrade Strategy
+
+Not relevant. This procedure is tied to the version of our API and the semantics of the `StatefulSet` underneath.
+
+### Version Skew Strategy
+
+Same as above. As long as the APIs stay the same, there should be no impact.
 
 ## Alternatives
 

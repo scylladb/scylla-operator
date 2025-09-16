@@ -173,6 +173,17 @@ As an additional (proactive) mitigation, the guide includes a warning box as par
 
 Once scaled up to a positive number of replicas, Operator will restore the original declarative state (recreate the `StatefulSet`) automatically. In the event that Operator is non-functional for whatever reason (environmental, bug, unhandled case), the StatefulSet can be recreated manually from its configuration in the must-gather archive collected.
 
+## Test Plan
+
+#### Acceptance Test
+
+Verify that the procedure yields the desired result of deleting a non-functioning node and creating one that is up, **in a cluster that has all other nodes up**.
+Verify that the failure modes: accidental cascading deletion of the StatefulSet, recovery without Operator from the must-gather archive, actually yield the expected results, and do not result in data loss.
+
+#### Regression Test - Optional
+
+Create an SCT case covering this procedure and expecting it to result in a healed cluster without data loss.
+
 ## Alternatives
 
 - Implement a "freeze" switch in Operator to mitigate the need to scale it down to zero.

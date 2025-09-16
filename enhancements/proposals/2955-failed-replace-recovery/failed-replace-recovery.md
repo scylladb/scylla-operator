@@ -26,7 +26,9 @@ The proposal is to add a guide that builds upon the [failed membership change gu
 
 #### Verify that there is indeed a node that failed to join the cluster
 
-Perform `nodetool status` on a functioning node of the cluster (different than the culprit node). You should see a node with status `DN` or `?N`.
+Perform `nodetool status` on a functioning node of the cluster (different than the culprit node). You should see a node with status different than `UN` (for example `DN`, `?N`).
+
+_**Warning Box** The guide assumes that the rest of the cluster is healthy._
 
 ```console
 $ kubectl exec -n examplens scylla-exampledc-somehealthynode-5 -- nodetool status
@@ -41,7 +43,7 @@ DN 10.152.183.214 466.12 KB 256    ?    09d815de-6f6d-4394-8439-bd8d34231835 exa
 UN 10.152.183.43  456.25 KB 256    ?    ac4e578d-cc82-4b71-9ba1-0f40aede9e8d examplerack
 ```
 
-The guide assumes that the rest of the cluster is healthy.
+Ensure that the culprit entry matches the old (replaced) node ID, or the new (attempting to replace) node ID, based on the logs of the failing node.
 
 #### Back up your data
 

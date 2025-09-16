@@ -40,6 +40,15 @@ DN 10.152.183.214 466.12 KB 256    ?    09d815de-6f6d-4394-8439-bd8d34231835 exa
 UN 10.152.183.43  456.25 KB 256    ?    ac4e578d-cc82-4b71-9ba1-0f40aede9e8d examplerack
 ```
 
+
+#### Back up your data
+
+This is a dangerous operation. It is recommended to perform a data backup before proceeding.
+
+#### Capture a must-gather archive
+
+Since recovery by manual removal of a node is a destructive operation, please collect a [must-gather](https://operator.docs.scylladb.com/stable/support/must-gather.html) archive before changing any Kubernetes state. Do not skip this step - the archive may be useful in configuration recovery if something goes wrong.
+
 #### Pause the components that might interfere with the procedure
 
 This assumes that the failed node's name is `scylla-exampledc-examplerack-1` in the namespace `examplens`
@@ -54,7 +63,11 @@ $ kubectl scale -n scylla-operator deploy/scylla-operator --replicas=0 --timeout
 Prevent the StatefulSet from recreating the pod instantly. We achieve this by orphan deleting the StatefulSet for that specific rack,
 because Operator will recreate the StatefulSet in its exact form when Operator is scaled back up at the end of the procedure.
 
+_**Warning Box** Execute this step carefully - it can have destructive effects._
+
 ```console
+$ # WARNING: Do not forget the --cascade=orphan parameter.
+$ # Doing otherwise will cause downtime.
 $ kubectl delete statefulset -n examplens scylla-exampledc-examplerack --cascade=orphan
 ```
 
@@ -141,6 +154,24 @@ Question to reviewers.
 - Can we expect in the general case that this will guarantee a return of the data integrity conditions one would expect from a successful node replace?
 
 ### Risks and Mitigations
+
+#### Recovery of the Declarative State
+
+As a general precaution, the guide includes a step to capture a must-gather snapshot of the declarative state of the Kubernetes cluster. It can be used for further debugging or for recovery of the declarative state in the event of some unhandled failure.
+
+#### User mistake - cascading deletion of the StatefulSet
+
+If the user forgets to `--cascade=orphan` when deleting the `StatefulSet` as part of the procedure, it will cause downtime: the pods of the rack will be deleted, resulting in (reversible) unavailability.
+
+Since deletion of a `StatefulSet` [does not cause the deletion of the associated PVCs](https://kubernetes.io/docs/tasks/run-application/delete-stateful-set/#persistent-volumes) by itself, this operation should not cause data loss by itself.
+
+Reversing this situation is possible by recreating the `StatefulSet` with identical configuration as the original one, that will recreate the deleted pods. These pods inherit the PVCs, so their state should be fully preserved. In a typical case, Operator will perform this automatically when scaled back to a positive number of replicas.
+
+As an additional (proactive) mitigation, the guide includes a warning box as part of the "orphan delete the StatefulSet" step.
+
+#### Operator fails to start up
+
+Once scaled up to a positive number of replicas, Operator will restore the original declarative state (recreate the `StatefulSet`) automatically. In the event that Operator is non-functional for whatever reason (environmental, bug, unhandled case), the StatefulSet can be recreated manually from its configuration in the must-gather archive collected.
 
 ## Alternatives
 

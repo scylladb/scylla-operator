@@ -115,9 +115,10 @@ type K8SSelectorConfig struct {
 // ScrapeConfig defines a namespaced Prometheus scrape_config to be aggregated across
 // multiple namespaces into the Prometheus configuration.
 type ScrapeConfig struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-
+	// +required
 	Spec ScrapeConfigSpec `json:"spec"`
 }
 
@@ -132,8 +133,10 @@ type ScrapeConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
 	// More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// List of ScrapeConfigs
+	// +required
 	Items []ScrapeConfig `json:"items"`
 }
 
@@ -973,6 +976,7 @@ type KumaSDConfig struct {
 // +k8s:openapi-gen=true
 type EurekaSDConfig struct {
 	// The URL to connect to the Eureka server.
+	// +kubebuilder:validation:Pattern:="^http(s)?://.+$"
 	// +kubebuilder:validation:MinLength=1
 	// +required
 	Server string `json:"server"`
@@ -1093,8 +1097,10 @@ type HetznerSDConfig struct {
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// The port to scrape metrics from.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
 	// +optional
-	Port *int `json:"port,omitempty"`
+	Port *int32 `json:"port,omitempty"`
 	// The time after which the servers are refreshed.
 	// +optional
 	RefreshInterval *v1.Duration `json:"refreshInterval,omitempty"`
@@ -1170,7 +1176,6 @@ type OVHCloudSDConfig struct {
 	// +required
 	ConsumerKey corev1.SecretKeySelector `json:"consumerKey"`
 	// Service of the targets to retrieve. Must be `VPS` or `DedicatedServer`.
-	// +kubebuilder:validation:Enum=VPS;DedicatedServer
 	// +required
 	Service OVHService `json:"service"`
 	// Custom endpoint to be used.
@@ -1296,6 +1301,7 @@ type PuppetDBSDConfig struct {
 	// Port to scrape the metrics from.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
+	// +optional
 	Port *int32 `json:"port,omitempty"`
 	// Optional HTTP basic authentication information.
 	// Cannot be set at the same time as `authorization`, or `oauth2`.
@@ -1349,6 +1355,7 @@ type LightSailSDConfig struct {
 	// If using the public IP address, this must instead be specified in the relabeling rule.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
+	// +optional
 	Port *int32 `json:"port,omitempty"`
 	// Optional HTTP basic authentication information.
 	// Cannot be set at the same time as `authorization`, or `oauth2`.

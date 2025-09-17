@@ -24,6 +24,8 @@ No well-defined recovery path in scenarios where Operator gets stuck for unhandl
 
 The proposal is to add a guide that builds upon the [failed membership change guide](https://docs.scylladb.com/manual/branch-2025.1/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html#cleaning-up-after-a-failed-membership-change) that would employ the following steps:
 
+_**Note Box**: To recover from failed node replace for multi-datacenter ScyllaDB deployments, simply perform the steps outlined in this guide in the worker cluster where the failed node is located._
+
 #### Verify that there is indeed a node that failed to join the cluster
 
 Perform `nodetool status` on a functioning node of the cluster (different than the culprit node). You should see a node with status different than `UN` (for example `DN`, `?N`).

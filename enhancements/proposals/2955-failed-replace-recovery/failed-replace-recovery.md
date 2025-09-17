@@ -196,7 +196,7 @@ Verify that the failure modes: accidental cascading deletion of the StatefulSet,
 
 #### Regression Test - Optional
 
-Create an SCT case covering this procedure and expecting it to result in a healed cluster without data loss.
+Create an SCT or E2E case covering this procedure and expecting it to result in a healed cluster without data loss.
 
 ### Upgrade/Downgrade Strategy
 

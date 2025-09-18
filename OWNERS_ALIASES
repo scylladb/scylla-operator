@@ -9,6 +9,7 @@ aliases:
   operator-review-autoassignees:
   # Subset of operator-team that will be automatically requested for reviews in PRs.
   - czeslavo
+  - mflendrich
   - rzetelskik
   operator-approvers:
   # Subset of operator-team that has "approve" rights.

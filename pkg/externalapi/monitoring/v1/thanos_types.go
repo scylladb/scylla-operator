@@ -44,14 +44,17 @@ const (
 //
 // The resource defines via label and namespace selectors which `PrometheusRule` objects should be associated to the deployed Thanos Ruler instances.
 type ThanosRuler struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	// Specification of the desired behavior of the ThanosRuler cluster. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+	// +required
 	Spec ThanosRulerSpec `json:"spec"`
 	// Most recent observed status of the ThanosRuler cluster. Read-only.
 	// More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+	// +optional
 	Status ThanosRulerStatus `json:"status,omitempty"`
 }
 
@@ -61,8 +64,10 @@ type ThanosRulerList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
 	// More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// List of Prometheuses
+	// +required
 	Items []ThanosRuler `json:"items"`
 }
 
@@ -86,11 +91,13 @@ type ThanosRulerSpec struct {
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 
 	// Thanos container image URL.
+	// +optional
 	Image string `json:"image,omitempty"`
 
 	// Image pull policy for the 'thanos', 'init-config-reloader' and 'config-reloader' containers.
 	// See https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy for more details.
 	// +kubebuilder:validation:Enum="";Always;Never;IfNotPresent
+	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
 	// An optional list of references to secrets in the same namespace
@@ -101,6 +108,7 @@ type ThanosRulerSpec struct {
 
 	// When a ThanosRuler deployment is paused, no actions except for deletion
 	// will be performed on the underlying objects.
+	// +optional
 	Paused bool `json:"paused,omitempty"`
 
 	// Number of thanos ruler instances to deploy.
@@ -113,6 +121,7 @@ type ThanosRulerSpec struct {
 
 	// Resources defines the resource requirements for single Pods.
 	// If not provided, no requests/limits will be set
+	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
 	// If specified, the pod's scheduling constraints.
@@ -146,6 +155,7 @@ type ThanosRulerSpec struct {
 	EnableServiceLinks *bool `json:"enableServiceLinks,omitempty"`
 
 	// Priority class assigned to the Pods
+	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 
 	// The name of the service name used by the underlying StatefulSet(s) as the governing service.
@@ -159,6 +169,7 @@ type ThanosRulerSpec struct {
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// Thanos Ruler Pods.
+	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Storage spec to specify how storage shall be used.
@@ -198,6 +209,7 @@ type ThanosRulerSpec struct {
 
 	// ListenLocal makes the Thanos ruler listen on loopback, so that it
 	// does not bind against the Pod IP.
+	// +optional
 	ListenLocal bool `json:"listenLocal,omitempty"`
 
 	// Configures the list of Thanos Query endpoints from which to query metrics.
@@ -258,6 +270,7 @@ type ThanosRulerSpec struct {
 	// EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert
 	// and metric that is user created. The label value will always be the namespace of the object that is
 	// being created.
+	// +optional
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 	// List of references to PrometheusRule objects
 	// to be excluded from enforcing a namespace label of origin.
@@ -273,19 +286,27 @@ type ThanosRulerSpec struct {
 
 	// Log level for ThanosRuler to be configured with.
 	// +kubebuilder:validation:Enum="";debug;info;warn;error
+	// +optional
 	LogLevel string `json:"logLevel,omitempty"`
 	// Log format for ThanosRuler to be configured with.
 	// +kubebuilder:validation:Enum="";logfmt;json
+	// +optional
 	LogFormat string `json:"logFormat,omitempty"`
 
 	// Port name used for the pods and governing service.
 	// Defaults to `web`.
 	// +kubebuilder:default:="web"
+	// +optional
 	PortName string `json:"portName,omitempty"`
 
 	// Interval between consecutive evaluations.
 	// +kubebuilder:default:="15s"
+	// +optional
 	EvaluationInterval Duration `json:"evaluationInterval,omitempty"`
+
+	// Minimum amount of time to wait before resending an alert to Alertmanager.
+	// +optional
+	ResendDelay *Duration `json:"resendDelay,omitempty"`
 
 	// Max time to tolerate prometheus outage for restoring "for" state of alert.
 	// It requires Thanos >= v0.30.0.
@@ -304,6 +325,13 @@ type ThanosRulerSpec struct {
 	// +optional
 	RuleConcurrentEval *int32 `json:"ruleConcurrentEval,omitempty"`
 
+	// Minimum duration between alert and restored "for" state.
+	// This is maintained only for alerts with configured "for" time greater than grace period.
+	// It requires Thanos >= v0.30.0.
+	//
+	// +optional
+	RuleGracePeriod *Duration `json:"ruleGracePeriod,omitempty"`
+
 	// Time duration ThanosRuler shall retain data for. Default is '24h', and
 	// must match the regular expression `[0-9]+(ms|s|m|h|d|w|y)` (milliseconds
 	// seconds minutes hours days weeks years).
@@ -312,6 +340,7 @@ type ThanosRulerSpec struct {
 	// operates in stateless mode.
 	//
 	// +kubebuilder:default:="24h"
+	// +optional
 	Retention Duration `json:"retention,omitempty"`
 
 	// Containers allows injecting additional containers or modifying operator generated
@@ -344,7 +373,7 @@ type ThanosRulerSpec struct {
 	//
 	// `tracingConfigFile` takes precedence over this field.
 	//
-	//+optional
+	// +optional
 	TracingConfig *corev1.SecretKeySelector `json:"tracingConfig,omitempty"`
 	// Configures the path of the tracing configuration file.
 	//
@@ -357,7 +386,7 @@ type ThanosRulerSpec struct {
 	//
 	// This field takes precedence over `tracingConfig`.
 	//
-	//+optional
+	// +optional
 	TracingConfigFile string `json:"tracingConfigFile,omitempty"`
 
 	// Configures the external label pairs of the ThanosRuler resource.
@@ -379,8 +408,10 @@ type ThanosRulerSpec struct {
 	// The external URL the Thanos Ruler instances will be available under. This is
 	// necessary to generate correct URLs. This is necessary if Thanos Ruler is not
 	// served from root of a DNS name.
+	// +optional
 	ExternalPrefix string `json:"externalPrefix,omitempty"`
 	// The route prefix ThanosRuler registers HTTP handlers for. This allows thanos UI to be served on a sub-path.
+	// +optional
 	RoutePrefix string `json:"routePrefix,omitempty"`
 
 	// GRPCServerTLSConfig configures the gRPC server from which Thanos Querier reads
@@ -393,14 +424,17 @@ type ThanosRulerSpec struct {
 	// The external Query URL the Thanos Ruler will set in the 'Source' field
 	// of all alerts.
 	// Maps to the '--alert.query-url' CLI arg.
+	// +optional
 	AlertQueryURL string `json:"alertQueryUrl,omitempty"`
 
 	// Minimum number of seconds for which a newly created pod should be ready
 	// without any of its container crashing for it to be considered available.
-	// Defaults to 0 (pod will be considered available as soon as it is ready)
-	// This is an alpha field from kubernetes 1.22 until 1.24 which requires enabling the StatefulSetMinReadySeconds feature gate.
+	//
+	// If unset, pods will be considered available as soon as they are ready.
+	//
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
-	MinReadySeconds *uint32 `json:"minReadySeconds,omitempty"`
+	MinReadySeconds *int32 `json:"minReadySeconds,omitempty"`
 
 	// Configures alert relabeling in Thanos Ruler.
 	//
@@ -430,6 +464,7 @@ type ThanosRulerSpec struct {
 	// Pods' hostAliases configuration
 	// +listType=map
 	// +listMapKey=ip
+	// +optional
 	HostAliases []HostAlias `json:"hostAliases,omitempty"`
 
 	// AdditionalArgs allows setting additional arguments for the ThanosRuler container.
@@ -465,11 +500,36 @@ type ThanosRulerSpec struct {
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+
+	// Enable access to Thanos Ruler feature flags. By default, no features are enabled.
+	//
+	// Enabling features which are disabled by default is entirely outside the
+	// scope of what the maintainers will support and by doing so, you accept
+	// that this behaviour may break at any time without notice.
+	//
+	// For more information see https://thanos.io/tip/components/rule.md/
+	//
+	// It requires Thanos >= 0.39.0.
+	// +listType:=set
+	// +optional
+	EnableFeatures []EnableFeature `json:"enableFeatures,omitempty"`
+
+	// HostUsers supports the user space in Kubernetes.
+	//
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/user-namespaces/
+	//
+	//
+	// The feature requires at least Kubernetes 1.28 with the `UserNamespacesSupport` feature gate enabled.
+	// Starting Kubernetes 1.33, the feature is enabled by default.
+	//
+	// +optional
+	HostUsers *bool `json:"hostUsers,omitempty"`
 }
 
 // ThanosRulerWebSpec defines the configuration of the ThanosRuler web server.
 // +k8s:openapi-gen=true
 type ThanosRulerWebSpec struct {
+	// +optional
 	WebConfigFileFields `json:",inline"`
 }
 
@@ -480,17 +540,22 @@ type ThanosRulerWebSpec struct {
 type ThanosRulerStatus struct {
 	// Represents whether any actions on the underlying managed objects are
 	// being performed. Only delete actions will be performed.
+	// +required
 	Paused bool `json:"paused"`
 	// Total number of non-terminated pods targeted by this ThanosRuler deployment
 	// (their labels match the selector).
+	// +required
 	Replicas int32 `json:"replicas"`
 	// Total number of non-terminated pods targeted by this ThanosRuler deployment
 	// that have the desired version spec.
+	// +required
 	UpdatedReplicas int32 `json:"updatedReplicas"`
 	// Total number of available pods (ready for at least minReadySeconds)
 	// targeted by this ThanosRuler deployment.
+	// +required
 	AvailableReplicas int32 `json:"availableReplicas"`
 	// Total number of unavailable pods targeted by this ThanosRuler deployment.
+	// +required
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 	// The current state of the ThanosRuler object.
 	// +listType=map

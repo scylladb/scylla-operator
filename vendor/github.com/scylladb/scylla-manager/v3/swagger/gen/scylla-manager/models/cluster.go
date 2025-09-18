@@ -15,6 +15,12 @@ import (
 // swagger:model Cluster
 type Cluster struct {
 
+	// alternator access key id
+	AlternatorAccessKeyID string `json:"alternator_access_key_id,omitempty"`
+
+	// alternator secret access key
+	AlternatorSecretAccessKey string `json:"alternator_secret_access_key,omitempty"`
+
 	// auth token
 	AuthToken string `json:"auth_token,omitempty"`
 

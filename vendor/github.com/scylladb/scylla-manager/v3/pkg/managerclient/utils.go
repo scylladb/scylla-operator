@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
+	"github.com/scylladb/scylla-manager/v3/pkg/util/sizesuffix"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/timeutc"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
@@ -154,7 +155,7 @@ func FormatRestoreProgress(size, restored, downloaded, failed int64) string {
 
 // FormatSizeSuffix returns string printing size with a unit.
 func FormatSizeSuffix(b int64) string {
-	return SizeSuffix(b).String()
+	return sizesuffix.SizeSuffix(b).String()
 }
 
 // FormatTime formats the supplied DateTime in `02 Jan 06 15:04:05 MST` format.
@@ -282,4 +283,25 @@ func FormatRetentionPolicy(retention, retentionDays int64) string {
 		}
 	}
 	return res
+}
+
+// FormatTablesProgress calculates percent of restored table bytes.
+func FormatTablesProgress(tables []*models.One2OneRestoreTableProgress) string {
+	var sumSize, sumRestored int64
+	for _, t := range tables {
+		sumSize += t.Size
+		sumRestored += t.Restored
+	}
+	return fmt.Sprintf("%d%%", sumRestored*100/sumSize)
+}
+
+// FormatViewsProgress calculates percent of restored views.
+func FormatViewsProgress(views []*models.One2OneRestoreViewProgress) string {
+	var done int
+	for _, v := range views {
+		if v.Status == models.One2OneRestoreTableProgressStatusDone {
+			done++
+		}
+	}
+	return fmt.Sprintf("%d%%", done*100/len(views))
 }

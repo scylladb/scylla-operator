@@ -80,7 +80,6 @@ func TestCollector_CollectObject(t *testing.T) {
 apiVersion: v1
 kind: Pod
 metadata:
-  creationTimestamp: null
   name: my-pod
   namespace: test
 spec:
@@ -134,7 +133,6 @@ status: {}
 apiVersion: v1
 kind: Pod
 metadata:
-  creationTimestamp: null
   name: my-pod
   namespace: test
 spec:
@@ -224,7 +222,6 @@ status:
 apiVersion: v1
 kind: Pod
 metadata:
-  creationTimestamp: null
   name: my-pod
   namespace: test
 spec:
@@ -360,7 +357,6 @@ status:
 apiVersion: v1
 kind: Pod
 metadata:
-  creationTimestamp: null
   name: my-pod
   namespace: test
 spec:
@@ -466,7 +462,6 @@ status:
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: my-namespace
   namespace: test
 spec: {}
@@ -506,7 +501,6 @@ status: {}
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: my-namespace
 spec: {}
 status: {}
@@ -520,7 +514,6 @@ data:
   secret-key: PHJlZGFjdGVkPg==
 kind: Secret
 metadata:
-  creationTimestamp: null
   name: my-secret
   namespace: my-namespace
 `, "\n"),
@@ -556,7 +549,6 @@ metadata:
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
-  creationTimestamp: null
   name: my-scyllacluster
   namespace: test
 spec:
@@ -611,7 +603,6 @@ status: {}
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: test
 spec: {}
 status: {}
@@ -623,7 +614,6 @@ status: {}
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
-  creationTimestamp: null
   name: my-scyllacluster
   namespace: test
 spec:
@@ -642,7 +632,6 @@ status: {}
 apiVersion: v1
 kind: Secret
 metadata:
-  creationTimestamp: null
   name: my-secret
   namespace: test
 `, "\n"),

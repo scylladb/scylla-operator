@@ -181,7 +181,6 @@ func TestMustGatherOptions_Run(t *testing.T) {
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: my-namespace
 spec: {}
 status: {}
@@ -193,7 +192,6 @@ status: {}
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: my-other-namespace
 spec: {}
 status: {}
@@ -205,7 +203,6 @@ status: {}
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: scylla-operator
 spec: {}
 status: {}
@@ -217,7 +214,6 @@ status: {}
 apiVersion: v1
 kind: Node
 metadata:
-  creationTimestamp: null
   name: fedora
 spec: {}
 status:
@@ -243,7 +239,6 @@ status:
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  creationTimestamp: null
   name: my-storage-class
 provisioner: ""
 `, "\n"),
@@ -254,7 +249,6 @@ provisioner: ""
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
-  creationTimestamp: null
   name: scylla
   namespace: my-namespace
 spec:
@@ -273,7 +267,6 @@ status: {}
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
-  creationTimestamp: null
   name: other-scylla
   namespace: my-other-namespace
 spec:
@@ -294,7 +287,6 @@ data:
   secret-key: PHJlZGFjdGVkPg==
 kind: Secret
 metadata:
-  creationTimestamp: null
   name: my-secret
   namespace: scylla-operator
 `, "\n"),
@@ -358,7 +350,6 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: my-namespace
 spec: {}
 status: {}
@@ -370,7 +361,6 @@ status: {}
 apiVersion: v1
 kind: Namespace
 metadata:
-  creationTimestamp: null
   name: scylla-operator
 spec: {}
 status: {}
@@ -382,7 +372,6 @@ status: {}
 apiVersion: v1
 kind: Node
 metadata:
-  creationTimestamp: null
   name: fedora
 spec: {}
 status:
@@ -408,7 +397,6 @@ status:
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
-  creationTimestamp: null
   name: scylla
   namespace: my-namespace
 spec:
@@ -448,7 +436,6 @@ status: {}
 apiVersion: internal.apiserver.k8s.io/v1alpha1
 kind: StorageVersion
 metadata:
-  creationTimestamp: null
   name: my-non-standard-resource
 spec: {}
 status: {}

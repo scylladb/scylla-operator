@@ -62,6 +62,8 @@ for the delete cluster cluster ID operation typically these are written to a htt
 */
 type DeleteClusterClusterIDParams struct {
 
+	/*AlternatorCreds*/
+	AlternatorCreds *bool
 	/*ClusterID*/
 	ClusterID string
 	/*CqlCreds*/
@@ -107,6 +109,17 @@ func (o *DeleteClusterClusterIDParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
+// WithAlternatorCreds adds the alternatorCreds to the delete cluster cluster ID params
+func (o *DeleteClusterClusterIDParams) WithAlternatorCreds(alternatorCreds *bool) *DeleteClusterClusterIDParams {
+	o.SetAlternatorCreds(alternatorCreds)
+	return o
+}
+
+// SetAlternatorCreds adds the alternatorCreds to the delete cluster cluster ID params
+func (o *DeleteClusterClusterIDParams) SetAlternatorCreds(alternatorCreds *bool) {
+	o.AlternatorCreds = alternatorCreds
+}
+
 // WithClusterID adds the clusterID to the delete cluster cluster ID params
 func (o *DeleteClusterClusterIDParams) WithClusterID(clusterID string) *DeleteClusterClusterIDParams {
 	o.SetClusterID(clusterID)
@@ -147,6 +160,22 @@ func (o *DeleteClusterClusterIDParams) WriteToRequest(r runtime.ClientRequest, r
 		return err
 	}
 	var res []error
+
+	if o.AlternatorCreds != nil {
+
+		// query param alternator_creds
+		var qrAlternatorCreds bool
+		if o.AlternatorCreds != nil {
+			qrAlternatorCreds = *o.AlternatorCreds
+		}
+		qAlternatorCreds := swag.FormatBool(qrAlternatorCreds)
+		if qAlternatorCreds != "" {
+			if err := r.SetQueryParam("alternator_creds", qAlternatorCreds); err != nil {
+				return err
+			}
+		}
+
+	}
 
 	// path param cluster_id
 	if err := r.SetPathParam("cluster_id", o.ClusterID); err != nil {

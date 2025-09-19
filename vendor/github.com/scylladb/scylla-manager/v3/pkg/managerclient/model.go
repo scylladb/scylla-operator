@@ -40,17 +40,20 @@ type ClusterSlice []*models.Cluster
 
 // Render renders ClusterSlice in a tabular format.
 func (cs ClusterSlice) Render(w io.Writer) error {
-	t := table.New("ID", "Name", "Labels", "Port", "CQL credentials")
+	t := table.New("ID", "Name", "Labels", "Port", "Credentials")
 	for _, c := range cs {
 		p := "default"
 		if c.Port != 0 {
 			p = fmt.Sprint(c.Port)
 		}
-		creds := "not set"
-		if c.Username != "" && c.Password != "" {
-			creds = "set"
+		var creds []string
+		if c.Username != "" {
+			creds = append(creds, "CQL")
 		}
-		t.AddRow(c.ID, c.Name, formatLabels(c.Labels), p, creds)
+		if c.AlternatorAccessKeyID != "" {
+			creds = append(creds, "Alternator")
+		}
+		t.AddRow(c.ID, c.Name, formatLabels(c.Labels), p, strings.Join(creds, ", "))
 	}
 	if _, err := w.Write([]byte(t.String())); err != nil {
 		return err
@@ -1431,6 +1434,125 @@ func (p ValidateBackupProgress) addHostProgress(w io.Writer) error {
 	return nil
 }
 
+// One2OneRestoreProgress prints validate_backup task progress.
+type One2OneRestoreProgress struct {
+	*models.TaskRunOne2OneRestoreProgress
+	Task *Task
+
+	Detailed bool
+}
+
+// Render implements Renderer interface.
+func (p One2OneRestoreProgress) Render(w io.Writer) error {
+	t := template.Must(template.New("").Funcs(template.FuncMap{
+		"isZero":               isZero,
+		"FormatTime":           FormatTime,
+		"FormatDuration":       FormatDuration,
+		"FormatError":          FormatError,
+		"FormatSizeSuffix":     FormatSizeSuffix,
+		"FormatTablesProgress": FormatTablesProgress,
+		"FormatViewsProgress":  FormatViewsProgress,
+	}).Parse(one2oneRestoreProgressTemplate))
+	return t.Execute(w, p)
+}
+
+// RenderDetailedTableProgress renders detailed information about table progress in tabular format.
+func (p One2OneRestoreProgress) RenderDetailedTableProgress() string {
+	t := table.New(
+		"Keyspace",
+		"Table",
+		"Size",
+		"Restored",
+		"Duration",
+		"Status",
+	)
+	for _, table := range p.Progress.Tables {
+		startedAt, completedAt := strfmt.DateTime{}, strfmt.DateTime{}
+		if table.StartedAt != nil {
+			startedAt = *table.StartedAt
+		}
+		if table.CompletedAt != nil {
+			completedAt = *table.CompletedAt
+		}
+		t.AddRow(
+			table.Keyspace,
+			table.Table,
+			FormatSizeSuffix(table.Size),
+			FormatSizeSuffix(table.Restored),
+			FormatDuration(startedAt, completedAt),
+			table.Status,
+		)
+	}
+	return t.Render()
+}
+
+// RenderDetailedTableProgress renders detailed information about view progress in tabular format.
+func (p One2OneRestoreProgress) RenderDetailedViewProgress() string {
+	t := table.New(
+		"Keyspace",
+		"View",
+		"Type",
+		"Duration",
+		"Status",
+	)
+	for _, view := range p.Progress.Views {
+		startedAt, completedAt := strfmt.DateTime{}, strfmt.DateTime{}
+		if view.StartedAt != nil {
+			startedAt = *view.StartedAt
+		}
+		if view.CompletedAt != nil {
+			completedAt = *view.CompletedAt
+		}
+		t.AddRow(
+			view.Keyspace,
+			view.View,
+			view.ViewType,
+			FormatDuration(startedAt, completedAt),
+			view.Status,
+		)
+	}
+	return t.Render()
+}
+
+var one2oneRestoreProgressTemplate = `{{ with .Run -}}
+Run:		{{ .ID }}
+Status:		{{ .Status }}
+{{- if .Cause }}
+Cause:		{{ FormatError .Cause }}
+
+{{- end }}
+{{- if not (isZero .StartTime) }}
+Start time:	{{ FormatTime .StartTime }}
+{{- end -}}
+{{- if not (isZero .EndTime) }}
+End time:	{{ FormatTime .EndTime }}
+{{- end }}
+Duration:	{{ FormatDuration .StartTime .EndTime }}
+{{- end -}}
+{{- with .Progress }}
+Progress: {{- if $.Detailed }} {{ template "DetailedProgress" $ }} {{- else }} {{ template "SummaryProgress" . }} {{- end }}
+{{- else }}
+Progress: 0%
+{{- end }}
+
+{{- define "SummaryProgress" }} 
+{{- if .Tables }}
+  Tables: {{ FormatTablesProgress .Tables }}
+{{- end }}
+{{- if .Views }}
+  Views:  {{ FormatViewsProgress .Views }}
+{{- end }}
+{{- end }}
+
+{{- define "DetailedProgress" }}
+{{- if .Progress.Tables }}
+{{ .RenderDetailedTableProgress }}
+{{- end }}
+{{- if .Progress.Views }}
+{{ .RenderDetailedViewProgress }}
+{{- end}}
+{{- end}}`
+
 // BackupListItems is a []backup.ListItem representation.
 type BackupListItems struct {
 	items       []*models.BackupListItem
@@ -1481,4 +1603,40 @@ func formatLabels(labels map[string]string) string {
 		out = append(out, k+"="+v)
 	}
 	return strings.Join(out, ", ")
+}
+
+// ClusterSuspendDetails renders cluster suspend details.
+type ClusterSuspendDetails struct {
+	*models.SuspendDetails
+
+	ClusterID string
+}
+
+// Render implements Renderer interface.
+func (csd ClusterSuspendDetails) Render(w io.Writer) error {
+	t := table.New("Cluster ID", "Suspended", "Allowed Task")
+	t.AddRow(
+		csd.ClusterID,
+		csd.Suspended,
+		csd.AllowTaskType,
+	)
+	if _, err := w.Write([]byte(t.String())); err != nil {
+		return err
+	}
+	return nil
+}
+
+// BackupDescribeSchema renders described backup schema.
+type BackupDescribeSchema struct {
+	*models.BackupDescribeSchema
+}
+
+// Render implements Renderer interface.
+func (bds BackupDescribeSchema) Render(w io.Writer) error {
+	cqlStmts := make([]string, 0, len(bds.Schema))
+	for _, row := range bds.Schema {
+		cqlStmts = append(cqlStmts, row.CqlStmt)
+	}
+	_, err := w.Write([]byte(strings.Join(cqlStmts, "\n") + "\n"))
+	return err
 }

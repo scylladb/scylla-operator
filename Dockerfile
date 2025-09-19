@@ -1,9 +1,9 @@
-FROM quay.io/scylladb/scylla-operator-images:golang-1.24 AS builder
+FROM quay.io/scylladb/scylla-operator-images:golang-1.25 AS builder
 WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
 RUN make build --warn-undefined-variables
 
-FROM quay.io/scylladb/scylla-operator-images:base-ubi-9.5-minimal
+FROM quay.io/scylladb/scylla-operator-images:base-ubi-9.6-minimal
 
 LABEL org.opencontainers.image.title="Scylla Operator" \
       org.opencontainers.image.description="ScyllaDB Operator for Kubernetes" \

@@ -252,6 +252,15 @@ func VerifyWithOptions(ctx context.Context, kubeClient kubernetes.Interface, scy
 				condType: "ConfigControllerDegraded",
 				status:   metav1.ConditionFalse,
 			},
+			// TODO: this is a mess, we should have a pattern similar to ScyllaDBCluster controller
+			{
+				condType: "ClusterStatusControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ClusterStatusControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) || sdc.Spec.ScyllaDB.AlternatorOptions != nil {

@@ -226,6 +226,22 @@ func DatacenterPodsSelector(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alph
 	)
 }
 
+func DatacenterMemberServiceSelector(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) labels.Selector {
+	ls := ClusterLabels(
+		&scyllav1alpha1.ScyllaDBDatacenter{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ScyllaDBDatacenterName(sc, dc),
+			},
+		},
+	)
+
+	ls[ScyllaServiceTypeLabel] = string(ScyllaServiceTypeMember)
+
+	return labels.SelectorFromSet(
+		ls,
+	)
+}
+
 func GroupVersionResourceToLabelValue(gvr schema.GroupVersionResource) string {
 	return fmt.Sprintf("%s-%s-%s", gvr.Group, gvr.Version, gvr.Resource)
 }

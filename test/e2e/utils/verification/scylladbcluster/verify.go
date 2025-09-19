@@ -89,6 +89,14 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 				condType: internalapi.MakeKindControllerCondition("Secret", scyllav1alpha1.DegradedCondition),
 				status:   metav1.ConditionFalse,
 			},
+			{
+				condType: internalapi.MakeKindControllerCondition("ConfigMap", scyllav1alpha1.ProgressingCondition),
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: internalapi.MakeKindControllerCondition("ConfigMap", scyllav1alpha1.DegradedCondition),
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		for _, dc := range sc.Spec.Datacenters {

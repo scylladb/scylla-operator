@@ -17,6 +17,7 @@ limitations under the License.
 package validation
 
 import (
+	"regexp"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -389,4 +390,30 @@ func validateTaintEffect(effect *corev1.TaintEffect, allowEmpty bool, fldPath *f
 		allErrors = append(allErrors, field.NotSupported(fldPath, *effect, validValues))
 	}
 	return allErrors
+}
+
+const (
+	// a sysctl segment regex, concatenated with dots to form a sysctl name
+	SysctlSegmentFmt string = "[a-z0-9]([-_a-z0-9]*[a-z0-9])?"
+
+	// a sysctl name regex with slash allowed
+	SysctlContainSlashFmt string = "(" + SysctlSegmentFmt + "[\\./])*" + SysctlSegmentFmt
+
+	// the maximal length of a sysctl name
+	SysctlMaxLength int = 253
+)
+
+var sysctlContainSlashRegexp = regexp.MustCompile("^" + SysctlContainSlashFmt + "$")
+
+// IsValidSysctlName checks that the given string is a valid sysctl name,
+// i.e. matches SysctlContainSlashFmt.
+// More info:
+//
+//	https://man7.org/linux/man-pages/man8/sysctl.8.html
+//	https://man7.org/linux/man-pages/man5/sysctl.d.5.html
+func IsValidSysctlName(name string) bool {
+	if len(name) > SysctlMaxLength {
+		return false
+	}
+	return sysctlContainSlashRegexp.MatchString(name)
 }

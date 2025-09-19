@@ -1,0 +1,44 @@
+apiVersion: scylla.scylladb.com/v1alpha1
+kind: ScyllaDBMonitoring
+metadata:
+  name: scylla-monitoring
+  namespace: scylla
+spec:
+  type: Platform
+  endpointsSelector:
+    matchLabels:
+      app.kubernetes.io/name: scylla
+      scylla-operator.scylladb.com/scylla-service-type: member
+      scylla/cluster: scylla
+  components:
+    prometheus:
+      mode: External
+    grafana:
+      datasources:
+        # Prometheus datasource pointing to OpenShift's Thanos Querier service.
+        # To make this work, `cluster-monitoring-config` ConfigMap in `openshift-monitoring` namespace must be configured
+        # to contain `config.yaml` key with `enableUserWorkload: true` in its content.
+        # See https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/monitoring/configuring-user-workload-monitoring#enabling-monitoring-for-user-defined-projects_preparing-to-configure-the-monitoring-stack-uwm for details.
+        - type: Prometheus
+          url: "https://thanos-querier.openshift-monitoring.svc:9091"
+          prometheusOptions:
+            tls:
+              caCertConfigMapRef:
+                name: openshift-service-ca.crt
+                key: service-ca.crt
+            auth:
+              type: BearerToken
+              bearerTokenOptions:
+                secretRef:
+                  # This is a `kubernetes.io/service-account-token` type of Secret created for a ServiceAccount bound to
+                  # `cluster-monitoring-view` ClusterRole.
+                  name: scylla-monitoring-grafana-token
+                  key: token
+      exposeOptions:
+        webInterface:
+          ingress:
+            ingressClassName: haproxy
+            dnsDomains:
+              - example-grafana.test.svc.cluster.local
+            annotations:
+              haproxy-ingress.github.io/ssl-passthrough: "true"

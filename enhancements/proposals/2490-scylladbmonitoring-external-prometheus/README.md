@@ -397,6 +397,8 @@ the [Support matrix](https://operator.docs.scylladb.com/stable/support/releases.
 
 ## Implementation History
 
+- 2025-09-12: Initial implementation completed.
+- 2025-08-29: Proposal accepted.
 - 2025-08-26: First review iteration.
 - 2025-08-21: Enhancement proposal introduced.
 

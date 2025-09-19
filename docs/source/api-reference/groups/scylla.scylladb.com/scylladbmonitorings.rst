@@ -137,6 +137,9 @@ object
    * - :ref:`authentication<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.authentication>`
      - object
      - authentication hold the authentication options for accessing Grafana.
+   * - :ref:`datasources<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[]>`
+     - array (object)
+     - datasources is a list of Grafana datasources to configure. It's expected to be set when using Prometheus component in `External` mode. At most one datasource is allowed for now (only Prometheus is supported).
    * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.exposeOptions>`
      - object
      - exposeOptions specifies options for exposing Grafana UI.
@@ -174,6 +177,233 @@ object
    * - insecureEnableAnonymousAccess
      - boolean
      - insecureEnableAnonymousAccess allows access to Grafana without authentication.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[]:
+
+.spec.components.grafana.datasources[]
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - name
+     - string
+     - name is the name of the datasource as it will appear in Grafana. Only "prometheus" is supported as that's the datasource name expected by the ScyllaDB monitoring stack dashboards.
+   * - :ref:`prometheusOptions<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions>`
+     - object
+     - prometheusOptions defines Prometheus-specific options.
+   * - type
+     - string
+     - type is the type of the datasource. Only "prometheus" is supported.
+   * - url
+     - string
+     - url is the URL of the datasource.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions:
+
+.spec.components.grafana.datasources[].prometheusOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+prometheusOptions defines Prometheus-specific options.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`auth<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.auth>`
+     - object
+     - auth holds authentication options for connecting to Prometheus.
+   * - :ref:`tls<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.tls>`
+     - object
+     - tls holds TLS configuration for connecting to Prometheus over HTTPS.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.auth:
+
+.spec.components.grafana.datasources[].prometheusOptions.auth
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+auth holds authentication options for connecting to Prometheus.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`bearerTokenOptions<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.auth.bearerTokenOptions>`
+     - object
+     - bearerToken holds options for Bearer token authentication.
+   * - type
+     - string
+     - type is the type of authentication to use.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.auth.bearerTokenOptions:
+
+.spec.components.grafana.datasources[].prometheusOptions.auth.bearerTokenOptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+bearerToken holds options for Bearer token authentication.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`secretRef<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.auth.bearerTokenOptions.secretRef>`
+     - object
+     - secretRef is a reference to a key in a Secret holding a Bearer token to use to authenticate with Prometheus.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.auth.bearerTokenOptions.secretRef:
+
+.spec.components.grafana.datasources[].prometheusOptions.auth.bearerTokenOptions.secretRef
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+secretRef is a reference to a key in a Secret holding a Bearer token to use to authenticate with Prometheus.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - key
+     - string
+     - key within the selected object.
+   * - name
+     - string
+     - name of the selected object.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.tls:
+
+.spec.components.grafana.datasources[].prometheusOptions.tls
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+tls holds TLS configuration for connecting to Prometheus over HTTPS.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - :ref:`caCertConfigMapRef<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.tls.caCertConfigMapRef>`
+     - object
+     - caCert is a reference to a key within the CA bundle ConfigMap. The key should hold the CA cert in PEM format. When not specified, system CAs are used.
+   * - :ref:`clientTLSKeyPairSecretRef<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.tls.clientTLSKeyPairSecretRef>`
+     - object
+     - clientTLSKeyPairSecretRef is a reference to a Secret holding client TLS certificate and key for mTLS authentication. It's expected to be a standard Kubernetes TLS Secret with `tls.crt` and `tls.key` keys.
+   * - insecureSkipVerify
+     - boolean
+     - insecureSkipVerify controls whether to skip server certificate verification.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.tls.caCertConfigMapRef:
+
+.spec.components.grafana.datasources[].prometheusOptions.tls.caCertConfigMapRef
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+caCert is a reference to a key within the CA bundle ConfigMap. The key should hold the CA cert in PEM format. When not specified, system CAs are used.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - key
+     - string
+     - key within the selected object.
+   * - name
+     - string
+     - name of the selected object.
+
+.. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.datasources[].prometheusOptions.tls.clientTLSKeyPairSecretRef:
+
+.spec.components.grafana.datasources[].prometheusOptions.tls.clientTLSKeyPairSecretRef
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+clientTLSKeyPairSecretRef is a reference to a Secret holding client TLS certificate and key for mTLS authentication. It's expected to be a standard Kubernetes TLS Secret with `tls.crt` and `tls.key` keys.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - name
+     - string
+     - Name of the referent.
 
 .. _api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.exposeOptions:
 
@@ -1572,6 +1802,9 @@ object
    * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.exposeOptions>`
      - object
      - exposeOptions specifies options for exposing Prometheus UI.
+   * - mode
+     - string
+     - mode defines the mode of the Prometheus instance.
    * - :ref:`placement<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.placement>`
      - object
      - placement describes restrictions for the nodes Prometheus is scheduled on.

@@ -427,7 +427,7 @@ func (sdcc *Controller) deleteSecret(obj interface{}) {
 func (sdcc *Controller) addConfigMap(obj interface{}) {
 	sdcc.handlers.HandleAdd(
 		obj.(*corev1.ConfigMap),
-		sdcc.handlers.EnqueueOwner,
+		sdcc.enqueueThroughClusterStatusConfigMapRefAnnotationOrOwner,
 	)
 }
 
@@ -435,7 +435,7 @@ func (sdcc *Controller) updateConfigMap(old, cur interface{}) {
 	sdcc.handlers.HandleUpdate(
 		old.(*corev1.ConfigMap),
 		cur.(*corev1.ConfigMap),
-		sdcc.handlers.EnqueueOwner,
+		sdcc.enqueueThroughClusterStatusConfigMapRefAnnotationOrOwner,
 		sdcc.deleteConfigMap,
 	)
 }
@@ -443,7 +443,7 @@ func (sdcc *Controller) updateConfigMap(old, cur interface{}) {
 func (sdcc *Controller) deleteConfigMap(obj interface{}) {
 	sdcc.handlers.HandleDelete(
 		obj,
-		sdcc.handlers.EnqueueOwner,
+		sdcc.enqueueThroughClusterStatusConfigMapRefAnnotationOrOwner,
 	)
 }
 
@@ -641,5 +641,19 @@ func (sdcc *Controller) enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecre
 func (sdcc *Controller) enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation(secret *corev1.Secret) controllerhelpers.EnqueueFuncType {
 	return sdcc.handlers.EnqueueAllFunc(sdcc.handlers.EnqueueWithFilterFunc(func(sdc *scyllav1alpha1.ScyllaDBDatacenter) bool {
 		return secret.Namespace == sdc.Namespace && sdc.Annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation] == secret.Name
+	}))
+}
+
+// TODO: use an iterator func
+func (sdcc *Controller) enqueueThroughClusterStatusConfigMapRefAnnotationOrOwner(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
+	configMap := obj.(*corev1.ConfigMap)
+
+	sdcc.enqueueThroughClusterStatusConfigMapRefAnnotation(configMap)(depth+1, configMap, op)
+	sdcc.handlers.EnqueueOwner(depth+1, obj, op)
+}
+
+func (sdcc *Controller) enqueueThroughClusterStatusConfigMapRefAnnotation(configMap *corev1.ConfigMap) controllerhelpers.EnqueueFuncType {
+	return sdcc.handlers.EnqueueAllFunc(sdcc.handlers.EnqueueWithFilterFunc(func(sdc *scyllav1alpha1.ScyllaDBDatacenter) bool {
+		return configMap.Namespace == sdc.Namespace && sdc.Annotations[naming.ScyllaDBClusterStatusOverrideConfigMapRefAnnotation] == configMap.Name
 	}))
 }

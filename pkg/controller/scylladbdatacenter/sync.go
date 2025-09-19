@@ -334,6 +334,16 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync jobs: %w", err))
 	}
 
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		clusterStatusControllerProgressingCondition,
+		clusterStatusControllerDegradedCondition,
+		sdc.Generation,
+		func() ([]metav1.Condition, error) {
+			return sdcc.syncClusterStatusConfigMap(ctx, sdc, serviceMap)
+		},
+	)
+
 	// Aggregate conditions.
 	err = controllerhelpers.SetAggregatedWorkloadConditions(&status.Conditions, sdc.Generation)
 	if err != nil {

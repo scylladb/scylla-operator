@@ -1,6 +1,7 @@
 package scylladbdatacenter
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -443,6 +444,11 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 	}
 
+	clusterStatusConfigMapName, err := naming.ScyllaDBDatacenterClusterStatusesConfigMapName(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get cluster status config map name: %w", err)
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        naming.StatefulSetNameForRack(rack, sdc),
@@ -639,6 +645,99 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 									Name:      "shared",
 									MountPath: naming.SharedDirName,
 									ReadOnly:  false,
+								},
+							},
+						},
+						{
+							Name:            "sstable-system-local-dump",
+							Image:           sdc.Spec.ScyllaDB.Image,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/bash",
+								"-euEo",
+								"pipefail",
+								"-O",
+								"inherit_errexit",
+								"-c",
+								strings.TrimSpace(`
+printf 'INFO %s sstable-system-local-dump - Checking for existence of data directory %s\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" "` + path.Join(naming.DataDir, "/data/system") + `" > /dev/stderr
+if [[ ! -d "` + path.Join(naming.DataDir, "/data/system") + `" ]]; then
+	printf 'INFO %s sstable-system-local-dump - Data directory does not exist, exiting\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" "` + path.Join(naming.DataDir, "/data/system") + `" > /dev/stderr
+	touch /mnt/shared/system-local-dump.json
+	exit 0
+fi
+
+printf 'INFO %s sstable-system-local-dump - Dumping system.local table from sstables in %s\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" "` + path.Join(naming.DataDir, "/data/system") + `" > /dev/stderr
+
+/usr/bin/scylla sstable dump-data \
+` + fmt.Sprintf("--scylla-data-dir=%s", path.Join(naming.DataDir, "/data")) + ` \
+--keyspace=system \
+--table=local \
+--output-format=json \
+--merge \
+$( find ` + path.Join(naming.DataDir, "/data/system") + ` -path "*/local-*/*-big-Data.db" ) >/mnt/shared/system-local-dump.json
+`),
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      naming.PVCTemplateName,
+									MountPath: naming.DataDir,
+									ReadOnly:  true,
+								},
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  false,
+								},
+							},
+						},
+						{
+							Name:            "bootstrap-gate",
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"bootstrap-gate",
+								"--service-name=$(SERVICE_NAME)",
+								fmt.Sprintf("--cluster-status-configmap-name=%s", clusterStatusConfigMapName),
+								fmt.Sprintf("--sstable-system-local-dump-path=/mnt/shared/system-local-dump.json"),
+								fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  true,
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
 								},
 							},
 						},
@@ -996,6 +1095,41 @@ wait
 									ReadOnly:  false,
 								},
 							},
+						},
+						// TODO: move to InitContainers to make it a native sidecar (available since 1.33)
+						{
+							Name:  "scylladb-api-status-update",
+							Image: sidecarImage,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"scylladb-api-status-update",
+								"--service-name=$(SERVICE_NAME)",
+								"--period-seconds=5",
+								fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+							// TODO: readiness probe?
+							ReadinessProbe:  nil,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 						},
 					},
 					ServiceAccountName: naming.MemberServiceAccountNameForScyllaDBDatacenter(sdc.Name),
@@ -2109,4 +2243,39 @@ func cloneMapExcludingKeysOrEmpty[M ~map[K]V, S ~[]K, K comparable, V any](m M, 
 		delete(r, k)
 	}
 	return r
+}
+
+func MakeClusterStatusConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, nodeClusterStatuses []controllerhelpers.ClusterStatus) (*corev1.ConfigMap, error) {
+	var err error
+
+	name, err := naming.ScyllaDBDatacenterClusterStatusesConfigMapName(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get cluster statuses config map name: %w", err)
+	}
+
+	buf := bytes.Buffer{}
+	err = json.NewEncoder(&buf).Encode(nodeClusterStatuses)
+	if err != nil {
+		return nil, fmt.Errorf("can't encode node cluster statuses: %w", err)
+	}
+
+	labels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)
+	maps.Copy(labels, naming.ClusterLabels(sdc))
+
+	annotations := cloneMapExcludingKeysOrEmpty(sdc.Annotations, nonPropagatedAnnotationKeys)
+
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   sdc.Namespace,
+			Name:        name,
+			Labels:      labels,
+			Annotations: annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
+			},
+		},
+		Data: map[string]string{
+			naming.ScyllaDBClusterStatusKey: buf.String(),
+		},
+	}, nil
 }

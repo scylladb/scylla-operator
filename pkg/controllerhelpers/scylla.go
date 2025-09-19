@@ -352,3 +352,15 @@ func GetScyllaDBClusterDatacenterNodeCount(sc *scyllav1alpha1.ScyllaDBCluster, d
 
 	return nodes
 }
+
+// TODO: move to a different package
+
+// TODO: some sort of generation/transitionTime?
+type ClusterStatus struct {
+	HostID string                           `json:"hostID,omitempty"`
+	Status scyllaclient.NodeStatusInfoSlice `json:"status,omitempty"`
+	Error  *string                          `json:"error,omitempty"`
+}
+
+// TODO: add decode/encode methods
+// TODO: add slice type

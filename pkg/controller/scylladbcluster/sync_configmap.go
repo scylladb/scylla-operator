@@ -68,3 +68,42 @@ func (scc *Controller) syncRemoteConfigMaps(
 
 	return progressingConditions, nil
 }
+
+func (scc *Controller) syncLocalConfigMaps(
+	ctx context.Context,
+	sc *scyllav1alpha1.ScyllaDBCluster,
+	localConfigMaps map[string]*corev1.ConfigMap,
+	remoteNamespaces map[string]*corev1.Namespace,
+) ([]metav1.Condition, error) {
+	progressingConditions, requiredConfigMaps, err := makeLocalConfigMaps(sc, remoteNamespaces, scc.remoteServiceLister)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't make local configmaps for %q ScyllaDBCluster: %w", naming.ObjRef(sc), err)
+	}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
+	}
+
+	err = controllerhelpers.Prune(ctx,
+		requiredConfigMaps,
+		localConfigMaps,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: scc.kubeClient.CoreV1().ConfigMaps(sc.Namespace).Delete,
+		},
+		scc.eventRecorder,
+	)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't prune configmap(s) for %q ScyllaDBCluster: %w", naming.ObjRef(sc), err)
+	}
+
+	for _, cm := range requiredConfigMaps {
+		_, changed, err := resourceapply.ApplyConfigMap(ctx, scc.kubeClient.CoreV1(), scc.configMapLister, scc.eventRecorder, cm, resourceapply.ApplyOptions{})
+		if changed {
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, configMapControllerProgressingCondition, cm, "apply", sc.Generation)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("can't apply configmap: %w", err)
+		}
+	}
+
+	return progressingConditions, nil
+}

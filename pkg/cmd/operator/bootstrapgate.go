@@ -209,14 +209,17 @@ func (o *BootstrapGateOptions) Execute(ctx context.Context, originalStreams gene
 	var err error
 	ignoredNodes := apimachineryutilsets.New[string]()
 
-	// Rolling restart case.
+	// FIXME
+	// Skip the rolling restart case for now.
 	if o.bootstrapped {
 		if o.hostID == nil {
 			return fmt.Errorf("node is bootstrapped but hostID is nil, this should never happen")
 		}
 
 		// Node is restarting, other nodes are going to consider it down.
-		ignoredNodes.Insert(*o.hostID)
+		// FIXME: we should add it to ignored nodes instead if we want to support blocking the rolling restart.
+		klog.V(2).InfoS("Node has already been bootstrapped, assuming it's being rolling restarted. Skipping.", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "Bootstrapped", o.bootstrapped, "HostID", o.hostID)
+		return nil
 	}
 	//
 

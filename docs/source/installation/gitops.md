@@ -9,6 +9,8 @@ For production deployment, you should always replace the {{productName}} image i
 We'd encourage you to use a sha reference, although using full-version tags is also fine.
 :::
 
+:::{include} ../.internal/namespaces.md
+:::
 
 ## Installation
 

@@ -2245,7 +2245,7 @@ func cloneMapExcludingKeysOrEmpty[M ~map[K]V, S ~[]K, K comparable, V any](m M, 
 	return r
 }
 
-func MakeClusterStatusConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, nodeClusterStatuses []controllerhelpers.ClusterStatus) (*corev1.ConfigMap, error) {
+func MakeClusterStatusConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, clusterStatus *controllerhelpers.ClusterStatus) (*corev1.ConfigMap, error) {
 	var err error
 
 	name, err := naming.ScyllaDBDatacenterClusterStatusesConfigMapName(sdc)
@@ -2254,9 +2254,9 @@ func MakeClusterStatusConfigMap(sdc *scyllav1alpha1.ScyllaDBDatacenter, nodeClus
 	}
 
 	buf := bytes.Buffer{}
-	err = json.NewEncoder(&buf).Encode(nodeClusterStatuses)
+	err = json.NewEncoder(&buf).Encode(clusterStatus)
 	if err != nil {
-		return nil, fmt.Errorf("can't encode node cluster statuses: %w", err)
+		return nil, fmt.Errorf("can't encode node cluster status: %w", err)
 	}
 
 	labels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)

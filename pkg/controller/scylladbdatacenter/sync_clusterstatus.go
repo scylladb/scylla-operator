@@ -25,10 +25,9 @@ func (sdcc *Controller) syncClusterStatusConfigMap(
 	var progressingConditions []metav1.Condition
 	var err error
 
-	var nodeClusterStatuses []controllerhelpers.ClusterStatus
+	var clusterStatus *controllerhelpers.ClusterStatus
 	if clusterStatusOverrideConfigMapRef, ok := sdc.Annotations[naming.ScyllaDBClusterStatusOverrideConfigMapRefAnnotation]; ok {
 		// TODO: move to func
-
 		overrideCM, err := sdcc.configMapLister.ConfigMaps(sdc.Namespace).Get(clusterStatusOverrideConfigMapRef)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
@@ -44,23 +43,26 @@ func (sdcc *Controller) syncClusterStatusConfigMap(
 			return progressingConditions, nil
 		}
 
+		var overrideClusterStatus controllerhelpers.ClusterStatus
 		data, ok := overrideCM.Data[naming.ScyllaDBClusterStatusKey]
 		if !ok {
 			return progressingConditions, fmt.Errorf("missing %s key", naming.ScyllaDBClusterStatusKey)
 		}
 
-		err = json.Unmarshal([]byte(data), &nodeClusterStatuses)
+		err = json.Unmarshal([]byte(data), &overrideClusterStatus)
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't unmarshal cluster status: %w", err)
 		}
+
+		clusterStatus = &overrideClusterStatus
 	} else {
-		nodeClusterStatuses, err = getNodeClusterStatuses(sdc, services)
+		clusterStatus, err = getClusterStatus(sdc, services)
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't get node cluster statuses: %w", err)
 		}
 	}
 
-	requiredConfigMap, err := MakeClusterStatusConfigMap(sdc, nodeClusterStatuses)
+	requiredConfigMap, err := MakeClusterStatusConfigMap(sdc, clusterStatus)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make cluster status configmap: %w", err)
 	}
@@ -76,8 +78,11 @@ func (sdcc *Controller) syncClusterStatusConfigMap(
 	return progressingConditions, nil
 }
 
-func getNodeClusterStatuses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service) ([]controllerhelpers.ClusterStatus, error) {
-	var nodeClusterStatuses []controllerhelpers.ClusterStatus
+func getClusterStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service) (*controllerhelpers.ClusterStatus, error) {
+	clusterStatus := &controllerhelpers.ClusterStatus{
+		ReplacingHostIDs:    []string{},
+		NodeClusterStatuses: []controllerhelpers.NodeClusterStatus{},
+	}
 
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
@@ -96,22 +101,21 @@ func getNodeClusterStatuses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map
 				continue
 			}
 
-			nodeClusterStatusAnnotation, ok := svc.Annotations[naming.ClusterStatusAnnotation]
-			if !ok {
-				// The node might not have reported its status yet.
-				// FIXME: should we wait? Sidecar would have to be moved to init containers.
-				continue
+			if replacingHostIDAnnotation, ok := svc.Annotations[naming.ReplacingNodeHostIDLabel]; ok {
+				clusterStatus.ReplacingHostIDs = append(clusterStatus.ReplacingHostIDs, replacingHostIDAnnotation)
 			}
 
-			var nodeClusterStatus controllerhelpers.ClusterStatus
-			err = json.NewDecoder(strings.NewReader(nodeClusterStatusAnnotation)).Decode(&nodeClusterStatus)
-			if err != nil {
-				return nil, fmt.Errorf("can't decode annotation %q of service %q for ScyllaDBDatacenter %q: %w", naming.ClusterStatusAnnotation, naming.ManualRef(sdc.Namespace, svcName), naming.ObjRef(sdc), err)
-			}
+			if nodeClusterStatusAnnotation, ok := svc.Annotations[naming.NodeClusterStatusAnnotation]; ok {
+				var nodeClusterStatus controllerhelpers.NodeClusterStatus
+				err = json.NewDecoder(strings.NewReader(nodeClusterStatusAnnotation)).Decode(&nodeClusterStatus)
+				if err != nil {
+					return nil, fmt.Errorf("can't decode annotation %q of service %q for ScyllaDBDatacenter %q: %w", naming.NodeClusterStatusAnnotation, naming.ManualRef(sdc.Namespace, svcName), naming.ObjRef(sdc), err)
+				}
 
-			nodeClusterStatuses = append(nodeClusterStatuses, nodeClusterStatus)
+				clusterStatus.NodeClusterStatuses = append(clusterStatus.NodeClusterStatuses, nodeClusterStatus)
+			}
 		}
 	}
 
-	return nodeClusterStatuses, nil
+	return clusterStatus, nil
 }

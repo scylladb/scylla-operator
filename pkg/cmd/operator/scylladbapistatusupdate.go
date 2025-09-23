@@ -265,17 +265,17 @@ func (c *controller) sync(ctx context.Context) error {
 		return fmt.Errorf("can't get service %q: %w", naming.ManualRef(c.namespace, c.serviceName), err)
 	}
 
-	clusterStatus, err := getClusterStatus(ctx)
+	nodeClusterStatus, err := getNodeClusterStatus(ctx)
 	if err != nil {
 		return fmt.Errorf("can't get cluster status: %w", err)
 	}
 
-	statusAnnotationValue, err := makeClusterStatusAnnotationValue(clusterStatus)
+	statusAnnotationValue, err := makeNodeClusterStatusAnnotationValue(nodeClusterStatus)
 	if err != nil {
 		return fmt.Errorf("can't make cluster status annotation value: %w", err)
 	}
 
-	patch, err := controllerhelpers.PrepareSetAnnotationPatch(svc, naming.ClusterStatusAnnotation, &statusAnnotationValue)
+	patch, err := controllerhelpers.PrepareSetAnnotationPatch(svc, naming.NodeClusterStatusAnnotation, &statusAnnotationValue)
 	if err != nil {
 		return fmt.Errorf("can't prepare annotation patch: %w", err)
 	}
@@ -288,7 +288,7 @@ func (c *controller) sync(ctx context.Context) error {
 	return nil
 }
 
-func getClusterStatus(ctx context.Context) (*controllerhelpers.ClusterStatus, error) {
+func getNodeClusterStatus(ctx context.Context) (*controllerhelpers.NodeClusterStatus, error) {
 	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
 	if err != nil {
 		return nil, fmt.Errorf("can't create Scylla client for localhost: %w", err)
@@ -299,7 +299,7 @@ func getClusterStatus(ctx context.Context) (*controllerhelpers.ClusterStatus, er
 	nodeStatuses, err := scyllaClient.Status(ctx, localhost)
 	if err != nil {
 		klog.V(4).InfoS("Error getting node statuses", "error", err)
-		return &controllerhelpers.ClusterStatus{
+		return &controllerhelpers.NodeClusterStatus{
 			Error: pointer.Ptr(err.Error()),
 		}, nil
 	}
@@ -307,24 +307,24 @@ func getClusterStatus(ctx context.Context) (*controllerhelpers.ClusterStatus, er
 	hostID, err := scyllaClient.GetLocalHostId(ctx, localhost, false)
 	if err != nil {
 		klog.V(4).InfoS("Error getting local host ID", "error", err)
-		return &controllerhelpers.ClusterStatus{
+		return &controllerhelpers.NodeClusterStatus{
 			Error: pointer.Ptr(err.Error()),
 		}, nil
 	}
 
-	return &controllerhelpers.ClusterStatus{
+	return &controllerhelpers.NodeClusterStatus{
 		HostID: hostID,
 		Status: nodeStatuses,
 	}, nil
 }
 
-func makeClusterStatusAnnotationValue(status *controllerhelpers.ClusterStatus) (string, error) {
+func makeNodeClusterStatusAnnotationValue(status *controllerhelpers.NodeClusterStatus) (string, error) {
 	var err error
 	buf := bytes.Buffer{}
 
 	err = json.NewEncoder(&buf).Encode(status)
 	if err != nil {
-		return "", fmt.Errorf("can't encode status: %w", err)
+		return "", fmt.Errorf("can't encode node cluster status: %w", err)
 	}
 
 	return buf.String(), nil

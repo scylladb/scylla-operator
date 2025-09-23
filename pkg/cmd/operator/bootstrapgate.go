@@ -12,13 +12,11 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
@@ -35,9 +33,6 @@ type AutoGenerateSSTables struct {
 					Bootstrapped struct {
 						Value string `json:"value"`
 					} `json:"bootstrapped"`
-					HostID struct {
-						Value string `json:"value"`
-					} `json:"host_id"`
 				} `json:"columns"`
 			} `json:"clustering_elements"`
 		} `json:"anonymous"`
@@ -53,7 +48,6 @@ type BootstrapGateOptions struct {
 	SStableSystemLocalDumpPath string
 
 	bootstrapped bool
-	hostID       *string
 
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllaversionedclient.Interface
@@ -161,9 +155,6 @@ func (o *BootstrapGateOptions) Complete(args []string) error {
 			if ce.Columns.Bootstrapped.Value == "COMPLETED" {
 				o.bootstrapped = true
 			}
-			if len(ce.Columns.HostID.Value) != 0 {
-				o.hostID = pointer.Ptr(ce.Columns.HostID.Value)
-			}
 		}
 	}
 
@@ -207,43 +198,13 @@ func (o *BootstrapGateOptions) Run(originalStreams genericclioptions.IOStreams, 
 
 func (o *BootstrapGateOptions) Execute(ctx context.Context, originalStreams genericclioptions.IOStreams, cmd *cobra.Command) error {
 	var err error
-	ignoredNodes := apimachineryutilsets.New[string]()
 
-	// FIXME
-	// Skip the rolling restart case for now.
 	if o.bootstrapped {
-		if o.hostID == nil {
-			return fmt.Errorf("node is bootstrapped but hostID is nil, this should never happen")
-		}
-
-		// Node is restarting, other nodes are going to consider it down.
-		// FIXME: we should add it to ignored nodes instead if we want to support blocking the rolling restart.
-		klog.V(2).InfoS("Node has already been bootstrapped, assuming it's being rolling restarted. Skipping.", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "Bootstrapped", o.bootstrapped, "HostID", o.hostID)
+		klog.V(2).InfoS("Node has already been bootstrapped, assuming it's being rolling restarted. Skipping.", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "Bootstrapped", o.bootstrapped)
 		return nil
 	}
-	//
 
-	// Node replace case.
-	var svc *corev1.Service
-	svc, err = o.kubeClient.CoreV1().Services(o.Namespace).Get(ctx, o.ServiceName, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("can't get service %q: %w", naming.ManualRef(o.Namespace, o.ServiceName), err)
-	}
-
-	replacingHostID, ok := svc.Labels[naming.ReplacingNodeHostIDLabel]
-	if ok && len(replacingHostID) == 0 {
-		return fmt.Errorf("service %q has an empty %q label, this should never happen", naming.ManualRef(o.Namespace, o.ServiceName), naming.ReplacingNodeHostIDLabel)
-	}
-
-	if len(replacingHostID) > 0 {
-		klog.V(2).InfoS("Node is replacing another node", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "Bootstrapped", o.bootstrapped, "HostID", o.hostID, "ReplacingHostID", replacingHostID)
-		ignoredNodes.Insert(replacingHostID)
-	}
-	//
-
-	// ALTERNATIVE: instead of getting the configmap with statuses, this is where we could ask all other nodes for their statuses (by using broadcastAddresses from corresponding services/pods)
-
-	klog.V(2).InfoS("Waiting for required bootstrap conditions", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "Bootstrapped", o.bootstrapped, "HostID", o.hostID, "ReplacingHostID", replacingHostID, "IgnoredNodes", ignoredNodes.UnsortedList())
+	klog.V(2).InfoS("Waiting for required bootstrap conditions", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "Bootstrapped", o.bootstrapped)
 	_, err = controllerhelpers.WaitForConfigMapState(
 		ctx,
 		o.kubeClient.CoreV1().ConfigMaps(o.Namespace),
@@ -255,8 +216,8 @@ func (o *BootstrapGateOptions) Execute(ctx context.Context, originalStreams gene
 				return false, fmt.Errorf("missing %s key", naming.ScyllaDBClusterStatusKey)
 			}
 
-			var nodeClusterStatuses []controllerhelpers.ClusterStatus
-			err = json.Unmarshal([]byte(data), &nodeClusterStatuses)
+			var clusterStatus controllerhelpers.ClusterStatus
+			err = json.Unmarshal([]byte(data), &clusterStatus)
 			if err != nil {
 				return false, fmt.Errorf("can't unmarshal cluster status: %w", err)
 			}
@@ -264,7 +225,7 @@ func (o *BootstrapGateOptions) Execute(ctx context.Context, originalStreams gene
 			// FIXME: this could be preprocessed
 			hostIDs := apimachineryutilsets.New[string]()
 			hostIDToStatusMap := make(map[string]map[string]bool)
-			for _, nodeClusterStatus := range nodeClusterStatuses {
+			for _, nodeClusterStatus := range clusterStatus.NodeClusterStatuses {
 				if nodeClusterStatus.Error != nil {
 					// We might get errors from nodes that haven't started bootstrap yet, so we need to ignore them.
 					// If the node is already a part of the cluster, we'll see it in other nodes' statuses.
@@ -281,7 +242,10 @@ func (o *BootstrapGateOptions) Execute(ctx context.Context, originalStreams gene
 				hostIDToStatusMap[nodeClusterStatus.HostID] = otherNodesHostIDToStatusMap
 			}
 
-			klog.V(4).InfoS("Cluster status", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "HostIDs", hostIDs.UnsortedList(), "HostIDToStatusMap", hostIDToStatusMap)
+			// Ignore nodes that are being replaced.
+			ignoredNodes := apimachineryutilsets.New[string](clusterStatus.ReplacingHostIDs...)
+
+			klog.V(4).InfoS("Cluster status", "Service", naming.ManualRef(o.Namespace, o.ServiceName), "HostIDs", hostIDs.UnsortedList(), "HostIDToStatusMap", hostIDToStatusMap, "IgnoredNodes", ignoredNodes.UnsortedList())
 			for hostID := range hostIDs {
 				if ignoredNodes.Has(hostID) {
 					// We don't care about this node.

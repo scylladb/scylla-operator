@@ -1544,7 +1544,10 @@ func makeLocalClusterStatusConfigMap(sc *scyllav1alpha1.ScyllaDBCluster, remoteN
 		return progressingConditions, nil, fmt.Errorf("can't get cluster statuses configmap name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
 	}
 
-	var nodeClusterStatuses []controllerhelpers.ClusterStatus
+	clusterStatus := &controllerhelpers.ClusterStatus{
+		ReplacingHostIDs:    []string{},
+		NodeClusterStatuses: []controllerhelpers.NodeClusterStatus{},
+	}
 	for _, dc := range sc.Spec.Datacenters {
 		dcNamespace, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
 		if !ok {
@@ -1561,18 +1564,19 @@ func makeLocalClusterStatusConfigMap(sc *scyllav1alpha1.ScyllaDBCluster, remoteN
 
 		// TODO: move to func
 		dcServiceSelector := naming.DatacenterMemberServiceSelector(sc, &dc)
-		dcNodeClusterStatuses, err := getNodeClusterStatusesFromRemoteDCMemberServices(sc, &dc, dcNamespace, dcServiceSelector, remoteServiceLister)
+		dcClusterStatus, err := getClusterStatusFromRemoteDCMemberServices(sc, &dc, dcNamespace, dcServiceSelector, remoteServiceLister)
 		if err != nil {
-			return progressingConditions, nil, fmt.Errorf("can't get node cluster statuses for ScyllaDBCluster %q Datacenter %q remote member services: %w", naming.ObjRef(sc), dc.Name, err)
+			return progressingConditions, nil, fmt.Errorf("can't get cluster status for ScyllaDBCluster %q Datacenter %q remote member services: %w", naming.ObjRef(sc), dc.Name, err)
 		}
 
-		nodeClusterStatuses = append(nodeClusterStatuses, dcNodeClusterStatuses...)
+		clusterStatus.ReplacingHostIDs = append(clusterStatus.ReplacingHostIDs, dcClusterStatus.ReplacingHostIDs...)
+		clusterStatus.NodeClusterStatuses = append(clusterStatus.NodeClusterStatuses, dcClusterStatus.NodeClusterStatuses...)
 	}
 
 	buf := bytes.Buffer{}
-	err = json.NewEncoder(&buf).Encode(nodeClusterStatuses)
+	err = json.NewEncoder(&buf).Encode(clusterStatus)
 	if err != nil {
-		return progressingConditions, nil, fmt.Errorf("can't encode node cluster statuses: %w", err)
+		return progressingConditions, nil, fmt.Errorf("can't encode cluster status: %w", err)
 	}
 
 	cm := &corev1.ConfigMap{
@@ -1611,8 +1615,11 @@ func makeLocalClusterStatusConfigMap(sc *scyllav1alpha1.ScyllaDBCluster, remoteN
 	return progressingConditions, cm, nil
 }
 
-func getNodeClusterStatusesFromRemoteDCMemberServices(sc *scyllav1alpha1.ScyllaDBCluster, remoteDC *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCMemberServiceSelector apimachinerylabels.Selector, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]controllerhelpers.ClusterStatus, error) {
-	var nodeClusterStatuses []controllerhelpers.ClusterStatus
+func getClusterStatusFromRemoteDCMemberServices(sc *scyllav1alpha1.ScyllaDBCluster, remoteDC *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCMemberServiceSelector apimachinerylabels.Selector, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) (*controllerhelpers.ClusterStatus, error) {
+	clusterStatus := &controllerhelpers.ClusterStatus{
+		ReplacingHostIDs:    []string{},
+		NodeClusterStatuses: []controllerhelpers.NodeClusterStatus{},
+	}
 
 	dcMemberServices, err := remoteServiceLister.Cluster(remoteDC.RemoteKubernetesClusterName).Services(remoteDCNamespace.Name).List(remoteDCMemberServiceSelector)
 	if err != nil {
@@ -1620,21 +1627,20 @@ func getNodeClusterStatusesFromRemoteDCMemberServices(sc *scyllav1alpha1.ScyllaD
 	}
 
 	for _, svc := range dcMemberServices {
-		nodeClusterStatusAnnotation, ok := svc.Annotations[naming.ClusterStatusAnnotation]
-		if !ok {
-			// The node might not have reported its status yet.
-			// FIXME: should we wait? Sidecar would have to be moved to init containers.
-			continue
+		if replacingNodeHostIDLabel, ok := svc.Labels[naming.ReplacingNodeHostIDLabel]; ok {
+			clusterStatus.ReplacingHostIDs = append(clusterStatus.ReplacingHostIDs, replacingNodeHostIDLabel)
 		}
 
-		var nodeClusterStatus controllerhelpers.ClusterStatus
-		err = json.NewDecoder(strings.NewReader(nodeClusterStatusAnnotation)).Decode(&nodeClusterStatus)
-		if err != nil {
-			return nil, fmt.Errorf("can't decode annotation %q of service %q for ScyllaDBCluster %q Datacenter %q: %w", naming.ClusterStatusAnnotation, naming.ObjRef(svc), naming.ObjRef(sc), remoteDC.Name, err)
-		}
+		if nodeClusterStatusAnnotation, ok := svc.Annotations[naming.NodeClusterStatusAnnotation]; ok {
+			var nodeClusterStatus controllerhelpers.NodeClusterStatus
+			err = json.NewDecoder(strings.NewReader(nodeClusterStatusAnnotation)).Decode(&nodeClusterStatus)
+			if err != nil {
+				return nil, fmt.Errorf("can't decode annotation %q of service %q for ScyllaDBCluster %q Datacenter %q: %w", naming.NodeClusterStatusAnnotation, naming.ObjRef(svc), naming.ObjRef(sc), remoteDC.Name, err)
+			}
 
-		nodeClusterStatuses = append(nodeClusterStatuses, nodeClusterStatus)
+			clusterStatus.NodeClusterStatuses = append(clusterStatus.NodeClusterStatuses, nodeClusterStatus)
+		}
 	}
 
-	return nodeClusterStatuses, nil
+	return clusterStatus, nil
 }

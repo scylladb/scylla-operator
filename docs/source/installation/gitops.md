@@ -155,9 +155,8 @@ kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.
 Performance tuning is enabled for all nodes that are selected by [NodeConfig](../resources/nodeconfigs.md) by default, unless opted-out.
 :::
 
-:::{code-block} shell
-# Wait for NodeConfig to apply changes to the Kubernetes nodes.
-kubectl wait --for='condition=Reconciled' --timeout=10m nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1
+After applying the manifest, wait for the NodeConfig to apply changes to the Kubernetes nodes.
+:::{include} ./../.internal/wait-for-status-conditions.nodeconfig.code-block.md
 :::
 
 ### Local CSI driver

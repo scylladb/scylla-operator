@@ -19,6 +19,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	prometheusappclient "github.com/prometheus/client_golang/api"
 	promeheusappv1api "github.com/prometheus/client_golang/api/prometheus/v1"
 	configassests "github.com/scylladb/scylla-operator/assets/config"
@@ -34,7 +35,11 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils/grafana"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/util/cert"
 	"k8s.io/klog/v2"
 )
 
@@ -114,6 +119,57 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			},
 			PrepareExternalPrometheusFn: nil, // Using managed Prometheus.
 			VerifyPrometheusFn:          verifyManagedPrometheus,
+			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
+		}),
+		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
+			Description: "Platform type with external Prometheus without TLS",
+			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
+				sm.Spec.Type = pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypePlatform)
+				sm.Spec.Components.Prometheus.Mode = scyllav1alpha1.PrometheusModeExternal
+				sm.Spec.Components.Grafana.Datasources = []scyllav1alpha1.GrafanaDatasourceSpec{
+					{
+						Name: "prometheus",
+						Type: scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+						URL:  fmt.Sprintf("http://%s.%s.svc.cluster.local:9090", prometheusNameForScyllaDBMonitoring(sm), f.Namespace()),
+						PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{
+							TLS: &scyllav1alpha1.GrafanaDatasourceTLSSpec{
+								InsecureSkipVerify: true,
+							},
+							Auth: &scyllav1alpha1.GrafanaPrometheusDatasourceAuthSpec{
+								Type: scyllav1alpha1.GrafanaPrometheusDatasourceAuthTypeNoAuthentication,
+							},
+						},
+					},
+				}
+			},
+			PrepareExternalPrometheusFn: prepareExternalPrometheusWithoutTLS,
+			VerifyPrometheusFn:          verifyExternalPrometheusWithoutTLS,
+			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
+		}),
+		g.FEntry(describeEntry, &scyllaDBMonitoringEntry{
+			Description: "Platform type with external Prometheus with TLS",
+			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
+				sm.Spec.Type = pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypePlatform)
+				sm.Spec.Components.Prometheus.Mode = scyllav1alpha1.PrometheusModeExternal
+				sm.Spec.Components.Grafana.Datasources = []scyllav1alpha1.GrafanaDatasourceSpec{
+					{
+						Name: "prometheus",
+						Type: scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+						URL:  fmt.Sprintf("https://%s.%s.svc.cluster.local:9090", prometheusNameForScyllaDBMonitoring(sm), f.Namespace()),
+						PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{
+							TLS: &scyllav1alpha1.GrafanaDatasourceTLSSpec{
+								InsecureSkipVerify: false,
+								CACertConfigMapRef: &scyllav1alpha1.LocalObjectKeySelector{
+									Name: prometheusCACertConfigMapNameForScyllaDBMonitoring(sm),
+									Key:  "ca-bundle.crt",
+								},
+							},
+						},
+					},
+				}
+			},
+			PrepareExternalPrometheusFn: prepareExternalPrometheusWithTLS,
+			VerifyPrometheusFn:          verifyExternalPrometheusWithTLS,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
 		}),
 	)
@@ -196,6 +252,13 @@ func verifyManagedPrometheus(ctx context.Context, f *framework.Framework, sm *sc
 	// Some of these may be fixable by manually verifying it in the operator sync loop so it can also be
 	// consumed by clients, but it's a bigger effort.
 
+	promClient := prepareManagedPrometheusClient(ctx, f, sm)
+	verifyPrometheusTargetsAndRules(ctx, promClient)
+}
+
+func prepareManagedPrometheusClient(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) promeheusappv1api.API {
+	g.GinkgoHelper()
+
 	prometheusServingCABundleConfigMapName, err := naming.ManagedPrometheusServingCAConfigMapName(sm)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	prometheusServingCABundleConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, prometheusServingCABundleConfigMapName, metav1.GetOptions{})
@@ -245,8 +308,13 @@ func verifyManagedPrometheus(ctx context.Context, f *framework.Framework, sm *sc
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	promClient := promeheusappv1api.NewAPI(promHTTPClient)
+	return promeheusappv1api.NewAPI(promHTTPClient)
+}
 
+func verifyPrometheusTargetsAndRules(ctx context.Context, promClient promeheusappv1api.API) {
+	g.GinkgoHelper()
+
+	framework.By("Verifying Prometheus targets and rules")
 	o.Eventually(func(eo o.Gomega) {
 		ctxTargets, ctxTargetsCancel := context.WithTimeout(ctx, 15*time.Second)
 		defer ctxTargetsCancel()
@@ -436,4 +504,358 @@ func decodeGrafanaDashboardFromGZBase64String(s string) (*grafanaDashboard, erro
 	}
 
 	return res, nil
+}
+
+func prepareExternalPrometheusWithoutTLS(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) {
+	g.GinkgoHelper()
+
+	framework.By("Creating a ServiceAccount for external Prometheus")
+	sa := createExternalPrometheusServiceAccountWithClusterRole(ctx, f, sm)
+
+	framework.By("Creating a Service for Prometheus to be used by external Prometheus")
+	svc := createServiceForPrometheus(ctx, f, sm)
+
+	framework.By("Creating a Prometheus instance to be used as external Prometheus")
+	createExternalPrometheusInstanceWithoutTLS(ctx, f, sm, sa, svc)
+}
+
+func prepareExternalPrometheusWithTLS(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) {
+	g.GinkgoHelper()
+
+	framework.By("Creating a ServiceAccount for external Prometheus")
+	sa := createExternalPrometheusServiceAccountWithClusterRole(ctx, f, sm)
+
+	framework.By("Creating a Service for Prometheus to be used by external Prometheus")
+	svc := createServiceForPrometheus(ctx, f, sm)
+
+	framework.By("Creating a TLS Secret and ConfigMap for Prometheus")
+	createPrometheusTLSSecretAndConfigMap(ctx, f, sm)
+
+	framework.By("Creating a Prometheus instance to be used as external Prometheus")
+	createExternalPrometheusInstanceWithTLS(ctx, f, sm, sa, svc)
+}
+
+func createExternalPrometheusServiceAccountWithClusterRole(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) *corev1.ServiceAccount {
+	g.GinkgoHelper()
+
+	framework.By("Creating a ServiceAccount for external Prometheus")
+	prometheusServiceAccountName := fmt.Sprintf("%s-prometheus", sm.Name)
+	sa, err := f.KubeAdminClient().CoreV1().ServiceAccounts(f.Namespace()).Create(ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      prometheusServiceAccountName,
+			Namespace: f.Namespace(),
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.By("Creating a ClusterRole for external Prometheus")
+	prometheusClusterRoleName := fmt.Sprintf("%s-prometheus", sm.Name)
+	_, err = f.KubeAdminClient().RbacV1().ClusterRoles().Create(ctx, &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: prometheusClusterRoleName,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{
+					"nodes",
+					"nodes/metrics",
+					"services",
+					"endpoints",
+					"pods",
+				},
+				Verbs: []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{""},
+				Resources: []string{"configmaps"},
+				Verbs:     []string{"get"},
+			},
+			{
+				APIGroups: []string{"discovery.k8s.io"},
+				Resources: []string{"endpointslices"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{"networking.k8s.io"},
+				Resources: []string{"ingresses"},
+				Verbs:     []string{"get", "list", "watch"},
+			},
+			{
+				NonResourceURLs: []string{"/metrics"},
+				Verbs:           []string{"get"},
+			},
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.By("Creating a ClusterRoleBinding for external Prometheus")
+	_, err = f.KubeAdminClient().RbacV1().ClusterRoleBindings().Create(ctx, &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-prometheus", sm.Name),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      prometheusServiceAccountName,
+				Namespace: f.Namespace(),
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     prometheusClusterRoleName,
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return sa
+}
+
+// createServiceForPrometheus creates a headless Service for Prometheus to be used by external Prometheus.
+func createServiceForPrometheus(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) *corev1.Service {
+	g.GinkgoHelper()
+
+	framework.By("Creating a Service for Prometheus")
+	prometheusName := prometheusNameForScyllaDBMonitoring(sm)
+	svc, err := f.KubeAdminClient().CoreV1().Services(f.Namespace()).Create(ctx, &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      prometheusName,
+			Namespace: f.Namespace(),
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: corev1.ClusterIPNone,
+			Selector: map[string]string{
+				"app.kubernetes.io/managed-by": "prometheus-operator",
+				"app.kubernetes.io/name":       "prometheus",
+				"app.kubernetes.io/instance":   prometheusName,
+				"operator.prometheus.io/name":  prometheusName,
+				"prometheus":                   prometheusName,
+			},
+			Ports: []corev1.ServicePort{
+				{
+					Name:     "web",
+					Port:     9090,
+					Protocol: corev1.ProtocolTCP,
+				},
+			},
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return svc
+}
+
+func createExternalPrometheusInstanceWithoutTLS(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring, sa *corev1.ServiceAccount, svc *corev1.Service) *monitoringv1.Prometheus {
+	g.GinkgoHelper()
+
+	framework.By("Creating a Prometheus instance")
+	prom, err := f.PrometheusOperatorAdminClient().MonitoringV1().Prometheuses(f.Namespace()).Create(ctx, &monitoringv1.Prometheus{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      prometheusNameForScyllaDBMonitoring(sm),
+			Namespace: f.Namespace(),
+		},
+		Spec: monitoringv1.PrometheusSpec{
+			CommonPrometheusFields: monitoringv1.CommonPrometheusFields{
+				ServiceAccountName: sa.Name,
+				ServiceName:        pointer.Ptr(svc.Name),
+				SecurityContext: &corev1.PodSecurityContext{
+					RunAsNonRoot: pointer.Ptr(true),
+					RunAsUser:    pointer.Ptr[int64](65534),
+					FSGroup:      pointer.Ptr[int64](65534),
+				},
+				ServiceMonitorSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"scylla-operator.scylladb.com/scylladbmonitoring-name": sm.Name,
+					},
+				},
+				Web: &monitoringv1.PrometheusWebSpec{
+					PageTitle: pointer.Ptr("ScyllaDB Prometheus"),
+				},
+			},
+			Alerting: &monitoringv1.AlertingSpec{
+				Alertmanagers: []monitoringv1.AlertmanagerEndpoints{
+					{
+						Name: "scylla-monitoring",
+						Port: intstr.FromString("web"),
+					},
+				},
+			},
+			RuleSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"scylla-operator.scylladb.com/scylladbmonitoring-name": sm.Name,
+				},
+			},
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return prom
+}
+
+func createExternalPrometheusInstanceWithTLS(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring, sa *corev1.ServiceAccount, svc *corev1.Service) *monitoringv1.Prometheus {
+	g.GinkgoHelper()
+
+	framework.By("Creating a Prometheus instance with TLS")
+	tlsSecretName := prometheusTLSSecretNameForScyllaDBMonitoring(sm)
+	prom, err := f.PrometheusOperatorAdminClient().MonitoringV1().Prometheuses(f.Namespace()).Create(ctx, &monitoringv1.Prometheus{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      prometheusNameForScyllaDBMonitoring(sm),
+			Namespace: f.Namespace(),
+		},
+		Spec: monitoringv1.PrometheusSpec{
+			CommonPrometheusFields: monitoringv1.CommonPrometheusFields{
+				ServiceAccountName: sa.Name,
+				ServiceName:        pointer.Ptr(svc.Name),
+				SecurityContext: &corev1.PodSecurityContext{
+					RunAsNonRoot: pointer.Ptr(true),
+					RunAsUser:    pointer.Ptr[int64](65534),
+					FSGroup:      pointer.Ptr[int64](65534),
+				},
+				ServiceMonitorSelector: &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"scylla-operator.scylladb.com/scylladbmonitoring-name": sm.Name,
+					},
+				},
+				Web: &monitoringv1.PrometheusWebSpec{
+					PageTitle: pointer.Ptr("ScyllaDB Prometheus"),
+					WebConfigFileFields: monitoringv1.WebConfigFileFields{
+						TLSConfig: &monitoringv1.WebTLSConfig{
+							Cert: monitoringv1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: tlsSecretName,
+									},
+									Key: "tls.crt",
+								},
+							},
+							KeySecret: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: tlsSecretName,
+								},
+								Key: "tls.key",
+							},
+						},
+					},
+				},
+			},
+			Alerting: &monitoringv1.AlertingSpec{
+				Alertmanagers: []monitoringv1.AlertmanagerEndpoints{
+					{
+						Name: "scylla-monitoring",
+						Port: intstr.FromString("web"),
+					},
+				},
+			},
+			RuleSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"scylla-operator.scylladb.com/scylladbmonitoring-name": sm.Name,
+				},
+			},
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return prom
+}
+
+func verifyExternalPrometheusWithoutTLS(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) {
+	g.GinkgoHelper()
+
+	promClient := makePrometheusClientWithConfig(prometheusappclient.Config{
+		Address: fmt.Sprintf("http://%s.%s.svc.cluster.local:9090", prometheusNameForScyllaDBMonitoring(sm), f.Namespace()),
+	})
+	verifyPrometheusTargetsAndRules(ctx, promClient)
+}
+
+func verifyExternalPrometheusWithTLS(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) {
+	g.GinkgoHelper()
+
+	rootCAs := x509.NewCertPool()
+	prometheusCACertConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, prometheusCACertConfigMapNameForScyllaDBMonitoring(sm), metav1.GetOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	prometheusCACerts, _ := verification.VerifyAndParseCABundle(prometheusCACertConfigMap)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(prometheusCACerts).To(o.HaveLen(2))
+	rootCAs.AddCert(prometheusCACerts[1]) // The CA cert is the second cert in the bundle.
+
+	promClient := makePrometheusClientWithConfig(prometheusappclient.Config{
+		Address: fmt.Sprintf("https://%s.%s.svc.cluster.local:9090", prometheusNameForScyllaDBMonitoring(sm), f.Namespace()),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: false,
+					RootCAs:            rootCAs,
+				},
+			},
+		},
+	})
+	verifyPrometheusTargetsAndRules(ctx, promClient)
+}
+
+func makePrometheusClientWithConfig(cfg prometheusappclient.Config) promeheusappv1api.API {
+	g.GinkgoHelper()
+
+	promHTTPClient, err := prometheusappclient.NewClient(cfg)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return promeheusappv1api.NewAPI(promHTTPClient)
+}
+
+func createPrometheusTLSSecretAndConfigMap(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) {
+	crt, key, err := cert.GenerateSelfSignedCertKey(fmt.Sprintf("%s.%s.svc.cluster.local", prometheusNameForScyllaDBMonitoring(sm), f.Namespace()), nil, nil)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.By("Creating a TLS secret for Prometheus")
+	_, err = f.KubeAdminClient().CoreV1().Secrets(f.Namespace()).Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      prometheusTLSSecretNameForScyllaDBMonitoring(sm),
+			Namespace: f.Namespace(),
+		},
+		Type: corev1.SecretTypeTLS,
+		StringData: map[string]string{
+			"tls.crt": string(crt),
+			"tls.key": string(key),
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.By("Creating a CA cert config map for Prometheus")
+	_, err = f.KubeAdminClient().CoreV1().ConfigMaps(f.Namespace()).Create(ctx, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      prometheusCACertConfigMapNameForScyllaDBMonitoring(sm),
+			Namespace: f.Namespace(),
+		},
+		Data: map[string]string{
+			"ca-bundle.crt": string(crt),
+		},
+	}, metav1.CreateOptions{
+		FieldManager: f.FieldManager(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func prometheusNameForScyllaDBMonitoring(sm *scyllav1alpha1.ScyllaDBMonitoring) string {
+	return fmt.Sprintf("%s-prometheus", sm.Name)
+}
+
+func prometheusCACertConfigMapNameForScyllaDBMonitoring(sm *scyllav1alpha1.ScyllaDBMonitoring) string {
+	return fmt.Sprintf("%s-prometheus-tls-ca", sm.Name)
+}
+
+func prometheusTLSSecretNameForScyllaDBMonitoring(sm *scyllav1alpha1.ScyllaDBMonitoring) string {
+	return fmt.Sprintf("%s-prometheus-tls", sm.Name)
 }

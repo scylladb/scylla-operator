@@ -75,12 +75,12 @@ func makeGrafanaPrometheusDatasourceTLSSpec(sm *scyllav1alpha1.ScyllaDBMonitorin
 		return nil, nil
 	}
 
-	managedPrometheusClientGrafanaSecretName, err := naming.ManagedPrometheusClientGrafanaSecretName(sm)
+	managedPrometheusClientGrafanaSecretName, err := naming.ManagedPrometheusClientGrafanaSecretName(sm.Name)
 	if err != nil {
 		return nil, fmt.Errorf("can't get managed Prometheus client Grafana secret name: %w", err)
 	}
 
-	managedPrometheusServiceCAConfigMapName, err := naming.ManagedPrometheusServingCAConfigMapName(sm)
+	managedPrometheusServiceCAConfigMapName, err := naming.ManagedPrometheusServingCAConfigMapName(sm.Name)
 	if err != nil {
 		return nil, fmt.Errorf("can't get managed Prometheus serving CA config map name: %w", err)
 	}

@@ -215,7 +215,7 @@ func (smc *Controller) syncPrometheus(
 ) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	managedPrometheusServiceCAConfigMapName, err := naming.ManagedPrometheusServingCAConfigMapName(sm)
+	managedPrometheusServiceCAConfigMapName, err := naming.ManagedPrometheusServingCAConfigMapName(sm.Name)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get managed Prometheus serving CA config map name: %w", err)
 	}
@@ -260,7 +260,7 @@ func (smc *Controller) syncPrometheus(
 		},
 	}
 
-	managedPrometheusClientGrafanaSecretName, err := naming.ManagedPrometheusClientGrafanaSecretName(sm)
+	managedPrometheusClientGrafanaSecretName, err := naming.ManagedPrometheusClientGrafanaSecretName(sm.Name)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get managed Prometheus client Grafana secret name: %w", err)
 	}

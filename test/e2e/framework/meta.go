@@ -10,8 +10,9 @@ const (
 	SerialLabelName          = "Serial"
 	MultiDatacenterLabelName = "MultiDatacenter"
 
-	RequiresObjectStorageLabelName   = "RequiresObjectStorage"
-	NotSupportedOnOpenShiftLabelName = "NotSupportedOnOpenShift"
+	RequiresObjectStorageLabelName    = "RequiresObjectStorage"
+	NotSupportedOnOpenShiftLabelName  = "NotSupportedOnOpenShift"
+	SupportedOnlyOnOpenShiftLabelName = "SupportedOnlyOnOpenShift"
 )
 
 var (
@@ -21,6 +22,7 @@ var (
 	}
 	MultiDatacenter = g.Label(MultiDatacenterLabelName)
 
-	RequiresObjectStorage   = g.Label(RequiresObjectStorageLabelName)
-	NotSupportedOnOpenShift = g.Label(NotSupportedOnOpenShiftLabelName)
+	RequiresObjectStorage    = g.Label(RequiresObjectStorageLabelName)
+	NotSupportedOnOpenShift  = g.Label(NotSupportedOnOpenShiftLabelName)
+	SupportedOnlyOnOpenShift = g.Label(SupportedOnlyOnOpenShiftLabelName)
 )

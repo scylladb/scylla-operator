@@ -42,6 +42,13 @@ else
   cp ./examples/third-party/prometheus-operator/*.yaml "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
 fi
 
+if [[ "${SO_ENABLE_OPENSHIFT_USER_WORKLOAD_MONITORING:-}" == "true" ]]; then
+  echo "Enabling OpenShift User Workload Monitoring"
+  cp ./hack/.ci/manifests/namespaces/openshift-monitoring/openshift-uwm.cm.yaml "${ARTIFACTS_DEPLOY_DIR}/"
+else
+  echo "Skipping enabling OpenShift User Workload Monitoring"
+fi
+
 cp ./deploy/operator/*.yaml "${ARTIFACTS_DEPLOY_DIR}/operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
 cp ./examples/third-party/cert-manager.yaml "${ARTIFACTS_DEPLOY_DIR}/"

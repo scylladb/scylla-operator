@@ -108,6 +108,10 @@ if [[ -n ${SO_INSTALL_XFSPROGS_ON_NODES:-} ]]; then
   kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/install-xfsprogs.daemonset.yaml
 fi
 
+if [[ "${SO_ENABLE_OPENSHIFT_USER_WORKLOAD_MONITORING:-}" == "true" ]]; then
+  kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}/openshift-uwm.cm.yaml"
+fi
+
 kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
 kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/cert-manager.yaml
 

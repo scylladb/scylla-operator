@@ -22,4 +22,6 @@ const (
 	jobControllerDegradedCondition               = "JobControllerDegraded"
 	configControllerProgressingCondition         = "ConfigControllerProgressing"
 	configControllerDegradedCondition            = "ConfigControllerDegraded"
+	clusterStatusControllerProgressingCondition  = "ClusterStatusControllerProgressing"
+	clusterStatusControllerDegradedCondition     = "ClusterStatusControllerDegraded"
 )

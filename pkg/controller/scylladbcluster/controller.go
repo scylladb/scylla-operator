@@ -221,6 +221,14 @@ func NewController(
 		},
 	)
 
+	configMapInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addConfigMap,
+			UpdateFunc: scc.updateConfigMap,
+			DeleteFunc: scc.deleteConfigMap,
+		},
+	)
+
 	// Handlers for local ConfigMaps and Secrets referenced by ScyllaDBClusters are skipped to optimize number of syncs which doesn't do anything.
 	// Applying configuration change requires rolling restart of ScyllaDBCluster, so these resources will be synced upon
 	// ScyllaDBCluster update.
@@ -738,6 +746,29 @@ func (scc *Controller) updateSecret(old, cur interface{}) {
 }
 
 func (scc *Controller) deleteSecret(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) addConfigMap(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*corev1.ConfigMap),
+		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) updateConfigMap(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*corev1.ConfigMap),
+		cur.(*corev1.ConfigMap),
+		scc.handlers.EnqueueOwner,
+		scc.deleteConfigMap,
+	)
+}
+
+func (scc *Controller) deleteConfigMap(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.handlers.EnqueueOwner,

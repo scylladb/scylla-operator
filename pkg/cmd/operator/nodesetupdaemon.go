@@ -244,6 +244,7 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 		localNodeScyllaCoreInformers.Core().V1().Pods(),
 		namespacedKubeInformers.Apps().V1().DaemonSets(),
 		namespacedKubeInformers.Batch().V1().Jobs(),
+		namespacedKubeInformers.Core().V1().ConfigMaps(),
 		selfPodInformers.Core().V1().Pods(),
 		o.Namespace,
 		o.PodName,

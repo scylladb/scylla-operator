@@ -18,3 +18,5 @@ func ValidateNodeAffinity(na *corev1.NodeAffinity, fldPath *field.Path) field.Er
 func ValidatePodAntiAffinity(podAntiAffinity *corev1.PodAntiAffinity, allowInvalidLabelValueInSelector bool, fldPath *field.Path) field.ErrorList {
 	return validatePodAntiAffinity(podAntiAffinity, allowInvalidLabelValueInSelector, fldPath)
 }
+
+var SysctlContainSlashRegexp = sysctlContainSlashRegexp

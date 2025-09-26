@@ -13,12 +13,10 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
 
-	gapi "github.com/grafana/grafana-api-golang-client"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	prometheusappclient "github.com/prometheus/client_golang/api"
@@ -32,6 +30,7 @@ import (
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/grafana"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,7 +95,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			},
 			PrepareExternalPrometheusFn: nil, // Using managed Prometheus.
 			VerifyPrometheusFn:          verifyManagedPrometheus,
-			VerifyGrafanaFn: verifyManagedGrafanaWithDashboards([]gapi.FolderDashboardSearchResponse{
+			VerifyGrafanaFn: verifyManagedGrafanaWithDashboards([]grafana.Dashboard{
 				{
 					Title:       "CQL Overview",
 					Type:        "dash-db",
@@ -288,7 +287,7 @@ func verifyManagedPrometheus(ctx context.Context, f *framework.Framework, sm *sc
 }
 
 func verifyManagedGrafanaWithDashboards(
-	expectedDashboards []gapi.FolderDashboardSearchResponse,
+	expectedDashboards []grafana.Dashboard,
 	expectedHomeDashboardUID string,
 ) func(context.Context, *framework.Framework, *scyllav1alpha1.ScyllaDBMonitoring) {
 	return func(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) {
@@ -316,106 +315,39 @@ func verifyManagedGrafanaWithDashboards(
 		o.Expect(sm.Spec.Components.Grafana.ExposeOptions.WebInterface.Ingress.DNSDomains).To(o.HaveLen(1))
 		grafanaServerName := sm.Spec.Components.Grafana.ExposeOptions.WebInterface.Ingress.DNSDomains[0]
 
-		verifyGrafanaDashboards(ctx, f, verifyGrafanaDashboardsOptions{
-			GrafanaServerName:        grafanaServerName,
-			GrafanaServingCAPool:     grafanaServingCAPool,
-			GrafanaUsername:          grafanaUsername,
-			GrafanaPassword:          grafanaPassword,
-			ExpectedDashboards:       expectedDashboards,
-			ExpectedHomeDashboardUID: expectedHomeDashboardUID,
+		grafanaClient, err := grafana.NewClient(grafana.ClientOptions{
+			URL:      "https://" + f.GetIngressAddress(grafanaServerName),
+			Username: grafanaUsername,
+			Password: grafanaPassword,
+			TLS: &tls.Config{
+				ServerName: grafanaServerName,
+				RootCAs:    grafanaServingCAPool,
+			},
 		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		verifyGrafanaDashboards(grafanaClient, expectedDashboards, expectedHomeDashboardUID)
 	}
 }
 
-type verifyGrafanaDashboardsOptions struct {
-	GrafanaServerName        string
-	GrafanaServingCAPool     *x509.CertPool
-	GrafanaUsername          string
-	GrafanaPassword          string
-	ExpectedDashboards       []gapi.FolderDashboardSearchResponse
-	ExpectedHomeDashboardUID string
-}
-
-func verifyGrafanaDashboards(ctx context.Context, f *framework.Framework, opts verifyGrafanaDashboardsOptions) {
+func verifyGrafanaDashboards(grafanaClient *grafana.Client, expectedDashboards []grafana.Dashboard, expectedHomeDashboardUID string) {
 	g.GinkgoHelper()
 
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				ServerName: opts.GrafanaServerName,
-				RootCAs:    opts.GrafanaServingCAPool,
-			},
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-		Timeout: 15 * time.Second,
-	}
-
-	grafanaBaseURL := "https://" + f.GetIngressAddress(opts.GrafanaServerName)
-	grafanaClient, err := gapi.New(
-		grafanaBaseURL,
-		gapi.Config{
-			BasicAuth: url.UserPassword(opts.GrafanaUsername, opts.GrafanaPassword),
-			Client:    httpClient,
-		},
-	)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	var dashboards []gapi.FolderDashboardSearchResponse
+	framework.By("Verifying Grafana dashboards")
+	var dashboards []grafana.Dashboard
 	o.Eventually(func(eo o.Gomega) {
+		var err error
 		dashboards, err = grafanaClient.Dashboards()
 		framework.Infof("Listing grafana dashboards: err: %v, count: %d", err, len(dashboards))
 		eo.Expect(err).NotTo(o.HaveOccurred())
-		eo.Expect(dashboards).To(o.HaveLen(len(opts.ExpectedDashboards)))
+		eo.Expect(dashboards).To(o.HaveLen(len(expectedDashboards)))
 	}).WithTimeout(10 * time.Minute).WithPolling(1 * time.Second).Should(o.Succeed())
+	o.Expect(dashboards).To(o.ConsistOf(expectedDashboards))
 
-	for i := range dashboards {
-		d := &dashboards[i]
-
-		// Clear random fields for comparison.
-		d.UID = ""
-		d.URL = ""
-		d.FolderUID = ""
-		d.FolderURL = ""
-
-		// Clear order dependent fields for comparison.
-		d.ID = 0
-		d.FolderID = 0
-
-		// Clear fields we don't want to compare
-		d.URI = ""
-	}
-	o.Expect(dashboards).To(o.ConsistOf(opts.ExpectedDashboards))
-
-	// The home dashboard API is not exposed in the client and OrgPreferences return empty values,
-	// so we have to call the API directly here.
-	ghdReq, err := http.NewRequestWithContext(ctx, "GET", grafanaBaseURL+"/api/dashboards/home", nil)
+	framework.By("Verifying Grafana home dashboard UID")
+	homeDashboardUID, err := grafanaClient.HomeDashboardUID()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	ghdReq.SetBasicAuth(opts.GrafanaUsername, opts.GrafanaPassword)
-	ghdResp, err := httpClient.Do(ghdReq)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	defer func() {
-		closeErr := ghdResp.Body.Close()
-		o.Expect(closeErr).NotTo(o.HaveOccurred())
-	}()
-	ghdRespBody, err := io.ReadAll(ghdResp.Body)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	type homeDashboardResponse struct {
-		Dashboard grafanaDashboard `json:"dashboard"`
-	}
-	hdResp := &homeDashboardResponse{}
-	err = json.Unmarshal(ghdRespBody, hdResp)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(hdResp.Dashboard.UID).To(o.Equal(opts.ExpectedHomeDashboardUID))
+	o.Expect(homeDashboardUID).To(o.Equal(expectedHomeDashboardUID))
 }
 
 // getExpectedPlatformDashboards returns the expected grafana dashboards.
@@ -423,10 +355,10 @@ func verifyGrafanaDashboards(ctx context.Context, f *framework.Framework, opts v
 // and given the size they are not feasible to be maintained as a duplicate.
 // Contrary to our testing practice, in this case we'll just make sure it's not empty and load
 // the expected values dynamically.
-func getExpectedPlatformDashboards() (expectedDashboards []gapi.FolderDashboardSearchResponse, homeDashboardUID string) {
+func getExpectedPlatformDashboards() (expectedDashboards []grafana.Dashboard, homeDashboardUID string) {
 	g.GinkgoHelper()
 
-	var expectedPlatformFolderDashboardSearchResponse []gapi.FolderDashboardSearchResponse
+	var expectedPlatformFolderDashboardSearchResponse []grafana.Dashboard
 
 	for dashboardFolderName, dashboardFolder := range grafanav1alpha1assets.GrafanaDashboardsPlatform.Get() {
 		for _, dashboardString := range dashboardFolder {
@@ -436,7 +368,7 @@ func getExpectedPlatformDashboards() (expectedDashboards []gapi.FolderDashboardS
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(gd).NotTo(o.BeZero())
 
-			expectedPlatformFolderDashboardSearchResponse = append(expectedPlatformFolderDashboardSearchResponse, gapi.FolderDashboardSearchResponse{
+			expectedPlatformFolderDashboardSearchResponse = append(expectedPlatformFolderDashboardSearchResponse, grafana.Dashboard{
 				Title:       gd.Title,
 				Tags:        gd.Tags,
 				Type:        "dash-db",

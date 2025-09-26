@@ -95,3 +95,26 @@ func (c *Client) HomeDashboardUID() (string, error) {
 
 	return "", fmt.Errorf("unexpected type for dashboard payload")
 }
+
+type DatasourceHealth struct {
+	Message string
+	OK      bool
+}
+
+func (c *Client) DatasourceHealth(datasourceName string) (DatasourceHealth, error) {
+	resp, err := c.c.Datasources.GetDataSourceByName(datasourceName)
+	if err != nil {
+		return DatasourceHealth{}, fmt.Errorf("failed to get datasource %q: %w", datasourceName, err)
+	}
+
+	datasourceUID := resp.GetPayload().UID
+	healthResp, err := c.c.Datasources.CheckDatasourceHealthWithUID(datasourceUID)
+	if err != nil {
+		return DatasourceHealth{}, fmt.Errorf("failed to check health for datasource %q (UID %s): %w", datasourceName, datasourceUID, err)
+	}
+
+	return DatasourceHealth{
+		Message: healthResp.GetPayload().Message,
+		OK:      healthResp.IsSuccess(),
+	}, nil
+}

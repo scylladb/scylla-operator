@@ -43,7 +43,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing ScyllaDBMonitoring", "ScyllaDBMonitoring", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	sm, err := smc.scylladbMonitoringLister.ScyllaDBMonitorings(namespace).Get(name)
+	sm, err := smc.scyllaDBMonitoringInformer.Lister().ScyllaDBMonitorings(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaDBMonitoring has been deleted", "ScyllaDBMonitoring", klog.KObj(sm))
 		return nil

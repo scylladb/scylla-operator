@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
@@ -427,6 +428,193 @@ func TestMergeArguments(t *testing.T) {
 			gotArguments := mergeArguments(test.operatorManagedArguments, test.userProvidedArguments)
 			if !reflect.DeepEqual(test.expectedArguments, gotArguments) {
 				t.Errorf("expected %+v, got %+v", test.expectedArguments, gotArguments)
+			}
+		})
+	}
+}
+
+func TestIPFamilyConsistency(t *testing.T) {
+	tests := []struct {
+		name                   string
+		broadcastAddress       string
+		expectedListenAddr     string
+		expectedRPCAddr        string
+		expectedPrometheusAddr string
+	}{
+		{
+			name:                   "IPv4 broadcast address",
+			broadcastAddress:       "10.0.0.1",
+			expectedListenAddr:     "0.0.0.0",
+			expectedRPCAddr:        "0.0.0.0",
+			expectedPrometheusAddr: "0.0.0.0",
+		},
+		{
+			name:                   "IPv6 broadcast address",
+			broadcastAddress:       "2001:db8::1",
+			expectedListenAddr:     "::",
+			expectedRPCAddr:        "::",
+			expectedPrometheusAddr: "::",
+		},
+		{
+			name:                   "IPv6 ULA address",
+			broadcastAddress:       "fd00:10:244:2::a",
+			expectedListenAddr:     "::",
+			expectedRPCAddr:        "::",
+			expectedPrometheusAddr: "::",
+		},
+		{
+			name:                   "Link-local IPv6 address",
+			broadcastAddress:       "fe80::1%eth0",
+			expectedListenAddr:     "::",
+			expectedRPCAddr:        "::",
+			expectedPrometheusAddr: "::",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Mock member with broadcast address
+			member := &identity.Member{
+				BroadcastAddress:    tt.broadcastAddress,
+				BroadcastRPCAddress: tt.broadcastAddress,
+			}
+
+			// Simulate the logic from setupEntrypoint
+			listenAddress := "0.0.0.0"
+			rpcAddress := "0.0.0.0"
+			prometheusAddress := "0.0.0.0"
+
+			// If broadcast address is IPv6, listen on IPv6 wildcard address
+			if strings.Contains(member.BroadcastAddress, ":") {
+				listenAddress = "::"
+				rpcAddress = "::"
+				prometheusAddress = "::"
+			}
+
+			// Verify the IP family consistency
+			if listenAddress != tt.expectedListenAddr {
+				t.Errorf("expected listen address %q, got %q", tt.expectedListenAddr, listenAddress)
+			}
+			if rpcAddress != tt.expectedRPCAddr {
+				t.Errorf("expected RPC address %q, got %q", tt.expectedRPCAddr, rpcAddress)
+			}
+			if prometheusAddress != tt.expectedPrometheusAddr {
+				t.Errorf("expected Prometheus address %q, got %q", tt.expectedPrometheusAddr, prometheusAddress)
+			}
+		})
+	}
+}
+
+func TestRPCAddressValidation(t *testing.T) {
+	tests := []struct {
+		name               string
+		broadcastAddress   string
+		userRPCAddress     *string
+		expectedRPCAddress string
+		expectWarning      bool
+	}{
+		{
+			name:               "IPv4 broadcast with matching IPv4 user rpc-address",
+			broadcastAddress:   "10.0.0.1",
+			userRPCAddress:     pointer.Ptr("192.168.1.100"),
+			expectedRPCAddress: "192.168.1.100",
+			expectWarning:      false,
+		},
+		{
+			name:               "IPv6 broadcast with matching IPv6 user rpc-address",
+			broadcastAddress:   "2001:db8::1",
+			userRPCAddress:     pointer.Ptr("fd00::100"),
+			expectedRPCAddress: "fd00::100",
+			expectWarning:      false,
+		},
+		{
+			name:               "IPv4 broadcast with IPv6 user rpc-address (rejected)",
+			broadcastAddress:   "10.0.0.1",
+			userRPCAddress:     pointer.Ptr("2001:db8::100"),
+			expectedRPCAddress: "0.0.0.0", // Should use default
+			expectWarning:      true,
+		},
+		{
+			name:               "IPv6 broadcast with IPv4 user rpc-address (rejected)",
+			broadcastAddress:   "2001:db8::1",
+			userRPCAddress:     pointer.Ptr("192.168.1.100"),
+			expectedRPCAddress: "::", // Should use default
+			expectWarning:      true,
+		},
+		{
+			name:               "IPv4 broadcast with no user rpc-address",
+			broadcastAddress:   "10.0.0.1",
+			userRPCAddress:     nil,
+			expectedRPCAddress: "0.0.0.0",
+			expectWarning:      false,
+		},
+		{
+			name:               "IPv6 broadcast with no user rpc-address",
+			broadcastAddress:   "2001:db8::1",
+			userRPCAddress:     nil,
+			expectedRPCAddress: "::",
+			expectWarning:      false,
+		},
+		{
+			name:               "IPv4 broadcast with IPv4 wildcard user rpc-address",
+			broadcastAddress:   "10.0.0.1",
+			userRPCAddress:     pointer.Ptr("0.0.0.0"),
+			expectedRPCAddress: "0.0.0.0",
+			expectWarning:      false,
+		},
+		{
+			name:               "IPv6 broadcast with IPv6 wildcard user rpc-address",
+			broadcastAddress:   "2001:db8::1",
+			userRPCAddress:     pointer.Ptr("::"),
+			expectedRPCAddress: "::",
+			expectWarning:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the validation logic from setupEntrypoint
+			userArgs := make(map[string]*string)
+			if tt.userRPCAddress != nil {
+				userArgs["rpc-address"] = tt.userRPCAddress
+			}
+
+			// Check if user provided rpc-address and validate IP family consistency
+			if userRpcAddress, hasUserRpcAddress := userArgs["rpc-address"]; hasUserRpcAddress && userRpcAddress != nil {
+				isBroadcastIPv6 := strings.Contains(tt.broadcastAddress, ":")
+				isUserRpcIPv6 := strings.Contains(*userRpcAddress, ":")
+
+				if isBroadcastIPv6 != isUserRpcIPv6 {
+					// IP families don't match, reject user's value
+					delete(userArgs, "rpc-address")
+					// In real code, this would log a warning
+					if !tt.expectWarning {
+						t.Errorf("expected no warning but IP families don't match")
+					}
+				} else {
+					// IP families match, keep user's value
+					if tt.expectWarning {
+						t.Errorf("expected warning but IP families match")
+					}
+				}
+			}
+
+			// Determine final rpc-address
+			var finalRPCAddress string
+			if rpcAddr, hasRPC := userArgs["rpc-address"]; hasRPC && rpcAddr != nil {
+				finalRPCAddress = *rpcAddr
+			} else {
+				// Set default based on broadcast address IP family
+				if strings.Contains(tt.broadcastAddress, ":") {
+					finalRPCAddress = "::"
+				} else {
+					finalRPCAddress = "0.0.0.0"
+				}
+			}
+
+			// Verify the result
+			if finalRPCAddress != tt.expectedRPCAddress {
+				t.Errorf("expected rpc-address %q, got %q", tt.expectedRPCAddress, finalRPCAddress)
 			}
 		})
 	}

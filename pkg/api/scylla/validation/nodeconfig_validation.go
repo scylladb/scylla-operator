@@ -3,9 +3,14 @@
 package validation
 
 import (
+	"fmt"
+
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	corevalidation "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/validation"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
+	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -19,6 +24,8 @@ func ValidateNodeConfigSpec(spec *scyllav1alpha1.NodeConfigSpec, fldPath *field.
 	if spec.LocalDiskSetup != nil {
 		allErrs = append(allErrs, ValidateLocalDiskSetup(spec.LocalDiskSetup, fldPath.Child("localDiskSetup"))...)
 	}
+
+	allErrs = append(allErrs, validateSysctls(spec.Sysctls, fldPath.Child("sysctls"))...)
 
 	return allErrs
 }
@@ -78,6 +85,25 @@ func ValidateLocalDiskSetupRAIDs(rcs []scyllav1alpha1.RAIDConfiguration, fldPath
 				allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("RAID0").Child("devices"), "", "nameRegex or modelRegex must be provided"))
 			}
 		}
+	}
+
+	return allErrs
+}
+
+func validateSysctls(sysctls []corev1.Sysctl, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	set := apimachineryutilsets.New[string]()
+	for i, s := range sysctls {
+		if len(s.Name) == 0 {
+			allErrs = append(allErrs, field.Required(fldPath.Index(i).Child("name"), ""))
+		} else if !corevalidation.IsValidSysctlName(s.Name) {
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("name"), s.Name, fmt.Sprintf("must have at most %d characters and match regex %s", corevalidation.SysctlMaxLength, corevalidation.SysctlContainSlashRegexp.String())))
+		} else if set.Has(s.Name) {
+			allErrs = append(allErrs, field.Duplicate(fldPath.Index(i).Child("name"), s.Name))
+		}
+
+		set.Insert(s.Name)
 	}
 
 	return allErrs

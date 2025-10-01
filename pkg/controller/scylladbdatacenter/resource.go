@@ -37,6 +37,7 @@ import (
 
 const (
 	scyllaAgentConfigVolumeName              = "scylla-agent-config-volume"
+	scyllaManagedAgentConfigVolumeName       = "scylla-managed-agent-config-volume"
 	scyllaAgentAuthTokenVolumeName           = "scylla-agent-auth-token-volume"
 	scylladbServingCertsVolumeName           = "scylladb-serving-certs"
 	scylladbClientCAVolumeName               = "scylladb-client-ca"
@@ -48,6 +49,15 @@ const (
 	rootUID int64 = 0
 	rootGID int64 = 0
 )
+
+// getEffectiveIPFamily returns the effective IP family for the ScyllaDBDatacenter.
+// It uses the top-level ipFamily setting if present, otherwise defaults to IPv4.
+func getEffectiveIPFamily(sdc *scyllav1alpha1.ScyllaDBDatacenter) corev1.IPFamily {
+	if sdc.Spec.IPFamily != nil {
+		return *sdc.Spec.IPFamily
+	}
+	return corev1.IPv4Protocol
+}
 
 const (
 	portNameCQL              = "cql"
@@ -94,7 +104,7 @@ func IdentityService(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Service, e
 		return nil, fmt.Errorf("can't get service ports: %w", err)
 	}
 
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        naming.IdentityServiceName(sdc),
 			Namespace:   sdc.Namespace,
@@ -109,7 +119,18 @@ func IdentityService(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Service, e
 			Selector: naming.ClusterLabels(sdc),
 			Ports:    servicePorts,
 		},
-	}, nil
+	}
+
+	// Configure IP families based on the datacenter configuration
+	ipFamily := getEffectiveIPFamily(sdc)
+	if ipFamily == corev1.IPv6Protocol {
+		svc.Spec.IPFamilies = []corev1.IPFamily{ipFamily}
+		svc.Spec.IPFamilyPolicy = &[]corev1.IPFamilyPolicy{corev1.IPFamilyPolicySingleStack}[0]
+	}
+	// Note: When ipFamily is IPv4 (default), we rely on Kubernetes defaults
+	// This supports backward compatibility and follows the principle of explicit IPv6 opt-in
+
+	return svc, nil
 }
 
 func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string, oldService *corev1.Service, jobs map[string]*batchv1.Job) (*corev1.Service, error) {
@@ -172,6 +193,13 @@ func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string
 			Ports:                    servicePorts,
 			PublishNotReadyAddresses: true,
 		},
+	}
+
+	// Configure IP families based on the datacenter configuration
+	ipFamily := getEffectiveIPFamily(sdc)
+	if ipFamily == corev1.IPv6Protocol {
+		svc.Spec.IPFamilies = []corev1.IPFamily{ipFamily}
+		svc.Spec.IPFamilyPolicy = &[]corev1.IPFamilyPolicy{corev1.IPFamilyPolicySingleStack}[0]
 	}
 
 	if sdc.Spec.ExposeOptions != nil && sdc.Spec.ExposeOptions.NodeService != nil {
@@ -537,6 +565,17 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 								},
 							},
 							{
+								Name: scyllaManagedAgentConfigVolumeName,
+								VolumeSource: corev1.VolumeSource{
+									ConfigMap: &corev1.ConfigMapVolumeSource{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: naming.GetScyllaDBManagerAgentConfigCMName(sdc.Name),
+										},
+										Optional: pointer.Ptr(false),
+									},
+								},
+							},
+							{
 								Name: scyllaAgentConfigVolumeName,
 								VolumeSource: corev1.VolumeSource{
 									Secret: &corev1.SecretVolumeSource{
@@ -744,6 +783,15 @@ exec /mnt/shared/scylla-operator sidecar \
 										},
 									},
 								},
+								{
+									Name: "IP_FAMILY",
+									Value: func() string {
+										if sdc.Spec.IPFamily != nil {
+											return string(*sdc.Spec.IPFamily)
+										}
+										return string(corev1.IPv4Protocol)
+									}(),
+								},
 							},
 							Resources: func() corev1.ResourceRequirements {
 								if rack.ScyllaDB != nil && rack.ScyllaDB.Resources != nil {
@@ -913,6 +961,15 @@ wait
 											FieldPath: "metadata.name",
 										},
 									},
+								},
+								{
+									Name: "IP_FAMILY",
+									Value: func() string {
+										if sdc.Spec.IPFamily != nil {
+											return string(*sdc.Spec.IPFamily)
+										}
+										return string(corev1.IPv4Protocol)
+									}(),
 								},
 							},
 							ReadinessProbe: &corev1.Probe{
@@ -1214,6 +1271,17 @@ func getScyllaDBManagerAgentContainer(r scyllav1alpha1.RackSpec, sdc *scyllav1al
 		Name:            naming.ScyllaManagerAgentContainerName,
 		Image:           *sdc.Spec.ScyllaDBManagerAgent.Image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
+		Env: []corev1.EnvVar{
+			{
+				Name: "IP_FAMILY",
+				Value: func() string {
+					if sdc.Spec.IPFamily != nil {
+						return string(*sdc.Spec.IPFamily)
+					}
+					return string(corev1.IPv4Protocol)
+				}(),
+			},
+		},
 		// There is no point in starting scylla-manager before ScyllaDB is tuned and ignited. The manager agent fails after 60 attempts and hits backoff unnecessarily.
 		Command: []string{
 			"/usr/bin/bash",
@@ -1234,6 +1302,7 @@ printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' 
 
 exec scylla-manager-agent \
 -c ` + fmt.Sprintf("%q ", naming.ScyllaAgentConfigDefaultFile) + `\
+-c ` + fmt.Sprintf("%q ", path.Join(naming.ScyllaManagedAgentConfigDirName, naming.ScyllaAgentConfigFileName)) + `\
 -c ` + fmt.Sprintf("%q ", path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentConfigFileName)) + `\
 -c ` + fmt.Sprintf("%q ", path.Join(naming.ScyllaAgentConfigDirName, naming.ScyllaAgentAuthTokenFileName)) + `
 `),
@@ -1255,6 +1324,12 @@ exec scylla-manager-agent \
 			{
 				Name:      naming.PVCTemplateName,
 				MountPath: naming.DataDir,
+			},
+			{
+				Name:      scyllaManagedAgentConfigVolumeName,
+				MountPath: path.Join(naming.ScyllaManagedAgentConfigDirName, naming.ScyllaAgentConfigFileName),
+				SubPath:   naming.ScyllaAgentConfigFileName,
+				ReadOnly:  true,
 			},
 			{
 				Name:      scyllaAgentConfigVolumeName,
@@ -1740,6 +1815,13 @@ func MakeManagedScyllaDBConfigMaps(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]*c
 
 	managedCMs = append(managedCMs, scyllaDBSnitchConfigCMs...)
 
+	scyllaDBManagerAgentConfigCM, err := MakeManagedScyllaDBManagerAgentConfig(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't make managed scylladb manager agent config: %w", err)
+	}
+
+	managedCMs = append(managedCMs, scyllaDBManagerAgentConfigCM)
+
 	return managedCMs, nil
 }
 
@@ -1830,6 +1912,46 @@ func MakeManagedScyllaDBConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.
 	)
 	if err != nil {
 		return nil, fmt.Errorf("can't render managed scylladb config: %w", err)
+	}
+
+	cm.SetOwnerReferences([]metav1.OwnerReference{
+		{
+			APIVersion:         scyllav1alpha1.ScyllaDBDatacenterGVK.GroupVersion().String(),
+			Kind:               scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
+			Name:               sdc.Name,
+			UID:                sdc.UID,
+			Controller:         pointer.Ptr(true),
+			BlockOwnerDeletion: pointer.Ptr(true),
+		},
+	})
+
+	if cm.Labels == nil {
+		cm.Labels = map[string]string{}
+	}
+	sdcLabels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)
+	maps.Copy(cm.Labels, sdcLabels)
+	maps.Copy(cm.Labels, naming.ClusterLabels(sdc))
+
+	if cm.Annotations == nil {
+		cm.Annotations = map[string]string{}
+	}
+	sdcAnnotations := cloneMapExcludingKeysOrEmpty(sdc.Annotations, nonPropagatedAnnotationKeys)
+	maps.Copy(cm.Annotations, sdcAnnotations)
+
+	return cm, nil
+}
+
+func MakeManagedScyllaDBManagerAgentConfig(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.ConfigMap, error) {
+	cm, _, err := scylladbassets.ScyllaDBManagerAgentConfigTemplate.Get().RenderObject(
+		map[string]any{
+			"Namespace":                 sdc.Namespace,
+			"Name":                      naming.GetScyllaDBManagerAgentConfigCMName(sdc.Name),
+			"ScyllaAgentConfigFileName": naming.ScyllaAgentConfigFileName,
+			"Spec":                      sdc.Spec,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("can't render managed scylladb manager agent config: %w", err)
 	}
 
 	cm.SetOwnerReferences([]metav1.OwnerReference{

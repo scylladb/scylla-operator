@@ -125,6 +125,21 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local secrets: %w", err))
 	}
 
+	localConfigMapMap, err := controllerhelpers.GetObjects[localCT, *corev1.ConfigMap](
+		ctx,
+		sc,
+		scyllav1alpha1.ScyllaDBClusterGVK,
+		scLocalSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.ConfigMap]{
+			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
+			ListObjectsFunc:           scc.configMapLister.ConfigMaps(sc.Namespace).List,
+			PatchObjectFunc:           scc.kubeClient.CoreV1().ConfigMaps(sc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local configmaps: %w", err))
+	}
+
 	localObjectErr := apimachineryutilerrors.NewAggregate(localObjectErrs)
 	if localObjectErr != nil {
 		return localObjectErr
@@ -509,6 +524,14 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 			degradedCondition:    secretControllerDegradedCondition,
 			syncFn: func() ([]metav1.Condition, error) {
 				return scc.syncLocalSecrets(ctx, sc, localSecretMap)
+			},
+		},
+		{
+			kind:                 "ConfigMap",
+			progressingCondition: configMapControllerProgressingCondition,
+			degradedCondition:    configMapControllerDegradedCondition,
+			syncFn: func() ([]metav1.Condition, error) {
+				return scc.syncLocalConfigMaps(ctx, sc, localConfigMapMap, remoteNamespaces)
 			},
 		},
 	}

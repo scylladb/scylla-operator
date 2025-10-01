@@ -1,6 +1,8 @@
 package scylladbcluster
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
@@ -165,9 +167,17 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 		return nil, fmt.Errorf("can't get agent auth token secret name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
 	}
 
+	clusterStatusConfigMapName, err := naming.ScyllaDBClusterClusterStatusesConfigMapName(sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get cluster statuses configmap name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
 	annotations := naming.ScyllaDBClusterDatacenterAnnotations(sc, dcSpec)
 	// Set the agent auth token override secret name annotation to share the generated auth token between ScyllaDBDatacenters.
 	annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation] = agentAuthTokenSecretName
+
+	// Set the cluster status configmap name annotation to share the cluster status between ScyllaDBDatacenters.
+	annotations[naming.ScyllaDBClusterStatusOverrideConfigMapRefAnnotation] = clusterStatusConfigMapName
 
 	return &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1075,6 +1085,12 @@ func getConfigMapsAndSecretsToMirrorForAllDCs(sc *scyllav1alpha1.ScyllaDBCluster
 	}
 	secretsToMirror = append(secretsToMirror, agentAuthTokenSecretName)
 
+	clusterStatusesConfigMapName, err := naming.ScyllaDBClusterClusterStatusesConfigMapName(sc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't get cluster statuses config map name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+	configMapsToMirror = append(configMapsToMirror, clusterStatusesConfigMapName)
+
 	if sc.Spec.DatacenterTemplate != nil {
 		dcConfigMaps, dcSecrets := getConfigMapsAndSecretsToMirrorForDC(sc.Spec.DatacenterTemplate)
 
@@ -1503,4 +1519,128 @@ func makeLocalScyllaDBManagerAgentAuthTokenSecret(sc *scyllav1alpha1.ScyllaDBClu
 			naming.ScyllaAgentAuthTokenFileName: authTokenConfig,
 		},
 	}, nil
+}
+
+func makeLocalConfigMaps(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]metav1.Condition, []*corev1.ConfigMap, error) {
+	var localConfigMaps []*corev1.ConfigMap
+
+	progressingConditions, clusterStatusConfigMap, err := makeLocalClusterStatusConfigMap(sc, remoteNamespaces, remoteServiceLister)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't make cluster status configmap for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil, nil
+	}
+	localConfigMaps = append(localConfigMaps, clusterStatusConfigMap)
+
+	return nil, localConfigMaps, nil
+}
+
+func makeLocalClusterStatusConfigMap(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]metav1.Condition, *corev1.ConfigMap, error) {
+	var progressingConditions []metav1.Condition
+
+	name, err := naming.ScyllaDBClusterClusterStatusesConfigMapName(sc)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't get cluster statuses configmap name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	clusterStatus := &controllerhelpers.ClusterStatus{
+		ReplacingHostIDs:    []string{},
+		NodeClusterStatuses: []controllerhelpers.NodeClusterStatus{},
+	}
+	for _, dc := range sc.Spec.Datacenters {
+		dcNamespace, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
+		if !ok {
+			// TODO: this doesn't seem necessary? We have a naming func for it.
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               configMapControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForRemoteNamespace",
+				Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", dc.RemoteKubernetesClusterName),
+				ObservedGeneration: sc.Generation,
+			})
+			continue
+		}
+
+		// TODO: move to func
+		dcServiceSelector := naming.DatacenterMemberServiceSelector(sc, &dc)
+		dcClusterStatus, err := getClusterStatusFromRemoteDCMemberServices(sc, &dc, dcNamespace, dcServiceSelector, remoteServiceLister)
+		if err != nil {
+			return progressingConditions, nil, fmt.Errorf("can't get cluster status for ScyllaDBCluster %q Datacenter %q remote member services: %w", naming.ObjRef(sc), dc.Name, err)
+		}
+
+		clusterStatus.ReplacingHostIDs = append(clusterStatus.ReplacingHostIDs, dcClusterStatus.ReplacingHostIDs...)
+		clusterStatus.NodeClusterStatuses = append(clusterStatus.NodeClusterStatuses, dcClusterStatus.NodeClusterStatuses...)
+	}
+
+	buf := bytes.Buffer{}
+	err = json.NewEncoder(&buf).Encode(clusterStatus)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't encode cluster status: %w", err)
+	}
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: sc.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sc, scyllav1alpha1.ScyllaDBClusterGVK),
+			},
+			Labels: func() map[string]string {
+				labels := make(map[string]string)
+
+				if sc.Spec.Metadata != nil {
+					maps.Copy(labels, sc.Spec.Metadata.Labels)
+				}
+
+				maps.Copy(labels, naming.ScyllaDBClusterLocalSelectorLabels(sc))
+
+				return labels
+			}(),
+			Annotations: func() map[string]string {
+				annotations := make(map[string]string)
+
+				if sc.Spec.Metadata != nil {
+					maps.Copy(annotations, sc.Spec.Metadata.Annotations)
+				}
+
+				return annotations
+			}(),
+		},
+		Data: map[string]string{
+			naming.ScyllaDBClusterStatusKey: buf.String(),
+		},
+	}
+
+	return progressingConditions, cm, nil
+}
+
+func getClusterStatusFromRemoteDCMemberServices(sc *scyllav1alpha1.ScyllaDBCluster, remoteDC *scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCMemberServiceSelector apimachinerylabels.Selector, remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) (*controllerhelpers.ClusterStatus, error) {
+	clusterStatus := &controllerhelpers.ClusterStatus{
+		ReplacingHostIDs:    []string{},
+		NodeClusterStatuses: []controllerhelpers.NodeClusterStatus{},
+	}
+
+	dcMemberServices, err := remoteServiceLister.Cluster(remoteDC.RemoteKubernetesClusterName).Services(remoteDCNamespace.Name).List(remoteDCMemberServiceSelector)
+	if err != nil {
+		return nil, fmt.Errorf("can't list member Services for %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+	}
+
+	for _, svc := range dcMemberServices {
+		if replacingNodeHostIDLabel, ok := svc.Labels[naming.ReplacingNodeHostIDLabel]; ok {
+			clusterStatus.ReplacingHostIDs = append(clusterStatus.ReplacingHostIDs, replacingNodeHostIDLabel)
+		}
+
+		if nodeClusterStatusAnnotation, ok := svc.Annotations[naming.NodeClusterStatusAnnotation]; ok {
+			var nodeClusterStatus controllerhelpers.NodeClusterStatus
+			err = json.NewDecoder(strings.NewReader(nodeClusterStatusAnnotation)).Decode(&nodeClusterStatus)
+			if err != nil {
+				return nil, fmt.Errorf("can't decode annotation %q of service %q for ScyllaDBCluster %q Datacenter %q: %w", naming.NodeClusterStatusAnnotation, naming.ObjRef(svc), naming.ObjRef(sc), remoteDC.Name, err)
+			}
+
+			clusterStatus.NodeClusterStatuses = append(clusterStatus.NodeClusterStatuses, nodeClusterStatus)
+		}
+	}
+
+	return clusterStatus, nil
 }

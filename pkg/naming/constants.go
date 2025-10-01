@@ -46,6 +46,8 @@ const (
 
 	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.
 	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
+
+	NodeClusterStatusAnnotation = "internal.scylla-operator.scylladb.com/cluster-status"
 )
 
 // Annotations used for feature backward compatibility between v1.ScyllaCluster and v1alpha1.ScyllaDBDatacenter
@@ -291,4 +293,10 @@ const (
 	ScyllaDBManagerTaskRepairIntensityOverrideAnnotation           = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override"
 	ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override"
 	ScyllaDBManagerTaskStatusAnnotation                            = "internal.scylla-operator.scylladb.com/scylladb-manager-task-status"
+)
+
+const (
+	ScyllaDBClusterStatusKey = "scylladb-cluster-status"
+
+	ScyllaDBClusterStatusOverrideConfigMapRefAnnotation = "internal.scylla-operator.scylladb.com/scylladb-cluster-status-override-config-map-ref"
 )

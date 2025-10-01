@@ -195,11 +195,6 @@ function apply-e2e-workarounds-in-all-clusters {
 }
 
 function apply-e2e-workarounds {
-  if [ -z "${SO_IMAGE+x}" ]; then
-    echo "SO_IMAGE can't be empty" > /dev/stderr
-    exit 2
-  fi
-
   # Allow admin to use ephemeralcontainers
   kubectl_create -f=- <<EOF
 apiVersion: rbac.authorization.k8s.io/v1
@@ -216,50 +211,6 @@ rules:
   verbs:
   - patch
 EOF
-
-  # FIXME: remove the workaround once https://github.com/scylladb/scylla-operator/issues/749 is done
-  kubectl_create -n=default -f=- <<EOF
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: sysctl
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: sysctl
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: sysctl
-    spec:
-      containers:
-      - name: sysctl
-        securityContext:
-          privileged: true
-        image: "${SO_IMAGE}"
-        imagePullPolicy: IfNotPresent
-        command:
-        - /usr/bin/bash
-        - -euExo
-        - pipefail
-        - -O
-        - inherit_errexit
-        - -c
-        args:
-        - |
-          sysctl fs.aio-max-nr=0xffffffff
-
-          sleep infinity &
-          wait
-      nodeSelector:
-        scylla.scylladb.com/node-type: scylla
-      tolerations:
-      - effect: NoSchedule
-        key: scylla-operator.scylladb.com/dedicated
-        operator: Equal
-        value: scyllaclusters
-EOF
-  kubectl -n=default rollout status daemonset/sysctl
 }
 
 function run-e2e {

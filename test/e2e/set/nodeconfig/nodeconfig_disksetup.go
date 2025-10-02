@@ -40,7 +40,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 	f := framework.NewFramework("nodesetup")
 
 	ncTemplate := scyllafixture.NodeConfig.ReadOrFail()
-	var matchingNodes []*corev1.Node
+	var nodeUnderTest *corev1.Node
 
 	g.JustBeforeEach(func() {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -48,10 +48,11 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 
 		g.By("Verifying there is at least one scylla node")
 		var err error
-		matchingNodes, err = utils.GetMatchingNodesForNodeConfig(ctx, f.KubeAdminClient().CoreV1(), ncTemplate)
+		matchingNodes, err := utils.GetMatchingNodesForNodeConfig(ctx, f.KubeAdminClient().CoreV1(), ncTemplate)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(matchingNodes).NotTo(o.HaveLen(0))
-		framework.Infof("There are %d scylla nodes", len(matchingNodes))
+		nodeUnderTest = matchingNodes[0]
+		framework.Infof("There are %d scylla nodes. %s will be used in tests.", len(matchingNodes), nodeUnderTest.GetName())
 	})
 
 	g.DescribeTable("should make RAID0 array out of loop devices, format it to XFS, and mount at desired location", func(numberOfDevices int) {
@@ -61,7 +62,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		nc := ncTemplate.DeepCopy()
 
 		framework.By("Creating a client Pod")
-		clientPod := newClientPod(nc)
+		clientPod := newClientPod(nc, nodeUnderTest)
 
 		clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -258,7 +259,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		defer cancel()
 
 		nc := e.nodeConfigFunc()
-		nodeUnderTest := matchingNodes[0]
 
 		if e.preNodeConfigCreationFunc != nil {
 			cleanupFunc := e.preNodeConfigCreationFunc(ctx, nc, nodeUnderTest)
@@ -408,7 +408,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				hostMountPath := fmt.Sprintf("/host/var/lib/%s", f.Namespace())
 
 				framework.By("Creating a client Pod")
-				clientPod := newClientPod(nc)
+				clientPod := newClientPod(nc, nodeUnderTest)
 				clientPod.Spec.NodeName = nodeUnderTest.GetName()
 
 				clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
@@ -468,7 +468,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 				hostDevicePath := "/host/dev/loops/disk"
 
 				framework.By("Creating a client Pod")
-				clientPod := newClientPod(nc)
+				clientPod := newClientPod(nc, nodeUnderTest)
 				clientPod.Spec.NodeName = nodeUnderTest.GetName()
 
 				clientPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
@@ -531,10 +531,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 	)
 
 	g.It("should successfully start a failed mount unit with a corrupted filesystem when it's overwritten with a clean one", func(ctx context.Context) {
-		o.Expect(matchingNodes).NotTo(o.BeEmpty())
-		o.Expect(matchingNodes[0]).NotTo(o.BeNil())
-		nodeUnderTest := matchingNodes[0]
-
 		devicePath := fmt.Sprintf("/dev/loops/%s", f.Namespace())
 		hostDevicePath := path.Join("/host", devicePath)
 
@@ -573,7 +569,7 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Creating a client Pod")
-		clientPod := newClientPod(nc)
+		clientPod := newClientPod(nc, nodeUnderTest)
 
 		clientPod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, clientPod, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -607,7 +603,6 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		framework.By("Getting the filesystem's block size")
 		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "stat", "--file-system", "--format=%s", devicePathInContainer)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
-
 		blockSize := strings.TrimSpace(stdout)
 
 		framework.By("Corrupting the filesystem")
@@ -646,17 +641,16 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		// We're running this command until it eventually succeeds because sometimes it can fail with:
+		//	mkfs.xfs: cannot open /host/dev/loop1: Device or resource busy (or similar)
+		// It happens only on OpenShift and most likely is a race between the device being released by _some_ part of the
+		// system and mkfs trying to open it. In virtually all observed cases, one retry after a short delay was enough to
+		// succeed.
 		framework.By("Overwriting the corrupted filesystem")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mkfs", "-t", string(scyllav1alpha1.XFSFilesystem), "-b", fmt.Sprintf("size=%s", blockSize), "-K", "-f", hostDevicePath)
-		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
-
-		framework.By("Zeroing XFS log")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-L", "-f", hostDevicePath)
-		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
-
-		framework.By("Verifying the filesystem's integrity")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "xfs_repair", "-o", "force_geometry", "-f", "-n", hostDevicePath)
-		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+		o.Eventually(func(eo o.Gomega) {
+			stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "mkfs", "-t", string(scyllav1alpha1.XFSFilesystem), "-b", fmt.Sprintf("size=%s", blockSize), "-K", "-f", devicePathInContainer)
+			eo.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
+		}).WithPolling(time.Second * 5).WithTimeout(1 * time.Minute).Should(o.Succeed())
 
 		framework.By("Waiting for NodeConfig to roll out")
 		ctx3, ctx3Cancel := context.WithTimeout(ctx, nodeConfigRolloutTimeout)
@@ -702,12 +696,15 @@ var _ = g.Describe("Node Setup", framework.Serial, func() {
 	}, g.NodeTimeout(testTimeout))
 })
 
-func newClientPod(nc *scyllav1alpha1.NodeConfig) *corev1.Pod {
+func newClientPod(nc *scyllav1alpha1.NodeConfig, nodeUnderTest *corev1.Node) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "client",
 		},
 		Spec: corev1.PodSpec{
+			// We want to schedule the Pod specifically on the node that is under test as we will perform operations
+			// on the host filesystem through that Pod.
+			NodeName: nodeUnderTest.Name,
 			Containers: []corev1.Container{
 				{
 					Name:  "client",

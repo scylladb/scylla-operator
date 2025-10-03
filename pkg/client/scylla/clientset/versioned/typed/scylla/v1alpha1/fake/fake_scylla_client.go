@@ -44,6 +44,10 @@ func (c *FakeScyllaV1alpha1) ScyllaDBMonitorings(namespace string) v1alpha1.Scyl
 	return newFakeScyllaDBMonitorings(c, namespace)
 }
 
+func (c *FakeScyllaV1alpha1) ScyllaDBStatusReports(namespace string) v1alpha1.ScyllaDBStatusReportInterface {
+	return newFakeScyllaDBStatusReports(c, namespace)
+}
+
 func (c *FakeScyllaV1alpha1) ScyllaOperatorConfigs() v1alpha1.ScyllaOperatorConfigInterface {
 	return newFakeScyllaOperatorConfigs(c)
 }

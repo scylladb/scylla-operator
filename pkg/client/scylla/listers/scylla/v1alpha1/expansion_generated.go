@@ -58,6 +58,14 @@ type ScyllaDBMonitoringListerExpansion interface{}
 // ScyllaDBMonitoringNamespaceLister.
 type ScyllaDBMonitoringNamespaceListerExpansion interface{}
 
+// ScyllaDBStatusReportListerExpansion allows custom methods to be added to
+// ScyllaDBStatusReportLister.
+type ScyllaDBStatusReportListerExpansion interface{}
+
+// ScyllaDBStatusReportNamespaceListerExpansion allows custom methods to be added to
+// ScyllaDBStatusReportNamespaceLister.
+type ScyllaDBStatusReportNamespaceListerExpansion interface{}
+
 // ScyllaOperatorConfigListerExpansion allows custom methods to be added to
 // ScyllaOperatorConfigLister.
 type ScyllaOperatorConfigListerExpansion interface{}

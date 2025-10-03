@@ -57,6 +57,9 @@ spec:
       - kind: ScyllaDBMonitoring
         name: scylladbmonitorings.scylla.scylladb.com
         version: v1alpha1
+      - kind: ScyllaDBStatusReport
+        name: scylladbstatusreports.scylla.scylladb.com
+        version: v1alpha1
       - kind: ScyllaOperatorConfig
         name: scyllaoperatorconfigs.scylla.scylladb.com
         version: v1alpha1
@@ -118,6 +121,8 @@ spec:
                 - get
                 - list
                 - watch
+                - patch
+                - update
             - apiGroups:
                 - ""
               resources:
@@ -172,6 +177,7 @@ spec:
                 - scylladbclusters
                 - scylladbmanagerclusterregistrations
                 - scylladbmanagertasks
+                - scylladbstatusreports
               verbs:
                 - create
                 - delete
@@ -334,6 +340,7 @@ spec:
                 - scylladbmonitorings/finalizers
                 - scylladbmanagerclusterregistrations/finalizers
                 - scylladbmanagertasks/finalizers
+                - scylladbstatusreports/finalizers
               verbs:
                 - update
             - apiGroups:

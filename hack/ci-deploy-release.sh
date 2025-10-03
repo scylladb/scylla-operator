@@ -58,6 +58,13 @@ else
   kubectl_create -n=prometheus-operator -f="${source_url}/${revision}/examples/third-party/prometheus-operator.yaml"
 fi
 
+if [[ "${SO_ENABLE_OPENSHIFT_USER_WORKLOAD_MONITORING:-}" == "true" ]]; then
+  echo "Enabling OpenShift User Workload Monitoring"
+  kubectl_create -f="${source_url}/${revision}/hack/.ci/manifests/namespaces/openshift-monitoring/openshift-uwm.cm.yaml"
+else
+  echo "Skipping enabling OpenShift User Workload Monitoring"
+fi
+
 kubectl_create -n=haproxy-ingress -f="${source_url}/${revision}/examples/third-party/haproxy-ingress.yaml"
 
 kubectl_create -f="${source_url}/${revision}/examples/third-party/cert-manager.yaml"

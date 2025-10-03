@@ -704,6 +704,7 @@ exec /mnt/shared/scylla-operator sidecar \
 										return string(scyllav1alpha1.ScyllaDBDatacenterDefaultClientsBroadcastAddressType)
 									}() + ` \
 --service-name=$(SERVICE_NAME) \
+--status-report-period-seconds=5 \
 --cpu-count=$(CPU_COUNT) \
 ` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + ` \
 ` +

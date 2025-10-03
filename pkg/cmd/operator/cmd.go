@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/scylladb/scylla-operator/pkg/cmd/operator/probeserver"
+	"github.com/scylladb/scylla-operator/pkg/cmd/operator/sidecar"
 	versioncmd "github.com/scylladb/scylla-operator/pkg/cmd/version"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
@@ -36,7 +37,7 @@ func NewOperatorCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.AddCommand(versioncmd.NewCmd(streams))
 	cmd.AddCommand(NewOperatorCmd(streams))
 	cmd.AddCommand(NewWebhookCmd(streams, DefaultValidators))
-	cmd.AddCommand(NewSidecarCmd(streams))
+	cmd.AddCommand(sidecar.NewCmd(streams))
 	cmd.AddCommand(NewNodeSetupCmd(streams))
 	cmd.AddCommand(NewCleanupJobCmd(streams))
 	cmd.AddCommand(NewGatherCmd(streams))

@@ -946,6 +946,7 @@ exec /mnt/shared/scylla-operator sidecar \
 --nodes-broadcast-address-type=ServiceClusterIP \
 --clients-broadcast-address-type=ServiceClusterIP \
 --service-name=$(SERVICE_NAME) \
+--status-report-period-seconds=5 \
 --cpu-count=$(CPU_COUNT) \
 --loglevel=0 \
  -- "$@"

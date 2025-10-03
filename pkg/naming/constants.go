@@ -46,6 +46,9 @@ const (
 
 	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.
 	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
+
+	// NodeStatusReportAnnotation reflects the current status report from the ScyllaDB node.
+	NodeStatusReportAnnotation = "internal.scylla.scylladb.com/scylladb-node-status-report"
 )
 
 // Annotations used for feature backward compatibility between v1.ScyllaCluster and v1alpha1.ScyllaDBDatacenter

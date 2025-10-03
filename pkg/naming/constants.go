@@ -300,3 +300,9 @@ const (
 	ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override"
 	ScyllaDBManagerTaskStatusAnnotation                            = "internal.scylla-operator.scylladb.com/scylladb-manager-task-status"
 )
+
+const (
+	// ScyllaDBDatacenterNodesStatusReportSelectorLabel is used to uniformly label nodes status reports created for a ScyllaDB cluster.
+	// It allows easy selection of all datacenter reports for a given cluster.
+	ScyllaDBDatacenterNodesStatusReportSelectorLabel = "scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector"
+)

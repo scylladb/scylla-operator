@@ -369,6 +369,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Networking().V1().Ingresses(),
 		kubeInformers.Batch().V1().Jobs(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
 		o.OperatorImage,
 		o.CQLSIngressPort,
 		rsaKeyGenerator,

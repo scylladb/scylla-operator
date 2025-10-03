@@ -65,17 +65,18 @@ type Controller struct {
 	kubeClient   kubernetes.Interface
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface
 
-	podLister                corev1listers.PodLister
-	serviceLister            corev1listers.ServiceLister
-	secretLister             corev1listers.SecretLister
-	configMapLister          corev1listers.ConfigMapLister
-	serviceAccountLister     corev1listers.ServiceAccountLister
-	roleBindingLister        rbacv1listers.RoleBindingLister
-	statefulSetLister        appsv1listers.StatefulSetLister
-	pdbLister                policyv1listers.PodDisruptionBudgetLister
-	ingressLister            networkingv1listers.IngressLister
-	scyllaDBDatacenterLister scyllav1alpha1listers.ScyllaDBDatacenterLister
-	jobLister                batchv1listers.JobLister
+	podLister                                 corev1listers.PodLister
+	serviceLister                             corev1listers.ServiceLister
+	secretLister                              corev1listers.SecretLister
+	configMapLister                           corev1listers.ConfigMapLister
+	serviceAccountLister                      corev1listers.ServiceAccountLister
+	roleBindingLister                         rbacv1listers.RoleBindingLister
+	statefulSetLister                         appsv1listers.StatefulSetLister
+	pdbLister                                 policyv1listers.PodDisruptionBudgetLister
+	ingressLister                             networkingv1listers.IngressLister
+	scyllaDBDatacenterLister                  scyllav1alpha1listers.ScyllaDBDatacenterLister
+	jobLister                                 batchv1listers.JobLister
+	scyllaDBDatacenterNodesStatusReportLister scyllav1alpha1listers.ScyllaDBDatacenterNodesStatusReportLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -101,6 +102,7 @@ func NewController(
 	ingressInformer networkingv1informers.IngressInformer,
 	jobInformer batchv1informers.JobInformer,
 	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
+	scyllaDBDatacenterNodesStatusReportInformer scyllav1alpha1informers.ScyllaDBDatacenterNodesStatusReportInformer,
 	operatorImage string,
 	cqlsIngressPort int,
 	keyGetter crypto.RSAKeyGetter,
@@ -127,6 +129,7 @@ func NewController(
 		ingressLister:            ingressInformer.Lister(),
 		scyllaDBDatacenterLister: scyllaDBDatacenterInformer.Lister(),
 		jobLister:                jobInformer.Lister(),
+		scyllaDBDatacenterNodesStatusReportLister: scyllaDBDatacenterNodesStatusReportInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			podInformer.Informer().HasSynced,
@@ -140,6 +143,7 @@ func NewController(
 			ingressInformer.Informer().HasSynced,
 			scyllaDBDatacenterInformer.Informer().HasSynced,
 			jobInformer.Informer().HasSynced,
+			scyllaDBDatacenterNodesStatusReportInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbdatacenter-controller"}),
@@ -191,7 +195,9 @@ func NewController(
 		DeleteFunc: sdcc.deleteConfigMap,
 	})
 
-	// We need pods events to know if a pod is ready after replace operation.
+	// We need pods events to know if a pod:
+	// - is ready after a replace operation
+	// - has updated a status report
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    sdcc.addPod,
 		UpdateFunc: sdcc.updatePod,
@@ -238,6 +244,12 @@ func NewController(
 		AddFunc:    sdcc.addJob,
 		UpdateFunc: sdcc.updateJob,
 		DeleteFunc: sdcc.deleteJob,
+	})
+
+	scyllaDBDatacenterNodesStatusReportInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    sdcc.addScyllaDBDatacenterNodesStatusReport,
+		UpdateFunc: sdcc.updateScyllaDBDatacenterNodesStatusReport,
+		DeleteFunc: sdcc.deleteScyllaDBDatacenterNodesStatusReport,
 	})
 
 	return sdcc, nil
@@ -642,4 +654,27 @@ func (sdcc *Controller) enqueueThroughScyllaDBManagerAgentAuthTokenOverrideSecre
 	return sdcc.handlers.EnqueueAllFunc(sdcc.handlers.EnqueueWithFilterFunc(func(sdc *scyllav1alpha1.ScyllaDBDatacenter) bool {
 		return secret.Namespace == sdc.Namespace && sdc.Annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation] == secret.Name
 	}))
+}
+
+func (sdcc *Controller) addScyllaDBDatacenterNodesStatusReport(obj interface{}) {
+	sdcc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport),
+		sdcc.handlers.EnqueueOwner,
+	)
+}
+
+func (sdcc *Controller) updateScyllaDBDatacenterNodesStatusReport(old, cur interface{}) {
+	sdcc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport),
+		cur.(*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport),
+		sdcc.handlers.EnqueueOwner,
+		sdcc.deleteScyllaDBDatacenterNodesStatusReport,
+	)
+}
+
+func (sdcc *Controller) deleteScyllaDBDatacenterNodesStatusReport(obj interface{}) {
+	sdcc.handlers.HandleDelete(
+		obj,
+		sdcc.handlers.EnqueueOwner,
+	)
 }

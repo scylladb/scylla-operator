@@ -379,3 +379,11 @@ func ManagedPrometheusClientGrafanaSecretName(smName string) (string, error) {
 func ManagedPrometheusServingCAConfigMapName(smName string) (string, error) {
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, smName, "prometheus-serving-ca")
 }
+
+func ScyllaDBDatacenterNodesStatusReportName(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, sdc.Name)
+}
+
+func ScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return sdc.Name
+}

@@ -445,6 +445,15 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 	}
 
+	scyllaDBStatusReportName, err := naming.ScyllaDBStatusReportNameForScyllaDBDatacenter(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get ScyllaDBStatusReport name for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+	}
+
+	if scyllaDBStatusReportOverrideRef, ok := sdc.Annotations[naming.ScyllaDBStatusReportOverrideRefAnnotation]; ok {
+		scyllaDBStatusReportName = scyllaDBStatusReportOverrideRef
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        naming.StatefulSetNameForRack(rack, sdc),
@@ -617,6 +626,91 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 					}(),
 					Tolerations: placement.Tolerations,
 					InitContainers: []corev1.Container{
+						{
+							Name:            "sstable-bootstrap-extractor",
+							Image:           sdc.Spec.ScyllaDB.Image,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/bash",
+								"-euEo",
+								"pipefail",
+								"-O",
+								"inherit_errexit",
+								"-c",
+								strings.TrimSpace(`
+/usr/bin/scylla sstable query \
+--system-schema \
+` + fmt.Sprintf("--scylla-data-dir=%s", path.Join(naming.DataDir, "/data")) + ` \
+--keyspace=system \
+--table=local \
+--output-format=json \
+--query="SELECT bootstrapped FROM scylla_sstable.local" \
+` + path.Join(naming.DataDir, "/data/system/local-*/*-Data.db") + ` >/mnt/shared/bootstrapped.json || touch /mnt/shared/bootstrapped.json
+`),
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      naming.PVCTemplateName,
+									MountPath: naming.DataDir,
+									ReadOnly:  true,
+								},
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  false,
+								},
+							},
+						},
+						{
+							Name:            "bootstrap-barrier",
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"bootstrap-barrier",
+								"--service-name=$(SERVICE_NAME)",
+								fmt.Sprintf("--scylladb-status-report-name=%s", scyllaDBStatusReportName),
+								fmt.Sprintf("--bootstrapped-path=/mnt/shared/bootstrapped.json"),
+								fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  true,
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
+						},
 						{
 							Name:            naming.SidecarInjectorContainerName,
 							Image:           sidecarImage,

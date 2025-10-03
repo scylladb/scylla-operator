@@ -295,3 +295,7 @@ const (
 	ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override"
 	ScyllaDBManagerTaskStatusAnnotation                            = "internal.scylla-operator.scylladb.com/scylladb-manager-task-status"
 )
+
+const (
+	ScyllaDBStatusReportOverrideRefAnnotation = "internal.scylla-operator.scylladb.com/scylladb-status-report-override-ref"
+)

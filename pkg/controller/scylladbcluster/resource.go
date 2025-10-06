@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -165,9 +166,18 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 		return nil, fmt.Errorf("can't get agent auth token secret name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
 	}
 
+	scyllaDBStatusReportName, err := naming.ScyllaDBStatusReportNameForScyllaDBCluster(sc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get ScyllaDBStatusReport name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
 	annotations := naming.ScyllaDBClusterDatacenterAnnotations(sc, dcSpec)
+
 	// Set the agent auth token override secret name annotation to share the generated auth token between ScyllaDBDatacenters.
 	annotations[naming.ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation] = agentAuthTokenSecretName
+
+	// TODO: comment
+	annotations[naming.ScyllaDBStatusReportOverrideRefAnnotation] = scyllaDBStatusReportName
 
 	return &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1503,4 +1513,135 @@ func makeLocalScyllaDBManagerAgentAuthTokenSecret(sc *scyllav1alpha1.ScyllaDBClu
 			naming.ScyllaAgentAuthTokenFileName: authTokenConfig,
 		},
 	}, nil
+}
+
+//func makeLocalScyllaDBStatusReports(
+//	sc *scyllav1alpha1.ScyllaDBCluster,
+//	remoteNamespaces map[string]*corev1.Namespace,
+//	remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter,
+//	remoteScyllaDBStatusReportLister remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBStatusReportLister],
+//) ([]metav1.Condition, []*scyllav1alpha1.ScyllaDBStatusReport, error) {
+//	var scyllaDBStatusReports []*scyllav1alpha1.ScyllaDBStatusReport
+//
+//	progressingConditions, aggregateScyllaDBStatusReport, err := makeAggregateScyllaDBStatusReport(sc, remoteNamespaces, remoteScyllaDBDatacenters, remoteScyllaDBStatusReportLister)
+//	if err != nil {
+//		return progressingConditions, nil, fmt.Errorf("can't make aggregate ScyllaDBStatusReport for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+//	}
+//	if len(progressingConditions) > 0 {
+//		return progressingConditions, nil, nil
+//	}
+//	scyllaDBStatusReports = append(scyllaDBStatusReports, aggregateScyllaDBStatusReport)
+//
+//	return nil, scyllaDBStatusReports, nil
+//}
+
+func makeRemoteScyllaDBStatusReports(
+	sc *scyllav1alpha1.ScyllaDBCluster,
+	dc *scyllav1alpha1.ScyllaDBClusterDatacenter,
+	remoteNamespace *corev1.Namespace,
+	remoteController metav1.Object,
+	remoteNamespaces map[string]*corev1.Namespace,
+	remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter,
+	remoteScyllaDBStatusReportLister remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBStatusReportLister],
+	managingClusterDomain string,
+) ([]metav1.Condition, []*scyllav1alpha1.ScyllaDBStatusReport, error) {
+	var scyllaDBStatusReports []*scyllav1alpha1.ScyllaDBStatusReport
+
+	progressingConditions, aggregateScyllaDBStatusReport, err := makeAggregateScyllaDBStatusReport(sc, dc, remoteNamespace, remoteController, remoteNamespaces, remoteScyllaDBDatacenters, remoteScyllaDBStatusReportLister, managingClusterDomain)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't make aggregate ScyllaDBStatusReport for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil, nil
+	}
+	scyllaDBStatusReports = append(scyllaDBStatusReports, aggregateScyllaDBStatusReport)
+
+	return nil, scyllaDBStatusReports, nil
+}
+
+func makeAggregateScyllaDBStatusReport(
+	sc *scyllav1alpha1.ScyllaDBCluster,
+	dc *scyllav1alpha1.ScyllaDBClusterDatacenter,
+	remoteNamespace *corev1.Namespace,
+	remoteController metav1.Object,
+	remoteNamespaces map[string]*corev1.Namespace,
+	remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter,
+	remoteScyllaDBStatusReportLister remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBStatusReportLister],
+	managingClusterDomain string,
+) ([]metav1.Condition, *scyllav1alpha1.ScyllaDBStatusReport, error) {
+	var progressingConditions []metav1.Condition
+
+	name, err := naming.ScyllaDBStatusReportNameForScyllaDBCluster(sc)
+	if err != nil {
+		return progressingConditions, nil, fmt.Errorf("can't get ScyllaDBStatusReport name for ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
+	}
+
+	var dcStatusReports []scyllav1alpha1.DatacenterStatusReport
+	for _, dcSpec := range sc.Spec.Datacenters {
+		dcNamespace, ok := remoteNamespaces[dcSpec.RemoteKubernetesClusterName]
+		if !ok {
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               makeRemoteScyllaDBStatusReportControllerDatacenterProgressingCondition(dc.Name),
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForRemoteNamespace",
+				Message:            fmt.Sprintf("Waiting for Namespace to be created in %q Cluster", dcSpec.RemoteKubernetesClusterName),
+				ObservedGeneration: sc.Generation,
+			})
+
+			continue
+		}
+
+		sdcName := naming.ScyllaDBDatacenterName(sc, &dcSpec)
+		sdc, ok := remoteScyllaDBDatacenters[dcSpec.RemoteKubernetesClusterName][sdcName]
+		if !ok {
+			// ScyllaDBDatacenter might not have been created yet.
+			// Build the status report without it.
+			// TODO: should we add an empty entry in that case?
+
+			continue
+		}
+
+		dcScyllaDBStatusReportName, err := naming.ScyllaDBStatusReportNameForScyllaDBDatacenter(sdc)
+		if err != nil {
+			// TODO: aggregate error
+			return progressingConditions, nil, fmt.Errorf("can't get ScyllaDBStatusReport name for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+		}
+
+		dcScyllaDBStatusReport, err := remoteScyllaDBStatusReportLister.Cluster(dcSpec.RemoteKubernetesClusterName).ScyllaDBStatusReports(dcNamespace.Name).Get(dcScyllaDBStatusReportName)
+		if err != nil {
+			// TODO: aggregate error
+			if !apierrors.IsNotFound(err) {
+				return progressingConditions, nil, fmt.Errorf("can't get ScyllaDBStatusReport %q for ScyllaDBDatacenter %q: %w", naming.ManualRef(dcNamespace.Name, dcScyllaDBStatusReportName), naming.ObjRef(sdc), err)
+			}
+
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               makeRemoteScyllaDBStatusReportControllerDatacenterProgressingCondition(dc.Name),
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForRemoteScyllaDBStatusReport",
+				Message:            fmt.Sprintf("Waiting for ScyllaDBStatusReport %q to be created in %q Cluster", naming.ManualRef(dcNamespace.Name, dcScyllaDBStatusReportName), dcSpec.RemoteKubernetesClusterName),
+				ObservedGeneration: sc.Generation,
+			})
+
+			continue
+		}
+
+		for _, dcStatusReport := range dcScyllaDBStatusReport.Datacenters {
+			dcStatusReports = append(dcStatusReports, *dcStatusReport.DeepCopy())
+		}
+	}
+
+	ssr := &scyllav1alpha1.ScyllaDBStatusReport{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   remoteNamespace.Name,
+			Labels:      naming.ScyllaDBClusterDatacenterRemoteScyllaDBStatusReportLabels(sc, dc, managingClusterDomain),
+			Annotations: naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(remoteController, remoteControllerGVK),
+			},
+		},
+		Datacenters: dcStatusReports,
+	}
+
+	return nil, ssr, nil
 }

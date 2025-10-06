@@ -61,15 +61,16 @@ type Controller struct {
 	endpointSliceLister        discoveryv1listers.EndpointSliceLister
 	endpointsLister            corev1listers.EndpointsLister
 
-	remoteRemoteOwnerLister        remotelister.GenericClusterLister[scyllav1alpha1listers.RemoteOwnerLister]
-	remoteScyllaDBDatacenterLister remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBDatacenterLister]
-	remoteNamespaceLister          remotelister.GenericClusterLister[corev1listers.NamespaceLister]
-	remoteServiceLister            remotelister.GenericClusterLister[corev1listers.ServiceLister]
-	remoteEndpointSliceLister      remotelister.GenericClusterLister[discoveryv1listers.EndpointSliceLister]
-	remoteEndpointsLister          remotelister.GenericClusterLister[corev1listers.EndpointsLister]
-	remotePodLister                remotelister.GenericClusterLister[corev1listers.PodLister]
-	remoteConfigMapLister          remotelister.GenericClusterLister[corev1listers.ConfigMapLister]
-	remoteSecretLister             remotelister.GenericClusterLister[corev1listers.SecretLister]
+	remoteRemoteOwnerLister          remotelister.GenericClusterLister[scyllav1alpha1listers.RemoteOwnerLister]
+	remoteScyllaDBDatacenterLister   remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBDatacenterLister]
+	remoteNamespaceLister            remotelister.GenericClusterLister[corev1listers.NamespaceLister]
+	remoteServiceLister              remotelister.GenericClusterLister[corev1listers.ServiceLister]
+	remoteEndpointSliceLister        remotelister.GenericClusterLister[discoveryv1listers.EndpointSliceLister]
+	remoteEndpointsLister            remotelister.GenericClusterLister[corev1listers.EndpointsLister]
+	remotePodLister                  remotelister.GenericClusterLister[corev1listers.PodLister]
+	remoteConfigMapLister            remotelister.GenericClusterLister[corev1listers.ConfigMapLister]
+	remoteSecretLister               remotelister.GenericClusterLister[corev1listers.SecretLister]
+	remoteScyllaDBStatusReportLister remotelister.GenericClusterLister[scyllav1alpha1listers.ScyllaDBStatusReportLister]
 
 	cachesToSync []cache.InformerSynced
 
@@ -100,6 +101,7 @@ func NewController(
 	remotePodInformer remoteinformers.GenericClusterInformer,
 	remoteConfigMapInformer remoteinformers.GenericClusterInformer,
 	remoteSecretInformer remoteinformers.GenericClusterInformer,
+	remoteScyllaDBStatusReportInformer remoteinformers.GenericClusterInformer,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -119,15 +121,16 @@ func NewController(
 		endpointSliceLister:        endpointSliceInformer.Lister(),
 		endpointsLister:            endpointsInformer.Lister(),
 
-		remoteRemoteOwnerLister:        remotelister.NewClusterLister(scyllav1alpha1listers.NewRemoteOwnerLister, remoteRemoteOwnerInformer.Indexer().Cluster),
-		remoteScyllaDBDatacenterLister: remotelister.NewClusterLister(scyllav1alpha1listers.NewScyllaDBDatacenterLister, remoteScyllaDBDatacenterInformer.Indexer().Cluster),
-		remoteNamespaceLister:          remotelister.NewClusterLister(corev1listers.NewNamespaceLister, remoteNamespaceInformer.Indexer().Cluster),
-		remoteServiceLister:            remotelister.NewClusterLister(corev1listers.NewServiceLister, remoteServiceInformer.Indexer().Cluster),
-		remoteEndpointSliceLister:      remotelister.NewClusterLister(discoveryv1listers.NewEndpointSliceLister, remoteEndpointSliceInformer.Indexer().Cluster),
-		remoteEndpointsLister:          remotelister.NewClusterLister(corev1listers.NewEndpointsLister, remoteEndpointsInformer.Indexer().Cluster),
-		remotePodLister:                remotelister.NewClusterLister(corev1listers.NewPodLister, remotePodInformer.Indexer().Cluster),
-		remoteConfigMapLister:          remotelister.NewClusterLister(corev1listers.NewConfigMapLister, remoteConfigMapInformer.Indexer().Cluster),
-		remoteSecretLister:             remotelister.NewClusterLister(corev1listers.NewSecretLister, remoteSecretInformer.Indexer().Cluster),
+		remoteRemoteOwnerLister:          remotelister.NewClusterLister(scyllav1alpha1listers.NewRemoteOwnerLister, remoteRemoteOwnerInformer.Indexer().Cluster),
+		remoteScyllaDBDatacenterLister:   remotelister.NewClusterLister(scyllav1alpha1listers.NewScyllaDBDatacenterLister, remoteScyllaDBDatacenterInformer.Indexer().Cluster),
+		remoteNamespaceLister:            remotelister.NewClusterLister(corev1listers.NewNamespaceLister, remoteNamespaceInformer.Indexer().Cluster),
+		remoteServiceLister:              remotelister.NewClusterLister(corev1listers.NewServiceLister, remoteServiceInformer.Indexer().Cluster),
+		remoteEndpointSliceLister:        remotelister.NewClusterLister(discoveryv1listers.NewEndpointSliceLister, remoteEndpointSliceInformer.Indexer().Cluster),
+		remoteEndpointsLister:            remotelister.NewClusterLister(corev1listers.NewEndpointsLister, remoteEndpointsInformer.Indexer().Cluster),
+		remotePodLister:                  remotelister.NewClusterLister(corev1listers.NewPodLister, remotePodInformer.Indexer().Cluster),
+		remoteConfigMapLister:            remotelister.NewClusterLister(corev1listers.NewConfigMapLister, remoteConfigMapInformer.Indexer().Cluster),
+		remoteSecretLister:               remotelister.NewClusterLister(corev1listers.NewSecretLister, remoteSecretInformer.Indexer().Cluster),
+		remoteScyllaDBStatusReportLister: remotelister.NewClusterLister(scyllav1alpha1listers.NewScyllaDBStatusReportLister, remoteScyllaDBStatusReportInformer.Indexer().Cluster),
 
 		cachesToSync: []cache.InformerSynced{
 			scyllaDBClusterInformer.Informer().HasSynced,
@@ -146,6 +149,7 @@ func NewController(
 			remotePodInformer.Informer().HasSynced,
 			remoteConfigMapInformer.Informer().HasSynced,
 			remoteSecretInformer.Informer().HasSynced,
+			remoteScyllaDBStatusReportInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbcluster-controller"}),
@@ -296,6 +300,14 @@ func NewController(
 			AddFunc:    scc.addRemoteSecret,
 			UpdateFunc: scc.updateRemoteSecret,
 			DeleteFunc: scc.deleteRemoteSecret,
+		},
+	)
+
+	remoteScyllaDBStatusReportInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    scc.addRemoteScyllaDBStatusReport,
+			UpdateFunc: scc.updateRemoteScyllaDBStatusReport,
+			DeleteFunc: scc.deleteRemoteScyllaDBStatusReport,
 		},
 	)
 
@@ -741,5 +753,28 @@ func (scc *Controller) deleteSecret(obj interface{}) {
 	scc.handlers.HandleDelete(
 		obj,
 		scc.handlers.EnqueueOwner,
+	)
+}
+
+func (scc *Controller) addRemoteScyllaDBStatusReport(obj interface{}) {
+	scc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaDBStatusReport),
+		scc.enqueueThroughParentLabel,
+	)
+}
+
+func (scc *Controller) updateRemoteScyllaDBStatusReport(old, cur interface{}) {
+	scc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaDBStatusReport),
+		cur.(*scyllav1alpha1.ScyllaDBStatusReport),
+		scc.enqueueThroughParentLabel,
+		scc.deleteRemoteScyllaDBStatusReport,
+	)
+}
+
+func (scc *Controller) deleteRemoteScyllaDBStatusReport(obj interface{}) {
+	scc.handlers.HandleDelete(
+		obj,
+		scc.enqueueThroughParentLabel,
 	)
 }

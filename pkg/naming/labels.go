@@ -214,6 +214,32 @@ func ScyllaDBClusterEndpointsSelector(sc *scyllav1alpha1.ScyllaDBCluster) labels
 	return labels.SelectorFromSet(ScyllaDBClusterEndpointsSelectorLabels(sc))
 }
 
+func ScyllaDBClusterDatacenterRemoteScyllaDBStatusReportLabels(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter, managingClusterDomain string) map[string]string {
+	dcLabels := make(map[string]string)
+	if sc.Spec.Metadata != nil {
+		maps.Copy(dcLabels, sc.Spec.Metadata.Labels)
+	}
+
+	if dc.Metadata != nil {
+		maps.Copy(dcLabels, dc.Metadata.Labels)
+	}
+	maps.Copy(dcLabels, RemoteManagedResourcesLabels(managingClusterDomain))
+	maps.Copy(dcLabels, ScyllaDBClusterRemoteScyllaDBStatusReportSelectorLabels(sc))
+	dcLabels[ParentClusterDatacenterNameLabel] = dc.Name
+	return dcLabels
+}
+
+func ScyllaDBClusterRemoteScyllaDBStatusReportSelectorLabels(sc *scyllav1alpha1.ScyllaDBCluster) map[string]string {
+	scSelectorLabels := ScyllaDBClusterRemoteSelectorLabels(sc)
+	scSelectorLabels[RemoteClusterScyllaDBStatusReportLabel] = sc.Name
+
+	return scSelectorLabels
+}
+
+func ScyllaDBClusterRemoteScyllaDBStatusReportSelector(sc *scyllav1alpha1.ScyllaDBCluster) labels.Selector {
+	return labels.SelectorFromSet(ScyllaDBClusterRemoteScyllaDBStatusReportSelectorLabels(sc))
+}
+
 func DatacenterPodsSelector(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) labels.Selector {
 	return labels.SelectorFromSet(
 		ClusterLabels(

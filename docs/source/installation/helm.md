@@ -12,8 +12,11 @@ We will use Minikube K8s cluster, but this could be any K8s cluster supported by
 
 ## Prerequisites
 
-- Kubernetes 1.16+
+- Kubernetes (see the supported version range in the [support matrix](../support/releases.md#support-matrix))
 - Helm 3+
+
+:::{include} ../.internal/namespaces.md
+:::
 
 ## TL;DR
 

@@ -12,6 +12,8 @@ import (
 	"k8s.io/utils/exec"
 )
 
+// MakeFS creates a filesystem of type fsType on the given device with the specified block size.
+// It returns a boolean indicating whether there were any changes made (i.e., if the filesystem was created).
 func MakeFS(ctx context.Context, executor exec.Interface, device string, blockSize int, fsType string) (bool, error) {
 	existingFs, err := blkutils.GetFilesystemType(ctx, executor, device)
 	if err != nil {
@@ -19,7 +21,7 @@ func MakeFS(ctx context.Context, executor exec.Interface, device string, blockSi
 	}
 
 	if existingFs == fsType {
-		return true, nil
+		return false, nil
 	}
 	if len(existingFs) > 0 {
 		return false, fmt.Errorf("can't format device %q with filesystem %q: already formatted with conflicting filesystem %q", device, fsType, existingFs)

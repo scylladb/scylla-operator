@@ -20,7 +20,7 @@ func TestMakeFS(t *testing.T) {
 		blockSize        int
 		fsType           string
 		expectedCommands []exectest.Command
-		expectedFinished bool
+		expectedChanged  bool
 		expectedErr      error
 	}{
 		{
@@ -37,8 +37,8 @@ func TestMakeFS(t *testing.T) {
 					Err:    nil,
 				},
 			},
-			expectedFinished: true,
-			expectedErr:      nil,
+			expectedChanged: false,
+			expectedErr:     nil,
 		},
 		{
 			name:      "fail if there's already a different filesystem",
@@ -54,8 +54,8 @@ func TestMakeFS(t *testing.T) {
 					Err:    nil,
 				},
 			},
-			expectedFinished: false,
-			expectedErr:      fmt.Errorf(`can't format device "/dev/md0" with filesystem "xfs": already formatted with conflicting filesystem "ext4"`),
+			expectedChanged: false,
+			expectedErr:     fmt.Errorf(`can't format device "/dev/md0" with filesystem "xfs": already formatted with conflicting filesystem "ext4"`),
 		},
 		{
 			name:      "format the device if existing disk filesystem is empty",
@@ -78,8 +78,8 @@ func TestMakeFS(t *testing.T) {
 					Err:    nil,
 				},
 			},
-			expectedFinished: true,
-			expectedErr:      nil,
+			expectedChanged: true,
+			expectedErr:     nil,
 		},
 	}
 
@@ -96,8 +96,8 @@ func TestMakeFS(t *testing.T) {
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected %v error, got %v", tc.expectedErr, err)
 			}
-			if !reflect.DeepEqual(finished, tc.expectedFinished) {
-				t.Fatalf("expected finished %v, got %v", tc.expectedFinished, finished)
+			if !reflect.DeepEqual(finished, tc.expectedChanged) {
+				t.Fatalf("expected finished %v, got %v", tc.expectedChanged, finished)
 			}
 			if executor.CommandCalls != len(tc.expectedCommands) {
 				t.Fatalf("expected %d command calls, got %d", len(tc.expectedCommands), executor.CommandCalls)

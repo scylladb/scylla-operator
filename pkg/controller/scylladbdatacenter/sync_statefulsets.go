@@ -430,7 +430,7 @@ func (sdcc *Controller) createMissingStatefulSets(
 					continue
 				}
 
-				updatedRackStatus := *sdcc.calculateRackStatus(sdc, sts)
+				updatedRackStatus := *sdcc.calculateRackStatus(sdc, rackName, sts)
 				_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
 					return rackStatus.Name == rackName
 				})
@@ -782,7 +782,7 @@ func (sdcc *Controller) syncStatefulSets(
 						continue
 					}
 
-					status.Racks[idx] = *sdcc.calculateRackStatus(sdc, updatedSts)
+					status.Racks[idx] = *sdcc.calculateRackStatus(sdc, rackName, updatedSts)
 				}
 			}
 			if anyStsChanged {
@@ -1050,7 +1050,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc))
 			}
 
-			status.Racks[idx] = *sdcc.calculateRackStatus(sdc, updatedSts)
+			status.Racks[idx] = *sdcc.calculateRackStatus(sdc, rackName, updatedSts)
 		}
 
 		// Wait for the StatefulSet to roll out.

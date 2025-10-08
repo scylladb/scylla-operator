@@ -53,6 +53,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ScyllaDBManagerClusterRegistrationList{},
 		&ScyllaDBManagerTask{},
 		&ScyllaDBManagerTaskList{},
+		&ScyllaDBStatusReport{},
 	)
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 	return nil

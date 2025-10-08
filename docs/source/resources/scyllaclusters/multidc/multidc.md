@@ -608,4 +608,4 @@ kubectl --context="${CONTEXT_DC2}" -n=scylla patch scyllacluster/scylla-cluster 
 ## ScyllaDBMonitoring
 
 To monitor your cluster, deploy ScyllaDBMonitoring in every datacenter independently.
-To deploy ScyllaDB Monitoring, follow the steps described in [Deploy managed monitoring](../../../resources/scylladbmonitorings.md#deploy-managed-monitoring) in {{productName}} documentation.
+To deploy ScyllaDB Monitoring, follow the steps described in [ScyllaDB Monitoring setup](../../../management/monitoring/setup.md) in {{productName}} documentation.

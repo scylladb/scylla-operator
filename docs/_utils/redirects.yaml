@@ -3,6 +3,7 @@
 #
 /stable/nodeoperations/restore.html: /stable/resources/scyllaclusters/nodeoperations/restore.html
 /stable/manager.html: /stable/architecture/manager.html
+/stable/resources/scylladbmonitorings.html: /stable/management/monitoring/overview.html
 
 # removing redirection html script files
 # test: /

@@ -314,7 +314,7 @@ Two running nodes, exactly what we were asking for.
 
 ## Monitoring
 
-To spin up a Prometheus monitoring refer to [monitoring guide](../resources/scylladbmonitorings.md).
+To spin up a Prometheus monitoring refer to [ScyllaDB Monitoring setup guide](../management/monitoring/setup.md).
 
 Helm charts can create ServiceMonitors needed to observe Scylla Manager and Scylla. 
 Both of these Helm Charts allow specifying whether you want to create a ServiceMonitor:

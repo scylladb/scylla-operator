@@ -221,11 +221,16 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	// Listen on all interfaces so users or a service mesh can use localhost.
-	listenAddress := "0.0.0.0"
+	// Use the same IP family for listen-address as broadcast-address to ensure consistency
+	// Prevent dual-stack conflicts where both IPv4 and IPv6 are passed to ScyllaDB
 	prometheusAddress := "0.0.0.0"
+
+	// If broadcast address is IPv6, use IPv6 wildcard addresses
+	if strings.Contains(m.BroadcastAddress, ":") {
+		prometheusAddress = "::"
+	}
+
 	args := map[string]*string{
-		"listen-address":        &listenAddress,
 		"seeds":                 pointer.Ptr(strings.Join(seeds, ",")),
 		"overprovisioned":       &overprovisioned,
 		"smp":                   pointer.Ptr(strconv.Itoa(s.cpuCount)),
@@ -243,8 +248,73 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		}
 	}
 
+	// Process user arguments and validate IP family consistency
 	if len(m.AdditionalScyllaDBArguments) > 0 {
-		args = mergeArguments(parseScyllaArguments(strings.Join(m.AdditionalScyllaDBArguments, " ")), args)
+		userArgs := parseScyllaArguments(strings.Join(m.AdditionalScyllaDBArguments, " "))
+
+		// Determine expected IP family based on broadcast-address
+		isBroadcastIPv6 := strings.Contains(m.BroadcastAddress, ":")
+
+		// Validate rpc-address IP family consistency if user provided it
+		if userRpcAddress, hasUserRpcAddress := userArgs["rpc-address"]; hasUserRpcAddress && userRpcAddress != nil {
+			isUserRpcIPv6 := strings.Contains(*userRpcAddress, ":")
+
+			if isBroadcastIPv6 != isUserRpcIPv6 {
+				// IP families don't match, reject user's value and log warning
+				klog.Warningf("User-provided rpc-address '%s' IP family doesn't match broadcast-address '%s' IP family. Removing user's rpc-address for consistency.",
+					*userRpcAddress, m.BroadcastAddress)
+				// Remove user's rpc-address so we'll use operator default
+				delete(userArgs, "rpc-address")
+			} else {
+				klog.Infof("Using user-provided rpc-address: %s", *userRpcAddress)
+			}
+		}
+
+		// Validate listen-address IP family consistency if user provided it
+		if userListenAddress, hasUserListenAddress := userArgs["listen-address"]; hasUserListenAddress && userListenAddress != nil {
+			isUserListenIPv6 := strings.Contains(*userListenAddress, ":")
+
+			if isBroadcastIPv6 != isUserListenIPv6 {
+				// IP families don't match, reject user's value and log warning
+				klog.Warningf("User-provided listen-address '%s' IP family doesn't match broadcast-address '%s' IP family. Removing user's listen-address for consistency.",
+					*userListenAddress, m.BroadcastAddress)
+				// Remove user's listen-address so we'll use operator default
+				delete(userArgs, "listen-address")
+			} else {
+				klog.Infof("Using user-provided listen-address: %s", *userListenAddress)
+			}
+		}
+
+		// Merge user arguments with operator-managed arguments
+		args = mergeArguments(args, userArgs)
+	}
+
+	// Set default addresses only if not provided by user (or were rejected due to IP family mismatch)
+	// Make sure that all addresses use the same IP family as broadcast-address for consistency
+	isBroadcastIPv6 := strings.Contains(m.BroadcastAddress, ":")
+
+	if _, hasRpcAddress := args["rpc-address"]; !hasRpcAddress {
+		defaultRpcAddress := "0.0.0.0"
+		if isBroadcastIPv6 {
+			defaultRpcAddress = "::"
+		}
+		args["rpc-address"] = &defaultRpcAddress
+		klog.Infof("Using default rpc-address: %s (IP family matches broadcast-address)", defaultRpcAddress)
+	}
+
+	if _, hasListenAddress := args["listen-address"]; !hasListenAddress {
+		defaultListenAddress := "0.0.0.0"
+		if isBroadcastIPv6 {
+			defaultListenAddress = "::"
+		}
+		args["listen-address"] = &defaultListenAddress
+		klog.Infof("Using default listen-address: %s (IP family matches broadcast-address)", defaultListenAddress)
+	}
+
+	// Enable IPv6 DNS lookups if using IPv6 broadcast address to resolve IPv6 DNS resolution issues
+	if isBroadcastIPv6 {
+		args["enable-ipv6-dns-lookup"] = pointer.Ptr("1")
+		klog.Infof("Enabling IPv6 DNS lookup due to IPv6 broadcast address: %s", m.BroadcastAddress)
 	}
 
 	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil {

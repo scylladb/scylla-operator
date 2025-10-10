@@ -5,4 +5,5 @@
 
 sysctls
 upgrading/index
+monitoring/index
 :::

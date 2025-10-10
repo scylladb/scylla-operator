@@ -207,6 +207,10 @@ linkcheck_ignore = [
     'https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources',
     'https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds',
 
-    # Ignore an anchor that works as expected in the browser (probably a matter of the JS page rendering).
+    # Ignore anchor that works as expected in the browser (probably a matter of the JS page rendering).
     'https://www.scylladb.com/product/support/#enterprise-support',
+]
+
+linkcheck_anchors_ignore_for_url = [
+   'https://github.com/prometheus-operator/prometheus-operator/blob/e4c727291acc543dab531bc4aaf16637067c1b86/pkg/apis/monitoring/v1/.*',
 ]

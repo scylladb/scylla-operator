@@ -4,6 +4,7 @@ package framework
 
 import (
 	o "github.com/onsi/gomega"
+	promclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	scyllaclientset "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -29,6 +30,7 @@ type AdminClientInterface interface {
 	KubeAdminClient() *kubernetes.Clientset
 	DynamicAdminClient() dynamic.Interface
 	ScyllaAdminClient() *scyllaclientset.Clientset
+	PrometheusOperatorAdminClient() *promclient.Clientset
 }
 
 type FullClientInterface interface {
@@ -105,6 +107,12 @@ func (ac *AdminClient) DiscoveryClient() *discovery.DiscoveryClient {
 	client, err := discovery.NewDiscoveryClientForConfig(ac.AdminClientConfig())
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return client
+}
+
+func (ac *AdminClient) PrometheusOperatorAdminClient() *promclient.Clientset {
+	cs, err := promclient.NewForConfig(ac.AdminClientConfig())
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return cs
 }
 
 type FullClient struct {

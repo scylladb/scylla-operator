@@ -363,3 +363,11 @@ func RemoteNamespaceName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.
 
 	return fmt.Sprintf("%s-%s", sc.Namespace, suffix), nil
 }
+
+func ScyllaDBStatusReportNameForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, scyllav1alpha1.ScyllaDBDatacenterGVK.Kind, sdc.Name)
+}
+
+func ScyllaDBStatusReportNameForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, scyllav1alpha1.ScyllaDBClusterGVK.Kind, sc.Name)
+}

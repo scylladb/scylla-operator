@@ -208,3 +208,7 @@ func WaitForScyllaDBManagerClusterRegistrationState(ctx context.Context, client 
 func WaitForScyllaDBManagerTaskState(ctx context.Context, client scyllav1alpha1client.ScyllaDBManagerTaskInterface, name string, options WaitForStateOptions, condition func(*scyllav1alpha1.ScyllaDBManagerTask) (bool, error), additionalConditions ...func(task *scyllav1alpha1.ScyllaDBManagerTask) (bool, error)) (*scyllav1alpha1.ScyllaDBManagerTask, error) {
 	return WaitForObjectState[*scyllav1alpha1.ScyllaDBManagerTask, *scyllav1alpha1.ScyllaDBManagerTaskList](ctx, client, name, options, condition, additionalConditions...)
 }
+
+func WaitForScyllaDBStatusReportState(ctx context.Context, client scyllav1alpha1client.ScyllaDBStatusReportInterface, name string, options WaitForStateOptions, condition func(*scyllav1alpha1.ScyllaDBStatusReport) (bool, error), additionalConditions ...func(report *scyllav1alpha1.ScyllaDBStatusReport) (bool, error)) (*scyllav1alpha1.ScyllaDBStatusReport, error) {
+	return WaitForObjectState[*scyllav1alpha1.ScyllaDBStatusReport, *scyllav1alpha1.ScyllaDBStatusReportList](ctx, client, name, options, condition, additionalConditions...)
+}

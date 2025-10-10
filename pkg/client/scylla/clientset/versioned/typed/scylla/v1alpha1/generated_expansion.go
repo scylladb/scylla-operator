@@ -18,4 +18,6 @@ type ScyllaDBManagerTaskExpansion interface{}
 
 type ScyllaDBMonitoringExpansion interface{}
 
+type ScyllaDBStatusReportExpansion interface{}
+
 type ScyllaOperatorConfigExpansion interface{}

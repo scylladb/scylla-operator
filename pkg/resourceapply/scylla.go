@@ -138,3 +138,35 @@ func ApplyScyllaDBManagerTask(
 		options,
 	)
 }
+
+func ApplyScyllaDBStatusReportWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*scyllav1alpha1.ScyllaDBStatusReport],
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.ScyllaDBStatusReport,
+	options ApplyOptions,
+) (*scyllav1alpha1.ScyllaDBStatusReport, bool, error) {
+	return ApplyGeneric[*scyllav1alpha1.ScyllaDBStatusReport](ctx, control, recorder, required, options)
+}
+
+func ApplyScyllaDBStatusReport(
+	ctx context.Context,
+	client scyllav1alpha1client.ScyllaDBStatusReportsGetter,
+	lister scyllav1alpha1listers.ScyllaDBStatusReportLister,
+	recorder record.EventRecorder,
+	required *scyllav1alpha1.ScyllaDBStatusReport,
+	options ApplyOptions,
+) (*scyllav1alpha1.ScyllaDBStatusReport, bool, error) {
+	return ApplyScyllaDBStatusReportWithControl(
+		ctx,
+		ApplyControlFuncs[*scyllav1alpha1.ScyllaDBStatusReport]{
+			GetCachedFunc: lister.ScyllaDBStatusReports(required.Namespace).Get,
+			CreateFunc:    client.ScyllaDBStatusReports(required.Namespace).Create,
+			UpdateFunc:    client.ScyllaDBStatusReports(required.Namespace).Update,
+			DeleteFunc:    client.ScyllaDBStatusReports(required.Namespace).Delete,
+		},
+		recorder,
+		required,
+		options,
+	)
+}

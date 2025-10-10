@@ -24,6 +24,8 @@ type Interface interface {
 	ScyllaDBManagerTasks() ScyllaDBManagerTaskInformer
 	// ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
 	ScyllaDBMonitorings() ScyllaDBMonitoringInformer
+	// ScyllaDBStatusReports returns a ScyllaDBStatusReportInformer.
+	ScyllaDBStatusReports() ScyllaDBStatusReportInformer
 	// ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.
 	ScyllaOperatorConfigs() ScyllaOperatorConfigInformer
 }
@@ -77,6 +79,11 @@ func (v *version) ScyllaDBManagerTasks() ScyllaDBManagerTaskInformer {
 // ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
 func (v *version) ScyllaDBMonitorings() ScyllaDBMonitoringInformer {
 	return &scyllaDBMonitoringInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ScyllaDBStatusReports returns a ScyllaDBStatusReportInformer.
+func (v *version) ScyllaDBStatusReports() ScyllaDBStatusReportInformer {
+	return &scyllaDBStatusReportInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.

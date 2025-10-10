@@ -58,6 +58,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().ScyllaDBManagerTasks().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("scylladbmonitorings"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().ScyllaDBMonitorings().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("scylladbstatusreports"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().ScyllaDBStatusReports().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("scyllaoperatorconfigs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Scylla().V1alpha1().ScyllaOperatorConfigs().Informer()}, nil
 

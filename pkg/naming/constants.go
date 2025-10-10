@@ -46,6 +46,9 @@ const (
 
 	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.
 	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
+
+	// NodeStatusReportAnnotation reflects the last status report from the node.
+	NodeStatusReportAnnotation = "internal.scylla.scylladb.com/scylladb-node-status-report"
 )
 
 // Annotations used for feature backward compatibility between v1.ScyllaCluster and v1alpha1.ScyllaDBDatacenter
@@ -238,6 +241,10 @@ const (
 )
 
 const (
+	RemoteClusterScyllaDBStatusReportLabel = "scylla-operator.scylladb.com/remote-cluster-scylladb-status-report"
+)
+
+const (
 	KubeConfigSecretKey string = "kubeconfig"
 )
 
@@ -291,4 +298,8 @@ const (
 	ScyllaDBManagerTaskRepairIntensityOverrideAnnotation           = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override"
 	ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override"
 	ScyllaDBManagerTaskStatusAnnotation                            = "internal.scylla-operator.scylladb.com/scylladb-manager-task-status"
+)
+
+const (
+	ScyllaDBStatusReportOverrideRefAnnotation = "internal.scylla-operator.scylladb.com/scylladb-status-report-override-ref"
 )

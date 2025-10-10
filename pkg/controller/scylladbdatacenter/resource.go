@@ -27,8 +27,10 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -443,6 +445,15 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 	}
 
+	scyllaDBStatusReportName, err := naming.ScyllaDBStatusReportNameForScyllaDBDatacenter(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get ScyllaDBStatusReport name for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+	}
+
+	if scyllaDBStatusReportOverrideRef, ok := sdc.Annotations[naming.ScyllaDBStatusReportOverrideRefAnnotation]; ok {
+		scyllaDBStatusReportName = scyllaDBStatusReportOverrideRef
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        naming.StatefulSetNameForRack(rack, sdc),
@@ -616,6 +627,91 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 					Tolerations: placement.Tolerations,
 					InitContainers: []corev1.Container{
 						{
+							Name:            "sstable-bootstrap-extractor",
+							Image:           sdc.Spec.ScyllaDB.Image,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/bash",
+								"-euEo",
+								"pipefail",
+								"-O",
+								"inherit_errexit",
+								"-c",
+								strings.TrimSpace(`
+/usr/bin/scylla sstable query \
+--system-schema \
+` + fmt.Sprintf("--scylla-data-dir=%s", path.Join(naming.DataDir, "/data")) + ` \
+--keyspace=system \
+--table=local \
+--output-format=json \
+--query="SELECT bootstrapped FROM scylla_sstable.local" \
+` + path.Join(naming.DataDir, "/data/system/local-*/*-Data.db") + ` >/mnt/shared/bootstrapped.json || touch /mnt/shared/bootstrapped.json
+`),
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+									corev1.ResourceMemory: resource.MustParse("100Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      naming.PVCTemplateName,
+									MountPath: naming.DataDir,
+									ReadOnly:  true,
+								},
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  false,
+								},
+							},
+						},
+						{
+							Name:            "bootstrap-barrier",
+							Image:           sidecarImage,
+							ImagePullPolicy: corev1.PullIfNotPresent,
+							Command: []string{
+								"/usr/bin/scylla-operator",
+								"bootstrap-barrier",
+								"--service-name=$(SERVICE_NAME)",
+								fmt.Sprintf("--scylladb-status-report-name=%s", scyllaDBStatusReportName),
+								fmt.Sprintf("--bootstrapped-path=/mnt/shared/bootstrapped.json"),
+								fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
+							},
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("10m"),
+									corev1.ResourceMemory: resource.MustParse("40Mi"),
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "shared",
+									MountPath: naming.SharedDirName,
+									ReadOnly:  true,
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "SERVICE_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
+						},
+						{
 							Name:            naming.SidecarInjectorContainerName,
 							Image:           sidecarImage,
 							ImagePullPolicy: corev1.PullIfNotPresent,
@@ -704,6 +800,7 @@ exec /mnt/shared/scylla-operator sidecar \
 										return string(scyllav1alpha1.ScyllaDBDatacenterDefaultClientsBroadcastAddressType)
 									}() + ` \
 --service-name=$(SERVICE_NAME) \
+--status-report-period-seconds=5 \
 --cpu-count=$(CPU_COUNT) \
 ` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + ` \
 ` +
@@ -2109,4 +2206,165 @@ func cloneMapExcludingKeysOrEmpty[M ~map[K]V, S ~[]K, K comparable, V any](m M, 
 		delete(r, k)
 	}
 	return r
+}
+
+func makeScyllaDBStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.ScyllaDBStatusReport, error) {
+	var err error
+
+	var errs []error
+	var rackStatusReports []scyllav1alpha1.RackStatusReport
+	for _, rack := range sdc.Spec.Racks {
+		rackStatusReport, err := makeRackStatusReport(sdc, &rack, services, podLister)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't make rack status report for rack %q of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err))
+			continue
+		}
+
+		rackStatusReports = append(rackStatusReports, *rackStatusReport)
+	}
+	err = apimachineryutilerrors.NewAggregate(errs)
+	if err != nil {
+		return nil, err
+	}
+
+	name, err := naming.ScyllaDBStatusReportNameForScyllaDBDatacenter(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get ScyllaDBStatusReport name for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+	}
+
+	labels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)
+	maps.Copy(labels, naming.ClusterLabels(sdc))
+
+	annotations := cloneMapExcludingKeysOrEmpty(sdc.Annotations, nonPropagatedAnnotationKeys)
+
+	ssr := &scyllav1alpha1.ScyllaDBStatusReport{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   sdc.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
+			},
+		},
+		Datacenters: []scyllav1alpha1.DatacenterStatusReport{
+			{
+				Name:  naming.GetScyllaDBDatacenterGossipDatacenterName(sdc),
+				Racks: rackStatusReports,
+			},
+		},
+	}
+	return ssr, nil
+}
+
+func makeRackStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.RackStatusReport, error) {
+	var errs []error
+
+	desiredRackNodeCount, err := controllerhelpers.GetRackNodeCount(sdc, rackSpec.Name)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rackSpec.Name, naming.ObjRef(sdc), err)
+	}
+
+	actualRackNodeCount := int32(0)
+	rackStatus, _, found := oslices.Find(sdc.Status.Racks, func(status scyllav1alpha1.RackStatus) bool {
+		return status.Name == rackSpec.Name
+	})
+	if found && rackStatus.CurrentNodes != nil {
+		actualRackNodeCount = *rackStatus.CurrentNodes
+	}
+
+	var nodeStatusReports []scyllav1alpha1.NodeStatusReport
+	for ord := int32(0); ord < *desiredRackNodeCount; ord++ {
+		// TODO: make this nicer
+		hostID := getNodeHostIDOrNil(sdc, rackSpec, int(ord), services)
+		if hostID == nil && ord >= actualRackNodeCount {
+			// The node is not expected to be a part of the cluster yet, skip it.
+			continue
+		}
+
+		nodeStatusReport, err := makeNodeStatusReport(sdc, rackSpec, int(ord), services, podLister)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't make node status report for node %d of rack %q of ScyllaDBDatacenter %q: %w", ord, rackSpec.Name, naming.ObjRef(sdc), err))
+			continue
+		}
+
+		nodeStatusReports = append(nodeStatusReports, *nodeStatusReport)
+	}
+	err = apimachineryutilerrors.NewAggregate(errs)
+	if err != nil {
+		return nil, err
+	}
+
+	rackStatusReport := &scyllav1alpha1.RackStatusReport{
+		Name:  rackSpec.Name,
+		Nodes: nodeStatusReports,
+	}
+	return rackStatusReport, nil
+}
+
+// TODO: deduplicate it
+func getNodeHostIDOrNil(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, ordinal int, services map[string]*corev1.Service) *string {
+	svcName := naming.MemberServiceName(*rackSpec, sdc, ordinal)
+	svc, ok := services[svcName]
+	if !ok {
+		return nil
+	}
+
+	hostID, ok := svc.Annotations[naming.HostIDAnnotation]
+	if !ok {
+		return nil
+	}
+
+	return &hostID
+}
+
+func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, ordinal int, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.NodeStatusReport, error) {
+	nodeStatusReport := &scyllav1alpha1.NodeStatusReport{
+		Ordinal: ordinal,
+	}
+
+	svcName := naming.MemberServiceName(*rackSpec, sdc, ordinal)
+	svc, ok := services[svcName]
+	if !ok {
+		return nodeStatusReport, nil
+	}
+
+	hostID, ok := svc.Annotations[naming.HostIDAnnotation]
+	if !ok {
+		// Host ID hasn't been propagated yet, report an empty status without a hostID.
+		return nodeStatusReport, nil
+	}
+	nodeStatusReport.HostID = &hostID
+
+	podName := naming.PodNameFromService(svc)
+	pod, err := podLister.Pods(sdc.Namespace).Get(podName)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
+		}
+
+		// Pod is missing, report an empty status.
+		return nodeStatusReport, nil
+	}
+
+	nodeStatusReportAnnotationValue, ok := pod.Annotations[naming.NodeStatusReportAnnotation]
+	if !ok {
+		// The node might not have reported its status yet, report an empty status.
+		return nodeStatusReport, nil
+	}
+
+	var internalNodeStatusReport internalapi.NodeStatusReport
+	err = internalNodeStatusReport.Decode(strings.NewReader(nodeStatusReportAnnotationValue))
+	if err != nil {
+		return nil, fmt.Errorf("can't decode annotation %q of pod %q for ScyllaDBDatacenter %q: %w", naming.NodeStatusReportAnnotation, naming.ManualRef(sdc.Namespace, podName), naming.ObjRef(sdc), err)
+	}
+
+	if internalNodeStatusReport.Error != nil {
+		// The node reported an error, report an empty status.
+		return nodeStatusReport, nil
+	}
+
+	nodeStatusReport.ObservedNodes = internalNodeStatusReport.ObservedNodes
+
+	return nodeStatusReport, nil
 }

@@ -43,21 +43,6 @@ for i in {1..30}; do
 done
 :::
 
-#### Prometheus Operator
-
-:::{code-block} shell
-:substitutions:
-kubectl -n=prometheus-operator apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/prometheus-operator.yaml
-:::
-
-:::{code-block} shell
-# Wait for CRDs to propagate to all apiservers.
-kubectl wait --for='condition=established' crd/prometheuses.monitoring.coreos.com crd/prometheusrules.monitoring.coreos.com crd/servicemonitors.monitoring.coreos.com
-
-# Wait for prometheus operator deployment.
-kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prometheus-operator
-:::
-
 ### {{productName}}
 
 Once you have the dependencies installed and available in your cluster, it is the time to install {{productName}}.
@@ -204,6 +189,10 @@ kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.c
 # Wait for it to deploy.
 kubectl -n=scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
 :::
+
+### Monitoring stack
+
+Please refer to the [ScyllaDB Monitoring setup](../management/monitoring/setup.md) guide to learn how to configure the monitoring stack.
 
 ## Next steps
 

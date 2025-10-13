@@ -4,31 +4,23 @@ metadata:
   name: example
 spec:
   type: Platform
+# [endpointsSelector]
   endpointsSelector:
     matchLabels:
       app.kubernetes.io/name: scylla
       scylla-operator.scylladb.com/scylla-service-type: member
-      scylla/cluster: replace-with-your-scyllacluster-name
+      scylla/cluster: scylla # Replace with your ScyllaCluster name.
+# [/endpointsSelector]
+# [prometheusMode]
   components:
     prometheus:
-      storage:
-        volumeClaimTemplate:
-          spec:
-            storageClassName: scylladb-local-xfs
-            resources:
-              requests:
-                storage: 1Gi
-      placement:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: scylla.scylladb.com/node-type
-                operator: In
-                values:
-                - scylla
-        tolerations:
-        - effect: NoSchedule
-          key: scylla-operator.scylladb.com/dedicated
-          operator: Equal
-          value: scyllaclusters
+      mode: External
+# [/prometheusMode]
+    grafana:
+# [grafanaDatasources]
+      datasources:
+        - name: prometheus
+          type: Prometheus
+          url: http://prometheus.scylla.svc.cluster.local:9090
+          prometheusOptions: {}
+# [/grafanaDatasources]

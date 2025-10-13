@@ -21,6 +21,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scylla"
+	"github.com/scylladb/scylla-operator/pkg/semver"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -445,6 +446,11 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 	}
 
+	initContainers, err := makeInitContainers(sdc, sidecarImage)
+	if err != nil {
+		return nil, fmt.Errorf("can't make init containers: %w", err)
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        naming.StatefulSetNameForRack(rack, sdc),
@@ -615,37 +621,10 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 
 						return volumes
 					}(),
-					Tolerations: placement.Tolerations,
-					InitContainers: []corev1.Container{
-						{
-							Name:            naming.SidecarInjectorContainerName,
-							Image:           sidecarImage,
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							Command: []string{
-								"/bin/sh",
-								"-c",
-								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
-							},
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("50Mi"),
-								},
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("50Mi"),
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "shared",
-									MountPath: naming.SharedDirName,
-									ReadOnly:  false,
-								},
-							},
-						},
-					},
+					Tolerations:    placement.Tolerations,
+					InitContainers: initContainers,
 					Containers: []corev1.Container{
+						// ScyllaDB container depends on the availability of the operator binary in the shared volume.
 						{
 							Name:            naming.ScyllaContainerName,
 							Image:           sdc.Spec.ScyllaDB.Image,
@@ -1055,13 +1034,6 @@ wait
 		sts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*sts.Spec.Replicas)
 	}
 
-	sysctlContainer, err := sysctlInitContainer(sdc, sidecarImage)
-	if err != nil {
-		return nil, fmt.Errorf("can't get sysctl container: %w", err)
-	}
-	if sysctlContainer != nil {
-		sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers, *sysctlContainer)
-	}
 	if rack.ScyllaDB != nil {
 		for _, vm := range rack.ScyllaDB.VolumeMounts {
 			sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(sts.Spec.Template.Spec.Containers[0].VolumeMounts, *vm.DeepCopy())
@@ -1165,22 +1137,79 @@ func containerPorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ContainerP
 	return ports, nil
 }
 
-func sysctlInitContainer(sdc *scyllav1alpha1.ScyllaDBDatacenter, image string) (*corev1.Container, error) {
+func makeInitContainers(sdc *scyllav1alpha1.ScyllaDBDatacenter, sidecarImage string) ([]corev1.Container, error) {
+	var initContainers []corev1.Container
+
+	sidecarInjectionCointainer := makeSidecarInjectionContainer(sidecarImage)
+	initContainers = append(initContainers, *sidecarInjectionCointainer)
+
+	sysctlContainer, ok, err := makeSysctlInitContainer(sdc, sidecarImage)
+	if err != nil {
+		return nil, fmt.Errorf("can't get sysctl init container: %w", err)
+	}
+	if ok {
+		initContainers = append(initContainers, *sysctlContainer)
+	}
+
+	bootstrapBarrierContainer, ok, err := makeScyllaDBBootstrapBarrierInitContainer(sdc, sidecarImage)
+	if err != nil {
+		return nil, fmt.Errorf("can't make ScyllaDB bootstrap barrier init container: %w", err)
+	}
+	if ok {
+		initContainers = append(initContainers, *bootstrapBarrierContainer)
+	}
+
+	return initContainers, nil
+}
+
+// makeSidecarInjectionContainer creates an init container that copies the operator binary to a shared volume.
+// This allows other containers to use the operator binary without it being available in their proper container images.
+func makeSidecarInjectionContainer(sidecarImage string) *corev1.Container {
+	return &corev1.Container{
+		Name:            naming.SidecarInjectorContainerName,
+		Image:           sidecarImage,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command: []string{
+			"/bin/sh",
+			"-c",
+			fmt.Sprintf("cp -a /usr/bin/scylla-operator '%s'", naming.SharedDirName),
+		},
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("50Mi"),
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+				corev1.ResourceMemory: resource.MustParse("50Mi"),
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "shared",
+				MountPath: naming.SharedDirName,
+				ReadOnly:  false,
+			},
+		},
+	}
+}
+
+func makeSysctlInitContainer(sdc *scyllav1alpha1.ScyllaDBDatacenter, sidecarImage string) (*corev1.Container, bool, error) {
 	sysctlsAnnotation, ok := sdc.Annotations[naming.TransformScyllaClusterToScyllaDBDatacenterSysctlsAnnotation]
 	if !ok {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	var sysctls []string
 	err := json.NewDecoder(strings.NewReader(sysctlsAnnotation)).Decode(&sysctls)
 	if err != nil {
-		return nil, fmt.Errorf("can't decode sysctl annotation %q: %w", sysctlsAnnotation, err)
+		return nil, false, fmt.Errorf("can't decode sysctl annotation %q: %w", sysctlsAnnotation, err)
 	}
 
 	opt := true
 	return &corev1.Container{
 		Name:            "sysctl-buddy",
-		Image:           image,
+		Image:           sidecarImage,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &opt,
@@ -1200,7 +1229,82 @@ func sysctlInitContainer(sdc *scyllav1alpha1.ScyllaDBDatacenter, image string) (
 			"-c",
 			fmt.Sprintf("sysctl -w %s", strings.Join(sysctls, " ")),
 		},
-	}, nil
+	}, true, nil
+}
+
+// makeScyllaDBBootstrapBarrierInitContainer creates an init container that blocks proceeding with ScyllaDB startup until bootstrap preconditions are met.
+// It depends on the availability of the operator binary in a shared volume, as well as `scylla sstable query` command in the ScyllaDB container image.
+func makeScyllaDBBootstrapBarrierInitContainer(sdc *scyllav1alpha1.ScyllaDBDatacenter, image string) (*corev1.Container, bool, error) {
+	if !utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+		return nil, false, nil
+	}
+
+	scyllaDBVersion, err := naming.ImageToVersion(sdc.Spec.ScyllaDB.Image)
+	if err != nil {
+		return nil, false, fmt.Errorf("can't get version of image %q: %w", sdc.Spec.ScyllaDB.Image, err)
+	}
+	sv := semver.NewScyllaVersion(scyllaDBVersion)
+	if !sv.SupportFeatureUnsafe(semver.ScyllaDBVersionRequiredForBootstrapSynchronisation) {
+		klog.V(4).InfoS("Not including bootstrap barrier init container as ScyllaDB version does not support it", "ScyllaDBDatacenter", naming.ObjRef(sdc), "ScyllaDBVersion", scyllaDBVersion, "ScyllaDBVersionRequiredForBootstrapSynchronisation", semver.ScyllaDBVersionRequiredForBootstrapSynchronisation)
+		return nil, false, nil
+	}
+
+	c := &corev1.Container{
+		Name:            "scylladb-bootstrap-barrier",
+		Image:           sdc.Spec.ScyllaDB.Image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command: []string{
+			"/mnt/shared/scylla-operator",
+			"run-bootstrap-barrier",
+			"--service-name=$(SERVICE_NAME)",
+			fmt.Sprintf("--scylla-data-dir=%s", path.Join(naming.DataDir, "/data")),
+			fmt.Sprintf("--selector-label-value=%s", naming.ScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sdc)),
+			func() string {
+				allowNonReportingHostIDsForSingleReport := false
+				if len(sdc.Spec.ScyllaDB.ExternalSeeds) > 0 {
+					// We assume that non-empty external seeds determine a multi-datacenter cluster.
+					// To handle non-automated multi-datacenter deployment model, we allow non-reporting host IDs to be present in status reports if there are no reports from other datacenters.
+					allowNonReportingHostIDsForSingleReport = true
+				}
+
+				return fmt.Sprintf("--single-report-allow-non-reporting-host-ids=%t", allowNonReportingHostIDsForSingleReport)
+			}(),
+			fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
+		},
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("100Mi"),
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      naming.PVCTemplateName,
+				MountPath: naming.DataDir,
+				ReadOnly:  true,
+			},
+			{
+				Name:      "shared",
+				MountPath: naming.SharedDirName,
+				ReadOnly:  true,
+			},
+		},
+		Env: []corev1.EnvVar{
+			{
+				Name: "SERVICE_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+		},
+	}
+	return c, true, nil
 }
 
 func getScyllaDBManagerAgentContainer(r scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Container, error) {

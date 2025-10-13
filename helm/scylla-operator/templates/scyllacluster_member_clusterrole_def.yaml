@@ -57,3 +57,11 @@ rules:
   - secrets/finalizers
   verbs:
   - update
+- apiGroups:
+  - scylla.scylladb.com
+  resources:
+  - scylladbdatacenternodesstatusreports
+  verbs:
+  - get
+  - list
+  - watch

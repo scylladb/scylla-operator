@@ -45,6 +45,9 @@ spec:
       - kind: ScyllaDBCluster
         name: scylladbclusters.scylla.scylladb.com
         version: v1alpha1
+      - kind: ScyllaDBDatacenterNodesStatusReport
+        name: scylladbdatacenternodesstatusreports.scylla.scylladb.com
+        version: v1alpha1
       - kind: ScyllaDBDatacenter
         name: scylladbdatacenters.scylla.scylladb.com
         version: v1alpha1
@@ -118,6 +121,8 @@ spec:
                 - get
                 - list
                 - watch
+                - patch
+                - update
             - apiGroups:
                 - ""
               resources:
@@ -172,6 +177,7 @@ spec:
                 - scylladbclusters
                 - scylladbmanagerclusterregistrations
                 - scylladbmanagertasks
+                - scylladbdatacenternodesstatusreports
               verbs:
                 - create
                 - delete
@@ -334,6 +340,7 @@ spec:
                 - scylladbmonitorings/finalizers
                 - scylladbmanagerclusterregistrations/finalizers
                 - scylladbmanagertasks/finalizers
+                - scylladbdatacenternodesstatusreports/finalizers
               verbs:
                 - update
             - apiGroups:

@@ -616,35 +616,122 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 						return volumes
 					}(),
 					Tolerations: placement.Tolerations,
-					InitContainers: []corev1.Container{
-						{
-							Name:            naming.SidecarInjectorContainerName,
-							Image:           sidecarImage,
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							Command: []string{
-								"/bin/sh",
-								"-c",
-								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
-							},
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("50Mi"),
+					InitContainers: func() []corev1.Container {
+						cs := []corev1.Container{
+							{
+								Name:            naming.SidecarInjectorContainerName,
+								Image:           sidecarImage,
+								ImagePullPolicy: corev1.PullIfNotPresent,
+								Command: []string{
+									"/bin/sh",
+									"-c",
+									fmt.Sprintf("cp -a /usr/bin/scylla-operator '%s'", naming.SharedDirName),
 								},
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("50Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("50Mi"),
+									},
+								},
+								VolumeMounts: []corev1.VolumeMount{
+									{
+										Name:      "shared",
+										MountPath: naming.SharedDirName,
+										ReadOnly:  false,
+									},
 								},
 							},
-							VolumeMounts: []corev1.VolumeMount{
+						}
+
+						if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+							cs = append(cs, []corev1.Container{
 								{
-									Name:      "shared",
-									MountPath: naming.SharedDirName,
-									ReadOnly:  false,
+									Name:            "scylladb-sstable-bootstrap-extractor",
+									Image:           sdc.Spec.ScyllaDB.Image,
+									ImagePullPolicy: corev1.PullIfNotPresent,
+									Command:         makeScyllaDBSSTableBootstrappedQueryCommand(path.Join(naming.DataDir, "/data"), naming.ScyllaDBSSTableBootstrapQueryResultPath),
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("50m"),
+											corev1.ResourceMemory: resource.MustParse("100Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("50m"),
+											corev1.ResourceMemory: resource.MustParse("100Mi"),
+										},
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      naming.PVCTemplateName,
+											MountPath: naming.DataDir,
+											ReadOnly:  true,
+										},
+										{
+											Name:      "shared",
+											MountPath: naming.SharedDirName,
+											ReadOnly:  false,
+										},
+									},
 								},
-							},
-						},
-					},
+								{
+									Name:            "scylladb-bootstrap-barrier",
+									Image:           sidecarImage,
+									ImagePullPolicy: corev1.PullIfNotPresent,
+									Command: []string{
+										"/usr/bin/scylla-operator",
+										"run-bootstrap-barrier",
+										"--service-name=$(SERVICE_NAME)",
+										fmt.Sprintf("--sstable-bootstrapped-query-result-path=%s", naming.ScyllaDBSSTableBootstrapQueryResultPath),
+										fmt.Sprintf("--selector-label-value=%s", naming.ScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sdc)),
+										func() string {
+											allowNonReportingHostIDsForSingleReport := false
+											if len(sdc.Spec.ScyllaDB.ExternalSeeds) > 0 {
+												// We assume that non-empty external seeds determine a multi-datacenter cluster.
+												// To handle non-automated multi-datacenter deployment model, we allow non-reporting host IDs to be present in status reports if there are no reports from other datacenters.
+												allowNonReportingHostIDsForSingleReport = true
+											}
+
+											return fmt.Sprintf("--single-report-allow-non-reporting-host-ids=%t", allowNonReportingHostIDsForSingleReport)
+										}(),
+										fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()),
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("40Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("40Mi"),
+										},
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "shared",
+											MountPath: naming.SharedDirName,
+											ReadOnly:  true,
+										},
+									},
+									Env: []corev1.EnvVar{
+										{
+											Name: "SERVICE_NAME",
+											ValueFrom: &corev1.EnvVarSource{
+												FieldRef: &corev1.ObjectFieldSelector{
+													FieldPath: "metadata.name",
+												},
+											},
+										},
+									},
+								},
+							}...)
+						}
+
+						return cs
+					}(),
 					Containers: []corev1.Container{
 						{
 							Name:            naming.ScyllaContainerName,
@@ -1291,6 +1378,34 @@ exec scylla-manager-agent \
 	}
 
 	return cnt, nil
+}
+
+func makeScyllaDBSSTableBootstrappedQueryCommand(scyllaDataDir, bootstrapQueryResultFile string) []string {
+	return []string{
+		"/usr/bin/bash",
+		"-euEo",
+		"pipefail",
+		"-O",
+		"inherit_errexit",
+		"-c",
+		strings.TrimSpace(`
+printf 'INFO %s - Querying bootstrap status.\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+exit_code=0
+/usr/bin/scylla sstable query \
+--system-schema \
+` + fmt.Sprintf("--scylla-data-dir=%s", scyllaDataDir) + ` \
+--keyspace=system \
+--table=local \
+--output-format=json \
+--query="SELECT bootstrapped FROM scylla_sstable.local" \
+` + path.Join(scyllaDataDir, "/system/local-*/*-Data.db") + ` >'` + bootstrapQueryResultFile + `' || exit_code=$?
+
+if [ "${exit_code}" -ne 0 ]; then
+  printf 'ERROR %s - Failed to query bootstrap status. Assuming the node requires boostrap.\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+  echo "[]" >'` + bootstrapQueryResultFile + `'
+fi
+`),
+	}
 }
 
 func MakePodDisruptionBudget(sdc *scyllav1alpha1.ScyllaDBDatacenter) *policyv1.PodDisruptionBudget {

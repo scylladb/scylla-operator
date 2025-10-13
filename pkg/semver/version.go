@@ -21,7 +21,8 @@ import (
 )
 
 var (
-	ScyllaVersionThatSupportsDisablingWritebackCache = semver.MustParse("2021.0.0")
+	ScyllaVersionThatSupportsDisablingWritebackCache   = semver.MustParse("2021.0.0")
+	ScyllaDBVersionRequiredForBootstrapSynchronisation = semver.MustParse("2025.2.0")
 )
 
 // ScyllaVersion contains the version of a cluster with unkown version support

@@ -151,6 +151,8 @@ const (
 
 	ScyllaDBIgnitionDonePath = SharedDirName + "/ignition.done"
 
+	ScyllaDBSSTableBootstrapQueryResultPath = SharedDirName + "/sstable-bootstrap-query-result.json"
+
 	DataDir = "/var/lib/scylla"
 
 	ReadinessProbePath         = "/readyz"
@@ -305,4 +307,9 @@ const (
 	// ScyllaDBDatacenterNodesStatusReportSelectorLabel is used to uniformly label nodes status reports created for a ScyllaDB cluster.
 	// It allows easy selection of all datacenter reports for a given cluster.
 	ScyllaDBDatacenterNodesStatusReportSelectorLabel = "scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector"
+
+	// ForceProceedToBootstrapAnnotation allows to force the bootstrap barrier to proceed without waiting for normal preconditions to be satisfied.
+	// If set to "true", bootstrap barrier will proceed to bootstrap immediately.
+	// This can be used on a particular member Service to override the normal bootstrap precondition checks, or on the entire ScyllaDBDatacenter to override the default behavior for all members.
+	ForceProceedToBootstrapAnnotation = "scylla-operator.scylladb.com/force-proceed-to-bootstrap"
 )

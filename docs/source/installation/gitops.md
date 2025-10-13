@@ -58,6 +58,10 @@ kubectl wait --for='condition=established' crd/prometheuses.monitoring.coreos.co
 kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prometheus-operator
 :::
 
+:::{note}
+See the [ScyllaDB Monitoring setup](../management/monitoring/setup.md) guide to learn how to configure the monitoring stack.
+:::
+
 ### {{productName}}
 
 Once you have the dependencies installed and available in your cluster, it is the time to install {{productName}}.

@@ -12,6 +12,8 @@ rules:
   - scylladbdatacenters/finalizers
   - remoteowners
   - remoteowners/finalizers
+  - scylladbdatacenternodesstatusreports
+  - scylladbdatacenternodesstatusreports/finalizers
   verbs:
   - create
   - delete

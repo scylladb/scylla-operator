@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+# [names]
+spec:
+  serviceAccountName: "prometheus"
+  serviceName: "prometheus"
+# [/names]
+  version: "v3.5.0"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  web:
+    pageTitle: "ScyllaDB Prometheus"
+# [selectors]
+  serviceMonitorSelector:
+    matchLabels:
+      scylla-operator.scylladb.com/scylladbmonitoring-name: "example"
+  ruleSelector:
+    matchLabels:
+      scylla-operator.scylladb.com/scylladbmonitoring-name: "example"
+# [/selectors]
+  alerting:
+    alertmanagers:
+      - name: "scylla-monitoring"
+        port: web

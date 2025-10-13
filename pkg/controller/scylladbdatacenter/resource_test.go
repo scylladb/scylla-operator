@@ -2,7 +2,9 @@ package scylladbdatacenter
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/features"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -24,6 +27,7 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 )
 
@@ -638,7 +642,7 @@ func TestMemberService(t *testing.T) {
 }
 
 func TestStatefulSetForRack(t *testing.T) {
-	t.Logf("Running TestStatefulSetForRack with TLS feature enabled: %t", utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates))
+	logEnabledFeatures(t)
 
 	newBasicRack := func() scyllav1alpha1.RackSpec {
 		return scyllav1alpha1.RackSpec{
@@ -937,11 +941,10 @@ printf 'INFO %s ignition - Ignited. Starting ScyllaDB...\n' "$( date '+%Y-%m-%d 
 exec /mnt/shared/scylla-operator sidecar \
 --feature-gates=` + func() string {
 											featureGates := []string{"AllAlpha=false", "AllBeta=false"}
-											if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
-												featureGates = append(featureGates, "AutomaticTLSCertificates=true")
-											} else {
-												featureGates = append(featureGates, "AutomaticTLSCertificates=false")
-											}
+
+											featureGates = append(featureGates, fmt.Sprintf("AutomaticTLSCertificates=%t", utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates)))
+											featureGates = append(featureGates, fmt.Sprintf("BootstrapSynchronisation=%t", utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation)))
+
 											return strings.Join(featureGates, ",")
 										}() + ` \
 --nodes-broadcast-address-type=ServiceClusterIP \
@@ -1806,6 +1809,7 @@ exec scylla-manager-agent \
 					cmp.Diff(tc.expectedStatefulSet, got))
 			}
 		})
+
 	}
 }
 
@@ -1815,6 +1819,17 @@ func TestStatefulSetForRackWithReversedTLSFeature(t *testing.T) {
 		utilfeature.DefaultMutableFeatureGate,
 		features.AutomaticTLSCertificates,
 		!utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
+	)
+
+	t.Run("", TestStatefulSetForRack)
+}
+
+func TestStatefulSetForRackWithReversedBootstrapSynchronisationFeature(t *testing.T) {
+	featuregatetesting.SetFeatureGateDuringTest(
+		t,
+		utilfeature.DefaultMutableFeatureGate,
+		features.BootstrapSynchronisation,
+		!utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation),
 	)
 
 	t.Run("", TestStatefulSetForRack)
@@ -6065,4 +6080,13 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 			}
 		})
 	}
+}
+
+func logEnabledFeatures(t *testing.T) {
+	t.Helper()
+
+	fs := slices.Collect(maps.Keys(utilfeature.DefaultMutableFeatureGate.GetAll()))
+	t.Logf("Running TestStatefulSetForRack with features enabled: %s", strings.Join(oslices.ConvertSlice(fs, func(f featuregate.Feature) string {
+		return fmt.Sprintf("%s=%t", f, utilfeature.DefaultMutableFeatureGate.Enabled(f))
+	}), ","))
 }

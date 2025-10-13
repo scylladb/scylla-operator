@@ -172,6 +172,14 @@ func Verify(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, rkcClusterM
 					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("Secret", scyllav1alpha1.DegradedCondition)(dc.Name),
 					status:   metav1.ConditionFalse,
 				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("ScyllaDBDatacenterNodesStatusReport", scyllav1alpha1.ProgressingCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
+				{
+					condType: scylladbclustercontroller.MakeRemoteKindControllerDatacenterConditionFunc("ScyllaDBDatacenterNodesStatusReport", scyllav1alpha1.DegradedCondition)(dc.Name),
+					status:   metav1.ConditionFalse,
+				},
 			}
 
 			condList = append(condList, dcCondList...)

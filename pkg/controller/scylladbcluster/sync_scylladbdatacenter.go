@@ -109,6 +109,30 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 				ObservedGeneration: sc.Generation,
 			})
 		}
+
+		// Wait for ScyllaDBDatacenterNodesStatusReport controller to finish progressing before proceeding.
+		// This ensures that the mirrored ScyllaDBDatacenterNodeStatusReports are up to date before a new DC is added,
+		// which lowers the chance of a new node being bootstrapped while the cluster is unhealthy.
+		// FIXME: this should be checked before any topology changes are made, not only when a new DC is added.
+		isScyllaDBDatacenterNodesStatusReportControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteScyllaDBDatacenterNodesStatusReportControllerDatacenterProgressingCondition(dc.Name))
+		isScyllaDBDatacenterNodesStatusReportControllerDegraded := meta.IsStatusConditionTrue(status.Conditions, makeRemoteScyllaDBDatacenterNodesStatusReportControllerDatacenterDegradedCondition(dc.Name))
+		if isScyllaDBDatacenterNodesStatusReportControllerProgressing || isScyllaDBDatacenterNodesStatusReportControllerDegraded {
+			klog.V(4).InfoS(
+				"Waiting for ScyllaDBDatacenterNodesStatusReport controller to finish progressing or recover from degraded state",
+				"ScyllaDBCluster", klog.KObj(sc),
+				"ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter),
+				"Datacenter", dc.Name,
+				"Progressing", isScyllaDBDatacenterNodesStatusReportControllerProgressing,
+				"Degraded", isScyllaDBDatacenterNodesStatusReportControllerDegraded,
+			)
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForScyllaDBDatacenterNodesStatusReportController",
+				Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenterNodesStatusReport controller for %q datacenter to finish progressing or recover from degraded state", dc.Name),
+				ObservedGeneration: sc.Generation,
+			})
+		}
 	}
 
 	if len(progressingConditions) > 0 {

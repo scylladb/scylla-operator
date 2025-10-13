@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	remotelister "github.com/scylladb/scylla-operator/pkg/remoteclient/lister"
 	corev1 "k8s.io/api/core/v1"
@@ -5000,6 +5001,466 @@ func Test_makeLocalScyllaDBManagerAgentAuthTokenSecret(t *testing.T) {
 
 			if !apiequality.Semantic.DeepEqual(got, tc.expected) {
 				t.Errorf("expected and got secret differ:\n%s\n", cmp.Diff(tc.expected, got))
+			}
+		})
+	}
+}
+
+func Test_makeExternalScyllaDBDatacenterNodesStatusReports(t *testing.T) {
+	t.Parallel()
+
+	newMockMultiDCScyllaDBCluster := func() *scyllav1alpha1.ScyllaDBCluster {
+		return &scyllav1alpha1.ScyllaDBCluster{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cluster",
+				Namespace: "scylla",
+			},
+			Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+				Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+					{
+						Name:                        "dc1",
+						RemoteKubernetesClusterName: "dc1-rkc",
+					},
+					{
+						Name:                        "dc2",
+						RemoteKubernetesClusterName: "dc2-rkc",
+					},
+					{
+						Name:                        "dc3",
+						RemoteKubernetesClusterName: "dc3-rkc",
+					},
+				},
+			},
+		}
+	}
+
+	newMockScyllaDBClusterDatacenter := func() *scyllav1alpha1.ScyllaDBClusterDatacenter {
+		return &scyllav1alpha1.ScyllaDBClusterDatacenter{
+			Name:                        "dc1",
+			RemoteKubernetesClusterName: "dc1-rkc",
+		}
+	}
+
+	newMockScyllaDBClusterDatacenterRemoteNamespace := func() *corev1.Namespace {
+		return &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "dc1-rkc-remote-namespace",
+			},
+		}
+	}
+
+	newMockRemoteController := func() *scyllav1alpha1.RemoteOwner {
+		return &scyllav1alpha1.RemoteOwner{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "remote-owner",
+				UID:  "1234",
+			},
+		}
+	}
+
+	newMockRemoteNamespaces := func() map[string]*corev1.Namespace {
+		return map[string]*corev1.Namespace{
+			"dc1-rkc": {
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "dc1-rkc-remote-namespace",
+				},
+			},
+			"dc2-rkc": {
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "dc2-rkc-remote-namespace",
+				},
+			},
+			"dc3-rkc": {
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "dc3-rkc-remote-namespace",
+				},
+			},
+		}
+	}
+
+	newMockRemoteScyllaDBDatacenters := func() map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter {
+		return map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter{
+			"dc1-rkc": {
+				"cluster-dc1": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-dc1",
+						Namespace: "dc1-rkc-remote-namespace",
+					},
+				},
+			},
+			"dc2-rkc": {
+				"cluster-dc2": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-dc2",
+						Namespace: "dc2-rkc-remote-namespace",
+					},
+				},
+			},
+			"dc3-rkc": {
+				"cluster-dc3": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-dc3",
+						Namespace: "dc3-rkc-remote-namespace",
+					},
+				},
+			},
+		}
+	}
+
+	tt := []struct {
+		name                          string
+		sc                            *scyllav1alpha1.ScyllaDBCluster
+		dc                            *scyllav1alpha1.ScyllaDBClusterDatacenter
+		remoteNamespace               *corev1.Namespace
+		remoteController              metav1.Object
+		remoteNamespaces              map[string]*corev1.Namespace
+		remoteScyllaDBDatacenters     map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter
+		existing                      map[string][]apimachineryruntime.Object
+		expected                      []*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport
+		expectedProgressingConditions []metav1.Condition
+		expectedErr                   error
+	}{
+		{
+			name: "self dc",
+			sc: &scyllav1alpha1.ScyllaDBCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cluster",
+					Namespace: "scylla",
+				},
+				Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+					Datacenters: []scyllav1alpha1.ScyllaDBClusterDatacenter{
+						{
+							Name:                        "dc1",
+							RemoteKubernetesClusterName: "dc1-rkc",
+						},
+					},
+				},
+			},
+			dc:               newMockScyllaDBClusterDatacenter(),
+			remoteNamespace:  newMockScyllaDBClusterDatacenterRemoteNamespace(),
+			remoteController: newMockRemoteController(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-remote-namespace",
+					},
+				},
+			},
+			remoteScyllaDBDatacenters:     map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter{},
+			existing:                      map[string][]apimachineryruntime.Object{},
+			expected:                      []*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name:             "remote namespaces of other DCs don't exist",
+			sc:               newMockMultiDCScyllaDBCluster(),
+			dc:               newMockScyllaDBClusterDatacenter(),
+			remoteNamespace:  newMockScyllaDBClusterDatacenterRemoteNamespace(),
+			remoteController: newMockRemoteController(),
+			remoteNamespaces: map[string]*corev1.Namespace{
+				"dc1-rkc": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "dc1-rkc-remote-namespace",
+					},
+				},
+			},
+			remoteScyllaDBDatacenters:     map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter{},
+			existing:                      map[string][]apimachineryruntime.Object{},
+			expected:                      []*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name:                          "remote SDCs for other DCs don't exist",
+			sc:                            newMockMultiDCScyllaDBCluster(),
+			dc:                            newMockScyllaDBClusterDatacenter(),
+			remoteNamespace:               newMockScyllaDBClusterDatacenterRemoteNamespace(),
+			remoteController:              newMockRemoteController(),
+			remoteNamespaces:              newMockRemoteNamespaces(),
+			remoteScyllaDBDatacenters:     map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter{},
+			existing:                      map[string][]apimachineryruntime.Object{},
+			expected:                      []*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+		{
+			name:                      "remote SDCs exist but their ScyllaDBNodesStatusReports do not",
+			sc:                        newMockMultiDCScyllaDBCluster(),
+			dc:                        newMockScyllaDBClusterDatacenter(),
+			remoteNamespace:           newMockScyllaDBClusterDatacenterRemoteNamespace(),
+			remoteController:          newMockRemoteController(),
+			remoteNamespaces:          newMockRemoteNamespaces(),
+			remoteScyllaDBDatacenters: newMockRemoteScyllaDBDatacenters(),
+			existing:                  map[string][]apimachineryruntime.Object{},
+			expected:                  []*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{},
+			expectedProgressingConditions: []metav1.Condition{
+				{
+					Type:    "RemoteScyllaDBDatacenterNodesStatusReportControllerDatacenterdc1Progressing",
+					Status:  "True",
+					Reason:  "WaitingForRemoteScyllaDBDatacenterNodesStatusReport",
+					Message: `Waiting for ScyllaDBDatacenterNodesStatusReport "dc2-rkc-remote-namespace/cluster-dc2-2n4hb" to be created in "dc2-rkc" Cluster`,
+				},
+				{
+					Type:    "RemoteScyllaDBDatacenterNodesStatusReportControllerDatacenterdc1Progressing",
+					Status:  "True",
+					Reason:  "WaitingForRemoteScyllaDBDatacenterNodesStatusReport",
+					Message: `Waiting for ScyllaDBDatacenterNodesStatusReport "dc3-rkc-remote-namespace/cluster-dc3-11k4m" to be created in "dc3-rkc" Cluster`,
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name:                      "remote SDCs and their ScyllaDBNodesStatusReports exist",
+			sc:                        newMockMultiDCScyllaDBCluster(),
+			dc:                        newMockScyllaDBClusterDatacenter(),
+			remoteNamespace:           newMockScyllaDBClusterDatacenterRemoteNamespace(),
+			remoteController:          newMockRemoteController(),
+			remoteNamespaces:          newMockRemoteNamespaces(),
+			remoteScyllaDBDatacenters: newMockRemoteScyllaDBDatacenters(),
+			existing: map[string][]apimachineryruntime.Object{
+				"dc1-rkc": {
+					&scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "cluster-dc1-7p9ut",
+							Namespace: "dc1-rkc-remote-namespace",
+						},
+						DatacenterName: "dc1",
+						Racks: []scyllav1alpha1.RackNodesStatusReport{
+							{
+								Name: "rack1",
+								Nodes: []scyllav1alpha1.NodeStatusReport{
+									{
+										Ordinal: 0,
+										HostID:  pointer.Ptr("host-id-dc1-rack1-0"),
+										ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+											{
+												HostID: "host-id-dc1-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+											{
+												HostID: "host-id-dc2-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+											{
+												HostID: "host-id-dc3-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				"dc2-rkc": {
+					&scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "cluster-dc2-2n4hb",
+							Namespace: "dc2-rkc-remote-namespace",
+						},
+						DatacenterName: "dc2",
+						Racks: []scyllav1alpha1.RackNodesStatusReport{
+							{
+								Name: "rack1",
+								Nodes: []scyllav1alpha1.NodeStatusReport{
+									{
+										Ordinal: 0,
+										HostID:  pointer.Ptr("host-id-dc2-rack1-0"),
+										ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+											{
+												HostID: "host-id-dc1-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+											{
+												HostID: "host-id-dc2-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+											{
+												HostID: "host-id-dc3-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				"dc3-rkc": {
+					&scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "cluster-dc3-11k4m",
+							Namespace: "dc3-rkc-remote-namespace",
+						},
+						DatacenterName: "dc3",
+						Racks: []scyllav1alpha1.RackNodesStatusReport{
+							{
+								Name: "rack1",
+								Nodes: []scyllav1alpha1.NodeStatusReport{
+									{
+										Ordinal: 0,
+										HostID:  pointer.Ptr("host-id-dc3-rack1-0"),
+										ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+											{
+												HostID: "host-id-dc1-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+											{
+												HostID: "host-id-dc2-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+											{
+												HostID: "host-id-dc3-rack1-0",
+												Status: scyllav1alpha1.NodeStatusUp,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-dc2-external-hglri",
+						Namespace: "dc1-rkc-remote-namespace",
+						Labels: map[string]string{
+							"app.kubernetes.io/managed-by":                                                        "remote.scylla-operator.scylladb.com",
+							"scylla-operator.scylladb.com/managed-by-cluster":                                     "test-cluster.local",
+							"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name":                 "dc1",
+							"scylla-operator.scylladb.com/parent-scylladbcluster-name":                            "cluster",
+							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":                       "scylla",
+							"scylla-operator.scylladb.com/remote-cluster-scylladb-datacenter-nodes-status-report": "cluster",
+							"scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector":       "cluster-dc1",
+						},
+						Annotations: map[string]string{},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "RemoteOwner",
+								Name:               "remote-owner",
+								UID:                "1234",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					DatacenterName: "dc2",
+					Racks: []scyllav1alpha1.RackNodesStatusReport{
+						{
+							Name: "rack1",
+							Nodes: []scyllav1alpha1.NodeStatusReport{
+								{
+									Ordinal: 0,
+									HostID:  pointer.Ptr("host-id-dc2-rack1-0"),
+									ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+										{
+											HostID: "host-id-dc1-rack1-0",
+											Status: scyllav1alpha1.NodeStatusUp,
+										},
+										{
+											HostID: "host-id-dc2-rack1-0",
+											Status: scyllav1alpha1.NodeStatusUp,
+										},
+										{
+											HostID: "host-id-dc3-rack1-0",
+											Status: scyllav1alpha1.NodeStatusUp,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cluster-dc3-external-617i6",
+						Namespace: "dc1-rkc-remote-namespace",
+						Labels: map[string]string{
+							"app.kubernetes.io/managed-by":                                                        "remote.scylla-operator.scylladb.com",
+							"scylla-operator.scylladb.com/managed-by-cluster":                                     "test-cluster.local",
+							"scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name":                 "dc1",
+							"scylla-operator.scylladb.com/parent-scylladbcluster-name":                            "cluster",
+							"scylla-operator.scylladb.com/parent-scylladbcluster-namespace":                       "scylla",
+							"scylla-operator.scylladb.com/remote-cluster-scylladb-datacenter-nodes-status-report": "cluster",
+							"scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector":       "cluster-dc1",
+						},
+						Annotations: map[string]string{},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "RemoteOwner",
+								Name:               "remote-owner",
+								UID:                "1234",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					DatacenterName: "dc3",
+					Racks: []scyllav1alpha1.RackNodesStatusReport{
+						{
+							Name: "rack1",
+							Nodes: []scyllav1alpha1.NodeStatusReport{
+								{
+									Ordinal: 0,
+									HostID:  pointer.Ptr("host-id-dc3-rack1-0"),
+									ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+										{
+											HostID: "host-id-dc1-rack1-0",
+											Status: scyllav1alpha1.NodeStatusUp,
+										},
+										{
+											HostID: "host-id-dc2-rack1-0",
+											Status: scyllav1alpha1.NodeStatusUp,
+										},
+										{
+											HostID: "host-id-dc3-rack1-0",
+											Status: scyllav1alpha1.NodeStatusUp,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedProgressingConditions: []metav1.Condition{},
+			expectedErr:                   nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			fakeClusterIndexer := newFakeClusterIndexer(t, tc.existing)
+			remoteScyllaDBDatacenterNodesStatusReportLister := remotelister.NewClusterLister(scyllav1alpha1listers.NewScyllaDBDatacenterNodesStatusReportLister, fakeClusterIndexer)
+
+			progressingConditions, scyllaDBDatacenterNodesStatusReports, err := makeExternalScyllaDBDatacenterNodesStatusReports(
+				tc.sc,
+				tc.dc,
+				tc.remoteNamespace,
+				tc.remoteController,
+				tc.remoteNamespaces,
+				tc.remoteScyllaDBDatacenters,
+				remoteScyllaDBDatacenterNodesStatusReportLister,
+				testClusterDomain,
+			)
+
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Fatalf("expected and got errors differ:\n%s\n", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
+			}
+
+			if !equality.Semantic.DeepEqual(progressingConditions, tc.expectedProgressingConditions) {
+				t.Errorf("expected and got progressing conditions differ: %s", cmp.Diff(tc.expectedProgressingConditions, progressingConditions))
+			}
+
+			if !equality.Semantic.DeepEqual(scyllaDBDatacenterNodesStatusReports, tc.expected) {
+				t.Errorf("expected and got ScyllaDBDatacenterNodesStatusReports differ: %s", cmp.Diff(tc.expected, scyllaDBDatacenterNodesStatusReports))
 			}
 		})
 	}

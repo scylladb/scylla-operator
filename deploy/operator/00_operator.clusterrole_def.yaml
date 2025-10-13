@@ -51,6 +51,8 @@ rules:
   - get
   - list
   - watch
+  - patch
+  - update
 - apiGroups:
   - ""
   resources:
@@ -105,6 +107,7 @@ rules:
   - scylladbclusters
   - scylladbmanagerclusterregistrations
   - scylladbmanagertasks
+  - scylladbdatacenternodesstatusreports
   verbs:
   - create
   - delete
@@ -267,6 +270,7 @@ rules:
   - scylladbmonitorings/finalizers
   - scylladbmanagerclusterregistrations/finalizers
   - scylladbmanagertasks/finalizers
+  - scylladbdatacenternodesstatusreports/finalizers
   verbs:
   - update
 - apiGroups:

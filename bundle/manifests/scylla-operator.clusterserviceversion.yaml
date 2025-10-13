@@ -45,6 +45,9 @@ spec:
       - kind: ScyllaDBCluster
         name: scylladbclusters.scylla.scylladb.com
         version: v1alpha1
+      - kind: ScyllaDBDatacenterNodesStatusReport
+        name: scylladbdatacenternodesstatusreports.scylla.scylladb.com
+        version: v1alpha1
       - kind: ScyllaDBDatacenter
         name: scylladbdatacenters.scylla.scylladb.com
         version: v1alpha1

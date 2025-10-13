@@ -45,6 +45,7 @@ func NewOperatorCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.AddCommand(probeserver.NewServeProbesCmd(streams))
 	cmd.AddCommand(NewIgnitionCmd(streams))
 	cmd.AddCommand(NewRlimitsJobCmd(streams))
+	cmd.AddCommand(NewBootstrapBarrierCmd(streams))
 
 	// TODO: wrap help func for the root command and every subcommand to add a line about automatic env vars and the prefix.
 

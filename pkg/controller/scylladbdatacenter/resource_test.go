@@ -2,7 +2,9 @@ package scylladbdatacenter
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/features"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -24,6 +27,7 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 )
 
@@ -638,7 +642,7 @@ func TestMemberService(t *testing.T) {
 }
 
 func TestStatefulSetForRack(t *testing.T) {
-	t.Logf("Running TestStatefulSetForRack with TLS feature enabled: %t", utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates))
+	logEnabledFeatures(t)
 
 	newBasicRack := func() scyllav1alpha1.RackSpec {
 		return scyllav1alpha1.RackSpec{
@@ -847,35 +851,141 @@ func TestStatefulSetForRack(t *testing.T) {
 
 							return volumes
 						}(),
-						InitContainers: []corev1.Container{
-							{
-								Name:            "sidecar-injection",
-								ImagePullPolicy: "IfNotPresent",
-								Image:           "scylladb/scylla-operator:latest",
-								Command: []string{
-									"/bin/sh",
-									"-c",
-									"cp -a /usr/bin/scylla-operator /mnt/shared",
-								},
-								Resources: corev1.ResourceRequirements{
-									Limits: corev1.ResourceList{
-										corev1.ResourceCPU:    resource.MustParse("10m"),
-										corev1.ResourceMemory: resource.MustParse("50Mi"),
+						InitContainers: func() []corev1.Container {
+							initContainers := []corev1.Container{
+								{
+									Name:            "sidecar-injection",
+									ImagePullPolicy: "IfNotPresent",
+									Image:           "scylladb/scylla-operator:latest",
+									Command: []string{
+										"/bin/sh",
+										"-c",
+										"cp -a /usr/bin/scylla-operator /mnt/shared",
 									},
-									Requests: corev1.ResourceList{
-										corev1.ResourceCPU:    resource.MustParse("10m"),
-										corev1.ResourceMemory: resource.MustParse("50Mi"),
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("50Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("50Mi"),
+										},
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "shared",
+											MountPath: "/mnt/shared",
+											ReadOnly:  false,
+										},
 									},
 								},
-								VolumeMounts: []corev1.VolumeMount{
+							}
+
+							if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+								initContainers = append(initContainers, []corev1.Container{
 									{
-										Name:      "shared",
-										MountPath: "/mnt/shared",
-										ReadOnly:  false,
+										Name:            "scylladb-sstable-bootstrap-extractor",
+										Image:           "scylladb/scylla:latest",
+										ImagePullPolicy: "IfNotPresent",
+										Command: []string{
+											"/usr/bin/bash",
+											"-euEo",
+											"pipefail",
+											"-O",
+											"inherit_errexit",
+											"-c",
+											strings.TrimSpace(`
+/usr/bin/scylla sstable query \
+--system-schema \
+--scylla-data-dir=/var/lib/scylla/data \
+--keyspace=system \
+--table=local \
+--output-format=json \
+--query="SELECT bootstrapped FROM scylla_sstable.local" \
+/var/lib/scylla/data/system/local-*/*-Data.db >/mnt/shared/bootstrapped.json || touch /mnt/shared/bootstrapped.json
+`),
+										},
+										Resources: corev1.ResourceRequirements{
+											Limits: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("50m"),
+												corev1.ResourceMemory: resource.MustParse("100Mi"),
+											},
+											Requests: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("50m"),
+												corev1.ResourceMemory: resource.MustParse("100Mi"),
+											},
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      naming.PVCTemplateName,
+												MountPath: naming.DataDir,
+												ReadOnly:  true,
+											},
+											{
+												Name:      "shared",
+												MountPath: naming.SharedDirName,
+												ReadOnly:  false,
+											},
+										},
 									},
-								},
-							},
-						},
+									{
+										Name:            "scylladb-bootstrap-barrier",
+										Image:           "scylladb/scylla-operator:latest",
+										ImagePullPolicy: "IfNotPresent",
+										Command: []string{
+											"/usr/bin/bash",
+											"-euEo",
+											"pipefail",
+											"-O",
+											"inherit_errexit",
+											"-c",
+											strings.TrimSpace(`
+if [ "$(jq 'all(.[]; .bootstrapped? == "COMPLETED")' /mnt/shared/bootstrapped.json)" = "true" ]; then
+	printf 'INFO %s bootstrap-barrier - Node has already been bootstrapped. Proceeding without running the barrier...\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+    exit 0
+fi
+
+/usr/bin/scylla-operator \
+run-bootstrap-barrier \
+--service-name=$(SERVICE_NAME) \
+--selector-label-value=basic \
+--loglevel=0 \
+`),
+										},
+										Resources: corev1.ResourceRequirements{
+											Limits: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("10m"),
+												corev1.ResourceMemory: resource.MustParse("40Mi"),
+											},
+											Requests: corev1.ResourceList{
+												corev1.ResourceCPU:    resource.MustParse("10m"),
+												corev1.ResourceMemory: resource.MustParse("40Mi"),
+											},
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "shared",
+												MountPath: naming.SharedDirName,
+												ReadOnly:  true,
+											},
+										},
+										Env: []corev1.EnvVar{
+											{
+												Name: "SERVICE_NAME",
+												ValueFrom: &corev1.EnvVarSource{
+													FieldRef: &corev1.ObjectFieldSelector{
+														FieldPath: "metadata.name",
+													},
+												},
+											},
+										},
+									},
+								}...)
+							}
+
+							return initContainers
+						}(),
 						Containers: []corev1.Container{
 							{
 								Name:            "scylla",
@@ -937,11 +1047,10 @@ printf 'INFO %s ignition - Ignited. Starting ScyllaDB...\n' "$( date '+%Y-%m-%d 
 exec /mnt/shared/scylla-operator sidecar \
 --feature-gates=` + func() string {
 											featureGates := []string{"AllAlpha=false", "AllBeta=false"}
-											if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
-												featureGates = append(featureGates, "AutomaticTLSCertificates=true")
-											} else {
-												featureGates = append(featureGates, "AutomaticTLSCertificates=false")
-											}
+
+											featureGates = append(featureGates, fmt.Sprintf("AutomaticTLSCertificates=%t", utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates)))
+											featureGates = append(featureGates, fmt.Sprintf("BootstrapSynchronisation=%t", utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation)))
+
 											return strings.Join(featureGates, ",")
 										}() + ` \
 --nodes-broadcast-address-type=ServiceClusterIP \
@@ -1806,6 +1915,7 @@ exec scylla-manager-agent \
 					cmp.Diff(tc.expectedStatefulSet, got))
 			}
 		})
+
 	}
 }
 
@@ -1815,6 +1925,18 @@ func TestStatefulSetForRackWithReversedTLSFeature(t *testing.T) {
 		utilfeature.DefaultMutableFeatureGate,
 		features.AutomaticTLSCertificates,
 		!utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates),
+	)
+
+	t.Run("", TestStatefulSetForRack)
+}
+
+// TODO: deduplicate this? Run a matrix instead?
+func TestStatefulSetForRackWithReversedBootstrapSynchronisationFeature(t *testing.T) {
+	featuregatetesting.SetFeatureGateDuringTest(
+		t,
+		utilfeature.DefaultMutableFeatureGate,
+		features.BootstrapSynchronisation,
+		!utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation),
 	)
 
 	t.Run("", TestStatefulSetForRack)
@@ -6065,4 +6187,13 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 			}
 		})
 	}
+}
+
+func logEnabledFeatures(t *testing.T) {
+	t.Helper()
+
+	fs := slices.Collect(maps.Keys(utilfeature.DefaultMutableFeatureGate.GetAll()))
+	t.Logf("Running TestStatefulSetForRack with features enabled: %s", strings.Join(oslices.ConvertSlice(fs, func(f featuregate.Feature) string {
+		return fmt.Sprintf("%s=%t", f, utilfeature.DefaultMutableFeatureGate.Enabled(f))
+	}), ","))
 }

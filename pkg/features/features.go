@@ -18,6 +18,10 @@ const (
 	// alpha: v1.8
 	// beta: v1.11
 	AutomaticTLSCertificates featuregate.Feature = "AutomaticTLSCertificates"
+
+	// BootstrapSynchronisation enables a barrier which ensures bootstrap preconditions are met before starting a ScyllaDB node attempting to join the cluster.
+	// alpha: v1.19
+	BootstrapSynchronisation featuregate.Feature = "BootstrapSynchronisation"
 )
 
 func init() {
@@ -25,6 +29,10 @@ func init() {
 		AutomaticTLSCertificates: {
 			Default:    true,
 			PreRelease: featuregate.Beta,
+		},
+		BootstrapSynchronisation: {
+			Default:    false,
+			PreRelease: featuregate.Alpha,
 		},
 	}))
 }

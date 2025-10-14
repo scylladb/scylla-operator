@@ -62,7 +62,8 @@ const (
 	// https://github.com/kubernetes/apimachinery/blob/f7c43800319c674eecce7c80a6ac7521a9b50aa8/pkg/apis/meta/v1/types.go#L1648
 	maxMessageLength = 32768
 
-	omissionIndicatorFmt = "(%d more omitted)"
+	messageOmissionIndicator = "(%d more omitted)"
+	reasonOmissionIndicator  = "And%dMoreOmitted"
 )
 
 // aggregateStatusConditionInfo aggregates status conditions reasons and messages into a single reason and message.
@@ -79,39 +80,53 @@ func aggregateStatusConditionInfo(conditions []metav1.Condition) (string, string
 		}
 	}
 
-	return joinWithLimit(reasons, ",", maxReasonLength, " "),
-		joinWithLimit(messages, "\n", maxMessageLength, "\n")
+	return joinWithLimit(reasons, joinWithLimitOptions{
+			separator:            ",",
+			limit:                maxReasonLength,
+			omissionIndicatorFmt: reasonOmissionIndicator,
+		}),
+		joinWithLimit(messages, joinWithLimitOptions{
+			separator:            "\n",
+			limit:                maxMessageLength,
+			omissionIndicatorFmt: messageOmissionIndicator,
+		})
+}
+
+type joinWithLimitOptions struct {
+	separator            string
+	limit                int
+	omissionIndicatorFmt string
 }
 
 // joinWithLimit joins the elements of the slice into a single string, separated by the specified separator.
 // If the length of the resulting string exceeds the specified limit, it omits the remaining elements and appends an
 // indication of how many were omitted.
-func joinWithLimit(elems []string, elemsSeparator string, limit int, omissionIndicatorSeparator string) string {
+func joinWithLimit(elems []string, opts joinWithLimitOptions) string {
 	var joined strings.Builder
 	for i, elem := range elems {
 		sep := ""
 		if i > 0 {
-			sep = elemsSeparator
+			sep = opts.separator
 		}
 
 		var (
 			currentLen            = joined.Len() + len(sep) + len(elem)
-			nextOmissionIndicator = omissionIndicatorSeparator + fmt.Sprintf(omissionIndicatorFmt, len(elems)-i-1)
+			nextOmissionIndicator = opts.separator + fmt.Sprintf(opts.omissionIndicatorFmt, len(elems)-i-1)
 		)
 
 		var (
 			// Check if adding the current element and the potential next omission indicator exceeds the limit.
-			elemWithNextOmissionExceedsLimit = currentLen+len(nextOmissionIndicator) > limit
+			elemWithNextOmissionExceedsLimit = currentLen+len(nextOmissionIndicator) > opts.limit
 			// Check if adding just the last element fits within the limit.
-			lastAndFits = currentLen <= limit && i == len(elems)-1
+			lastAndFits = currentLen <= opts.limit && i == len(elems)-1
 		)
 		if elemWithNextOmissionExceedsLimit && !lastAndFits {
 			omissionSep := ""
 			if i > 0 {
-				omissionSep = omissionIndicatorSeparator
+				omissionSep = opts.separator
 			}
 			// We're safe to add the current omission indicator as we've verified in the previous iteration it would fit.
-			currentOmissionIndicator := omissionSep + fmt.Sprintf(omissionIndicatorFmt, len(elems)-i)
+			currentOmissionIndicator := omissionSep + fmt.Sprintf(opts.omissionIndicatorFmt, len(elems)-i)
 			joined.WriteString(currentOmissionIndicator)
 			break
 		}

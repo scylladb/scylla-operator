@@ -182,6 +182,14 @@ func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string,
 		}
 	}
 
+	if cs.State.Terminated != nil {
+		logOptions.Previous = false
+		err = writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".terminated"), podMeta.Name, logOptions)
+		if err != nil {
+			return fmt.Errorf("can't retrieve pod logs for terminated container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
+		}
+	}
+
 	return nil
 }
 

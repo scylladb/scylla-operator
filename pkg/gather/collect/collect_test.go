@@ -442,6 +442,141 @@ status:
 			},
 		},
 		{
+			name: "fetches pod logs from terminated containers",
+			targetedObject: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "my-pod",
+				},
+				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name: "my-init-container",
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name: "my-container",
+						},
+					},
+					EphemeralContainers: []corev1.EphemeralContainer{
+						{
+							EphemeralContainerCommon: corev1.EphemeralContainerCommon{
+								Name: "my-ephemeral-container",
+							},
+						},
+					},
+				},
+				Status: corev1.PodStatus{
+					InitContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: "my-init-container",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{},
+								Running:    nil,
+							},
+						},
+					},
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: "my-container",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{},
+								Running:    nil,
+							},
+						},
+					},
+					EphemeralContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name: "my-ephemeral-container",
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{},
+								Running:    nil,
+							},
+						},
+					},
+				},
+			},
+			existingObjects:  nil,
+			relatedResources: false,
+			keepGoing:        false,
+			expectedError:    nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
+					{
+						Name: "namespaces/test/pods/my-pod.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: test
+spec:
+  containers:
+  - name: my-container
+    resources: {}
+  ephemeralContainers:
+  - name: my-ephemeral-container
+    resources: {}
+  initContainers:
+  - name: my-init-container
+    resources: {}
+status:
+  containerStatuses:
+  - image: ""
+    imageID: ""
+    lastState: {}
+    name: my-container
+    ready: false
+    restartCount: 0
+    state:
+      terminated:
+        exitCode: 0
+        finishedAt: null
+        startedAt: null
+  ephemeralContainerStatuses:
+  - image: ""
+    imageID: ""
+    lastState: {}
+    name: my-ephemeral-container
+    ready: false
+    restartCount: 0
+    state:
+      terminated:
+        exitCode: 0
+        finishedAt: null
+        startedAt: null
+  initContainerStatuses:
+  - image: ""
+    imageID: ""
+    lastState: {}
+    name: my-init-container
+    ready: false
+    restartCount: 0
+    state:
+      terminated:
+        exitCode: 0
+        finishedAt: null
+        startedAt: null
+`, "\n"),
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-container.terminated",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-ephemeral-container.terminated",
+						Content: "fake logs",
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-init-container.terminated",
+						Content: "fake logs",
+					},
+				},
+			},
+		},
+		{
 			name: "namespace doesn't collect any extra resources if related resources are disabled",
 			targetedObject: &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{

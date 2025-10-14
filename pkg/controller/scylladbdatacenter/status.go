@@ -58,8 +58,9 @@ func (sdcc *Controller) getScyllaVersion(sts *appsv1.StatefulSet) (string, error
 
 // calculateRackStatus calculates a status for the rack.
 // sts and old status may be nil.
-func (sdcc *Controller) calculateRackStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet) *scyllav1alpha1.RackStatus {
+func (sdcc *Controller) calculateRackStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet) *scyllav1alpha1.RackStatus {
 	status := &scyllav1alpha1.RackStatus{
+		Name:           rackName,
 		Nodes:          pointer.Ptr(int32(0)),
 		CurrentNodes:   pointer.Ptr(int32(0)),
 		UpdatedNodes:   pointer.Ptr(int32(0)),
@@ -72,7 +73,6 @@ func (sdcc *Controller) calculateRackStatus(sdc *scyllav1alpha1.ScyllaDBDatacent
 		return status
 	}
 
-	status.Name = sts.Labels[naming.RackNameLabel]
 	status.Nodes = pointer.Ptr(*sts.Spec.Replicas)
 	status.ReadyNodes = pointer.Ptr(sts.Status.ReadyReplicas)
 	status.AvailableNodes = pointer.Ptr(sts.Status.AvailableReplicas)
@@ -129,7 +129,7 @@ func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, 
 	// Calculate the status for racks.
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		status.Racks = append(status.Racks, *sdcc.calculateRackStatus(sdc, statefulSetMap[stsName]))
+		status.Racks = append(status.Racks, *sdcc.calculateRackStatus(sdc, rack.Name, statefulSetMap[stsName]))
 	}
 
 	updateAggregatedStatusFields(status)

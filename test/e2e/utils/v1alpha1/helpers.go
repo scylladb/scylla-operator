@@ -385,7 +385,7 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 		var errs []error
 		for _, h := range hosts {
 			var s scyllaclient.NodeStatusInfoSlice
-			s, err = scyllaClient.Status(ctx, h)
+			s, err = scyllaClient.NodesStatusInfo(ctx, h)
 			if err != nil {
 				return true, fmt.Errorf("can't get scylla status on node %q: %w", h, err)
 			}
@@ -397,7 +397,7 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 			}
 
 			downHosts := s.DownHostIDs()
-			infoMessages = append(infoMessages, fmt.Sprintf("Node %q, down: %q, up: %q", h, strings.Join(downHosts, "\n"), strings.Join(s.LiveHosts(), ",")))
+			infoMessages = append(infoMessages, fmt.Sprintf("Node %q, down: %q, up: %q", h, strings.Join(downHosts, "\n"), strings.Join(s.UpHostIDs(), ",")))
 
 			if len(downHosts) != 0 {
 				allSeeAllAsUN = false

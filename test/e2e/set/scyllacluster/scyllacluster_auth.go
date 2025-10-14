@@ -182,12 +182,12 @@ var _ = g.Describe("ScyllaCluster authentication", func() {
 	})
 })
 
-func getScyllaClientStatus(ctx context.Context, hosts []string, authToken string) (scyllaclient.NodeStatusInfoSlice, error) {
+func getScyllaClientStatus(ctx context.Context, hosts []string, authToken string) (scyllaclient.NodeStatusAndStateInfoSlice, error) {
 	cfg := scyllaclient.DefaultConfig(authToken, hosts...)
 
 	client, err := scyllaclient.NewClient(cfg)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	defer client.Close()
 
-	return client.Status(ctx, hosts[0])
+	return client.NodesStatusAndStateInfo(ctx, hosts[0])
 }

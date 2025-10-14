@@ -127,32 +127,92 @@ const (
 	ReshapeCompactionType    CompactionType = "RESHAPE"
 )
 
-// NodeStatusInfo represents a nodetool status line.
-type NodeStatusInfo struct {
-	HostID string
-	Addr   string
-	Status NodeStatus
-	State  NodeState
+// NodeStatusAndStateInfo represents a node's status and state (like in nodetool status).
+type NodeStatusAndStateInfo struct {
+	NodeStatusInfo
+	State NodeState
 }
 
-func (s NodeStatusInfo) String() string {
+func (s NodeStatusAndStateInfo) String() string {
 	return fmt.Sprintf("host: %s, Status: %s%s", s.Addr, s.Status, s.State)
 }
 
 // IsUN returns true if host is Up and NORMAL meaning it's a fully functional
 // live node.
-func (s NodeStatusInfo) IsUN() bool {
+func (s NodeStatusAndStateInfo) IsUN() bool {
 	return s.Status == NodeStatusUp && s.State == NodeStateNormal
 }
 
-// NodeStatusInfoSlice adds functionality to Status response.
-type NodeStatusInfoSlice []NodeStatusInfo
+// NodeStatusAndStateInfoSlice adds functionality to Status response.
+type NodeStatusAndStateInfoSlice []NodeStatusAndStateInfo
 
 // Hosts returns slice of address of all nodes.
-func (s NodeStatusInfoSlice) Hosts() []string {
+func (s NodeStatusAndStateInfoSlice) Hosts() []string {
 	var hosts []string
 	for _, h := range s {
 		hosts = append(hosts, h.Addr)
+	}
+	return hosts
+}
+
+// HostIDs returns slice of HostID of all nodes.
+func (s NodeStatusAndStateInfoSlice) HostIDs() []string {
+	var hostIDs []string
+	for _, h := range s {
+		hostIDs = append(hostIDs, h.HostID)
+	}
+	return hostIDs
+}
+
+// LiveHosts returns slice of address of nodes in UN state.
+func (s NodeStatusAndStateInfoSlice) LiveHosts() []string {
+	var hosts []string
+	for _, h := range s {
+		if h.IsUN() {
+			hosts = append(hosts, h.Addr)
+		}
+	}
+	return hosts
+}
+
+// DownHosts returns slice of address of nodes that are down.
+func (s NodeStatusAndStateInfoSlice) DownHosts() []string {
+	var hosts []string
+	for _, h := range s {
+		if h.Status == NodeStatusDown {
+			hosts = append(hosts, h.Addr)
+		}
+	}
+	return hosts
+}
+
+// DownHostIDs returns slice of HostID of nodes that are down.
+func (s NodeStatusAndStateInfoSlice) DownHostIDs() []string {
+	var hostIDs []string
+	for _, h := range s {
+		if h.Status == NodeStatusDown {
+			hostIDs = append(hostIDs, h.HostID)
+		}
+	}
+	return hostIDs
+}
+
+// NodeStatusInfo represents the status (Up/Down) of a node.
+type NodeStatusInfo struct {
+	HostID string
+	Addr   string
+	Status NodeStatus
+}
+
+type NodeStatusInfoSlice []NodeStatusInfo
+
+// UpHostIDs returns slice of HostID of nodes that are up.
+func (s NodeStatusInfoSlice) UpHostIDs() []string {
+	var hosts []string
+	for _, h := range s {
+		if h.Status == NodeStatusUp {
+			hosts = append(hosts, h.Addr)
+		}
 	}
 	return hosts
 }
@@ -166,35 +226,13 @@ func (s NodeStatusInfoSlice) HostIDs() []string {
 	return hostIDs
 }
 
-// LiveHosts returns slice of address of nodes in UN state.
-func (s NodeStatusInfoSlice) LiveHosts() []string {
-	var hosts []string
-	for _, h := range s {
-		if h.IsUN() {
-			hosts = append(hosts, h.Addr)
-		}
-	}
-	return hosts
-}
-
-// DownHosts returns slice of address of nodes that are down.
-func (s NodeStatusInfoSlice) DownHosts() []string {
-	var hosts []string
-	for _, h := range s {
-		if h.Status == NodeStatusDown {
-			hosts = append(hosts, h.Addr)
-		}
-	}
-	return hosts
-}
-
 // DownHostIDs returns slice of HostID of nodes that are down.
 func (s NodeStatusInfoSlice) DownHostIDs() []string {
-	var hostIDs []string
+	var hosts []string
 	for _, h := range s {
 		if h.Status == NodeStatusDown {
-			hostIDs = append(hostIDs, h.HostID)
+			hosts = append(hosts, h.HostID)
 		}
 	}
-	return hostIDs
+	return hosts
 }

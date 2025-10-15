@@ -120,11 +120,7 @@ func operationalModeFromString(str string) OperationalMode {
 type CompactionType string
 
 const (
-	CompactionCompactionType CompactionType = "COMPACTION"
-	CleanupCompactionType    CompactionType = "CLEANUP"
-	ScrubCompactionType      CompactionType = "SCRUB"
-	UpgradeCompactionType    CompactionType = "UPGRADE"
-	ReshapeCompactionType    CompactionType = "RESHAPE"
+	CleanupCompactionType CompactionType = "CLEANUP"
 )
 
 // NodeStatusAndStateInfo represents a node's status and state (like in nodetool status).

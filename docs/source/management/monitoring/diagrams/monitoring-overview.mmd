@@ -1,0 +1,63 @@
+:::{mermaid}
+flowchart BT
+
+%% Styles
+classDef scyllaVibe fill:#57d1e5,stroke:#4f5d75,color:#000;
+classDef prometheusVibe fill:#e6512d,stroke:#ff9800,color:#fff;
+classDef grafanaVibe fill:#f5a612,stroke:#ff9800,color:#fff;
+
+%% Nodes
+SC[ScyllaCluster]
+class SC scyllaVibe
+
+SDM[ScyllaDBMonitoring]
+class SDM scyllaVibe
+
+Prometheus
+class Prometheus prometheusVibe
+
+GrafanaDeployment
+class GrafanaDeployment grafanaVibe
+
+ServiceMonitor
+class ServiceMonitor prometheusVibe
+
+PrometheusRule
+class PrometheusRule prometheusVibe
+
+OtherGrafanaResources
+class OtherGrafanaResources grafanaVibe
+
+PrometheusOperator(Prometheus Operator)
+class PrometheusOperator prometheusVibe
+
+%% Grouping
+subgraph K8sCluster[Kubernetes Cluster]
+    direction TB
+    MS
+    SC
+    PrometheusOperator
+end
+subgraph MS[Monitoring Stack]
+    SDM
+    subgraph PrometheusStack[Prometheus]
+        ServiceMonitor
+        PrometheusRule
+        Prometheus["Prometheus"]
+    end
+
+    subgraph GrafanaStack[Grafana]
+        direction LR
+        GrafanaDeployment[Deployment]
+        OtherGrafanaResources["`_Other objects..._`"]
+    end
+end
+
+%% Relationships between nodes
+SDM -->|selects| SC
+SDM -->|creates| PrometheusStack
+SDM -->|creates| GrafanaStack
+Prometheus -->|scrapes| SC
+
+PrometheusOperator -->|reconciles| PrometheusStack
+:::

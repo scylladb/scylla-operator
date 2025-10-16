@@ -85,30 +85,50 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) Status(ctx context.Context, host string) (NodeStatusInfoSlice, error) {
+func (c *Client) NodesStatusInfo(ctx context.Context, host string) (NodeStatusInfoSlice, error) {
 	if len(host) > 0 {
-		// Always query same host
 		ctx = forceHost(ctx, host)
 	}
 
-	// Get all hosts
-	resp, err := c.scyllaClient.Operations.StorageServiceHostIDGet(&scyllaoperations.StorageServiceHostIDGetParams{Context: ctx})
+	getHostIDResp, err := c.scyllaClient.Operations.StorageServiceHostIDGet(&scyllaoperations.StorageServiceHostIDGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
 
-	all := make([]NodeStatusInfo, len(resp.Payload))
-	for i, p := range resp.Payload {
-		all[i].Addr = p.Key
-		all[i].HostID = p.Value
+	all := make([]NodeStatusInfo, len(getHostIDResp.Payload))
+	for i, n := range getHostIDResp.Payload {
+		all[i].Addr = n.Key
+		all[i].HostID = n.Value
+		all[i].Status = NodeStatusDown
 	}
 
-	// Get live nodes
-	live, err := c.scyllaClient.Operations.GossiperEndpointLiveGet(&scyllaoperations.GossiperEndpointLiveGetParams{Context: ctx})
+	getLiveNodesResp, err := c.scyllaClient.Operations.GossiperEndpointLiveGet(&scyllaoperations.GossiperEndpointLiveGetParams{Context: ctx})
 	if err != nil {
 		return nil, err
 	}
-	setNodeStatus(all, NodeStatusUp, live.Payload)
+	liveNodeAddrs := strset.New(getLiveNodesResp.Payload...)
+
+	for i, n := range all {
+		if liveNodeAddrs.Has(n.Addr) {
+			all[i].Status = NodeStatusUp
+		}
+	}
+
+	return all, nil
+}
+
+func (c *Client) NodesStatusAndStateInfo(ctx context.Context, host string) (NodeStatusAndStateInfoSlice, error) {
+	allNodesLivenessStatus, err := c.NodesStatusInfo(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+
+	all := make([]NodeStatusAndStateInfo, len(allNodesLivenessStatus))
+	for i, n := range allNodesLivenessStatus {
+		all[i] = NodeStatusAndStateInfo{
+			NodeStatusInfo: n,
+		}
+	}
 
 	// Get joining nodes
 	joining, err := c.scyllaClient.Operations.StorageServiceNodesJoiningGet(&scyllaoperations.StorageServiceNodesJoiningGetParams{Context: ctx})
@@ -438,7 +458,7 @@ func DefaultTransport() *http.Transport {
 	}
 }
 
-func setNodeState(all []NodeStatusInfo, state NodeState, addrs []string) {
+func setNodeState(all []NodeStatusAndStateInfo, state NodeState, addrs []string) {
 	if len(addrs) == 0 {
 		return
 	}
@@ -447,19 +467,6 @@ func setNodeState(all []NodeStatusInfo, state NodeState, addrs []string) {
 	for i := range all {
 		if m.Has(all[i].Addr) {
 			all[i].State = state
-		}
-	}
-}
-
-func setNodeStatus(all []NodeStatusInfo, status NodeStatus, addrs []string) {
-	if len(addrs) == 0 {
-		return
-	}
-	m := strset.New(addrs...)
-
-	for i := range all {
-		if m.Has(all[i].Addr) {
-			all[i].Status = status
 		}
 	}
 }

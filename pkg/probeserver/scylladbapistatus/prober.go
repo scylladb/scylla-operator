@@ -77,7 +77,7 @@ func (p *Prober) Readyz(w http.ResponseWriter, req *http.Request) {
 	defer scyllaClient.Close()
 
 	// Contact Scylla to learn about the status of the member
-	nodeStatuses, err := scyllaClient.Status(ctx, localhost)
+	nodeStatuses, err := scyllaClient.NodesStatusAndStateInfo(ctx, localhost)
 	if err != nil {
 		klog.ErrorS(err, "readyz probe: can't get scylla node status", "Service", p.serviceRef())
 		w.WriteHeader(http.StatusInternalServerError)

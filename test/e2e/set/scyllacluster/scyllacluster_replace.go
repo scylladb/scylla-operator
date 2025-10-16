@@ -144,9 +144,9 @@ var _ = g.Describe("ScyllaCluster", func() {
 			otherNodeBroadcastRPCAddress, err := utils.GetBroadcastRPCAddress(ctx, f.KubeClient().CoreV1(), sc, otherNodeService)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			status, err := client.Status(ctx, otherNodeBroadcastRPCAddress)
+			status, err := client.NodesStatusInfo(ctx, otherNodeBroadcastRPCAddress)
 			g.Expect(err).NotTo(o.HaveOccurred())
-			g.Expect(status.LiveHosts()).To(o.ContainElement(replacedNodeBroadcastAddress))
+			g.Expect(status.UpHostIDs()).To(o.ContainElement(replacedNodeBroadcastAddress))
 		}).WithPolling(time.Second).WithTimeout(5 * time.Minute).Should(o.Succeed())
 
 		hosts, err = utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)

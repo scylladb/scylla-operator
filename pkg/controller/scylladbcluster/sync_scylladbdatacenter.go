@@ -90,6 +90,21 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 		}
 	}
 
+	// Wait for ScyllaDBDatacenterNodesStatusReport controller to finish progressing before proceeding.
+	// This ensures that the mirrored ScyllaDBDatacenterNodeStatusReports are up to date before a new DC is added,
+	// which lowers the chance of a new node being bootstrapped while the cluster is unhealthy.
+	isScyllaDBDatacenterNodesStatusReportControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteScyllaDBDatacenterNodesStatusReportControllerDatacenterProgressingCondition(dc.Name))
+	if isScyllaDBDatacenterNodesStatusReportControllerProgressing {
+		klog.V(4).InfoS("Waiting for ScyllaDBDatacenterNodesStatusReport controller to finish progressing", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", dc.Name)
+		progressingConditions = append(progressingConditions, metav1.Condition{
+			Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
+			Status:             metav1.ConditionTrue,
+			Reason:             "WaitingForScyllaDBDatacenterNodesStatusReportController",
+			Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenterNodesStatusReport controller for %q datacenter to finish progressing", dc.Name),
+			ObservedGeneration: sc.Generation,
+		})
+	}
+
 	if len(progressingConditions) > 0 {
 		return progressingConditions, nil
 	}

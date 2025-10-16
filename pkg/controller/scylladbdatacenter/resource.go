@@ -27,8 +27,10 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -614,35 +616,139 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 						return volumes
 					}(),
 					Tolerations: placement.Tolerations,
-					InitContainers: []corev1.Container{
-						{
-							Name:            naming.SidecarInjectorContainerName,
-							Image:           sidecarImage,
-							ImagePullPolicy: corev1.PullIfNotPresent,
-							Command: []string{
-								"/bin/sh",
-								"-c",
-								fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
-							},
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("50Mi"),
+					InitContainers: func() []corev1.Container {
+						cs := []corev1.Container{
+							{
+								Name:            naming.SidecarInjectorContainerName,
+								Image:           sidecarImage,
+								ImagePullPolicy: corev1.PullIfNotPresent,
+								Command: []string{
+									"/bin/sh",
+									"-c",
+									fmt.Sprintf("cp -a /usr/bin/scylla-operator %s", naming.SharedDirName),
 								},
-								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("10m"),
-									corev1.ResourceMemory: resource.MustParse("50Mi"),
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("50Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("10m"),
+										corev1.ResourceMemory: resource.MustParse("50Mi"),
+									},
+								},
+								VolumeMounts: []corev1.VolumeMount{
+									{
+										Name:      "shared",
+										MountPath: naming.SharedDirName,
+										ReadOnly:  false,
+									},
 								},
 							},
-							VolumeMounts: []corev1.VolumeMount{
+						}
+
+						if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+							cs = append(cs, []corev1.Container{{
+								Name:            "scylladb-sstable-bootstrap-extractor",
+								Image:           sdc.Spec.ScyllaDB.Image,
+								ImagePullPolicy: corev1.PullIfNotPresent,
+								Command: []string{
+									"/usr/bin/bash",
+									"-euEo",
+									"pipefail",
+									"-O",
+									"inherit_errexit",
+									"-c",
+									strings.TrimSpace(`
+/usr/bin/scylla sstable query \
+--system-schema \
+` + fmt.Sprintf("--scylla-data-dir=%s", path.Join(naming.DataDir, "/data")) + ` \
+--keyspace=system \
+--table=local \
+--output-format=json \
+--query="SELECT bootstrapped FROM scylla_sstable.local" \
+` + path.Join(naming.DataDir, "/data/system/local-*/*-Data.db") + ` >/mnt/shared/bootstrapped.json || touch /mnt/shared/bootstrapped.json
+`),
+								},
+								Resources: corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("50m"),
+										corev1.ResourceMemory: resource.MustParse("100Mi"),
+									},
+									Requests: corev1.ResourceList{
+										corev1.ResourceCPU:    resource.MustParse("50m"),
+										corev1.ResourceMemory: resource.MustParse("100Mi"),
+									},
+								},
+								VolumeMounts: []corev1.VolumeMount{
+									{
+										Name:      naming.PVCTemplateName,
+										MountPath: naming.DataDir,
+										ReadOnly:  true,
+									},
+									{
+										Name:      "shared",
+										MountPath: naming.SharedDirName,
+										ReadOnly:  false,
+									},
+								},
+							},
 								{
-									Name:      "shared",
-									MountPath: naming.SharedDirName,
-									ReadOnly:  false,
-								},
-							},
-						},
-					},
+									Name:            "scylladb-bootstrap-barrier",
+									Image:           sidecarImage,
+									ImagePullPolicy: corev1.PullIfNotPresent,
+									Command: []string{
+										"/usr/bin/bash",
+										"-euEo",
+										"pipefail",
+										"-O",
+										"inherit_errexit",
+										"-c",
+										strings.TrimSpace(`
+if [ "$(jq 'all(.[]; .bootstrapped? == "COMPLETED")' /mnt/shared/bootstrapped.json)" = "true" ]; then
+	printf 'INFO %s bootstrap-barrier - Node has already been bootstrapped. Proceeding without running the barrier...\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
+    exit 0
+fi
+
+/usr/bin/scylla-operator \
+run-bootstrap-barrier \
+--service-name=$(SERVICE_NAME) \
+` + fmt.Sprintf("--selector-label-value=%s", naming.ScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sdc)) + ` \
+` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + ` \
+`),
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("40Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("10m"),
+											corev1.ResourceMemory: resource.MustParse("40Mi"),
+										},
+									},
+									VolumeMounts: []corev1.VolumeMount{
+										{
+											Name:      "shared",
+											MountPath: naming.SharedDirName,
+											ReadOnly:  true,
+										},
+									},
+									Env: []corev1.EnvVar{
+										{
+											Name: "SERVICE_NAME",
+											ValueFrom: &corev1.EnvVarSource{
+												FieldRef: &corev1.ObjectFieldSelector{
+													FieldPath: "metadata.name",
+												},
+											},
+										},
+									},
+								}}...)
+						}
+
+						return cs
+					}(),
 					Containers: []corev1.Container{
 						{
 							Name:            naming.ScyllaContainerName,
@@ -704,6 +810,7 @@ exec /mnt/shared/scylla-operator sidecar \
 										return string(scyllav1alpha1.ScyllaDBDatacenterDefaultClientsBroadcastAddressType)
 									}() + ` \
 --service-name=$(SERVICE_NAME) \
+--status-report-period-seconds=5 \
 --cpu-count=$(CPU_COUNT) \
 ` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + ` \
 ` +
@@ -2109,4 +2216,150 @@ func cloneMapExcludingKeysOrEmpty[M ~map[K]V, S ~[]K, K comparable, V any](m M, 
 		delete(r, k)
 	}
 	return r
+}
+
+func makeScyllaDBDatacenterNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport, error) {
+	var err error
+
+	var errs []error
+	var rackStatusReports []scyllav1alpha1.RackNodesStatusReport
+	for _, rack := range sdc.Spec.Racks {
+		rackNodesStatusReport, err := makeRackNodesStatusReport(sdc, &rack, services, podLister)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't make rack status report for rack %q of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err))
+			continue
+		}
+
+		rackStatusReports = append(rackStatusReports, *rackNodesStatusReport)
+	}
+	err = apimachineryutilerrors.NewAggregate(errs)
+	if err != nil {
+		return nil, err
+	}
+
+	name, err := naming.ScyllaDBDatacenterNodesStatusReportName(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get ScyllaDBDatacenterNodesStatusReport name for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+	}
+
+	labels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)
+	maps.Copy(labels, naming.ClusterLabels(sdc))
+	labels[naming.ScyllaDBDatacenterNodesStatusReportSelectorLabel] = naming.ScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sdc)
+
+	annotations := cloneMapExcludingKeysOrEmpty(sdc.Annotations, nonPropagatedAnnotationKeys)
+
+	ssr := &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   sdc.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(sdc, scyllav1alpha1.ScyllaDBDatacenterGVK),
+			},
+		},
+		DatacenterName: naming.GetScyllaDBDatacenterGossipDatacenterName(sdc),
+		Racks:          rackStatusReports,
+	}
+	return ssr, nil
+}
+
+func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.RackNodesStatusReport, error) {
+	var errs []error
+
+	desiredRackNodeCount, err := controllerhelpers.GetRackNodeCount(sdc, rackSpec.Name)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rackSpec.Name, naming.ObjRef(sdc), err)
+	}
+
+	actualRackNodeCount := int32(0)
+	rackStatus, _, found := oslices.Find(sdc.Status.Racks, func(status scyllav1alpha1.RackStatus) bool {
+		return status.Name == rackSpec.Name
+	})
+	if found && rackStatus.CurrentNodes != nil {
+		actualRackNodeCount = *rackStatus.CurrentNodes
+	}
+
+	var nodeStatusReports []scyllav1alpha1.NodeStatusReport
+	for ord := int32(0); ord < *desiredRackNodeCount; ord++ {
+		isNodeExpectedInK8sState := ord < actualRackNodeCount
+		nodeStatusReport, ok, err := makeNodeStatusReport(sdc, rackSpec, int(ord), services, podLister, isNodeExpectedInK8sState)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't make node status report for node %d of rack %q of ScyllaDBDatacenter %q: %w", ord, rackSpec.Name, naming.ObjRef(sdc), err))
+			continue
+		}
+		if !ok {
+			continue
+		}
+
+		nodeStatusReports = append(nodeStatusReports, *nodeStatusReport)
+	}
+	err = apimachineryutilerrors.NewAggregate(errs)
+	if err != nil {
+		return nil, err
+	}
+
+	rackStatusReport := &scyllav1alpha1.RackNodesStatusReport{
+		Name:  rackSpec.Name,
+		Nodes: nodeStatusReports,
+	}
+	return rackStatusReport, nil
+}
+
+// makeNodeStatusReport creates a NodeStatusReport for a specific node in a rack.
+// It returns an optional NodeStatusReport, a boolean indicating whether the NodeStatusReport is non-nil, and an error.
+func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, ordinal int, services map[string]*corev1.Service, podLister corev1listers.PodLister, isNodeExpectedInK8sState bool) (*scyllav1alpha1.NodeStatusReport, bool, error) {
+	var hostID string
+	svcName := naming.MemberServiceName(*rackSpec, sdc, ordinal)
+	svc, svcExists := services[svcName]
+	if svcExists {
+		hostID = svc.Annotations[naming.HostIDAnnotation]
+	}
+
+	if !isNodeExpectedInK8sState && len(hostID) == 0 {
+		// The node is not expected to be a part of the cluster in K8s state, and it has no known identity in ScyllaDB. Skip it.
+		return nil, false, nil
+	}
+
+	nodeStatusReport := &scyllav1alpha1.NodeStatusReport{
+		Ordinal: ordinal,
+	}
+
+	if len(hostID) == 0 {
+		// Host ID hasn't been propagated yet, report an empty status without a hostID.
+		return nodeStatusReport, true, nil
+	}
+	nodeStatusReport.HostID = &hostID
+
+	podName := naming.PodNameFromService(svc)
+	pod, err := podLister.Pods(sdc.Namespace).Get(podName)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return nil, false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
+		}
+
+		// Pod is missing, report an empty status.
+		return nodeStatusReport, true, nil
+	}
+
+	nodeStatusReportAnnotationValue, ok := pod.Annotations[naming.NodeStatusReportAnnotation]
+	if !ok {
+		// The node might not have reported its status yet, report an empty status.
+		return nodeStatusReport, true, nil
+	}
+
+	var internalNodeStatusReport internalapi.NodeStatusReport
+	err = internalNodeStatusReport.Decode(strings.NewReader(nodeStatusReportAnnotationValue))
+	if err != nil {
+		return nil, false, fmt.Errorf("can't decode annotation %q of pod %q for ScyllaDBDatacenter %q: %w", naming.NodeStatusReportAnnotation, naming.ManualRef(sdc.Namespace, podName), naming.ObjRef(sdc), err)
+	}
+
+	if internalNodeStatusReport.Error != nil {
+		// The node reported an error, report an empty status.
+		return nodeStatusReport, true, nil
+	}
+
+	nodeStatusReport.ObservedNodes = internalNodeStatusReport.ObservedNodes
+
+	return nodeStatusReport, true, nil
 }

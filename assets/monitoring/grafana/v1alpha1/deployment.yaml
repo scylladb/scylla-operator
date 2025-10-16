@@ -121,10 +121,18 @@ spec:
           mountPath: /var/run/secrets/grafana-admin-credentials
         - name: grafana-serving-certs
           mountPath: /var/run/secrets/grafana-serving-certs
+        {{- if and .prometheusTLSSpec .prometheusTLSSpec.ClientTLSKeyPairSecretRef }}
         - name: prometheus-client-certs
           mountPath: /var/run/secrets/prometheus-client-certs
+        {{- end }}
+        {{- if and .prometheusTLSSpec .prometheusTLSSpec.ServingCAConfigMapRef }}
         - name: prometheus-serving-ca
           mountPath: /var/run/configmaps/prometheus-serving-ca
+        {{- end }}
+        {{- if and .prometheusAuthSpec .prometheusAuthSpec.BearerTokenSecretRef }}
+        - name: prometheus-bearer-token
+          mountPath: /var/run/secrets/prometheus-bearer-token
+        {{- end }}
         - name: grafana-storage
           mountPath: /var/lib/grafana
         securityContext:
@@ -159,12 +167,21 @@ spec:
       - name: grafana-serving-certs
         secret:
           secretName: "{{ .servingCertSecretName }}"
+      {{- if and .prometheusTLSSpec .prometheusTLSSpec.ClientTLSKeyPairSecretRef }}
       - name: prometheus-client-certs
         secret:
-          secretName: "{{ .scyllaDBMonitoringName }}-prometheus-client-grafana"
+          secretName: "{{ .prometheusTLSSpec.ClientTLSKeyPairSecretRef.Name }}"
+      {{- end }}
+      {{- if and .prometheusTLSSpec .prometheusTLSSpec.ServingCAConfigMapRef }}
       - name: prometheus-serving-ca
         configMap:
-          name: "{{ .scyllaDBMonitoringName }}-prometheus-serving-ca"
+          name: "{{ .prometheusTLSSpec.ServingCAConfigMapRef.Name }}"
+      {{- end }}
+      {{- if and .prometheusAuthSpec .prometheusAuthSpec.BearerTokenSecretRef }}
+      - name: prometheus-bearer-token
+        secret:
+          secretName: "{{ .prometheusAuthSpec.BearerTokenSecretRef.Name }}"
+      {{- end }}
       - name: grafana-storage
         emptyDir:
           sizeLimit: 100Mi

@@ -114,8 +114,6 @@ spec:
   agentVersion: {{agentVersion}}
   version: {{imageTag}}
   cpuset: true
-  sysctls:
-  - "fs.aio-max-nr=2097152"
   automaticOrphanedNodeCleanup: true
   exposeOptions:
     broadcastOptions:
@@ -370,8 +368,6 @@ spec:
   agentVersion: {{ agentVersion }}
   version: {{ imageTag }}
   cpuset: true
-  sysctls:
-  - "fs.aio-max-nr=2097152"
   automaticOrphanedNodeCleanup: true
   exposeOptions:
     broadcastOptions:

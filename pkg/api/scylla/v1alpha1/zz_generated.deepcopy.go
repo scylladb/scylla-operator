@@ -590,6 +590,11 @@ func (in *NodeConfigSpec) DeepCopyInto(out *NodeConfigSpec) {
 		*out = new(LocalDiskSetup)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Sysctls != nil {
+		in, out := &in.Sysctls, &out.Sysctls
+		*out = make([]v1.Sysctl, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

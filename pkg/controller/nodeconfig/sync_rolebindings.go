@@ -24,6 +24,7 @@ func (ncc *Controller) syncRoleBindings(
 
 	requiredRoleBindings := []*rbacv1.RoleBinding{
 		makePerftuneRoleBinding(),
+		makeSysctlsRoleBinding(),
 		makeRlimitsRoleBinding(),
 	}
 

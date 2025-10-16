@@ -247,7 +247,17 @@ func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		return nil, fmt.Errorf("can't get controller ref: %w", err)
 	}
 
-	requiredForNode, err := makeJobsForNode(ctx, nc, cr, ncdc.namespace, ncdc.nodeName, ncdc.nodeUID, ncdc.scyllaImage, selfPod)
+	sysctlConfigMapName, err := naming.NodeConfigSysctlConfigMapName(nc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get sysctl config map name: %w", err)
+	}
+
+	systlConfigMap, err := ncdc.namespacedConfigMapLister.ConfigMaps(ncdc.namespace).Get(sysctlConfigMapName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get sysctl config map %q: %w", naming.ManualRef(ncdc.namespace, sysctlConfigMapName), err)
+	}
+
+	requiredForNode, err := makeJobsForNode(ctx, nc, cr, ncdc.namespace, ncdc.nodeName, ncdc.nodeUID, ncdc.scyllaImage, ncdc.operatorImage, selfPod, systlConfigMap)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make Jobs for node: %w", err)
 	}
@@ -286,7 +296,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		}
 
 		switch jobType := naming.NodeConfigJobType(t); jobType {
-		case naming.NodeConfigJobTypeNode:
+		case naming.NodeConfigJobTypeNodePerftune, naming.NodeConfigJobTypeNodeSysctls:
 			// FIXME: Extract into a function and double check how jobs report status.
 			if fresh.Status.CompletionTime == nil {
 				klog.V(4).InfoS("Job isn't completed yet", "Job", klog.KObj(fresh))

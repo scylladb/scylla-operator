@@ -374,6 +374,15 @@
       },
       "type": "array"
     },
+    "ipFamily": {
+      "default": "IPv4",
+      "description": "IPFamily specifies the IP family for this cluster.\nAll services, broadcast addresses, and pod IPs will use this IP family.",
+      "enum": [
+        "IPv4",
+        "IPv6"
+      ],
+      "type": "string"
+    },
     "minReadySeconds": {
       "description": "minReadySeconds is the minimum number of seconds for which a newly created ScyllaDB node should be ready\nfor it to be considered available.\nWhen used to control load balanced traffic, this can give the load balancer in front of a node enough time to\nnotice that the node is ready and start forwarding traffic in time. Because it all depends on timing, the order\nis not guaranteed and, if possible, you should use readinessGates instead.\nIf not provided, Operator will determine this value.",
       "format": "int32",
@@ -394,6 +403,19 @@
         "hostNetworking": {
           "description": "hostNetworking determines if scylla uses the host's network namespace. Setting this option\navoids going through Kubernetes SDN and exposes scylla on node's IP.\nDeprecated: `hostNetworking` is deprecated and may be ignored in the future.",
           "type": "boolean"
+        },
+        "ipFamilies": {
+          "description": "ipFamilies specifies the IP families to use.\nSupports: IPv4, IPv6.",
+          "items": {
+            "description": "IPFamily represents the IP Family (IPv4 or IPv6). This type is used\nto express the family of an IP expressed by a type (e.g. service.spec.ipFamilies).",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ipFamilyPolicy": {
+          "default": "SingleStack",
+          "description": "ipFamilyPolicy specifies the IP family policy for the cluster.\nSupports: SingleStack, PreferDualStack, RequireDualStack.",
+          "type": "string"
         }
       },
       "type": "object"

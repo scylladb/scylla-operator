@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,12 +62,22 @@ func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clien
 		AdditionalScyllaDBArguments: additionalScyllaDBArguments,
 	}
 
-	m.BroadcastAddress, err = controllerhelpers.GetScyllaBroadcastAddress(nodesAddressType, service, pod)
+	// Determine IP family preference from service configuration
+	var ipFamily *corev1.IPFamily
+	if len(service.Spec.IPFamilies) > 0 {
+		ipFamily = &service.Spec.IPFamilies[0]
+	} else {
+		// Fall back to detecting from service ClusterIPs
+		preferredFamily := helpers.GetPreferredServiceIPFamily(service)
+		ipFamily = &preferredFamily
+	}
+
+	m.BroadcastAddress, err = controllerhelpers.GetScyllaBroadcastAddress(nodesAddressType, service, pod, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("can't get node broadcast address: %w", err)
 	}
 
-	m.BroadcastRPCAddress, err = controllerhelpers.GetScyllaBroadcastAddress(clientAddressType, service, pod)
+	m.BroadcastRPCAddress, err = controllerhelpers.GetScyllaBroadcastAddress(clientAddressType, service, pod, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client broadcast address: %w", err)
 	}
@@ -135,7 +146,17 @@ func (m *Member) GetSeeds(ctx context.Context, coreClient v1.CoreV1Interface, ex
 	res = append(res, externalSeeds...)
 
 	// Assume nodes share broadcast address type and it's immutable.
-	localSeed, err := controllerhelpers.GetScyllaBroadcastAddress(m.NodesBroadcastAddressType, svc, pod)
+	// Determine IP family preference from service configuration
+	var ipFamily *corev1.IPFamily
+	if len(svc.Spec.IPFamilies) > 0 {
+		ipFamily = &svc.Spec.IPFamilies[0]
+	} else {
+		// Fall back to detecting from service ClusterIPs
+		preferredFamily := helpers.GetPreferredServiceIPFamily(svc)
+		ipFamily = &preferredFamily
+	}
+
+	localSeed, err := controllerhelpers.GetScyllaBroadcastAddress(m.NodesBroadcastAddressType, svc, pod, ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("can't get node broadcast address for service %q: %w", naming.ObjRef(svc), err)
 	}

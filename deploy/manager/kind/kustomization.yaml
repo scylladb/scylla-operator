@@ -1,0 +1,8 @@
+resources:
+  - ../../manager/dev
+patches:
+  - target:
+      group: scylla.scylladb.com
+      version: v1
+      kind: ScyllaCluster
+    path: storage-class-patch.yaml

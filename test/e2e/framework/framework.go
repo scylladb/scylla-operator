@@ -389,6 +389,42 @@ func createUserNamespace(ctx context.Context, clusterName string, labels map[str
 	}, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
+	// Create a Role with ephemeral containers permissions
+	_, err = adminClient.RbacV1().Roles(ns.Name).Create(ctx, &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ephemeral-containers",
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"pods/ephemeralcontainers"},
+				Verbs:     []string{"get", "list", "patch", "update"},
+			},
+		},
+	}, metav1.CreateOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	// Grant the user ServiceAccount ephemeral containers permissions
+	_, err = adminClient.RbacV1().RoleBindings(ns.Name).Create(ctx, &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: userSA.Name + "-ephemeral-containers",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				APIGroup:  corev1.GroupName,
+				Kind:      rbacv1.ServiceAccountKind,
+				Namespace: userSA.Namespace,
+				Name:      userSA.Name,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "Role",
+			Name:     "ephemeral-containers",
+		},
+	}, metav1.CreateOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
 	// Create a service account token Secret for the user ServiceAccount.
 	userSATokenSecret, err := adminClient.CoreV1().Secrets(ns.Name).Create(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

@@ -22,7 +22,7 @@ import (
 
 // Despite the sysctl configuration being a part of ScyllaCluster's API, it configures kernel parameters on the host.
 // Therefore, the test is disruptive and needs to run serially.
-var _ = g.Describe("ScyllaCluster sysctl", framework.Serial, func() {
+var _ = g.Describe("ScyllaCluster sysctl", framework.Serial, framework.NotSupportedOnKind, func() {
 	f := framework.NewFramework("scyllacluster")
 
 	// Delete any NodeConfigs before each test to ensure we don't race against NodeConfig's sysctl functionality.

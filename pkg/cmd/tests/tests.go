@@ -78,6 +78,21 @@ var Suites = ginkgotest.TestSuites{
 		),
 		DefaultParallelism: 42,
 	},
+	{
+		Name: "kind-parallel",
+		Description: templates.LongDesc(`
+		Tests that can be run on a KinD cluster in parallel.
+		`),
+		LabelFilter: fmt.Sprintf(
+			"!%s && !%s && !%s && !%s && !%s",
+			framework.NotSupportedOnKindLabelName,
+			framework.RequiresObjectStorageLabelName, // TODO: Decide whether we'd like to support tests requiring object storage in KinD (e.g., via MinIO)
+			framework.MultiDatacenterLabelName,       // TODO: handle multi-datacenter in KinD by reusing one cluster for multiple datacenters
+			framework.SerialLabelName,
+			framework.SupportedOnlyOnOpenShiftLabelName,
+		),
+		DefaultParallelism: 42,
+	},
 }
 
 func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {

@@ -7,7 +7,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -105,22 +104,18 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Manually draining ScyllaCluster node #4 (%s)", podName)
-		ec := &corev1.EphemeralContainer{
-			TargetContainerName: naming.ScyllaContainerName,
-			EphemeralContainerCommon: corev1.EphemeralContainerCommon{
-				Name:            "e2e-drain-scylla",
-				Image:           scylladbdatacenter.ImageForCluster(sc),
-				ImagePullPolicy: corev1.PullIfNotPresent,
-				Command:         []string{"/usr/bin/nodetool", "drain"},
-				Args:            []string{},
-			},
-		}
-		pod, err := utils.RunEphemeralContainerAndWaitForCompletion(ctx, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, ec)
+		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(ctx, podName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
-		ephemeralContainerState := controllerhelpers.FindContainerStatus(pod, ec.Name)
-		o.Expect(ephemeralContainerState).NotTo(o.BeNil())
-		o.Expect(ephemeralContainerState.State.Terminated).NotTo(o.BeNil())
-		o.Expect(ephemeralContainerState.State.Terminated.ExitCode).To(o.BeEquivalentTo(0))
+
+		stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
+			Command:       []string{"nodetool", "drain"},
+			Namespace:     pod.Namespace,
+			PodName:       pod.Name,
+			ContainerName: "scylla",
+			CaptureStdout: true,
+			CaptureStderr: true,
+		})
+		o.Expect(err).NotTo(o.HaveOccurred(), "stdout: %s, stderr: %s", stdout, stderr)
 
 		framework.By("Scaling the ScyllaCluster down to 4 replicas")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace).Patch(

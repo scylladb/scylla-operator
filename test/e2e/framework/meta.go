@@ -13,6 +13,7 @@ const (
 	RequiresObjectStorageLabelName    = "RequiresObjectStorage"
 	NotSupportedOnOpenShiftLabelName  = "NotSupportedOnOpenShift"
 	SupportedOnlyOnOpenShiftLabelName = "SupportedOnlyOnOpenShift"
+	NotSupportedOnKindLabelName       = "NotSupportedOnKind"
 )
 
 var (
@@ -25,4 +26,5 @@ var (
 	RequiresObjectStorage    = g.Label(RequiresObjectStorageLabelName)
 	NotSupportedOnOpenShift  = g.Label(NotSupportedOnOpenShiftLabelName)
 	SupportedOnlyOnOpenShift = g.Label(SupportedOnlyOnOpenShiftLabelName)
+	NotSupportedOnKind       = g.Label(NotSupportedOnKindLabelName)
 )

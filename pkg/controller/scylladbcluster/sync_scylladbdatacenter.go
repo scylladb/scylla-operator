@@ -61,30 +61,51 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 			if sc.Spec.Datacenters[i].Name == dc.Name {
 				break
 			}
+
 			previousDCSpec := sc.Spec.Datacenters[i]
 			isScyllaDBDatacenterControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(previousDCSpec.Name))
-			if isScyllaDBDatacenterControllerProgressing {
-				klog.V(4).InfoS("Waiting for ScyllaDBDatacenter controller for previous datacenter to finish progressing", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", dc.Name, "PreviousDatacenter", previousDCSpec.Name)
+			isScyllaDBDatacenterControllerDegraded := meta.IsStatusConditionTrue(status.Conditions, makeRemoteScyllaDBDatacenterControllerDatacenterDegradedCondition(previousDCSpec.Name))
+			if isScyllaDBDatacenterControllerProgressing || isScyllaDBDatacenterControllerDegraded {
+				klog.V(4).InfoS(
+					"Waiting for ScyllaDBDatacenter controller for previous datacenter to finish progressing or recover from degraded state",
+					"ScyllaDBCluster", klog.KObj(sc),
+					"Datacenter", dc.Name,
+					"PreviousDatacenter", previousDCSpec.Name,
+					"Progressing", isScyllaDBDatacenterControllerProgressing,
+					"Degraded", isScyllaDBDatacenterControllerDegraded,
+				)
 				progressingConditions = append(progressingConditions, metav1.Condition{
 					Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
 					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForScyllaDBDatacenterController",
-					Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter controller for %q datacenter to finish progressing", previousDCSpec.Name),
+					Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenter controller for %q datacenter to finish progressing or recover from degraded state", previousDCSpec.Name),
 					ObservedGeneration: sc.Generation,
 				})
 			}
+
 		}
 
 		// Scylla cannot start without connecting to seeds. Before we create new DC, make sure seed service and endpoints behind it are already reconciled.
 		isEndpointSliceControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name))
 		isServiceControllerProgressing := meta.IsStatusConditionTrue(status.Conditions, makeRemoteServiceControllerDatacenterProgressingCondition(dc.Name))
-		if isEndpointSliceControllerProgressing || isServiceControllerProgressing {
-			klog.V(4).InfoS("Waiting until EndpointSlice and Service controllers are no longer progressing", "ScyllaDBCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter), "Datacenter", dc.Name)
+		isEndpointSliceControllerDegraded := meta.IsStatusConditionTrue(status.Conditions, makeRemoteEndpointSliceControllerDatacenterDegradedCondition(dc.Name))
+		isServiceControllerDegraded := meta.IsStatusConditionTrue(status.Conditions, makeRemoteServiceControllerDatacenterDegradedCondition(dc.Name))
+		if isEndpointSliceControllerProgressing || isServiceControllerProgressing || isEndpointSliceControllerDegraded || isServiceControllerDegraded {
+			klog.V(4).InfoS(
+				"Waiting until EndpointSlice and Service controllers are no longer progressing or degraded",
+				"ScyllaDBCluster", klog.KObj(sc),
+				"ScyllaDBDatacenter", klog.KObj(requiredScyllaDBDatacenter),
+				"Datacenter", dc.Name,
+				"EndpointSliceProgressing", isEndpointSliceControllerProgressing,
+				"ServiceProgressing", isServiceControllerProgressing,
+				"EndpointSliceDegraded", isEndpointSliceControllerDegraded,
+				"ServiceDegraded", isServiceControllerDegraded,
+			)
 			progressingConditions = append(progressingConditions, metav1.Condition{
 				Type:               makeRemoteScyllaDBDatacenterControllerDatacenterProgressingCondition(dc.Name),
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForEndpointSliceServiceController",
-				Message:            fmt.Sprintf("Waiting for EndpointSlice and Service controller for %q datacenter to finish progressing", dc.Name),
+				Message:            fmt.Sprintf("Waiting for EndpointSlice and Service controller for %q datacenter to finish progressing or recover from degraded state", dc.Name),
 				ObservedGeneration: sc.Generation,
 			})
 		}

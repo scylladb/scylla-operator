@@ -16,6 +16,19 @@ spec:
       mountPoint: /var/lib/persistent-volumes
       unsupportedOptions:
       - prjquota
+  sysctls:
+  - name: fs.aio-max-nr
+    value: "4294967295" # Allow for high parallelism in CI.
+  - name: fs.file-max
+    value: "9223372036854775807"
+  - name: fs.nr_open
+    value: "1073741816"
+  - name: fs.inotify.max_user_instances
+    value: "1200"
+  - name: vm.swappiness
+    value: "1"
+  - name: vm.vfs_cache_pressure
+    value: "2000"
   placement:
     nodeSelector:
       scylla.scylladb.com/node-type: scylla

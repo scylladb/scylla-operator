@@ -131,6 +131,14 @@ func verifyNodeConfig(ctx context.Context, kubeClient kubernetes.Interface, nc *
 				condType: "RoleBindingControllerDegraded",
 				status:   corev1.ConditionFalse,
 			},
+			{
+				condType: "ConfigMapControllerProgressing",
+				status:   corev1.ConditionFalse,
+			},
+			{
+				condType: "ConfigMapControllerDegraded",
+				status:   corev1.ConditionFalse,
+			},
 		}
 
 		for _, nodeName := range dsNodeNames {

@@ -124,6 +124,7 @@ const (
 	ScyllaManagerAgentContainerName = "scylla-manager-agent"
 	SidecarInjectorContainerName    = "sidecar-injection"
 	PerftuneContainerName           = "perftune"
+	SysctlsContainerName            = "sysctls"
 	CleanupContainerName            = "cleanup"
 	RLimitsContainerName            = "rlimits"
 
@@ -171,13 +172,17 @@ const (
 
 	PerftuneJobPrefixName        = "perftune"
 	PerftuneServiceAccountName   = "perftune"
+	SysctlsServiceAccountName    = "sysctls"
 	RlimitsJobServiceAccountName = "rlimits"
+
+	SysctlConfigFileName = "99-override_scylla-operator_scylladb_com.conf"
 )
 
 type NodeConfigJobType string
 
 const (
-	NodeConfigJobTypeNode                    NodeConfigJobType = "Node"
+	NodeConfigJobTypeNodePerftune            NodeConfigJobType = "NodePerftune"
+	NodeConfigJobTypeNodeSysctls             NodeConfigJobType = "NodeSysctls"
 	NodeConfigJobTypeContainerPerftune       NodeConfigJobType = "ContainerPerftune"
 	NodeConfigJobTypeContainerResourceLimits NodeConfigJobType = "ContainerResourceLimits"
 )

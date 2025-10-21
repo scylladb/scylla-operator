@@ -229,6 +229,7 @@ type NodeConfigSpec struct {
 	// +kubebuilder:validation:Required
 	Placement NodeConfigPlacement `json:"placement"`
 
+	// TODO(rzetelskik): rename this field to indicate that this only affects ScyllaDB-specific performance tuning (e.g. DisablePerftune) in the next API version.
 	// disableOptimizations controls if nodes matching placement requirements are going to be optimized for performance.
 	// Turning off optimizations on already optimized Nodes does not revert changes.
 	// See https://operator.docs.scylladb.com/stable/architecture/tuning.html for details.
@@ -237,6 +238,11 @@ type NodeConfigSpec struct {
 	// localDiskSetup contains options of automatic local disk setup.
 	// +optional
 	LocalDiskSetup *LocalDiskSetup `json:"localDiskSetup"`
+
+	// sysctls specifies a list of sysctls to configure on the node.
+	// Removing parameters from this list does not revert already applied configurations.
+	// +optional
+	Sysctls []corev1.Sysctl `json:"sysctls,omitempty"`
 }
 
 // +kubebuilder:object:root=true

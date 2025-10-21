@@ -3,6 +3,7 @@
 package nodeconfig
 
 import (
+	"bytes"
 	"fmt"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -44,6 +45,18 @@ func makePerftuneServiceAccount() *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 			Name:      naming.PerftuneServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+	}
+}
+
+func makeSysctlsServiceAccount() *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.SysctlsServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 			},
@@ -148,6 +161,26 @@ func makePerftuneRole() *rbacv1.Role {
 	}
 }
 
+func makeSysctlsRole() *rbacv1.Role {
+	return &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.SysctlsServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups:     []string{"security.openshift.io"},
+				Resources:     []string{"securitycontextconstraints"},
+				ResourceNames: []string{"privileged"},
+				Verbs:         []string{"use"},
+			},
+		},
+	}
+}
+
 func makeRlimitsRole() *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
@@ -211,6 +244,30 @@ func makePerftuneRoleBinding() *rbacv1.RoleBinding {
 				Kind:      "ServiceAccount",
 				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
 				Name:      naming.PerftuneServiceAccountName,
+			},
+		},
+	}
+}
+
+func makeSysctlsRoleBinding() *rbacv1.RoleBinding {
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name:      naming.SysctlsServiceAccountName,
+			Labels: map[string]string{
+				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "Role",
+			Name:     naming.SysctlsServiceAccountName,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Name:      naming.SysctlsServiceAccountName,
 			},
 		},
 	}
@@ -457,4 +514,61 @@ exec chroot ./ /scylla-operator/usr/bin/scylla-operator node-setup-daemon \
 			},
 		},
 	}
+}
+
+func makeConfigMaps(nc *scyllav1alpha1.NodeConfig) ([]*corev1.ConfigMap, error) {
+	var configMaps []*corev1.ConfigMap
+
+	sysctlConfigMap, err := makeSysctlConfigMap(nc)
+	if err != nil {
+		return nil, fmt.Errorf("can't make sysctl configmap: %w", err)
+	}
+	configMaps = append(configMaps, sysctlConfigMap)
+
+	return configMaps, nil
+}
+
+func makeSysctlConfigMap(nc *scyllav1alpha1.NodeConfig) (*corev1.ConfigMap, error) {
+	name, err := naming.NodeConfigSysctlConfigMapName(nc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get sysctl configmap name: %w", err)
+	}
+
+	data, err := makeSysctlData(nc.Spec.Sysctls)
+	if err != nil {
+		return nil, fmt.Errorf("can't make sysctl configmap data: %w", err)
+	}
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Labels: map[string]string{
+				naming.KubernetesNameLabel: naming.NodeConfigAppName,
+				naming.NodeConfigNameLabel: nc.Name,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(nc, nodeConfigControllerGVK),
+			},
+		},
+		Data: data,
+	}
+	return cm, nil
+}
+
+func makeSysctlData(sysctls []corev1.Sysctl) (map[string]string, error) {
+	var err error
+	var confBuf bytes.Buffer
+	for _, s := range sysctls {
+		_, err = confBuf.WriteString(fmt.Sprintf("%s = %s\n", s.Name, s.Value))
+		if err != nil {
+			return nil, fmt.Errorf("can't write string: %w", err)
+		}
+	}
+
+	data := map[string]string{
+		naming.SysctlConfigFileName: confBuf.String(),
+	}
+
+	return data, nil
 }

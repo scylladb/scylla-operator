@@ -583,7 +583,7 @@
           "type": "string"
         },
         "sysctls": {
-          "description": "sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs.\nExample: fs.aio-max-nr=232323",
+          "description": "sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs.\nExample: fs.aio-max-nr=232323\nDeprecated: `sysctls` is deprecated. Use NodeConfig to configure sysctls instead.\nSee NodeConfig resource reference for details.",
           "items": {
             "type": "string"
           },

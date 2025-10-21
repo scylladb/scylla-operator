@@ -423,6 +423,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().Namespaces(),
 		kubeInformers.Core().V1().Nodes(),
 		kubeInformers.Core().V1().ServiceAccounts(),
+		kubeInformers.Core().V1().ConfigMaps(),
 		o.OperatorImage,
 	)
 	if err != nil {

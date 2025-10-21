@@ -1510,6 +1510,24 @@ spec:
                   required:
                     - nodeSelector
                   type: object
+                sysctls:
+                  description: |-
+                    sysctls specifies a list of sysctls to configure on the node.
+                    Removing parameters from this list does not revert already applied configurations.
+                  items:
+                    description: Sysctl defines a kernel parameter to be set
+                    properties:
+                      name:
+                        description: Name of a property to set
+                        type: string
+                      value:
+                        description: Value of a property to set
+                        type: string
+                    required:
+                      - name
+                      - value
+                    type: object
+                  type: array
               required:
                 - placement
               type: object
@@ -5365,6 +5383,8 @@ spec:
                   description: |-
                     sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs.
                     Example: fs.aio-max-nr=232323
+                    Deprecated: `sysctls` is deprecated. Use NodeConfig to configure sysctls instead.
+                    See NodeConfig resource reference for details.
                   items:
                     type: string
                   type: array

@@ -503,9 +503,27 @@ func isRackStatusUpToDate(sc *scyllav1.ScyllaCluster, rack string) bool {
 }
 
 func GetWarningsOnScyllaClusterCreate(sc *scyllav1.ScyllaCluster) []string {
-	return nil
+	var warnings []string
+
+	warnings = append(warnings, warningsForScyllaClusterSpec(&sc.Spec, field.NewPath("spec"))...)
+
+	return warnings
+}
+
+func warningsForScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	if len(spec.Sysctls) > 0 {
+		warnings = append(warnings, fmt.Sprintf("%s: deprecated; use NodeConfig's .spec.sysctls instead", fldPath.Child("sysctls")))
+	}
+
+	return warnings
 }
 
 func GetWarningsOnScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) []string {
-	return nil
+	var warnings []string
+
+	warnings = append(warnings, warningsForScyllaClusterSpec(&new.Spec, field.NewPath("spec"))...)
+
+	return warnings
 }

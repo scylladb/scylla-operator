@@ -80,6 +80,8 @@ type ScyllaClusterSpec struct {
 
 	// sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs.
 	// Example: fs.aio-max-nr=232323
+	// Deprecated: `sysctls` is deprecated. Use NodeConfig to configure sysctls instead.
+	// See NodeConfig resource reference for details.
 	// +optional
 	Sysctls []string `json:"sysctls,omitempty"`
 

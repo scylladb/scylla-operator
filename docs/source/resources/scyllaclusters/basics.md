@@ -64,8 +64,6 @@ spec:
   agentVersion: {{agentVersion}}
   developerMode: false
   automaticOrphanedNodeCleanup: true
-  sysctls:
-  - fs.aio-max-nr=30000000
   datacenter:
     name: us-east-1
     racks:

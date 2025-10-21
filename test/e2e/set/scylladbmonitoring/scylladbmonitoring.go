@@ -63,8 +63,7 @@ func describeEntry(e *scyllaDBMonitoringEntry) string {
 var _ = g.Describe("ScyllaDBMonitoring", func() {
 	f := framework.NewFramework("scylladbmonitoring")
 
-	// Disabled on OpenShift because of https://github.com/scylladb/scylla-operator/issues/2319#issuecomment-2643287819
-	g.DescribeTable("should setup monitoring stack TESTCASE_DISABLED_ON_OPENSHIFT", func(ctx g.SpecContext, e *scyllaDBMonitoringEntry) {
+	g.DescribeTable("should setup monitoring stack", func(ctx g.SpecContext, e *scyllaDBMonitoringEntry) {
 		framework.By("Creating a ScyllaCluster with a single node")
 		sc := createTestScyllaCluster(ctx, f)
 
@@ -105,7 +104,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			},
 				"cql-overview",
 			),
-		}),
+		}, framework.NotSupportedOnOpenShift),
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
 			Description: "Platform type",
 			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
@@ -114,7 +113,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: nil, // Using managed Prometheus.
 			VerifyPrometheusFn:          verifyManagedPrometheus,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}),
+		}, framework.NotSupportedOnOpenShift),
 	)
 })
 

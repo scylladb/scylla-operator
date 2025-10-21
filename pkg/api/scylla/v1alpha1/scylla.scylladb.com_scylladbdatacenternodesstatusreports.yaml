@@ -1,0 +1,79 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: scylladbdatacenternodesstatusreports.scylla.scylladb.com
+spec:
+  group: scylla.scylladb.com
+  names:
+    kind: ScyllaDBDatacenterNodesStatusReport
+    listKind: ScyllaDBDatacenterNodesStatusReportList
+    plural: scylladbdatacenternodesstatusreports
+    singular: scylladbdatacenternodesstatusreport
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: |-
+            ScyllaDBDatacenterNodesStatusReport serves as an internal interface for propagating and aggregating node statuses observed by nodes in a ScyllaDB datacenter.
+            It is used by ScyllaDB Operator for coordinating operations such as topology changes and is not intended for direct user interaction.
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            datacenterName:
+              description: DatacenterName is the name of the reported ScyllaDB datacenter.
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            racks:
+              description: Racks holds the list of rack status reports.
+              items:
+                properties:
+                  name:
+                    description: Name is the name of the rack.
+                    type: string
+                  nodes:
+                    description: Nodes holds the list of node status reports collected from nodes from this rack.
+                    items:
+                      properties:
+                        hostID:
+                          description: HostID is the ScyllaDB reporter node's host ID.
+                          type: string
+                        observedNodes:
+                          description: ObservedNodes holds the list of node statuses as observed by the reporter node.
+                          items:
+                            properties:
+                              hostID:
+                                description: HostID is the ScyllaDB node's host ID.
+                                type: string
+                              status:
+                                description: Status is the status of the node.
+                                type: string
+                            type: object
+                          type: array
+                        ordinal:
+                          description: Ordinal is the ordinal of the reporter node within its rack.
+                          type: integer
+                      type: object
+                    type: array
+                type: object
+              type: array
+          type: object
+      served: true
+      storage: true

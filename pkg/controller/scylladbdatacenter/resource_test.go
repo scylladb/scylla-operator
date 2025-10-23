@@ -885,84 +885,37 @@ func runTestStatefulSetForRack(t *testing.T) {
 							if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
 								initContainers = append(initContainers, []corev1.Container{
 									{
-										Name:            "scylladb-sstable-bootstrap-extractor",
+										Name:            "scylladb-bootstrap-barrier",
 										Image:           "scylladb/scylla:latest",
 										ImagePullPolicy: "IfNotPresent",
 										Command: []string{
-											"/usr/bin/bash",
-											"-euEo",
-											"pipefail",
-											"-O",
-											"inherit_errexit",
-											"-c",
-											strings.TrimSpace(`
-printf 'INFO %s - Querying bootstrap status.\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
-exit_code=0
-/usr/bin/scylla sstable query \
---system-schema \
---scylla-data-dir=/var/lib/scylla/data \
---keyspace=system \
---table=local \
---output-format=json \
---query="SELECT bootstrapped FROM scylla_sstable.local" \
-/var/lib/scylla/data/system/local-*/*-Data.db >'/mnt/shared/sstable-bootstrap-query-result.json' || exit_code=$?
-
-if [ "${exit_code}" -ne 0 ]; then
-  printf 'ERROR %s - Failed to query bootstrap status. Assuming the node requires boostrap.\n' "$( date '+%Y-%m-%d %H:%M:%S,%3N' )" > /dev/stderr
-  echo "[]" >'/mnt/shared/sstable-bootstrap-query-result.json'
-fi
-`),
-										},
-										Resources: corev1.ResourceRequirements{
-											Limits: corev1.ResourceList{
-												corev1.ResourceCPU:    resource.MustParse("50m"),
-												corev1.ResourceMemory: resource.MustParse("100Mi"),
-											},
-											Requests: corev1.ResourceList{
-												corev1.ResourceCPU:    resource.MustParse("50m"),
-												corev1.ResourceMemory: resource.MustParse("100Mi"),
-											},
-										},
-										VolumeMounts: []corev1.VolumeMount{
-											{
-												Name:      naming.PVCTemplateName,
-												MountPath: naming.DataDir,
-												ReadOnly:  true,
-											},
-											{
-												Name:      "shared",
-												MountPath: naming.SharedDirName,
-												ReadOnly:  false,
-											},
-										},
-									},
-									{
-										Name:            "scylladb-bootstrap-barrier",
-										Image:           "scylladb/scylla-operator:latest",
-										ImagePullPolicy: "IfNotPresent",
-										Command: []string{
-											"/usr/bin/scylla-operator",
+											"/mnt/shared/scylla-operator",
 											"run-bootstrap-barrier",
 											"--service-name=$(SERVICE_NAME)",
-											"--sstable-bootstrapped-query-result-path=/mnt/shared/sstable-bootstrap-query-result.json",
+											"--scylla-data-dir=/var/lib/scylla/data",
 											"--selector-label-value=basic",
 											"--single-report-allow-non-reporting-host-ids=false",
 											"--loglevel=0",
 										},
 										Resources: corev1.ResourceRequirements{
 											Limits: corev1.ResourceList{
-												corev1.ResourceCPU:    resource.MustParse("10m"),
-												corev1.ResourceMemory: resource.MustParse("40Mi"),
+												corev1.ResourceCPU:    resource.MustParse("50m"),
+												corev1.ResourceMemory: resource.MustParse("100Mi"),
 											},
 											Requests: corev1.ResourceList{
-												corev1.ResourceCPU:    resource.MustParse("10m"),
-												corev1.ResourceMemory: resource.MustParse("40Mi"),
+												corev1.ResourceCPU:    resource.MustParse("50m"),
+												corev1.ResourceMemory: resource.MustParse("100Mi"),
 											},
 										},
 										VolumeMounts: []corev1.VolumeMount{
 											{
+												Name:      "data",
+												MountPath: "/var/lib/scylla",
+												ReadOnly:  true,
+											},
+											{
 												Name:      "shared",
-												MountPath: naming.SharedDirName,
+												MountPath: "/mnt/shared",
 												ReadOnly:  true,
 											},
 										},
@@ -1462,6 +1415,7 @@ exec scylla-manager-agent \
 	}
 
 	const scyllaContainerIndex = 0
+	const runBootstrapBarrierInitContainerIndex = 1
 
 	tt := []struct {
 		name                string
@@ -1641,8 +1595,6 @@ exec scylla-manager-agent \
 				)
 
 				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
-					const runBootstrapBarrierInitContainerIndex = 2
-
 					sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Command[len(sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Command)-2] = strings.Replace(
 						sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Command[len(sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Command)-2],
 						`--single-report-allow-non-reporting-host-ids=false`,
@@ -1902,6 +1854,31 @@ exec scylla-manager-agent \
 			existingStatefulSet: nil,
 			expectedStatefulSet: newBasicStatefulSet(),
 			expectedError:       nil,
+		},
+		{
+			name: "new StatefulSet with Scylla version lower than required for BootstrapSynchronisation feature",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = "scylla/scylla:2025.1.0"
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Labels["scylla/scylla-version"] = "2025.1.0"
+				sts.Spec.Template.Labels["scylla/scylla-version"] = "2025.1.0"
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = "scylla/scylla:2025.1.0"
+
+				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+					sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers[:runBootstrapBarrierInitContainerIndex],
+						sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex+1:]...)
+				}
+
+				return sts
+			}(),
+			expectedError: nil,
 		},
 	}
 

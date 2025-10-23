@@ -31,7 +31,7 @@ import (
 type Options struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
-	CheckBootstrappedOptions
+	ScyllaSSTableBootstrappedQueryOptions
 
 	ServiceName                          string
 	SelectorLabelValue                   string
@@ -50,7 +50,7 @@ func NewOptions(streams genericclioptions.IOStreams) *Options {
 func (o *Options) AddFlags(cmd *cobra.Command) {
 	o.ClientConfig.AddFlags(cmd)
 	o.InClusterReflection.AddFlags(cmd)
-	o.CheckBootstrappedOptions.AddFlags(cmd)
+	o.ScyllaSSTableBootstrappedQueryOptions.AddFlags(cmd)
 
 	cmd.Flags().StringVarP(&o.ServiceName, "service-name", "", o.ServiceName, "Name of the service corresponding to the managed node.")
 	cmd.Flags().StringVarP(&o.SelectorLabelValue, "selector-label-value", "", o.SelectorLabelValue, "Value of the selector label used to select ScyllaDBDatacenterNodesStatusReports to use for the precondition evaluation.")
@@ -96,7 +96,7 @@ func (o *Options) Validate() error {
 
 	errs = append(errs, o.ClientConfig.Validate())
 	errs = append(errs, o.InClusterReflection.Validate())
-	errs = append(errs, o.CheckBootstrappedOptions.Validate())
+	errs = append(errs, o.ScyllaSSTableBootstrappedQueryOptions.Validate())
 
 	if len(o.ServiceName) == 0 {
 		errs = append(errs, fmt.Errorf("service-name can't be empty"))
@@ -132,7 +132,7 @@ func (o *Options) Complete() error {
 		return err
 	}
 
-	err = o.CheckBootstrappedOptions.Complete()
+	err = o.ScyllaSSTableBootstrappedQueryOptions.Complete()
 	if err != nil {
 		return err
 	}
@@ -162,11 +162,17 @@ func (o *Options) Run(originalStreams genericclioptions.IOStreams, cmd *cobra.Co
 		cancel()
 	}()
 
-	if o.Bootstrapped {
+	bootstrapped, err := o.IsBootstrapped(ctx)
+	if err != nil {
+		return fmt.Errorf("can't check whether node has been bootstrapped: %w", err)
+	}
+
+	if bootstrapped {
 		klog.V(2).InfoS("Node has already been bootstrapped, skipping the bootstrap barrier.", "Service", naming.ManualRef(o.Namespace, o.ServiceName))
 		return nil
 	}
 
+	klog.V(2).InfoS("Node has not been bootstrapped yet, running the bootstrap barrier.", "Service", naming.ManualRef(o.Namespace, o.ServiceName))
 	return o.Execute(ctx, originalStreams, cmd)
 }
 

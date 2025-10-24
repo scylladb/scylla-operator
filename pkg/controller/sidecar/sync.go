@@ -139,7 +139,11 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 	}
 
 	if len(localIP) == 0 {
-		return fmt.Errorf("local host ID %q not found in IP to hostID mapping: %v", hostID, ipToHostIDMap)
+		// It most likely means that the Scylla node the sidecar is running on has not joined the cluster yet. We need
+		// to requeue and try again later.
+		klog.V(2).InfoS("The node with the expected HostID has not joined the cluster yet, will retry in a bit", "HostID", hostID, "IPToHostIDMap", ipToHostIDMap)
+		c.queue.AddRateLimited(c.key)
+		return nil
 	}
 
 	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, localhost, localIP)

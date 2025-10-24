@@ -1,16 +1,18 @@
 # Exposing Grafana
 
-This guide shows how to expose Grafana deployed by `ScyllaDBMonitoring` using an Ingress resource.
+This guide shows how to expose Grafana deployed by `ScyllaDBMonitoring` using an `Ingress` resource.
 
-For accessing Grafana service from outside the Kubernetes cluster we recommend using an Ingress, although there are many other ways to do so.
-When using Ingress, what matters is to direct your packets to the ingress controller Service/Pods and have the correct TLS SNI field set by the caller when reaching out to the service, so it is routed properly, and your client can successfully validate the grafana serving certificate.
+:::{note}
+For accessing the Grafana service from outside the Kubernetes cluster we recommend using an `Ingress`, although there are many other ways to do so.
+When using `Ingress`, what matters is to direct your packets to the ingress controller `Service`/`Pod`s and have the correct TLS SNI field set by the caller when reaching out to the service, so it is routed properly, and your client can successfully validate the Grafana serving certificate.
 This is easier when you are using a real DNS domain that resolves to your Ingress controller's IP address but most clients and tools allow setting the SNI field manually.
+:::
 
 ## Prerequisites
 
-This assumes you have already deployed `ScyllaDBMonitoring` in your cluster. If you haven't done so, please follow the [ScyllaDB Monitoring setup](setup.md) guide first.
+This assumes that you have already deployed a `ScyllaDBMonitoring` in your cluster. If you haven't done so, please follow the [ScyllaDB Monitoring setup](setup.md) guide first.
 
-In the example below we're using HAProxy Ingress Controller. You can deploy it in your Kubernetes cluster using the provided
+In the example below we're using the HAProxy Ingress Controller. You can deploy it in your Kubernetes cluster using the provided
 third-party example. If you already have it (or other Ingress Controller) deployed in your cluster, you can skip the below steps.
 
 ### Install HAProxy Ingress
@@ -38,10 +40,10 @@ $ GRAFANA_PASSWORD="$( kubectl -n scylla get secret/example-grafana-admin-creden
 
 ## Connect through Ingress using a resolvable domain
 
-In production clusters, the Ingress controller and appropriate DNS records should be set up already. Often there is already a generic wildcard record like `*.app.mydomain` pointing to the Ingress controller's external IP. For custom service domains, it is usually a CNAME pointing to the Ingress controller's A record.
+In production clusters, the ingress controller and appropriate DNS records should be set up already. Often there is already a generic wildcard record like `*.app.mydomain` pointing to the Ingress controller's external IP. For custom service domains, it is usually a CNAME pointing to the Ingress controller's A record.
 
 :::{note}
-The ScyllaDBMonitoring example creates an Ingress object with `test-grafana.test.svc.cluster.local` DNS domain that you should adjust to your domain. Below examples use `example-grafana.apps.mydomain`.
+The ScyllaDBMonitoring example creates an `Ingress` object with a `test-grafana.test.svc.cluster.local` DNS domain that you should adjust to match your domain. Below examples use `example-grafana.apps.mydomain`.
 :::
 
 :::{note}
@@ -55,9 +57,9 @@ $ curl --fail -s -o /dev/null -w '%{http_code}' -L --cacert <( echo "${GRAFANA_S
 
 ## Connect through Ingress using an unresolvable domain
 
-To connect to an Ingress without a resolvable domain you first need to find out your Ingress controller's IP that can be resolved externally. Again, there are many ways to do so beyond the below examples.
+To connect to an Ingress without a resolvable domain you first need to find out your ingress controller's IP that can be resolved externally. Again, there are many ways to do so beyond the below examples.
 
-Unless stated otherwise, we assume your Ingress is running on port 443.
+Unless stated otherwise, we assume your ingress is running on port 443.
 
 ```console
 $ INGRESS_PORT=443
@@ -67,7 +69,7 @@ $ INGRESS_PORT=443
 
 #### Ingress ExternalIP
 
-When you are running in a real cluster there is usually a cloud LoadBalancer or a bare metal alternative providing you with an externally reachable IP address.
+When you are running in a real cluster there is usually a cloud load balancer or a bare metal alternative providing you with an externally reachable IP address.
 
 ```console
 $ INGRESS_IP="$( kubectl -n=haproxy-ingress get service/haproxy-ingress --template='{{ ( index .status.loadBalancer.ingress 0 ).ip }}' )"
@@ -75,7 +77,7 @@ $ INGRESS_IP="$( kubectl -n=haproxy-ingress get service/haproxy-ingress --templa
 
 #### Ingress NodePort
 
-NodePort is slightly less convenient, but it's available in development clusters as well.
+`NodePort` is slightly less convenient, but it's available in development clusters as well.
 
 ```console
 $ INGRESS_IP="$( kubectl get nodes --template='{{ $internal_ip := "" }}{{ $external_ip := "" }}{{ range ( index .items 0 ).status.addresses }}{{ if eq .type "InternalIP" }}{{ $internal_ip = .address }}{{ else if eq .type "ExternalIP" }}{{ $external_ip = .address }}{{ end }}{{ end }}{{ if $external_ip }}{{ $external_ip }}{{ else }}{{ $internal_ip }}{{ end }}' )"

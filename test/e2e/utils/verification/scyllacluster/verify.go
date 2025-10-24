@@ -257,6 +257,14 @@ func VerifyWithOptions(ctx context.Context, kubeClient kubernetes.Interface, scy
 				condType: "ScyllaDBManagerTaskControllerDegraded",
 				status:   metav1.ConditionFalse,
 			},
+			{
+				condType: "ScyllaDBDatacenterNodesStatusReportControllerProgressing",
+				status:   metav1.ConditionFalse,
+			},
+			{
+				condType: "ScyllaDBDatacenterNodesStatusReportControllerDegraded",
+				status:   metav1.ConditionFalse,
+			},
 		}
 
 		if utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) || sc.Spec.Alternator != nil {

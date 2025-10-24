@@ -186,6 +186,21 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		objectErrs = append(objectErrs, err)
 	}
 
+	scyllaDBDatacenterNodesStatusReportMap, err := controllerhelpers.GetObjects[CT, *scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](
+		ctx,
+		sdc,
+		scyllav1alpha1.ScyllaDBDatacenterGVK,
+		sdcSelector,
+		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]{
+			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
+			ListObjectsFunc:           sdcc.scyllaDBDatacenterNodesStatusReportLister.ScyllaDBDatacenterNodesStatusReports(sdc.Namespace).List,
+			PatchObjectFunc:           sdcc.scyllaClient.ScyllaDBDatacenterNodesStatusReports(sdc.Namespace).Patch,
+		},
+	)
+	if err != nil {
+		objectErrs = append(objectErrs, err)
+	}
+
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
 		return objectErr
@@ -263,6 +278,16 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync configs: %w", err))
 	}
+
+	err = controllerhelpers.RunSync(
+		&status.Conditions,
+		scyllaDBDatacenterNodesStatusReportControllerProgressingCondition,
+		scyllaDBDatacenterNodesStatusReportControllerDegradedCondition,
+		sdc.Generation,
+		func() ([]metav1.Condition, error) {
+			return sdcc.syncScyllaDBDatacenterNodesStatusReports(ctx, sdc, serviceMap, scyllaDBDatacenterNodesStatusReportMap)
+		},
+	)
 
 	err = controllerhelpers.RunSync(
 		&status.Conditions,

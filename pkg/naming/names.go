@@ -379,3 +379,19 @@ func ManagedPrometheusClientGrafanaSecretName(smName string) (string, error) {
 func ManagedPrometheusServingCAConfigMapName(smName string) (string, error) {
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, smName, "prometheus-serving-ca")
 }
+
+func ScyllaDBDatacenterNodesStatusReportName(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, sdc.Name)
+}
+
+func ScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
+	return sdc.Name
+}
+
+func ExternalScyllaDBDatacenterNodesStatusReportName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, sc.Name, dc.Name, "external")
+}
+
+func ExternalScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) string {
+	return ScyllaDBDatacenterName(sc, dc)
+}

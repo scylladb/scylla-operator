@@ -1,4 +1,6 @@
-package operator
+// Copyright (C) 2025 ScyllaDB
+
+package sidecar
 
 import (
 	"context"
@@ -28,7 +30,11 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type SidecarOptions struct {
+const (
+	minStatusReportInterval = 1 * time.Second
+)
+
+type Options struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
 
@@ -37,6 +43,7 @@ type SidecarOptions struct {
 	ExternalSeeds                     []string
 	NodesBroadcastAddressTypeString   string
 	ClientsBroadcastAddressTypeString string
+	StatusReportInterval              time.Duration
 
 	nodesBroadcastAddressType   scyllav1alpha1.BroadcastAddressType
 	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType
@@ -44,19 +51,21 @@ type SidecarOptions struct {
 	kubeClient kubernetes.Interface
 }
 
-func NewSidecarOptions(streams genericclioptions.IOStreams) *SidecarOptions {
+func NewOptions(streams genericclioptions.IOStreams) *Options {
 	clientConfig := genericclioptions.NewClientConfig("scylla-sidecar")
 	clientConfig.QPS = 2
 	clientConfig.Burst = 5
 
-	return &SidecarOptions{
+	return &Options{
 		ClientConfig:        clientConfig,
 		InClusterReflection: genericclioptions.InClusterReflection{},
+
+		StatusReportInterval: 5 * time.Second,
 	}
 }
 
-func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewSidecarOptions(streams)
+func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewOptions(streams)
 
 	cmd := &cobra.Command{
 		Use:   "sidecar",
@@ -94,11 +103,12 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVar(&o.ExternalSeeds, "external-seeds", o.ExternalSeeds, "The external seeds to propagate to ScyllaDB binary on startup as \"seeds\" parameter of seed-provider.")
 	cmd.Flags().StringVarP(&o.NodesBroadcastAddressTypeString, "nodes-broadcast-address-type", "", o.NodesBroadcastAddressTypeString, "Address type that is broadcasted for communication with other nodes.")
 	cmd.Flags().StringVarP(&o.ClientsBroadcastAddressTypeString, "clients-broadcast-address-type", "", o.ClientsBroadcastAddressTypeString, "Address type that is broadcasted for communication with clients.")
+	cmd.Flags().DurationVarP(&o.StatusReportInterval, "status-report-interval", "", o.StatusReportInterval, "How often to poll the status.")
 
 	return cmd
 }
 
-func (o *SidecarOptions) Validate() error {
+func (o *Options) Validate() error {
 	var errs []error
 
 	errs = append(errs, o.ClientConfig.Validate())
@@ -121,10 +131,14 @@ func (o *SidecarOptions) Validate() error {
 		errs = append(errs, fmt.Errorf("unsupported value of clients-broadcast-address-type %q, supported ones are: %v", o.ClientsBroadcastAddressTypeString, validation.SupportedScyllaV1Alpha1BroadcastAddressTypes))
 	}
 
+	if o.StatusReportInterval < 1 {
+		errs = append(errs, fmt.Errorf("status-report-interval must not be lower than %s", minStatusReportInterval))
+	}
+
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (o *SidecarOptions) Complete() error {
+func (o *Options) Complete() error {
 	err := o.ClientConfig.Complete()
 	if err != nil {
 		return err
@@ -146,7 +160,7 @@ func (o *SidecarOptions) Complete() error {
 	return nil
 }
 
-func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, args []string) error {
+func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, args []string) error {
 	klog.Infof("%s version %s", cmd.Name(), version.Get())
 	cliflag.PrintFlags(cmd.Flags())
 	for _, arg := range args {
@@ -161,7 +175,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		cancel()
 	}()
 
-	singleServiceKubeInformers := informers.NewSharedInformerFactoryWithOptions(
+	identityKubeInformers := informers.NewSharedInformerFactoryWithOptions(
 		o.kubeClient,
 		12*time.Hour,
 		informers.WithNamespace(o.Namespace),
@@ -174,7 +188,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
 
-	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
+	singleServiceInformer := identityKubeInformers.Core().V1().Services()
 
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
@@ -186,8 +200,19 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		return fmt.Errorf("can't create sidecar controller: %w", err)
 	}
 
+	sr, err := NewStatusReporter(
+		o.Namespace,
+		o.ServiceName,
+		o.StatusReportInterval,
+		o.kubeClient,
+		identityKubeInformers.Core().V1().Pods(),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create status reporter: %w", err)
+	}
+
 	// Start informers.
-	singleServiceKubeInformers.Start(ctx.Done())
+	identityKubeInformers.Start(ctx.Done())
 	namespacedKubeInformers.Start(ctx.Done())
 
 	klog.V(2).InfoS("Waiting for single service informer caches to sync")
@@ -230,6 +255,13 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	go func() {
 		defer wg.Done()
 		sc.Run(ctx)
+	}()
+
+	// Run status reporter.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sr.Run(ctx)
 	}()
 
 	// Run scylla in a new process.

@@ -544,6 +544,7 @@ spec:
             - scylladbclusters
             - scylladbmanagerclusterregistrations
             - scylladbmanagertasks
+            - scylladbmonitorings
       sideEffects: None
       targetPort: 5000
       type: ValidatingAdmissionWebhook

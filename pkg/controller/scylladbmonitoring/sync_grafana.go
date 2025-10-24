@@ -27,8 +27,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
@@ -110,6 +112,11 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1a
 		return nil, "", fmt.Errorf("dashboardsCMs can't be empty")
 	}
 
+	prometheusDatasourceSpec, err := makeGrafanaPrometheusDatasourceSpec(sm)
+	if err != nil {
+		return nil, "", fmt.Errorf("can't make Prometheus datasource spec: %w", err)
+	}
+
 	return grafanav1alpha1assets.GrafanaDeploymentTemplate.Get().RenderObject(map[string]any{
 		"grafanaImage":           grafanaImage,
 		"bashToolsImage":         bashToolsImage,
@@ -120,6 +127,8 @@ func makeGrafanaDeployment(sm *scyllav1alpha1.ScyllaDBMonitoring, soc *scyllav1a
 		"resources":              resources,
 		"restartTriggerHash":     restartTriggerHash,
 		"dashboardsCMs":          dashboardsCMs,
+		"prometheusTLSSpec":      prometheusDatasourceSpec.TLS,
+		"prometheusAuthSpec":     prometheusDatasourceSpec.Auth,
 	})
 }
 
@@ -170,7 +179,7 @@ func makeGrafanaConfigs(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMa
 	case scyllav1alpha1.ScyllaDBMonitoringTypeSAAS:
 		defaultDashboard = "scylladb-latest/overview.json"
 	default:
-		return nil, "", fmt.Errorf("unkown monitoring type: %q", t)
+		return nil, "", fmt.Errorf("unknown monitoring type: %q", t)
 	}
 
 	return grafanav1alpha1assets.GrafanaConfigsTemplate.Get().RenderObject(map[string]any{
@@ -213,9 +222,17 @@ func makeGrafanaDashboards(sm *scyllav1alpha1.ScyllaDBMonitoring) ([]*corev1.Con
 }
 
 func makeGrafanaProvisionings(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.ConfigMap, string, error) {
-	return grafanav1alpha1assets.GrafanaProvisioningConfigMapTemplate.Get().RenderObject(map[string]any{
+	prometheusDatasourceSpec, err := makeGrafanaPrometheusDatasourceSpec(sm)
+	if err != nil {
+		return nil, "", fmt.Errorf("can't make Prometheus datasource spec: %w", err)
+	}
+
+	datasourceConfig := map[string]any{
 		"scyllaDBMonitoringName": sm.Name,
-	})
+		"prometheusDatasource":   prometheusDatasourceSpec,
+	}
+
+	return grafanav1alpha1assets.GrafanaProvisioningConfigMapTemplate.Get().RenderObject(datasourceConfig)
 }
 
 func makeGrafanaService(sm *scyllav1alpha1.ScyllaDBMonitoring) (*corev1.Service, string, error) {
@@ -258,7 +275,13 @@ func (smc *Controller) syncGrafana(
 	deployments map[string]*appsv1.Deployment,
 	ingresses map[string]*networkingv1.Ingress,
 ) ([]metav1.Condition, error) {
-	var progressingConditions []metav1.Condition
+	referencedObjects, progressingConditions, err := smc.resolveGrafanaReferencedObjects(sm)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't resolve referenced objects required by Grafana: %w", err)
+	}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
+	}
 
 	grafanaServingCertChainConfig := &okubecrypto.CertChainConfig{
 		CAConfig: &okubecrypto.CAConfig{
@@ -336,7 +359,15 @@ func (smc *Controller) syncGrafana(
 
 	var requiredDeployment *appsv1.Deployment
 	// Trigger restart for inputs that are not live reloaded.
-	grafanaRestartHash, hashErr := hash.HashObjects(requiredConfigsCM, requiredProvisioningsCM, requiredDahsboardsCMs)
+	objectsForGrafanaRestartHash := []any{
+		requiredConfigsCM,
+		requiredProvisioningsCM,
+		requiredAdminCredentialsSecret,
+	}
+	for _, referencedObj := range referencedObjects {
+		objectsForGrafanaRestartHash = append(objectsForGrafanaRestartHash, referencedObj)
+	}
+	grafanaRestartHash, hashErr := hash.HashObjects(objectsForGrafanaRestartHash...)
 	if hashErr != nil {
 		renderErrors = append(renderErrors, hashErr)
 	} else {
@@ -603,4 +634,57 @@ func (smc *Controller) syncGrafana(
 	}
 
 	return progressingConditions, nil
+}
+
+func (smc *Controller) resolveGrafanaReferencedObjects(sm *scyllav1alpha1.ScyllaDBMonitoring) (
+	referencedObjects []runtime.Object,
+	progressingConditions []metav1.Condition,
+	err error,
+) {
+	var objectErrs []error
+
+	for _, cmName := range getScyllaDBMonitoringGrafanaConfigMapReferences(sm) {
+		cm, err := smc.configMapLister.ConfigMaps(sm.Namespace).Get(cmName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               grafanaControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForConfigMap",
+					Message:            fmt.Sprintf("Waiting for ConfigMap %q to exist.", naming.ManualRef(sm.Namespace, cmName)),
+					ObservedGeneration: sm.Generation,
+				})
+
+			} else {
+				objectErrs = append(objectErrs, fmt.Errorf("can't get referenced configmap %q: %w", cmName, err))
+			}
+			continue
+		}
+		referencedObjects = append(referencedObjects, cm)
+	}
+
+	for _, secretName := range getScyllaDBMonitoringGrafanaSecretReferences(sm) {
+		secret, err := smc.secretLister.Secrets(sm.Namespace).Get(secretName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               grafanaControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForSecret",
+					Message:            fmt.Sprintf("Waiting for Secret %q to exist.", naming.ManualRef(sm.Namespace, secretName)),
+					ObservedGeneration: sm.Generation,
+				})
+			} else {
+				objectErrs = append(objectErrs, fmt.Errorf("can't get referenced secret %q: %w", secretName, err))
+			}
+			continue
+		}
+		referencedObjects = append(referencedObjects, secret)
+	}
+
+	if err := apimachineryutilerrors.NewAggregate(objectErrs); err != nil {
+		return nil, progressingConditions, err
+	}
+
+	return referencedObjects, progressingConditions, nil
 }

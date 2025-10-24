@@ -86,8 +86,30 @@ type Storage struct {
 	VolumeClaimTemplate corev1.PersistentVolumeClaimTemplate `json:"volumeClaimTemplate,omitempty"`
 }
 
+// PrometheusMode describes the mode of the Prometheus instance.
+// +kubebuilder:validation:Enum="Managed";"External"
+type PrometheusMode string
+
+const (
+	// PrometheusModeManaged defines a mode where a `Prometheus` object is created as a child of a `ScyllaDBMonitoring`
+	// object. `ServiceMonitor` and `PrometheusRule` resources are also created to configure scraping and alerting.
+	// This mode requires a Prometheus Operator to be installed in the cluster.
+	PrometheusModeManaged PrometheusMode = "Managed"
+
+	// PrometheusModeExternal defines a mode where no `Prometheus` child object is created, but `ServiceMonitor` and
+	// `PrometheusRule` objects are still created to configure scraping and alerting.
+	// This mode requires a Prometheus Operator to be installed in the cluster, along with a `Prometheus` instance
+	// configured to reconcile `ServiceMonitor` and `PrometheusRule` resources.
+	PrometheusModeExternal PrometheusMode = "External"
+)
+
 // PrometheusSpec holds the spec prometheus options.
 type PrometheusSpec struct {
+	// mode defines the mode of the Prometheus instance.
+	// +kubebuilder:default:="Managed"
+	// +optional
+	Mode PrometheusMode `json:"mode,omitempty"`
+
 	// placement describes restrictions for the nodes Prometheus is scheduled on.
 	// +optional
 	Placement *PlacementSpec `json:"placement,omitempty"`
@@ -133,6 +155,117 @@ type GrafanaSpec struct {
 	// authentication hold the authentication options for accessing Grafana.
 	// +optional
 	Authentication GrafanaAuthentication `json:"authentication,omitempty"`
+
+	// datasources is a list of Grafana datasources to configure.
+	// It's expected to be set when using Prometheus component in `External` mode.
+	// At most one datasource is allowed for now (only Prometheus is supported).
+	// +kubebuilder:validation:MaxItems=1
+	// +optional
+	Datasources []GrafanaDatasourceSpec `json:"datasources,omitempty"`
+}
+
+// GrafanaDatasourceType defines the type of Grafana datasource.
+// +kubebuilder:validation:Enum="Prometheus"
+type GrafanaDatasourceType string
+
+const (
+	// GrafanaDatasourceTypePrometheus is the Prometheus datasource type.
+	GrafanaDatasourceTypePrometheus GrafanaDatasourceType = "Prometheus"
+)
+
+type GrafanaDatasourceSpec struct {
+	// name is the name of the datasource as it will appear in Grafana.
+	// Only "prometheus" is supported as that's the datasource name expected by the ScyllaDB monitoring stack dashboards.
+	// +kubebuilder:validation:Enum="prometheus"
+	// +kubebuilder:default:="prometheus"
+	Name string `json:"name,omitempty"`
+
+	// type is the type of the datasource. Only "prometheus" is supported.
+	// +kubebuilder:validation:Enum="Prometheus"
+	// +kubebuilder:default:="Prometheus"
+	// +optional
+	Type GrafanaDatasourceType `json:"type,omitempty"`
+
+	// url is the URL of the datasource.
+	// +kubebuilder:validation:MinLength=1
+	URL string `json:"url"`
+
+	// prometheusOptions defines Prometheus-specific options.
+	// +optional
+	PrometheusOptions *GrafanaPrometheusDatasourceOptions `json:"prometheusOptions,omitempty"`
+}
+
+type GrafanaPrometheusDatasourceOptions struct {
+	// tls holds TLS configuration for connecting to Prometheus over HTTPS.
+	// +optional
+	TLS *GrafanaDatasourceTLSSpec `json:"tls,omitempty"`
+
+	// auth holds authentication options for connecting to Prometheus.
+	// +optional
+	Auth *GrafanaPrometheusDatasourceAuthSpec `json:"auth,omitempty"`
+}
+
+// GrafanaPrometheusDatasourceAuthType defines the type of authentication to use when connecting to Prometheus.
+type GrafanaPrometheusDatasourceAuthType string
+
+const (
+	// GrafanaPrometheusDatasourceAuthTypeNoAuthentication means no authentication.
+	GrafanaPrometheusDatasourceAuthTypeNoAuthentication GrafanaPrometheusDatasourceAuthType = "NoAuthentication"
+
+	// GrafanaPrometheusDatasourceAuthTypeBearerToken means Bearer token authentication.
+	GrafanaPrometheusDatasourceAuthTypeBearerToken GrafanaPrometheusDatasourceAuthType = "BearerToken"
+)
+
+type GrafanaPrometheusDatasourceAuthSpec struct {
+	// type is the type of authentication to use.
+	// +kubebuilder:default:="NoAuthentication"
+	// +optional
+	Type GrafanaPrometheusDatasourceAuthType `json:"type,omitempty"`
+
+	// bearerToken holds options for Bearer token authentication.
+	// +optional
+	BearerTokenOptions *GrafanaPrometheusDatasourceBearerTokenAuthOptions `json:"bearerTokenOptions,omitempty"`
+}
+
+type GrafanaPrometheusDatasourceBearerTokenAuthOptions struct {
+	// secretRef is a reference to a key in a Secret holding a Bearer token to use to authenticate with Prometheus.
+	// +optional
+	SecretRef *LocalObjectKeySelector `json:"secretRef,omitempty"`
+}
+
+type GrafanaDatasourceTLSSpec struct {
+	// caCert is a reference to a key within the CA bundle ConfigMap. The key should hold the CA cert in PEM format.
+	// When not specified, system CAs are used.
+	// +optional
+	CACertConfigMapRef *LocalObjectKeySelector `json:"caCertConfigMapRef,omitempty"`
+
+	// insecureSkipVerify controls whether to skip server certificate verification.
+	// +kubebuilder:default:=false
+	// +optional
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+
+	// clientTLSKeyPairSecretRef is a reference to a Secret holding client TLS certificate and key for mTLS authentication.
+	// It's expected to be a standard Kubernetes TLS Secret with `tls.crt` and `tls.key` keys.
+	// +optional
+	ClientTLSKeyPairSecretRef *LocalObjectReference `json:"clientTLSKeyPairSecretRef,omitempty"`
+}
+
+// LocalObjectKeySelector selects a key of a ConfigMap or Secret in the same namespace.
+type LocalObjectKeySelector struct {
+	// name of the selected object.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// key within the selected object.
+	// +kubebuilder:validation:MinLength=1
+	Key string `json:"key"`
+}
+
+// LocalObjectReference contains a reference to an object in the same namespace.
+// It can be used to reference a Secret, ConfigMap, or any other namespaced resource.
+type LocalObjectReference struct {
+	// Name of the referent.
+	Name string `json:"name"`
 }
 
 // Components holds the options to configure individual applications.

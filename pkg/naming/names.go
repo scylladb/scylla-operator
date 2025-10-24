@@ -371,3 +371,11 @@ func NodeConfigSysctlsJobForNodeName(nodeUID string) (string, error) {
 func NodeConfigSysctlConfigMapName(nc *scyllav1alpha1.NodeConfig) (string, error) {
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, nc.Name, "sysctl")
 }
+
+func ManagedPrometheusClientGrafanaSecretName(smName string) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, smName, "prometheus-client-grafana")
+}
+
+func ManagedPrometheusServingCAConfigMapName(smName string) (string, error) {
+	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, smName, "prometheus-serving-ca")
+}

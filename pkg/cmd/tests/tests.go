@@ -34,9 +34,10 @@ var Suites = ginkgotest.TestSuites{
 		Tests that can be run in parallel.
 		`),
 		LabelFilter: fmt.Sprintf(
-			"!%s && !%s",
+			"!%s && !%s && !%s",
 			framework.SerialLabelName,
 			framework.MultiDatacenterLabelName,
+			framework.SupportedOnlyOnOpenShiftLabelName,
 		),
 		DefaultParallelism: 42,
 	},
@@ -58,7 +59,11 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that must be run serially.
 		`),
-		LabelFilter:        fmt.Sprintf("%s", framework.SerialLabelName),
+		LabelFilter: fmt.Sprintf(
+			"%s && !%s",
+			framework.SerialLabelName,
+			framework.SupportedOnlyOnOpenShiftLabelName,
+		),
 		DefaultParallelism: 1,
 	},
 	{
@@ -66,7 +71,11 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests for multi-datacenter setups that can be run in parallel.
 		`),
-		LabelFilter:        fmt.Sprintf("%s", framework.MultiDatacenterLabelName),
+		LabelFilter: fmt.Sprintf(
+			"%s && !%s",
+			framework.MultiDatacenterLabelName,
+			framework.SupportedOnlyOnOpenShiftLabelName,
+		),
 		DefaultParallelism: 42,
 	},
 }

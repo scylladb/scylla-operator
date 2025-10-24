@@ -467,10 +467,10 @@ spec:
           secretName: "serving-secret"
       - name: prometheus-client-certs
         secret:
-          secretName: "sm-name-prometheus-client-grafana"
+          secretName: "sm-name-prometheus-client-grafana-2w56m"
       - name: prometheus-serving-ca
         configMap:
-          name: "sm-name-prometheus-serving-ca"
+          name: "sm-name-prometheus-serving-ca-3ah2z"
       - name: grafana-storage
         emptyDir:
           sizeLimit: 100Mi
@@ -676,10 +676,258 @@ spec:
           secretName: "serving-secret"
       - name: prometheus-client-certs
         secret:
-          secretName: "sm-name-prometheus-client-grafana"
+          secretName: "sm-name-prometheus-client-grafana-2w56m"
       - name: prometheus-serving-ca
         configMap:
-          name: "sm-name-prometheus-serving-ca"
+          name: "sm-name-prometheus-serving-ca-3ah2z"
+      - name: grafana-storage
+        emptyDir:
+          sizeLimit: 100Mi
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
+`, "\n"),
+			expectedErr: nil,
+		},
+		{
+			name: "external prometheus datasource",
+			sm: &scyllav1alpha1.ScyllaDBMonitoring{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name",
+				},
+				Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
+					Type: pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypePlatform),
+					Components: &scyllav1alpha1.Components{
+						Prometheus: &scyllav1alpha1.PrometheusSpec{
+							Mode: scyllav1alpha1.PrometheusModeExternal,
+						},
+						Grafana: &scyllav1alpha1.GrafanaSpec{
+							Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+								{
+									Type: scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+									Name: "prometheus",
+									URL:  "https://prometheus.example.com/",
+									PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{
+										TLS: &scyllav1alpha1.GrafanaDatasourceTLSSpec{
+											CACertConfigMapRef: &scyllav1alpha1.LocalObjectKeySelector{
+												Name: "prometheus-serving-ca",
+												Key:  "ca.crt",
+											},
+											ClientTLSKeyPairSecretRef: &scyllav1alpha1.LocalObjectReference{
+												Name: "prometheus-client-grafana",
+											},
+										},
+										Auth: &scyllav1alpha1.GrafanaPrometheusDatasourceAuthSpec{
+											Type: scyllav1alpha1.GrafanaPrometheusDatasourceAuthTypeBearerToken,
+											BearerTokenOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceBearerTokenAuthOptions{
+												SecretRef: &scyllav1alpha1.LocalObjectKeySelector{
+													Name: "prometheus-bearer-token",
+													Key:  "token",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			soc:                          defaultSOC,
+			grafanaServingCertSecretName: "serving-secret",
+			dashboardsCMs: []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0",
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/dashboard-name": "scylladb-6.0",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1",
+						Annotations: map[string]string{
+							"internal.scylla-operator.scylladb.com/dashboard-name": "scylladb-6.1",
+						},
+					},
+				},
+			},
+			restartTriggerHash: "restart-trigger-hash",
+			expectedString: strings.TrimLeft(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "sm-name-grafana"
+spec:
+  selector:
+    matchLabels:
+      scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scylla-operator.scylladb.com/inputs-hash: "restart-trigger-hash"
+      labels:
+        scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
+    spec:
+      serviceAccountName: "sm-name-grafana"
+      affinity:
+        {}
+      tolerations:
+        null
+      initContainers:
+      - name: gzip
+        image: "bash-tools-image"
+        command:
+        - /usr/bin/bash
+        - -euExo
+        - pipefail
+        - -O
+        - inherit_errexit
+        - -c
+        args:
+        - |
+          mkdir /var/run/decompressed-configmaps/grafana-scylladb-dashboards
+          find /var/run/configmaps -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+            tp="/var/run/decompressed-configmaps/${d#"/var/run/configmaps/"}"
+            mkdir "${tp}"
+            find "${d}" -mindepth 1 -maxdepth 1 -name '*.gz.base64' -exec cp -L -t "${tp}" {} +
+          done
+          find /var/run/decompressed-configmaps -name '*.gz.base64' | while read -r f; do
+            base64 -d "${f}" > "${f%.base64}"
+            rm "${f}"
+          done
+          find /var/run/decompressed-configmaps -name '*.gz' -exec gzip -d {} +
+        volumeMounts:
+        - name: decompressed-configmaps
+          mountPath: /var/run/decompressed-configmaps
+        - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+          mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.0"
+        - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+          mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.1"
+      containers:
+      - name: grafana
+        image: "grafana-image"
+        command:
+        - grafana-server
+        - --packaging=docker
+        - --homepath=/usr/share/grafana
+        - --config=/var/run/configmaps/grafana-configs/grafana.ini
+        env:
+        - name: GF_PATHS_PROVISIONING
+        - name: GF_PATHS_HOME
+        - name: GF_PATHS_DATA
+        - name: GF_PATHS_LOGS
+        - name: GF_PATHS_PLUGINS
+        - name: GF_PATHS_CONFIG
+        ports:
+        - containerPort: 3000
+          name: grafana
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 1
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTPS
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTPS
+        resources:
+          {}
+        volumeMounts:
+        - name: grafana-configs
+          mountPath: /var/run/configmaps/grafana-configs
+        - name: decompressed-configmaps
+          mountPath: /var/run/dashboards/scylladb
+          subPath: grafana-scylladb-dashboards
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/access-control/access-control.yaml
+          subPath: access-control.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/alerting/alerting.yaml
+          subPath: alerting.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/dashboards/dashboards.yaml
+          subPath: dashboards.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/datasources/datasources.yaml
+          subPath: datasources.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/notifiers/notifiers.yaml
+          subPath: notifiers.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/plugins/plugins.yaml
+          subPath: plugins.yaml
+        - name: grafana-admin-credentials
+          mountPath: /var/run/secrets/grafana-admin-credentials
+        - name: grafana-serving-certs
+          mountPath: /var/run/secrets/grafana-serving-certs
+        - name: prometheus-client-certs
+          mountPath: /var/run/secrets/prometheus-client-certs
+        - name: prometheus-serving-ca
+          mountPath: /var/run/configmaps/prometheus-serving-ca
+        - name: prometheus-bearer-token
+          mountPath: /var/run/secrets/prometheus-bearer-token
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: 472
+          runAsGroup: 472
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: decompressed-configmaps
+        emptyDir:
+          sizeLimit: 50Mi
+      - name: grafana-configs
+        configMap:
+          name: "sm-name-grafana-configs"
+      - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+        configMap:
+          name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+      - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+        configMap:
+          name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+      - name: grafana-provisioning
+        configMap:
+          name: "sm-name-grafana-provisioning"
+      - name: grafana-admin-credentials
+        secret:
+          secretName: "sm-name-grafana-admin-credentials"
+      - name: grafana-serving-certs
+        secret:
+          secretName: "serving-secret"
+      - name: prometheus-client-certs
+        secret:
+          secretName: "prometheus-client-grafana"
+      - name: prometheus-serving-ca
+        configMap:
+          name: "prometheus-serving-ca"
+      - name: prometheus-bearer-token
+        secret:
+          secretName: "prometheus-bearer-token"
       - name: grafana-storage
         emptyDir:
           sizeLimit: 100Mi
@@ -718,6 +966,348 @@ spec:
 				t.Errorf("expected and got strings differ:\n%s", gcmp.Diff(
 					strings.Split(tc.expectedString, "\n"),
 					strings.Split(deploymentString, "\n"),
+				))
+			}
+		})
+	}
+}
+
+func Test_makeGrafanaProvisionings(t *testing.T) {
+	testScyllaDBMonitoring := func() *scyllav1alpha1.ScyllaDBMonitoring {
+		return &scyllav1alpha1.ScyllaDBMonitoring{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "sm-name",
+			},
+			Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
+				EndpointsSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"app": "scylla",
+					},
+				},
+			},
+		}
+	}
+
+	tt := []struct {
+		name           string
+		sm             *scyllav1alpha1.ScyllaDBMonitoring
+		expectedString string
+	}{
+		{
+			name: "default",
+			sm:   testScyllaDBMonitoring(),
+			expectedString: strings.TrimLeft(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "sm-name-grafana-provisioning"
+data:
+  access-control.yaml: ""
+  alerting.yaml: ""
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: dashboards
+      type: file
+      updateIntervalSeconds: 30
+      options:
+        path: /var/run/dashboards
+        foldersFromFilesStructure: true
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      url: "https://sm-name-prometheus:9090"
+      isDefault: true
+      version: 1
+      editable: false
+      jsonData:
+        timeInterval: "5s"
+        tlsAuthWithCACert: true
+      secureJsonData:
+        tlsCACert: "$__file{/var/run/configmaps/prometheus-serving-ca/ca-bundle.crt}"
+        tlsClientCert: "$__file{/var/run/secrets/prometheus-client-certs/tls.crt}" 
+        tlsClientKey: "$__file{/var/run/secrets/prometheus-client-certs/tls.key}"
+  notifiers.yaml: ""
+  plugins.yaml: ""
+`, "\n"),
+		},
+		{
+			name: "custom prometheus datasource with mTLS and bearer token",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := testScyllaDBMonitoring()
+				sm.Spec.Components = &scyllav1alpha1.Components{
+					Prometheus: &scyllav1alpha1.PrometheusSpec{
+						Mode: scyllav1alpha1.PrometheusModeExternal,
+					},
+					Grafana: &scyllav1alpha1.GrafanaSpec{
+						Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+							{
+								Type: scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+								Name: "prometheus",
+								URL:  "https://custom-prometheus:9090",
+								PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{
+									TLS: &scyllav1alpha1.GrafanaDatasourceTLSSpec{
+										CACertConfigMapRef: &scyllav1alpha1.LocalObjectKeySelector{
+											Name: "custom-prometheus-ca",
+											Key:  "custom-ca-bundle-key.crt",
+										},
+										ClientTLSKeyPairSecretRef: &scyllav1alpha1.LocalObjectReference{
+											Name: "custom-prometheus-client-tls",
+										},
+									},
+									Auth: &scyllav1alpha1.GrafanaPrometheusDatasourceAuthSpec{
+										Type: scyllav1alpha1.GrafanaPrometheusDatasourceAuthTypeBearerToken,
+										BearerTokenOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceBearerTokenAuthOptions{
+											SecretRef: &scyllav1alpha1.LocalObjectKeySelector{
+												Name: "custom-prometheus-bearer-token",
+												Key:  "token-key",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedString: strings.TrimLeft(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "sm-name-grafana-provisioning"
+data:
+  access-control.yaml: ""
+  alerting.yaml: ""
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: dashboards
+      type: file
+      updateIntervalSeconds: 30
+      options:
+        path: /var/run/dashboards
+        foldersFromFilesStructure: true
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      url: "https://custom-prometheus:9090"
+      isDefault: true
+      version: 1
+      editable: false
+      jsonData:
+        timeInterval: "5s"
+        tlsAuthWithCACert: true
+        httpHeaderName1: "Authorization"
+      secureJsonData:
+        tlsCACert: "$__file{/var/run/configmaps/prometheus-serving-ca/custom-ca-bundle-key.crt}"
+        tlsClientCert: "$__file{/var/run/secrets/prometheus-client-certs/tls.crt}" 
+        tlsClientKey: "$__file{/var/run/secrets/prometheus-client-certs/tls.key}"
+        httpHeaderValue1: "Bearer $__file{/var/run/secrets/prometheus-bearer-token/token-key}"
+  notifiers.yaml: ""
+  plugins.yaml: ""
+`, "\n"),
+		},
+		{
+			name: "custom prometheus datasource with TLS without verification, no auth",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := testScyllaDBMonitoring()
+				sm.Spec.Components = &scyllav1alpha1.Components{
+					Prometheus: &scyllav1alpha1.PrometheusSpec{
+						Mode: scyllav1alpha1.PrometheusModeExternal,
+					},
+					Grafana: &scyllav1alpha1.GrafanaSpec{
+						Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+							{
+								Type: scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+								Name: "prometheus",
+								URL:  "https://custom-prometheus:9090",
+								PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{
+									TLS: &scyllav1alpha1.GrafanaDatasourceTLSSpec{
+										InsecureSkipVerify: true,
+									},
+								},
+							},
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedString: strings.TrimLeft(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "sm-name-grafana-provisioning"
+data:
+  access-control.yaml: ""
+  alerting.yaml: ""
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: dashboards
+      type: file
+      updateIntervalSeconds: 30
+      options:
+        path: /var/run/dashboards
+        foldersFromFilesStructure: true
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      url: "https://custom-prometheus:9090"
+      isDefault: true
+      version: 1
+      editable: false
+      jsonData:
+        timeInterval: "5s"
+        tlsSkipVerify: true
+  notifiers.yaml: ""
+  plugins.yaml: ""
+`, "\n"),
+		},
+		{
+			name: "custom prometheus datasource without TLS, no auth",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := testScyllaDBMonitoring()
+				sm.Spec.Components = &scyllav1alpha1.Components{
+					Prometheus: &scyllav1alpha1.PrometheusSpec{
+						Mode: scyllav1alpha1.PrometheusModeExternal,
+					},
+					Grafana: &scyllav1alpha1.GrafanaSpec{
+						Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+							{
+								Type:              scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+								Name:              "prometheus",
+								URL:               "http://custom-prometheus:9090",
+								PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{},
+							},
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedString: strings.TrimLeft(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "sm-name-grafana-provisioning"
+data:
+  access-control.yaml: ""
+  alerting.yaml: ""
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: dashboards
+      type: file
+      updateIntervalSeconds: 30
+      options:
+        path: /var/run/dashboards
+        foldersFromFilesStructure: true
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      url: "http://custom-prometheus:9090"
+      isDefault: true
+      version: 1
+      editable: false
+      jsonData:
+        timeInterval: "5s"
+  notifiers.yaml: ""
+  plugins.yaml: ""
+`, "\n"),
+		},
+		{
+			name: "custom prometheus datasource with bearer token auth, no TLS",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := testScyllaDBMonitoring()
+				sm.Spec.Components = &scyllav1alpha1.Components{
+					Prometheus: &scyllav1alpha1.PrometheusSpec{
+						Mode: scyllav1alpha1.PrometheusModeExternal,
+					},
+					Grafana: &scyllav1alpha1.GrafanaSpec{
+						Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+							{
+								Type: scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+								Name: "prometheus",
+								URL:  "http://custom-prometheus:9090",
+								PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{
+									Auth: &scyllav1alpha1.GrafanaPrometheusDatasourceAuthSpec{
+										Type: scyllav1alpha1.GrafanaPrometheusDatasourceAuthTypeBearerToken,
+										BearerTokenOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceBearerTokenAuthOptions{
+											SecretRef: &scyllav1alpha1.LocalObjectKeySelector{
+												Name: "custom-prometheus-bearer-token",
+												Key:  "token-key",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedString: strings.TrimLeft(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "sm-name-grafana-provisioning"
+data:
+  access-control.yaml: ""
+  alerting.yaml: ""
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: dashboards
+      type: file
+      updateIntervalSeconds: 30
+      options:
+        path: /var/run/dashboards
+        foldersFromFilesStructure: true
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: prometheus
+      type: prometheus
+      access: proxy
+      url: "http://custom-prometheus:9090"
+      isDefault: true
+      version: 1
+      editable: false
+      jsonData:
+        timeInterval: "5s"
+        httpHeaderName1: "Authorization"
+      secureJsonData:
+        httpHeaderValue1: "Bearer $__file{/var/run/secrets/prometheus-bearer-token/token-key}"
+  notifiers.yaml: ""
+  plugins.yaml: ""
+`, "\n"),
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			_, objString, err := makeGrafanaProvisionings(tc.sm)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if objString != tc.expectedString {
+				t.Errorf("expected and got strings differ:\n%s", gcmp.Diff(
+					strings.Split(tc.expectedString, "\n"),
+					strings.Split(objString, "\n"),
 				))
 			}
 		})

@@ -20,16 +20,36 @@ data:
     - name: prometheus
       type: prometheus
       access: proxy
-      url: "https://{{ .scyllaDBMonitoringName }}-prometheus:9090"
+      url: "{{ .prometheusDatasource.URL }}"
       isDefault: true
       version: 1
       editable: false
       jsonData:
         timeInterval: "5s"
+        {{- if and .prometheusDatasource.TLS .prometheusDatasource.TLS.InsecureSkipVerify }}
+        tlsSkipVerify: true
+        {{- end }}
+        {{- if and .prometheusDatasource.TLS .prometheusDatasource.TLS.ServingCAConfigMapRef }}
         tlsAuthWithCACert: true
+        {{- end }}
+        {{- if and .prometheusDatasource.Auth .prometheusDatasource.Auth.BearerTokenSecretRef }}
+        httpHeaderName1: "Authorization"
+        {{- end }}
+      {{- $hasCACert := and .prometheusDatasource.TLS .prometheusDatasource.TLS.ServingCAConfigMapRef -}}
+      {{- $hasClientPair := and .prometheusDatasource.TLS .prometheusDatasource.TLS.ClientTLSKeyPairSecretRef -}}
+      {{- $hasBearer := and .prometheusDatasource.Auth .prometheusDatasource.Auth.BearerTokenSecretRef -}}
+      {{- if or $hasCACert $hasClientPair $hasBearer }}
       secureJsonData:
-        tlsCACert: "$__file{/var/run/configmaps/prometheus-serving-ca/ca-bundle.crt}"
-        tlsClientCert: "$__file{/var/run/secrets/prometheus-client-certs/tls.crt}"
+        {{- if $hasCACert }}
+        tlsCACert: "$__file{/var/run/configmaps/prometheus-serving-ca/{{ .prometheusDatasource.TLS.ServingCAConfigMapRef.Key }}}"
+        {{- end }}
+        {{- if $hasClientPair }}
+        tlsClientCert: "$__file{/var/run/secrets/prometheus-client-certs/tls.crt}" 
         tlsClientKey: "$__file{/var/run/secrets/prometheus-client-certs/tls.key}"
+        {{- end }}
+        {{- if $hasBearer }}
+        httpHeaderValue1: "Bearer $__file{/var/run/secrets/prometheus-bearer-token/{{ .prometheusDatasource.Auth.BearerTokenSecretRef.Key }}}"
+        {{- end }}
+      {{- end }}
   notifiers.yaml: ""
   plugins.yaml: ""

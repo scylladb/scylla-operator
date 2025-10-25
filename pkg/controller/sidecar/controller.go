@@ -264,9 +264,10 @@ func (c *Controller) deleteService(obj interface{}) {
 	c.enqueue(svc)
 }
 
-func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.Client) (string, error) {
+func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string) (string, error) {
+	var v string
 	c.hostID.RLock()
-	v := c.hostID.v
+	v = c.hostID.v
 	c.hostID.RUnlock()
 
 	if len(v) > 0 {
@@ -281,7 +282,7 @@ func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.C
 		return v, nil
 	}
 
-	v, err := scyllaClient.GetLocalHostId(ctx, localhost, false)
+	v, err := scyllaClient.GetLocalHostId(ctx, localhostAddr, false)
 	if err != nil {
 		return "", fmt.Errorf("can't get local HostID: %w", err)
 	}
@@ -295,8 +296,8 @@ func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.C
 	return v, nil
 }
 
-func (c *Controller) getTokenRingHash(ctx context.Context, scyllaClient *scyllaclient.Client) (string, error) {
-	tokenRing, err := scyllaClient.GetTokenRing(ctx, localhost)
+func (c *Controller) getTokenRingHash(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string) (string, error) {
+	tokenRing, err := scyllaClient.GetTokenRing(ctx, localhostAddr)
 	if err != nil {
 		return "", fmt.Errorf("can't get token ring: %w", err)
 	}

@@ -26,7 +26,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -211,7 +210,7 @@ func (o *RunOptions) Complete(args []string) error {
 }
 
 func (o *RunOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.V(1).Infof("%q version %q", cmd.CommandPath(), version.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()

@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -147,7 +147,7 @@ func (o *GatherBaseOptions) RunInit(originalStreams genericclioptions.IOStreams,
 
 	flag.Parse()
 
-	klog.InfoS("Program info", "Command", cmd.Name(), "Version", version.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
 	return nil

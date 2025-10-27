@@ -9,9 +9,9 @@ import (
 	"text/template"
 
 	"github.com/scylladb/scylla-operator/pkg/assets"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	programversion "github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,7 +126,7 @@ var templateFuncs = template.FuncMap{
 }
 
 func (o *GenerateAPIRefsOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.V(1).Infof("%q version %q", cmd.CommandPath(), programversion.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()

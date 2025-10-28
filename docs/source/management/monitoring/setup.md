@@ -18,7 +18,7 @@ Deploy Prometheus Operator using kubectl:
 
 :::{code-block} shell
 :substitutions:
-kubectl apply -n prometheus-operator --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/prometheus-operator
+kubectl apply -n prometheus-operator --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/prometheus-operator.yaml
 :::
 
 #### Wait for Prometheus Operator to roll out

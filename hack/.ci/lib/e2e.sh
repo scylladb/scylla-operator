@@ -131,7 +131,9 @@ spec:
   - name: artifacts
     emptyDir: {}
 EOF
-  kubectl -n=gather-artifacts wait --for=condition=Ready pod/must-gather
+  kubectl -n=gather-artifacts wait --timeout=300s --for=condition=Ready pod/must-gather ||
+    kubectl -n gather-artifacts describe pod must-gather && \
+    kubectl -n gather-artifacts logs pod/must-gather --all-containers=true
 
   exit_code="$( wait-for-container-exit-with-logs gather-artifacts must-gather must-gather )"
 

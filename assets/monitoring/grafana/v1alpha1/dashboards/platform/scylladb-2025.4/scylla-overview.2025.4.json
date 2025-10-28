@@ -4014,7 +4014,7 @@
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "2025.3"
+        "2025.4"
     ],
     "templating": {
         "list": [
@@ -4327,8 +4327,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2025-3",
-                    "value": "2025-3"
+                    "text": "2025-4",
+                    "value": "2025-4"
                 },
                 "error": null,
                 "hide": 2,
@@ -4339,11 +4339,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2025-3",
-                        "value": "2025-3"
+                        "text": "2025-4",
+                        "value": "2025-4"
                     }
                 ],
-                "query": "2025-3",
+                "query": "2025-4",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -4416,8 +4416,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2025.3",
-                    "value": "2025.3"
+                    "text": "2025.4",
+                    "value": "2025.4"
                 },
                 "error": null,
                 "hide": 2,
@@ -4428,11 +4428,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2025.3",
-                        "value": "2025.3"
+                        "text": "2025.4",
+                        "value": "2025.4"
                     }
                 ],
-                "query": "2025.3",
+                "query": "2025.4",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -4494,6 +4494,6 @@
     },
     "timezone": "utc",
     "title": "Overview",
-    "uid": "overview-2025-3",
+    "uid": "overview-2025-4",
     "version": 1
 }

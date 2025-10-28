@@ -9,13 +9,13 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -147,7 +147,7 @@ func (o *SidecarOptions) Complete() error {
 }
 
 func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, args []string) error {
-	klog.Infof("%s version %s", cmd.Name(), version.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 	for _, arg := range args {
 		klog.V(1).Infof("ARG: %q", arg)

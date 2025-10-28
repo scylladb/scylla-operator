@@ -7,7 +7,7 @@ import (
 	goruntime "runtime"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/version"
+	"github.com/scylladb/scylla-operator/pkg/build"
 	"github.com/spf13/cobra"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	restclient "k8s.io/client-go/rest"
@@ -117,12 +117,11 @@ type ClientConfig struct {
 
 func MakeVersionedUserAgent(baseName string) string {
 	return fmt.Sprintf(
-		"%s/%s (%s/%s) scylla-operator/%s",
+		"%s (%s/%s) scylla-operator/%s",
 		baseName,
-		version.Get().GitVersion,
 		goruntime.GOOS,
 		goruntime.GOARCH,
-		version.Get().GitCommit,
+		build.GitCommit(),
 	)
 }
 

@@ -13,10 +13,8 @@ MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
 # Support container build from git worktrees where the parent git folder isn't available.
 GIT ?=git
 
-GIT_TAG ?=$(shell [ ! -d ".git/" ] || $(GIT) describe --long --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) describe failed))
 GIT_TAG_SHORT ?=$(shell [ ! -d ".git/" ] || $(GIT) describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) describe failed))
 GIT_COMMIT ?=$(shell [ ! -d ".git/" ] || $(GIT) rev-parse --short "HEAD^{commit}" 2>/dev/null)$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) rev-parse failed))
-GIT_TREE_STATE ?=$(shell ( ( [ ! -d ".git/" ] || $(GIT) diff --quiet ) && echo 'clean' ) || echo 'dirty')
 
 GO ?=go
 GO_MODULE ?=$(shell $(GO) list -m)$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list go module name))
@@ -80,12 +78,9 @@ MONITORING_DASHBOARDS_DIR :=./submodules/github.com/scylladb/scylla-monitoring/g
 MONITORING_RULES_DIR :=./submodules/github.com/scylladb/scylla-monitoring/prometheus/prom_rules
 
 define version-ldflags
--X $(1).versionFromGit="$(GIT_TAG)" \
--X $(1).commitFromGit="$(GIT_COMMIT)" \
--X $(1).gitTreeState="$(GIT_TREE_STATE)" \
--X $(1).buildDate="$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')"
+-X $(1).commitFromGit="$(GIT_COMMIT)"
 endef
-GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/version) $(GO_LD_EXTRA_FLAGS))'
+GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/build) $(GO_LD_EXTRA_FLAGS))'
 
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1
@@ -723,23 +718,17 @@ test-unit:
 	$(GO) test $(GO_TEST_COUNT) $(GO_TEST_FLAGS) $(GO_TEST_EXTRA_FLAGS) $(GO_TEST_PACKAGES) $(if $(GO_TEST_ARGS)$(GO_TEST_EXTRA_ARGS),-args $(GO_TEST_ARGS) $(GO_TEST_EXTRA_ARGS))
 .PHONY: test-unit
 
-test-integration: GO_TEST_PACKAGES :=./test/integration/...
-test-integration: GO_TEST_COUNT :=-count=1
-test-integration: GO_TEST_FLAGS += -p=1 -timeout 30m -v
-test-integration: GO_TEST_ARGS += -ginkgo.progress
-test-integration: test-unit
-.PHONY: test-integration
-
 test-e2e:
 	$(GO) run ./cmd/scylla-operator-tests run $(GO_TEST_E2E_EXTRA_ARGS)
 .PHONY: test-e2e
 
-test-scripts:
-	./hack/lib/tag-from-gh-ref.sh
-.PHONY: test-scripts
-
-test: test-unit test-scripts
+test: test-unit test-binary
 .PHONY: test
+
+test-binary: build
+	# Verify that the built binary runs and prints the expected output (including the exact commit hash):
+	@ test "$$(./scylla-operator version)" = 'GitCommit="$(GIT_COMMIT)"' || (echo "Built binary version output does not match the expected commit hash." && false)
+.PHONY: test-binary
 
 help:
 	$(info The following make targets are available:)

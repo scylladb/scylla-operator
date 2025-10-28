@@ -5,8 +5,8 @@ package version
 import (
 	"fmt"
 
+	"github.com/scylladb/scylla-operator/pkg/build"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -69,7 +69,7 @@ func (o *Options) Complete() error {
 	return nil
 }
 
-func (o *Options) Run(originalStreams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	fmt.Printf("%s: %s\n", cmd.Name(), version.Get())
+func (o *Options) Run(genericclioptions.IOStreams, *cobra.Command) error {
+	fmt.Printf("GitCommit=%s\n", build.GitCommit())
 	return nil
 }

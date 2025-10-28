@@ -9,6 +9,7 @@ import (
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodesetup"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodetune"
 	"github.com/scylladb/scylla-operator/pkg/cri"
@@ -16,7 +17,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/kubelet"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -169,7 +169,7 @@ func (o *NodeSetupDaemonOptions) Complete() error {
 }
 
 func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.Infof("%s version %s", cmd.Name(), version.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()

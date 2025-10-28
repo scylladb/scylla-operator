@@ -8,12 +8,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -112,7 +112,7 @@ func (o *CleanupJobOptions) Complete() error {
 }
 
 func (o *CleanupJobOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.InfoS("Starting the node cleanup", "version", version.Get())
+	cmdutil.LogCommandStarting(cmd)
 
 	defer func(startTime time.Time) {
 		klog.InfoS("Node cleanup completed", "duration", time.Since(startTime))

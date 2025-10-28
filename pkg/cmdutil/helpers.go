@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/scylladb/scylla-operator/pkg/build"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -98,4 +99,9 @@ func getLoglevelOrDefault() (int, error) {
 
 func GetLoglevelOrDefaultOrDie() int {
 	return helpers.Must(getLoglevelOrDefault())
+}
+
+// LogCommandStarting logs the start of the given command along with the Git commit.
+func LogCommandStarting(cmd *cobra.Command) {
+	klog.InfoS(fmt.Sprintf("Starting %s", cmd.Name()), "GitCommit", build.GitCommit())
 }

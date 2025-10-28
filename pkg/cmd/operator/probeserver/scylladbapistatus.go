@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/probeserver/scylladbapistatus"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	cliflag "k8s.io/component-base/cli/flag"
-	"k8s.io/klog/v2"
 )
 
 type ScyllaDBAPIStatusOptions struct {
@@ -130,7 +129,7 @@ func (o *ScyllaDBAPIStatusOptions) Complete(args []string) error {
 }
 
 func (o *ScyllaDBAPIStatusOptions) Run(originalStreams genericclioptions.IOStreams, cmd *cobra.Command) (returnErr error) {
-	klog.Infof("%s version %s", cmd.Name(), version.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()

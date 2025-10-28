@@ -20,11 +20,11 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -271,7 +271,7 @@ func (o *WebhookOptions) Complete() error {
 }
 
 func (o *WebhookOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.Infof("%s version %s", cmd.Name(), version.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()

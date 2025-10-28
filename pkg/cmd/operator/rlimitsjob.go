@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -83,7 +83,7 @@ func (o *RlimitsJobOptions) Complete() error {
 }
 
 func (o *RlimitsJobOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.InfoS("Starting rlimits Job", "version", version.Get())
+	cmdutil.LogCommandStarting(cmd)
 
 	defer func(startTime time.Time) {
 		klog.InfoS("Rlimits Job completed", "duration", time.Since(startTime))

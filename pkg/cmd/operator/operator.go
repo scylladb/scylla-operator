@@ -14,6 +14,7 @@ import (
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/clusterdomain"
+	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controller/globalscylladbmanager"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfig"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodeconfigpod"
@@ -33,7 +34,6 @@ import (
 	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
 	remoteinformers "github.com/scylladb/scylla-operator/pkg/remoteclient/informers"
 	"github.com/scylladb/scylla-operator/pkg/signals"
-	"github.com/scylladb/scylla-operator/pkg/version"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -51,7 +51,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -269,7 +268,7 @@ func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 }
 
 func (o *OperatorOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	klog.Infof("%s version %s", cmd.Name(), version.Get())
+	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
 	stopCh := signals.StopChannel()

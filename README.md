@@ -1,11 +1,9 @@
 # Scylla Operator
 
 [![GitHub release](https://img.shields.io/github/tag/scylladb/scylla-operator.svg?label=release)](https://github.com/scylladb/scylla-operator/releases)
-[![Go](https://github.com/scylladb/scylla-operator/actions/workflows/go.yaml/badge.svg?branch=master)](https://github.com/scylladb/scylla-operator/actions/workflows/go.yaml?query=branch%3Amaster)
 [![Go Report Card](https://goreportcard.com/badge/github.com/scylladb/scylla-operator)](https://goreportcard.com/report/github.com/scylladb/scylla-operator)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://golang.org/)
 [![LICENSE](https://img.shields.io/github/license/scylladb/scylla-operator.svg)](https://github.com/scylladb/scylla-operator/blob/master/LICENSE)
-
 
 [Scylla Operator](https://github.com/scylladb/scylla-operator) is a Kubernetes Operator for managing and automating tasks related to managing ScyllaDB clusters.
 
@@ -13,63 +11,26 @@
 
 ![](logo.svg)
 
-## Deploying the Operator
-For version requirements see the [support matrix](https://operator.docs.scylladb.com/stable/support/releases.html).
-
-### GitOps
-Kubernetes manifests are located in the `deploy/` folder. To deploy the operator manually using Kubernetes manifests or to integrate it into your GitOps flow please follow [these instructions](./deploy/README.md). 
-
-### Helm Charts
-You can also use Helm charts to deploy both Scylla Operator and Scylla clusters:
-
-#### Stable
-```bash
-helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts/stable
-```
-
-#### Latest
-```bash
-helm repo add scylla-operator https://storage.googleapis.com/scylla-operator-charts/latest
-```
-
-
-## Quickstarts and Training
-To quickly deploy a ScyllaCluster, you can choose one of the following options:
-
-* [GKE](https://operator.docs.scylladb.com/stable/quickstarts/gke.html): This is a quickstart guide to help you set up a basic [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine) cluster quickly with local NVMes and solid performance.
-* [EKS](https://operator.docs.scylladb.com/stable/quickstarts/eks.html): This is a quickstart guide to help you set up a basic [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/) cluster quickly with local NVMes and solid performance.
-
-ScyllaDB Installation: 
-* [Generic](https://operator.docs.scylladb.com/stable/installation/kubernetes/generic.html): Follow this guide for the general way to use the operator.
-* [GKE](https://operator.docs.scylladb.com/stable/installation/kubernetes/gke.html): An advanced guide for deploying Scylla with the **best performance settings** on [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine).
-* [EKS](https://operator.docs.scylladb.com/stable/installation/kubernetes/eks.html): An advanced guide for deploying Scylla with the **best performance settings** on [Amazon Elastic Kubernetes Service](https://aws.amazon.com/eks/).
-* [Scylla University Lesson](https://university.scylladb.com/courses/scylla-operations/lessons/kubernetes-operator/): Follow this lesson on Scylla University to learn more about the Operator and how to use it. The lesson includes some hands-on examples which you can run yourself. 
-
-## Releases
-To find out more about our releases, support matrix and how our CI/CD is set up there is a [dedicated docs page](https://operator.docs.scylladb.com/stable/support/releases.html).
 
 ## Documentation
-Scylla Operator documentation is available on https://operator.docs.scylladb.com
 
-## Features
-* Deploying multi-zone clusters
-* Scaling up or adding new racks
-* Scaling down
-* Monitoring with Prometheus and Grafana
-* Integration with [Scylla Manager](https://docs.scylladb.com/operating-scylla/manager/)
-* Dead node replacement
-* Version Upgrade
-* Backup
-* Repairs
-* Autohealing
+ScyllaDB Operator documentation is available on https://operator.docs.scylladb.com. It's the best place to start learning
+about the Operator, its features, and how to use it.
 
-## Roadmap
-<!---
-TODO: Link a dedicated roadmap.
--->
-* Restore
+## Deploying the Operator
+
+Please refer to the [Installation](https://operator.docs.scylladb.com/stable/installation/index.html) section of our documentation
+to learn how to deploy ScyllaDB Operator in your Kubernetes cluster.
+
+You can also check out our [ScyllaDB University lesson](https://university.scylladb.com/courses/scylla-operations/lessons/kubernetes-operator/) to learn more about the Operator and how to use it.
+The lesson includes some hands-on examples which you can run yourself.
+
+## Releases
+
+To find out more about our releases and support matrix there is a [dedicated docs page](https://operator.docs.scylladb.com/stable/support/releases.html).
 
 ## Support
+
 If you find a bug please file an [issue](https://github.com/scylladb/scylla-operator/issues) for us.
 
 We are also available on `#scylla-operator` channel on [Slack](https://scylladb-users.slack.com) if you have questions.

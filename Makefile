@@ -718,22 +718,11 @@ test-unit:
 	$(GO) test $(GO_TEST_COUNT) $(GO_TEST_FLAGS) $(GO_TEST_EXTRA_FLAGS) $(GO_TEST_PACKAGES) $(if $(GO_TEST_ARGS)$(GO_TEST_EXTRA_ARGS),-args $(GO_TEST_ARGS) $(GO_TEST_EXTRA_ARGS))
 .PHONY: test-unit
 
-test-integration: GO_TEST_PACKAGES :=./test/integration/...
-test-integration: GO_TEST_COUNT :=-count=1
-test-integration: GO_TEST_FLAGS += -p=1 -timeout 30m -v
-test-integration: GO_TEST_ARGS += -ginkgo.progress
-test-integration: test-unit
-.PHONY: test-integration
-
 test-e2e:
 	$(GO) run ./cmd/scylla-operator-tests run $(GO_TEST_E2E_EXTRA_ARGS)
 .PHONY: test-e2e
 
-test-scripts:
-	./hack/lib/tag-from-gh-ref.sh
-.PHONY: test-scripts
-
-test: test-unit test-scripts test-binary
+test: test-unit test-binary
 .PHONY: test
 
 test-binary: build

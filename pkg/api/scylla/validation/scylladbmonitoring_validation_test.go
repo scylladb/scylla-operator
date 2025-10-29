@@ -421,3 +421,195 @@ func TestValidateScyllaDBMonitoringUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestGetWarningsOnScyllaDBMonitoringCreate(t *testing.T) {
+	t.Parallel()
+	sm := validScyllaDBMonitoringWithExternalPrometheus()
+
+	testCases := []struct {
+		name            string
+		sm              *scyllav1alpha1.ScyllaDBMonitoring
+		expectedWarning []string
+	}{
+		{
+			name:            "no warnings on valid monitoring",
+			sm:              sm,
+			expectedWarning: nil,
+		},
+		{
+			name: "warning on spec.components.grafana.exposeOptions",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Grafana.ExposeOptions = &scyllav1alpha1.GrafanaExposeOptions{
+					WebInterface: &scyllav1alpha1.HTTPSExposeOptions{
+						Ingress: &scyllav1alpha1.IngressOptions{
+							IngressClassName: "haproxy",
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.components.grafana.exposeOptions` field is deprecated and will be removed in future releases, please expose managed Grafana Service on your own (e.g., via Ingress or HTTPRoute).",
+			},
+		},
+		{
+			name: "warning on spec.components.prometheus.mode = Managed",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Prometheus.Mode = scyllav1alpha1.PrometheusModeManaged
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.components.prometheus.mode` = `Managed` is deprecated and will be removed in future releases, please use `External` instead.",
+			},
+		},
+		{
+			name: "warning on spec.components.prometheus.exposeOptions",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Prometheus.ExposeOptions = &scyllav1alpha1.PrometheusExposeOptions{
+					WebInterface: &scyllav1alpha1.HTTPSExposeOptions{
+						Ingress: &scyllav1alpha1.IngressOptions{
+							IngressClassName: "haproxy",
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.components.prometheus.exposeOptions` field is deprecated and will be removed in future releases, please expose managed Prometheus Service on your own (e.g., via Ingress or HTTPRoute).",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			actualWarnings := GetWarningsOnScyllaDBMonitoringCreate(tc.sm)
+			if !reflect.DeepEqual(actualWarnings, tc.expectedWarning) {
+				t.Errorf("expected warnings differ from actual: %s", cmp.Diff(tc.expectedWarning, actualWarnings))
+			}
+		})
+	}
+}
+
+func TestGetWarningsOnScyllaDBMonitoringUpdate(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name            string
+		old             *scyllav1alpha1.ScyllaDBMonitoring
+		new             *scyllav1alpha1.ScyllaDBMonitoring
+		expectedWarning []string
+	}{
+		{
+			name:            "no warnings on valid monitoring",
+			old:             validScyllaDBMonitoringWithExternalPrometheus(),
+			new:             validScyllaDBMonitoringWithExternalPrometheus(),
+			expectedWarning: nil,
+		},
+		{
+			name: "no warning on non-nil spec.components.grafana.exposeOptions in old monitoring",
+			old: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Grafana.ExposeOptions = &scyllav1alpha1.GrafanaExposeOptions{
+					WebInterface: &scyllav1alpha1.HTTPSExposeOptions{
+						Ingress: &scyllav1alpha1.IngressOptions{
+							IngressClassName: "haproxy",
+						},
+					},
+				}
+				return sm
+			}(),
+			new:             validScyllaDBMonitoringWithExternalPrometheus(),
+			expectedWarning: nil,
+		},
+		{
+			name: "warning on non-nil spec.components.grafana.exposeOptions in new monitoring",
+			old:  validScyllaDBMonitoringWithExternalPrometheus(),
+			new: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Grafana.ExposeOptions = &scyllav1alpha1.GrafanaExposeOptions{
+					WebInterface: &scyllav1alpha1.HTTPSExposeOptions{
+						Ingress: &scyllav1alpha1.IngressOptions{
+							IngressClassName: "haproxy",
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.components.grafana.exposeOptions` field is deprecated and will be removed in future releases, please expose managed Grafana Service on your own (e.g., via Ingress or HTTPRoute).",
+			},
+		},
+		{
+			name: "no warning on spec.components.prometheus.mode Managed in old monitoring",
+			old: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Prometheus.Mode = scyllav1alpha1.PrometheusModeManaged
+				return sm
+			}(),
+			new:             validScyllaDBMonitoringWithExternalPrometheus(),
+			expectedWarning: nil,
+		},
+		{
+			name: "warning on spec.components.prometheus.mode Managed in new monitoring",
+			old:  validScyllaDBMonitoringWithExternalPrometheus(),
+			new: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Prometheus.Mode = scyllav1alpha1.PrometheusModeManaged
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.components.prometheus.mode` = `Managed` is deprecated and will be removed in future releases, please use `External` instead.",
+			},
+		},
+		{
+			name: "no warning on non-nil spec.components.prometheus.exposeOptions in old monitoring",
+			old: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Prometheus.ExposeOptions = &scyllav1alpha1.PrometheusExposeOptions{
+					WebInterface: &scyllav1alpha1.HTTPSExposeOptions{
+						Ingress: &scyllav1alpha1.IngressOptions{
+							IngressClassName: "haproxy",
+						},
+					},
+				}
+				return sm
+			}(),
+			new:             validScyllaDBMonitoringWithExternalPrometheus(),
+			expectedWarning: nil,
+		},
+		{
+			name: "warning on non-nil spec.components.prometheus.exposeOptions in new monitoring",
+			old:  validScyllaDBMonitoringWithExternalPrometheus(),
+			new: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Components.Prometheus.ExposeOptions = &scyllav1alpha1.PrometheusExposeOptions{
+					WebInterface: &scyllav1alpha1.HTTPSExposeOptions{
+						Ingress: &scyllav1alpha1.IngressOptions{
+							IngressClassName: "haproxy",
+						},
+					},
+				}
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.components.prometheus.exposeOptions` field is deprecated and will be removed in future releases, please expose managed Prometheus Service on your own (e.g., via Ingress or HTTPRoute).",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			actualWarnings := GetWarningsOnScyllaDBMonitoringUpdate(tc.new, tc.old)
+			if !reflect.DeepEqual(actualWarnings, tc.expectedWarning) {
+				t.Errorf("expected warnings differ from actual: %s", cmp.Diff(tc.expectedWarning, actualWarnings))
+			}
+		})
+	}
+}

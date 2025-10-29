@@ -6,5 +6,5 @@ operator:
   minKubernetesVersion: 1.30.0
 thirdParty:
   prometheusOperator:
-    version: 0.84.0
+    version: 0.86.1 # Latest compatible with Prometheus version defined in assets/config/config.yaml (https://prometheus-operator.dev/docs/getting-started/compatibility/)
     namespace: prometheus-operator

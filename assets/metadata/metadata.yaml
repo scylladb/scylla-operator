@@ -4,3 +4,7 @@ operator:
   minOpenShiftVersion: 4.19
   maxOpenShiftVersion: 4.19
   minKubernetesVersion: 1.30.0
+thirdParty:
+  prometheusOperator:
+    version: 0.84.0
+    namespace: prometheus-operator

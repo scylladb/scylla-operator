@@ -547,7 +547,8 @@ update-examples:
 	$(call replace-scyllacluster-versions,./examples/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),./examples/third-party/haproxy-ingress.yaml)
-	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),./examples/third-party/prometheus-operator.yaml)
+
+	./hack/third-party/build-prometheus-operator-manifest.sh "./examples/third-party/prometheus-operator.yaml"
 .PHONY: update-examples
 
 verify-examples: tmp_dir :=$(shell mktemp -d)
@@ -557,7 +558,8 @@ verify-examples:
 	$(call replace-scyllacluster-versions,$(tmp_dir)/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),$(tmp_dir)/third-party/haproxy-ingress.yaml)
-	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/prometheus-operator/*.yaml)),$(tmp_dir)/third-party/prometheus-operator.yaml)
+
+	./hack/third-party/build-prometheus-operator-manifest.sh "$(tmp_dir)/third-party/prometheus-operator.yaml"
 
 	$(diff) -r '$(tmp_dir)'/ ./examples
 .PHONY: verify-examples

@@ -84,7 +84,7 @@ run <<'EOF'
 kubectl apply --server-side -f=./examples/common/cert-manager.yaml
 EOF
 run <<'EOF'
-kubectl -n=prometheus-operator apply --server-side -f=./examples/third-party/prometheus-operator/
+kubectl -n=prometheus-operator apply --server-side -f=./examples/third-party/prometheus-operator.yaml
 EOF
 run <<'EOF'
 kubectl wait --for='condition=established' crd/certificates.cert-manager.io crd/issuers.cert-manager.io

@@ -18,7 +18,7 @@ third-party example. If you already have it (or other Ingress Controller) deploy
 Deploy HAProxy Ingress using kubectl:
 :::{code-block} shell
 :substitutions:
-kubectl apply -n haproxy-ingress --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/haproxy-ingress
+kubectl apply -n haproxy-ingress --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/haproxy-ingress.yaml
 :::
 
 Wait for HAProxy Ingress to roll out:

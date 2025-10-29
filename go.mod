@@ -34,9 +34,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/pkg/errors v0.9.1
-	// Pinned to a commit fixing https://github.com/scylladb/scylla-operator/issues/2963. Update to proper release once it's available.
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
-	// Pinned to a commit fixing https://github.com/scylladb/scylla-operator/issues/2963. Update to proper release once it's available.
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/robfig/cron/v3 v3.0.1

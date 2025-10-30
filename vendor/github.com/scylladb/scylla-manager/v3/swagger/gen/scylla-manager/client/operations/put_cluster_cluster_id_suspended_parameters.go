@@ -64,6 +64,8 @@ for the put cluster cluster ID suspended operation typically these are written t
 */
 type PutClusterClusterIDSuspendedParams struct {
 
+	/*AllowTaskType*/
+	AllowTaskType *string
 	/*ClusterID*/
 	ClusterID string
 	/*StartTasks*/
@@ -109,6 +111,17 @@ func (o *PutClusterClusterIDSuspendedParams) SetHTTPClient(client *http.Client) 
 	o.HTTPClient = client
 }
 
+// WithAllowTaskType adds the allowTaskType to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) WithAllowTaskType(allowTaskType *string) *PutClusterClusterIDSuspendedParams {
+	o.SetAllowTaskType(allowTaskType)
+	return o
+}
+
+// SetAllowTaskType adds the allowTaskType to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) SetAllowTaskType(allowTaskType *string) {
+	o.AllowTaskType = allowTaskType
+}
+
 // WithClusterID adds the clusterID to the put cluster cluster ID suspended params
 func (o *PutClusterClusterIDSuspendedParams) WithClusterID(clusterID string) *PutClusterClusterIDSuspendedParams {
 	o.SetClusterID(clusterID)
@@ -149,6 +162,22 @@ func (o *PutClusterClusterIDSuspendedParams) WriteToRequest(r runtime.ClientRequ
 		return err
 	}
 	var res []error
+
+	if o.AllowTaskType != nil {
+
+		// query param allow_task_type
+		var qrAllowTaskType string
+		if o.AllowTaskType != nil {
+			qrAllowTaskType = *o.AllowTaskType
+		}
+		qAllowTaskType := qrAllowTaskType
+		if qAllowTaskType != "" {
+			if err := r.SetQueryParam("allow_task_type", qAllowTaskType); err != nil {
+				return err
+			}
+		}
+
+	}
 
 	// path param cluster_id
 	if err := r.SetPathParam("cluster_id", o.ClusterID); err != nil {

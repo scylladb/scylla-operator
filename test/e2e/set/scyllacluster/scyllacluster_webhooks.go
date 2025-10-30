@@ -3,7 +3,6 @@
 package scyllacluster
 
 import (
-	"context"
 	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -11,32 +10,17 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/storage/names"
 )
 
-const warningHandlerContextKey = "warningHandlerContextKey"
-
-type testWarningHandler struct {
-}
-
-// HandleWarningHeaderWithContext implements rest.WarningHandlerWithContext.
-// It retrieves a pointer to a string from the context and updates it with the warning message.
-// This allows for concurrent execution of tests with a shared client (enforced by the unfortunate framework implementation).
-func (h testWarningHandler) HandleWarningHeaderWithContext(ctx context.Context, _ int, _ string, text string) {
-	v := ctx.Value(warningHandlerContextKey)
-	if warningPtr, ok := v.(*string); ok {
-		*warningPtr = text
-	}
-}
-
 var _ = g.Describe("ScyllaCluster's admission webhook", func() {
 	f := framework.NewFramework("scyllacluster")
 
-	warningHandler := &testWarningHandler{}
-	f.AdminClient.Config.WarningHandlerWithContext = warningHandler
+	f.AdminClient.Config = verification.RestConfigWithWarningCaptureHandler(f.AdminClient.Config)
 
 	type entry struct {
 		modifierFuncs          []func(*scyllav1.ScyllaCluster)
@@ -64,8 +48,7 @@ var _ = g.Describe("ScyllaCluster's admission webhook", func() {
 	g.DescribeTableSubtree("should respond", func(e *entry) {
 		g.It("is created", func(ctx g.SpecContext) {
 			var err error
-			var warning string
-			warningCtx := context.WithValue(ctx, warningHandlerContextKey, &warning)
+			warningCtx := verification.NewWarningContext(ctx)
 
 			sc := f.GetDefaultScyllaCluster()
 			// Set an explicit name to be able to fill in the expected error message on rejection.
@@ -77,7 +60,7 @@ var _ = g.Describe("ScyllaCluster's admission webhook", func() {
 			framework.By("Creating a ScyllaCluster")
 			_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(warningCtx, sc, metav1.CreateOptions{})
 			o.Expect(err).To(e.expectedErrMatcherFunc(sc))
-			o.Expect(warning).To(o.Equal(e.expectedWarning))
+			o.Expect(warningCtx.CapturedWarning()).To(o.Equal(e.expectedWarning))
 		})
 
 		g.It("is updated", func(ctx g.SpecContext) {
@@ -95,8 +78,7 @@ var _ = g.Describe("ScyllaCluster's admission webhook", func() {
 			patch, err := controllerhelpers.GenerateMergePatch(sc, scCopy)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			var warning string
-			warningCtx := context.WithValue(ctx, warningHandlerContextKey, &warning)
+			warningCtx := verification.NewWarningContext(ctx)
 
 			framework.By("Updating a ScyllaCluster")
 			_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -107,7 +89,7 @@ var _ = g.Describe("ScyllaCluster's admission webhook", func() {
 				metav1.PatchOptions{},
 			)
 			o.Expect(err).To(e.expectedErrMatcherFunc(scCopy))
-			o.Expect(warning).To(o.Equal(e.expectedWarning))
+			o.Expect(warningCtx.CapturedWarning()).To(o.Equal(e.expectedWarning))
 		})
 	},
 		g.Entry("with acceptance and no warning when a valid ScyllaCluster", &entry{

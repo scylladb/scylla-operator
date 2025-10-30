@@ -156,7 +156,11 @@ spec:
                           maxItems: 1
                           type: array
                         exposeOptions:
-                          description: exposeOptions specifies options for exposing Grafana UI.
+                          description: |-
+                            exposeOptions specifies options for exposing Grafana UI.
+
+                            Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future
+                            versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Grafana if needed.
                           properties:
                             webInterface:
                               description: webInterface specifies expose options for the user web interface.
@@ -1167,7 +1171,11 @@ spec:
                       description: prometheus holds configuration for the prometheus instance, if any.
                       properties:
                         exposeOptions:
-                          description: exposeOptions specifies options for exposing Prometheus UI.
+                          description: |-
+                            exposeOptions specifies options for exposing Prometheus UI.
+
+                            Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future
+                            versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Prometheus if needed.
                           properties:
                             webInterface:
                               description: webInterface specifies expose options for the user web interface.

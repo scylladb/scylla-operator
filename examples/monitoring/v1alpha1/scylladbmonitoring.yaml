@@ -32,12 +32,3 @@ spec:
           key: scylla-operator.scylladb.com/dedicated
           operator: Equal
           value: scyllaclusters
-    grafana:
-      exposeOptions:
-        webInterface:
-          ingress:
-            ingressClassName: haproxy
-            dnsDomains:
-            - example-grafana.test.svc.cluster.local
-            annotations:
-              haproxy-ingress.github.io/ssl-passthrough: "true"

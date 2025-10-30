@@ -118,6 +118,10 @@ type PrometheusSpec struct {
 	Resources corev1.ResourceRequirements `json:"resources"`
 
 	// exposeOptions specifies options for exposing Prometheus UI.
+	//
+	// Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future
+	// versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Prometheus if needed.
+	//
 	// +optional
 	ExposeOptions *PrometheusExposeOptions `json:"exposeOptions,omitempty"`
 
@@ -143,6 +147,10 @@ type GrafanaSpec struct {
 	Resources corev1.ResourceRequirements `json:"resources"`
 
 	// exposeOptions specifies options for exposing Grafana UI.
+	//
+	// Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future
+	// versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Grafana if needed.
+	//
 	// +optional
 	ExposeOptions *GrafanaExposeOptions `json:"exposeOptions,omitempty"`
 

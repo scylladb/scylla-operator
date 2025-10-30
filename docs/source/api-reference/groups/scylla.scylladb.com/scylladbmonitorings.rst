@@ -142,7 +142,7 @@ object
      - datasources is a list of Grafana datasources to configure. It's expected to be set when using Prometheus component in `External` mode. At most one datasource is allowed for now (only Prometheus is supported).
    * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.exposeOptions>`
      - object
-     - exposeOptions specifies options for exposing Grafana UI.
+     - exposeOptions specifies options for exposing Grafana UI.  Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Grafana if needed.
    * - :ref:`placement<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.grafana.placement>`
      - object
      - placement describes restrictions for the nodes Grafana is scheduled on.
@@ -412,7 +412,7 @@ object
 
 Description
 """""""""""
-exposeOptions specifies options for exposing Grafana UI.
+exposeOptions specifies options for exposing Grafana UI.  Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Grafana if needed.
 
 Type
 """"
@@ -1801,7 +1801,7 @@ object
      - Description
    * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbmonitorings-v1alpha1-.spec.components.prometheus.exposeOptions>`
      - object
-     - exposeOptions specifies options for exposing Prometheus UI.
+     - exposeOptions specifies options for exposing Prometheus UI.  Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Prometheus if needed.
    * - mode
      - string
      - mode defines the mode of the Prometheus instance.
@@ -1822,7 +1822,7 @@ object
 
 Description
 """""""""""
-exposeOptions specifies options for exposing Prometheus UI.
+exposeOptions specifies options for exposing Prometheus UI.  Deprecated: This field will be removed in the next version of the API. Support for it will be removed in the future versions of the operator. We recommend managing your own Ingress or HTTPRoute resources to expose Prometheus if needed.
 
 Type
 """"

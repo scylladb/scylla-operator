@@ -137,7 +137,7 @@ func (c *Client) DeleteCluster(ctx context.Context, clusterID string) error {
 }
 
 // DeleteClusterSecrets removes cluster secrets.
-func (c *Client) DeleteClusterSecrets(ctx context.Context, clusterID string, cqlCreds, sslUserCert bool) error {
+func (c *Client) DeleteClusterSecrets(ctx context.Context, clusterID string, cqlCreds, alternatorCreds, sslUserCert bool) error {
 	ok := false
 	p := &operations.DeleteClusterClusterIDParams{
 		Context:   ctx,
@@ -145,6 +145,10 @@ func (c *Client) DeleteClusterSecrets(ctx context.Context, clusterID string, cql
 	}
 	if cqlCreds {
 		p.CqlCreds = &cqlCreds
+		ok = true
+	}
+	if alternatorCreds {
+		p.AlternatorCreds = &alternatorCreds
 		ok = true
 	}
 	if sslUserCert {
@@ -543,6 +547,47 @@ func (c *Client) ValidateBackupProgress(ctx context.Context, clusterID, taskID, 
 	}, nil
 }
 
+// BackupDescribeSchema returns backed up schema from DESCRIBE SCHEMA WITH INTERNALS query.
+func (c *Client) BackupDescribeSchema(ctx context.Context, clusterID, snapshotTag, location, queryClusterID, queryTaskID string) (BackupDescribeSchema, error) {
+	params := &operations.GetClusterClusterIDBackupsSchemaParams{
+		Context:     ctx,
+		ClusterID:   clusterID,
+		SnapshotTag: snapshotTag,
+		Location:    location,
+	}
+	if queryClusterID != "" {
+		params.SetQueryClusterID(&queryClusterID)
+	}
+	if queryTaskID != "" {
+		params.SetQueryTaskID(&queryTaskID)
+	}
+
+	resp, err := c.operations.GetClusterClusterIDBackupsSchema(params)
+	if err != nil {
+		return BackupDescribeSchema{}, err
+	}
+	return BackupDescribeSchema{
+		BackupDescribeSchema: resp.GetPayload(),
+	}, nil
+}
+
+// One2OneRestoreProgress returns 1-1-restore progress.
+func (c *Client) One2OneRestoreProgress(ctx context.Context, clusterID, taskID, runID string) (One2OneRestoreProgress, error) {
+	resp, err := c.operations.GetClusterClusterIDTask11RestoreTaskIDRunID(&operations.GetClusterClusterIDTask11RestoreTaskIDRunIDParams{
+		Context:   ctx,
+		ClusterID: clusterID,
+		TaskID:    taskID,
+		RunID:     runID,
+	})
+	if err != nil {
+		return One2OneRestoreProgress{}, err
+	}
+
+	return One2OneRestoreProgress{
+		TaskRunOne2OneRestoreProgress: resp.Payload,
+	}, nil
+}
+
 // ListBackups returns listing of available backups.
 func (c *Client) ListBackups(ctx context.Context, clusterID string,
 	locations []string, allClusters bool, keyspace []string, minDate, maxDate time.Time,
@@ -683,4 +728,22 @@ func (c *Client) Resume(ctx context.Context, clusterID string, startTasks bool) 
 
 	_, err := c.operations.PutClusterClusterIDSuspended(p) // nolint: errcheck
 	return err
+}
+
+// SuspendDetails returns details about the cluster suspend state.
+func (c *Client) SuspendDetails(ctx context.Context, clusterID string) (ClusterSuspendDetails, error) {
+	p := &operations.GetClusterClusterIDSuspendedDetailsParams{
+		Context:   ctx,
+		ClusterID: clusterID,
+	}
+
+	resp, err := c.operations.GetClusterClusterIDSuspendedDetails(p)
+	if err != nil {
+		return ClusterSuspendDetails{}, err
+	}
+
+	return ClusterSuspendDetails{
+		SuspendDetails: resp.Payload,
+		ClusterID:      clusterID,
+	}, nil
 }

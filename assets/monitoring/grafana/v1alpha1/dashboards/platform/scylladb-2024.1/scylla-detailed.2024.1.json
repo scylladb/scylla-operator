@@ -90,7 +90,10 @@
                 "type": "tags"
             },
             {
-                "class": "annotation_hints_sent",
+                "class": "annotation_hints_sent_old",
+                "dashversion": [
+                    "<2025.1"
+                ],
                 "datasource": "prometheus",
                 "enable": false,
                 "expr": "changes(scylla_hints_manager_sent{cluster=\"$cluster\"}[$__rate_interval])>0",
@@ -1060,6 +1063,9 @@
             "span": 3,
             "targets": [
                 {
+                    "dashversion": [
+                        "<2025.1"
+                    ],
                     "expr": "$topbottom([[filter_limit]], $func(rate(scylla_hints_manager_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -6444,6 +6450,9 @@
                     "span": 3,
                     "targets": [
                         {
+                            "dashversion": [
+                                "<2025.1"
+                            ],
                             "expr": "$topbottom([[filter_limit]], $func(rate(scylla_hints_for_views_manager_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval]))  by ([[by]]))",
                             "intervalFactor": 1,
                             "legendFormat": "",
@@ -7320,7 +7329,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "$topbottom([[filter_limit]], sum(casrlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\"}) or on([[by]]) $func(rate(scylla_storage_proxy_coordinator_cas_read_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_cas_read_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]]) + 1))",
+                            "expr": "$topbottom([[filter_limit]], sum(casrlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\"}) by([[by]]) or on([[by]]) $func(rate(scylla_storage_proxy_coordinator_cas_read_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_cas_read_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]]) + 1))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "refId": "A",
@@ -7650,7 +7659,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "$topbottom([[filter_limit]], sum(caswlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\"}) or on([[by]]) ($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) + 1)))",
+                            "expr": "$topbottom([[filter_limit]], sum(caswlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\"}) by ([[by]]) or on([[by]]) ($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) + 1)))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "refId": "A",
@@ -11036,6 +11045,170 @@
             "type": "timeseries"
         },
         {
+            "class": "rps_panel",
+            "datasource": "prometheus",
+            "description": "",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "si:reads/s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 245
+            },
+            "id": 150,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_storage_proxy_coordinator_foreground_reads{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}) by (scheduling_group_name, [[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "{{scheduling_group_name}} {{dc}} {{instance}} {{shard}}",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Foreground Reads by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "wps_panel",
+            "datasource": "prometheus",
+            "description": "",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "si:writes/s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 245
+            },
+            "id": 151,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_storage_proxy_coordinator_foreground_writes{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}) by (scheduling_group_name, [[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "{{scheduling_group_name}} {{dc}} {{instance}} {{shard}}",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Foreground Writes by [[by]]",
+            "type": "timeseries"
+        },
+        {
             "class": "collapsible_row_panel",
             "collapsed": false,
             "dashproductreject": "no-your-pannels",
@@ -11046,7 +11219,7 @@
                 "x": 0,
                 "y": 251
             },
-            "id": 150,
+            "id": 152,
             "panels": [],
             "repeat": "",
             "title": "Your panels",
@@ -11069,7 +11242,7 @@
                 "x": 0,
                 "y": 252
             },
-            "id": 151,
+            "id": 153,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -11136,7 +11309,7 @@
                 "x": 0,
                 "y": 254
             },
-            "id": 152,
+            "id": 154,
             "isNew": true,
             "links": [],
             "options": {
@@ -11211,7 +11384,7 @@
                 "x": 12,
                 "y": 254
             },
-            "id": 153,
+            "id": 155,
             "isNew": true,
             "links": [],
             "options": {
@@ -11251,12 +11424,12 @@
                 "x": 0,
                 "y": 260
             },
-            "id": 154,
+            "id": 156,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.11.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.12.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -11446,12 +11619,10 @@
                     "selected": true,
                     "tags": [],
                     "text": [
-                        "sl:default",
-                        "statement"
+                        "sl:default"
                     ],
                     "value": [
-                        "sl:default",
-                        "statement"
+                        "sl:default"
                     ]
                 },
                 "datasource": "prometheus",
@@ -11463,7 +11634,7 @@
                 "multi": true,
                 "name": "sg",
                 "options": [],
-                "query": "label_values(scylla_scheduler_runtime_ms{cluster=\"$cluster\"}, group)",
+                "query": "label_values(scylla_scheduler_runtime_ms{cluster=\"$cluster\", group=~\"sl:..*\"}, group)",
                 "refresh": 2,
                 "regex": "",
                 "skipUrlSync": false,
@@ -11686,8 +11857,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.11.1",
-                    "value": "4.11.1"
+                    "text": "4.12.1",
+                    "value": "4.12.1"
                 },
                 "error": null,
                 "hide": 2,
@@ -11698,11 +11869,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.11.1",
-                        "value": "4.11.1"
+                        "text": "4.12.1",
+                        "value": "4.12.1"
                     }
                 ],
-                "query": "4.11.1",
+                "query": "4.12.1",
                 "skipUrlSync": false,
                 "type": "custom"
             }

@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"fmt"
+
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -23,12 +25,76 @@ func ValidateScyllaDBMonitoringUpdate(new, old *scyllav1alpha1.ScyllaDBMonitorin
 	return allErrs
 }
 
-func GetWarningsOnScyllaDBMonitoringCreate(_ *scyllav1alpha1.ScyllaDBMonitoring) []string {
-	return nil
+func GetWarningsOnScyllaDBMonitoringCreate(sm *scyllav1alpha1.ScyllaDBMonitoring) []string {
+	var warnings []string
+
+	warnings = append(warnings, getWarningsForScyllaDBMonitoringSpec(sm.Spec, field.NewPath("spec"))...)
+
+	return warnings
 }
 
-func GetWarningsOnScyllaDBMonitoringUpdate(_, _ *scyllav1alpha1.ScyllaDBMonitoring) []string {
-	return nil
+func GetWarningsOnScyllaDBMonitoringUpdate(new, _ *scyllav1alpha1.ScyllaDBMonitoring) []string {
+	var warnings []string
+
+	warnings = append(warnings, getWarningsForScyllaDBMonitoringSpec(new.Spec, field.NewPath("spec"))...)
+
+	return warnings
+}
+
+func getWarningsForScyllaDBMonitoringSpec(spec scyllav1alpha1.ScyllaDBMonitoringSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	if spec.Components != nil {
+		warnings = append(warnings, getWarningsForScyllaDBMonitoringComponents(*spec.Components, fldPath.Child("components"))...)
+	}
+
+	return warnings
+}
+
+func getWarningsForScyllaDBMonitoringComponents(components scyllav1alpha1.Components, fldPath *field.Path) []string {
+	var warnings []string
+
+	if components.Grafana != nil {
+		warnings = append(warnings, getWarningsForScyllaDBMonitoringGrafanaSpec(*components.Grafana, fldPath.Child("grafana"))...)
+	}
+
+	if components.Prometheus != nil {
+		warnings = append(warnings, getWarningsForScyllaDBMonitoringPrometheusSpec(*components.Prometheus, fldPath.Child("prometheus"))...)
+	}
+
+	return warnings
+}
+
+func getWarningsForScyllaDBMonitoringGrafanaSpec(grafana scyllav1alpha1.GrafanaSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	if grafana.ExposeOptions != nil {
+		warnings = append(warnings, fmt.Sprintf(
+			"`%s` field is deprecated and will be removed in future releases, please expose managed Grafana Service on your own (e.g., via Ingress or HTTPRoute).",
+			fldPath.Child("exposeOptions"),
+		))
+	}
+
+	return warnings
+}
+
+func getWarningsForScyllaDBMonitoringPrometheusSpec(prometheus scyllav1alpha1.PrometheusSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	if prometheus.Mode == scyllav1alpha1.PrometheusModeManaged {
+		warnings = append(warnings, fmt.Sprintf(
+			"`%s` = `Managed` is deprecated and will be removed in future releases, please use `External` instead.",
+			fldPath.Child("mode"),
+		))
+	}
+	if prometheus.ExposeOptions != nil {
+		warnings = append(warnings, fmt.Sprintf(
+			"`%s` field is deprecated and will be removed in future releases, please expose managed Prometheus Service on your own (e.g., via Ingress or HTTPRoute).",
+			fldPath.Child("exposeOptions"),
+		))
+	}
+
+	return warnings
 }
 
 func validateScyllaDBMonitoringSpecUpdate(new, old *scyllav1alpha1.ScyllaDBMonitoringSpec, fldPath *field.Path) field.ErrorList {

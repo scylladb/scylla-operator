@@ -94,6 +94,9 @@ const (
 	// PrometheusModeManaged defines a mode where a `Prometheus` object is created as a child of a `ScyllaDBMonitoring`
 	// object. `ServiceMonitor` and `PrometheusRule` resources are also created to configure scraping and alerting.
 	// This mode requires a Prometheus Operator to be installed in the cluster.
+	//
+	// Deprecated: This mode is deprecated and will be removed in future versions. Use `External` mode instead.
+	//
 	PrometheusModeManaged PrometheusMode = "Managed"
 
 	// PrometheusModeExternal defines a mode where no `Prometheus` child object is created, but `ServiceMonitor` and

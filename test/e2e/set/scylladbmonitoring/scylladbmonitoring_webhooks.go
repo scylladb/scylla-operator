@@ -7,6 +7,7 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,9 +17,12 @@ import (
 var _ = g.Describe("ScyllaDBMonitoring webhook", func() {
 	f := framework.NewFramework("scylladbmonitoring")
 
+	f.AdminClient.Config = verification.RestConfigWithWarningCaptureHandler(f.AdminClient.Config)
+
 	type entry struct {
 		modifierFuncs          []func(*scyllav1alpha1.ScyllaDBMonitoring)
 		expectedErrMatcherFunc func(sm *scyllav1alpha1.ScyllaDBMonitoring) o.OmegaMatcher
+		expectedWarning        string
 	}
 
 	validSDBM := &scyllav1alpha1.ScyllaDBMonitoring{
@@ -28,10 +32,16 @@ var _ = g.Describe("ScyllaDBMonitoring webhook", func() {
 		Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
 			Components: &scyllav1alpha1.Components{
 				Prometheus: &scyllav1alpha1.PrometheusSpec{
-					Mode: scyllav1alpha1.PrometheusModeManaged,
+					Mode: scyllav1alpha1.PrometheusModeExternal,
 				},
 				Grafana: &scyllav1alpha1.GrafanaSpec{
 					Resources: corev1.ResourceRequirements{},
+					Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+						{
+							URL:               "https://prometheus.example:9091",
+							PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{},
+						},
+					},
 				},
 			},
 		},
@@ -39,6 +49,8 @@ var _ = g.Describe("ScyllaDBMonitoring webhook", func() {
 
 	g.DescribeTableSubtree("should respond", func(e *entry) {
 		g.It("is created", func(ctx g.SpecContext) {
+			warningCtx := verification.NewWarningContext(ctx)
+
 			sm := validSDBM.DeepCopy()
 			sm.Name = names.SimpleNameGenerator.GenerateName("sm-")
 			for _, f := range e.modifierFuncs {
@@ -46,8 +58,9 @@ var _ = g.Describe("ScyllaDBMonitoring webhook", func() {
 			}
 
 			framework.By("Creating a ScyllaDBMonitoring")
-			_, err := f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBMonitorings(f.Namespace()).Create(ctx, sm, metav1.CreateOptions{})
+			_, err := f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBMonitorings(f.Namespace()).Create(warningCtx, sm, metav1.CreateOptions{})
 			o.Expect(err).To(e.expectedErrMatcherFunc(sm))
+			o.Expect(warningCtx.CapturedWarning()).To(o.Equal(e.expectedWarning))
 		}, g.NodeTimeout(testTimeout))
 
 		g.It("is updated", func(ctx g.SpecContext) {
@@ -57,13 +70,15 @@ var _ = g.Describe("ScyllaDBMonitoring webhook", func() {
 			createdSM, err := f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBMonitorings(f.Namespace()).Create(ctx, sm, metav1.CreateOptions{})
 			o.Expect(err).To(o.Succeed())
 
+			warningCtx := verification.NewWarningContext(ctx)
 			smCopy := createdSM.DeepCopy()
 			for _, f := range e.modifierFuncs {
 				f(smCopy)
 			}
 			framework.By("Updating the ScyllaDBMonitoring")
-			_, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBMonitorings(f.Namespace()).Update(ctx, smCopy, metav1.UpdateOptions{})
+			_, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBMonitorings(f.Namespace()).Update(warningCtx, smCopy, metav1.UpdateOptions{})
 			o.Expect(err).To(e.expectedErrMatcherFunc(smCopy))
+			o.Expect(warningCtx.CapturedWarning()).To(o.Equal(e.expectedWarning))
 		}, g.NodeTimeout(testTimeout))
 	},
 		g.Entry("with acceptance when a valid ScyllaDBMonitoring", &entry{
@@ -97,6 +112,23 @@ var _ = g.Describe("ScyllaDBMonitoring webhook", func() {
 					Code: 422,
 				}})
 			},
+		}),
+		g.Entry("with acceptance and warning when a ScyllaDBMonitoring with deprecated field", &entry{
+			modifierFuncs: []func(*scyllav1alpha1.ScyllaDBMonitoring){
+				func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
+					sm.Spec.Components.Grafana.ExposeOptions = &scyllav1alpha1.GrafanaExposeOptions{
+						WebInterface: &scyllav1alpha1.HTTPSExposeOptions{
+							Ingress: &scyllav1alpha1.IngressOptions{
+								IngressClassName: "haproxy",
+							},
+						},
+					}
+				},
+			},
+			expectedErrMatcherFunc: func(sm *scyllav1alpha1.ScyllaDBMonitoring) o.OmegaMatcher {
+				return o.Succeed()
+			},
+			expectedWarning: "`spec.components.grafana.exposeOptions` field is deprecated and will be removed in future releases, please expose managed Grafana Service on your own (e.g., via Ingress or HTTPRoute).",
 		}),
 	)
 })

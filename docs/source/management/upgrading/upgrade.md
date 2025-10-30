@@ -55,6 +55,11 @@ Replace `<release_name>` with the name of your Helm release for {{productName}} 
 
 ## Upgrade steps for specific versions
 
+:::{caution}
+The below instructions are **supplementary** to the standard upgrade procedure and don't fully replace it.
+Make sure to familiarize yourself with both the standard upgrade procedure and the additional steps for the specific version you are upgrading to, if applicable, and follow them accordingly.
+:::
+
 ### 1.17 to 1.18
 
 Upgrading from v1.17.x requires extra actions due to the removal of the standalone ScyllaDB Manager controller.

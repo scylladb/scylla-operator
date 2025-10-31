@@ -1,7 +1,7 @@
 apiVersion: scylla.scylladb.com/v1alpha1
 kind: ScyllaDBMonitoring
 metadata:
-  name: scylla-monitoring
+  name: example
   namespace: scylla
 spec:
   type: Platform
@@ -24,7 +24,8 @@ spec:
           prometheusOptions:
             tls:
               caCertConfigMapRef:
-                name: openshift-service-ca.crt
+                # This is the ConfigMap reference for OpenShift's injected Service CA bundle.
+                name: example-openshift-service-ca
                 key: service-ca.crt
             auth:
               type: BearerToken

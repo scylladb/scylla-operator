@@ -24,7 +24,6 @@ The below NodeConfig manifest configures the sysctls recommended for production-
 
 :::{literalinclude} ../../../examples/common/configure-sysctls.nodeconfig.yaml
 :language: yaml
-:linenos:
 :emphasize-lines: 6-18
 :::
 

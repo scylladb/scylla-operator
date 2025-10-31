@@ -1,4 +1,6 @@
-package operator
+// Copyright (C) 2025 ScyllaDB
+
+package sidecar
 
 import (
 	"context"
@@ -28,9 +30,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type SidecarOptions struct {
+type Options struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
+	statusReporterOptions
 
 	ServiceName                       string
 	CPUCount                          int
@@ -44,19 +47,22 @@ type SidecarOptions struct {
 	kubeClient kubernetes.Interface
 }
 
-func NewSidecarOptions(streams genericclioptions.IOStreams) *SidecarOptions {
+func NewOptions(streams genericclioptions.IOStreams) *Options {
 	clientConfig := genericclioptions.NewClientConfig("scylla-sidecar")
 	clientConfig.QPS = 2
 	clientConfig.Burst = 5
 
-	return &SidecarOptions{
+	return &Options{
 		ClientConfig:        clientConfig,
 		InClusterReflection: genericclioptions.InClusterReflection{},
+		statusReporterOptions: statusReporterOptions{
+			statusReportInterval: 5 * time.Second,
+		},
 	}
 }
 
-func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
-	o := NewSidecarOptions(streams)
+func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
+	o := NewOptions(streams)
 
 	cmd := &cobra.Command{
 		Use:   "sidecar",
@@ -88,6 +94,7 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 
 	o.ClientConfig.AddFlags(cmd)
 	o.InClusterReflection.AddFlags(cmd)
+	o.statusReporterOptions.AddFlags(cmd)
 
 	cmd.Flags().StringVarP(&o.ServiceName, "service-name", "", o.ServiceName, "Name of the service corresponding to the managed node.")
 	cmd.Flags().IntVarP(&o.CPUCount, "cpu-count", "", o.CPUCount, "Number of cpus to use.")
@@ -98,11 +105,12 @@ func NewSidecarCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	return cmd
 }
 
-func (o *SidecarOptions) Validate() error {
+func (o *Options) Validate() error {
 	var errs []error
 
 	errs = append(errs, o.ClientConfig.Validate())
 	errs = append(errs, o.InClusterReflection.Validate())
+	errs = append(errs, o.statusReporterOptions.Validate())
 
 	if len(o.ServiceName) == 0 {
 		errs = append(errs, fmt.Errorf("service-name can't be empty"))
@@ -124,13 +132,18 @@ func (o *SidecarOptions) Validate() error {
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (o *SidecarOptions) Complete() error {
+func (o *Options) Complete() error {
 	err := o.ClientConfig.Complete()
 	if err != nil {
 		return err
 	}
 
 	err = o.InClusterReflection.Complete()
+	if err != nil {
+		return err
+	}
+
+	err = o.statusReporterOptions.Complete()
 	if err != nil {
 		return err
 	}
@@ -146,7 +159,7 @@ func (o *SidecarOptions) Complete() error {
 	return nil
 }
 
-func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, args []string) error {
+func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, args []string) error {
 	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 	for _, arg := range args {
@@ -161,7 +174,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		cancel()
 	}()
 
-	singleServiceKubeInformers := informers.NewSharedInformerFactoryWithOptions(
+	identityKubeInformers := informers.NewSharedInformerFactoryWithOptions(
 		o.kubeClient,
 		12*time.Hour,
 		informers.WithNamespace(o.Namespace),
@@ -174,7 +187,7 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 
 	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
 
-	singleServiceInformer := singleServiceKubeInformers.Core().V1().Services()
+	singleServiceInformer := identityKubeInformers.Core().V1().Services()
 
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
@@ -186,8 +199,19 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 		return fmt.Errorf("can't create sidecar controller: %w", err)
 	}
 
+	sr, err := NewStatusReporter(
+		o.Namespace,
+		o.ServiceName,
+		o.statusReportInterval,
+		o.kubeClient,
+		identityKubeInformers.Core().V1().Pods(),
+	)
+	if err != nil {
+		return fmt.Errorf("can't create status reporter: %w", err)
+	}
+
 	// Start informers.
-	singleServiceKubeInformers.Start(ctx.Done())
+	identityKubeInformers.Start(ctx.Done())
 	namespacedKubeInformers.Start(ctx.Done())
 
 	klog.V(2).InfoS("Waiting for single service informer caches to sync")
@@ -230,6 +254,13 @@ func (o *SidecarOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	go func() {
 		defer wg.Done()
 		sc.Run(ctx)
+	}()
+
+	// Run status reporter.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		sr.Run(ctx)
 	}()
 
 	// Run scylla in a new process.

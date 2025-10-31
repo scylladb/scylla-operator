@@ -137,7 +137,7 @@ func (o *Observer) Run(ctx context.Context) {
 	klog.InfoS("Starting observer", "Name", o.name)
 
 	if !cache.WaitForNamedCacheSync("Observer "+o.name, ctx.Done(), o.cachesToSync...) {
-		klog.ErrorS(fmt.Errorf("timed out waiting for caches to sync"), "Observer", o.name)
+		klog.ErrorS(nil, "Timed out waiting for caches to sync", "Observer", o.name)
 		return
 	}
 

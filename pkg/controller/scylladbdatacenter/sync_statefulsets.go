@@ -520,6 +520,24 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, fmt.Errorf("can't delete StatefulSet(s): %w", err)
 	}
 
+	// Wait for ScyllaDBDatacenterNodesStatusReport controller to finish progressing before proceeding.
+	// This ensures that the status report is up to date before we start making changes,
+	// which lowers the chance of a new node being bootstrapped while the cluster is unhealthy.
+	isScyllaDBDatacenterNodesStatusReportControllerProgressing := apimeta.IsStatusConditionTrue(status.Conditions, scyllaDBDatacenterNodesStatusReportControllerProgressingCondition)
+	if isScyllaDBDatacenterNodesStatusReportControllerProgressing {
+		klog.V(4).InfoS("Waiting for ScyllaDBDatacenterNodesStatusReport controller to finish progressing", "ScyllaDBDatacenter", klog.KObj(sdc))
+		progressingConditions = append(progressingConditions, metav1.Condition{
+			Type:               statefulSetControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "WaitingForScyllaDBDatacenterNodesStatusReportController",
+			Message:            fmt.Sprintf("Waiting for ScyllaDBDatacenterNodesStatusReport controller to finish progressing"),
+			ObservedGeneration: sdc.Generation,
+		})
+	}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
+	}
+
 	// Before any update, make sure all StatefulSets are present.
 	// Create any that are missing.
 	createProgressingConditions, err := sdcc.createMissingStatefulSets(ctx, sdc, status, requiredStatefulSets, statefulSets, services)

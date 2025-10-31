@@ -369,6 +369,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Networking().V1().Ingresses(),
 		kubeInformers.Batch().V1().Jobs(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
 		o.OperatorImage,
 		o.CQLSIngressPort,
 		rsaKeyGenerator,
@@ -683,6 +684,26 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 						return nil, err
 					}
 					return clusterClient.CoreV1().Secrets(ns).Watch(ctx, options)
+				}
+			},
+		}),
+		remoteScyllaInformer.ForResource(&scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, remoteinformers.ClusterListWatch[scyllaversionedclient.Interface]{
+			ListFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.ListFunc {
+				return func(options metav1.ListOptions) (runtime.Object, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.ScyllaV1alpha1().ScyllaDBDatacenterNodesStatusReports(ns).List(ctx, options)
+				}
+			},
+			WatchFunc: func(client remoteclient.ClusterClientInterface[scyllaversionedclient.Interface], cluster, ns string) cache.WatchFunc {
+				return func(options metav1.ListOptions) (watch.Interface, error) {
+					clusterClient, err := client.Cluster(cluster)
+					if err != nil {
+						return nil, err
+					}
+					return clusterClient.ScyllaV1alpha1().ScyllaDBDatacenterNodesStatusReports(ns).Watch(ctx, options)
 				}
 			},
 		}),

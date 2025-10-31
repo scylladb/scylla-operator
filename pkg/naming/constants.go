@@ -46,6 +46,9 @@ const (
 
 	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.
 	CleanupJobTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/cleanup-token-ring-hash"
+
+	// NodeStatusReportAnnotation reflects the current status report from the ScyllaDB node.
+	NodeStatusReportAnnotation = "internal.scylla.scylladb.com/scylladb-node-status-report"
 )
 
 // Annotations used for feature backward compatibility between v1.ScyllaCluster and v1alpha1.ScyllaDBDatacenter
@@ -148,6 +151,8 @@ const (
 
 	ScyllaDBIgnitionDonePath = SharedDirName + "/ignition.done"
 
+	ScyllaDBSSTableBootstrapQueryResultPath = SharedDirName + "/sstable-bootstrap-query-result.json"
+
 	DataDir = "/var/lib/scylla"
 
 	ReadinessProbePath         = "/readyz"
@@ -243,6 +248,10 @@ const (
 )
 
 const (
+	RemoteClusterScyllaDBDatacenterNodesStatusReportLabel = "scylla-operator.scylladb.com/remote-cluster-scylladb-datacenter-nodes-status-report"
+)
+
+const (
 	KubeConfigSecretKey string = "kubeconfig"
 )
 
@@ -296,4 +305,15 @@ const (
 	ScyllaDBManagerTaskRepairIntensityOverrideAnnotation           = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-intensity-override"
 	ScyllaDBManagerTaskRepairSmallTableThresholdOverrideAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-task-repair-small-table-threshold-override"
 	ScyllaDBManagerTaskStatusAnnotation                            = "internal.scylla-operator.scylladb.com/scylladb-manager-task-status"
+)
+
+const (
+	// ScyllaDBDatacenterNodesStatusReportSelectorLabel is used to uniformly label nodes status reports created for a ScyllaDB cluster.
+	// It allows easy selection of all datacenter reports for a given cluster.
+	ScyllaDBDatacenterNodesStatusReportSelectorLabel = "scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector"
+
+	// ForceProceedToBootstrapAnnotation allows to force the bootstrap barrier to proceed without waiting for normal preconditions to be satisfied.
+	// If set to "true", bootstrap barrier will proceed to bootstrap immediately.
+	// This can be used on a particular member Service to override the normal bootstrap precondition checks, or on the entire ScyllaDBDatacenter to override the default behavior for all members.
+	ForceProceedToBootstrapAnnotation = "scylla-operator.scylladb.com/force-proceed-to-bootstrap"
 )

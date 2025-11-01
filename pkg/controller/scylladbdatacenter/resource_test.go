@@ -791,6 +791,17 @@ func runTestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								{
+									Name: "scylla-managed-agent-config-volume",
+									VolumeSource: corev1.VolumeSource{
+										ConfigMap: &corev1.ConfigMapVolumeSource{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "basic-manager-agent-config",
+											},
+											Optional: pointer.Ptr(false),
+										},
+									},
+								},
+								{
 									Name: "scylla-agent-config-volume",
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
@@ -1032,6 +1043,10 @@ exec /mnt/shared/scylla-operator sidecar \
 											},
 										},
 									},
+									{
+										Name:  "IP_FAMILY",
+										Value: "IPv4",
+									},
 								},
 								Resources: func() corev1.ResourceRequirements {
 									rack := newBasicRack()
@@ -1177,6 +1192,10 @@ wait`),
 											},
 										},
 									},
+									{
+										Name:  "IP_FAMILY",
+										Value: "IPv4",
+									},
 								},
 								ReadinessProbe: &corev1.Probe{
 									TimeoutSeconds:   int32(30),
@@ -1273,6 +1292,7 @@ printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' 
 
 exec scylla-manager-agent \
 -c "/etc/scylla-manager-agent/scylla-manager-agent.yaml" \
+-c "/mnt/scylla-managed-agent-config/scylla-manager-agent.yaml" \
 -c "/mnt/scylla-agent-config/scylla-manager-agent.yaml" \
 -c "/mnt/scylla-agent-config/auth-token.yaml"
 `),
@@ -1281,6 +1301,12 @@ exec scylla-manager-agent \
 									{
 										Name:          "agent-rest-api",
 										ContainerPort: 10001,
+									},
+								},
+								Env: []corev1.EnvVar{
+									{
+										Name:  "IP_FAMILY",
+										Value: "IPv4",
 									},
 								},
 								ReadinessProbe: &corev1.Probe{
@@ -1294,6 +1320,12 @@ exec scylla-manager-agent \
 									{
 										Name:      "data",
 										MountPath: "/var/lib/scylla",
+									},
+									{
+										Name:      "scylla-managed-agent-config-volume",
+										MountPath: "/mnt/scylla-managed-agent-config/scylla-manager-agent.yaml",
+										SubPath:   "scylla-manager-agent.yaml",
+										ReadOnly:  true,
 									},
 									{
 										Name:      "scylla-agent-config-volume",
@@ -3784,6 +3816,12 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 `, "\n"),
@@ -3826,6 +3864,12 @@ internode_compression: "all"
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -3880,6 +3924,12 @@ client_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -3944,6 +3994,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4008,6 +4064,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4073,6 +4135,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4140,6 +4208,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4207,6 +4281,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4272,6 +4352,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4338,6 +4424,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 `, "\n"),
@@ -4389,6 +4481,12 @@ internode_compression: "all"
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 `, "\n"),

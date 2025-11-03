@@ -31,6 +31,7 @@ func TestCollector_CollectObject(t *testing.T) {
 				{Name: "namespaces", Namespaced: false, Kind: "Namespace", Verbs: []string{"list"}},
 				{Name: "pods", Namespaced: true, Kind: "Pod", Verbs: []string{"list"}},
 				{Name: "secrets", Namespaced: true, Kind: "Secret", Verbs: []string{"list"}},
+				{Name: "configmaps", Namespaced: true, Kind: "ConfigMap", Verbs: []string{"list"}},
 			},
 		},
 		{
@@ -614,13 +615,13 @@ status: {}
 				},
 			},
 			existingObjects: []runtime.Object{
-				&corev1.Secret{
+				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "my-namespace",
-						Name:      "my-secret",
+						Name:      "my-configmap",
 					},
-					Data: map[string][]byte{
-						"secret-key": []byte("secret-value"),
+					Data: map[string]string{
+						"key": "value",
 					},
 				},
 			},
@@ -642,14 +643,14 @@ status: {}
 `, "\n"),
 					},
 					{
-						Name: "namespaces/my-namespace/secrets/my-secret.yaml",
+						Name: "namespaces/my-namespace/configmaps/my-configmap.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
 data:
-  secret-key: PHJlZGFjdGVkPg==
-kind: Secret
+  key: value
+kind: ConfigMap
 metadata:
-  name: my-secret
+  name: my-configmap
   namespace: my-namespace
 `, "\n"),
 					},
@@ -713,16 +714,16 @@ status: {}
 						Name: "test",
 					},
 				},
-				&corev1.Secret{
+				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "test",
-						Name:      "my-secret",
+						Name:      "my-configmap",
 					},
 				},
-				&corev1.Secret{
+				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "other-namespace",
-						Name:      "other-secret",
+						Name:      "other-configmap",
 					},
 				},
 			},
@@ -744,6 +745,16 @@ status: {}
 `, "\n"),
 					},
 					{
+						Name: "namespaces/test/configmaps/my-configmap.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+  namespace: test
+`, "\n"),
+					},
+					{
 						Name: "namespaces/test/scyllaclusters.scylla.scylladb.com/my-scyllacluster.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: scylla.scylladb.com/v1
@@ -761,14 +772,130 @@ spec:
 status: {}
 `, "\n"),
 					},
+				},
+			},
+		},
+		{
+			name: "namespace doesn't collect secrets even if related resources are enabled",
+			targetedObject: &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			existingObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "my-secret",
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "my-configmap",
+					},
+				},
+			},
+			relatedResources: true,
+			keepGoing:        false,
+			expectedError:    nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
 					{
-						Name: "namespaces/test/secrets/my-secret.yaml",
+						Name: "cluster-scoped/namespaces/test.yaml",
 						Content: strings.TrimPrefix(`
 apiVersion: v1
-kind: Secret
+kind: Namespace
 metadata:
-  name: my-secret
+  name: test
+spec: {}
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "namespaces/test/configmaps/my-configmap.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
   namespace: test
+`, "\n"),
+					},
+				},
+			},
+		},
+		{
+			name: "scyllacluster doesn't collect secrets even if related resources are enabled",
+			targetedObject: &scyllav1.ScyllaCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "my-scyllacluster",
+				},
+			},
+			existingObjects: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test",
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "my-secret",
+					},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "my-configmap",
+					},
+				},
+			},
+			relatedResources: true,
+			keepGoing:        false,
+			expectedError:    nil,
+			expectedDump: &testhelpers.GatherDump{
+				EmptyDirs: nil,
+				Files: []testhelpers.File{
+					{
+						Name: "cluster-scoped/namespaces/test.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+spec: {}
+status: {}
+`, "\n"),
+					},
+					{
+						Name: "namespaces/test/configmaps/my-configmap.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+  namespace: test
+`, "\n"),
+					},
+					{
+						Name: "namespaces/test/scyllaclusters.scylla.scylladb.com/my-scyllacluster.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: my-scyllacluster
+  namespace: test
+spec:
+  agentVersion: ""
+  datacenter:
+    name: ""
+    racks: null
+  network: {}
+  version: ""
+status: {}
 `, "\n"),
 					},
 				},
@@ -836,13 +963,20 @@ metadata:
 				existingUnstructuredObjects = append(existingUnstructuredObjects, u)
 			}
 			fakeDynamicClient := dynamicfakeclient.NewSimpleDynamicClient(scheme, existingUnstructuredObjects...)
+
+			discoverer := NewResourceDiscoverer(false, fakeDiscoveryClient)
+			discoveredResources, err := discoverer.DiscoverResources()
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			collector := NewCollector(
 				tmpDir,
 				[]ResourcePrinterInterface{
 					&OmitManagedFieldsPrinter{Delegate: &YAMLPrinter{}},
 				},
 				&rest.Config{},
-				fakeDiscoveryClient,
+				discoveredResources,
 				fakeKubeClient.CoreV1(),
 				fakeDynamicClient,
 				tc.relatedResources,

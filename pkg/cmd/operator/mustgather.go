@@ -13,10 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/discovery"
 	"k8s.io/klog/v2"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -40,21 +38,23 @@ var (
 		
 		# Collect archive of all resources present in the Kubernetes cluster.
 		scylla-operator must-gather --all-resources
+
+		# Collect archive of all resources present in the Kubernetes cluster,
+		# excluding LimitRange and DeviceClass.
+		scylla-operator must-gather --all-resources --exclude-resource=LimitRange --exclude-resource=DeviceClass.resource.k8s.io
 	`)
 )
 
 type MustGatherOptions struct {
 	*GatherBaseOptions
 
-	AllResources            bool
-	CollectedResourceGroups []GroupResourceSpec
+	AllResources bool
 }
 
 func NewMustGatherOptions(streams genericclioptions.IOStreams) *MustGatherOptions {
 	options := &MustGatherOptions{
-		GatherBaseOptions:       NewGatherBaseOptions("scylla-operator-must-gather", true),
-		AllResources:            false,
-		CollectedResourceGroups: DefaultCollectedResourceGroups,
+		GatherBaseOptions: NewGatherBaseOptions("scylla-operator-must-gather"),
+		AllResources:      false,
 	}
 
 	return options
@@ -147,201 +147,108 @@ func findResource(preferredResources []*collect.ResourceInfo, gr schema.GroupRes
 	return nil, fmt.Errorf("can't find resource %q", gr)
 }
 
-type resourceSpec struct {
-	collect.ResourceInfo
-	Namespace, Name string
+var defaultCollectedResourceGroups = []schema.GroupResource{
+	{
+		Resource: "scyllaclusters",
+		Group:    "scylla.scylladb.com",
+	},
+	{
+		Resource: "scyllaoperatorconfigs",
+		Group:    "scylla.scylladb.com",
+	},
+	{
+		Resource: "nodeconfigs",
+		Group:    "scylla.scylladb.com",
+	},
+	{
+		Resource: "customresourcedefinitions",
+		Group:    "apiextensions.k8s.io",
+	},
+	{
+		Resource: "nodes",
+		Group:    "",
+	},
+	{
+		Resource: "storageclasses",
+		Group:    "storage.k8s.io",
+	},
+	{
+		Resource: "validatingwebhookconfigurations",
+		Group:    "admissionregistration.k8s.io",
+	},
+	{
+		Resource: "mutatingwebhookconfigurations",
+		Group:    "admissionregistration.k8s.io",
+	},
 }
 
-type GroupResourceSpec struct {
-	schema.GroupResource
-	Namespace, Name string
-}
-
-var DefaultCollectedResourceGroups = []GroupResourceSpec{
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "scyllaclusters",
-			Group:    "scylla.scylladb.com",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "scyllaoperatorconfigs",
-			Group:    "scylla.scylladb.com",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "nodeconfigs",
-			Group:    "scylla.scylladb.com",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "namespaces",
-			Group:    "",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "scylla-operator",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "namespaces",
-			Group:    "",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "scylla-manager",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "namespaces",
-			Group:    "",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "scylla-operator-node-tuning",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "customresourcedefinitions",
-			Group:    "apiextensions.k8s.io",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "nodes",
-			Group:    "",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "storageclasses",
-			Group:    "storage.k8s.io",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "validatingwebhookconfigurations",
-			Group:    "admissionregistration.k8s.io",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
-	{
-		GroupResource: schema.GroupResource{
-			Resource: "mutatingwebhookconfigurations",
-			Group:    "admissionregistration.k8s.io",
-		},
-		Namespace: corev1.NamespaceAll,
-		Name:      "",
-	},
+var defaultCollectedNamespaces = []string{
+	"scylla-operator",
+	"scylla-manager",
+	"scylla-operator-node-tuning",
 }
 
 func (o *MustGatherOptions) run(ctx context.Context) error {
 	startTime := time.Now()
-	klog.InfoS("Gathering artifacts", "DestDir", o.DestDir)
+	klog.InfoS("Gathering artifacts", "DestDir", o.cliFlags.DestDir)
 	defer func() {
 		klog.InfoS("Finished gathering artifacts", "Duration", time.Since(startTime))
 	}()
 
+	discoverer := collect.NewResourceDiscoverer(o.cliFlags.IncludeSensitiveResources, o.discoveryClient)
+	discoveredResources, err := discoverer.DiscoverResources(o.resourcesToExclude...)
+	if err != nil {
+		return fmt.Errorf("can't discover resources: %w", err)
+	}
+
 	collector := collect.NewCollector(
-		o.DestDir,
+		o.cliFlags.DestDir,
 		o.GetPrinters(),
 		o.restConfig,
-		o.discoveryClient,
+		discoveredResources,
 		o.kubeClient.CoreV1(),
 		o.dynamicClient,
 		true,
-		o.KeepGoing,
-		o.LogsLimitBytes,
+		o.cliFlags.KeepGoing,
+		o.cliFlags.LogsLimitBytes,
 	)
 
-	var resourceSpecs []resourceSpec
 	if o.AllResources {
-		allPreferredListableResources, err := collector.DiscoverResources(ctx, discovery.SupportsAllVerbs{
-			Verbs: []string{"list"},
-		}.Match)
-		if err != nil {
-			return fmt.Errorf("can't discover resources: %w", err)
-		}
-
-		// Filter out native resources that share storage across groups.
-		preferredListableResources, err := collect.ReplaceIsometricResourceInfosIfPresent(allPreferredListableResources)
-		if err != nil {
-			return fmt.Errorf("can't replace isometric resourceInfos: %w", err)
-		}
-
-		resourceSpecs = make([]resourceSpec, 0, len(preferredListableResources))
-		for _, pr := range preferredListableResources {
-			resourceSpecs = append(resourceSpecs, resourceSpec{
-				ResourceInfo: collect.ResourceInfo{
-					Resource: pr.Resource,
-					Scope:    pr.Scope,
-				},
-				Namespace: corev1.NamespaceAll,
-				Name:      "",
-			})
-		}
-	} else {
-		preferredResources, err := collector.DiscoverResources(ctx, func(groupVersion string, r *metav1.APIResource) bool {
-			return true
-		})
-		if err != nil {
-			return fmt.Errorf("can't discover preferred resources: %w", err)
-		}
-
-		resourceSpecs = make([]resourceSpec, 0, len(o.CollectedResourceGroups))
-		for _, s := range o.CollectedResourceGroups {
-			ri, err := findResource(preferredResources, s.GroupResource)
-			if err != nil {
-				return fmt.Errorf("can't find resource in preferred resources: %w", err)
-			}
-
-			namespace := s.Namespace
-			if ri.Scope.Name() == meta.RESTScopeNameNamespace &&
-				s.Namespace == corev1.NamespaceAll &&
-				o.GatherBaseOptions.ConfigFlags.Namespace != nil {
-				namespace = *o.GatherBaseOptions.ConfigFlags.Namespace
-			}
-
-			resourceSpecs = append(resourceSpecs, resourceSpec{
-				ResourceInfo: *ri,
-				Namespace:    namespace,
-				Name:         s.Name,
-			})
-		}
+		return collector.CollectResourcesObjects(ctx, discoveredResources)
 	}
+	return o.collectDefaultResources(ctx, collector, discoveredResources)
+}
 
-	var err error
+func (o *MustGatherOptions) collectDefaultResources(ctx context.Context, collector *collect.Collector, discoveredResources []*collect.ResourceInfo) error {
 	var errs []error
-	for _, rs := range resourceSpecs {
-		if len(rs.Name) != 0 {
-			err = collector.CollectResource(ctx, &rs.ResourceInfo, rs.Namespace, rs.Name)
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					klog.InfoS("Resource not found", "Resource", rs.ResourceInfo.Resource)
-				} else {
-					errs = append(errs, fmt.Errorf("can't collect resource %q: %w", rs, err))
-				}
-			}
-		} else {
-			err = collector.CollectResources(ctx, &rs.ResourceInfo, rs.Namespace)
-			if err != nil {
-				errs = append(errs, fmt.Errorf("can't collect resources %q: %w", rs, err))
-			}
+
+	for _, s := range defaultCollectedResourceGroups {
+		ri, err := findResource(discoveredResources, s)
+		if err != nil {
+			return fmt.Errorf("can't find resource in preferred resources: %w", err)
+		}
+
+		namespace := corev1.NamespaceAll
+		if ri.Scope.Name() == meta.RESTScopeNameNamespace &&
+			o.GatherBaseOptions.ConfigFlags.Namespace != nil {
+			namespace = *o.GatherBaseOptions.ConfigFlags.Namespace
+		}
+		if err := collector.CollectResourceObjects(ctx, ri, namespace); err != nil {
+			errs = append(errs, fmt.Errorf("can't collect resource %q: %w", ri.Resource, err))
 		}
 	}
 
+	for _, ns := range defaultCollectedNamespaces {
+		if err := collector.CollectResourceObject(ctx, &collect.ResourceInfo{
+			Scope:    meta.RESTScopeRoot,
+			Resource: corev1.SchemeGroupVersion.WithResource("namespaces"),
+		}, "", ns); err != nil {
+			if apierrors.IsNotFound(err) {
+				klog.InfoS("Namespace not found", "Namespace", ns)
+			} else {
+				errs = append(errs, fmt.Errorf("can't collect namespace %q: %w", ns, err))
+			}
+		}
+	}
 	return apimachineryutilerrors.NewAggregate(errs)
 }

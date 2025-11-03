@@ -128,6 +128,9 @@ patches:
     - op: add
       path: /spec/template/spec/containers/0/args/-
       value: "--crypto-key-buffer-delay=2s"
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: "--feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}"
   target:
       group: apps
       version: v1

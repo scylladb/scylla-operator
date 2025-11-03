@@ -6,4 +6,5 @@
 overview
 setup
 exposing-grafana
+external-prometheus-on-openshift
 :::

@@ -73,9 +73,9 @@ myst_multiversion_substitutions = {
     "master": {
         "revision": "master",
         "agentVersion": "3.7.0",
-        "enterpriseImageTag": "2025.3.2",
-        "imageTag": "2025.3.2",
-        "scyllaDBRepositoryTag": "scylla-2025.3.2",
+        "enterpriseImageTag": "2025.3.3",
+        "imageTag": "2025.3.3",
+        "scyllaDBRepositoryTag": "scylla-2025.3.3",
     },
     "v1.18": {
         "revision": "v1.18",

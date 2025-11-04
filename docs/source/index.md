@@ -90,7 +90,7 @@ Manage your ScyllaDB clusters using {{productName}}.
 :anchor: Learn more »
 :class: large-4
 
-Learn about the APIs that {{productName}} provides. ScyllaClusters, ScyllaDBMonitorings and more.
+Learn about the APIs that {{productName}} provides.
 ```
 
 ```{topic-box}

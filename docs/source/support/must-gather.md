@@ -1,12 +1,13 @@
 # Gathering data with must-gather
 
 `must-gather` is an embedded tool in Scylla Operator that helps collecting all the necessary info when something goes wrong.
-
 The tool talks to the Kubernetes API, retrieves a predefined set of resources and saves them into a folder in your current directory.
-By default, all collected Secrets are censored to avoid sending sensitive data.
-That said, you can always review the archive before you attach it to an issue or your support request.
 
-Given it needs to talk to the Kubernetes API, at the very least, you need to supply the `--kubeconfig` flag with a path to the kubeconfig file for your Kubernetes cluster, or set the `KUBECONFIG` environment variable.
+By default, sensitive resources (`Secrets` and `bitnami.com.SealedSecrets`) are omitted from the collection.
+If you come across a clear need to include them (not recommended unless the default settings are deemed insufficient for investigation), please refer to the [include sensitive resources](#including-sensitive-resources) section below.
+If you have other resources that you wouldn't like to include in the collection, refer to the [excluding resources](#excluding-resources) section below.
+
+Given that `must-gather` needs to talk to the Kubernetes API, at the very least, you need to supply the `--kubeconfig` flag with a path to the kubeconfig file for your Kubernetes cluster, or set the `KUBECONFIG` environment variable.
 
 ## Running must-gather
 
@@ -98,4 +99,26 @@ You can also request collecting every resource in the Kubernetes API, if the def
 
 ```bash
 scylla-operator must-gather --all-resources
+```
+
+### Including sensitive resources
+
+By default, `must-gather` omits sensitive resources like `Secrets` or `bitnami.com.SealedSecrets`. You can turn this
+behavior off by passing the `--include-sensitive-resources` flag.
+
+```bash
+scylla-operator must-gather --all-resources --include-sensitive-resources
+```
+
+### Excluding resources
+
+If you have resources that you don't want to include in the collection other than the default ones, you can exclude them
+by passing the `--exclude-resource` flag multiple times.
+
+:::{note}
+The format for the resource is `kind` (for core resources) or `kind.group`. Examples: `LimitRange` or `DeviceClass.resource.k8s.io`.
+:::
+
+```bash
+scylla-operator must-gather --all-resources --exclude-resource="LimitRange" --exclude-resource="DeviceClass.resource.k8s.io"
 ```

@@ -6,12 +6,14 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 	kgenericclioptions "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -24,22 +26,61 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const (
+	excludeResourceFlagHelpFormat = `Kubernetes resource to exclude, in the format kind[.group]. Can be specified multiple times.
+Kind matching is case-insensitive; omit the group only for core resources (e.g., Pod, ConfigMap").
+By default, the following are always excluded, despite the value of this flag: %s
+
+Specifying this flag adds to the default exclusions. For example:
+  --exclude-resource=Pod --exclude-resource=Deployment.apps
+
+To force-include resources that are excluded by default, use --include-sensitive-resources`
+
+	includeSensitiveResourcesFlagHelpFormat = `Controls whether sensitive resources (%s) should be collected. (default false)
+When this flag is set, you can still exclude selected ones using --exclude-resource.
+For example:
+  --include-sensitive-resources --exclude-resource=Secret
+will only exclude Secrets.`
+)
+
+// GatherBaseCLIFlags holds the command-line flags for the gather base options.
+// These are raw values directly from the command line. They need to be validated and
+// processed before use.
+type GatherBaseCLIFlags struct {
+	DestDir                   string
+	CollectManagedFields      bool
+	LogsLimitBytes            int64
+	KeepGoing                 bool
+	ExcludeResources          []string
+	IncludeSensitiveResources bool
+}
+
+// NewGatherBaseCLIFlags creates a new GatherBaseCLIFlags with default values.
+func NewGatherBaseCLIFlags() *GatherBaseCLIFlags {
+	return &GatherBaseCLIFlags{
+		DestDir:                   "",
+		LogsLimitBytes:            0,
+		CollectManagedFields:      false,
+		KeepGoing:                 true,
+		ExcludeResources:          []string{},
+		IncludeSensitiveResources: false,
+	}
+}
+
 type GatherBaseOptions struct {
 	GathererName string
 	ConfigFlags  *kgenericclioptions.ConfigFlags
 
-	restConfig      *rest.Config
-	kubeClient      kubernetes.Interface
-	dynamicClient   dynamic.Interface
-	discoveryClient discovery.DiscoveryInterface
+	restConfig         *rest.Config
+	kubeClient         kubernetes.Interface
+	dynamicClient      dynamic.Interface
+	discoveryClient    discovery.DiscoveryInterface
+	resourcesToExclude []schema.GroupKind
 
-	DestDir              string
-	CollectManagedFields bool
-	LogsLimitBytes       int64
-	KeepGoing            bool
+	cliFlags *GatherBaseCLIFlags
 }
 
-func NewGatherBaseOptions(gathererName string, keepGoing bool) *GatherBaseOptions {
+func NewGatherBaseOptions(gathererName string) *GatherBaseOptions {
 	return &GatherBaseOptions{
 		GathererName: gathererName,
 		ConfigFlags: kgenericclioptions.NewConfigFlags(true).WithWrapConfigFn(func(c *rest.Config) *rest.Config {
@@ -49,37 +90,38 @@ func NewGatherBaseOptions(gathererName string, keepGoing bool) *GatherBaseOption
 			c.Burst = math.MaxInt
 			return c
 		}),
-		DestDir:              "",
-		CollectManagedFields: false,
-		LogsLimitBytes:       0,
-		KeepGoing:            keepGoing,
+		cliFlags: NewGatherBaseCLIFlags(),
 	}
 }
 
 func (o *GatherBaseOptions) AddFlags(flagset *pflag.FlagSet) {
 	o.ConfigFlags.AddFlags(flagset)
 
-	flagset.StringVarP(&o.DestDir, "dest-dir", "", o.DestDir, "Destination directory where to store the artifacts.")
-	flagset.Int64VarP(&o.LogsLimitBytes, "log-limit-bytes", "", o.LogsLimitBytes, "Maximum number of bytes collected for each log file, 0 means unlimited.")
-	flagset.BoolVarP(&o.CollectManagedFields, "managed-fields", "", o.CollectManagedFields, "Controls whether metadata.managedFields should be collected in the resource dumps.")
-	flagset.BoolVarP(&o.KeepGoing, "keep-going", "", o.KeepGoing, "Controls whether the collection should proceed to other resources over collection errors, accumulating errors.")
+	f := o.cliFlags
+	flagset.StringVar(&f.DestDir, "dest-dir", f.DestDir, "Destination directory where to store the artifacts.")
+	flagset.Int64Var(&f.LogsLimitBytes, "log-limit-bytes", f.LogsLimitBytes, "Maximum number of bytes collected for each log file, 0 means unlimited.")
+	flagset.BoolVar(&f.CollectManagedFields, "managed-fields", f.CollectManagedFields, "Controls whether metadata.managedFields should be collected in the resource dumps.")
+	flagset.BoolVar(&f.KeepGoing, "keep-going", f.KeepGoing, "Controls whether the collection should proceed to other resources over collection errors, accumulating errors.")
+	flagset.StringArrayVar(&f.ExcludeResources, "exclude-resource", f.ExcludeResources, fmt.Sprintf(excludeResourceFlagHelpFormat, defaultExcludedSensitiveResourcesAsString()))
+	flagset.BoolVar(&f.IncludeSensitiveResources, "include-sensitive-resources", f.IncludeSensitiveResources, fmt.Sprintf(includeSensitiveResourcesFlagHelpFormat, defaultExcludedSensitiveResourcesAsString()))
 }
 
 func (o *GatherBaseOptions) Validate() error {
 	var errs []error
 
-	if o.LogsLimitBytes < 0 {
-		errs = append(errs, fmt.Errorf("log-limit-bytes can't be lower then 0 but %v has been specified", o.LogsLimitBytes))
+	f := o.cliFlags
+	if f.LogsLimitBytes < 0 {
+		errs = append(errs, fmt.Errorf("log-limit-bytes can't be lower then 0 but %v has been specified", f.LogsLimitBytes))
 	}
 
-	if len(o.DestDir) > 0 {
-		files, err := os.ReadDir(o.DestDir)
+	if len(f.DestDir) > 0 {
+		files, err := os.ReadDir(f.DestDir)
 		if err == nil {
 			if len(files) > 0 {
-				errs = append(errs, fmt.Errorf("destination directory %q is not empty", o.DestDir))
+				errs = append(errs, fmt.Errorf("destination directory %q is not empty", f.DestDir))
 			}
 		} else if !os.IsNotExist(err) {
-			errs = append(errs, fmt.Errorf("can't stat destination directory %q: %w", o.DestDir, err))
+			errs = append(errs, fmt.Errorf("can't stat destination directory %q: %w", f.DestDir, err))
 		}
 	}
 
@@ -87,6 +129,8 @@ func (o *GatherBaseOptions) Validate() error {
 }
 
 func (o *GatherBaseOptions) Complete() error {
+	f := o.cliFlags
+
 	restConfig, err := o.ConfigFlags.ToRESTConfig()
 	if err != nil {
 		return fmt.Errorf("can't create RESTConfig: %w", err)
@@ -107,29 +151,35 @@ func (o *GatherBaseOptions) Complete() error {
 	o.discoveryClient = cacheddiscovery.NewMemCacheClient(o.kubeClient.Discovery())
 
 	ignoreDestDirExists := false
-	if len(o.DestDir) == 0 {
-		o.DestDir = fmt.Sprintf("%s-%s", o.GathererName, apimachineryutilrand.String(12))
+	if len(f.DestDir) == 0 {
+		f.DestDir = fmt.Sprintf("%s-%s", o.GathererName, apimachineryutilrand.String(12))
 	} else {
 		// We have already made sure that the dir doesn't exist or is empty in validation.
 		ignoreDestDirExists = true
 	}
 
-	err = os.Mkdir(o.DestDir, 0770)
+	err = os.Mkdir(f.DestDir, 0770)
 	if err == nil {
-		klog.InfoS("Created destination directory", "Path", o.DestDir)
+		klog.InfoS("Created destination directory", "Path", f.DestDir)
 	} else if os.IsExist(err) {
 		// Just to be sure we cover it, but it's unlikely a dir with random suffix would already exist.
 		if !ignoreDestDirExists {
-			return fmt.Errorf("can't create destination directory %q because it already exists: %w", o.DestDir, err)
+			return fmt.Errorf("can't create destination directory %q because it already exists: %w", f.DestDir, err)
 		}
 	} else {
-		return fmt.Errorf("can't create destination directory %q: %w", o.DestDir, err)
+		return fmt.Errorf("can't create destination directory %q: %w", f.DestDir, err)
+	}
+
+	for _, exclude := range f.ExcludeResources {
+		o.resourcesToExclude = append(o.resourcesToExclude, schema.ParseGroupKind(exclude))
 	}
 
 	return nil
 }
 
 func (o *GatherBaseOptions) RunInit(originalStreams genericclioptions.IOStreams, cmd *cobra.Command) error {
+	f := o.cliFlags
+
 	err := flag.Set("logtostderr", "false")
 	if err != nil {
 		return fmt.Errorf("can't set logtostderr flag: %w", err)
@@ -140,7 +190,7 @@ func (o *GatherBaseOptions) RunInit(originalStreams genericclioptions.IOStreams,
 		return fmt.Errorf("can't set alsologtostderr flag: %w", err)
 	}
 
-	err = flag.Set("log_file", filepath.Join(o.DestDir, fmt.Sprintf("%s.log", o.GathererName)))
+	err = flag.Set("log_file", filepath.Join(f.DestDir, fmt.Sprintf("%s.log", o.GathererName)))
 	if err != nil {
 		return fmt.Errorf("can't set log_file flag: %w", err)
 	}
@@ -154,9 +204,10 @@ func (o *GatherBaseOptions) RunInit(originalStreams genericclioptions.IOStreams,
 }
 
 func (o *GatherBaseOptions) GetPrinters() []collect.ResourcePrinterInterface {
+	f := o.cliFlags
 	printers := make([]collect.ResourcePrinterInterface, 0, 1)
 
-	if o.CollectManagedFields {
+	if f.CollectManagedFields {
 		printers = append(printers, &collect.YAMLPrinter{})
 	} else {
 		printers = append(printers, &collect.OmitManagedFieldsPrinter{
@@ -165,4 +216,13 @@ func (o *GatherBaseOptions) GetPrinters() []collect.ResourcePrinterInterface {
 	}
 
 	return printers
+}
+
+// defaultExcludedSensitiveResourcesAsString returns a string representation of the default excluded sensitive resources for use in flag help.
+func defaultExcludedSensitiveResourcesAsString() string {
+	var ss []string
+	for _, gk := range collect.DefaultExcludedSensitiveResources() {
+		ss = append(ss, gk.String())
+	}
+	return strings.Join(ss, ", ")
 }

@@ -280,18 +280,6 @@ status: {}
 `, "\n"),
 					},
 					{
-						Name: "namespaces/scylla-operator/secrets/my-secret.yaml",
-						Content: strings.TrimPrefix(`
-apiVersion: v1
-data:
-  secret-key: PHJlZGFjdGVkPg==
-kind: Secret
-metadata:
-  name: my-secret
-  namespace: scylla-operator
-`, "\n"),
-					},
-					{
 						Name: "scylla-operator-must-gather.log",
 					},
 				},
@@ -501,7 +489,7 @@ status: {}
 				ErrOut: os.Stderr,
 			}
 			o := NewMustGatherOptions(streams)
-			o.DestDir = tmpDir
+			o.cliFlags.DestDir = tmpDir
 			o.kubeClient = fakeKubeClient
 			o.discoveryClient = fakeDiscoveryClient
 			o.dynamicClient = fakeDynamicClient

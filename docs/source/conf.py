@@ -77,6 +77,13 @@ myst_multiversion_substitutions = {
         "imageTag": "2025.3.3",
         "scyllaDBRepositoryTag": "scylla-2025.3.3",
     },
+    "v1.19": {
+        "revision": "v1.19",
+        "agentVersion": "3.7.0",
+        "enterpriseImageTag": "2025.3.3",
+        "imageTag": "2025.3.3",
+        "scyllaDBRepositoryTag": "scylla-2025.3.3",
+    },
     "v1.18": {
         "revision": "v1.18",
         "agentVersion": "3.5.1",
@@ -86,12 +93,6 @@ myst_multiversion_substitutions = {
     "v1.17": {
         "revision": "v1.17",
         "agentVersion": "3.5.1",
-        "enterpriseImageTag": "2025.1.5",
-        "imageTag": "2025.1.5",
-    },
-    "v1.16": {
-        "revision": "v1.16",
-        "agentVersion": "3.4.2",
         "enterpriseImageTag": "2025.1.5",
         "imageTag": "2025.1.5",
     },
@@ -115,10 +116,10 @@ redirects_file = "./redirections.yaml"
 TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
-BRANCHES = ['master', 'v1.16', 'v1.17', 'v1.18']
+BRANCHES = ['master', 'v1.17', 'v1.18', 'v1.19']
 # Set which versions are not released yet.
-UNSTABLE_VERSIONS = ["master"]
-DEPRECATED_VERSIONS = ['v1.16']
+UNSTABLE_VERSIONS = ["master", "v1.19"]
+DEPRECATED_VERSIONS = []
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)
 # Defines which version is considered to be the latest stable version.
 # Must be listed in smv_tag_whitelist or smv_branch_whitelist.
@@ -187,7 +188,7 @@ sitemap_url_scheme = "/stable/{link}"
 # Sphinx design configuration
 # Conditionally add sphinx_design based on version
 # to keep compatibility with older versions.
-SPHINX_DESIGN_VERSIONS = ['v1.16', 'v1.17', 'v1.18']
+SPHINX_DESIGN_VERSIONS = ['v1.17', 'v1.18']
 current_version = os.environ.get('SPHINX_MULTIVERSION_NAME', 'master')
 
 

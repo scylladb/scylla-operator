@@ -113,7 +113,7 @@ runs:
         --arg release_name "${release_name}" \
         --arg prerelease "${prerelease}" \
         --arg body "$( cat ~/release_notes.md )" \
-        --argjson make_latest ${make_latest} \
+        --arg make_latest "${make_latest}" \
         '{
           "tag_name": $current_tag,
           "name": $current_tag,

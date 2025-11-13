@@ -299,7 +299,7 @@ spec:
 
 #### ServiceLoadBalancerIngress Type
 
-Address broadcasted to clients/nodes is taken from the node dedicated Service, from `status.ingress[0].ipAddress` or `status.ingress[0].hostname` field.
+Address broadcasted to clients/nodes is taken from the node dedicated Service, from `.status.loadBalancer.ingress[0].ip` or `.status.loadBalancer.ingress[0].hostname` field.
 
 In order to configure it, the `nodeService` template must specify the LoadBalancer Service.
 

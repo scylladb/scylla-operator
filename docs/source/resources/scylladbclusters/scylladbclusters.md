@@ -37,6 +37,10 @@ The remaining clusters will serve as Worker clusters and must meet the following
 - Have {{productName}} and its prerequisites installed.
 - Run a storage provisioner capable of provisioning XFS volumes with the StorageClass `scylladb-local-xfs` on each node dedicated to ScyllaDB.
 
+:::{caution}
+You are strongly advised to [enable bootstrap synchronisation](../../reference/feature-gates.md#bootstrapsynchronisation) in your {{productName}} installations to avoid potential stability issues when adding new nodes to your ScyllaDB clusters.
+:::
+
 For guidance on setting up such infrastructure, refer to one of the following resources:
 
 - [Build multiple Amazon EKS clusters with Inter-Kubernetes networking](../common/multidc/eks.md)

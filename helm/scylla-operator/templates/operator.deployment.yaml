@@ -39,6 +39,9 @@ spec:
         args:
         - operator
         - --loglevel={{ .Values.logLevel }}
+        {{- range $arg := .Values.additionalArgs }}
+        - {{ $arg }}
+        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
       terminationGracePeriodSeconds: 10

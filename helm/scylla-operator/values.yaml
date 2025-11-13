@@ -12,6 +12,8 @@ image:
 
 # Scylla Operator log level, 0-9 (higher number means more detailed logs)
 logLevel: 2
+# Additional arguments to pass to Scylla Operator container.
+additionalArgs: [ ]
 # Resources allocated to Scylla Operator pods
 resources:
   requests:

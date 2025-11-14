@@ -9,29 +9,8 @@ see the [`ScyllaDBMonitoring` API reference](../../api-reference/groups/scylla.s
 
 ## Requirements
 
-Before you can set up your ScyllaDB monitoring, you need {{productName}} and a `ScyllaCluster` already installed in your Kubernetes cluster.
-For more information on how to deploy {{productName}}, see [the installation guide](../../installation/overview.md).
-
-### Deploy Prometheus Operator
-
-:::{note}
-`ScyllaDBMonitoring` relies on the Prometheus Operator for managing Prometheus-related resources.
-You can deploy it in your Kubernetes cluster using the provided third-party examples. If you already have it deployed
-in your cluster, you can skip this step.
-:::
-
-Deploy Prometheus Operator using kubectl:
-
-:::{code-block} shell
-:substitutions:
-kubectl apply -n prometheus-operator --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/prometheus-operator.yaml
-:::
-
-#### Wait for Prometheus Operator to roll out
-
-```console
-kubectl -n prometheus-operator rollout status --timeout=5m deployments.apps/prometheus-operator
-```
+Before you can set up your ScyllaDB monitoring, you need {{productName}} (along with the Prometheus Operator) and a `ScyllaCluster`
+already installed in your Kubernetes cluster. For more information on how to deploy {{productName}}, see [the installation guide](../../installation/overview.md).
 
 ## Deploy external Prometheus
 

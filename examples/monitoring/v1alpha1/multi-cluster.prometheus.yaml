@@ -1,0 +1,40 @@
+# This Prometheus configuration is intended to be used in conjunction with multiple ScyllaDBMonitoring
+# instances configured to use the "External" Prometheus mode.
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+# [names]
+spec:
+  serviceAccountName: "prometheus"
+  serviceName: "prometheus"
+  # [/names]
+  version: "v3.5.0"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  web:
+    pageTitle: "ScyllaDB Prometheus"
+  # [selectors]
+  serviceMonitorNamespaceSelector: {} # Select ServiceMonitors in all namespaces.
+  serviceMonitorSelector: # Select ServiceMonitors created by multiple ScyllaDBMonitoring instances.
+    matchExpressions:
+      - key: scylla-operator.scylladb.com/scylladbmonitoring-name
+        operator: In
+        values:
+          - "cluster-1-monitoring"
+          - "cluster-2-monitoring"
+  ruleNamespaceSelector: {} # Select Rules in all namespaces.
+  ruleSelector: # Select Rules created by multiple ScyllaDBMonitoring instances.
+    matchExpressions:
+      - key: scylla-operator.scylladb.com/scylladbmonitoring-name
+        operator: In
+        values:
+          - "cluster-1-monitoring"
+          - "cluster-2-monitoring"
+  # [/selectors]
+  alerting:
+    alertmanagers:
+      - name: "scylla-monitoring"
+        port: web

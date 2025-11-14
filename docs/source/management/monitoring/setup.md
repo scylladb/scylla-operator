@@ -106,11 +106,36 @@ You also need to ensure that your `Prometheus` instance is configured to discove
 :end-before: "# [/selectors]"
 :::
 
-:::{note}
-If you leave selectors empty, Prometheus will select all `ServiceMonitor` and `PrometheusRule` resources. It may be desirable in some cases.
-Please refer to the [Prometheus Operator documentation](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.PrometheusSpec)
-for more details on how to configure `serviceMonitorSelector` and `ruleSelector`.
+#### Monitoring multiple ScyllaClusters with a single Prometheus
+
+If you have more than one `ScyllaCluster` in your Kubernetes cluster, and you want to monitor all of them using the same `Prometheus` instance,
+you can customize the selectors to match `ServiceMonitors` and `PrometheusRules` created for multiple `ScyllaClusters`.
+
+Assuming you're going to create two `ScyllaDBMonitoring` objects named `cluster-1-monitoring` and `cluster-2-monitoring`
+for two different `ScyllaClusters` in two distinct namespaces, you can set the selectors like this so that the `Prometheus` instance
+will scrape both of them:
+
+:::{literalinclude} ../../../../examples/monitoring/v1alpha1/multi-cluster.prometheus.yaml
+:language: yaml
+:dedent:
+:start-after: "# [selectors]"
+:end-before: "# [/selectors]"
 :::
+
+In this case, we're setting `serviceMonitorNamespaceSelector` and `ruleNamespaceSelector` to an empty selector, which means that `Prometheus`
+will look for `ServiceMonitors` and `PrometheusRules` in all namespaces.
+
+:::{warning}
+If you want to monitor multiple `ScyllaClusters` using a single `Prometheus` instance, ensure all selected `ScyllaClusters`
+have unique names across the entire Kubernetes cluster (not just within their namespaces).
+Our monitoring setup cannot currently distinguish metrics collected from `ScyllaClusters` with colliding names, even if
+they are in different namespaces.
+:::
+
+Please refer to the [Prometheus Operator documentation](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.PrometheusSpec)
+for more details on how to configure selectors in the `Prometheus` specification.
+
+#### Deploy Prometheus
 
 You can deploy a `Prometheus` instance by executing the following command:
 

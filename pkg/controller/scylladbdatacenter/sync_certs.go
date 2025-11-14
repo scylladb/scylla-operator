@@ -377,7 +377,7 @@ func (sdcc *Controller) syncCerts(
 					Refresh:  20 * 24 * time.Hour,
 					CertCreator: (&ocrypto.ServingCertCreatorConfig{
 						Subject: pkix.Name{
-							CommonName: "",
+							CommonName: sdc.Name, // Scylla requires non-empty CN for serving certs.
 						},
 						IPAddresses: ipAddresses,
 						DNSNames:    servingDNSNames,

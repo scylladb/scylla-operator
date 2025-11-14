@@ -119,6 +119,13 @@ type ScyllaClusterSpec struct {
 	// +optional
 	DNSDomains []string `json:"dnsDomains,omitempty"`
 
+	// IPFamily specifies the IP family for this cluster.
+	// All services, broadcast addresses, and pod IPs will use this IP family.
+	// +kubebuilder:validation:Enum=IPv4;IPv6
+	// +kubebuilder:default="IPv4"
+	// +optional
+	IPFamily *corev1.IPFamily `json:"ipFamily,omitempty"`
+
 	// exposeOptions specifies options for exposing ScyllaCluster services.
 	// This field is immutable.
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
@@ -468,6 +475,17 @@ type Network struct {
 
 	// dnsPolicy defines how a pod's DNS will be configured.
 	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+
+	// ipFamilyPolicy specifies the IP family policy for the cluster.
+	// Supports: SingleStack, PreferDualStack, RequireDualStack.
+	// +kubebuilder:default:="SingleStack"
+	// +optional
+	IPFamilyPolicy *corev1.IPFamilyPolicy `json:"ipFamilyPolicy,omitempty"`
+
+	// ipFamilies specifies the IP families to use.
+	// Supports: IPv4, IPv6.
+	// +optional
+	IPFamilies []corev1.IPFamily `json:"ipFamilies,omitempty"`
 }
 
 func (s Network) GetDNSPolicy() corev1.DNSPolicy {

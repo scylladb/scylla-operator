@@ -201,6 +201,157 @@ Wait for it to deploy by watching status conditions.
 :::{include} ./../../.internal/wait-for-status-conditions.scyllacluster.code-block.md
 :::
 
+## IPv6 and Dual-Stack Networking
+
+You can run ScyllaDB clusters on IPv6-only networks or use both IPv4 and IPv6 together (dual-stack).
+
+### IPv6 Configuration
+
+Use the `ipFamily` field to specify which IP version ScyllaDB should use:
+
+```yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-ipv6
+spec:
+  version: {{imageTag}}
+  ipFamily: IPv6
+  
+  network:
+    dnsPolicy: ClusterFirst
+    
+  datacenter:
+    name: dc1
+    racks:
+    - name: rack1
+      members: 3
+      storage:
+        capacity: 10Gi
+      resources:
+        requests:
+          cpu: 1
+          memory: 4Gi
+  exposeOptions:
+    broadcastOptions:
+      nodes:
+        type: PodIP
+      clients:
+        type: PodIP
+```
+
+### Dual-Stack Configuration
+
+For dual-stack environments (both IPv4 and IPv6), you typically only need to specify the IP family for ScyllaDB:
+
+```yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-dual-stack
+spec:
+  version: {{imageTag}}
+  ipFamily: IPv4
+  
+  network:
+    dnsPolicy: ClusterFirst
+    
+  datacenter:
+    name: dc1
+    racks:
+    - name: rack1
+      members: 3
+      storage:
+        capacity: 10Gi
+      resources:
+        requests:
+          cpu: 1
+          memory: 4Gi
+  exposeOptions:
+    broadcastOptions:
+      nodes:
+        type: PodIP
+      clients:
+        type: PodIP
+```
+
+**Advanced**: If you need explicit control over service networking, you can configure it manually:
+
+```yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-dual-stack-explicit
+spec:
+  version: {{imageTag}}
+  ipFamily: IPv4
+  network:
+    ipFamilyPolicy: PreferDualStack
+    ipFamilies: ["IPv4", "IPv6"]  # IPv4 first, then IPv6
+  datacenter:
+    name: dc1
+    racks:
+    - name: rack1
+      members: 3
+      storage:
+        capacity: 10Gi
+      resources:
+        requests:
+          cpu: 1
+          memory: 4Gi
+  exposeOptions:
+    broadcastOptions:
+      nodes:
+        type: PodIP
+      clients:
+        type: PodIP
+```
+
+### What happens by default
+
+::::{important}
+**DNS Configuration for IPv6**
+
+When using IPv6, it's recommended to explicitly set `dnsPolicy: ClusterFirst` in the network configuration:
+
+```yaml
+spec:
+  network:
+    dnsPolicy: ClusterFirst
+```
+
+This will make sure proper IPv6 DNS resolution within the Kubernetes cluster, which is essential for ScyllaDB nodes to discover each other using IPv6 addresses.
+::::
+
+::::{important}
+**If you don't specify an IP family, ScyllaCluster will pick one automatically:**
+
+- **IPv4-only clusters**: Uses IPv4 (works like before)
+- **IPv6-only clusters**: Uses IPv6 automatically 
+- **Dual-stack clusters**: Uses the **first IP family** from your `network.ipFamilies` list
+- **No configuration**: Defaults to IPv4 for compatibility
+
+This means existing clusters keep working without any changes.
+::::
+
+### Configuration Options
+
+| Field | What it does | Default | Required? |
+|-------|-------------|---------|-----------|
+| `ipFamily` | IP version for ScyllaDB communication | Auto-detected or IPv4 | **Recommended** |
+| `network.ipFamilyPolicy` | How services handle IP versions | `SingleStack` | Only for advanced dual-stack |
+| `network.ipFamilies` | Which IP versions to support for services | `["IPv4"]` | Only for advanced dual-stack |
+
+::::{note}
+**When do you need `network` configuration?**
+
+- **Most cases**: Just set `ipFamily`, Kubernetes will auto-detect service networking
+- **Advanced dual-stack**: Use `network` fields only if you need explicit control over service IP families
+- **IPv4-only or IPv6-only clusters**: Just `ipFamily` is sufficient, no `network` config needed
+::::
+
+For detailed IPv6 configuration, troubleshooting, and examples, see the [IPv6 Networking Guide](./ipv6-networking.md).
+
 ## Forcing a rolling restart
 
 When you change a ScyllaDB config option that's not live reloaded by ScyllaDB, or want to trigger a rolling restart for a different reason, ScyllaCluster allows triggering the rolling restarts declaratively by changing `ScyllaCluster.spec.forceRedeploymentReason` to any other value. This will trigger a rolling restart of all ScyllaDB nodes in sequence, always respecting the [PodDistruptionsBudget](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-budgets) and keeping the cluster available.

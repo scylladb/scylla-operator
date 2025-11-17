@@ -21,7 +21,7 @@ management/index
 resources/index
 quickstarts/index
 support/index
-api-reference/index
+reference/index
 :::
 
 ```{hero-box}
@@ -124,13 +124,13 @@ FAQs, support matrix, must-gather and more.
 ```
 
 ```{topic-box}
-:title: API Reference
+:title: Reference
 :icon: icon-docs-commands
-:link: api-reference/index
+:link: reference/index
 :anchor: Learn more »
 :class: large-4
 
-Visit the automatically generated API reference for all our APIs.
+Reference of {{productName}} APIs and configuration options.
 ```
 ````
 

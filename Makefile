@@ -77,6 +77,8 @@ CRD_FILES ?=$(shell find ./pkg/api/ -name '*.yaml')$(if $(filter $(.SHELLSTATUS)
 MONITORING_DASHBOARDS_DIR :=./submodules/github.com/scylladb/scylla-monitoring/grafana/build
 MONITORING_RULES_DIR :=./submodules/github.com/scylladb/scylla-monitoring/prometheus/prom_rules
 
+DOCS_API_REFERENCE_DIR :=./docs/source/reference/api
+
 define version-ldflags
 -X $(1).commitFromGit="$(GIT_COMMIT)"
 endef
@@ -612,18 +614,18 @@ verify-monitoring: submodules
 
 # $1 - extra flags
 define run-update-docs
-	$(GO) run ./cmd/gen-api-reference/ --templates-dir ./docs/source/api-reference/templates $(1) $(CRD_FILES)
+	$(GO) run ./cmd/gen-api-reference/ --templates-dir '$(DOCS_API_REFERENCE_DIR)'/templates $(1) $(CRD_FILES)
 
 endef
 
 update-docs-api:
-	$(call run-update-docs,--output-dir=./docs/source/api-reference/groups --overwrite)
+	$(call run-update-docs,--output-dir='$(DOCS_API_REFERENCE_DIR)'/groups --overwrite)
 .PHONY: update-docs-api
 
 verify-docs-api: tmp_dir :=$(shell mktemp -d)
 verify-docs-api:
 	$(call run-update-docs,--output-dir="$(tmp_dir)")
-	$(diff) -r '$(tmp_dir)' ./docs/source/api-reference/groups || (echo 'Generated API docs are not up-to date. Please run `make update-docs-api` to update it or remove the extra files.' && false)
+	$(diff) -r '$(tmp_dir)' '$(DOCS_API_REFERENCE_DIR)'/groups || (echo 'Generated API docs are not up-to date. Please run `make update-docs-api` to update it or remove the extra files.' && false)
 .PHONY: verify-docs-api
 
 verify-links:

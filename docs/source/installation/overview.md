@@ -37,12 +37,12 @@ Depending on [which storage provisioner you choose](../architecture/storage/over
 
 {{productName}} contains the Kubernetes API extensions and corresponding controllers and admission hooks that run inside `scylla-operator` namespace.
 
-You can learn more about the APIs in [resources section](../resources/overview.md) and the [generated API reference](../api-reference/index.rst). 
+You can learn more about the APIs in [resources section](../resources/overview.md) and the [generated API reference](../reference/api/index.rst). 
 
 ### ScyllaDB Manager
 
-ScyllaDB Manager is a global deployment that is responsible for operating all [ScyllaClusters](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) and runs inside `scylla-manager` namespace.
-{{productName}} syncs the [ScyllaCluster](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) metadata, [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) and [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) tasks into the manager (and vice versa). This way it allows avoiding direct access to the shared instance by users. Unfortunately, at this point, other task like restoring from a backup require executing into the shared ScyllaDB Manager deployment which effectively needs administrator privileges. 
+ScyllaDB Manager is a global deployment that is responsible for operating all [ScyllaClusters](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) and runs inside `scylla-manager` namespace.
+{{productName}} syncs the [ScyllaCluster](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) metadata, [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) and [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) tasks into the manager (and vice versa). This way it allows avoiding direct access to the shared instance by users. Unfortunately, at this point, other task like restoring from a backup require executing into the shared ScyllaDB Manager deployment which effectively needs administrator privileges. 
 
 ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends on the {{productName}} deployment and the CRD it provides.
 

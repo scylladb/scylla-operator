@@ -177,7 +177,7 @@ Above cluster will use {{ imageTag }} Scylla, {{ agentVersion }} Scylla Manager 
 Each node will have a single CPU and 1 GiB of memory.
 
 For other customizable fields, please refer to chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla/values.yaml)'.format(repository, revision) }}) in Scylla Operator repository
-and [ScyllaCluster CRD](../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst).
+and [ScyllaCluster CRD](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst).
 The CRD's `spec.rack` and Helm chart `rack` should have the same fields.
 
 You can copy the default `values.yaml` file and modify it to your needs.

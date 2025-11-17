@@ -4,7 +4,8 @@ operator:
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.
   scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.11"
-  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2025.3.3@sha256:bcff88ab302b3dd88e247bbc99e5b8ab20273eef15f4c50e0a052541f196d380"
+  # scyllaDBUtilsImage should be pinned to latest 2025.1.z until https://github.com/scylladb/scylla-operator/issues/3080 is fixed.
+  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2025.1.9@sha256:64e1c947b2ed7f50fe13b8e0b96affba91dbe0d487720217c4bf288568eed02b"
   scyllaDBManagerVersion: "3.7.0@sha256:9718a9333f9337418be6d301521ccb49ef1449ea693bb178c4b5f5e8feedaf23"
   scyllaDBManagerAgentVersion: "3.7.0@sha256:bfceefaabeecc119ea8c39150314967c5b8efc22334c0ca3e020ed2ab9ca7e19"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"

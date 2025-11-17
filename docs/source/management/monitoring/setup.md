@@ -1,11 +1,11 @@
 # Setting up ScyllaDB Monitoring
 
 This guide will walk you through setting up a complete monitoring stack for your ScyllaDB clusters using the
-[`ScyllaDBMonitoring`](../../api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource and an external `Prometheus` instance.
+[`ScyllaDBMonitoring`](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource and an external `Prometheus` instance.
 
 The guide assumes you have read the [overview](overview.md) of ScyllaDB monitoring and are familiar with the concepts of Prometheus and Grafana.
 It doesn't cover every possible configuration option, but it will highlight the most important ones. For a complete reference of all configuration options, 
-see the [`ScyllaDBMonitoring` API reference](../../api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst).
+see the [`ScyllaDBMonitoring` API reference](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst).
 
 ## Requirements
 

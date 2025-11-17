@@ -2,9 +2,9 @@
 
 ## Introduction
 
-The [ScyllaDBCluster](../../api-reference/groups/scylla.scylladb.com/scylladbclusters.rst) resource defines a multi-datacenter ScyllaDB cluster that can span multiple geo-distributed Kubernetes clusters.
+The [ScyllaDBCluster](../../reference/api/groups/scylla.scylladb.com/scylladbclusters.rst) resource defines a multi-datacenter ScyllaDB cluster that can span multiple geo-distributed Kubernetes clusters.
 This section provides an overview of its structure and demonstrates how to perform basic configurations and access the APIs.
-It is not intended as a comprehensive guide to all capabilities. For a full list of available options, refer to the [generated API reference](../../api-reference/groups/scylla.scylladb.com/scylladbclusters.rst).
+It is not intended as a comprehensive guide to all capabilities. For a full list of available options, refer to the [generated API reference](../../reference/api/groups/scylla.scylladb.com/scylladbclusters.rst).
 
 :::{caution}
 ScyllaDBCluster is considered as a technical preview, which means users should be cautious when using it on environments other than development.

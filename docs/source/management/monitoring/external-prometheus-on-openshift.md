@@ -1,7 +1,7 @@
 # Setting up ScyllaDB Monitoring on OpenShift
 
 This guide will walk you through setting up a monitoring stack for your ScyllaDB clusters using the
-[`ScyllaDBMonitoring`](../../api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource and an
+[`ScyllaDBMonitoring`](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource and an
 external Prometheus instance that is already deployed in your Kubernetes cluster in an OpenShift cluster using [User Workload Monitoring (UWM)][user-workload-monitoring].
 
 The guide assumes you have read the [overview](overview.md) and [setup](setup.md) of ScyllaDB monitoring and are familiar with the concepts of Prometheus and Grafana.

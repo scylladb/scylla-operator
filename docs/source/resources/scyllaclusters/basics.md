@@ -2,9 +2,9 @@
 
 ## Introduction
 
-[ScyllaCluster](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) defines a ScyllaDB **datacenter** and manages the racks within.
+[ScyllaCluster](../../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) defines a ScyllaDB **datacenter** and manages the racks within.
 This section aims to make you familiar with how it looks like and how to perform some of the basic configuration or accessing the APIs.
-By no means is this a complete description of what it can do. Please consult our [generated API reference](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst) for a complete list of options.
+By no means is this a complete description of what it can do. Please consult our [generated API reference](../../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) for a complete list of options.
 
 ::::{tip}
 You can always see the currently supported API fields for a particular version installed in your cluster by running
@@ -14,7 +14,7 @@ kubectl explain --api-version='scylla.scylladb.com/v1' ScyllaCluster.spec
 ::::
 
 Note that the Kubernetes clusters are only a regional concept, availability-wise they map into a ScyllaDB datacenter.
-To deploy a ScyllaDB cluster with multiple datacenters use our multi datacenter resource [ScyllaDBCluster](../scylladbclusters/scylladbclusters.md), or combine multiple Kubernetes clusters, each running a [ScyllaCluster](../../api-reference/groups/scylla.scylladb.com/scyllaclusters.rst),
+To deploy a ScyllaDB cluster with multiple datacenters use our multi datacenter resource [ScyllaDBCluster](../scylladbclusters/scylladbclusters.md), or combine multiple Kubernetes clusters, each running a [ScyllaCluster](../../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst),
 To learn more about **manual** multi-dc deployments using ScyllaCluster resource, please see [the dedicated multi-datacenter guide](./multidc/multidc.md).
 
 ## Creating a ScyllaCluster

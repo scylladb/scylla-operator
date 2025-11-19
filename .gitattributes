@@ -17,7 +17,7 @@ values.schema.json linguist-generated=true
 
 # Path prefixes
 vendor/** linguist-generated=true
-docs/source/api-reference/** linguist-generated=true
+docs/source/reference/api/** linguist-generated=true
 pkg/client/** linguist-generated=true
 pkg/externalclient/** linguist-generated=true
 deploy/operator/** linguist-generated=true

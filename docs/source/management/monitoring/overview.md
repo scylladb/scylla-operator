@@ -3,7 +3,7 @@
 ## Architecture
 
 ScyllaDB [exposes](https://monitoring.docs.scylladb.com/stable/reference/monitoring-apis.html) its metrics in the Prometheus format. 
-{{productName}} provides the [`ScyllaDBMonitoring`](../../api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource
+{{productName}} provides the [`ScyllaDBMonitoring`](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource
 that allows you to set up a complete monitoring stack for your ScyllaDB clusters based on the following components:
 
 - [**Prometheus**](https://prometheus.io) for metrics collection and alerting (along with scraping and alerting rules targeting ScyllaDB instances).
@@ -51,7 +51,7 @@ When using this mode, you need to ensure that the existing Prometheus instance i
 
 Please note that in this mode, `ScyllaDBMonitoring` has to be configured so that Grafana can access the Prometheus instance.
 You can configure Grafana datasources in the `spec.components.grafana.datasources` field of the `ScyllaDBMonitoring` resource.
-Please refer to the [`ScyllaDBMonitoring` API reference](../../api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst) for details.
+Please refer to the [`ScyllaDBMonitoring` API reference](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst) for details.
 
 ### Managed
 

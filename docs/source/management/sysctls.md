@@ -28,7 +28,7 @@ The below NodeConfig manifest configures the sysctls recommended for production-
 :::
 
 :::{tip}
-You can learn more about the NodeConfig resource in the [NodeConfig tutorial](../resources/nodeconfigs.md) and the [generated API reference](../api-reference/groups/scylla.scylladb.com/nodeconfigs.rst).
+You can learn more about the NodeConfig resource in the [NodeConfig tutorial](../resources/nodeconfigs.md) and the [generated API reference](../reference/api/groups/scylla.scylladb.com/nodeconfigs.rst).
 :::
 
 ### Configuring sysctls via GitOps (kubectl)

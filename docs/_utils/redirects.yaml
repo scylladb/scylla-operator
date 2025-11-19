@@ -4,8 +4,23 @@
 /stable/nodeoperations/restore.html: /stable/resources/scyllaclusters/nodeoperations/restore.html
 /stable/manager.html: /stable/architecture/manager.html
 /master/resources/scylladbmonitorings.html: /master/management/monitoring/overview.html
-# TODO: uncomment this redirect after branching out 1.19
+# TODO: uncomment this redirect when setting stable to 1.19
 # /stable/resources/scylladbmonitorings.html: /stable/management/monitoring/overview.html
+
+# TODO: uncomment this redirect when setting stable to 1.19
+#/stable/api-reference/index.rst: /stable/reference/api/index.rst
+#/stable/api-reference/groups/scylla.scylladb.com.rst: /stable/reference/api/groups/scylla.scylladb.com.rst
+#/stable/api-reference/groups/scylla.scylladb.com/nodeconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.rst
+#/stable/api-reference/groups/scylla.scylladb.com/remotekubernetesclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.rst
+#/stable/api-reference/groups/scylla.scylladb.com/remoteowners.rst: /stable/reference/api/groups/scylla.scylladb.com/remoteowners.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scyllaclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scylladbclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbclusters.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenters.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenters.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagertasks.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst
+#/stable/api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst
 
 # removing redirection html script files
 # test: /

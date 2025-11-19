@@ -34,10 +34,11 @@ var Suites = ginkgotest.TestSuites{
 		Tests that can be run in parallel.
 		`),
 		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s",
+			"!%s && !%s && !%s && !%s",
 			framework.SerialLabelName,
 			framework.MultiDatacenterLabelName,
 			framework.SupportedOnlyOnOpenShiftLabelName,
+			framework.IPv6LabelName,
 		),
 		DefaultParallelism: 42,
 	},
@@ -47,10 +48,11 @@ var Suites = ginkgotest.TestSuites{
 		Tests that can be run in parallel on an OpenShift cluster.
 		`),
 		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s",
+			"!%s && !%s && !%s && !%s",
 			framework.SerialLabelName,
 			framework.MultiDatacenterLabelName,
 			framework.NotSupportedOnOpenShiftLabelName,
+			framework.IPv6LabelName,
 		),
 		DefaultParallelism: 42,
 	},
@@ -76,6 +78,14 @@ var Suites = ginkgotest.TestSuites{
 			framework.MultiDatacenterLabelName,
 			framework.SupportedOnlyOnOpenShiftLabelName,
 		),
+		DefaultParallelism: 42,
+	},
+	{
+		Name: "scylla-operator/conformance/parallel-ipv6",
+		Description: templates.LongDesc(`
+		Tests that ensure Scylla Operator is working properly with IPv6 and dual-stack networking.
+		`),
+		LabelFilter:        fmt.Sprintf("%s", framework.IPv6LabelName),
 		DefaultParallelism: 42,
 	},
 }

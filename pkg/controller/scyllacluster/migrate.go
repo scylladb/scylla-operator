@@ -105,6 +105,7 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 		ImagePullSecrets:        scSpec.ImagePullSecrets,
 		DNSPolicy:               pointer.Ptr(scSpec.Network.GetDNSPolicy()),
 		DNSDomains:              scSpec.DNSDomains,
+		IPFamily:                scSpec.IPFamily,
 		ForceRedeploymentReason: pointer.Ptr(scSpec.ForceRedeploymentReason),
 		ExposeOptions: func() *scyllav1alpha1.ExposeOptions {
 			if scSpec.ExposeOptions == nil {

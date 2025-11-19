@@ -1,0 +1,69 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-dual-stack-example
+  namespace: scylla
+spec:
+  version: "{{imageTag}}"
+  
+  ipFamily: IPv4
+  
+  network:
+    dnsPolicy: ClusterFirst
+    ipFamilyPolicy: PreferDualStack
+    ipFamilies: ["IPv4", "IPv6"]
+  
+  datacenter:
+    name: dual-stack-datacenter
+    racks:
+    - name: dual-stack-rack-a
+      members: 3
+      storage:
+        capacity: 100Gi
+        storageClassName: fast-ssd
+      resources:
+        requests:
+          cpu: 2
+          memory: 8Gi
+        limits:
+          cpu: 2
+          memory: 8Gi
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values: ["zone-a"]
+    - name: dual-stack-rack-b
+      members: 3
+      storage:
+        capacity: 100Gi
+        storageClassName: fast-ssd
+      resources:
+        requests:
+          cpu: 2
+          memory: 8Gi
+        limits:
+          cpu: 2
+          memory: 8Gi
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values: ["zone-b"]
+  
+  exposeOptions:
+    broadcastOptions:
+      nodes:
+        type: PodIP
+        podIP:
+          source: Status
+      clients:
+        type: PodIP
+        podIP:
+          source: Status

@@ -8,6 +8,8 @@
 set -euxEo pipefail
 shopt -s inherit_errexit
 
+source "$( dirname "${BASH_SOURCE[0]}" )/../lib/metadata.sh"
+
 if [[ -n "${1+x}" ]]; then
     target="${1}"
 else
@@ -15,15 +17,6 @@ else
     exit 1
 fi
 
-readonly metadata_file="assets/metadata/metadata.yaml"
-
-function get-metadata() {
-    local key="${1}"
-    yq -e "$key" "${metadata_file}" || {
-        echo "Failed to get key ${key} from ${metadata_file}" >&2
-        exit 1
-    }
-}
 
 function get-url() {
     local version="${1}"

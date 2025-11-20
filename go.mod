@@ -231,3 +231,10 @@ tool (
 	k8s.io/code-generator
 	sigs.k8s.io/controller-tools/cmd/controller-gen
 )
+
+// prometheus-operator modules are intentionally kept in sync with the version defined in `assets/metadata/metadata.yaml`.
+// Synchronization is performed automatically by the `make update-go-mod-replace` target, do not edit manually.
+replace (
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
+	github.com/prometheus-operator/prometheus-operator/pkg/client => github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.1
+)

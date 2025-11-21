@@ -24,7 +24,6 @@ metadata:
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
     containerImage: docker.io/scylladb/scylla-operator:0.0.0 # Overwritten during publishing.
-    com.redhat.openshift.versions: v4.19-v4.19
   name: scylla-operator.v0.0.0 # Overwritten during publishing.
   namespace: placeholder
 spec:

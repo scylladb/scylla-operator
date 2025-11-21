@@ -1,8 +1,0 @@
-apiVersion: operators.coreos.com/v1alpha1
-kind: ClusterServiceVersion
-metadata:
-  annotations:
-    containerImage: docker.io/scylladb/scylla-operator:latest # overwritten during publishing
-    createdAt: "2025-05-13T04:42:10" # overwritten during publishing
-spec:
-  version: 1.0.0 # overwritten during publishing

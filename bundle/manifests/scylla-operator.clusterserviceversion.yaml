@@ -4,10 +4,9 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Full Lifecycle
-    createdAt: "2025-05-13T04:42:10" # overwritten during publishing
+    createdAt: "2025-05-13T04:42:10" # Overwritten during publishing.
     operators.operatorframework.io/builder: operator-sdk-unknown
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
-    containerImage: docker.io/scylladb/scylla-operator:latest # overwritten during publishing
     categories: Database,Developer Tools,Integration & Delivery
     description: Kubernetes Operator for ScyllaDB
     support: ScyllaDB
@@ -23,8 +22,9 @@ metadata:
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
+    containerImage: docker.io/scylladb/scylla-operator:0.0.0 # Overwritten during publishing.
     com.redhat.openshift.versions: v4.19-v4.19
-  name: scylla-operator.v0.0.0
+  name: scylla-operator.v0.0.0 # Overwritten during publishing.
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -519,7 +519,7 @@ spec:
   provider:
     name: ScyllaDB
     url: https://scylladb.com
-  version: 1.0.0 # overwritten during publishing
+  version: 1.0.0 # Overwritten during publishing.
   webhookdefinitions:
     - admissionReviewVersions:
         - v1

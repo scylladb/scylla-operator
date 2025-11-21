@@ -11,6 +11,7 @@ metadata:
     categories: Database,Developer Tools,Integration & Delivery
     description: Kubernetes Operator for ScyllaDB
     support: ScyllaDB
+    repository: https://github.com/scylladb/scylla-operator
     operatorframework.io/suggested-namespace: scylla-operator
     operators.openshift.io/valid-subscription: ""
     features.operators.openshift.io/disconnected: "false"

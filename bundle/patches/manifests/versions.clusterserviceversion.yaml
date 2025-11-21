@@ -1,0 +1,6 @@
+# This file is populated automatically. DO NOT EDIT THE VALUES MANUALLY!
+# If you want to update the values, run `make update-bundle`.
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+spec:
+  minKubeVersion: 1.31.0

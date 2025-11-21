@@ -634,11 +634,12 @@ verify-links:
 	fi;
 .PHONY: verify-links
 
+# patch-bundle applies patches matching the glob pattern to the target file. It strips any head comments from the patch files.
 # $1 - path to the target being patched
 # $2 - glob pattern for patch files
 define patch-bundle
 	for f in $(2); do \
-		$(YQ) -i -e '. *= load("'"$$f"'")' $(1); \
+		$(YQ) -i -e '. *= (load("'"$$f"'") | ... head_comment="")' $(1); \
 	done
 endef
 
@@ -658,30 +659,40 @@ endef
 
 # $1 - logo path
 # $2 - logo patch path
-define update-bundle-patches-logo
+define update-bundle-patches-manifests-logo
 	$(YQ) -i ".spec.icon[0].base64data = \"$$( base64 -w 0 '$(1)' )\"" '$(2)'
 	$(YQ) -i ".spec.icon[0].mediatype = \"$$( file --mime-type -b '$(1)' )\"" '$(2)'
 endef
 
 # $1 - metadata file
 # $2 - patch file
-define update-bundle-patches-versions
+define update-bundle-patches-manifests-versions
 	$(YQ) eval-all -i -P '\
 	select(fi==0).spec.minKubeVersion = ( select(fi==1) | .operator.minKubernetesVersion ) | \
-	select(fi==0).metadata.annotations."com.redhat.openshift.versions" = ( select(fi==1) | "v" + .operator.minOpenShiftVersion + "-v" + .operator.maxOpenShiftVersion ) | \
+	select(fi==0)' \
+	'$(2)' '$(1)'
+endef
+
+# $1 - metadata file
+# $2 - bundle metadata annotations file
+define update-bundle-patches-metadata-versions
+	$(YQ) eval-all -i -P '\
+	select(fi==0).annotations."com.redhat.openshift.versions" = ( select(fi==1) | "v" + .operator.minOpenShiftVersion + "-v" + .operator.maxOpenShiftVersion ) | \
 	select(fi==0)' \
 	'$(2)' '$(1)'
 endef
 
 # $1 - bundle path
 define update-bundle-patches
-	$(call update-bundle-patches-logo,./logo.svg,$(1)/patches/logo.clusterserviceversion.yaml)
-	$(call update-bundle-patches-versions,assets/metadata/metadata.yaml,$(1)/patches/versions.clusterserviceversion.yaml)
+	$(call update-bundle-patches-manifests-logo,./logo.svg,$(1)/patches/manifests/logo.clusterserviceversion.yaml)
+	$(call update-bundle-patches-manifests-versions,assets/metadata/metadata.yaml,$(1)/patches/manifests/versions.clusterserviceversion.yaml)
+	$(call update-bundle-patches-metadata-versions,assets/metadata/metadata.yaml,$(1)/patches/metadata/versions.annotations.yaml)
 endef
 
 # $1 - path to bundle
 define apply-bundle-fixes
-	$(call patch-bundle,$(1)/manifests/scylla-operator.clusterserviceversion.yaml,$(1)/patches/*.clusterserviceversion.yaml)
+	$(call patch-bundle,$(1)/manifests/scylla-operator.clusterserviceversion.yaml,$(1)/patches/manifests/*.clusterserviceversion.yaml)
+	$(call patch-bundle,$(1)/metadata/annotations.yaml,$(1)/patches/metadata/*.annotations.yaml)
 
 	# Workaround for https://github.com/operator-framework/operator-registry/issues/1741
 	$(call fix-bundle-manifests-filenames, $(1)/manifests)

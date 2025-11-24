@@ -20,17 +20,17 @@ metadata:
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
 spec:
-  displayName: Scylla Operator
+  displayName: ScyllaDB Operator
   description: |
-    [Scylla Operator](https://github.com/scylladb/scylla-operator) is a Kubernetes Operator for managing and automating tasks related to managing ScyllaDB clusters.
+    [ScyllaDB Operator](https://github.com/scylladb/scylla-operator) is a Kubernetes Operator for managing and automating tasks related to managing ScyllaDB clusters.
 
     [ScyllaDB](https://www.scylladb.com) is a close-to-the-hardware rewrite of Cassandra in C++. It features a shared nothing architecture that enables true linear scaling and major hardware optimizations that achieve ultra-low latencies and extreme throughput. It is a drop-in replacement for Cassandra and uses the same interfaces.
   keywords:
-    - scylla-operator
+    - scylladb-operator
     - kubernetes
     - scylladb
   links:
-    - name: Scylla Operator Documentation
+    - name: ScyllaDB Operator Documentation
       url: https://operator.docs.scylladb.com
     - name: ScyllaDB Documentation
       url: https://docs.scylladb.com

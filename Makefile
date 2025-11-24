@@ -691,7 +691,7 @@ endef
 
 # $1 - path to bundle
 define apply-bundle-fixes
-	$(call patch-bundle,$(1)/manifests/scylla-operator.clusterserviceversion.yaml,$(1)/patches/manifests/*.clusterserviceversion.yaml)
+	$(call patch-bundle,$(1)/manifests/scylladb-operator.clusterserviceversion.yaml,$(1)/patches/manifests/*.clusterserviceversion.yaml)
 	$(call patch-bundle,$(1)/metadata/annotations.yaml,$(1)/patches/metadata/*.annotations.yaml)
 
 	# Workaround for https://github.com/operator-framework/operator-registry/issues/1741
@@ -701,22 +701,24 @@ define apply-bundle-fixes
 	# https://olm.operatorframework.io/docs/advanced-tasks/adding-admission-and-conversion-webhooks/#deploying-an-operator-with-webhooks-using-olm
 	# Hence we cannot require our own copy coming from secret in webhook-server deployment.
 	# Delete volume and related volume mount and use only what OLM provides.
-	$(call fix-bundle-webhook-certificate-volume, $(1)/manifests/scylla-operator.clusterserviceversion.yaml)
+	$(call fix-bundle-webhook-certificate-volume, $(1)/manifests/scylladb-operator.clusterserviceversion.yaml)
+endef
+
+# $1 - bundle path
+define generate-bundle
+	$(call update-bundle-patches,$(1))
+	$(OPERATOR_SDK) generate bundle --package scylladb-operator --deploy-dir deploy/operator/ --manifests --output-dir $(1) --overwrite
+	$(call apply-bundle-fixes,$(1))
 endef
 
 update-bundle:
-	$(call update-bundle-patches,./bundle)
-	$(OPERATOR_SDK) generate bundle --deploy-dir deploy/operator/ --manifests --output-dir bundle --overwrite
-	$(call apply-bundle-fixes,./bundle)
+	$(call generate-bundle,./bundle)
 .PHONY: update-bundle
 
 verify-bundle: tmp_dir :=$(shell mktemp -d)
 verify-bundle:
 	cp -r ./bundle/. $(tmp_dir)/
-	$(call update-bundle-patches,$(tmp_dir))
-	$(OPERATOR_SDK) generate bundle --deploy-dir deploy/operator/ --manifests --output-dir $(tmp_dir) --overwrite
-	$(call apply-bundle-fixes,$(tmp_dir))
-
+	$(call generate-bundle,$(tmp_dir))
 	$(diff) -r '$(tmp_dir)'/ ./bundle
 .PHONY: verify-bundle
 

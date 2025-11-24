@@ -4,6 +4,6 @@ metadata:
   annotations:
     containerImage: docker.io/scylladb/scylla-operator:0.0.0 # Overwritten during publishing.
     createdAt: "2025-05-13T04:42:10" # Overwritten during publishing.
-  name: scylla-operator.v0.0.0 # Overwritten during publishing.
+  name: scylladb-operator.v0.0.0 # Overwritten during publishing.
 spec:
   version: 1.0.0 # Overwritten during publishing.

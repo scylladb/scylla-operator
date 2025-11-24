@@ -60,41 +60,16 @@ todo_include_todos = True
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_block"]
 myst_heading_anchors = 6
 
-# Global substitutions
 myst_substitutions = {
-  "productName": "Scylla Operator",
-  "repository": "scylladb/scylla-operator",
-  "imageRepository": "docker.io/scylladb/scylla",
-  "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-}
-
-# Multiversion substitutions, merged with global substitutions but only when given documentation branch is being built.
-myst_multiversion_substitutions = {
-    "master": {
-        "revision": "master",
-        "agentVersion": "3.7.0",
-        "enterpriseImageTag": "2025.3.3",
-        "imageTag": "2025.3.3",
-        "scyllaDBRepositoryTag": "scylla-2025.3.3",
-    },
-    "v1.18": {
-        "revision": "v1.18",
-        "agentVersion": "3.5.1",
-        "enterpriseImageTag": "2025.1.5",
-        "imageTag": "2025.1.5",
-    },
-    "v1.17": {
-        "revision": "v1.17",
-        "agentVersion": "3.5.1",
-        "enterpriseImageTag": "2025.1.5",
-        "imageTag": "2025.1.5",
-    },
-    "v1.16": {
-        "revision": "v1.16",
-        "agentVersion": "3.4.2",
-        "enterpriseImageTag": "2025.1.5",
-        "imageTag": "2025.1.5",
-    },
+    "productName": "Scylla Operator",
+    "repository": "scylladb/scylla-operator",
+    "revision": "v1.19",
+    "imageRepository": "docker.io/scylladb/scylla",
+    "imageTag": "2025.3.3",
+    "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
+    "enterpriseImageTag": "2025.3.3",
+    "agentVersion": "3.7.0",
+    "scyllaDBRepositoryTag": "scylla-2025.3.3",
 }
 
 # -- Options for not found extension

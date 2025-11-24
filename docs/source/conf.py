@@ -60,12 +60,12 @@ myst_heading_anchors = 6
 myst_substitutions = {
   "productName": "Scylla Operator",
   "repository": "scylladb/scylla-operator",
-  "revision": "master",
+  "revision": "v1.18",
   "imageRepository": "docker.io/scylladb/scylla",
-  "imageTag": "2025.1.2",
+  "imageTag": "2025.1.5",
   "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-  "enterpriseImageTag": "2024.1.12",
-  "agentVersion": "3.5.0",
+  "enterpriseImageTag": "2025.1.5",
+  "agentVersion": "3.5.1",
 }
 
 # -- Options for not found extension

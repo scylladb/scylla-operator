@@ -12,6 +12,6 @@ home: https://www.scylladb.com/
 sources:
   - https://github.com/scylladb/scylla-operator
 maintainers:
-  - name: Maciej Zimnoch
-    email: maciej@scylladb.com
+  - name: ScyllaDB
+    email: support@scylladb.com
 icon: https://github.com/scylladb/scylla-operator/raw/master/logo.svg

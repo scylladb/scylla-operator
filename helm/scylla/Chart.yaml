@@ -13,6 +13,6 @@ sources:
   - https://github.com/scylladb/scylla-operator
   - https://github.com/scylladb/scylla
 maintainers:
-  - name: Maciej Zimnoch
-    email: maciej@scylladb.com
+  - name: ScyllaDB
+    email: support@scylladb.com
 icon: https://www.scylladb.com/wp-content/uploads/brand-logo-vert@2x.png

@@ -11,6 +11,7 @@ nodeGroups:
 - name: scylla-pool
   instanceType: i4i.2xlarge
   desiredCapacity: 3
+  amiFamily: AmazonLinux2023
   labels:
     scylla.scylladb.com/node-type: scylla
   taints:
@@ -24,6 +25,7 @@ nodeGroups:
 - name: infra-pool
   instanceType: i3.large
   desiredCapacity: 1
+  amiFamily: AmazonLinux2023
   labels:
     scylla.scylladb.com/node-type: infra
   ssh:

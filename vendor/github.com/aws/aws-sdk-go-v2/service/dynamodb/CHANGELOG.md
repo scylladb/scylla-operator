@@ -1,3 +1,21 @@
+# v1.53.2 (2025-11-25)
+
+* **Bug Fix**: Add error check for endpoint param binding during auth scheme resolution to fix panic reported in #3234
+
+# v1.53.1 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.53.0 (2025-11-19)
+
+* **Feature**: Extended Global Secondary Index (GSI) composite keys to support up to 8 attributes.
+
+# v1.52.6 (2025-11-12)
+
+* **Bug Fix**: Further reduce allocation overhead when the metrics system isn't in-use.
+* **Bug Fix**: Reduce allocation overhead when the client doesn't have any HTTP interceptors configured.
+* **Bug Fix**: Remove blank trace spans towards the beginning of the request that added no additional information. This conveys a slight reduction in overall allocations.
+
 # v1.52.5 (2025-11-11)
 
 * **Bug Fix**: Return validation error if input region is not a valid host label.

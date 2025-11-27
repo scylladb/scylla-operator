@@ -10,8 +10,8 @@ More over, {{productName}} implements additional features like performance tunin
 While we do our best to implement these routines as generically as possible, sometimes there isn't any low level API to base them on and they may work only on a subset of platforms.
 
 :::{caution}
-We *strongly* recommend using a [supported Kubernetes platform](../support/releases.md#supported-kubernetes-platforms).
-Issues on unsupported platforms are unlikely to be addressed.
+We *strongly* recommend using a [supported Kubernetes environment](../support/releases.md#supported-kubernetes-environments).
+Issues on unsupported environments are unlikely to be addressed.
 :::
 
 :::{note}

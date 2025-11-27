@@ -78,15 +78,15 @@ The support matrix table shows version requirements for a particular **Scylla Op
 
 {{productName}} image is published as a manifest list to `docker.io/scylladb/scylla-operator:X.Y.Z` containing image build for `amd64` and `aarch64`.
 
-### Supported Kubernetes platforms
+### Supported Kubernetes environments
 
-We officially test and recommend to use the following platforms:
+We officially test and recommend to use the following environments:
 
 :::{table}
-| Platform         | OS Image     |
-|:-----------------|:-------------|
-| GKE              | Ubuntu       |
-| EKS              | Amazon Linux |
+| Platform | OS Image     |
+|:---------|:-------------|
+| GKE      | Ubuntu       |
+| EKS      | Amazon Linux |
 :::
 
 While our APIs generally work on any Kubernetes conformant cluster,
@@ -94,12 +94,12 @@ performance tuning and other pieces that need to interact with the host OS, kube
 
 
 :::{warning}
-The following platforms are known **not to work correctly** at this time.
+The following environments are known **not to work correctly** at this time.
 
 :::{table}
-| Platform         | OS Image     | Details |
-|:-----------------|:-------------| :------ |
-| GKE              | Container OS | Lack of XFS support |
-| EKS              | Bottlerocket | Suspected kernel/cgroups issue that breaks available memory detection for ScyllaDB |
+| Platform | OS Image     | Details |
+|:---------|:-------------| :------ |
+| GKE      | Container OS | Lack of XFS support |
+| EKS      | Bottlerocket | Suspected kernel/cgroups issue that breaks available memory detection for ScyllaDB |
 :::
 :::

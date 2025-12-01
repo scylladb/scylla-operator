@@ -690,15 +690,16 @@ func runTestStatefulSetForRack(t *testing.T) {
 
 	newBasicStatefulSetLabels := func(ordinal int) map[string]string {
 		return map[string]string{
-			"app":                          "scylla",
-			"app.kubernetes.io/managed-by": "scylla-operator",
-			"app.kubernetes.io/name":       "scylla",
-			"default-sc-label":             "foo",
-			"scylla/cluster":               "basic",
-			"scylla/datacenter":            "dc",
-			"scylla/rack":                  "rack",
-			"scylla/scylla-version":        "latest",
-			"scylla/rack-ordinal":          fmt.Sprintf("%d", ordinal),
+			"app":                                   "scylla",
+			"app.kubernetes.io/managed-by":          "scylla-operator",
+			"app.kubernetes.io/name":                "scylla",
+			"default-sc-label":                      "foo",
+			"scylla/cluster":                        "basic",
+			"scylla/datacenter":                     "dc",
+			"scylla/rack":                           "rack",
+			"scylla/scylla-version":                 "latest",
+			"scylla/rack-ordinal":                   fmt.Sprintf("%d", ordinal),
+			"scylla-operator.scylladb.com/pod-type": "scylladb-node",
 		}
 	}
 
@@ -1674,15 +1675,16 @@ exec scylla-manager-agent \
 					"scylla-operator.scylladb.com/inputs-hash": "",
 				}
 				sts.Spec.Template.ObjectMeta.Labels = map[string]string{
-					"app":                          "scylla",
-					"app.kubernetes.io/managed-by": "scylla-operator",
-					"app.kubernetes.io/name":       "scylla",
-					"custom-pod-label":             "custom-pod-label-value",
-					"scylla/cluster":               "basic",
-					"scylla/datacenter":            "dc",
-					"scylla/rack":                  "rack",
-					"scylla/rack-ordinal":          "0",
-					"scylla/scylla-version":        "latest",
+					"app":                                   "scylla",
+					"app.kubernetes.io/managed-by":          "scylla-operator",
+					"app.kubernetes.io/name":                "scylla",
+					"custom-pod-label":                      "custom-pod-label-value",
+					"scylla/cluster":                        "basic",
+					"scylla/datacenter":                     "dc",
+					"scylla/rack":                           "rack",
+					"scylla/rack-ordinal":                   "0",
+					"scylla/scylla-version":                 "latest",
+					"scylla-operator.scylladb.com/pod-type": "scylladb-node",
 				}
 
 				return sts
@@ -2820,6 +2822,7 @@ func TestMakeJobs(t *testing.T) {
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
 								},
 							},
 							Spec: corev1.PodSpec{
@@ -3038,6 +3041,7 @@ func TestMakeJobs(t *testing.T) {
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
 								},
 							},
 							Spec: corev1.PodSpec{
@@ -3165,6 +3169,7 @@ func TestMakeJobs(t *testing.T) {
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-2-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
 								},
 							},
 							Spec: corev1.PodSpec{
@@ -3324,6 +3329,7 @@ func TestMakeJobs(t *testing.T) {
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
 								},
 							},
 							Spec: corev1.PodSpec{
@@ -3441,6 +3447,7 @@ func TestMakeJobs(t *testing.T) {
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
 								},
 							},
 							Spec: corev1.PodSpec{
@@ -3558,6 +3565,7 @@ func TestMakeJobs(t *testing.T) {
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
 								},
 							},
 							Spec: corev1.PodSpec{
@@ -3653,6 +3661,7 @@ func TestMakeJobs(t *testing.T) {
 									"scylla/cluster":                             "basic",
 									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
 									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
 								},
 							},
 							Spec: corev1.PodSpec{

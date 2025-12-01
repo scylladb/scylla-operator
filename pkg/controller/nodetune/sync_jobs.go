@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 
@@ -98,25 +99,32 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 		ifaceNames = append(ifaceNames, iface.Name)
 	}
 
+	// Host node might not be running irqbalance. Mount config only when it's present on the host.
+	hasIrqBalance := false
+	if _, irqBalance := os.Stat("/etc/sysconfig/irqbalance"); irqBalance == nil {
+		hasIrqBalance = true
+	}
+
 	// Sort interface names to have stable representation for the same set of interfaces.
 	sort.Strings(ifaceNames)
 
 	klog.V(4).Info("Tuning network interfaces", "ifaces", ifaceNames)
 
-	return makePerftuneJobForContainers(
-		cr,
-		ncdc.namespace,
-		ncdc.nodeConfigName,
-		ncdc.nodeName,
-		ncdc.nodeUID,
-		ncdc.scyllaImage,
-		irqCPUs.FormatMask(),
-		dataHostPaths,
-		disableWritebackCache,
-		podSpec,
-		ifaceNames,
-		scyllaContainerIDs,
-	)
+	return makePerftuneJobForContainers(makePerftuneJobForContainersOptions{
+		ControllerRef:         cr,
+		Namespace:             ncdc.namespace,
+		NodeConfigName:        ncdc.nodeConfigName,
+		NodeName:              ncdc.nodeName,
+		NodeUID:               ncdc.nodeUID,
+		Image:                 ncdc.scyllaImage,
+		IrqMask:               irqCPUs.FormatMask(),
+		DataHostPaths:         dataHostPaths,
+		DisableWritebackCache: disableWritebackCache,
+		Tolerations:           podSpec.Tolerations,
+		IfaceNames:            ifaceNames,
+		ScyllaContainerIDs:    scyllaContainerIDs,
+		HasIrqBalance:         hasIrqBalance,
+	})
 }
 
 func (ncdc *Controller) makeResourceLimitJobsForContainers(ctx context.Context, podSpec *corev1.PodSpec, scyllaPods []*corev1.Pod) ([]*batchv1.Job, error) {

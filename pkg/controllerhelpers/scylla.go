@@ -252,11 +252,6 @@ func IsPodTunable(pod *corev1.Pod) bool {
 	return pod.Status.QOSClass == corev1.PodQOSGuaranteed
 }
 
-func IsNodeTuned(ncnss []scyllav1alpha1.NodeConfigNodeStatus, nodeName string) bool {
-	ns := FindNodeStatus(ncnss, nodeName)
-	return ns != nil && ns.TunedNode
-}
-
 func IsScyllaPod(pod *corev1.Pod) bool {
 	if pod.Labels == nil {
 		return false

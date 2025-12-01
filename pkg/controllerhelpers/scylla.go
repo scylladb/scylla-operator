@@ -258,17 +258,11 @@ func IsNodeTuned(ncnss []scyllav1alpha1.NodeConfigNodeStatus, nodeName string) b
 }
 
 func IsScyllaPod(pod *corev1.Pod) bool {
-	// TODO: use a better label, verify the container
 	if pod.Labels == nil {
 		return false
 	}
 
-	if !labels.SelectorFromSet(naming.ScyllaLabels()).Matches(labels.Set(pod.Labels)) {
-		return false
-	}
-
-	_, ok := pod.Labels[naming.ClusterNameLabel]
-	if !ok {
+	if !labels.SelectorFromSet(naming.ScyllaDBNodePodLabels()).Matches(labels.Set(pod.Labels)) {
 		return false
 	}
 

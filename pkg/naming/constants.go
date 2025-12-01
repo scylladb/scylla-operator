@@ -77,6 +77,28 @@ const (
 	ScyllaIngressTypeAnyNode ScyllaIngressType = "AnyNode"
 )
 
+type PodType string
+
+const (
+	// PodTypeScyllaDBNode indicates that the pod is a ScyllaDB node pod.
+	PodTypeScyllaDBNode PodType = "scylladb-node"
+
+	// PodTypeCleanupJob indicates that the pod is a cleanup job pod.
+	PodTypeCleanupJob PodType = "cleanup-job"
+
+	// PodTypeNodePerftuneJob indicates that the pod is a node perftune job pod.
+	PodTypeNodePerftuneJob PodType = "node-perftune-job"
+
+	// PodTypeNodeSysctlsJob indicates that the pod is a node sysctls job pod.
+	PodTypeNodeSysctlsJob PodType = "node-sysctls-job"
+
+	// PodTypeContainerPerftuneJob indicates that the pod is a container perftune job pod.
+	PodTypeContainerPerftuneJob PodType = "container-perftune-job"
+
+	// PodTypeContainerRLimitsJob indicates that the pod is a container resource limits job pod.
+	PodTypeContainerRLimitsJob PodType = "container-rlimits-job"
+)
+
 // Generic Labels used on objects created by the operator.
 const (
 	// ClusterNameLabel specifies ScyllaCluster name. It's used as a selector by both ScyllaCluster and ScyllaDBDatacenter controllers.
@@ -100,6 +122,8 @@ const (
 	ControllerNameLabel          = "scylla-operator.scylladb.com/controller-name"
 	NodeJobLabel                 = "scylla-operator.scylladb.com/node-job"
 	NodeJobTypeLabel             = "scylla-operator.scylladb.com/node-job-type"
+	// PodTypeLabel specifies the type of the pod (e.g., ScyllaDB node). It's assigned to pods managed by the operator.
+	PodTypeLabel = "scylla-operator.scylladb.com/pod-type"
 
 	AppName           = "scylla"
 	OperatorAppName   = "scylla-operator"

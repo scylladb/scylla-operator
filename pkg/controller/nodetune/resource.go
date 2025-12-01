@@ -3,8 +3,8 @@ package nodetune
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
-	"os"
 	"path"
 
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
@@ -38,6 +38,9 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 		naming.NodeConfigJobForNodeKey: nodeName,
 	}
 
+	podLabels := maps.Clone(labels)
+	podLabels[naming.PodTypeLabel] = string(naming.PodTypeNodePerftuneJob)
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -52,7 +55,7 @@ func makePerftuneJobForNode(controllerRef *metav1.OwnerReference, namespace, nod
 			BackoffLimit: pointer.Ptr(int32(math.MaxInt32)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels,
+					Labels:      podLabels,
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
@@ -127,6 +130,9 @@ func makeRlimitsJobForContainer(controllerRef *metav1.OwnerReference, namespace,
 		naming.NodeConfigJobData:       string(jobDataBytes),
 	}
 
+	podLabels := maps.Clone(labels)
+	podLabels[naming.PodTypeLabel] = string(naming.PodTypeContainerRLimitsJob)
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       namespace,
@@ -140,7 +146,7 @@ func makeRlimitsJobForContainer(controllerRef *metav1.OwnerReference, namespace,
 			BackoffLimit: pointer.Ptr(int32(math.MaxInt32)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels,
+					Labels:      podLabels,
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
@@ -181,32 +187,46 @@ type containerJobData struct {
 	ContainerIDs []string `json:"containerIDs"`
 }
 
-func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespace, nodeConfigName, nodeName string, nodeUID types.UID, image, irqMask string, dataHostPaths []string, disableWritebackCache bool, podSpec *corev1.PodSpec, ifaceNames, scyllaContainerIDs []string) (*batchv1.Job, error) {
-	podSpec = podSpec.DeepCopy()
+type makePerftuneJobForContainersOptions struct {
+	ControllerRef         *metav1.OwnerReference
+	Namespace             string
+	NodeConfigName        string
+	NodeName              string
+	NodeUID               types.UID
+	Image                 string
+	IrqMask               string
+	DataHostPaths         []string
+	DisableWritebackCache bool
+	Tolerations           []corev1.Toleration
+	IfaceNames            []string
+	ScyllaContainerIDs    []string
+	HasIrqBalance         bool
+}
 
+func makePerftuneJobForContainers(opts makePerftuneJobForContainersOptions) (*batchv1.Job, error) {
 	args := []string{
-		"--irq-cpu-mask", irqMask,
+		"--irq-cpu-mask", opts.IrqMask,
 		"--tune=net",
 	}
 
-	for _, ifaceName := range ifaceNames {
+	for _, ifaceName := range opts.IfaceNames {
 		args = append(args, fmt.Sprintf("--nic=%s", ifaceName))
 	}
 
 	// FIXME: disk shouldn't be empty
-	if len(dataHostPaths) > 0 {
+	if len(opts.DataHostPaths) > 0 {
 		args = append(args, "--tune", "disks")
 	}
-	for _, hostPath := range dataHostPaths {
+	for _, hostPath := range opts.DataHostPaths {
 		args = append(args, "--dir", path.Join("/host", hostPath))
 	}
 
-	if disableWritebackCache {
+	if opts.DisableWritebackCache {
 		args = append(args, "--write-back-cache", "false")
 	}
 
 	jobData := containerJobData{
-		ContainerIDs: scyllaContainerIDs,
+		ContainerIDs: opts.ScyllaContainerIDs,
 	}
 	jobDataBytes, err := json.Marshal(jobData)
 	if err != nil {
@@ -214,21 +234,24 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 	}
 
 	labels := map[string]string{
-		naming.NodeConfigNameLabel:          nodeConfigName,
-		naming.NodeConfigJobForNodeUIDLabel: string(nodeUID),
+		naming.NodeConfigNameLabel:          opts.NodeConfigName,
+		naming.NodeConfigJobForNodeUIDLabel: string(opts.NodeUID),
 		naming.NodeConfigJobTypeLabel:       string(naming.NodeConfigJobTypeContainerPerftune),
 	}
 	annotations := map[string]string{
-		naming.NodeConfigJobForNodeKey: nodeName,
+		naming.NodeConfigJobForNodeKey: opts.NodeName,
 		naming.NodeConfigJobData:       string(jobDataBytes),
 	}
 
+	podLabels := maps.Clone(labels)
+	podLabels[naming.PodTypeLabel] = string(naming.PodTypeContainerPerftuneJob)
+
 	perftuneJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
+			Namespace: opts.Namespace,
 			// TODO: hash the name to avoid overflow
-			Name:            fmt.Sprintf("perftune-containers-%s", nodeUID),
-			OwnerReferences: []metav1.OwnerReference{*controllerRef},
+			Name:            fmt.Sprintf("perftune-containers-%s", opts.NodeUID),
+			OwnerReferences: []metav1.OwnerReference{*opts.ControllerRef},
 			Labels:          labels,
 			Annotations:     annotations,
 		},
@@ -237,12 +260,12 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 			BackoffLimit: pointer.Ptr(int32(math.MaxInt32)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels,
+					Labels:      podLabels,
 					Annotations: annotations,
 				},
 				Spec: corev1.PodSpec{
-					Tolerations:        podSpec.Tolerations,
-					NodeName:           nodeName,
+					Tolerations:        opts.Tolerations,
+					NodeName:           opts.NodeName,
 					RestartPolicy:      corev1.RestartPolicyOnFailure,
 					HostPID:            true,
 					HostNetwork:        true,
@@ -250,7 +273,7 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 					Containers: []corev1.Container{
 						{
 							Name:            naming.PerftuneContainerName,
-							Image:           image,
+							Image:           opts.Image,
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Command:         []string{"/opt/scylladb/scripts/perftune.py"},
 							Args:            args,
@@ -296,9 +319,7 @@ func makePerftuneJobForContainers(controllerRef *metav1.OwnerReference, namespac
 		},
 	}
 
-	// Host node might not be running irqbalance. Mount config only when it's present on the host.
-	_, err = os.Stat("/etc/sysconfig/irqbalance")
-	if err == nil {
+	if opts.HasIrqBalance {
 		perftuneJob.Spec.Template.Spec.Volumes = append(
 			perftuneJob.Spec.Template.Spec.Volumes,
 			makeHostFileVolume("etc-sysconfig-irqbalance", "/etc/sysconfig/irqbalance"),

@@ -325,6 +325,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 	requiredLabels := map[string]string{}
 	requiredLabels[naming.RackOrdinalLabel] = strconv.Itoa(rackOrdinal)
 	requiredLabels[naming.ScyllaVersionLabel] = scyllaDBVersion
+	requiredLabels[naming.PodTypeLabel] = string(naming.PodTypeScyllaDBNode)
 	maps.Copy(requiredLabels, selectorLabels)
 
 	sdcLabels := cloneMapExcludingKeysOrEmpty(sdc.Labels, nonPropagatedLabelKeys)
@@ -1637,6 +1638,9 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 				naming.NodeJobTypeLabel: string(naming.JobTypeCleanup),
 			})
 
+			podLabels := maps.Clone(labels)
+			podLabels[naming.PodTypeLabel] = string(naming.PodTypeCleanupJob)
+
 			annotations := cloneMapExcludingKeysOrEmpty(sdc.Annotations, nonPropagatedAnnotationKeys)
 			annotations[naming.CleanupJobTokenRingHashAnnotation] = currentTokenRingHash
 
@@ -1676,7 +1680,7 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 					ManualSelector: pointer.Ptr(false),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Labels:      labels,
+							Labels:      podLabels,
 							Annotations: annotations,
 						},
 						Spec: corev1.PodSpec{

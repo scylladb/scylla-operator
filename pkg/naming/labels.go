@@ -60,8 +60,14 @@ func StatefulSetPodLabel(name string) map[string]string {
 	}
 }
 
-func ScyllaLabels() map[string]string {
+// ScyllaDBNodePodLabels returns a map of labels for ScyllaDB node pods.
+func ScyllaDBNodePodLabels() map[string]string {
+	return map[string]string{
+		PodTypeLabel: string(PodTypeScyllaDBNode),
+	}
+}
 
+func ScyllaLabels() map[string]string {
 	return map[string]string{
 		"app": AppName,
 

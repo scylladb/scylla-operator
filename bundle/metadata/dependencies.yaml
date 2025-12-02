@@ -1,0 +1,6 @@
+dependencies:
+- type: olm.package
+  value:
+    packageName: openshift-cert-manager-operator
+    # TODO: add a patch propagating version from a shared source of truth
+    version: "1.17.0"

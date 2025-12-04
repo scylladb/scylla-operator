@@ -63,26 +63,6 @@ SO_SCYLLA_OPERATOR_LOGLEVEL="${SO_SCYLLA_OPERATOR_LOGLEVEL:-4}"
 export SO_SCYLLA_OPERATOR_LOGLEVEL
 yq e --inplace '.spec.template.spec.containers[0].args += "--loglevel=" + env(SO_SCYLLA_OPERATOR_LOGLEVEL)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 
-if [[ -n "${SO_SCYLLA_OPERATOR_REPLICAS:-}" ]]; then
-  yq e --inplace '.spec.replicas = env(SO_SCYLLA_OPERATOR_REPLICAS)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-fi
-
-if [[ -n "${SO_SCYLLA_OPERATOR_RESOURCE_REQUESTS_CPU:-}" ]]; then
-  yq e --inplace '.spec.template.spec.containers[0].resources.requests.cpu = env(SO_SCYLLA_OPERATOR_RESOURCE_REQUESTS_CPU)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-fi
-
-if [[ -n "${SO_SCYLLA_OPERATOR_RESOURCE_REQUESTS_MEMORY:-}" ]]; then
-  yq e --inplace '.spec.template.spec.containers[0].resources.requests.memory = env(SO_SCYLLA_OPERATOR_RESOURCE_REQUESTS_MEMORY)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-fi
-
-if [[ -n "${SO_SCYLLA_OPERATOR_RESOURCE_LIMITS_CPU:-}" ]]; then
-  yq e --inplace '.spec.template.spec.containers[0].resources.limits.cpu = env(SO_SCYLLA_OPERATOR_RESOURCE_LIMITS_CPU)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-fi
-
-if [[ -n "${SO_SCYLLA_OPERATOR_RESOURCE_LIMITS_MEMORY:-}" ]]; then
-  yq e --inplace '.spec.template.spec.containers[0].resources.limits.memory = env(SO_SCYLLA_OPERATOR_RESOURCE_LIMITS_MEMORY)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-fi
-
 yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
 
 SO_CRYPTO_KEY_SIZE="${SO_CRYPTO_KEY_SIZE:-4096}"

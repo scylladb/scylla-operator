@@ -66,7 +66,8 @@ func ValidateScyllaDBDatacenterSpec(spec *scyllav1alpha1.ScyllaDBDatacenterSpec,
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDBManagerAgent(spec.ScyllaDBManagerAgent, fldPath.Child("scyllaDBManagerAgent"))...)
 
 	if spec.ScyllaDB.AdditionalScyllaDBArguments != nil {
-		allErrs = append(allErrs, ValidateScyllaArgsIPFamily(spec.IPFamily, spec.ScyllaDB.AdditionalScyllaDBArguments, fldPath.Child("scyllaDB", "additionalScyllaDBArguments"))...)
+		ipFamily := spec.GetIPFamily()
+		allErrs = append(allErrs, ValidateScyllaArgsIPFamily(&ipFamily, spec.ScyllaDB.AdditionalScyllaDBArguments, fldPath.Child("scyllaDB", "additionalScyllaDBArguments"))...)
 	}
 
 	allErrs = append(allErrs, validateStructSliceFieldUniqueness(spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) string {
@@ -630,13 +631,12 @@ func validateScyllaArgIPAddress(argName string, expectedIPFamily corev1.IPFamily
 		allErrs = append(allErrs, field.Invalid(
 			fldPath,
 			argsStr,
-			fmt.Sprintf("%s '%s' IP family (%s) must match spec.ipFamily (%s)", argName, value, gotFamily, expectedFamily),
+			fmt.Sprintf("%s '%s' IP family (%s) must match spec.ipFamilies[0] (%s)", argName, value, gotFamily, expectedFamily),
 		))
 	}
 
 	return allErrs
 }
-
 func extractArgValue(remaining string) string {
 	remaining = strings.TrimLeft(remaining, "= ")
 

@@ -1053,35 +1053,35 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 
 	tt := []struct {
 		name                string
-		ipFamily            *corev1.IPFamily
+		ipFamily            corev1.IPFamily
 		scyllaArgs          []string
 		expectedErrorList   field.ErrorList
 		expectedErrorString string
 	}{
 		{
-			name:                "no IP family specified with no args is valid",
-			ipFamily:            nil,
+			name:                "IPv4 with no args is valid",
+			ipFamily:            ipv4,
 			scyllaArgs:          []string{},
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:                "IPv4 with no address args is valid",
-			ipFamily:            &ipv4,
+			ipFamily:            ipv4,
 			scyllaArgs:          []string{"--some-other-flag=value"},
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:                "IPv6 with no address args is valid",
-			ipFamily:            &ipv6,
+			ipFamily:            ipv6,
 			scyllaArgs:          []string{"--some-other-flag=value"},
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
 			name:     "IPv4 with IPv4 rpc-address is valid",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--rpc-address=10.0.0.1",
 			},
@@ -1090,7 +1090,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv4 with IPv4 listen-address is valid",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--listen-address=10.0.0.2",
 			},
@@ -1099,7 +1099,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv6 with IPv6 rpc-address is valid",
-			ipFamily: &ipv6,
+			ipFamily: ipv6,
 			scyllaArgs: []string{
 				"--rpc-address=2001:db8::1",
 			},
@@ -1108,7 +1108,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv6 with IPv6 listen-address is valid",
-			ipFamily: &ipv6,
+			ipFamily: ipv6,
 			scyllaArgs: []string{
 				"--listen-address=2001:db8::2",
 			},
@@ -1117,7 +1117,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv4 with wildcard 0.0.0.0 is valid",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--rpc-address=0.0.0.0",
 				"--listen-address=0.0.0.0",
@@ -1127,7 +1127,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv6 with wildcard :: is valid",
-			ipFamily: &ipv6,
+			ipFamily: ipv6,
 			scyllaArgs: []string{
 				"--rpc-address=::",
 				"--listen-address=::",
@@ -1137,7 +1137,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "default IPv4 with wildcard 0.0.0.0 is valid",
-			ipFamily: nil,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--rpc-address=0.0.0.0",
 			},
@@ -1146,7 +1146,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv4 with IPv6 rpc-address is invalid",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--rpc-address=2001:db8::1",
 			},
@@ -1162,7 +1162,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv4 with IPv6 listen-address is invalid",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--listen-address=2001:db8::2",
 			},
@@ -1178,7 +1178,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv6 with IPv4 rpc-address is invalid",
-			ipFamily: &ipv6,
+			ipFamily: ipv6,
 			scyllaArgs: []string{
 				"--rpc-address=10.0.0.1",
 			},
@@ -1194,7 +1194,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv6 with IPv4 listen-address is invalid",
-			ipFamily: &ipv6,
+			ipFamily: ipv6,
 			scyllaArgs: []string{
 				"--listen-address=10.0.0.2",
 			},
@@ -1210,7 +1210,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "IPv4 with multiple mismatched addresses returns multiple errors",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--rpc-address=2001:db8::1",
 				"--listen-address=2001:db8::2",
@@ -1233,7 +1233,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "quoted IPv6 rpc-address with IPv4 is invalid",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				`--rpc-address="2001:db8::1"`,
 			},
@@ -1249,7 +1249,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "space-separated IPv4 rpc-address with IPv6 is invalid",
-			ipFamily: &ipv6,
+			ipFamily: ipv6,
 			scyllaArgs: []string{
 				"--rpc-address 10.0.0.1",
 			},
@@ -1265,7 +1265,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "default IPv4 with IPv6 rpc-address is invalid",
-			ipFamily: nil,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--rpc-address=2001:db8::1",
 			},
@@ -1281,7 +1281,7 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		},
 		{
 			name:     "mixed valid and invalid addresses",
-			ipFamily: &ipv4,
+			ipFamily: ipv4,
 			scyllaArgs: []string{
 				"--rpc-address=10.0.0.1",
 				"--listen-address=2001:db8::2",

@@ -10,6 +10,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -1039,6 +1040,280 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 			}
 			if !reflect.DeepEqual(errStr, test.expectedErrorString) {
 				t.Errorf("expected and actual error strings differ: %s", cmp.Diff(test.expectedErrorString, errStr))
+			}
+		})
+	}
+}
+
+func TestValidateScyllaArgsIPFamily(t *testing.T) {
+	t.Parallel()
+
+	ipv4 := corev1.IPv4Protocol
+	ipv6 := corev1.IPv6Protocol
+
+	tt := []struct {
+		name                string
+		ipFamily            *corev1.IPFamily
+		scyllaArgs          []string
+		expectedErrorList   field.ErrorList
+		expectedErrorString string
+	}{
+		{
+			name:                "no IP family specified with no args is valid",
+			ipFamily:            nil,
+			scyllaArgs:          []string{},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:                "IPv4 with no address args is valid",
+			ipFamily:            &ipv4,
+			scyllaArgs:          []string{"--some-other-flag=value"},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:                "IPv6 with no address args is valid",
+			ipFamily:            &ipv6,
+			scyllaArgs:          []string{"--some-other-flag=value"},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "IPv4 with IPv4 rpc-address is valid",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				"--rpc-address=10.0.0.1",
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "IPv4 with IPv4 listen-address is valid",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				"--listen-address=10.0.0.2",
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "IPv6 with IPv6 rpc-address is valid",
+			ipFamily: &ipv6,
+			scyllaArgs: []string{
+				"--rpc-address=2001:db8::1",
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "IPv6 with IPv6 listen-address is valid",
+			ipFamily: &ipv6,
+			scyllaArgs: []string{
+				"--listen-address=2001:db8::2",
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "IPv4 with wildcard 0.0.0.0 is valid",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				"--rpc-address=0.0.0.0",
+				"--listen-address=0.0.0.0",
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "IPv6 with wildcard :: is valid",
+			ipFamily: &ipv6,
+			scyllaArgs: []string{
+				"--rpc-address=::",
+				"--listen-address=::",
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "default IPv4 with wildcard 0.0.0.0 is valid",
+			ipFamily: nil,
+			scyllaArgs: []string{
+				"--rpc-address=0.0.0.0",
+			},
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name:     "IPv4 with IPv6 rpc-address is invalid",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				"--rpc-address=2001:db8::1",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--rpc-address=2001:db8::1",
+					Detail:   "--rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--rpc-address=2001:db8::1": --rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4)`,
+		},
+		{
+			name:     "IPv4 with IPv6 listen-address is invalid",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				"--listen-address=2001:db8::2",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--listen-address=2001:db8::2",
+					Detail:   "--listen-address '2001:db8::2' IP family (IPv6) must match spec.ipFamily (IPv4)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--listen-address=2001:db8::2": --listen-address '2001:db8::2' IP family (IPv6) must match spec.ipFamily (IPv4)`,
+		},
+		{
+			name:     "IPv6 with IPv4 rpc-address is invalid",
+			ipFamily: &ipv6,
+			scyllaArgs: []string{
+				"--rpc-address=10.0.0.1",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--rpc-address=10.0.0.1",
+					Detail:   "--rpc-address '10.0.0.1' IP family (IPv4) must match spec.ipFamily (IPv6)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--rpc-address=10.0.0.1": --rpc-address '10.0.0.1' IP family (IPv4) must match spec.ipFamily (IPv6)`,
+		},
+		{
+			name:     "IPv6 with IPv4 listen-address is invalid",
+			ipFamily: &ipv6,
+			scyllaArgs: []string{
+				"--listen-address=10.0.0.2",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--listen-address=10.0.0.2",
+					Detail:   "--listen-address '10.0.0.2' IP family (IPv4) must match spec.ipFamily (IPv6)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--listen-address=10.0.0.2": --listen-address '10.0.0.2' IP family (IPv4) must match spec.ipFamily (IPv6)`,
+		},
+		{
+			name:     "IPv4 with multiple mismatched addresses returns multiple errors",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				"--rpc-address=2001:db8::1",
+				"--listen-address=2001:db8::2",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--rpc-address=2001:db8::1 --listen-address=2001:db8::2",
+					Detail:   "--rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4)",
+				},
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--rpc-address=2001:db8::1 --listen-address=2001:db8::2",
+					Detail:   "--listen-address '2001:db8::2' IP family (IPv6) must match spec.ipFamily (IPv4)",
+				},
+			},
+			expectedErrorString: `[test: Invalid value: "--rpc-address=2001:db8::1 --listen-address=2001:db8::2": --rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4), test: Invalid value: "--rpc-address=2001:db8::1 --listen-address=2001:db8::2": --listen-address '2001:db8::2' IP family (IPv6) must match spec.ipFamily (IPv4)]`,
+		},
+		{
+			name:     "quoted IPv6 rpc-address with IPv4 is invalid",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				`--rpc-address="2001:db8::1"`,
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: `--rpc-address="2001:db8::1"`,
+					Detail:   "--rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--rpc-address=\"2001:db8::1\"": --rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4)`,
+		},
+		{
+			name:     "space-separated IPv4 rpc-address with IPv6 is invalid",
+			ipFamily: &ipv6,
+			scyllaArgs: []string{
+				"--rpc-address 10.0.0.1",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--rpc-address 10.0.0.1",
+					Detail:   "--rpc-address '10.0.0.1' IP family (IPv4) must match spec.ipFamily (IPv6)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--rpc-address 10.0.0.1": --rpc-address '10.0.0.1' IP family (IPv4) must match spec.ipFamily (IPv6)`,
+		},
+		{
+			name:     "default IPv4 with IPv6 rpc-address is invalid",
+			ipFamily: nil,
+			scyllaArgs: []string{
+				"--rpc-address=2001:db8::1",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--rpc-address=2001:db8::1",
+					Detail:   "--rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--rpc-address=2001:db8::1": --rpc-address '2001:db8::1' IP family (IPv6) must match spec.ipFamily (IPv4)`,
+		},
+		{
+			name:     "mixed valid and invalid addresses",
+			ipFamily: &ipv4,
+			scyllaArgs: []string{
+				"--rpc-address=10.0.0.1",
+				"--listen-address=2001:db8::2",
+				"--some-other-flag=value",
+			},
+			expectedErrorList: field.ErrorList{
+				&field.Error{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "test",
+					BadValue: "--rpc-address=10.0.0.1 --listen-address=2001:db8::2 --some-other-flag=value",
+					Detail:   "--listen-address '2001:db8::2' IP family (IPv6) must match spec.ipFamily (IPv4)",
+				},
+			},
+			expectedErrorString: `test: Invalid value: "--rpc-address=10.0.0.1 --listen-address=2001:db8::2 --some-other-flag=value": --listen-address '2001:db8::2' IP family (IPv6) must match spec.ipFamily (IPv4)`,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			errList := validation.ValidateScyllaArgsIPFamily(tc.ipFamily, tc.scyllaArgs, field.NewPath("test"))
+			if !reflect.DeepEqual(errList, tc.expectedErrorList) {
+				t.Errorf("expected and actual error lists differ: %s", cmp.Diff(tc.expectedErrorList, errList))
+			}
+
+			errStr := ""
+			if agg := errList.ToAggregate(); agg != nil {
+				errStr = agg.Error()
+			}
+			if !reflect.DeepEqual(errStr, tc.expectedErrorString) {
+				t.Errorf("expected and actual error strings differ: %s", cmp.Diff(tc.expectedErrorString, errStr))
 			}
 		})
 	}

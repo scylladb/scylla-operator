@@ -32,6 +32,7 @@ type Controller struct {
 
 	namespace string
 	podName   string
+	ipFamily  corev1.IPFamily
 
 	kubeClient kubernetes.Interface
 	podLister  corev1listers.PodLister
@@ -40,12 +41,14 @@ type Controller struct {
 func NewController(
 	namespace string,
 	podName string,
+	ipFamily corev1.IPFamily,
 	kubeClient kubernetes.Interface,
 	podInformer corev1informers.PodInformer,
 ) (*Controller, error) {
 	c := &Controller{
 		namespace: namespace,
 		podName:   podName,
+		ipFamily:  ipFamily,
 
 		kubeClient: kubeClient,
 		podLister:  podInformer.Lister(),
@@ -80,7 +83,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 		return fmt.Errorf("can't get Pod %q: %v", naming.ManualRef(c.namespace, c.podName), err)
 	}
 
-	nodeStatusReport := getNodeStatusReport(ctx)
+	nodeStatusReport := c.getNodeStatusReport(ctx)
 	encodedNodeStatusReport, err := nodeStatusReport.Encode()
 	if err != nil {
 		return fmt.Errorf("can't encode node status report: %w", err)
@@ -109,8 +112,8 @@ func (c *Controller) Sync(ctx context.Context) error {
 	return nil
 }
 
-func getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
+func (c *Controller) getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost(c.ipFamily)
 	if err != nil {
 		return &internalapi.NodeStatusReport{
 			Error: pointer.Ptr(fmt.Errorf("can't create Scylla client for localhost: %w", err).Error()),

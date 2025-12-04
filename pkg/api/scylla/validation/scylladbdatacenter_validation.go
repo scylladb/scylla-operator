@@ -10,6 +10,7 @@ import (
 
 	imgreference "github.com/containers/image/v5/docker/reference"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corevalidation "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/validation"
@@ -582,22 +583,17 @@ func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.
 	return allErrs
 }
 
-func ValidateScyllaArgsIPFamily(ipFamily *corev1.IPFamily, scyllaArgs []string, fldPath *field.Path) field.ErrorList {
+func ValidateScyllaArgsIPFamily(ipFamily corev1.IPFamily, scyllaArgs []string, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
 	if len(scyllaArgs) == 0 {
 		return allErrs
 	}
 
-	effectiveIPFamily := corev1.IPv4Protocol
-	if ipFamily != nil {
-		effectiveIPFamily = *ipFamily
-	}
-
 	argsStr := strings.Join(scyllaArgs, " ")
 
-	allErrs = append(allErrs, validateScyllaArgIPAddress("rpc-address", effectiveIPFamily, argsStr, fldPath)...)
-	allErrs = append(allErrs, validateScyllaArgIPAddress("listen-address", effectiveIPFamily, argsStr, fldPath)...)
+	allErrs = append(allErrs, validateScyllaArgIPAddress("rpc-address", ipFamily, argsStr, fldPath)...)
+	allErrs = append(allErrs, validateScyllaArgIPAddress("listen-address", ipFamily, argsStr, fldPath)...)
 
 	return allErrs
 }
@@ -635,28 +631,11 @@ func validateScyllaArgIPAddress(argName string, expectedIPFamily corev1.IPFamily
 		allErrs = append(allErrs, field.Invalid(
 			fldPath,
 			argsStr,
-			fmt.Sprintf("--%s '%s' IP family (%s) must match spec.ipFamily (%s)", argName, value, gotFamily, expectedFamily),
+			fmt.Sprintf("--%s '%s' IP family (%s) must match spec.ipFamilies[0] (%s)", argName, value, gotFamily, expectedFamily),
 		))
 	}
 
 	return allErrs
-}
-
-func extractArgValue(remaining string) string {
-	remaining = strings.TrimLeft(remaining, "= ")
-
-	if strings.HasPrefix(remaining, "\"") {
-		if endIdx := strings.Index(remaining[1:], "\""); endIdx != -1 {
-			return remaining[1 : endIdx+1]
-		}
-		return ""
-	}
-
-	if spaceIdx := strings.IndexAny(remaining, " \t"); spaceIdx != -1 {
-		return remaining[:spaceIdx]
-	}
-
-	return remaining
 }
 
 func GetWarningsOnScyllaDBDatacenterCreate(sdc *scyllav1alpha1.ScyllaDBDatacenter) []string {

@@ -463,6 +463,8 @@ func newBasicScyllaCluster() *scyllav1.ScyllaCluster {
 			Network: scyllav1.Network{
 				HostNetworking: false,
 				DNSPolicy:      corev1.DNSClusterFirst,
+				IPFamilyPolicy: pointer.Ptr(corev1.IPFamilyPolicySingleStack),
+				IPFamilies:     []corev1.IPFamily{corev1.IPv4Protocol},
 			},
 			Repairs:                 nil,
 			Backups:                 nil,
@@ -609,6 +611,8 @@ func newBasicScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatacenter {
 			ImagePullSecrets:        []corev1.LocalObjectReference{{Name: "image-pull-secret"}},
 			DNSPolicy:               pointer.Ptr(corev1.DNSClusterFirst),
 			DNSDomains:              []string{"dns-domain-1", "dns-domain-2"},
+			IPFamilyPolicy:          pointer.Ptr(corev1.IPFamilyPolicySingleStack),
+			IPFamilies:              []corev1.IPFamily{corev1.IPv4Protocol},
 			ForceRedeploymentReason: pointer.Ptr("force-redeployment-reason"),
 			ExposeOptions: &scyllav1alpha1.ExposeOptions{
 				CQL: &scyllav1alpha1.CQLExposeOptions{

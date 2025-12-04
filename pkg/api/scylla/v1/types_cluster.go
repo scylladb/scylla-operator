@@ -468,6 +468,17 @@ type Network struct {
 
 	// dnsPolicy defines how a pod's DNS will be configured.
 	DNSPolicy corev1.DNSPolicy `json:"dnsPolicy,omitempty"`
+
+	// ipFamilyPolicy specifies the IP family policy for the cluster.
+	// Supports: SingleStack, PreferDualStack, RequireDualStack.
+	// +kubebuilder:default:="SingleStack"
+	// +optional
+	IPFamilyPolicy *corev1.IPFamilyPolicy `json:"ipFamilyPolicy,omitempty"`
+
+	// ipFamilies specifies the IP families to use.
+	// Supports: IPv4, IPv6.
+	// +optional
+	IPFamilies []corev1.IPFamily `json:"ipFamilies,omitempty"`
 }
 
 func (s Network) GetDNSPolicy() corev1.DNSPolicy {
@@ -476,6 +487,13 @@ func (s Network) GetDNSPolicy() corev1.DNSPolicy {
 	}
 
 	return corev1.DNSClusterFirstWithHostNet
+}
+
+func (n Network) GetIPFamily() corev1.IPFamily {
+	if len(n.IPFamilies) > 0 {
+		return n.IPFamilies[0]
+	}
+	return corev1.IPv4Protocol
 }
 
 // DatacenterSpec is the desired state for a Scylla Datacenter.

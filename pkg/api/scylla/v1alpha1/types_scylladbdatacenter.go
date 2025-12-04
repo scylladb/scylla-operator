@@ -49,6 +49,25 @@ type ScyllaDBDatacenterSpec struct {
 	// +optional
 	ForceRedeploymentReason *string `json:"forceRedeploymentReason,omitempty"`
 
+	// IPFamily specifies the IP family for this datacenter.
+	// All services, broadcast addresses, and pod IPs will use this IP family.
+	// +kubebuilder:validation:Enum=IPv4;IPv6
+	// +kubebuilder:default="IPv4"
+	// +optional
+	IPFamily *corev1.IPFamily `json:"ipFamily,omitempty"`
+
+	// ipFamilyPolicy specifies the IP family policy for services in this datacenter.
+	// Supports: SingleStack, PreferDualStack, RequireDualStack.
+	// +kubebuilder:validation:Enum=SingleStack;PreferDualStack;RequireDualStack
+	// +optional
+	IPFamilyPolicy *corev1.IPFamilyPolicy `json:"ipFamilyPolicy,omitempty"`
+
+	// ipFamilies specifies the IP families to use for services in this datacenter.
+	// Supports: IPv4, IPv6.
+	// When set, this overrides the single IPFamily field for service configuration.
+	// +optional
+	IPFamilies []corev1.IPFamily `json:"ipFamilies,omitempty"`
+
 	// exposeOptions specifies parameters related to exposing ScyllaDBDatacenter backends.
 	// +optional
 	ExposeOptions *ExposeOptions `json:"exposeOptions,omitempty"`
@@ -545,4 +564,13 @@ type ScyllaDBDatacenterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ScyllaDBDatacenter `json:"items"`
+}
+
+// GetIPFamily returns the IP family for this datacenter.
+// It defaults to IPv4 if not specified.
+func (s *ScyllaDBDatacenterSpec) GetIPFamily() corev1.IPFamily {
+	if s.IPFamily != nil {
+		return *s.IPFamily
+	}
+	return corev1.IPv4Protocol
 }

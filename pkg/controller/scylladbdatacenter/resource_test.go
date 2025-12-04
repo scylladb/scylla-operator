@@ -792,6 +792,17 @@ func runTestStatefulSetForRack(t *testing.T) {
 									},
 								},
 								{
+									Name: "scylla-managed-agent-config-volume",
+									VolumeSource: corev1.VolumeSource{
+										ConfigMap: &corev1.ConfigMapVolumeSource{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "basic-manager-agent-config",
+											},
+											Optional: pointer.Ptr(false),
+										},
+									},
+								},
+								{
 									Name: "scylla-agent-config-volume",
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
@@ -1007,6 +1018,8 @@ exec /mnt/shared/scylla-operator sidecar \
 --clients-broadcast-address-type=ServiceClusterIP \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
+--scylla-localhost-address=127.0.0.1 \
+--ip-family=IPv4 \
 --loglevel=0 \
  -- "$@"
 `),
@@ -1167,6 +1180,7 @@ wait`),
 									"scylladb-api-status",
 									"--port=8080",
 									"--service-name=$(SERVICE_NAME)",
+									"--scylla-localhost-address=127.0.0.1",
 									"--loglevel=0",
 								},
 								Env: []corev1.EnvVar{
@@ -1274,6 +1288,7 @@ printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' 
 
 exec scylla-manager-agent \
 -c "/etc/scylla-manager-agent/scylla-manager-agent.yaml" \
+-c "/mnt/scylla-managed-agent-config/scylla-manager-agent.yaml" \
 -c "/mnt/scylla-agent-config/scylla-manager-agent.yaml" \
 -c "/mnt/scylla-agent-config/auth-token.yaml"
 `),
@@ -1295,6 +1310,12 @@ exec scylla-manager-agent \
 									{
 										Name:      "data",
 										MountPath: "/var/lib/scylla",
+									},
+									{
+										Name:      "scylla-managed-agent-config-volume",
+										MountPath: "/mnt/scylla-managed-agent-config/scylla-manager-agent.yaml",
+										SubPath:   "scylla-manager-agent.yaml",
+										ReadOnly:  true,
 									},
 									{
 										Name:      "scylla-agent-config-volume",
@@ -3793,6 +3814,12 @@ func Test_MakeManagedScyllaDBConfig(t *testing.T) {
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 `, "\n"),
@@ -3835,6 +3862,12 @@ internode_compression: "all"
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -3889,6 +3922,12 @@ client_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -3953,6 +3992,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4017,6 +4062,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4082,6 +4133,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4149,6 +4206,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4216,6 +4279,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4281,6 +4350,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 native_transport_port_ssl: 9142
@@ -4347,6 +4422,12 @@ alternator_encryption_options:
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 `, "\n"),
@@ -4398,6 +4479,12 @@ internode_compression: "all"
 					"scylladb-managed-config.yaml": strings.TrimPrefix(`
 cluster_name: "foo-cluster"
 rpc_address: "0.0.0.0"
+api_address: "127.0.0.1"
+listen_address: "0.0.0.0"
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "127.0.0.1"
 endpoint_snitch: "GossipingPropertyFileSnitch"
 internode_compression: "all"
 `, "\n"),
@@ -4416,6 +4503,152 @@ internode_compression: "all"
 			)
 
 			got, err := MakeManagedScyllaDBConfig(tc.sdc)
+			if !reflect.DeepEqual(err, tc.expectedErr) {
+				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
+			}
+
+			if !apiequality.Semantic.DeepEqual(got, tc.expectedCM) {
+				t.Errorf("expected and actual configmaps differ:\n%s", cmp.Diff(tc.expectedCM, got))
+			}
+		})
+	}
+}
+
+func TestMakeManagedScyllaDBManagerAgentConfig(t *testing.T) {
+	tt := []struct {
+		name        string
+		sdc         *scyllav1alpha1.ScyllaDBDatacenter
+		expectedErr error
+		expectedCM  *corev1.ConfigMap
+	}{
+		{
+			name: "manager agent config with IPv4 (default)",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+					Annotations: map[string]string{
+						"user-annotation": "user-annotation-value",
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo-cluster",
+				},
+			},
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-manager-agent-config",
+					Labels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
+					},
+					Annotations: map[string]string{
+						"user-annotation": "user-annotation-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylla-manager-agent.yaml": strings.TrimLeft(`
+# ScyllaDB API endpoint configuration based on IP family
+scylla:
+  api_address: "127.0.0.1"
+  api_port: 10000
+
+# Default ScyllaDB Manager Agent configuration
+# Additional configuration can be provided via customConfigSecretRef
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "manager agent config with IPv6",
+			sdc: &scyllav1alpha1.ScyllaDBDatacenter{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo",
+					UID:       "uid-42",
+					Labels: map[string]string{
+						"user-label": "user-label-value",
+					},
+					Annotations: map[string]string{
+						"user-annotation": "user-annotation-value",
+					},
+				},
+				Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+					ClusterName: "foo-cluster",
+					IPFamily:    pointer.Ptr(corev1.IPv6Protocol),
+				},
+			},
+			expectedCM: &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "foo-ns",
+					Name:      "foo-manager-agent-config",
+					Labels: map[string]string{
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla/cluster":               "foo",
+						"user-label":                   "user-label-value",
+					},
+					Annotations: map[string]string{
+						"user-annotation": "user-annotation-value",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "foo",
+							UID:                "uid-42",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				Data: map[string]string{
+					"scylla-manager-agent.yaml": strings.TrimLeft(`
+# ScyllaDB API endpoint configuration based on IP family
+scylla:
+  api_address: "::1"
+  api_port: 10000
+
+# Default ScyllaDB Manager Agent configuration
+# Additional configuration can be provided via customConfigSecretRef
+`, "\n"),
+				},
+			},
+			expectedErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := MakeManagedScyllaDBManagerAgentConfig(tc.sdc)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Errorf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err))
 			}

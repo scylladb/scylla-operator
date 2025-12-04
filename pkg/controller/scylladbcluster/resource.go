@@ -354,9 +354,15 @@ func makeEndpointSlicesForSeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *sc
 		dcLabels[discoveryv1.LabelServiceName] = naming.SeedService(sc, &otherDC)
 		dcLabels[discoveryv1.LabelManagedBy] = naming.OperatorAppNameWithDomain
 
-		endpoints, err := calculateEndpointsForRemoteDCPods(sc, nodeBroadcastType, otherDC, otherDCNamespace, otherDCPodSelector, remotePodLister, remoteServiceLister)
+		endpoints, ipFamily, err := calculateEndpointsForRemoteDCPods(sc, nodeBroadcastType, otherDC, otherDCNamespace, otherDCPodSelector, remotePodLister, remoteServiceLister)
 		if err != nil {
 			return progressingConditions, nil, fmt.Errorf("can't calculate endpoints to dataceter %q for datacenter %q: %w", otherDC.Name, dc.Name, err)
+		}
+
+		// Default to IPv4 if no IP family detected
+		addressType := discoveryv1.AddressTypeIPv4
+		if ipFamily != nil && *ipFamily == corev1.IPv6Protocol {
+			addressType = discoveryv1.AddressTypeIPv6
 		}
 
 		remoteEndpointSlices = append(remoteEndpointSlices, &discoveryv1.EndpointSlice{
@@ -367,7 +373,7 @@ func makeEndpointSlicesForSeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *sc
 				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
 			},
-			AddressType: discoveryv1.AddressTypeIPv4,
+			AddressType: addressType,
 			Endpoints:   endpoints,
 			Ports: oslices.ConvertSlice(scyllaDBInterNodeCommunicationPorts, func(port portSpec) discoveryv1.EndpointPort {
 				return discoveryv1.EndpointPort{
@@ -479,14 +485,15 @@ func mergeAndCompactPortSpecSlices(xs ...[]portSpec) []portSpec {
 }
 
 // calculateEndpointsForRemoteDCPods computes endpoints for remote datacenter pods taking into account how nodes are being exposed.
-func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, broadcastAddressType scyllav1alpha1.BroadcastAddressType, remoteDC scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCPodSelector apimachinerylabels.Selector, remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]discoveryv1.Endpoint, error) {
+func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, broadcastAddressType scyllav1alpha1.BroadcastAddressType, remoteDC scyllav1alpha1.ScyllaDBClusterDatacenter, remoteDCNamespace *corev1.Namespace, remoteDCPodSelector apimachinerylabels.Selector, remotePodLister remotelister.GenericClusterLister[corev1listers.PodLister], remoteServiceLister remotelister.GenericClusterLister[corev1listers.ServiceLister]) ([]discoveryv1.Endpoint, *corev1.IPFamily, error) {
 	var endpoints []discoveryv1.Endpoint
+	var detectedIPFamily *corev1.IPFamily
 
 	switch broadcastAddressType {
 	case scyllav1alpha1.BroadcastAddressTypePodIP:
 		dcPods, err := remotePodLister.Cluster(remoteDC.RemoteKubernetesClusterName).Pods(remoteDCNamespace.Name).List(remoteDCPodSelector)
 		if err != nil {
-			return nil, fmt.Errorf("can't list pods in %q ScyllaCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+			return nil, nil, fmt.Errorf("can't list pods in %q ScyllaCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
 		}
 
 		klog.V(4).InfoS("Found remote Scylla Pods", "Cluster", klog.KObj(sc), "Datacenter", remoteDC.Name, "Pods", len(dcPods))
@@ -517,22 +524,26 @@ func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, broad
 	case scyllav1alpha1.BroadcastAddressTypeServiceClusterIP:
 		eps, err := makeRemoteServiceEndpoints(sc, remoteDC, remoteDCNamespace, remoteDCPodSelector, remoteServiceLister, makeServiceClusterIPEndpoints)
 		if err != nil {
-			return nil, fmt.Errorf("can't make remote service endpoints for %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+			return nil, nil, fmt.Errorf("can't make remote service endpoints for %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
 		}
 		endpoints = append(endpoints, eps...)
 
 	case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
 		eps, err := makeRemoteServiceEndpoints(sc, remoteDC, remoteDCNamespace, remoteDCPodSelector, remoteServiceLister, makeServiceLoadBalancerIngressEndpoints)
 		if err != nil {
-			return nil, fmt.Errorf("can't make remote service endpoints for %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
+			return nil, nil, fmt.Errorf("can't make remote service endpoints for %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), remoteDC.Name, err)
 		}
 		endpoints = append(endpoints, eps...)
 
 	default:
-		return nil, fmt.Errorf("unsupported node broadcast address type %v specified in %q ScyllaDBCluster", broadcastAddressType, naming.ObjRef(sc))
+		return nil, nil, fmt.Errorf("unsupported node broadcast address type %v specified in %q ScyllaDBCluster", broadcastAddressType, naming.ObjRef(sc))
 	}
 
-	return endpoints, nil
+	// Detect IP family from endpoint addresses
+	ipFamily := helpers.DetectEndpointsIPFamily(endpoints)
+	detectedIPFamily = &ipFamily
+
+	return endpoints, detectedIPFamily, nil
 }
 
 func makeRemoteServiceEndpoints(
@@ -573,15 +584,18 @@ func makeServiceClusterIPEndpoints(dcService *corev1.Service) []discoveryv1.Endp
 		return nil
 	}
 
-	addresses := []string{dcService.Spec.ClusterIP}
-	clusterIPs := oslices.FilterOut(dcService.Spec.ClusterIPs, func(clusterIP string) bool {
-		return clusterIP == corev1.ClusterIPNone || clusterIP == dcService.Spec.ClusterIP
-	})
-	addresses = append(addresses, clusterIPs...)
+	preferredFamily := helpers.GetPreferredServiceIPFamily(dcService)
+
+	// Select the appropriate IP address based on the preferred family
+	// In dual-stack services, this will pick only the matching IP family
+	selectedIP, err := helpers.GetPreferredServiceIP(dcService, &preferredFamily)
+	if err != nil {
+		return nil
+	}
 
 	return []discoveryv1.Endpoint{
 		{
-			Addresses: addresses,
+			Addresses: []string{selectedIP},
 			Conditions: discoveryv1.EndpointConditions{
 				Ready:       pointer.Ptr(true),
 				Serving:     pointer.Ptr(true),
@@ -1376,6 +1390,7 @@ func makeEndpointSliceForLocalIdentityService(sc *scyllav1alpha1.ScyllaDBCluster
 
 	var errs []error
 	var endpoints []discoveryv1.Endpoint
+	var detectedIPFamily *corev1.IPFamily
 	for _, dc := range sc.Spec.Datacenters {
 		dcPodSelector := naming.DatacenterPodsSelector(sc, &dc)
 		dcNamespace, ok := remoteNamespaces[dc.RemoteKubernetesClusterName]
@@ -1391,18 +1406,29 @@ func makeEndpointSliceForLocalIdentityService(sc *scyllav1alpha1.ScyllaDBCluster
 			continue
 		}
 
-		dcEndpoints, err := calculateEndpointsForRemoteDCPods(sc, clientBroadcastAddressType, dc, dcNamespace, dcPodSelector, remotePodLister, remoteServiceLister)
+		dcEndpoints, dcIPFamily, err := calculateEndpointsForRemoteDCPods(sc, clientBroadcastAddressType, dc, dcNamespace, dcPodSelector, remotePodLister, remoteServiceLister)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't calculate endpoints for %q ScyllaDBCluster %q Datacenter: %w", naming.ObjRef(sc), dc.Name, err))
 			continue
 		}
 
 		endpoints = append(endpoints, dcEndpoints...)
+
+		// Use the first detected IP family for the EndpointSlice
+		if detectedIPFamily == nil && dcIPFamily != nil {
+			detectedIPFamily = dcIPFamily
+		}
 	}
 
 	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, nil, err
+	}
+
+	// Default to IPv4 if no IP family detected
+	addressType := discoveryv1.AddressTypeIPv4
+	if detectedIPFamily != nil && *detectedIPFamily == corev1.IPv6Protocol {
+		addressType = discoveryv1.AddressTypeIPv6
 	}
 
 	es := &discoveryv1.EndpointSlice{
@@ -1435,7 +1461,7 @@ func makeEndpointSliceForLocalIdentityService(sc *scyllav1alpha1.ScyllaDBCluster
 				*metav1.NewControllerRef(sc, scyllav1alpha1.ScyllaDBClusterGVK),
 			},
 		},
-		AddressType: discoveryv1.AddressTypeIPv4,
+		AddressType: addressType,
 		Ports: oslices.ConvertSlice(localIdentityServicePorts, func(spec portSpec) discoveryv1.EndpointPort {
 			return discoveryv1.EndpointPort{
 				Name:     pointer.Ptr(spec.name),

@@ -223,6 +223,35 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              ipFamilies:
+                description: |-
+                  ipFamilies specifies the IP families to use for services in this datacenter.
+                  Supports: IPv4, IPv6.
+                  When set, this overrides the single IPFamily field for service configuration.
+                items:
+                  description: |-
+                    IPFamily represents the IP Family (IPv4 or IPv6). This type is used
+                    to express the family of an IP expressed by a type (e.g. service.spec.ipFamilies).
+                  type: string
+                type: array
+              ipFamily:
+                default: IPv4
+                description: |-
+                  IPFamily specifies the IP family for this datacenter.
+                  All services, broadcast addresses, and pod IPs will use this IP family.
+                enum:
+                - IPv4
+                - IPv6
+                type: string
+              ipFamilyPolicy:
+                description: |-
+                  ipFamilyPolicy specifies the IP family policy for services in this datacenter.
+                  Supports: SingleStack, PreferDualStack, RequireDualStack.
+                enum:
+                - SingleStack
+                - PreferDualStack
+                - RequireDualStack
+                type: string
               metadata:
                 description: metadata controls shared metadata for all pods created
                   based on this spec.

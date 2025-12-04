@@ -99,6 +99,15 @@ object
    * - :ref:`imagePullSecrets<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.imagePullSecrets[]>`
      - array (object)
      - imagePullSecrets is an optional list of references to secrets in the same namespace used for pulling any images used by this spec.
+   * - ipFamilies
+     - array (string)
+     - ipFamilies specifies the IP families to use for services in this datacenter. Supports: IPv4, IPv6. When set, this overrides the single IPFamily field for service configuration.
+   * - ipFamily
+     - string
+     - IPFamily specifies the IP family for this datacenter. All services, broadcast addresses, and pod IPs will use this IP family.
+   * - ipFamilyPolicy
+     - string
+     - ipFamilyPolicy specifies the IP family policy for services in this datacenter. Supports: SingleStack, PreferDualStack, RequireDualStack.
    * - :ref:`metadata<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.metadata>`
      - object
      - metadata controls shared metadata for all pods created based on this spec.

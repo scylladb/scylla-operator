@@ -13,6 +13,7 @@ import (
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corevalidation "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/validation"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -63,6 +64,10 @@ func ValidateScyllaDBDatacenterSpec(spec *scyllav1alpha1.ScyllaDBDatacenterSpec,
 
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDB(&spec.ScyllaDB, fldPath.Child("scyllaDB"))...)
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDBManagerAgent(spec.ScyllaDBManagerAgent, fldPath.Child("scyllaDBManagerAgent"))...)
+
+	if spec.ScyllaDB.AdditionalScyllaDBArguments != nil {
+		allErrs = append(allErrs, ValidateScyllaArgsIPFamily(spec.IPFamily, spec.ScyllaDB.AdditionalScyllaDBArguments, fldPath.Child("scyllaDB", "additionalScyllaDBArguments"))...)
+	}
 
 	allErrs = append(allErrs, validateStructSliceFieldUniqueness(spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) string {
 		return rackSpec.Name
@@ -575,6 +580,78 @@ func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.
 	}
 
 	return allErrs
+}
+
+func ValidateScyllaArgsIPFamily(ipFamily *corev1.IPFamily, scyllaArgs []string, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	if len(scyllaArgs) == 0 {
+		return allErrs
+	}
+
+	effectiveIPFamily := corev1.IPv4Protocol
+	if ipFamily != nil {
+		effectiveIPFamily = *ipFamily
+	}
+
+	argsStr := strings.Join(scyllaArgs, " ")
+
+	allErrs = append(allErrs, validateScyllaArgIPAddress("--rpc-address", effectiveIPFamily, argsStr, fldPath)...)
+	allErrs = append(allErrs, validateScyllaArgIPAddress("--listen-address", effectiveIPFamily, argsStr, fldPath)...)
+
+	return allErrs
+}
+
+func validateScyllaArgIPAddress(argName string, expectedIPFamily corev1.IPFamily, argsStr string, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	idx := strings.Index(argsStr, argName)
+	if idx == -1 {
+		return allErrs
+	}
+
+	value := extractArgValue(argsStr[idx+len(argName):])
+	if value == "" || value == "0.0.0.0" || value == "::" {
+		return allErrs
+	}
+
+	valueIsIPv6 := strings.Contains(value, ":")
+	expectedIsIPv6 := expectedIPFamily == corev1.IPv6Protocol
+
+	if valueIsIPv6 != expectedIsIPv6 {
+		expectedFamily := "IPv4"
+		gotFamily := "IPv4"
+		if expectedIsIPv6 {
+			expectedFamily = "IPv6"
+		}
+		if valueIsIPv6 {
+			gotFamily = "IPv6"
+		}
+		allErrs = append(allErrs, field.Invalid(
+			fldPath,
+			argsStr,
+			fmt.Sprintf("%s '%s' IP family (%s) must match spec.ipFamily (%s)", argName, value, gotFamily, expectedFamily),
+		))
+	}
+
+	return allErrs
+}
+
+func extractArgValue(remaining string) string {
+	remaining = strings.TrimLeft(remaining, "= ")
+
+	if strings.HasPrefix(remaining, "\"") {
+		if endIdx := strings.Index(remaining[1:], "\""); endIdx != -1 {
+			return remaining[1 : endIdx+1]
+		}
+		return ""
+	}
+
+	if spaceIdx := strings.IndexAny(remaining, " \t"); spaceIdx != -1 {
+		return remaining[:spaceIdx]
+	}
+
+	return remaining
 }
 
 func GetWarningsOnScyllaDBDatacenterCreate(sdc *scyllav1alpha1.ScyllaDBDatacenter) []string {

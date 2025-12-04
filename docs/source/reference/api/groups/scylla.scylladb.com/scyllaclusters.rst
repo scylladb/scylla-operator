@@ -117,6 +117,9 @@ object
    * - :ref:`imagePullSecrets<api-scylla.scylladb.com-scyllaclusters-v1-.spec.imagePullSecrets[]>`
      - array (object)
      - imagePullSecrets is an optional list of references to secrets in the same namespace used for pulling Scylla and Agent images.
+   * - ipFamily
+     - string
+     - IPFamily specifies the IP family for this cluster. All services, broadcast addresses, and pod IPs will use this IP family.
    * - minReadySeconds
      - integer
      - minReadySeconds is the minimum number of seconds for which a newly created ScyllaDB node should be ready for it to be considered available. When used to control load balanced traffic, this can give the load balancer in front of a node enough time to notice that the node is ready and start forwarding traffic in time. Because it all depends on timing, the order is not guaranteed and, if possible, you should use readinessGates instead. If not provided, Operator will determine this value.
@@ -4713,6 +4716,12 @@ object
    * - hostNetworking
      - boolean
      - hostNetworking determines if scylla uses the host's network namespace. Setting this option avoids going through Kubernetes SDN and exposes scylla on node's IP. Deprecated: `hostNetworking` is deprecated and may be ignored in the future.
+   * - ipFamilies
+     - array (string)
+     - ipFamilies specifies the IP families to use. Supports: IPv4, IPv6.
+   * - ipFamilyPolicy
+     - string
+     - ipFamilyPolicy specifies the IP family policy for the cluster. Supports: SingleStack, PreferDualStack, RequireDualStack.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata:
 

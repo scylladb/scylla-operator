@@ -22,8 +22,6 @@ SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-standa
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-scylla-operator-e2e}"
 USE_EXISTING_CLUSTER="${USE_EXISTING_CLUSTER:-""}"
 
-SCRIPT_START_TIME=$(date +%s)
-
 crypto_key_buffer_size_multiplier=1
 if [[ -n "${SO_E2E_PARALLELISM:-}" && "${SO_E2E_PARALLELISM}" -ne 0 ]]; then
   crypto_key_buffer_size_multiplier="${SO_E2E_PARALLELISM}"
@@ -43,28 +41,6 @@ KIND_BIN="kind"
 if [[ -n "${USE_SUDO}" ]]; then
     KIND_BIN="sudo ${KIND_BIN}"
 fi
-
-# Timing utility functions
-function log_step_start() {
-    local step_name="$1"
-    echo "=========================================="
-    echo "Starting: ${step_name}"
-    echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
-    echo "=========================================="
-    date +%s
-}
-
-function log_step_end() {
-    local step_name="$1"
-    local start_time="$2"
-    local end_time=$(date +%s)
-    local duration=$((end_time - start_time))
-    echo "=========================================="
-    echo "Completed: ${step_name}"
-    echo "Duration: ${duration} seconds ($(printf '%02d:%02d:%02d' $((duration/3600)) $((duration%3600/60)) $((duration%60))))"
-    echo "=========================================="
-    echo ""
-}
 
 function build_operator_image() {
     pushd "${REPO_ROOT_DIR}" > /dev/null
@@ -310,43 +286,31 @@ if [[ -n "${BUILD_OPERATOR}" ]]; then
     echo "Built Scylla Operator image: ${SO_IMAGE}"
 fi
 
-# Setting up kind cluster
-STEP_START=$(log_step_start "Setting up KinD cluster")
+kind_start_time=$(date +%s)
 ensure_kind_cluster
-log_step_end "Setting up KinD cluster" "${STEP_START}"
+kind_end_time=$(date +%s)
 # TODO: verify why it doesn't work in CI
-<<<<<<< Updated upstream
 ensure_images_loaded
-=======
-# ensure_images_loaded
-
-STEP_START=$(log_step_start "Installing all dependencies")
->>>>>>> Stashed changes
 KUBECONFIG=$(prepare_kubeconfig)
 
+env_setup_start_time=$(date +%s)
 create_e2e_namespace
 create_kubeconfig_secret
 
-# Installing all dependencies
 install_cert_manager
 install_prometheus_operator
 install_scylla_operator
 install_scylla_manager
 install_ha_proxy_ingress
-log_step_end "Installing all dependencies" "${STEP_START}"
+env_setup_end_time=$(date +%s)
 
-# Running test suite
-STEP_START=$(log_step_start "Running test suite: ${TEST_SUITE_NAME}")
+tests_run_start_time=$(date +%s)
 run_test_suite_in_pod "${TEST_SUITE_NAME}"
-log_step_end "Running test suite: ${TEST_SUITE_NAME}" "${STEP_START}"
+tests_run_end_time=$(date +%s)
 
-# Log total execution time
-SCRIPT_END_TIME=$(date +%s)
-TOTAL_DURATION=$((SCRIPT_END_TIME - SCRIPT_START_TIME))
-echo "=========================================="
-echo "TOTAL SCRIPT EXECUTION TIME"
-echo "Duration: ${TOTAL_DURATION} seconds ($(printf '%02d:%02d:%02d' $((TOTAL_DURATION/3600)) $((TOTAL_DURATION%3600/60)) $((TOTAL_DURATION%60))))"
-echo "=========================================="
+echo "KinD cluster setup time: $(( kind_end_time - kind_start_time )) seconds"
+echo "Environment setup time: $(( env_setup_end_time - env_setup_start_time )) seconds"
+echo "Tests run time: $(( tests_run_end_time - tests_run_start_time )) seconds"
 
 # TODOs:
 # - Add ingress controller installation and configuration

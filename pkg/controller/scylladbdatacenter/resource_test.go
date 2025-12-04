@@ -1018,7 +1018,6 @@ exec /mnt/shared/scylla-operator sidecar \
 --clients-broadcast-address-type=ServiceClusterIP \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
---scylla-localhost-address=127.0.0.1 \
 --ip-family=IPv4 \
 --loglevel=0 \
  -- "$@"

@@ -721,12 +721,6 @@ exec /mnt/shared/scylla-operator sidecar \
 									}() + ` \
 --service-name=$(SERVICE_NAME) \
 --cpu-count=$(CPU_COUNT) \
---scylla-localhost-address=` + func() string {
-										if sdc.Spec.GetIPFamily() == corev1.IPv6Protocol {
-											return "::1"
-										}
-										return "127.0.0.1"
-									}() + ` \
 --ip-family=` + string(sdc.Spec.GetIPFamily()) + ` \
 ` + fmt.Sprintf("--loglevel=%d", cmdutil.GetLoglevelOrDefaultOrDie()) + ` \
 ` +

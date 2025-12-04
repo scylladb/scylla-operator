@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/api/core/v1"
@@ -19,17 +20,22 @@ import (
 
 const (
 	requeueWaitDuration = 5 * time.Second
-	localhost           = "localhost"
 )
 
 func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) error {
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
+	parsedIP, err := helpers.ParseIP(c.localhostAddress)
+	if err != nil {
+		return fmt.Errorf("can't parse localhost address %q: %w", c.localhostAddress, err)
+	}
+	ipFamily := helpers.GetIPFamily(parsedIP)
+
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost(ipFamily)
 	if err != nil {
 		return err
 	}
 	defer scyllaClient.Close()
 
-	opMode, err := scyllaClient.OperationMode(ctx, localhost)
+	opMode, err := scyllaClient.OperationMode(ctx, c.localhostAddress)
 	if err != nil {
 		return fmt.Errorf("can't get node operation mode: %w", err)
 	}
@@ -57,7 +63,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 		// Node can be in NORMAL mode while still starting up.
 		// Last thing that scylla is doing as part of startup process is brining native transport up
 		// so we check if native port is up as sign that it is not loading.
-		nativeUp, err := scyllaClient.IsNativeTransportEnabled(ctx, localhost)
+		nativeUp, err := scyllaClient.IsNativeTransportEnabled(ctx, c.localhostAddress)
 		if err != nil {
 			return fmt.Errorf("can't get native transport status: %w", err)
 		}
@@ -69,11 +75,11 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 		}
 
 		// Decommission the node only if it is in normal mode and native transport is up.
-		decommissionErr := scyllaClient.Decommission(ctx, localhost)
+		decommissionErr := scyllaClient.Decommission(ctx, c.localhostAddress)
 		if decommissionErr != nil {
 			// Decommission is long running task, so request fails due to the timeout in most cases.
 			// To not raise an error, when it is in progress, we check opMode.
-			opMode, err := scyllaClient.OperationMode(ctx, localhost)
+			opMode, err := scyllaClient.OperationMode(ctx, c.localhostAddress)
 			if err == nil && (opMode.IsDecommissioned() || opMode.IsLeaving() || opMode.IsDecommissioning()) {
 				klog.V(2).InfoS("Decommissioning is in progress. Waiting a bit.", "Mode", opMode)
 				c.queue.AddAfter(c.key, requeueWaitDuration)
@@ -114,18 +120,24 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 		klog.V(4).InfoS("Finished syncing Service annotation", "Service", klog.KObj(svc), "duration", time.Since(startTime))
 	}()
 
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
+	parsedIP, err := helpers.ParseIP(c.localhostAddress)
+	if err != nil {
+		return fmt.Errorf("can't parse localhost address %q: %w", c.localhostAddress, err)
+	}
+	ipFamily := helpers.GetIPFamily(parsedIP)
+
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost(ipFamily)
 	if err != nil {
 		return fmt.Errorf("can't create a new ScyllaClient for localhost: %w", err)
 	}
 	defer scyllaClient.Close()
 
-	hostID, err := c.getHostID(ctx, scyllaClient)
+	hostID, err := c.getHostID(ctx, scyllaClient, c.localhostAddress)
 	if err != nil {
 		return fmt.Errorf("can't get HostID: %w", err)
 	}
 
-	ipToHostIDMap, err := scyllaClient.GetIPToHostIDMap(ctx, localhost)
+	ipToHostIDMap, err := scyllaClient.GetIPToHostIDMap(ctx, c.localhostAddress)
 	if err != nil {
 		return fmt.Errorf("can't get host id to ip mapping: %w", err)
 	}
@@ -146,7 +158,7 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 		return nil
 	}
 
-	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, localhost, localIP)
+	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, c.localhostAddress, localIP)
 	if err != nil {
 		return fmt.Errorf("can't get node tokens: %w", err)
 	}
@@ -159,7 +171,7 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 		klog.V(4).InfoS("Node doesn't have any tokens assigned, looks like it's still bootstrapping, requeueing")
 		c.queue.AddAfter(c.key, requeueWaitDuration)
 	} else {
-		currentTokenRingHash, err = c.getTokenRingHash(ctx, scyllaClient)
+		currentTokenRingHash, err = c.getTokenRingHash(ctx, scyllaClient, c.localhostAddress)
 		if err != nil {
 			return fmt.Errorf("can't get token hash: %w", err)
 		}

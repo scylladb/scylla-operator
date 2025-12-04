@@ -582,22 +582,17 @@ func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.
 	return allErrs
 }
 
-func ValidateScyllaArgsIPFamily(ipFamily *corev1.IPFamily, scyllaArgs []string, fldPath *field.Path) field.ErrorList {
+func ValidateScyllaArgsIPFamily(ipFamily corev1.IPFamily, scyllaArgs []string, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
 	if len(scyllaArgs) == 0 {
 		return allErrs
 	}
 
-	effectiveIPFamily := corev1.IPv4Protocol
-	if ipFamily != nil {
-		effectiveIPFamily = *ipFamily
-	}
-
 	argsStr := strings.Join(scyllaArgs, " ")
 
-	allErrs = append(allErrs, validateScyllaArgIPAddress("--rpc-address", effectiveIPFamily, argsStr, fldPath)...)
-	allErrs = append(allErrs, validateScyllaArgIPAddress("--listen-address", effectiveIPFamily, argsStr, fldPath)...)
+	allErrs = append(allErrs, validateScyllaArgIPAddress("--rpc-address", ipFamily, argsStr, fldPath)...)
+	allErrs = append(allErrs, validateScyllaArgIPAddress("--listen-address", ipFamily, argsStr, fldPath)...)
 
 	return allErrs
 }
@@ -630,13 +625,12 @@ func validateScyllaArgIPAddress(argName string, expectedIPFamily corev1.IPFamily
 		allErrs = append(allErrs, field.Invalid(
 			fldPath,
 			argsStr,
-			fmt.Sprintf("%s '%s' IP family (%s) must match spec.ipFamily (%s)", argName, value, gotFamily, expectedFamily),
+			fmt.Sprintf("%s '%s' IP family (%s) must match spec.ipFamilies[0] (%s)", argName, value, gotFamily, expectedFamily),
 		))
 	}
 
 	return allErrs
 }
-
 func extractArgValue(remaining string) string {
 	remaining = strings.TrimLeft(remaining, "= ")
 

@@ -359,6 +359,9 @@ func makeEndpointSlicesForSeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *sc
 			return progressingConditions, nil, fmt.Errorf("can't calculate endpoints to dataceter %q for datacenter %q: %w", otherDC.Name, dc.Name, err)
 		}
 
+		detectedIPFamily := helpers.DetectEndpointsIPFamily(endpoints)
+		addressType := helpers.IPFamilyToAddressType(detectedIPFamily)
+
 		remoteEndpointSlices = append(remoteEndpointSlices, &discoveryv1.EndpointSlice{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace:       remoteNamespace.Name,
@@ -367,7 +370,7 @@ func makeEndpointSlicesForSeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *sc
 				Annotations:     naming.ScyllaDBClusterDatacenterAnnotations(sc, dc),
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(remoteController, remoteControllerGVK)},
 			},
-			AddressType: discoveryv1.AddressTypeIPv4,
+			AddressType: addressType,
 			Endpoints:   endpoints,
 			Ports: oslices.ConvertSlice(scyllaDBInterNodeCommunicationPorts, func(port portSpec) discoveryv1.EndpointPort {
 				return discoveryv1.EndpointPort{
@@ -573,15 +576,18 @@ func makeServiceClusterIPEndpoints(dcService *corev1.Service) []discoveryv1.Endp
 		return nil
 	}
 
-	addresses := []string{dcService.Spec.ClusterIP}
-	clusterIPs := oslices.FilterOut(dcService.Spec.ClusterIPs, func(clusterIP string) bool {
-		return clusterIP == corev1.ClusterIPNone || clusterIP == dcService.Spec.ClusterIP
-	})
-	addresses = append(addresses, clusterIPs...)
+	preferredFamily := helpers.GetPreferredServiceIPFamily(dcService)
+
+	// Select the appropriate IP address based on the preferred family
+	// In dual-stack services, this will pick only the matching IP family
+	selectedIP, ok := helpers.GetPreferredServiceIP(dcService, &preferredFamily)
+	if !ok {
+		return nil
+	}
 
 	return []discoveryv1.Endpoint{
 		{
-			Addresses: addresses,
+			Addresses: []string{selectedIP},
 			Conditions: discoveryv1.EndpointConditions{
 				Ready:       pointer.Ptr(true),
 				Serving:     pointer.Ptr(true),
@@ -1400,10 +1406,14 @@ func makeEndpointSliceForLocalIdentityService(sc *scyllav1alpha1.ScyllaDBCluster
 		endpoints = append(endpoints, dcEndpoints...)
 	}
 
+	detectedIPFamily := helpers.DetectEndpointsIPFamily(endpoints)
+
 	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return progressingConditions, nil, err
 	}
+
+	addressType := helpers.IPFamilyToAddressType(detectedIPFamily)
 
 	es := &discoveryv1.EndpointSlice{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1435,7 +1445,7 @@ func makeEndpointSliceForLocalIdentityService(sc *scyllav1alpha1.ScyllaDBCluster
 				*metav1.NewControllerRef(sc, scyllav1alpha1.ScyllaDBClusterGVK),
 			},
 		},
-		AddressType: discoveryv1.AddressTypeIPv4,
+		AddressType: addressType,
 		Ports: oslices.ConvertSlice(localIdentityServicePorts, func(spec portSpec) discoveryv1.EndpointPort {
 			return discoveryv1.EndpointPort{
 				Name:     pointer.Ptr(spec.name),

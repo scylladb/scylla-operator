@@ -169,7 +169,7 @@ function install_prometheus_operator() {
 
 function install_scylla_operator() {
     echo "Installing Scylla Operator..."
-    sed "s|docker.io/scylladb/scylla-operator:latest|${SO_IMAGE}|g" "${REPO_ROOT_DIR}/deploy/operator.yaml" | \
+    kustomize build "${REPO_ROOT_DIR}/deploy/kind" | sed "s|docker.io/scylladb/scylla-operator:latest|${SO_IMAGE}|g" | \
       kubectl -n=scylla-operator apply --server-side -f=-
     kubectl wait --for='condition=established' crd/scyllaclusters.scylla.scylladb.com crd/nodeconfigs.scylla.scylladb.com crd/scyllaoperatorconfigs.scylla.scylladb.com crd/scylladbmonitorings.scylla.scylladb.com
     kubectl -n=scylla-operator rollout status --timeout=10m deployment.apps/{scylla-operator,webhook-server}
@@ -214,10 +214,6 @@ function run_test_suite_in_pod() {
       "--scyllacluster-nodes-broadcast-address-type=PodIP"
       "--scyllacluster-clients-broadcast-address-type=PodIP"
       "--scyllacluster-storageclass-name=${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
-      "--crypto-key-size=${SO_CRYPTO_KEY_SIZE}"
-      "--crypto-key-buffer-size-min=${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"
-      "--crypto-key-buffer-size-max=${SO_CRYPTO_KEY_BUFFER_SIZE_MAX}"
-
     )
 
     kubectl_create -n=e2e -f=- <<EOF
@@ -288,7 +284,7 @@ fi
 
 ensure_kind_cluster
 # TODO: verify why it doesn't work in CI
-ensure_images_loaded
+# ensure_images_loaded
 KUBECONFIG=$(prepare_kubeconfig)
 
 create_e2e_namespace
@@ -303,5 +299,4 @@ install_ha_proxy_ingress
 run_test_suite_in_pod "${TEST_SUITE_NAME}"
 
 # TODOs:
-# - Add ingress controller installation and configuration
 # - Add support for multi-DC tests by configuring multiple worker kubeconfigs

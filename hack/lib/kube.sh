@@ -28,8 +28,13 @@ function kubectl_cp {
   done
 }
 
+# wait-for-object-creation awaits the creation of a Kubernetes object in a given namespace.
+# $1 - namespace
+# $2 - object kind/name (e.g., pod/name)
+# $3 - timeout (optional, defaults to 60s)
 function wait-for-object-creation {
-  kubectl wait --timeout=60s --for=create -n "${1}" "${2}"
+  local timeout="${3:-60s}"
+  kubectl wait --timeout="${timeout}" --for=create -n="${1}" "${2}"
 }
 
 # $1 - namespace

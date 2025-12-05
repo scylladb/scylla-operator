@@ -1,0 +1,5 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: scylladb-operator-operator-group
+  namespace: scylla-operator

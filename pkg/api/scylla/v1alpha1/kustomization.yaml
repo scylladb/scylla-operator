@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - scylla.scylladb.com_nodeconfigs.yaml
+  - scylla.scylladb.com_remotekubernetesclusters.yaml
+  - scylla.scylladb.com_remoteowners.yaml
+  - scylla.scylladb.com_scylladbclusters.yaml
+  - scylla.scylladb.com_scylladbdatacenternodesstatusreports.yaml
+  - scylla.scylladb.com_scylladbdatacenters.yaml
+  - scylla.scylladb.com_scylladbmanagerclusterregistrations.yaml
+  - scylla.scylladb.com_scylladbmanagertasks.yaml
+  - scylla.scylladb.com_scylladbmonitorings.yaml
+  - scylla.scylladb.com_scyllaoperatorconfigs.yaml

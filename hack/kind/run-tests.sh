@@ -21,6 +21,8 @@ SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-5}"
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-standard}"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-scylla-operator-e2e}"
 USE_EXISTING_CLUSTER="${USE_EXISTING_CLUSTER:-""}"
+ARTIFACTS="${ARTIFACTS:-$(mktemp -d)}"
+FOCUS_TESTS="${FOCUS_TESTS:-.*}"
 
 crypto_key_buffer_size_multiplier=1
 if [[ -n "${SO_E2E_PARALLELISM:-}" && "${SO_E2E_PARALLELISM}" -ne 0 ]]; then
@@ -199,7 +201,7 @@ function run_test_suite_in_pod() {
     ingress_controller_address="$( kubectl -n=haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' ):9142"
 
     e2e_command_args=(
-      # "--skip=${SO_SKIPPED_TESTS}"
+      "--focus=${FOCUS_TESTS}"
       "--kubeconfig=/var/run/secrets/kubeconfig"
       "--loglevel=5"
       "--color=false"
@@ -214,10 +216,6 @@ function run_test_suite_in_pod() {
       "--scyllacluster-nodes-broadcast-address-type=PodIP"
       "--scyllacluster-clients-broadcast-address-type=PodIP"
       "--scyllacluster-storageclass-name=${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
-      "--crypto-key-size=${SO_CRYPTO_KEY_SIZE}"
-      "--crypto-key-buffer-size-min=${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"
-      "--crypto-key-buffer-size-max=${SO_CRYPTO_KEY_BUFFER_SIZE_MAX}"
-
     )
 
     kubectl_create -n=e2e -f=- <<EOF
@@ -289,8 +287,10 @@ fi
 kind_start_time=$(date +%s)
 ensure_kind_cluster
 kind_end_time=$(date +%s)
+
 # TODO: verify why it doesn't work in CI
-ensure_images_loaded
+# ensure_images_loaded
+
 KUBECONFIG=$(prepare_kubeconfig)
 
 env_setup_start_time=$(date +%s)
@@ -313,5 +313,4 @@ echo "Environment setup time: $(( env_setup_end_time - env_setup_start_time )) s
 echo "Tests run time: $(( tests_run_end_time - tests_run_start_time )) seconds"
 
 # TODOs:
-# - Add ingress controller installation and configuration
 # - Add support for multi-DC tests by configuring multiple worker kubeconfigs

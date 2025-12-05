@@ -644,6 +644,8 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 									positionalArgs = append(positionalArgs, "--developer-mode=0")
 								}
 
+								positionalArgs = append(positionalArgs, "--reactor-backend=io_uring")
+
 								cmd := []string{
 									"/usr/bin/bash",
 									"-euEo",

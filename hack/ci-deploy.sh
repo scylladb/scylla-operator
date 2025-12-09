@@ -10,16 +10,19 @@ shopt -s inherit_errexit
 
 source "$( dirname "${BASH_SOURCE[0]}" )/lib/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/lib/kube.sh"
+source "$( dirname "${BASH_SOURCE[0]}" )/lib/install.sh"
 
-if [[ -z ${1+x} ]]; then
-    echo "Missing operator image ref.\nUsage: ${0} <operator_image_ref>" >&2 >/dev/null
-    exit 1
+if [[ "$#" -ne 1 ]]; then
+  echo "Missing arguments.\nUsage: ${0} <operator_image_ref>" > /dev/stderr
+  exit 1
 fi
+
+OPERATOR_IMAGE_REF="${1}"
+export OPERATOR_IMAGE_REF
 
 trap cleanup-bg-jobs-on-exit EXIT
 
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
-OPERATOR_IMAGE_REF=${1}
 
 if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
   ARTIFACTS_DEPLOY_DIR=${ARTIFACTS}/deploy
@@ -28,7 +31,7 @@ fi
 SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:-false}
 SO_INSTALL_XFSPROGS_ON_NODES="${SO_INSTALL_XFSPROGS_ON_NODES:-}"
 
-mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{operator,prometheus-operator,haproxy-ingress}
+mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{prometheus-operator,haproxy-ingress}
 
 if [[ -n "${SO_INSTALL_XFSPROGS_ON_NODES:-}" ]]; then
   cp ./examples/gke/install-xfsprogs.daemonset.yaml "${ARTIFACTS_DEPLOY_DIR}/"
@@ -49,33 +52,7 @@ else
   echo "Skipping enabling OpenShift User Workload Monitoring"
 fi
 
-cp ./deploy/operator/*.yaml "${ARTIFACTS_DEPLOY_DIR}/operator"
 cp ./examples/third-party/haproxy-ingress/*.yaml "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
-cp ./examples/third-party/cert-manager.yaml "${ARTIFACTS_DEPLOY_DIR}/"
-
-for f in $( find "${ARTIFACTS_DEPLOY_DIR}"/ -type f -name '*.yaml' ); do
-    sed -i -E -e "s~docker\.io/scylladb/scylla-operator:[^ @]+$~${OPERATOR_IMAGE_REF}~" "${f}"
-done
-
-# TODO: Replace it with ScyllaOperatorConfig field when available.
-# Ref: https://github.com/scylladb/scylla-operator/issues/2314.
-SO_SCYLLA_OPERATOR_LOGLEVEL="${SO_SCYLLA_OPERATOR_LOGLEVEL:-4}"
-export SO_SCYLLA_OPERATOR_LOGLEVEL
-yq e --inplace '.spec.template.spec.containers[0].args += "--loglevel=" + env(SO_SCYLLA_OPERATOR_LOGLEVEL)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-
-yq e --inplace '.spec.template.spec.containers[0].args += ["--qps=200", "--burst=400"]' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-
-SO_CRYPTO_KEY_SIZE="${SO_CRYPTO_KEY_SIZE:-4096}"
-export SO_CRYPTO_KEY_SIZE
-SO_CRYPTO_KEY_BUFFER_SIZE_MIN="${SO_CRYPTO_KEY_BUFFER_SIZE_MIN:-6}"
-export SO_CRYPTO_KEY_BUFFER_SIZE_MIN
-SO_CRYPTO_KEY_BUFFER_SIZE_MAX="${SO_CRYPTO_KEY_BUFFER_SIZE_MAX:-10}"
-export SO_CRYPTO_KEY_BUFFER_SIZE_MAX
-yq e --inplace '.spec.template.spec.containers[0].args += ["--crypto-key-size="+env(SO_CRYPTO_KEY_SIZE), "--crypto-key-buffer-size-min="+env(SO_CRYPTO_KEY_BUFFER_SIZE_MIN), "--crypto-key-buffer-size-max="+env(SO_CRYPTO_KEY_BUFFER_SIZE_MAX), "--crypto-key-buffer-delay=2s"]' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-
-if [[ -n ${SCYLLA_OPERATOR_FEATURE_GATES+x} ]]; then
-    yq e --inplace '.spec.template.spec.containers[0].args += "--feature-gates="+ env(SCYLLA_OPERATOR_FEATURE_GATES)' "${ARTIFACTS_DEPLOY_DIR}/operator/50_operator.deployment.yaml"
-fi
 
 # Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
@@ -93,21 +70,18 @@ if [[ "${SO_ENABLE_OPENSHIFT_USER_WORKLOAD_MONITORING:-}" == "true" ]]; then
 fi
 
 kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
-kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/cert-manager.yaml
 
-# Wait for cert-manager
-kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
-for d in cert-manager{,-cainjector,-webhook}; do
-    kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${d}"
-done
-wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
+install-operator "$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../" )"
 
-kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/operator
-
-# Manager needs scylla CRD registered and the webhook running
-kubectl wait --for condition=established crd/scyllaclusters.scylla.scylladb.com
+# Wait for operator and webhook server to roll out
+wait-for-object-creation scylla-operator deployment.apps/scylla-operator 5m
 kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+wait-for-object-creation scylla-operator deployment.apps/webhook-server 5m
 kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
+
+# Manager needs scylla CRD registered
+wait-for-object-creation scylla-operator crd/scyllaclusters.scylla.scylladb.com 5m
+kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
 
 if [[ -z "${SO_NODECONFIG_PATH:-}" ]]; then
   echo "Skipping NodeConfig creation"

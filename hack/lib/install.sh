@@ -48,7 +48,29 @@ function install-operator() {
   SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,AllBeta=true}"
   export SCYLLA_OPERATOR_FEATURE_GATES
 
-  _install-operator-manifests
+  SO_SCYLLA_OPERATOR_INSTALL_MODE="${SO_SCYLLA_OPERATOR_INSTALL_MODE:-manifests}"
+  case "${SO_SCYLLA_OPERATOR_INSTALL_MODE}" in
+      "manifests")
+          if [ -z "${OPERATOR_IMAGE_REF+x}" ]; then
+            echo "OPERATOR_IMAGE_REF must be set when SO_SCYLLA_OPERATOR_INSTALL_MODE is 'manifests'" > /dev/stderr
+            exit 1
+          fi
+
+          _install-operator-manifests
+          ;;
+      "olm")
+          if [ -z "${SO_OLM_CATALOG_IMAGE_REF+x}" ]; then
+              echo "SO_OLM_CATALOG_IMAGE_REF must be set when SO_SCYLLA_OPERATOR_INSTALL_MODE is 'olm'" > /dev/stderr
+              exit 1
+          fi
+
+          _install-operator-olm
+          ;;
+      *)
+          echo "SO_SCYLLA_OPERATOR_INSTALL_MODE must be set to 'manifests' or 'olm'"
+          exit 1
+          ;;
+  esac
 }
 
 function _install-operator-manifests() {
@@ -119,4 +141,59 @@ patches:
 EOF
 
   kubectl kustomize --load-restrictor=LoadRestrictionsNone "${ARTIFACTS_DEPLOY_DIR}/operator" | kubectl_create -n=scylla-operator -f=-
+}
+
+function _install-operator-olm() {
+  if [ -z "${SO_OLM_CATALOG_IMAGE_REF+x}" ]; then
+    echo "SO_OLM_CATALOG_IMAGE_REF must be set" > /dev/stderr
+    exit 1
+  fi
+
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}"/olm
+  cat > "${ARTIFACTS_DEPLOY_DIR}/olm/kustomization.yaml" << EOF
+resources:
+- ${SOURCE_ROOT}/hack/.ci/manifests/olm/00_scylladb-operator.catalogsource.yaml
+- ${SOURCE_ROOT}/hack/.ci/manifests/olm/00_scylladb-operator.namespace.yaml
+- ${SOURCE_ROOT}/hack/.ci/manifests/olm/10_scylladb-operator.operatorgroup.yaml
+- ${SOURCE_ROOT}/hack/.ci/manifests/olm/50_scylladb-operator.subscription.yaml
+patches:
+- patch: |-
+    apiVersion: operators.coreos.com/v1alpha1
+    kind: CatalogSource
+    metadata:
+      name: scylladb-operator-catalog
+      namespace: openshift-marketplace
+    spec:
+      image: "${SO_OLM_CATALOG_IMAGE_REF}"
+- patch: |-
+    apiVersion: operators.coreos.com/v1alpha1
+    kind: Subscription
+    metadata:
+      name: scylladb-operator-subscription
+      namespace: scylla-operator
+    spec:
+      config:
+        env:
+        # Setting SCYLLA_OPERATOR_V instead of SCYLLA_OPERATOR_LOGLEVEL is a dirty workaround to override the default LOGLEVEL being set in the manifests.
+        # Normally, the flag takes precedence over the env var, so it is not possible to override it with SCYLLA_OPERATOR_LOGLEVEL.
+        # However, the 'v' flag takes precedence over 'loglevel', so setting it through the env var overrides the default flag value.
+        - name: SCYLLA_OPERATOR_V
+          value: "${SO_SCYLLA_OPERATOR_LOGLEVEL}"
+        - name: SCYLLA_OPERATOR_CRYPTO_KEY_SIZE
+          value: "${SO_CRYPTO_KEY_SIZE}"
+        - name: SCYLLA_OPERATOR_CRYPTO_KEY_BUFFER_SIZE_MIN
+          value: "${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"
+        - name: SCYLLA_OPERATOR_CRYPTO_KEY_BUFFER_SIZE_MAX
+          value: "${SO_CRYPTO_KEY_BUFFER_SIZE_MAX}"
+        - name: SCYLLA_OPERATOR_CRYPTO_KEY_BUFFER_DELAY
+          value: "${SO_CRYPTO_KEY_BUFFER_DELAY}"
+        - name: SCYLLA_OPERATOR_QPS
+          value: "${SO_QPS}"
+        - name: SCYLLA_OPERATOR_BURST
+          value: "${SO_BURST}"
+        - name: SCYLLA_OPERATOR_FEATURE_GATES
+          value: "${SCYLLA_OPERATOR_FEATURE_GATES}"
+EOF
+
+  kubectl kustomize --load-restrictor=LoadRestrictionsNone "${ARTIFACTS_DEPLOY_DIR}/olm" | kubectl_create -f=-
 }

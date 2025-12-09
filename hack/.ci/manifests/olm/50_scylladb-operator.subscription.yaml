@@ -1,0 +1,12 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: scylladb-operator-subscription
+  namespace: scylla-operator
+spec:
+  # Channel value needs to correspond to the one defined in the catalog created in CI.
+  channel: candidate-v1.0
+  installPlanApproval: Automatic
+  name: scylladb-operator
+  source: scylladb-operator-catalog
+  sourceNamespace: openshift-marketplace

@@ -6,13 +6,13 @@ toolchain go1.24.6
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
-	github.com/aws/aws-sdk-go-v2 v1.40.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.2
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.2
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.26
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.14
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.2
-	github.com/aws/smithy-go v1.23.2
+	github.com/aws/aws-sdk-go-v2 v1.41.0
+	github.com/aws/aws-sdk-go-v2/config v1.32.5
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.5
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.29
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.16
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.5
+	github.com/aws/smithy-go v1.24.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/blang/semver/v4 v4.0.0
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
@@ -31,8 +31,8 @@ require (
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed
 	github.com/magiconair/properties v1.8.10
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/onsi/ginkgo/v2 v2.27.2
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/ginkgo/v2 v2.27.3
+	github.com/onsi/gomega v1.38.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.2
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.2
@@ -45,13 +45,13 @@ require (
 	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20251028150944-ac6f6b50a24c
 	github.com/scylladb/scylladb-swagger-go-client v0.2.0
 	github.com/shurcooL/githubv4 v0.0.0-20240727222349-48295856cce7
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/config v1.4.0
-	golang.org/x/oauth2 v0.33.0
-	golang.org/x/sys v0.38.0
+	golang.org/x/oauth2 v0.34.0
+	golang.org/x/sys v0.39.0
 	golang.org/x/time v0.14.0
 	google.golang.org/grpc v1.77.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -79,17 +79,17 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.14 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.14 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.16 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.32.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.14 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.14 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.0.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.41.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.32.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.0.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect

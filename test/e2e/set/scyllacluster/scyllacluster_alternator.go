@@ -285,7 +285,7 @@ authorizer: CassandraAuthorizer
 			})
 			o.Expect(err).To(o.MatchError(&smithy.GenericAPIError{
 				Code:    "UnrecognizedClientException",
-				Message: "The security token included in the request is invalid.",
+				Message: "wrong signature",
 			}))
 
 			framework.By("Cleaning up table %q", tableName)

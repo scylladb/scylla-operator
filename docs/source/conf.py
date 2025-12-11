@@ -58,11 +58,11 @@ myst_substitutions = {
     "repository": "scylladb/scylla-operator",
     "revision": "master",
     "imageRepository": "docker.io/scylladb/scylla",
-    "imageTag": "2025.3.3",
+    "imageTag": "2025.3.5",
     "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-    "enterpriseImageTag": "2025.3.3",
+    "enterpriseImageTag": "2025.3.5",
     "agentVersion": "3.7.0",
-    "scyllaDBRepositoryTag": "scylla-2025.3.3",
+    "scyllaDBRepositoryTag": "scylla-2025.3.5",
 }
 
 # -- Options for not found extension

@@ -3,7 +3,7 @@
 # Copyright (C) 2024 ScyllaDB
 #
 
-set -euExo pipefail
+set -euEo pipefail
 shopt -s inherit_errexit
 
 FIELD_MANAGER="${FIELD_MANAGER:-so-default}"

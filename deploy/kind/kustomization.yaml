@@ -1,0 +1,10 @@
+resources:
+  # Operator deployment along with CRDs
+  - ../operator
+
+patches:
+  # TODO: move operator patches to deploy/operator
+  - target:
+      kind: Deployment
+      name: scylla-operator
+    path: operator-crypto-key-size.patch.yaml

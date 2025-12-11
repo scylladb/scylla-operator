@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../pkg/api/scylla # crds for all api versions
+  - ./00_namespace.yaml
+  - ./00_operator.clusterrole.yaml
+  - ./00_operator.clusterrole_def.yaml
+  - ./00_operator.clusterrole_def_openshift.yaml
+  - ./00_operator_remote.clusterrole.yaml
+  - ./00_operator_remote.clusterrole_def.yaml
+  - ./00_scyllacluster_clusterrole_edit.yaml
+  - ./00_scyllacluster_clusterrole_view.yaml
+  - ./00_scyllacluster_member_clusterrole.yaml
+  - ./00_scyllacluster_member_clusterrole_def.yaml
+  - ./00_scyllacluster_member_clusterrole_def_openshift.yaml
+  - ./00_scylladbmonitoring_grafana_clusterrole.yaml
+  - ./00_scylladbmonitoring_grafana_clusterrole_def_openshift.yaml
+  - ./00_scylladbmonitoring_prometheus_clusterrole.yaml
+  - ./00_scylladbmonitoring_prometheus_clusterrole_def.yaml
+  - ./00_scylladbmonitoring_prometheus_clusterrole_def_openshift.yaml
+  - ./10_certificate.yaml
+  - ./10_issuer.yaml
+  - ./10_operator.pdb.yaml
+  - ./10_operator.serviceaccount.yaml
+  - ./10_validatingwebhook.yaml
+  - ./10_webhookserver.pdb.yaml
+  - ./10_webhookserver.service.yaml
+  - ./10_webhookserver.serviceaccount.yaml
+  - ./20_clusterrolebinding.yaml
+  - ./50_operator.deployment.yaml
+  - ./50_webhookserver.deployment.yaml

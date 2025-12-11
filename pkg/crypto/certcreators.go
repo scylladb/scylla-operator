@@ -102,5 +102,6 @@ func (c *ServingCertCreatorConfig) ToCreator() *X509CertCreator {
 		IPAddresses: c.IPAddresses,
 		DNSNames:    c.DNSNames,
 		KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 }

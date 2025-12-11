@@ -19,6 +19,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -40,9 +41,12 @@ type Options struct {
 	ExternalSeeds                     []string
 	NodesBroadcastAddressTypeString   string
 	ClientsBroadcastAddressTypeString string
+	ScyllaLocalhostAddress            string
+	IPFamilyString                    string
 
 	nodesBroadcastAddressType   scyllav1alpha1.BroadcastAddressType
 	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType
+	ipFamily                    corev1.IPFamily
 
 	kubeClient kubernetes.Interface
 }
@@ -101,6 +105,8 @@ func NewCmd(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.Flags().StringSliceVar(&o.ExternalSeeds, "external-seeds", o.ExternalSeeds, "The external seeds to propagate to ScyllaDB binary on startup as \"seeds\" parameter of seed-provider.")
 	cmd.Flags().StringVarP(&o.NodesBroadcastAddressTypeString, "nodes-broadcast-address-type", "", o.NodesBroadcastAddressTypeString, "Address type that is broadcasted for communication with other nodes.")
 	cmd.Flags().StringVarP(&o.ClientsBroadcastAddressTypeString, "clients-broadcast-address-type", "", o.ClientsBroadcastAddressTypeString, "Address type that is broadcasted for communication with clients.")
+	cmd.Flags().StringVarP(&o.ScyllaLocalhostAddress, "scylla-localhost-address", "", "127.0.0.1", "Localhost address for connecting to ScyllaDB API (127.0.0.1 for IPv4 or ::1 for IPv6).")
+	cmd.Flags().StringVarP(&o.IPFamilyString, "ip-family", "", string(corev1.IPv4Protocol), "IP family to use for ScyllaDB (IPv4 or IPv6).")
 
 	return cmd
 }
@@ -129,6 +135,28 @@ func (o *Options) Validate() error {
 		errs = append(errs, fmt.Errorf("unsupported value of clients-broadcast-address-type %q, supported ones are: %v", o.ClientsBroadcastAddressTypeString, validation.SupportedScyllaV1Alpha1BroadcastAddressTypes))
 	}
 
+	if len(o.ScyllaLocalhostAddress) == 0 {
+		errs = append(errs, fmt.Errorf("scylla-localhost-address can't be empty"))
+	} else if o.ScyllaLocalhostAddress != "127.0.0.1" && o.ScyllaLocalhostAddress != "::1" {
+		errs = append(errs, fmt.Errorf("scylla-localhost-address must be either '127.0.0.1' (IPv4) or '::1' (IPv6), got %q", o.ScyllaLocalhostAddress))
+	}
+
+	if len(o.IPFamilyString) == 0 {
+		errs = append(errs, fmt.Errorf("ip-family can't be empty"))
+	} else if o.IPFamilyString != string(corev1.IPv4Protocol) && o.IPFamilyString != string(corev1.IPv6Protocol) {
+		errs = append(errs, fmt.Errorf("ip-family must be either %q or %q, got %q", corev1.IPv4Protocol, corev1.IPv6Protocol, o.IPFamilyString))
+	}
+
+	// Validate consistency between ip-family and scylla-localhost-address
+	if len(o.IPFamilyString) > 0 && len(o.ScyllaLocalhostAddress) > 0 {
+		if o.IPFamilyString == string(corev1.IPv4Protocol) && o.ScyllaLocalhostAddress != "127.0.0.1" {
+			errs = append(errs, fmt.Errorf("ip-family is %q but scylla-localhost-address is %q; expected '127.0.0.1' for IPv4", o.IPFamilyString, o.ScyllaLocalhostAddress))
+		}
+		if o.IPFamilyString == string(corev1.IPv6Protocol) && o.ScyllaLocalhostAddress != "::1" {
+			errs = append(errs, fmt.Errorf("ip-family is %q but scylla-localhost-address is %q; expected '::1' for IPv6", o.IPFamilyString, o.ScyllaLocalhostAddress))
+		}
+	}
+
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
@@ -155,6 +183,7 @@ func (o *Options) Complete() error {
 
 	o.clientsBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)
 	o.nodesBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)
+	o.ipFamily = corev1.IPFamily(o.IPFamilyString)
 
 	return nil
 }
@@ -192,6 +221,7 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
 		o.ServiceName,
+		o.ScyllaLocalhostAddress,
 		o.kubeClient,
 		singleServiceInformer,
 	)
@@ -229,7 +259,7 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		return fmt.Errorf("can't get pod %q: %w", o.ServiceName, err)
 	}
 
-	member, err := identity.NewMember(service, pod, o.nodesBroadcastAddressType, o.clientsBroadcastAddressType, args)
+	member, err := identity.NewMember(service, pod, o.nodesBroadcastAddressType, o.clientsBroadcastAddressType, o.ipFamily, args)
 	if err != nil {
 		return fmt.Errorf("can't create new member from objects: %w", err)
 	}

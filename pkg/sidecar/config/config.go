@@ -19,6 +19,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/util/cpuset"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
@@ -221,11 +222,14 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	// Listen on all interfaces so users or a service mesh can use localhost.
-	listenAddress := "0.0.0.0"
+	isBroadcastIPv6 := m.IPFamily == corev1.IPv6Protocol
+
 	prometheusAddress := "0.0.0.0"
+	if isBroadcastIPv6 {
+		prometheusAddress = "::"
+	}
+
 	args := map[string]*string{
-		"listen-address":        &listenAddress,
 		"seeds":                 pointer.Ptr(strings.Join(seeds, ",")),
 		"overprovisioned":       &overprovisioned,
 		"smp":                   pointer.Ptr(strconv.Itoa(s.cpuCount)),
@@ -233,6 +237,11 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 		"broadcast-address":     &m.BroadcastAddress,
 		"broadcast-rpc-address": &m.BroadcastRPCAddress,
 		"cpuset":                &cpusAllowed,
+	}
+
+	if !isBroadcastIPv6 {
+		listenAddress := "0.0.0.0"
+		args["listen-address"] = &listenAddress
 	}
 
 	if hostID, ok := m.ServiceLabels[naming.ReplacingNodeHostIDLabel]; ok {
@@ -244,7 +253,48 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	}
 
 	if len(m.AdditionalScyllaDBArguments) > 0 {
-		args = mergeArguments(parseScyllaArguments(strings.Join(m.AdditionalScyllaDBArguments, " ")), args)
+		userArgs := parseScyllaArguments(strings.Join(m.AdditionalScyllaDBArguments, " "))
+
+		if userRpcAddress, hasUserRpcAddress := userArgs["rpc-address"]; hasUserRpcAddress && userRpcAddress != nil {
+			isUserRpcIPv6 := strings.Contains(*userRpcAddress, ":")
+
+			if isBroadcastIPv6 != isUserRpcIPv6 {
+				klog.Warningf("User-provided rpc-address '%s' IP family doesn't match broadcast-address '%s' IP family. Removing user's rpc-address for consistency.",
+					*userRpcAddress, m.BroadcastAddress)
+				delete(userArgs, "rpc-address")
+			} else {
+				klog.Infof("Using user-provided rpc-address: %s", *userRpcAddress)
+			}
+		}
+
+		if userListenAddress, hasUserListenAddress := userArgs["listen-address"]; hasUserListenAddress && userListenAddress != nil {
+			isUserListenIPv6 := strings.Contains(*userListenAddress, ":")
+
+			if isBroadcastIPv6 != isUserListenIPv6 {
+				klog.Warningf("User-provided listen-address '%s' IP family doesn't match broadcast-address '%s' IP family. Removing user's listen-address for consistency.",
+					*userListenAddress, m.BroadcastAddress)
+				delete(userArgs, "listen-address")
+			} else {
+				klog.Infof("Using user-provided listen-address: %s", *userListenAddress)
+			}
+		}
+
+		args = mergeArguments(args, userArgs)
+	}
+
+	if isBroadcastIPv6 {
+		if _, hasRpcAddress := args["rpc-address"]; !hasRpcAddress {
+			args["rpc-address"] = pointer.Ptr("::")
+			klog.Infof("Using default IPv6 rpc-address: ::")
+		}
+
+		if _, hasListenAddress := args["listen-address"]; !hasListenAddress {
+			args["listen-address"] = pointer.Ptr("::")
+			klog.Infof("Using default IPv6 listen-address: ::")
+		}
+
+		args["enable-ipv6-dns-lookup"] = pointer.Ptr("1")
+		klog.Info("Enabling IPv6 DNS lookup due to cluster IPv6 IPFamily")
 	}
 
 	if _, err := os.Stat(scyllaIOPropertiesPath); err == nil {

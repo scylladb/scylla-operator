@@ -1,0 +1,2 @@
+annotations:
+  operators.operatorframework.io.bundle.channels.v1: dev # Overwritten during publishing.

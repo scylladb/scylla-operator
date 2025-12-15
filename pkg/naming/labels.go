@@ -26,9 +26,12 @@ func ClusterLabelsForScyllaCluster(sc *scyllav1.ScyllaCluster) map[string]string
 	return labels
 }
 
-// ClusterSelector returns a labels selector for the given ScyllaCluster.
-func ClusterSelector(sdc *scyllav1alpha1.ScyllaDBDatacenter) labels.Selector {
-	return labels.SelectorFromSet(ClusterLabels(sdc))
+// ScyllaDBNodesPodsLabelsForScyllaCluster returns a map of label keys and values for ScyllaDB nodes pods limited
+// to the given ScyllaCluster.
+func ScyllaDBNodesPodsLabelsForScyllaCluster(sc *scyllav1.ScyllaCluster) map[string]string {
+	labels := ClusterLabelsForScyllaCluster(sc)
+	labels[PodTypeLabel] = string(PodTypeScyllaDBNode)
+	return labels
 }
 
 // DatacenterLabels returns a map of label keys and values
@@ -60,8 +63,14 @@ func StatefulSetPodLabel(name string) map[string]string {
 	}
 }
 
-func ScyllaLabels() map[string]string {
+// ScyllaDBNodePodLabels returns a map of labels for ScyllaDB node pods (belonging to any cluster).
+func ScyllaDBNodePodLabels() map[string]string {
+	return map[string]string{
+		PodTypeLabel: string(PodTypeScyllaDBNode),
+	}
+}
 
+func ScyllaLabels() map[string]string {
 	return map[string]string{
 		"app": AppName,
 

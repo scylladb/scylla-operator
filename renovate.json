@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["custom.regex"],
+  "schedule": ["before 5am every weekday"],
+  "labels": [
+    "kind/dependency-bump",
+    "priority/important-longterm"
+  ],
+  "customManagers": [
+    {
+      "description": "Custom manager for dependencies defined in assets/config/config.yaml with Renovate annotations matching the regex.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^assets/config/config\\.yaml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*\\S+:\\s*\"?(?<currentValue>[^\"\\s]+)\"?"
+      ]
+    }
+  ]
+}

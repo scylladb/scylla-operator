@@ -1,7 +1,10 @@
 FROM quay.io/scylladb/scylla-operator-images:golang-1.25 AS builder
 WORKDIR /go/src/github.com/scylladb/scylla-operator
 COPY . .
-RUN make build --warn-undefined-variables
+
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    make build --warn-undefined-variables
 
 FROM quay.io/scylladb/scylla-operator-images:base-ubi-9.6-minimal
 

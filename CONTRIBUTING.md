@@ -83,3 +83,12 @@ Refer to [The Standard of Code Review](https://github.com/golang/go/wiki/CodeRev
 ### Submitting
 
 After addressing the review feedback, squash your changes into the original commits. Avoid adding new commits. Your PR should always be in a mergeable state.
+
+## Maintenance
+
+### Configuring Renovate
+
+We're using [Renovate](https://docs.renovatebot.com/) for automatic dependency updates of some components.
+If you want to modify Renovate's configuration, edit the `renovate.json` file in the repository root. You can verify
+your changes by running Renovate locally using the following command: `./hack/check-renovate.sh`. If there are any
+updates that you expect Renovate to make, but the script does not report them, please adjust your configuration accordingly.

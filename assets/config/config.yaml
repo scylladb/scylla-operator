@@ -1,4 +1,5 @@
 operator:
+  # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
   scyllaDBVersion: "2025.3.5"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.

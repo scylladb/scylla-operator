@@ -16,7 +16,6 @@ examples/haproxy-ingress.yaml linguist-generated=true
 values.schema.json linguist-generated=true
 
 # Path prefixes
-vendor/** linguist-generated=true
 docs/source/reference/api/** linguist-generated=true
 pkg/client/** linguist-generated=true
 pkg/externalclient/** linguist-generated=true

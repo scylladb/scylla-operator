@@ -8,6 +8,7 @@ shopt -s inherit_errexit
 
 source "$( dirname "${BASH_SOURCE[0]}" )/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/kube.sh"
+source "$( dirname "${BASH_SOURCE[0]}" )/metadata.sh"
 
 # install-operator installs the Scylla Operator and its dependencies in the cluster through the specified method.
 # $1 - root source path to use. It can either be an absolute file path or a URL.
@@ -172,6 +173,7 @@ patches:
       name: scylladb-operator-subscription
       namespace: scylla-operator
     spec:
+      channel: $( get-metadata ".operatorTests.olm.channel" )
       config:
         env:
         # Setting SCYLLA_OPERATOR_V instead of SCYLLA_OPERATOR_LOGLEVEL is a dirty workaround to override the default LOGLEVEL being set in the manifests.

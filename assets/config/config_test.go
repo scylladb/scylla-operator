@@ -54,6 +54,23 @@ func validateDashboardPath(p string) error {
 	return fmt.Errorf("path %q is invalid: doesn't match regex %q", p, dashboardPathRegexFmt)
 }
 
+func TestManagerAndAgentVersionsMatch(t *testing.T) {
+	t.Parallel()
+
+	// Extract tag from version string (ignore digest after @)
+	extractTag := func(version string) string {
+		parts := strings.Split(version, "@")
+		return parts[0]
+	}
+
+	managerTag := extractTag(Project.Operator.ScyllaDBManagerVersion)
+	agentTag := extractTag(Project.Operator.ScyllaDBManagerAgentVersion)
+
+	if managerTag != agentTag {
+		t.Errorf("scyllaDBManagerVersion tag %q does not match scyllaDBManagerAgentVersion tag %q", managerTag, agentTag)
+	}
+}
+
 func TestProjectConfig(t *testing.T) {
 	t.Parallel()
 

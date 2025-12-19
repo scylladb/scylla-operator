@@ -65,13 +65,13 @@ GA images aren't built from scratch but rather promoted from an existing release
 The support matrix table shows version requirements for a particular **Scylla Operator** version. Be sure to match these requirements, otherwise some functionality will not work.
 
 :::{table}
-| Component           | master                    | v1.19                     | v1.18             |
-| ------------------- | ------------------------- | ------------------------- | ----------------- |
-| Kubernetes          | `1.31 - 1.34`             | `1.31 - 1.34`             | `1.30 - 1.33`     |
-| CRI API             | `v1`                      | `v1`                      | `v1`              |
-| ScyllaDB            | `2024.1, 2025.1 - 2025.3` | `2024.1, 2025.1 - 2025.3` | `2024.1 - 2025.1` |
-| ScyllaDB Manager    | `3.5, 3.7`                | `3.5, 3.7`                | `3.5`             |
-| ScyllaDB Monitoring | `(CRD)`                   | `(CRD)`                   | `(CRD)`           |
+| Component           | master                            | v1.19                     | v1.18             |
+| ------------------- | --------------------------------- | ------------------------- | ----------------- |
+| Kubernetes          | `1.31 - 1.34`                     | `1.31 - 1.34`             | `1.30 - 1.33`     |
+| CRI API             | `v1`                              | `v1`                      | `v1`              |
+| ScyllaDB            | `2024.1, 2025.1, 2025.3 - 2025.4` | `2024.1, 2025.1 - 2025.3` | `2024.1 - 2025.1` |
+| ScyllaDB Manager    | `3.5, 3.7`                        | `3.5, 3.7`                | `3.5`             |
+| ScyllaDB Monitoring | `(CRD)`                           | `(CRD)`                   | `(CRD)`           |
 :::
 
 ### Architectures

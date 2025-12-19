@@ -2,8 +2,30 @@
 import os
 from datetime import date
 import sys
+from pathlib import Path
+import yaml
 
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
+
+
+def load_myst_substitutions():
+    """
+    Load dynamic configuration values from config.yaml.
+    """
+    config_path = Path(__file__).parent.parent.parent / 'assets' / 'config' / 'config.yaml'
+
+    with open(config_path, 'r') as config_file:
+        config = yaml.safe_load(config_file)
+
+    scylla_db_version = config['operator']['scyllaDBVersion']
+    scylla_db_manager_version = config['operator']['scyllaDBManagerVersion'].split('@')[0]
+
+    return {
+        "imageTag": scylla_db_version,
+        "enterpriseImageTag": scylla_db_version,
+        "agentVersion": scylla_db_manager_version,
+        "scyllaDBRepositoryTag": f"scylla-{scylla_db_version}",
+    }
 
 # -- General configuration
 
@@ -53,16 +75,17 @@ todo_include_todos = True
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_block"]
 myst_heading_anchors = 6
 
+# Load dynamic substitutions from config.yaml
+dynamic_substitutions = load_myst_substitutions()
+
+# Merge hardcoded substitutions with dynamic ones
 myst_substitutions = {
     "productName": "Scylla Operator",
     "repository": "scylladb/scylla-operator",
     "revision": "master",
     "imageRepository": "docker.io/scylladb/scylla",
-    "imageTag": "2025.3.5",
     "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-    "enterpriseImageTag": "2025.3.5",
-    "agentVersion": "3.7.0",
-    "scyllaDBRepositoryTag": "scylla-2025.3.5",
+    **dynamic_substitutions,
 }
 
 # -- Options for not found extension

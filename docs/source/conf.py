@@ -53,16 +53,22 @@ todo_include_todos = True
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_block"]
 myst_heading_anchors = 6
 
+deps_versions_substitutions = {
+    # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
+    "imageTag": "2025.4.0",
+    # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla-enterprise versioning=semver
+    "enterpriseImageTag": "2025.4.0",
+    # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
+    "agentVersion": "3.7.0",
+}
+
 myst_substitutions = {
     "productName": "Scylla Operator",
     "repository": "scylladb/scylla-operator",
     "revision": "master",
     "imageRepository": "docker.io/scylladb/scylla",
-    "imageTag": "2025.4.0",
     "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-    "enterpriseImageTag": "2025.4.0",
-    "agentVersion": "3.7.0",
-    "scyllaDBRepositoryTag": "scylla-2025.4.0",
+    **deps_versions_substitutions,
 }
 
 # -- Options for not found extension

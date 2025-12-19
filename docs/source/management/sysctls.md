@@ -12,7 +12,7 @@ To configure sysctls for multi-datacenter ScyllaDB deployments, simply perform t
 
 :::{caution}    
 The recommended sysctl for production-grade ScyllaDB deployments provided throughout our examples follow the recommendations from the upstream ScyllaDB repository.
-However, as we are not able to reliably keep them up to date at all times, always consult the {{ '[configuration files in the source branch of your ScyllaDB release](https://github.com/scylladb/scylladb/tree/{}/dist/common/sysctl.d)'.format(scyllaDBRepositoryTag) }} before you configure your cluster.
+However, as we are not able to reliably keep them up to date at all times, always consult the {{ '[configuration files in the source branch of your ScyllaDB release](https://github.com/scylladb/scylladb/tree/scylla-{}/dist/common/sysctl.d)'.format(imageTag) }} before you configure your cluster.
 :::
 
 :::{caution}

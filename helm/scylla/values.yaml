@@ -8,7 +8,7 @@ annotations: {}
 scyllaImage:
   repository: scylladb/scylla
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 2025.3.5
+  tag: 2025.4.0
 # Allows to customize Scylla image
 agentImage:
   repository: scylladb/scylla-manager-agent

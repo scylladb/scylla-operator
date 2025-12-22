@@ -5,6 +5,7 @@
 
 sysctls
 bootstrap-sync
+data-cleanup
 upgrading/index
 monitoring/index
 :::

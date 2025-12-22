@@ -1,12 +1,15 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["custom.regex"],
+  "enabledManagers": ["custom.regex", "gomod"],
   "schedule": ["before 5am every weekday"],
   "labels": [
     "kind/dependency-bump",
     "priority/important-longterm"
   ],
+  "gomod": {
+    "groupName": "gomod"
+  },
   "customManagers": [
     {
       "description": "Custom manager for dependencies defined in assets/config/config.yaml with Renovate annotations matching the regex.",

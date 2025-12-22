@@ -1,19 +1,5 @@
 version: 2
 updates:
-- package-ecosystem: gomod
-  directory: /
-  schedule:
-    interval: weekly
-    day: wednesday
-    time: '05:00' # UTC
-  labels:
-  - priority/important-longterm
-  - kind/dependency-bump
-  groups:
-    gomod:
-        applies-to: version-updates
-        patterns:
-          - "*"
 - package-ecosystem: github-actions
   directory: /
   schedule:

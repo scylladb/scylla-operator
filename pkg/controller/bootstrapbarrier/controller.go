@@ -8,14 +8,12 @@ import (
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
-	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
@@ -41,9 +39,11 @@ func NewController(
 	singleReportAllowNonReportingHostIDs bool,
 	bootstrapPreconditionCh chan struct{},
 	kubeClient kubernetes.Interface,
-	serviceInformer corev1informers.ServiceInformer,
-	scyllaDBDatacenterNodesStatusReportInformer scyllav1alpha1informers.ScyllaDBDatacenterNodesStatusReportInformer,
+	informerFactory *InformerFactory,
 ) (*Controller, error) {
+	serviceInformer := informerFactory.Services()
+	scyllaDBDatacenterNodesStatusReportInformer := informerFactory.ScyllaDBDatacenterNodesStatusReports()
+
 	c := &Controller{
 		namespace:                            namespace,
 		serviceName:                          serviceName,

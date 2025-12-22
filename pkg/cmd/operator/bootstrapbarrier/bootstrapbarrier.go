@@ -6,10 +6,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controller/bootstrapbarrier"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
@@ -17,12 +15,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/spf13/cobra"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
@@ -179,28 +173,14 @@ func (o *Options) Run(originalStreams genericclioptions.IOStreams, cmd *cobra.Co
 }
 
 func (o *Options) Execute(cmdCtx context.Context, originalStreams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	identityKubeInformers := informers.NewSharedInformerFactoryWithOptions(
+	informerFactory := bootstrapbarrier.NewInformerFactory(
 		o.kubeClient,
-		12*time.Hour,
-		informers.WithNamespace(o.Namespace),
-		informers.WithTweakListOptions(
-			func(options *metav1.ListOptions) {
-				options.FieldSelector = fields.OneTermEqualSelector("metadata.name", o.ServiceName).String()
-			},
-		),
-	)
-
-	scyllaDBDatacenterNodesStatusReportKubeInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		o.scyllaClient,
-		12*time.Hour,
-		scyllainformers.WithNamespace(o.Namespace),
-		scyllainformers.WithTweakListOptions(
-			func(options *metav1.ListOptions) {
-				options.LabelSelector = labels.Set{
-					naming.ScyllaDBDatacenterNodesStatusReportSelectorLabel: o.SelectorLabelValue,
-				}.String()
-			},
-		),
+		bootstrapbarrier.InformerFactoryOptions{
+			ServiceName:        o.ServiceName,
+			SelectorLabelValue: o.SelectorLabelValue,
+			Namespace:          o.Namespace,
+		},
 	)
 
 	boostrapPreconditionCh := make(chan struct{})
@@ -211,8 +191,7 @@ func (o *Options) Execute(cmdCtx context.Context, originalStreams genericcliopti
 		o.SingleReportAllowNonReportingHostIDs,
 		boostrapPreconditionCh,
 		o.kubeClient,
-		identityKubeInformers.Core().V1().Services(),
-		scyllaDBDatacenterNodesStatusReportKubeInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
+		informerFactory,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create bootstrap barrier controller: %w", err)
@@ -231,13 +210,7 @@ func (o *Options) Execute(cmdCtx context.Context, originalStreams genericcliopti
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		identityKubeInformers.Start(ctx.Done())
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scyllaDBDatacenterNodesStatusReportKubeInformers.Start(ctx.Done())
+		informerFactory.Start(ctx.Done())
 	}()
 
 	wg.Add(1)

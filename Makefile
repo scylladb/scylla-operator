@@ -748,6 +748,9 @@ test-binary: build
 	@ test "$$(./scylla-operator version)" = 'GitCommit="$(GIT_COMMIT)"' || (echo "Built binary version output does not match the expected commit hash." && false)
 .PHONY: test-binary
 
+test-envtest:
+	ginkgo --tags=envtest -p './test/envtest/controllers/...'
+
 help:
 	$(info The following make targets are available:)
 	@$(MAKE) -f $(firstword $(MAKEFILE_LIST)) --print-data-base --question no-such-target 2>&1 | grep -v 'no-such-target' | \

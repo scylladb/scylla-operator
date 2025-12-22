@@ -38,8 +38,9 @@ type ScyllaDBTestVersions struct {
 }
 
 type OperatorTestsConfig struct {
-	ScyllaDBVersions ScyllaDBTestVersions `json:"scyllaDBVersions"`
-	NodeSetupImage   string               `json:"nodeSetupImage"`
+	ScyllaDBVersions         ScyllaDBTestVersions `json:"scyllaDBVersions"`
+	NodeSetupImage           string               `json:"nodeSetupImage"`
+	EnvTestKubernetesVersion string               `json:"envTestKubernetesVersion"`
 }
 
 type ProjectConfig struct {

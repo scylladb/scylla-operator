@@ -10,6 +10,13 @@
   "gomod": {
     "groupName": "gomod"
   },
+  "packageRules": [
+    {
+      "description": "scylla-manager and scylla-manager-agent must be updated together",
+      "matchPackageNames": ["scylla-manager", "scylla-manager-agent"],
+      "groupName": "scylla-manager"
+    }
+  ],
   "customManagers": [
     {
       "description": "Custom manager for dependencies defined in assets/config/config.yaml with Renovate annotations matching the regex.",

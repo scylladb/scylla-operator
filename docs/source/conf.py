@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 from datetime import date
-import sys
 
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
 

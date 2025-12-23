@@ -48,14 +48,44 @@ func GetScyllaHostForScyllaCluster(sc *scyllav1.ScyllaCluster, svc *corev1.Servi
 	return GetScyllaBroadcastAddress(scyllav1alpha1.BroadcastAddressType(nodeBroadcastAddressType), svc, pod)
 }
 
-func GetScyllaBroadcastAddress(broadcastAddressType scyllav1alpha1.BroadcastAddressType, svc *corev1.Service, pod *corev1.Pod) (string, error) {
+func GetScyllaBroadcastAddress(broadcastAddressType scyllav1alpha1.BroadcastAddressType, svc *corev1.Service, pod *corev1.Pod, ipFamily ...*corev1.IPFamily) (string, error) {
 	switch broadcastAddressType {
 	case scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress:
 		if len(svc.Status.LoadBalancer.Ingress) < 1 {
 			return "", fmt.Errorf("service %q does not have an ingress status", naming.ObjRef(svc))
 		}
 
+		if len(ipFamily) > 0 && ipFamily[0] != nil {
+			preferredFamily := *ipFamily[0]
+
+			for _, ingress := range svc.Status.LoadBalancer.Ingress {
+				if len(ingress.IP) == 0 {
+					continue
+				}
+				ip, err := helpers.ParseIP(ingress.IP)
+				if err != nil {
+					continue
+				}
+				if helpers.GetIPFamily(ip) == preferredFamily {
+					if helpers.IsIPv6(ip) {
+						return ip.String(), nil
+					}
+					return ingress.IP, nil
+				}
+			}
+
+			// If no IP of the preferred family was found, try hostname as fallback
+			if len(svc.Status.LoadBalancer.Ingress[0].Hostname) != 0 {
+				return svc.Status.LoadBalancer.Ingress[0].Hostname, nil
+			}
+
+			return "", fmt.Errorf("service %q does not have a %s ingress IP or hostname", naming.ObjRef(svc), preferredFamily)
+		}
+
 		if len(svc.Status.LoadBalancer.Ingress[0].IP) != 0 {
+			if ip, err := helpers.ParseIP(svc.Status.LoadBalancer.Ingress[0].IP); err == nil && helpers.IsIPv6(ip) {
+				return ip.String(), nil
+			}
 			return svc.Status.LoadBalancer.Ingress[0].IP, nil
 		}
 
@@ -70,13 +100,45 @@ func GetScyllaBroadcastAddress(broadcastAddressType scyllav1alpha1.BroadcastAddr
 			return "", fmt.Errorf("service %q does not have a ClusterIP address", naming.ObjRef(svc))
 		}
 
+		if ip, err := helpers.ParseIP(svc.Spec.ClusterIP); err == nil && helpers.IsIPv6(ip) {
+			return ip.String(), nil
+		}
 		return svc.Spec.ClusterIP, nil
 
 	case scyllav1alpha1.BroadcastAddressTypePodIP:
+		if len(ipFamily) > 0 && ipFamily[0] != nil {
+			preferredFamily := *ipFamily[0]
+
+			for _, podIP := range pod.Status.PodIPs {
+				ip, err := helpers.ParseIP(podIP.IP)
+				if err != nil {
+					continue
+				}
+				if helpers.GetIPFamily(ip) == preferredFamily {
+					if helpers.IsIPv6(ip) {
+						return ip.String(), nil
+					}
+					return podIP.IP, nil
+				}
+			}
+
+			if len(pod.Status.PodIP) == 0 {
+				return "", fmt.Errorf("pod %q does not have a PodIP address", naming.ObjRef(pod))
+			}
+
+			if ip, err := helpers.ParseIP(pod.Status.PodIP); err == nil && helpers.IsIPv6(ip) {
+				return ip.String(), nil
+			}
+			return pod.Status.PodIP, nil
+		}
+
 		if len(pod.Status.PodIP) == 0 {
 			return "", fmt.Errorf("pod %q does not have a PodIP address", naming.ObjRef(pod))
 		}
 
+		if ip, err := helpers.ParseIP(pod.Status.PodIP); err == nil && helpers.IsIPv6(ip) {
+			return ip.String(), nil
+		}
 		return pod.Status.PodIP, nil
 
 	default:
@@ -138,13 +200,30 @@ func NewScyllaClientFromToken(hosts []string, authToken string) (*scyllaclient.C
 	return NewScyllaClient(cfg)
 }
 
-func NewScyllaClientForLocalhost() (*scyllaclient.Client, error) {
-	cfg := scyllaclient.DefaultConfig("", "localhost")
+// NewScyllaClientConfigForLocalhost creates a ScyllaDB client configuration for
+// localhost with the specified IP family (IPv4 or IPv6).
+func NewScyllaClientConfigForLocalhost(ipFamily corev1.IPFamily) *scyllaclient.Config {
+	var host string
+	switch ipFamily {
+	case corev1.IPv6Protocol:
+		host = "::1" // IPv6 localhost
+	default:
+		host = "127.0.0.1" // IPv4 localhost
+	}
+
+	cfg := scyllaclient.DefaultConfig("", host)
 	cfg.Scheme = "http"
 	cfg.Port = fmt.Sprintf("%d", naming.ScyllaAPIPort)
 	t := scyllaclient.DefaultTransport()
 	t.TLSClientConfig = nil
 	cfg.Transport = t
+	return cfg
+}
+
+// NewScyllaClientForLocalhost creates a ScyllaDB client configured for
+// localhost with the specified IP family (IPv4 or IPv6).
+func NewScyllaClientForLocalhost(ipFamily corev1.IPFamily) (*scyllaclient.Client, error) {
+	cfg := NewScyllaClientConfigForLocalhost(ipFamily)
 	return NewScyllaClient(cfg)
 }
 

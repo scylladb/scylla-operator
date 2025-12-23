@@ -35,9 +35,10 @@ type Member struct {
 	AdditionalScyllaDBArguments []string
 
 	NodesBroadcastAddressType scyllav1alpha1.BroadcastAddressType
+	IPFamily                  corev1.IPFamily
 }
 
-func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clientAddressType scyllav1alpha1.BroadcastAddressType, additionalScyllaDBArguments []string) (*Member, error) {
+func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clientAddressType scyllav1alpha1.BroadcastAddressType, ipFamily corev1.IPFamily, additionalScyllaDBArguments []string) (*Member, error) {
 	rackOrdinalString, ok := pod.Labels[naming.RackOrdinalLabel]
 	if !ok {
 		return nil, fmt.Errorf("pod %q is missing %q label", naming.ObjRef(pod), naming.RackOrdinalLabel)
@@ -58,15 +59,16 @@ func NewMember(service *corev1.Service, pod *corev1.Pod, nodesAddressType, clien
 		PodID:                       string(pod.UID),
 		Overprovisioned:             pod.Status.QOSClass != corev1.PodQOSGuaranteed,
 		NodesBroadcastAddressType:   nodesAddressType,
+		IPFamily:                    ipFamily,
 		AdditionalScyllaDBArguments: additionalScyllaDBArguments,
 	}
 
-	m.BroadcastAddress, err = controllerhelpers.GetScyllaBroadcastAddress(nodesAddressType, service, pod)
+	m.BroadcastAddress, err = controllerhelpers.GetScyllaBroadcastAddress(nodesAddressType, service, pod, &ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("can't get node broadcast address: %w", err)
 	}
 
-	m.BroadcastRPCAddress, err = controllerhelpers.GetScyllaBroadcastAddress(clientAddressType, service, pod)
+	m.BroadcastRPCAddress, err = controllerhelpers.GetScyllaBroadcastAddress(clientAddressType, service, pod, &ipFamily)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client broadcast address: %w", err)
 	}
@@ -134,8 +136,8 @@ func (m *Member) GetSeeds(ctx context.Context, coreClient v1.CoreV1Interface, ex
 	res := make([]string, 0, len(externalSeeds)+1)
 	res = append(res, externalSeeds...)
 
-	// Assume nodes share broadcast address type and it's immutable.
-	localSeed, err := controllerhelpers.GetScyllaBroadcastAddress(m.NodesBroadcastAddressType, svc, pod)
+	// Assume nodes share broadcast address type and IP family and they are immutable.
+	localSeed, err := controllerhelpers.GetScyllaBroadcastAddress(m.NodesBroadcastAddressType, svc, pod, &m.IPFamily)
 	if err != nil {
 		return nil, fmt.Errorf("can't get node broadcast address for service %q: %w", naming.ObjRef(svc), err)
 	}

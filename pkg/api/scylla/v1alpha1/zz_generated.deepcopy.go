@@ -2115,6 +2115,16 @@ func (in *ScyllaDBDatacenterSpec) DeepCopyInto(out *ScyllaDBDatacenterSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.IPFamilyPolicy != nil {
+		in, out := &in.IPFamilyPolicy, &out.IPFamilyPolicy
+		*out = new(v1.IPFamilyPolicy)
+		**out = **in
+	}
+	if in.IPFamilies != nil {
+		in, out := &in.IPFamilies, &out.IPFamilies
+		*out = make([]v1.IPFamily, len(*in))
+		copy(*out, *in)
+	}
 	if in.ExposeOptions != nil {
 		in, out := &in.ExposeOptions, &out.ExposeOptions
 		*out = new(ExposeOptions)

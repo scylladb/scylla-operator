@@ -27,7 +27,8 @@ type ScyllaDBAPIStatusOptions struct {
 
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
-	ServiceName string
+	ServiceName            string
+	ScyllaLocalhostAddress string
 
 	mux        *http.ServeMux
 	kubeClient kubernetes.Interface
@@ -49,6 +50,7 @@ func (o *ScyllaDBAPIStatusOptions) AddFlags(cmd *cobra.Command) {
 	o.InClusterReflection.AddFlags(cmd)
 
 	cmd.Flags().StringVarP(&o.ServiceName, "service-name", "", o.ServiceName, "Name of the service corresponding to the managed node.")
+	cmd.Flags().StringVarP(&o.ScyllaLocalhostAddress, "scylla-localhost-address", "", "127.0.0.1", "Localhost address for connecting to ScyllaDB API (127.0.0.1 for IPv4 or ::1 for IPv6).")
 }
 
 func NewScyllaDBAPIStatusCmd(streams genericclioptions.IOStreams) *cobra.Command {
@@ -99,6 +101,12 @@ func (o *ScyllaDBAPIStatusOptions) Validate(args []string) error {
 		if len(serviceNameValidationErrs) != 0 {
 			errs = append(errs, fmt.Errorf("invalid service name %q: %v", o.ServiceName, serviceNameValidationErrs))
 		}
+	}
+
+	if len(o.ScyllaLocalhostAddress) == 0 {
+		errs = append(errs, fmt.Errorf("scylla-localhost-address can't be empty"))
+	} else if o.ScyllaLocalhostAddress != "127.0.0.1" && o.ScyllaLocalhostAddress != "::1" {
+		errs = append(errs, fmt.Errorf("scylla-localhost-address must be either '127.0.0.1' (IPv4) or '::1' (IPv6), got %q", o.ScyllaLocalhostAddress))
 	}
 
 	return apimachineryutilerrors.NewAggregate(errs)
@@ -159,6 +167,7 @@ func (o *ScyllaDBAPIStatusOptions) Execute(ctx context.Context, originalStreams 
 	prober := scylladbapistatus.NewProber(
 		o.Namespace,
 		o.ServiceName,
+		o.ScyllaLocalhostAddress,
 		singleServiceInformer.Lister(),
 	)
 

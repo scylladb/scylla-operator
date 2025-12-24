@@ -2,6 +2,8 @@ package crypto
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/big"
@@ -164,4 +166,197 @@ func TestX509CertCreator_MakeCertificate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestX509CertCreator_MakeCertificateECDSA(t *testing.T) {
+t.Parallel()
+
+now := func() time.Time {
+return time.Date(2021, 02, 01, 00, 00, 00, 00, time.UTC)
+}
+
+// Create an ECDSA CA for testing
+ecKeyGen, err := NewECDSAKeyGenerator(1, 1, elliptic.P384(), 42*time.Hour)
+if err != nil {
+t.Fatalf("can't create ECDSA key generator: %v", err)
+}
+defer ecKeyGen.Close()
+
+var wg sync.WaitGroup
+defer wg.Wait()
+
+ctx, ctxCancel := context.WithCancel(context.Background())
+defer ctxCancel()
+
+wg.Add(1)
+go func() {
+defer wg.Done()
+ecKeyGen.Run(ctx)
+}()
+
+// Create CA cert
+caCreator := &X509CertCreator{
+Subject: pkix.Name{
+CommonName: "test.ecdsa-ca",
+},
+IsCA:     true,
+KeyUsage: x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+}
+
+caKey, err := ecKeyGen.GetNewKey(ctx)
+if err != nil {
+t.Fatalf("can't get CA key: %v", err)
+}
+
+signer := NewSelfSignedSignerWithECDSAKey(now, caKey)
+caTemplate := caCreator.MakeCertificateTemplate(now(), 24*time.Hour)
+caTemplate.SignatureAlgorithm = getSignatureAlgorithm(caKey)
+
+caCert, err := signer.SignCertificate(caTemplate, &caKey.PublicKey)
+if err != nil {
+t.Fatalf("can't sign CA cert: %v", err)
+}
+
+ca, err := NewCertificateAuthorityWithECDSAKey(caCert, caKey, now)
+if err != nil {
+t.Fatalf("can't create CA: %v", err)
+}
+
+tt := []struct {
+name         string
+certCreator  *X509CertCreator
+lifetime     time.Duration
+expectedCert *x509.Certificate
+expectedErr  error
+}{
+{
+name: "basic ECDSA fields work",
+certCreator: &X509CertCreator{
+Subject: pkix.Name{
+CommonName:   "ecdsa-test-cert",
+Organization: []string{"ScyllaDB"},
+},
+DNSNames:    []string{"ecdsa.foo", "ecdsa.bar"},
+KeyUsage:    x509.KeyUsageDigitalSignature,
+ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+},
+lifetime: 1 * time.Hour,
+expectedCert: &x509.Certificate{
+Version: 3,
+Subject: pkix.Name{
+Organization: []string{"ScyllaDB"},
+CommonName:   "ecdsa-test-cert",
+},
+Issuer: pkix.Name{
+CommonName: "test.ecdsa-ca",
+},
+NotBefore:             time.Date(2021, 01, 31, 23, 59, 59, 00, time.UTC),
+NotAfter:              time.Date(2021, 02, 01, 01, 00, 00, 00, time.UTC),
+DNSNames:              []string{"ecdsa.foo", "ecdsa.bar"},
+IsCA:                  false,
+BasicConstraintsValid: true,
+AuthorityKeyId:        ca.GetCert().SubjectKeyId,
+SignatureAlgorithm:    x509.ECDSAWithSHA384,
+PublicKeyAlgorithm:    x509.ECDSA,
+KeyUsage:              x509.KeyUsageDigitalSignature,
+ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+MaxPathLen:            -1,
+},
+expectedErr: nil,
+},
+}
+
+for _, tc := range tt {
+t.Run(tc.name, func(t *testing.T) {
+t.Parallel()
+
+keygen2, err := NewECDSAKeyGenerator(1, 1, elliptic.P384(), 42*time.Hour)
+if err != nil {
+t.Fatal(err)
+}
+defer keygen2.Close()
+
+var wg2 sync.WaitGroup
+defer wg2.Wait()
+
+ctx2, ctxCancel2 := context.WithCancel(context.Background())
+defer ctxCancel2()
+
+wg2.Add(1)
+go func() {
+defer wg2.Done()
+keygen2.Run(ctx2)
+}()
+
+cert, key, err := tc.certCreator.MakeCertificateECDSA(ctx2, keygen2, ca, tc.lifetime)
+if !reflect.DeepEqual(err, tc.expectedErr) {
+t.Errorf("expected and actual error differ: %s", cmp.Diff(tc.expectedErr, err))
+}
+
+if err != nil {
+return
+}
+
+certPool := x509.NewCertPool()
+certPool.AddCert(ca.GetCert())
+_, err = cert.Verify(x509.VerifyOptions{
+CurrentTime: now(),
+Roots:       certPool,
+})
+if err != nil {
+t.Errorf("can't verify cert: %v", err)
+}
+
+if key == nil {
+t.Error("got nil key")
+}
+
+// Verify it's an ECDSA key
+if _, ok := key.Public().(*ecdsa.PublicKey); !ok {
+t.Error("expected ECDSA public key")
+}
+
+cert.Raw = nil
+cert.RawTBSCertificate = nil
+cert.RawIssuer = nil
+cert.RawSubject = nil
+cert.RawSubjectPublicKeyInfo = nil
+cert.Subject.Names = nil
+cert.Issuer.Names = nil
+cert.Extensions = nil
+
+if tc.expectedCert != nil {
+if cert.Signature == nil {
+t.Errorf("cert doesn't have a signature")
+}
+cert.Signature = nil
+
+if cert.SerialNumber == nil {
+t.Errorf("cert doesn't have a serialNumber")
+}
+cert.SerialNumber = nil
+
+if cert.PublicKey == nil {
+t.Errorf("cert doesn't have a publicKey")
+}
+cert.PublicKey = nil
+}
+
+if !reflect.DeepEqual(cert, tc.expectedCert) {
+t.Errorf(
+"expected and actual certificate differ: '%s'",
+cmp.Diff(
+(*certificateWithoutEqual)(tc.expectedCert),
+(*certificateWithoutEqual)(cert),
+cmp.Comparer(func(lhs, rhs *big.Int) bool {
+if lhs == nil || rhs == nil {
+return lhs == rhs
+}
+return lhs.Cmp(rhs) == 0
+}),
+),
+)
+}
+})
+}
 }

@@ -128,11 +128,18 @@ func getAuthorityKeyIDFromSignerKey(key any) []byte {
 	}
 
 	var keyBytes []byte
+	var err error
+	
 	switch k := key.(type) {
 	case *rsa.PublicKey:
+		if k == nil {
+			return nil
+		}
 		keyBytes = x509.MarshalPKCS1PublicKey(k)
 	case *ecdsa.PublicKey:
-		var err error
+		if k == nil {
+			return nil
+		}
 		keyBytes, err = x509.MarshalPKIXPublicKey(k)
 		if err != nil {
 			klog.ErrorS(err, "Failed to marshal ECDSA public key")

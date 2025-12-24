@@ -102,8 +102,8 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		OperatorImage:   "",
 		CQLSIngressPort: 0,
 
-		CryptoKeyType:          string(crypto.KeyTypeECDSA),
-		CryptoKeySize:          ecdsaCurveP384,
+		CryptoKeyType:          string(crypto.KeyTypeRSA),
+		CryptoKeySize:          4096,
 		CryptoKeyBufferSizeMin: 10,
 		CryptoKeyBufferSizeMax: 30,
 		CryptoKeyBufferDelay:   200 * time.Millisecond,

@@ -33,10 +33,13 @@ func NewRSAKeyGenerator(min, max, keySize int, delay time.Duration) (*RSAKeyGene
 
 		return privateKey, nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &RSAKeyGenerator{
 		Generator: *g,
-	}, err
+	}, nil
 }
 
 func (g *RSAKeyGenerator) GetNewKey(ctx context.Context) (*rsa.PrivateKey, error) {
@@ -59,13 +62,16 @@ func NewECDSAKeyGenerator(min, max int, curve elliptic.Curve, delay time.Duratio
 		if err != nil {
 			return nil, fmt.Errorf("can't generate key: %w", err)
 		}
+	if err != nil {
+		return nil, err
+	}
 
 		return privateKey, nil
 	})
 
 	return &ECDSAKeyGenerator{
 		Generator: *g,
-	}, err
+	}, nil
 }
 
 func (g *ECDSAKeyGenerator) GetNewKey(ctx context.Context) (*ecdsa.PrivateKey, error) {

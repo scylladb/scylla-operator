@@ -368,7 +368,8 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		// Note: Controllers currently expect RSA keys. In the future, controllers should be updated
 		// to accept either key type. For now, ECDSA support is available through the operator but
 		// controllers will continue to use RSA keys.
-		// TODO: Update controllers to support both RSA and ECDSA key generators
+		// TODO(#2134): Refactor controllers to support both RSA and ECDSA key generators.
+		// This will allow removing this RSA fallback and reduce resource usage.
 		rsaKeyGenerator, err = crypto.NewRSAKeyGenerator(
 			o.CryptoKeyBufferSizeMin,
 			o.CryptoKeyBufferSizeMax,

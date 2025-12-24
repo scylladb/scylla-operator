@@ -48,6 +48,7 @@ type X509CertCreator struct {
 }
 
 var _ RSACertCreator = &X509CertCreator{}
+var _ ECDSACertCreator = &X509CertCreator{}
 
 func (c *X509CertCreator) MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate {
 	return &x509.Certificate{

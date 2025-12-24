@@ -24,7 +24,7 @@ require (
 	github.com/go-openapi/runtime v0.29.2
 	github.com/go-openapi/strfmt v0.25.0
 	github.com/gobwas/glob v0.2.3
-	github.com/gocql/gocql v1.7.0
+	github.com/gocql/gocql/v2 v2.0.0
 	github.com/godbus/dbus/v5 v5.2.0
 	github.com/google/go-cmp v0.7.0
 	github.com/grafana/grafana-openapi-client-go v0.0.0-20250925215610-d92957c70d5c
@@ -39,7 +39,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
-	github.com/scylladb/gocqlx/v2 v2.8.0
+	github.com/scylladb/gocqlx/v3 v3.0.4
 	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20251028150944-ac6f6b50a24c
 	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20251028150944-ac6f6b50a24c
 	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20251028150944-ac6f6b50a24c
@@ -54,7 +54,7 @@ require (
 	golang.org/x/sys v0.39.0
 	golang.org/x/time v0.14.0
 	google.golang.org/grpc v1.77.0
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.34.3
 	k8s.io/apiextensions-apiserver v0.34.3
 	k8s.io/apimachinery v0.34.3

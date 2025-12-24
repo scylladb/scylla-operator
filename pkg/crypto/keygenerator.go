@@ -25,6 +25,12 @@ type RSAKeyGenerator struct {
 var _ RSAKeyGetter = &RSAKeyGenerator{}
 
 func NewRSAKeyGenerator(min, max, keySize int, delay time.Duration) (*RSAKeyGenerator, error) {
+	// RFC 5702 and NIST SP 800-57 Part 3 recommend a minimum of 2048-bit keys for RSA
+	const minRSAKeySize = 2048
+	if keySize < minRSAKeySize {
+		return nil, fmt.Errorf("RSA key size must be at least %d bits, got %d", minRSAKeySize, keySize)
+	}
+
 	g, err := itemgenerator.NewGenerator[rsa.PrivateKey]("RSAKeyGenerator", min, max, delay, func() (*rsa.PrivateKey, error) {
 		privateKey, err := rsa.GenerateKey(rand.Reader, keySize)
 		if err != nil {
@@ -62,12 +68,12 @@ func NewECDSAKeyGenerator(min, max int, curve elliptic.Curve, delay time.Duratio
 		if err != nil {
 			return nil, fmt.Errorf("can't generate key: %w", err)
 		}
-	if err != nil {
-		return nil, err
-	}
 
 		return privateKey, nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &ECDSAKeyGenerator{
 		Generator: *g,

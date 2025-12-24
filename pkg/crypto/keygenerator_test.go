@@ -434,3 +434,53 @@ func BenchmarkECDSAKeyGeneration(b *testing.B) {
 	cancel()
 	<-done
 }
+
+func TestRSAKeyGenerator_MinimumKeySize(t *testing.T) {
+t.Parallel()
+
+testCases := []struct {
+name        string
+keySize     int
+expectError bool
+}{
+{
+name:        "below minimum (1024)",
+keySize:     1024,
+expectError: true,
+},
+{
+name:        "at minimum (2048)",
+keySize:     2048,
+expectError: false,
+},
+{
+name:        "above minimum (4096)",
+keySize:     4096,
+expectError: false,
+},
+}
+
+for _, tc := range testCases {
+t.Run(tc.name, func(t *testing.T) {
+t.Parallel()
+
+gen, err := NewRSAKeyGenerator(1, 1, tc.keySize, 1*time.Second)
+
+if tc.expectError {
+if err == nil {
+t.Errorf("expected error for key size %d, but got none", tc.keySize)
+}
+if gen != nil {
+t.Errorf("expected nil generator for invalid key size, got %v", gen)
+}
+} else {
+if err != nil {
+t.Errorf("unexpected error for valid key size %d: %v", tc.keySize, err)
+}
+if gen != nil {
+gen.Close()
+}
+}
+})
+}
+}

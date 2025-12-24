@@ -122,7 +122,7 @@ func DecodePrivateKeyRSA(keyBytes []byte) (*rsa.PrivateKey, error) {
 
 	var unexpectedBlockTypes []string
 	for len(remainingBytes) != 0 {
-		block, remainingBytes = pem.Decode(keyBytes)
+		block, remainingBytes = pem.Decode(remainingBytes)
 		if block == nil {
 			break
 		}
@@ -154,7 +154,7 @@ func DecodePrivateKeyECDSA(keyBytes []byte) (*ecdsa.PrivateKey, error) {
 
 	var unexpectedBlockTypes []string
 	for len(remainingBytes) != 0 {
-		block, remainingBytes = pem.Decode(keyBytes)
+		block, remainingBytes = pem.Decode(remainingBytes)
 		if block == nil {
 			break
 		}

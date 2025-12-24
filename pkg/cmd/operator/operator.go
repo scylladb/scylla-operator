@@ -365,16 +365,18 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 			return fmt.Errorf("can't create ecdsa key generator: %w", err)
 		}
 		defer ecdsaKeyGenerator.Close()
-		// For now, we create an RSA generator as a fallback since controllers expect RSA
-		// In a future update, controllers can be refactored to support both key types
+		// Note: Controllers currently expect RSA keys. In the future, controllers should be updated
+		// to accept either key type. For now, ECDSA support is available through the operator but
+		// controllers will continue to use RSA keys.
+		// TODO: Update controllers to support both RSA and ECDSA key generators
 		rsaKeyGenerator, err = crypto.NewRSAKeyGenerator(
 			o.CryptoKeyBufferSizeMin,
 			o.CryptoKeyBufferSizeMax,
-			4096, // Use default RSA size as fallback
+			4096, // Use default RSA size for controllers
 			o.CryptoKeyBufferDelay,
 		)
 		if err != nil {
-			return fmt.Errorf("can't create fallback rsa key generator: %w", err)
+			return fmt.Errorf("can't create rsa key generator for controllers: %w", err)
 		}
 		defer rsaKeyGenerator.Close()
 	default:

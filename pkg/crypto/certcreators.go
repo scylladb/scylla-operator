@@ -4,6 +4,7 @@ package crypto
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -12,10 +13,30 @@ import (
 	"time"
 )
 
-type CertCreator interface {
+// getSignatureAlgorithm returns the appropriate signature algorithm based on the key type
+func getSignatureAlgorithm(privateKey any) x509.SignatureAlgorithm {
+	switch privateKey.(type) {
+	case *rsa.PrivateKey:
+		return x509.SHA512WithRSA
+	case *ecdsa.PrivateKey:
+		return x509.ECDSAWithSHA384
+	default:
+		return x509.SHA512WithRSA
+	}
+}
+
+type RSACertCreator interface {
 	MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate
 	MakeCertificate(ctx context.Context, keyGetter RSAKeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error)
 }
+
+type ECDSACertCreator interface {
+	MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate
+	MakeCertificateECDSA(ctx context.Context, keyGetter ECDSAKeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, *ecdsa.PrivateKey, error)
+}
+
+// CertCreator is kept for backward compatibility, use RSACertCreator instead
+type CertCreator RSACertCreator
 
 type X509CertCreator struct {
 	Subject     pkix.Name
@@ -26,7 +47,7 @@ type X509CertCreator struct {
 	IsCA        bool
 }
 
-var _ CertCreator = &X509CertCreator{}
+var _ RSACertCreator = &X509CertCreator{}
 
 func (c *X509CertCreator) MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate {
 	return &x509.Certificate{
@@ -51,10 +72,33 @@ func (c *X509CertCreator) MakeCertificate(ctx context.Context, keyGetter RSAKeyG
 
 	selfSignedSigner, ok := signer.(*SelfSignedSigner)
 	if ok {
-		signer = NewSelfSignedSignerWithKey(selfSignedSigner.nowFunc, privateKey)
+		signer = NewSelfSignedSignerWithRSAKey(selfSignedSigner.nowFunc, privateKey)
 	}
 
 	template := c.MakeCertificateTemplate(signer.Now(), validity)
+	template.SignatureAlgorithm = getSignatureAlgorithm(privateKey)
+
+	cert, err := signer.SignCertificate(template, &privateKey.PublicKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cert, privateKey, nil
+}
+
+func (c *X509CertCreator) MakeCertificateECDSA(ctx context.Context, keyGetter ECDSAKeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+	privateKey, err := keyGetter.GetNewKey(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't get generated key: %w", err)
+	}
+
+	selfSignedSigner, ok := signer.(*SelfSignedSigner)
+	if ok {
+		signer = NewSelfSignedSignerWithECDSAKey(selfSignedSigner.nowFunc, privateKey)
+	}
+
+	template := c.MakeCertificateTemplate(signer.Now(), validity)
+	template.SignatureAlgorithm = getSignatureAlgorithm(privateKey)
 
 	cert, err := signer.SignCertificate(template, &privateKey.PublicKey)
 	if err != nil {

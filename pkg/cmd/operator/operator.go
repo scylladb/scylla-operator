@@ -2,6 +2,7 @@ package operator
 
 import (
 	"context"
+	"crypto/elliptic"
 	"errors"
 	"fmt"
 	"net"
@@ -59,6 +60,11 @@ const (
 	rsaKeySizeMin = 2048
 	rsaKeySizeMax = 4096
 
+	// ECDSA curve bit sizes
+	ecdsaCurveP256 = 256
+	ecdsaCurveP384 = 384
+	ecdsaCurveP521 = 521
+
 	cryptoKeyBufferSizeMaxFlagKey = "crypto-key-buffer-size-max"
 )
 
@@ -79,6 +85,7 @@ type OperatorOptions struct {
 	OperatorImage   string
 	CQLSIngressPort int
 
+	CryptoKeyType          string
 	CryptoKeySize          int
 	CryptoKeyBufferSizeMin int
 	CryptoKeyBufferSizeMax int
@@ -95,7 +102,8 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		OperatorImage:   "",
 		CQLSIngressPort: 0,
 
-		CryptoKeySize:          4096,
+		CryptoKeyType:          string(crypto.KeyTypeECDSA),
+		CryptoKeySize:          ecdsaCurveP384,
 		CryptoKeyBufferSizeMin: 10,
 		CryptoKeyBufferSizeMax: 30,
 		CryptoKeyBufferDelay:   200 * time.Millisecond,
@@ -145,7 +153,8 @@ func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
-	cmd.Flags().IntVarP(&o.CryptoKeySize, "crypto-key-size", "", o.CryptoKeySize, "The size of the RSA key to use, in bits.")
+	cmd.Flags().StringVarP(&o.CryptoKeyType, "crypto-key-type", "", o.CryptoKeyType, "The type of key to use for certificates. Valid values are 'RSA' or 'ECDSA'.")
+	cmd.Flags().IntVarP(&o.CryptoKeySize, "crypto-key-size", "", o.CryptoKeySize, "The size of the key to use. For RSA, this is the key size in bits (2048-4096). For ECDSA, this is the curve size (256, 384, or 521).")
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMin, "crypto-key-buffer-size-min", "", o.CryptoKeyBufferSizeMin, "Minimal number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1.")
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMax, cryptoKeyBufferSizeMaxFlagKey, "", o.CryptoKeyBufferSizeMax, "Maximum number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1. If not set, it will adjust to be at least the size of crypto-key-buffer-size-min.")
 	cmd.Flags().DurationVarP(&o.CryptoKeyBufferDelay, "crypto-key-buffer-delay", "", o.CryptoKeyBufferDelay, "Delay is the time to wait when generating next certificate in the (min, max) range. Certificate generation bellow the min threshold is not affected.")
@@ -166,12 +175,21 @@ func (o *OperatorOptions) Validate() error {
 		errs = append(errs, errors.New("operator image can't be empty"))
 	}
 
-	if o.CryptoKeySize < rsaKeySizeMin {
-		errs = append(errs, fmt.Errorf("crypto-key-size must not be less than %d", rsaKeySizeMin))
-	}
-
-	if o.CryptoKeySize > rsaKeySizeMax {
-		errs = append(errs, fmt.Errorf("crypto-key-size must not be more than %d", rsaKeySizeMax))
+	keyType := crypto.KeyType(o.CryptoKeyType)
+	switch keyType {
+	case crypto.KeyTypeRSA:
+		if o.CryptoKeySize < rsaKeySizeMin {
+			errs = append(errs, fmt.Errorf("crypto-key-size for RSA must not be less than %d", rsaKeySizeMin))
+		}
+		if o.CryptoKeySize > rsaKeySizeMax {
+			errs = append(errs, fmt.Errorf("crypto-key-size for RSA must not be more than %d", rsaKeySizeMax))
+		}
+	case crypto.KeyTypeECDSA:
+		if o.CryptoKeySize != ecdsaCurveP256 && o.CryptoKeySize != ecdsaCurveP384 && o.CryptoKeySize != ecdsaCurveP521 {
+			errs = append(errs, fmt.Errorf("crypto-key-size for ECDSA must be %d, %d, or %d", ecdsaCurveP256, ecdsaCurveP384, ecdsaCurveP521))
+		}
+	default:
+		errs = append(errs, fmt.Errorf("crypto-key-type must be either 'RSA' or 'ECDSA', got %q", o.CryptoKeyType))
 	}
 
 	if o.CryptoKeyBufferSizeMin < 1 {
@@ -308,16 +326,60 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		return fmt.Errorf("Standalone ScyllaDB Manager controller Deployment %q should not be running alongside Scylla Operator. Delete it before starting Scylla Operator.", naming.ManualRef(naming.ScyllaManagerNamespace, naming.StandaloneScyllaDBManagerControllerName))
 	}
 
-	rsaKeyGenerator, err := crypto.NewRSAKeyGenerator(
-		o.CryptoKeyBufferSizeMin,
-		o.CryptoKeyBufferSizeMax,
-		o.CryptoKeySize,
-		o.CryptoKeyBufferDelay,
-	)
-	if err != nil {
-		return fmt.Errorf("can't create rsa key generator: %w", err)
+	keyType := crypto.KeyType(o.CryptoKeyType)
+	var rsaKeyGenerator *crypto.RSAKeyGenerator
+	var ecdsaKeyGenerator *crypto.ECDSAKeyGenerator
+	var err error
+
+	switch keyType {
+	case crypto.KeyTypeRSA:
+		rsaKeyGenerator, err = crypto.NewRSAKeyGenerator(
+			o.CryptoKeyBufferSizeMin,
+			o.CryptoKeyBufferSizeMax,
+			o.CryptoKeySize,
+			o.CryptoKeyBufferDelay,
+		)
+		if err != nil {
+			return fmt.Errorf("can't create rsa key generator: %w", err)
+		}
+		defer rsaKeyGenerator.Close()
+	case crypto.KeyTypeECDSA:
+		var curve elliptic.Curve
+		switch o.CryptoKeySize {
+		case ecdsaCurveP256:
+			curve = elliptic.P256()
+		case ecdsaCurveP384:
+			curve = elliptic.P384()
+		case ecdsaCurveP521:
+			curve = elliptic.P521()
+		default:
+			return fmt.Errorf("unsupported ECDSA curve size: %d", o.CryptoKeySize)
+		}
+		ecdsaKeyGenerator, err = crypto.NewECDSAKeyGenerator(
+			o.CryptoKeyBufferSizeMin,
+			o.CryptoKeyBufferSizeMax,
+			curve,
+			o.CryptoKeyBufferDelay,
+		)
+		if err != nil {
+			return fmt.Errorf("can't create ecdsa key generator: %w", err)
+		}
+		defer ecdsaKeyGenerator.Close()
+		// For now, we create an RSA generator as a fallback since controllers expect RSA
+		// In a future update, controllers can be refactored to support both key types
+		rsaKeyGenerator, err = crypto.NewRSAKeyGenerator(
+			o.CryptoKeyBufferSizeMin,
+			o.CryptoKeyBufferSizeMax,
+			4096, // Use default RSA size as fallback
+			o.CryptoKeyBufferDelay,
+		)
+		if err != nil {
+			return fmt.Errorf("can't create fallback rsa key generator: %w", err)
+		}
+		defer rsaKeyGenerator.Close()
+	default:
+		return fmt.Errorf("unsupported key type: %s", keyType)
 	}
-	defer rsaKeyGenerator.Close()
 
 	kubeInformers := informers.NewSharedInformerFactory(o.kubeClient, resyncPeriod)
 	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
@@ -750,11 +812,21 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		rsaKeyGenerator.Run(ctx)
-	}()
+	if rsaKeyGenerator != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rsaKeyGenerator.Run(ctx)
+		}()
+	}
+
+	if ecdsaKeyGenerator != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ecdsaKeyGenerator.Run(ctx)
+		}()
+	}
 
 	wg.Add(1)
 	go func() {

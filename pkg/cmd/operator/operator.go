@@ -60,6 +60,11 @@ const (
 	rsaKeySizeMin = 2048
 	rsaKeySizeMax = 4096
 
+	// Standard RSA key sizes
+	rsaKeySize2048 = 2048
+	rsaKeySize3072 = 3072
+	rsaKeySize4096 = 4096
+
 	// ECDSA curve bit sizes
 	ecdsaCurveP256 = 256
 	ecdsaCurveP384 = 384
@@ -154,7 +159,7 @@ func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
 	cmd.Flags().StringVarP(&o.CryptoKeyType, "crypto-key-type", "", o.CryptoKeyType, "The type of key to use for certificates. Valid values are 'RSA' or 'ECDSA'.")
-	cmd.Flags().IntVarP(&o.CryptoKeySize, "crypto-key-size", "", o.CryptoKeySize, "The size of the key to use. For RSA, this is the key size in bits (2048-4096). For ECDSA, this is the curve size (256, 384, or 521).")
+	cmd.Flags().IntVarP(&o.CryptoKeySize, "crypto-key-size", "", o.CryptoKeySize, "The size of the key to use. For RSA, this is the key size in bits (2048, 3072, or 4096). For ECDSA, this is the curve size (256, 384, or 521).")
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMin, "crypto-key-buffer-size-min", "", o.CryptoKeyBufferSizeMin, "Minimal number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1.")
 	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMax, cryptoKeyBufferSizeMaxFlagKey, "", o.CryptoKeyBufferSizeMax, "Maximum number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1. If not set, it will adjust to be at least the size of crypto-key-buffer-size-min.")
 	cmd.Flags().DurationVarP(&o.CryptoKeyBufferDelay, "crypto-key-buffer-delay", "", o.CryptoKeyBufferDelay, "Delay is the time to wait when generating next certificate in the (min, max) range. Certificate generation bellow the min threshold is not affected.")
@@ -178,11 +183,8 @@ func (o *OperatorOptions) Validate() error {
 	keyType := crypto.KeyType(o.CryptoKeyType)
 	switch keyType {
 	case crypto.KeyTypeRSA:
-		if o.CryptoKeySize < rsaKeySizeMin {
-			errs = append(errs, fmt.Errorf("crypto-key-size for RSA must not be less than %d", rsaKeySizeMin))
-		}
-		if o.CryptoKeySize > rsaKeySizeMax {
-			errs = append(errs, fmt.Errorf("crypto-key-size for RSA must not be more than %d", rsaKeySizeMax))
+		if o.CryptoKeySize != rsaKeySize2048 && o.CryptoKeySize != rsaKeySize3072 && o.CryptoKeySize != rsaKeySize4096 {
+			errs = append(errs, fmt.Errorf("crypto-key-size for RSA must be %d, %d, or %d", rsaKeySize2048, rsaKeySize3072, rsaKeySize4096))
 		}
 	case crypto.KeyTypeECDSA:
 		if o.CryptoKeySize != ecdsaCurveP256 && o.CryptoKeySize != ecdsaCurveP384 && o.CryptoKeySize != ecdsaCurveP521 {

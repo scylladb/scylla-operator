@@ -25,10 +25,10 @@ type RSAKeyGenerator struct {
 var _ RSAKeyGetter = &RSAKeyGenerator{}
 
 func NewRSAKeyGenerator(min, max, keySize int, delay time.Duration) (*RSAKeyGenerator, error) {
-	// RFC 5702 and NIST SP 800-57 Part 3 recommend a minimum of 2048-bit keys for RSA
-	const minRSAKeySize = 2048
-	if keySize < minRSAKeySize {
-		return nil, fmt.Errorf("RSA key size must be at least %d bits, got %d", minRSAKeySize, keySize)
+	// RFC 5702 and NIST SP 800-57 Part 3 recommend standard RSA key sizes
+	// Standard sizes are 2048, 3072, and 4096 bits
+	if keySize != 2048 && keySize != 3072 && keySize != 4096 {
+		return nil, fmt.Errorf("RSA key size must be 2048, 3072, or 4096 bits, got %d", keySize)
 	}
 
 	g, err := itemgenerator.NewGenerator[rsa.PrivateKey]("RSAKeyGenerator", min, max, delay, func() (*rsa.PrivateKey, error) {

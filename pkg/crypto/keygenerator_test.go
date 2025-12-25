@@ -435,52 +435,72 @@ func BenchmarkECDSAKeyGeneration(b *testing.B) {
 	<-done
 }
 
-func TestRSAKeyGenerator_MinimumKeySize(t *testing.T) {
-t.Parallel()
+func TestRSAKeyGenerator_KeySizeValidation(t *testing.T) {
+	t.Parallel()
 
-testCases := []struct {
-name        string
-keySize     int
-expectError bool
-}{
-{
-name:        "below minimum (1024)",
-keySize:     1024,
-expectError: true,
-},
-{
-name:        "at minimum (2048)",
-keySize:     2048,
-expectError: false,
-},
-{
-name:        "above minimum (4096)",
-keySize:     4096,
-expectError: false,
-},
-}
+	testCases := []struct {
+		name        string
+		keySize     int
+		expectError bool
+	}{
+		{
+			name:        "below minimum (1024)",
+			keySize:     1024,
+			expectError: true,
+		},
+		{
+			name:        "valid 2048",
+			keySize:     2048,
+			expectError: false,
+		},
+		{
+			name:        "invalid 2560",
+			keySize:     2560,
+			expectError: true,
+		},
+		{
+			name:        "valid 3072",
+			keySize:     3072,
+			expectError: false,
+		},
+		{
+			name:        "invalid 3584",
+			keySize:     3584,
+			expectError: true,
+		},
+		{
+			name:        "valid 4096",
+			keySize:     4096,
+			expectError: false,
+		},
+		{
+			name:        "above maximum (8192)",
+			keySize:     8192,
+			expectError: true,
+		},
+	}
 
-for _, tc := range testCases {
-t.Run(tc.name, func(t *testing.T) {
-t.Parallel()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-gen, err := NewRSAKeyGenerator(1, 1, tc.keySize, 1*time.Second)
+			gen, err := NewRSAKeyGenerator(1, 1, tc.keySize, 1*time.Second)
 
-if tc.expectError {
-if err == nil {
-t.Errorf("expected error for key size %d, but got none", tc.keySize)
-}
-if gen != nil {
-t.Errorf("expected nil generator for invalid key size, got %v", gen)
-}
-} else {
-if err != nil {
-t.Errorf("unexpected error for valid key size %d: %v", tc.keySize, err)
-}
-if gen != nil {
-gen.Close()
-}
-}
-})
-}
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("expected error for key size %d, but got none", tc.keySize)
+				}
+				if gen != nil {
+					t.Errorf("expected nil generator for invalid key size, got %v", gen)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error for valid key size %d: %v", tc.keySize, err)
+				}
+				if gen != nil {
+					gen.Close()
+				}
+			}
+		})
+	}
 }

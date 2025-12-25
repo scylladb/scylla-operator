@@ -3,6 +3,7 @@
 package crypto
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -18,13 +19,13 @@ var (
 
 type Signer interface {
 	Now() time.Time
-	GetPublicKey() *rsa.PublicKey
-	SignCertificate(template *x509.Certificate, requestKey *rsa.PublicKey) (*x509.Certificate, error)
+	GetPublicKey() any
+	SignCertificate(template *x509.Certificate, requestKey any) (*x509.Certificate, error)
 	VerifyCertificate(cert *x509.Certificate) error
 }
 
 type SelfSignedSigner struct {
-	privateKey *rsa.PrivateKey
+	privateKey any // *rsa.PrivateKey or *ecdsa.PrivateKey
 	nowFunc    func() time.Time
 }
 
@@ -35,24 +36,49 @@ func NewSelfSignedSigner(nowFunc func() time.Time) *SelfSignedSigner {
 		nowFunc: nowFunc,
 	}
 }
-func NewSelfSignedSignerWithKey(nowFunc func() time.Time, privateKey *rsa.PrivateKey) *SelfSignedSigner {
+
+func NewSelfSignedSignerWithRSAKey(nowFunc func() time.Time, privateKey *rsa.PrivateKey) *SelfSignedSigner {
 	return &SelfSignedSigner{
 		privateKey: privateKey,
 		nowFunc:    nowFunc,
 	}
 }
 
+func NewSelfSignedSignerWithECDSAKey(nowFunc func() time.Time, privateKey *ecdsa.PrivateKey) *SelfSignedSigner {
+	return &SelfSignedSigner{
+		privateKey: privateKey,
+		nowFunc:    nowFunc,
+	}
+}
+
+// NewSelfSignedSignerWithKey is kept for backward compatibility, use NewSelfSignedSignerWithRSAKey instead
+func NewSelfSignedSignerWithKey(nowFunc func() time.Time, privateKey *rsa.PrivateKey) *SelfSignedSigner {
+	return NewSelfSignedSignerWithRSAKey(nowFunc, privateKey)
+}
+
 func (s *SelfSignedSigner) Now() time.Time {
 	return s.nowFunc()
 }
 
-func (s *SelfSignedSigner) GetPublicKey() *rsa.PublicKey {
+func (s *SelfSignedSigner) GetPublicKey() any {
 	return nil
 }
 
-func (s *SelfSignedSigner) SignCertificate(template *x509.Certificate, requestKey *rsa.PublicKey) (*x509.Certificate, error) {
+func getPublicKeyFromPrivateKey(privateKey any) any {
+	switch key := privateKey.(type) {
+	case *rsa.PrivateKey:
+		return &key.PublicKey
+	case *ecdsa.PrivateKey:
+		return &key.PublicKey
+	default:
+		return nil
+	}
+}
+
+func (s *SelfSignedSigner) SignCertificate(template *x509.Certificate, requestKey any) (*x509.Certificate, error) {
 	// Make sure the self-signed signer was initialized for this publicKey.
-	if !reflect.DeepEqual(requestKey, s.privateKey.Public()) {
+	expectedPublicKey := getPublicKeyFromPrivateKey(s.privateKey)
+	if !reflect.DeepEqual(requestKey, expectedPublicKey) {
 		return nil, fmt.Errorf("self-signed signer: public key mismatch")
 	}
 
@@ -76,13 +102,13 @@ func (s *SelfSignedSigner) VerifyCertificate(cert *x509.Certificate) error {
 
 type CertificateAuthority struct {
 	cert       *x509.Certificate
-	privateKey *rsa.PrivateKey
+	privateKey any // *rsa.PrivateKey or *ecdsa.PrivateKey
 	nowFunc    func() time.Time
 }
 
 var _ Signer = &CertificateAuthority{}
 
-func NewCertificateAuthority(cert *x509.Certificate, key *rsa.PrivateKey, nowFunc func() time.Time) (*CertificateAuthority, error) {
+func NewCertificateAuthorityWithRSAKey(cert *x509.Certificate, key *rsa.PrivateKey, nowFunc func() time.Time) (*CertificateAuthority, error) {
 	if cert.IsCA == false {
 		return nil, fmt.Errorf("certificate isn't a CA")
 	}
@@ -94,15 +120,32 @@ func NewCertificateAuthority(cert *x509.Certificate, key *rsa.PrivateKey, nowFun
 	}, nil
 }
 
+func NewCertificateAuthorityWithECDSAKey(cert *x509.Certificate, key *ecdsa.PrivateKey, nowFunc func() time.Time) (*CertificateAuthority, error) {
+	if cert.IsCA == false {
+		return nil, fmt.Errorf("certificate isn't a CA")
+	}
+
+	return &CertificateAuthority{
+		cert:       cert,
+		privateKey: key,
+		nowFunc:    nowFunc,
+	}, nil
+}
+
+// NewCertificateAuthority is kept for backward compatibility, use NewCertificateAuthorityWithRSAKey instead
+func NewCertificateAuthority(cert *x509.Certificate, key *rsa.PrivateKey, nowFunc func() time.Time) (*CertificateAuthority, error) {
+	return NewCertificateAuthorityWithRSAKey(cert, key, nowFunc)
+}
+
 func (ca *CertificateAuthority) Now() time.Time {
 	return ca.nowFunc()
 }
 
-func (ca *CertificateAuthority) GetPublicKey() *rsa.PublicKey {
-	return &ca.privateKey.PublicKey
+func (ca *CertificateAuthority) GetPublicKey() any {
+	return getPublicKeyFromPrivateKey(ca.privateKey)
 }
 
-func (ca *CertificateAuthority) SignCertificate(template *x509.Certificate, requestKey *rsa.PublicKey) (*x509.Certificate, error) {
+func (ca *CertificateAuthority) SignCertificate(template *x509.Certificate, requestKey any) (*x509.Certificate, error) {
 	var err error
 	template.SerialNumber, err = rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {

@@ -4,6 +4,8 @@ package crypto
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -23,6 +25,12 @@ type RSAKeyGenerator struct {
 var _ RSAKeyGetter = &RSAKeyGenerator{}
 
 func NewRSAKeyGenerator(min, max, keySize int, delay time.Duration) (*RSAKeyGenerator, error) {
+	// RFC 5702 and NIST SP 800-57 Part 3 recommend standard RSA key sizes
+	// Standard sizes are 2048, 3072, and 4096 bits
+	if keySize != 2048 && keySize != 3072 && keySize != 4096 {
+		return nil, fmt.Errorf("RSA key size must be 2048, 3072, or 4096 bits, got %d", keySize)
+	}
+
 	g, err := itemgenerator.NewGenerator[rsa.PrivateKey]("RSAKeyGenerator", min, max, delay, func() (*rsa.PrivateKey, error) {
 		privateKey, err := rsa.GenerateKey(rand.Reader, keySize)
 		if err != nil {
@@ -31,12 +39,47 @@ func NewRSAKeyGenerator(min, max, keySize int, delay time.Duration) (*RSAKeyGene
 
 		return privateKey, nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &RSAKeyGenerator{
 		Generator: *g,
-	}, err
+	}, nil
 }
 
 func (g *RSAKeyGenerator) GetNewKey(ctx context.Context) (*rsa.PrivateKey, error) {
+	return g.GetItem(ctx)
+}
+
+type ECDSAKeyGetter interface {
+	GetNewKey(ctx context.Context) (*ecdsa.PrivateKey, error)
+}
+
+type ECDSAKeyGenerator struct {
+	itemgenerator.Generator[ecdsa.PrivateKey]
+}
+
+var _ ECDSAKeyGetter = &ECDSAKeyGenerator{}
+
+func NewECDSAKeyGenerator(min, max int, curve elliptic.Curve, delay time.Duration) (*ECDSAKeyGenerator, error) {
+	g, err := itemgenerator.NewGenerator[ecdsa.PrivateKey]("ECDSAKeyGenerator", min, max, delay, func() (*ecdsa.PrivateKey, error) {
+		privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
+		if err != nil {
+			return nil, fmt.Errorf("can't generate key: %w", err)
+		}
+
+		return privateKey, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ECDSAKeyGenerator{
+		Generator: *g,
+	}, nil
+}
+
+func (g *ECDSAKeyGenerator) GetNewKey(ctx context.Context) (*ecdsa.PrivateKey, error) {
 	return g.GetItem(ctx)
 }

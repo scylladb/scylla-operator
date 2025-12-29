@@ -33,7 +33,7 @@ You can do this by following the [official OpenShift documentation][user-workloa
 
 To allow `ScyllaDBMonitoring`-managed Grafana to access the OpenShift User Workload Monitoring Prometheus instance,
 you need to create a `ServiceAccount` and a `ClusterRoleBinding` that grants the necessary permissions. We will use its
-`ServiceAccount` token for configuring Grafana datasource. See the OpenShift's [Accessing metrics as a developer](https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/monitoring/accessing-metrics#accessing-metrics-as-a-developer) 
+`ServiceAccount` token for configuring Grafana datasource. See the OpenShift's [Accessing metrics as a developer](https://docs.redhat.com/en/documentation/monitoring_stack_for_red_hat_openshift/4.20/html/accessing_metrics/accessing-metrics-as-a-developer) 
 article for more details.
 
 :::{note}

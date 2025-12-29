@@ -137,6 +137,18 @@ func NewCertificateAuthority(cert *x509.Certificate, key *rsa.PrivateKey, nowFun
 	return NewCertificateAuthorityWithRSAKey(cert, key, nowFunc)
 }
 
+// NewCertificateAuthorityWithAnyKey creates a CertificateAuthority with either RSA or ECDSA key.
+func NewCertificateAuthorityWithAnyKey(cert *x509.Certificate, key any, nowFunc func() time.Time) (*CertificateAuthority, error) {
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		return NewCertificateAuthorityWithRSAKey(cert, k, nowFunc)
+	case *ecdsa.PrivateKey:
+		return NewCertificateAuthorityWithECDSAKey(cert, k, nowFunc)
+	default:
+		return nil, fmt.Errorf("unsupported key type: %T", key)
+	}
+}
+
 func (ca *CertificateAuthority) Now() time.Time {
 	return ca.nowFunc()
 }

@@ -38,7 +38,7 @@ func (s *SigningTLSSecret) AsCertificateAuthority() (*ocrypto.CertificateAuthori
 	return ca, nil
 }
 
-func (s *SigningTLSSecret) MakeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret, validity, refresh time.Duration) (*TLSSecret, error) {
+func (s *SigningTLSSecret) MakeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGetter, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret, validity, refresh time.Duration) (*TLSSecret, error) {
 	ca, err := s.AsCertificateAuthority()
 	if err != nil {
 		return nil, err

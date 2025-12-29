@@ -278,7 +278,7 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 	return tlsSecret, nil
 }
 
-func MakeSelfSignedCA(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
+func MakeSelfSignedCA(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGetter, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
 	signer := ocrypto.NewSelfSignedSigner(nowFunc)
 	tlsSecret, err := makeCertificate(ctx, name, certCreator, keyGetter, signer, validity, refresh, controller, controllerGVK, existingSecret)
 	if err != nil {

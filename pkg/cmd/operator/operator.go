@@ -329,6 +329,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	}
 
 	keyType := crypto.KeyType(o.CryptoKeyType)
+	var keyGenerator crypto.KeyGetter
 	var rsaKeyGenerator *crypto.RSAKeyGenerator
 	var ecdsaKeyGenerator *crypto.ECDSAKeyGenerator
 	var err error
@@ -345,6 +346,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 			return fmt.Errorf("can't create rsa key generator: %w", err)
 		}
 		defer rsaKeyGenerator.Close()
+		keyGenerator = rsaKeyGenerator
 	case crypto.KeyTypeECDSA:
 		var curve elliptic.Curve
 		switch o.CryptoKeySize {
@@ -367,21 +369,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 			return fmt.Errorf("can't create ecdsa key generator: %w", err)
 		}
 		defer ecdsaKeyGenerator.Close()
-		// Note: Controllers currently expect RSA keys. In the future, controllers should be updated
-		// to accept either key type. For now, ECDSA support is available through the operator but
-		// controllers will continue to use RSA keys.
-		// TODO(#2134): Refactor controllers to support both RSA and ECDSA key generators.
-		// This will allow removing this RSA fallback and reduce resource usage.
-		rsaKeyGenerator, err = crypto.NewRSAKeyGenerator(
-			o.CryptoKeyBufferSizeMin,
-			o.CryptoKeyBufferSizeMax,
-			4096, // Use default RSA size for controllers
-			o.CryptoKeyBufferDelay,
-		)
-		if err != nil {
-			return fmt.Errorf("can't create rsa key generator for controllers: %w", err)
-		}
-		defer rsaKeyGenerator.Close()
+		keyGenerator = ecdsaKeyGenerator
 	default:
 		return fmt.Errorf("unsupported key type: %s", keyType)
 	}
@@ -439,7 +427,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
 		o.OperatorImage,
 		o.CQLSIngressPort,
-		rsaKeyGenerator,
+		keyGenerator,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scylladbdatacenter controller: %w", err)
@@ -536,7 +524,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		monitoringInformers.Monitoring().V1().Prometheuses(),
 		monitoringInformers.Monitoring().V1().PrometheusRules(),
 		monitoringInformers.Monitoring().V1().ServiceMonitors(),
-		rsaKeyGenerator,
+		keyGenerator,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)

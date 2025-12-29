@@ -14,6 +14,12 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/itemgenerator"
 )
 
+// KeyGetter is a generic interface for getting private keys of any supported type.
+// It returns any to support both RSA and ECDSA keys.
+type KeyGetter interface {
+	GetNewKeyAny(ctx context.Context) (any, error)
+}
+
 type RSAKeyGetter interface {
 	GetNewKey(ctx context.Context) (*rsa.PrivateKey, error)
 }
@@ -23,6 +29,7 @@ type RSAKeyGenerator struct {
 }
 
 var _ RSAKeyGetter = &RSAKeyGenerator{}
+var _ KeyGetter = &RSAKeyGenerator{}
 
 func NewRSAKeyGenerator(min, max, keySize int, delay time.Duration) (*RSAKeyGenerator, error) {
 	// RFC 5702 and NIST SP 800-57 Part 3 recommend standard RSA key sizes
@@ -52,6 +59,10 @@ func (g *RSAKeyGenerator) GetNewKey(ctx context.Context) (*rsa.PrivateKey, error
 	return g.GetItem(ctx)
 }
 
+func (g *RSAKeyGenerator) GetNewKeyAny(ctx context.Context) (any, error) {
+	return g.GetNewKey(ctx)
+}
+
 type ECDSAKeyGetter interface {
 	GetNewKey(ctx context.Context) (*ecdsa.PrivateKey, error)
 }
@@ -61,6 +72,7 @@ type ECDSAKeyGenerator struct {
 }
 
 var _ ECDSAKeyGetter = &ECDSAKeyGenerator{}
+var _ KeyGetter = &ECDSAKeyGenerator{}
 
 func NewECDSAKeyGenerator(min, max int, curve elliptic.Curve, delay time.Duration) (*ECDSAKeyGenerator, error) {
 	g, err := itemgenerator.NewGenerator[ecdsa.PrivateKey]("ECDSAKeyGenerator", min, max, delay, func() (*ecdsa.PrivateKey, error) {
@@ -82,4 +94,8 @@ func NewECDSAKeyGenerator(min, max int, curve elliptic.Curve, delay time.Duratio
 
 func (g *ECDSAKeyGenerator) GetNewKey(ctx context.Context) (*ecdsa.PrivateKey, error) {
 	return g.GetItem(ctx)
+}
+
+func (g *ECDSAKeyGenerator) GetNewKeyAny(ctx context.Context) (any, error) {
+	return g.GetNewKey(ctx)
 }

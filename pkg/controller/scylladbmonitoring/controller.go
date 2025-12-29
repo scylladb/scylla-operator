@@ -82,7 +82,7 @@ type Controller struct {
 	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBMonitoring]
 
-	keyGetter crypto.RSAKeyGetter
+	keyGetter crypto.KeyGetter
 }
 
 func NewController(
@@ -102,7 +102,7 @@ func NewController(
 	prometheusInformer monitoringv1informers.PrometheusInformer,
 	prometheusRuleInformer monitoringv1informers.PrometheusRuleInformer,
 	serviceMonitorInformer monitoringv1informers.ServiceMonitorInformer,
-	keyGetter crypto.RSAKeyGetter,
+	keyGetter crypto.KeyGetter,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)

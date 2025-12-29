@@ -113,7 +113,7 @@ func (configs CertChainConfigs) GetMetaConfigMaps() []*corev1.ConfigMap {
 }
 
 type CertificateManager struct {
-	keyGetter       ocrypto.RSAKeyGetter
+	keyGetter       ocrypto.KeyGetter
 	secretsClient   corev1client.SecretsGetter
 	secretLister    corev1listers.SecretLister
 	configMapClient corev1client.ConfigMapsGetter
@@ -122,7 +122,7 @@ type CertificateManager struct {
 }
 
 func NewCertificateManager(
-	keyGetter ocrypto.RSAKeyGetter,
+	keyGetter ocrypto.KeyGetter,
 	secretsClient corev1client.SecretsGetter,
 	secretLister corev1listers.SecretLister,
 	configMapClient corev1client.ConfigMapsGetter,

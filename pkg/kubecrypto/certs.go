@@ -154,7 +154,7 @@ func getAuthorityKeyIDFromSignerKey(key any) []byte {
 	return h[:]
 }
 
-func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
+func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGetter, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
 	if certCreator == nil {
 		return nil, fmt.Errorf("missing cert creator")
 	}
@@ -223,7 +223,24 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 	if len(refreshReason) != 0 {
 		startTime := time.Now()
 		klog.V(2).InfoS("Creating certificate", "Secret", naming.ObjRef(tlsSecret.GetSecret()), "Reason", refreshReason)
-		cert, key, err := certCreator.MakeCertificate(ctx, keyGetter, signer, validity)
+		
+		// Try to use the generic interface that supports both RSA and ECDSA
+		var cert *x509.Certificate
+		var key any
+		var err error
+		
+		// Check if certCreator supports MakeCertificateAny (for both RSA and ECDSA)
+		if x509Creator, ok := certCreator.(*ocrypto.X509CertCreator); ok {
+			cert, key, err = x509Creator.MakeCertificateAny(ctx, keyGetter, signer, validity)
+		} else {
+			// Fallback to RSA-only path for backward compatibility
+			rsaKeyGetter, ok := keyGetter.(ocrypto.RSAKeyGetter)
+			if !ok {
+				return nil, fmt.Errorf("keyGetter does not implement RSAKeyGetter and cert creator is not X509CertCreator")
+			}
+			cert, key, err = certCreator.MakeCertificate(ctx, rsaKeyGetter, signer, validity)
+		}
+		
 		if err != nil {
 			return nil, fmt.Errorf("can't create certificate: %w", err)
 		}
@@ -234,7 +251,7 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 			return nil, fmt.Errorf("can't encode certificates: %w", err)
 		}
 
-		keyBytes, err := ocrypto.EncodePrivateKey(key)
+		keyBytes, err := ocrypto.EncodePrivateKeyAny(key)
 		if err != nil {
 			return nil, fmt.Errorf("can't encode key: %w", err)
 		}

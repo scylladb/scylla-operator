@@ -88,6 +88,18 @@ func EncodePrivateKey(key *rsa.PrivateKey) ([]byte, error) {
 	return EncodePrivateKeyRSA(key)
 }
 
+// EncodePrivateKeyAny encodes a private key of any supported type (RSA or ECDSA) to PEM format.
+func EncodePrivateKeyAny(key any) ([]byte, error) {
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		return EncodePrivateKeyRSA(k)
+	case *ecdsa.PrivateKey:
+		return EncodePrivateKeyECDSA(k)
+	default:
+		return nil, fmt.Errorf("unsupported key type: %T", key)
+	}
+}
+
 func DecodeCertificates(certBytes []byte) ([]*x509.Certificate, error) {
 	var certificates []*x509.Certificate
 	remainingBytes := certBytes

@@ -50,6 +50,48 @@ type X509CertCreator struct {
 var _ RSACertCreator = &X509CertCreator{}
 var _ ECDSACertCreator = &X509CertCreator{}
 
+// MakeCertificateAny creates a certificate using a generic KeyGetter that can provide either RSA or ECDSA keys.
+// It returns the certificate and private key as any types, which the caller must type assert.
+func (c *X509CertCreator) MakeCertificateAny(ctx context.Context, keyGetter KeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, any, error) {
+	privateKey, err := keyGetter.GetNewKeyAny(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't get generated key: %w", err)
+	}
+
+	// Update signer if it's self-signed to use the new private key
+	selfSignedSigner, ok := signer.(*SelfSignedSigner)
+	if ok {
+		switch key := privateKey.(type) {
+		case *rsa.PrivateKey:
+			signer = NewSelfSignedSignerWithRSAKey(selfSignedSigner.nowFunc, key)
+		case *ecdsa.PrivateKey:
+			signer = NewSelfSignedSignerWithECDSAKey(selfSignedSigner.nowFunc, key)
+		default:
+			return nil, nil, fmt.Errorf("unsupported key type: %T", privateKey)
+		}
+	}
+
+	template := c.MakeCertificateTemplate(signer.Now(), validity)
+	template.SignatureAlgorithm = getSignatureAlgorithm(privateKey)
+
+	var publicKey any
+	switch key := privateKey.(type) {
+	case *rsa.PrivateKey:
+		publicKey = &key.PublicKey
+	case *ecdsa.PrivateKey:
+		publicKey = &key.PublicKey
+	default:
+		return nil, nil, fmt.Errorf("unsupported key type for public key extraction: %T", privateKey)
+	}
+
+	cert, err := signer.SignCertificate(template, publicKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cert, privateKey, nil
+}
+
 func (c *X509CertCreator) MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate {
 	return &x509.Certificate{
 		Subject:               c.Subject,

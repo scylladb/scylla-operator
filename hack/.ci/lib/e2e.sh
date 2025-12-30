@@ -269,7 +269,13 @@ function run-e2e {
   kubectl create -n=e2e pdb my-pdb --selector='app=e2e' --min-available=1 --dry-run=client -o=yaml | kubectl_create -f=-
 
   # Create a Secret with the main cluster's kubeconfig.
-  kubectl create -n=e2e secret generic kubeconfig --from-file=kubeconfig="${KUBECONFIG}" --dry-run=client -o=yaml | kubectl_create -f=-
+  # If there's IN_CLUSTER_KUBECONFIG set, it will be used instead of KUBECONFIG as a source file for the secret.
+  KUBECONFIG_SECRET_SOURCE="${KUBECONFIG}"
+  if [[ -n "${IN_CLUSTER_KUBECONFIG+x}" ]]; then
+    KUBECONFIG_SECRET_SOURCE="${IN_CLUSTER_KUBECONFIG}"
+  fi
+
+  kubectl create -n=e2e secret generic kubeconfig --from-file=kubeconfig="${KUBECONFIG_SECRET_SOURCE}" --dry-run=client -o=yaml | kubectl_create -f=-
 
   # Create a Secret including _all_ workers' kubeconfigs (including the main cluster's kubeconfig if present in WORKER_KUBECONFIGS).
   kubectl create -n=e2e secret generic worker-kubeconfigs ${WORKER_KUBECONFIGS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
@@ -384,6 +390,10 @@ function run-e2e {
 
   if [[ -n "${worker_object_storage_buckets}" ]]; then
     e2e_command_args+=( "--worker-object-storage-buckets=${worker_object_storage_buckets}" )
+  fi
+
+  if [[ -n "${SO_FOCUS+x}" ]]; then
+    e2e_command_args+=( "--focus=${SO_FOCUS}" )
   fi
 
   kubectl_create -n=e2e -f=- <<EOF

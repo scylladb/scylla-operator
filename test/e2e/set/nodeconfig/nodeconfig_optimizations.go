@@ -35,7 +35,7 @@ const (
 
 // These tests modify global resource affecting global cluster state.
 // They must not be run asynchronously with other tests.
-var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
+var _ = g.Describe("NodeConfig Optimizations", framework.Serial, framework.NotSupportedOnKind, func() {
 	f := framework.NewFramework("nodeconfig")
 
 	ncTemplate := scyllafixture.NodeConfig.ReadOrFail()

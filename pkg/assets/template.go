@@ -21,6 +21,7 @@ var TemplateFuncs template.FuncMap = template.FuncMap{
 	"repeat":               Repeat,
 	"isTrue":               IsTrue,
 	"sanitizeDNSSubdomain": SanitizeDNSSubdomain,
+	"join":                 strings.Join,
 }
 
 func MarshalYAML(v any) (string, error) {

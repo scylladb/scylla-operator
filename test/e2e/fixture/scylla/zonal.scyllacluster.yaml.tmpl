@@ -10,6 +10,9 @@ spec:
   agentVersion: "{{ .scyllaDBManagerVersion }}"
   version: "{{ .scyllaDBVersion }}"
   developerMode: true
+  {{- if .scyllaArgs }}
+  scyllaArgs: "{{ join .scyllaArgs " " }}"
+  {{- end }}
   exposeOptions:
     nodeService:
       type: {{ .nodeServiceType }}

@@ -78,6 +78,21 @@ var Suites = ginkgotest.TestSuites{
 		),
 		DefaultParallelism: 42,
 	},
+	{
+		Name: "kind-fast",
+		Description: templates.LongDesc(`
+		Relatively fast tests that can be run on kind clusters.
+		`),
+		LabelFilter: fmt.Sprintf(
+			"!%s && !%s && !%s && !%s && !%s",
+			framework.NotSupportedOnKindLabelName,
+			framework.RequiresObjectStorageLabelName,
+			framework.MultiDatacenterLabelName,
+			framework.SerialLabelName,
+			framework.SupportedOnlyOnOpenShiftLabelName,
+		),
+		DefaultParallelism: 42,
+	},
 }
 
 func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {

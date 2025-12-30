@@ -30,6 +30,44 @@ it's up to the developer to ensure they are available in the environment:
   (**Note:** Until [#6978](https://github.com/operator-framework/operator-sdk/pull/6978) is merged and released, you
   need to use `operator-sdk` from the PR branch; `quay.io/scylladb/scylla-operator-images:golang-1.25` image has it preinstalled)
 
+### Running E2E tests locally
+
+We use [Kind](https://kind.sigs.k8s.io/) for basic local testing. There's a Makefile target to create a Kind cluster.
+
+```bash
+make kind-setup
+```
+
+You can then run the E2E tests (`kind-fast` suite) with:
+
+```bash
+make test-e2e-kind
+```
+
+The tests will run against the Kind cluster created in the previous step. A pod running the tests will be created in the `e2e` namespace.
+
+You can choose the Scylla Operator image to be used in the tests by setting the `SO_IMAGE` environment variable. For example:
+
+```bash
+SO_IMAGE="quay.io/scylladb/scylla-operator:latest" make test-e2e-kind
+``` 
+
+Please note that the image must be accessible from within the Kind cluster. If you're using a locally built image, you can load it into the Kind cluster with:
+
+
+
+To run specific test cases, use the `SO_FOCUS` environment variable. For example, to run tests related to ScyllaCluster creation:
+
+```bash
+SO_FOCUS="TestCaseName" make test-e2e-kind
+```
+
+If you ever need to start from a clean state, you can delete the Kind cluster with:
+
+```bash
+make kind-teardown
+```
+
 ## Coding convention
 
 Follow these guidelines for writing and structuring your code:

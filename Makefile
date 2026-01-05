@@ -799,3 +799,8 @@ helm-publish:
 kind-setup:
 	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/cluster-setup.sh
 .PHONY: kind-setup
+
+test-e2e-kind: kind-setup
+	CLUSTER_NAME=$(KIND_CLUSTER_NAME) \
+	SO_IMAGE=$(IMAGE_REF) \
+	./hack/kind/run-e2e-tests.sh

@@ -8,9 +8,12 @@ shopt -s inherit_errexit
 # Additionally, it sets up a local container registry and connects it to the KinD cluster so that images can be pushed to
 # it efficiently.
 
-readonly script_dir="$( dirname "${BASH_SOURCE[0]}" )"
+readonly parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
-CLUSTER_NAME="${CLUSTER_NAME:-scylla-operator-e2e-cluster}"
+if [ -z "${CLUSTER_NAME}" ]; then
+  echo "CLUSTER_NAME must be set" > /dev/stderr
+  exit 1
+fi
 
 # Ensure KinD cluster exists.
 if [ "${RECREATE:-false}" == "true" ]; then
@@ -18,7 +21,7 @@ if [ "${RECREATE:-false}" == "true" ]; then
 fi
 
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
-    kind create cluster --name="${CLUSTER_NAME}" --config="${script_dir}/cluster-config.yaml"
+    kind create cluster --name="${CLUSTER_NAME}" --config="${parent_dir}/cluster-config.yaml"
 else
     echo "Reusing existing KinD cluster: ${CLUSTER_NAME}"
 fi

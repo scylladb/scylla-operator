@@ -167,6 +167,7 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
 		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                  TestContext.ScyllaClusterOptions.ScyllaArgs(),
 	}
 
 	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
@@ -183,6 +184,7 @@ func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.Scyll
 		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
 		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                  TestContext.ScyllaClusterOptions.ScyllaArgs(),
 		"rackNames":                   []string{"a", "b", "c"},
 	}
 
@@ -200,6 +202,7 @@ func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatac
 		"nodesBroadcastAddressType":      TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
 		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
 		"scyllaDBRepository":             configassets.ScyllaDBImageRepository,
 		"scyllaDBManagerAgentRepository": configassets.ScyllaDBManagerAgentImageRepository,
 	}
@@ -218,6 +221,7 @@ func (f *Framework) GetDefaultScyllaDBCluster(rkcMap map[string]*scyllav1alpha1.
 		"nodesBroadcastAddressType":      TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
 		"clientsBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
 		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
 		"remoteKubernetesClusterMap":     rkcMap,
 		"scyllaDBRepository":             configassets.ScyllaDBImageRepository,
 		"scyllaDBManagerAgentRepository": configassets.ScyllaDBManagerAgentImageRepository,

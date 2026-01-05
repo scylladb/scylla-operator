@@ -12,6 +12,13 @@ spec:
   scyllaDB:
     image: "{{ .scyllaDBRepository }}:{{ .scyllaDBVersion }}"
     enableDeveloperMode: true
+    {{- if .scyllaArgs }}
+    additionalScyllaDBArguments: [
+        {{- range .scyllaArgs }}
+        "{{ . }}",
+        {{- end }}
+    ]
+    {{- end }}
   scyllaDBManagerAgent:
     image: "{{ .scyllaDBManagerAgentRepository }}:{{ .scyllaDBManagerVersion }}"
   exposeOptions:

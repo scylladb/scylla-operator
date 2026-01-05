@@ -406,7 +406,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		g.Entry("using a workaround for consistent_cluster_management for ScyllaDB Enterprise image", entry{
 			scyllaDBImage: fmt.Sprintf("%s:%s", configassets.ScyllaDBEnterpriseImageRepository, configassets.Project.Operator.ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride),
 			preTargetClusterCreateHook: func(targetSDC *scyllav1alpha1.ScyllaDBDatacenter) {
-				targetSDC.Spec.ScyllaDB.AdditionalScyllaDBArguments = []string{"--consistent-cluster-management=false"}
+				targetSDC.Spec.ScyllaDB.AdditionalScyllaDBArguments = append(targetSDC.Spec.ScyllaDB.AdditionalScyllaDBArguments, "--consistent-cluster-management=false")
 			},
 			postSchemaRestoreHook: func(ctx context.Context, ns string, nsClient framework.Client, targetSDC *scyllav1alpha1.ScyllaDBDatacenter) {
 				var err error

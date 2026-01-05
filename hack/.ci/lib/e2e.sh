@@ -359,6 +359,7 @@ function run-e2e {
     "--scyllacluster-nodes-broadcast-address-type=${SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE}"
     "--scyllacluster-clients-broadcast-address-type=${SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE}"
     "--scyllacluster-storageclass-name=${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
+    "--scyllacluster-reactor-backend=${SO_SCYLLACLUSTER_REACTOR_BACKEND:-}"
     "--object-storage-bucket=${SO_BUCKET_NAME}"
     "--gcs-service-account-key-path=${gcs_sa_in_container_path}"
     "--s3-credentials-file-path=${s3_credentials_in_container_path}"

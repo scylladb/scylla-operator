@@ -420,7 +420,10 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			scyllaRepository: configassets.ScyllaDBEnterpriseImageRepository,
 			scyllaVersion:    configassets.Project.Operator.ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride,
 			preTargetClusterCreateHook: func(targetCluster *scyllav1.ScyllaCluster) {
-				targetCluster.Spec.ScyllaArgs = "--consistent-cluster-management=false"
+				if targetCluster.Spec.ScyllaArgs != "" {
+					targetCluster.Spec.ScyllaArgs += " "
+				}
+				targetCluster.Spec.ScyllaArgs += "--consistent-cluster-management=false"
 			},
 			postSchemaRestoreHook: func(ctx context.Context, f *framework.Framework, targetSC *scyllav1.ScyllaCluster) {
 				var err error

@@ -26,6 +26,17 @@ type IngressController struct {
 type ScyllaClusterOptions struct {
 	ExposeOptions    ExposeOptions
 	StorageClassName string
+	ReactorBackend   string
+}
+
+func (o *ScyllaClusterOptions) ScyllaArgs() []string {
+	var args []string
+
+	if o.ReactorBackend != "" {
+		args = append(args, "--reactor-backend="+o.ReactorBackend)
+	}
+
+	return args
 }
 
 type ExposeOptions struct {

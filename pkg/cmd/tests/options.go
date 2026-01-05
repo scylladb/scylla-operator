@@ -38,6 +38,7 @@ type ScyllaClusterOptions struct {
 	NodesBroadcastAddressType   string
 	ClientsBroadcastAddressType string
 	StorageClassName            string
+	ReactorBackend              string
 }
 
 var supportedNodeServiceTypes = []scyllav1.NodeServiceType{
@@ -48,6 +49,11 @@ var supportedNodeServiceTypes = []scyllav1.NodeServiceType{
 var supportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 	scyllav1.BroadcastAddressTypePodIP,
 	scyllav1.BroadcastAddressTypeServiceClusterIP,
+}
+
+var supportedReactorBackends = []string{
+	"io_uring",
+	"linux-aio",
 }
 
 type TestFrameworkOptions struct {
@@ -78,6 +84,7 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 			NodesBroadcastAddressType:   string(scyllav1.BroadcastAddressTypePodIP),
 			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
 			StorageClassName:            "",
+			ReactorBackend:              "", // Leaving empty to rely on ScyllaDB default.
 		},
 		ObjectStorageOptions:        NewObjectStorageOptions(),
 		ScyllaDBVersion:             configassets.Project.Operator.ScyllaDBVersion,
@@ -126,6 +133,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		", ",
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
+	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.ReactorBackend, "scyllacluster-reactor-backend", "", o.ScyllaClusterOptionsUntyped.ReactorBackend, fmt.Sprintf("Name of the reactor backend to use for ScyllaCluster."))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBVersion, "scylladb-version", "", o.ScyllaDBVersion, "Version of ScyllaDB to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerVersion, "scylladb-manager-version", "", o.ScyllaDBManagerVersion, "Version of Scylla Manager to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
@@ -150,15 +158,19 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 	}
 
 	if !oslices.ContainsItem(supportedNodeServiceTypes, scyllav1.NodeServiceType(o.ScyllaClusterOptionsUntyped.NodeServiceType)) {
-		errors = append(errors, fmt.Errorf("invalid scylla-cluster-node-service-type: %q", o.ScyllaClusterOptionsUntyped.NodeServiceType))
+		errors = append(errors, fmt.Errorf("invalid scyllacluster-node-service-type: %q", o.ScyllaClusterOptionsUntyped.NodeServiceType))
 	}
 
 	if !oslices.ContainsItem(supportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType)) {
-		errors = append(errors, fmt.Errorf("invalid scylla-cluster-nodes-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType))
+		errors = append(errors, fmt.Errorf("invalid scyllacluster-nodes-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType))
 	}
 
 	if !oslices.ContainsItem(supportedBroadcastAddressTypes, scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType)) {
-		errors = append(errors, fmt.Errorf("invalid scylla-cluster-clients-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType))
+		errors = append(errors, fmt.Errorf("invalid scyllacluster-clients-broadcast-address-type: %q", o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType))
+	}
+
+	if backend := o.ScyllaClusterOptionsUntyped.ReactorBackend; backend != "" && !oslices.ContainsItem(supportedReactorBackends, backend) {
+		errors = append(errors, fmt.Errorf("invalid scyllacluster-reactor-backend: %q", o.ScyllaClusterOptionsUntyped.ReactorBackend))
 	}
 
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBVersion) {
@@ -230,6 +242,7 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 			ClientsBroadcastAddressType: scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType),
 		},
 		StorageClassName: o.ScyllaClusterOptionsUntyped.StorageClassName,
+		ReactorBackend:   o.ScyllaClusterOptionsUntyped.ReactorBackend,
 	}
 
 	workerRestConfigs := make(map[string]*rest.Config, len(o.WorkerClientConfigs))

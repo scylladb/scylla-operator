@@ -49,7 +49,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		var err error
 		matchingNodes, err = utils.GetMatchingNodesForNodeConfig(ctx, f.KubeAdminClient().CoreV1(), ncTemplate)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(matchingNodes).NotTo(o.HaveLen(0))
+		o.Expect(matchingNodes).NotTo(o.BeEmpty())
 		framework.Infof("There are %d scylla nodes", len(matchingNodes))
 	})
 

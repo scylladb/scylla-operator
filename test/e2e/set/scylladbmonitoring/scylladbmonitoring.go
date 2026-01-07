@@ -469,7 +469,7 @@ func verifyPrometheusGrafanaDataSource(grafanaClient *grafana.Client) {
 		health, err := grafanaClient.DatasourceHealth("prometheus")
 		framework.Infof("Checking 'prometheus' grafana data source health: err: %v, health: %v, message: %s", err, health.OK, health.Message)
 		eo.Expect(err).NotTo(o.HaveOccurred())
-		eo.Expect(health.OK).To(o.Equal(true))
+		eo.Expect(health.OK).To(o.BeTrue())
 	}).WithTimeout(10 * time.Minute).WithPolling(1 * time.Second).Should(o.Succeed())
 }
 

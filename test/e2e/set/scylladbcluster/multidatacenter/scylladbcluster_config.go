@@ -294,7 +294,7 @@ var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter
 			},
 		}
 
-		o.Expect(len(sc.Spec.Datacenters)).To(o.BeNumerically(">", 0))
+		o.Expect(sc.Spec.Datacenters).ToNot(o.BeEmpty())
 		for idx := range sc.Spec.Datacenters {
 			sc.Spec.Datacenters[idx].ScyllaDB = &scyllav1alpha1.ScyllaDBTemplate{
 				CustomConfigMapRef: pointer.Ptr(dcScyllaDBCustomConfigMap.Name),

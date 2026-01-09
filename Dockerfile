@@ -20,7 +20,14 @@ LABEL org.opencontainers.image.title="Scylla Operator" \
       org.opencontainers.image.source="https://github.com/scylladb/scylla-operator/" \
       org.opencontainers.image.documentation="https://operator.docs.scylladb.com" \
       org.opencontainers.image.url="https://hub.docker.com/r/scylladb/scylla-operator" \
-      org.opencontainers.image.vendor="ScyllaDB"
+      org.opencontainers.image.vendor="ScyllaDB" \
+      name="Scylla Operator" \
+      maintainer="ScyllaDB Operator Team" \
+      vendor="ScyllaDB" \
+      version="see-image-tag" \
+      release="see-image-tag" \
+      summary="ScyllaDB Operator for Kubernetes" \
+      description="Easily run and manage your ScyllaDB cluster on Kubernetes."
 
 RUN microdnf install -y procps-ng && \
     microdnf clean all && \
@@ -28,4 +35,7 @@ RUN microdnf install -y procps-ng && \
 
 COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator /usr/bin/
 COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator-tests /usr/bin/
+
+COPY /LICENSE /licenses/LICENSE
+
 ENTRYPOINT ["/usr/bin/scylla-operator"]

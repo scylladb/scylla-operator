@@ -38,5 +38,14 @@
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*\"\\S+\":\\s*\"(?<currentValue>[^\"]+)\""
       ]
     }
-  ]
+  ],
+  "customDatasources": {
+    "envtest": {
+      "defaultRegistryUrlTemplate": "https://raw.githubusercontent.com/kubernetes-sigs/controller-tools/HEAD/envtest-releases.yaml",
+      "format": "yaml",
+      "transformTemplates": [
+        "{ \"releases\": $map($keys(releases), function($v) { { \"version\": $v } }) }"
+      ]
+    }
+  }
 }

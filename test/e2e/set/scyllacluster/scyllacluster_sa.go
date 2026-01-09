@@ -40,7 +40,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			},
 		}, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sa.OwnerReferences).To(o.HaveLen(0))
+		o.Expect(sa.OwnerReferences).To(o.BeEmpty())
 
 		rb, err := f.KubeClient().RbacV1().RoleBindings(f.Namespace()).Create(ctx, &rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
@@ -61,7 +61,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 			},
 		}, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sa.OwnerReferences).To(o.HaveLen(0))
+		o.Expect(sa.OwnerReferences).To(o.BeEmpty())
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})

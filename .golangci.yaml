@@ -5,11 +5,18 @@ linters:
     - unused
     - govet
     - importas
+    - ginkgolinter
     # More linters can be added, see supported ones: https://golangci-lint.run/usage/linters/
   exclusions:
     presets:
       - common-false-positives
       - std-error-handling
+    rules:
+      # TODO: https://github.com/scylladb/scylla-operator/issues/3190
+      - path: test/e2e/
+        linters:
+          - ginkgolinter
+        text: "use BeforeEach\\(\\) to assign variable"
   settings:
     importas:
       no-unaliased: true
@@ -31,8 +38,15 @@ linters:
           alias: oslices
         - pkg: github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1
           alias: monitoringv1
+    ginkgolinter:
+      forbid-spec-pollution: true
+      forbid-focus-container: true
+      validate-async-intervals: true
 formatters:
   enable:
     - gofmt
     - goimports
     - gci
+run:
+  build-tags:
+    - envtest

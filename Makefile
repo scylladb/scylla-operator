@@ -5,8 +5,12 @@ SHELL :=/bin/bash -euEo pipefail -O inherit_errexit
 comma :=,
 
 IMAGE_TAG ?= latest
-IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
-BUNDLE_IMAGE_REF ?= docker.io/scylladb/scylla-operator-bundle:$(IMAGE_TAG)
+REGISTRY ?= docker.io
+IMAGE_REPO ?= scylladb/scylla-operator
+BUNDLE_REPO ?= scylladb/scylla-operator-bundle
+
+IMAGE_REF ?= $(REGISTRY)/$(IMAGE_REPO):$(IMAGE_TAG)
+BUNDLE_IMAGE_REF ?= $(REGISTRY)/$(BUNDLE_REPO):$(IMAGE_TAG)
 
 MAKE_REQUIRED_MIN_VERSION:=4.2 # for SHELLSTATUS
 
@@ -83,6 +87,8 @@ define version-ldflags
 -X $(1).commitFromGit="$(GIT_COMMIT)"
 endef
 GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/build) $(GO_LD_EXTRA_FLAGS))'
+
+KIND_CLUSTER_NAME=scylla-operator-e2e
 
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1
@@ -792,3 +798,12 @@ helm-publish:
 
 	$(GSUTIL) setmeta -h 'Content-Type:text/yaml' -h 'Cache-Control: $(HELM_MANIFEST_CACHE_CONTROL)' '$(HELM_BUCKET)/index.yaml'
 .PHONY: helm-publish
+
+kind-setup:
+	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/cluster-setup.sh
+.PHONY: kind-setup
+
+test-e2e-kind: kind-setup
+	CLUSTER_NAME=$(KIND_CLUSTER_NAME) \
+	SO_IMAGE=$(IMAGE_REF) \
+	./hack/kind/run-e2e-tests.sh

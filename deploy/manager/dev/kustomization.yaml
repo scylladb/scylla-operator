@@ -1,0 +1,8 @@
+resources:
+  - 00_namespace.yaml
+  - 10_manager_configmap.yaml
+  - 10_manager_networkpolicy.yaml
+  - 10_manager_service.yaml
+  - 10_manager_serviceaccount.yaml
+  - 50_manager_deployment.yaml
+  - 50_scyllacluster.yaml

@@ -36,4 +36,6 @@ RUN microdnf install -y procps-ng && \
 COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator /usr/bin/
 COPY --from=builder /go/src/github.com/scylladb/scylla-operator/scylla-operator-tests /usr/bin/
 
+COPY /LICENSE /licenses/LICENSE
+
 ENTRYPOINT ["/usr/bin/scylla-operator"]

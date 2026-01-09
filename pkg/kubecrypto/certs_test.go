@@ -2,6 +2,8 @@ package kubecrypto
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -808,4 +810,154 @@ func Test_getAuthorityKeyIDFromSignerKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMakeCertificate_ECDSA(t *testing.T) {
+t.Parallel()
+
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// Create ECDSA key generator
+ecdsaKeyGen, err := ocrypto.NewECDSAKeyGenerator(1, 1, elliptic.P384(), 1*time.Second)
+if err != nil {
+t.Fatal(err)
+}
+defer ecdsaKeyGen.Close()
+
+wg := sync.WaitGroup{}
+wg.Add(1)
+go func() {
+defer wg.Done()
+ecdsaKeyGen.Run(ctx)
+}()
+defer wg.Wait()
+
+// Create certificate creator
+certCreator := &ocrypto.X509CertCreator{
+Subject: pkix.Name{
+CommonName: "test-ecdsa-cert",
+},
+IsCA:     false,
+KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+}
+
+// Create self-signed signer
+signer := ocrypto.NewSelfSignedSigner(now)
+
+// Make certificate with ECDSA key
+cert, key, err := certCreator.MakeCertificateAny(ctx, ecdsaKeyGen, signer, 24*time.Hour)
+if err != nil {
+t.Fatalf("failed to create ECDSA certificate: %v", err)
+}
+
+// Verify certificate was created
+if cert == nil {
+t.Fatal("expected certificate, got nil")
+}
+
+// Verify key is ECDSA
+_, ok := key.(*ecdsa.PrivateKey)
+if !ok {
+t.Fatalf("expected ECDSA key, got %T", key)
+}
+
+// Verify certificate uses ECDSA signature algorithm
+if cert.SignatureAlgorithm != x509.ECDSAWithSHA384 {
+t.Errorf("expected ECDSAWithSHA384 signature algorithm, got %v", cert.SignatureAlgorithm)
+}
+
+// Verify certificate subject
+if cert.Subject.CommonName != "test-ecdsa-cert" {
+t.Errorf("expected common name 'test-ecdsa-cert', got %q", cert.Subject.CommonName)
+}
+}
+
+func TestMakeSelfSignedCA_ECDSA(t *testing.T) {
+t.Parallel()
+
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// Create ECDSA key generator
+ecdsaKeyGen, err := ocrypto.NewECDSAKeyGenerator(1, 1, elliptic.P256(), 1*time.Second)
+if err != nil {
+t.Fatal(err)
+}
+defer ecdsaKeyGen.Close()
+
+wg := sync.WaitGroup{}
+wg.Add(1)
+go func() {
+defer wg.Done()
+ecdsaKeyGen.Run(ctx)
+}()
+defer wg.Wait()
+
+// Create CA certificate creator
+caCertCreator := &ocrypto.X509CertCreator{
+Subject: pkix.Name{
+CommonName: "test-ecdsa-ca",
+},
+IsCA:     true,
+KeyUsage: x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+}
+
+controller := &metav1.ObjectMeta{
+Namespace: "test-namespace",
+Name:      "test-controller",
+UID:       "test-uid",
+}
+controllerGVK := schema.GroupVersionKind{
+Group:   "test.scylladb.com",
+Version: "v1",
+Kind:    "TestController",
+}
+
+// Create self-signed CA with ECDSA key
+caTLSSecret, err := MakeSelfSignedCA(
+ctx,
+"test-ecdsa-ca",
+caCertCreator,
+ecdsaKeyGen,
+now,
+365*24*time.Hour, // validity
+180*24*time.Hour, // refresh
+controller,
+controllerGVK,
+nil, // no existing secret
+)
+if err != nil {
+t.Fatalf("failed to create self-signed CA with ECDSA: %v", err)
+}
+
+// Verify CA certificate was created
+if caTLSSecret == nil {
+t.Fatal("expected CA TLS secret, got nil")
+}
+
+caCert, err := caTLSSecret.GetCert()
+if err != nil {
+t.Fatalf("failed to get CA certificate: %v", err)
+}
+
+// Verify certificate is a CA
+if !caCert.IsCA {
+t.Error("expected certificate to be a CA")
+}
+
+// Verify certificate uses ECDSA signature algorithm
+if caCert.SignatureAlgorithm != x509.ECDSAWithSHA384 {
+t.Errorf("expected ECDSAWithSHA384 signature algorithm, got %v", caCert.SignatureAlgorithm)
+}
+
+// Verify certificate subject
+if caCert.Subject.CommonName != "test-ecdsa-ca" {
+t.Errorf("expected common name 'test-ecdsa-ca', got %q", caCert.Subject.CommonName)
+}
+
+// Verify certificate is self-signed
+if !isSelfSigned(caCert) {
+t.Error("expected self-signed certificate")
+}
 }

@@ -25,12 +25,31 @@ func NewSigningTLSSecret(tlsSecret *TLSSecret, nowFunc func() time.Time) *Signin
 }
 
 func (s *SigningTLSSecret) AsCertificateAuthority() (*ocrypto.CertificateAuthority, error) {
-	signerCert, signerKey, err := s.GetCertKey()
+	certs, err := s.GetCerts()
 	if err != nil {
-		return nil, fmt.Errorf("can't get issuer cert key from secret %q: %v", naming.ObjRef(s.GetSecret()), err)
+		return nil, fmt.Errorf("can't get issuer certs from secret %q: %v", naming.ObjRef(s.GetSecret()), err)
 	}
 
-	ca, err := ocrypto.NewCertificateAuthority(signerCert, signerKey, s.nowFunc)
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("no certificates in secret %q", naming.ObjRef(s.GetSecret()))
+	}
+
+	signerCert := certs[0]
+
+	// Get the key - use cached key if available (supports RSA and ECDSA)
+	var signerKey any
+	if s.key != nil {
+		signerKey = s.key
+	} else {
+		// Load from secret - defaults to RSA for backward compatibility
+		rsaKey, err := s.GetKey()
+		if err != nil {
+			return nil, fmt.Errorf("can't get issuer key from secret %q: %v", naming.ObjRef(s.GetSecret()), err)
+		}
+		signerKey = rsaKey
+	}
+
+	ca, err := ocrypto.NewCertificateAuthorityWithAnyKey(signerCert, signerKey, s.nowFunc)
 	if err != nil {
 		return nil, fmt.Errorf("can't create certificate authority from secret %q: %v", naming.ObjRef(s.GetSecret()), err)
 	}
@@ -38,7 +57,7 @@ func (s *SigningTLSSecret) AsCertificateAuthority() (*ocrypto.CertificateAuthori
 	return ca, nil
 }
 
-func (s *SigningTLSSecret) MakeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret, validity, refresh time.Duration) (*TLSSecret, error) {
+func (s *SigningTLSSecret) MakeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGetter, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret, validity, refresh time.Duration) (*TLSSecret, error) {
 	ca, err := s.AsCertificateAuthority()
 	if err != nil {
 		return nil, err

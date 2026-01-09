@@ -2,6 +2,7 @@ package kubecrypto
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
@@ -20,7 +21,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func needsRefresh(existingCert *x509.Certificate, now time.Time, refresh time.Duration, desiredCert *x509.Certificate, issuerPublicKey *rsa.PublicKey, secretRef klog.ObjectRef) string {
+func needsRefresh(existingCert *x509.Certificate, now time.Time, refresh time.Duration, desiredCert *x509.Certificate, issuerPublicKey any, secretRef klog.ObjectRef) string {
 	// Don't check notBefore to avoid issues on time skew.
 	// notAfter is fine as the cert should never be close to it.
 	if now.After(existingCert.NotAfter) {
@@ -89,7 +90,7 @@ func extractExistingSecret(
 	now time.Time,
 	refresh time.Duration,
 	desiredCert *x509.Certificate,
-	desiredIssuerKey *rsa.PublicKey,
+	desiredIssuerKey any,
 ) ([]byte, []byte, *x509.Certificate, string) {
 	if secret.Data == nil {
 		return nil, nil, nil, "missing data"
@@ -120,18 +121,40 @@ func extractExistingSecret(
 	return certBytes, privateKeyBytes, cert, ""
 }
 
-func getAuthorityKeyIDFromSignerKey(key *rsa.PublicKey) []byte {
+func getAuthorityKeyIDFromSignerKey(key any) []byte {
 	// Virtual signers, like SelfSignedSigner will have an empty key.
 	if key == nil {
 		return nil
 	}
 
-	keyBytes := x509.MarshalPKCS1PublicKey(key)
+	var keyBytes []byte
+	var err error
+	
+	switch k := key.(type) {
+	case *rsa.PublicKey:
+		if k == nil {
+			return nil
+		}
+		keyBytes = x509.MarshalPKCS1PublicKey(k)
+	case *ecdsa.PublicKey:
+		if k == nil {
+			return nil
+		}
+		keyBytes, err = x509.MarshalPKIXPublicKey(k)
+		if err != nil {
+			klog.ErrorS(err, "Failed to marshal ECDSA public key")
+			return nil
+		}
+	default:
+		klog.Warningf("Unsupported public key type: %T", k)
+		return nil
+	}
+
 	h := sha1.Sum(keyBytes)
 	return h[:]
 }
 
-func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
+func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGetter, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
 	if certCreator == nil {
 		return nil, fmt.Errorf("missing cert creator")
 	}
@@ -200,7 +223,24 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 	if len(refreshReason) != 0 {
 		startTime := time.Now()
 		klog.V(2).InfoS("Creating certificate", "Secret", naming.ObjRef(tlsSecret.GetSecret()), "Reason", refreshReason)
-		cert, key, err := certCreator.MakeCertificate(ctx, keyGetter, signer, validity)
+		
+		// Try to use the generic interface that supports both RSA and ECDSA
+		var cert *x509.Certificate
+		var key any
+		var err error
+		
+		// Check if certCreator supports MakeCertificateAny (for both RSA and ECDSA)
+		if x509Creator, ok := certCreator.(*ocrypto.X509CertCreator); ok {
+			cert, key, err = x509Creator.MakeCertificateAny(ctx, keyGetter, signer, validity)
+		} else {
+			// Fallback to RSA-only path for backward compatibility
+			rsaKeyGetter, ok := keyGetter.(ocrypto.RSAKeyGetter)
+			if !ok {
+				return nil, fmt.Errorf("keyGetter does not implement RSAKeyGetter and cert creator is not X509CertCreator")
+			}
+			cert, key, err = certCreator.MakeCertificate(ctx, rsaKeyGetter, signer, validity)
+		}
+		
 		if err != nil {
 			return nil, fmt.Errorf("can't create certificate: %w", err)
 		}
@@ -211,7 +251,7 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 			return nil, fmt.Errorf("can't encode certificates: %w", err)
 		}
 
-		keyBytes, err := ocrypto.EncodePrivateKey(key)
+		keyBytes, err := ocrypto.EncodePrivateKeyAny(key)
 		if err != nil {
 			return nil, fmt.Errorf("can't encode key: %w", err)
 		}
@@ -238,7 +278,7 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 	return tlsSecret, nil
 }
 
-func MakeSelfSignedCA(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
+func MakeSelfSignedCA(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGetter, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
 	signer := ocrypto.NewSelfSignedSigner(nowFunc)
 	tlsSecret, err := makeCertificate(ctx, name, certCreator, keyGetter, signer, validity, refresh, controller, controllerGVK, existingSecret)
 	if err != nil {

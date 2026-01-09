@@ -207,7 +207,7 @@ func GetCertKeyFromSecret(secret *corev1.Secret) (*x509.Certificate, *rsa.Privat
 type TLSSecret struct {
 	secret *corev1.Secret
 	certs  []*x509.Certificate
-	key    *rsa.PrivateKey
+	key    any // Can be *rsa.PrivateKey or *ecdsa.PrivateKey
 }
 
 func NewTLSSecret(secret *corev1.Secret) *TLSSecret {
@@ -249,7 +249,11 @@ func (s *TLSSecret) GetCert() (*x509.Certificate, error) {
 
 func (s *TLSSecret) GetKey() (*rsa.PrivateKey, error) {
 	if s.key != nil {
-		return s.key, nil
+		rsaKey, ok := s.key.(*rsa.PrivateKey)
+		if !ok {
+			return nil, fmt.Errorf("cached key is not an RSA key, got %T", s.key)
+		}
+		return rsaKey, nil
 	}
 
 	var err error
@@ -258,7 +262,11 @@ func (s *TLSSecret) GetKey() (*rsa.PrivateKey, error) {
 		return nil, fmt.Errorf("can't get key from secret %q: %w", naming.ObjRef(s.secret), err)
 	}
 
-	return s.key, nil
+	rsaKey, ok := s.key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("key from secret is not an RSA key, got %T", s.key)
+	}
+	return rsaKey, nil
 }
 
 func (s *TLSSecret) GetCertsKey() ([]*x509.Certificate, *rsa.PrivateKey, error) {
@@ -293,11 +301,11 @@ func (s *TLSSecret) SetCertsCache(certs []*x509.Certificate) {
 	s.certs = certs
 }
 
-func (s *TLSSecret) SetKeyCache(key *rsa.PrivateKey) {
+func (s *TLSSecret) SetKeyCache(key any) {
 	s.key = key
 }
 
-func (s *TLSSecret) SetCache(certs []*x509.Certificate, key *rsa.PrivateKey) {
+func (s *TLSSecret) SetCache(certs []*x509.Certificate, key any) {
 	s.SetCertsCache(certs)
 	s.SetKeyCache(key)
 }

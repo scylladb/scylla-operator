@@ -158,6 +158,11 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, ValidateAlternatorSpec(spec.Alternator, fldPath.Child("alternator"))...)
 	}
 
+	if len(spec.ScyllaArgs) > 0 {
+		ipFamily := spec.Network.GetIPFamily()
+		allErrs = append(allErrs, ValidateScyllaArgsIPFamily(ipFamily, []string{spec.ScyllaArgs}, fldPath.Child("scyllaArgs"))...)
+	}
+
 	for i, rack := range spec.Datacenter.Racks {
 		allErrs = append(allErrs, ValidateScyllaClusterRackSpec(rack, rackNames, fldPath.Child("datacenter", "racks").Index(i))...)
 	}

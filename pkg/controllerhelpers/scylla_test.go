@@ -16,6 +16,88 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+func TestNewScyllaClientConfigForLocalhost(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name         string
+		ipFamily     corev1.IPFamily
+		expectedHost string
+	}{
+		{
+			name:         "IPv4 creates config for 127.0.0.1",
+			ipFamily:     corev1.IPv4Protocol,
+			expectedHost: "127.0.0.1",
+		},
+		{
+			name:         "IPv6 creates config for ::1",
+			ipFamily:     corev1.IPv6Protocol,
+			expectedHost: "::1",
+		},
+		{
+			name:         "empty string defaults to IPv4",
+			ipFamily:     "",
+			expectedHost: "127.0.0.1",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := NewScyllaClientConfigForLocalhost(tc.ipFamily)
+
+			if len(cfg.Hosts) != 1 {
+				t.Fatalf("expected 1 host, got %d", len(cfg.Hosts))
+			}
+			if cfg.Hosts[0] != tc.expectedHost {
+				t.Errorf("expected host %q, got %q", tc.expectedHost, cfg.Hosts[0])
+			}
+			if cfg.Scheme != "http" {
+				t.Errorf("expected scheme %q, got %q", "http", cfg.Scheme)
+			}
+		})
+	}
+}
+
+func TestNewScyllaClientForLocalhost(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name     string
+		ipFamily corev1.IPFamily
+	}{
+		{
+			name:     "IPv4 creates client",
+			ipFamily: corev1.IPv4Protocol,
+		},
+		{
+			name:     "IPv6 creates client",
+			ipFamily: corev1.IPv6Protocol,
+		},
+		{
+			name:     "empty string defaults to IPv4",
+			ipFamily: "",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			client, err := NewScyllaClientForLocalhost(tc.ipFamily)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			defer client.Close()
+
+			if client == nil {
+				t.Fatal("expected non-nil client")
+			}
+		})
+	}
+}
+
 func TestIsNodeConfigSelectingNode(t *testing.T) {
 	tt := []struct {
 		name        string
@@ -192,8 +274,9 @@ func TestGetScyllaHost(t *testing.T) {
 			Name: "simple-cluster-us-east1-us-east1-b-0",
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP: "10.0.0.1",
-			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP:  "10.0.0.1",
+			ClusterIPs: []string{"10.0.0.1"},
+			Type:       corev1.ServiceTypeClusterIP,
 		},
 	}
 
@@ -262,8 +345,9 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 			Name: "simple-cluster-us-east1-us-east1-b-0",
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP: "10.0.0.1",
-			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP:  "10.0.0.1",
+			ClusterIPs: []string{"10.0.0.1"},
+			Type:       corev1.ServiceTypeClusterIP,
 		},
 	}
 
@@ -281,6 +365,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		nodeBroadcastAddressType scyllav1alpha1.BroadcastAddressType
 		svc                      *corev1.Service
 		pod                      *corev1.Pod
+		preferredFamily          *corev1.IPFamily
 		expected                 string
 		expectedError            error
 	}{
@@ -290,6 +375,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			pod:                      pod,
 			svc:                      svc,
+			preferredFamily:          nil, // Auto-detect
 			expected:                 "10.0.0.1",
 		},
 		{
@@ -300,17 +386,20 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 				svc := svc.DeepCopy()
 
 				svc.Spec.ClusterIP = corev1.ClusterIPNone
+				svc.Spec.ClusterIPs = []string{corev1.ClusterIPNone}
 
 				return svc
 			}(),
-			expected:      "",
-			expectedError: fmt.Errorf(`service "simple-cluster-us-east1-us-east1-b-0" does not have a ClusterIP address`),
+			preferredFamily: nil, // Auto-detect
+			expected:        "",
+			expectedError:   fmt.Errorf(`service "simple-cluster-us-east1-us-east1-b-0" does not have a ClusterIP address`),
 		},
 		{
 			name:                     "PodIP broadcast address type",
 			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypePodIP,
 			pod:                      pod,
 			svc:                      svc,
+			preferredFamily:          nil, // Auto-detect
 			expected:                 "10.1.0.1",
 			expectedError:            nil,
 		},
@@ -324,9 +413,10 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 
 				return pod
 			}(),
-			svc:           svc,
-			expected:      "",
-			expectedError: fmt.Errorf(`pod "simple-cluster-us-east1-us-east1-b-0" does not have a PodIP address`),
+			svc:             svc,
+			preferredFamily: nil, // Auto-detect
+			expected:        "",
+			expectedError:   fmt.Errorf(`pod "simple-cluster-us-east1-us-east1-b-0" does not have a PodIP address`),
 		},
 		{
 			name:                     "error for broadcast address type service load balancer ingress and no service ingress status",
@@ -340,8 +430,9 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 
 				return svc
 			}(),
-			expected:      "",
-			expectedError: fmt.Errorf(`service "simple-cluster-us-east1-us-east1-b-0" does not have an ingress status`),
+			preferredFamily: nil, // Auto-detect
+			expected:        "",
+			expectedError:   fmt.Errorf(`service "simple-cluster-us-east1-us-east1-b-0" does not have an ingress status`),
 		},
 		{
 			name:                     "ip for broadcast address type service load balancer ingress and non-empty ip in service load balancer status",
@@ -360,8 +451,9 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 
 				return svc
 			}(),
-			expected:      "10.2.0.1",
-			expectedError: nil,
+			preferredFamily: nil, // Auto-detect
+			expected:        "10.2.0.1",
+			expectedError:   nil,
 		},
 		{
 			name:                     "hostname for broadcast address type service load balancer ingress, empty ip and non-empty hostname in service load balancer status",
@@ -380,8 +472,9 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 
 				return svc
 			}(),
-			expected:      "test.scylla.com",
-			expectedError: nil,
+			preferredFamily: nil, // Auto-detect
+			expected:        "test.scylla.com",
+			expectedError:   nil,
 		},
 		{
 			name:                     "error for broadcast address type service load balancer ingress and no external address in service load balancer status",
@@ -400,16 +493,116 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 
 				return svc
 			}(),
-			expected:      "",
-			expectedError: fmt.Errorf(`service "simple-cluster-us-east1-us-east1-b-0" does not have an external address`),
+			preferredFamily: nil, // Auto-detect
+			expected:        "",
+			expectedError:   fmt.Errorf(`service "simple-cluster-us-east1-us-east1-b-0" does not have an external address`),
 		},
 		{
 			name:                     "error for unsupported broadcast address type",
 			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressType("Unsupported"),
 			pod:                      pod,
 			svc:                      svc,
+			preferredFamily:          nil, // Auto-detect
 			expected:                 "",
 			expectedError:            fmt.Errorf(`unsupported broadcast address type: "Unsupported"`),
+		},
+		{
+			name:                     "LoadBalancerIngress with IPv6 address",
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			pod:                      pod,
+			svc: func() *corev1.Service {
+				svc := svc.DeepCopy()
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+					{
+						IP: "2001:db8::1",
+					},
+				}
+				return svc
+			}(),
+			preferredFamily: nil,
+			expected:        "2001:db8::1",
+			expectedError:   nil,
+		},
+		{
+			name:                     "LoadBalancerIngress with dual-stack and IPv4 preference",
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			pod:                      pod,
+			svc: func() *corev1.Service {
+				svc := svc.DeepCopy()
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+					{IP: "10.2.0.1"},
+					{IP: "2001:db8::2"},
+				}
+				return svc
+			}(),
+			preferredFamily: pointer.Ptr(corev1.IPv4Protocol),
+			expected:        "10.2.0.1",
+			expectedError:   nil,
+		},
+		{
+			name:                     "LoadBalancerIngress with dual-stack and IPv6 preference",
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			pod:                      pod,
+			svc: func() *corev1.Service {
+				svc := svc.DeepCopy()
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+					{IP: "10.2.0.1"},
+					{IP: "2001:db8::2"},
+				}
+				return svc
+			}(),
+			preferredFamily: pointer.Ptr(corev1.IPv6Protocol),
+			expected:        "2001:db8::2",
+			expectedError:   nil,
+		},
+		{
+			name:                     "PodIP with explicit IPv4 preference",
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypePodIP,
+			pod: func() *corev1.Pod {
+				pod := pod.DeepCopy()
+				pod.Status.PodIPs = []corev1.PodIP{
+					{IP: "10.1.0.1"},
+					{IP: "2001:db8::1"},
+				}
+				return pod
+			}(),
+			svc:             svc,
+			preferredFamily: pointer.Ptr(corev1.IPv4Protocol),
+			expected:        "10.1.0.1",
+			expectedError:   nil,
+		},
+		{
+			name:                     "PodIP with explicit IPv6 preference",
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypePodIP,
+			pod: func() *corev1.Pod {
+				pod := pod.DeepCopy()
+				pod.Status.PodIPs = []corev1.PodIP{
+					{IP: "10.1.0.1"},
+					{IP: "2001:db8::1"},
+				}
+				return pod
+			}(),
+			svc:             svc,
+			preferredFamily: pointer.Ptr(corev1.IPv6Protocol),
+			expected:        "2001:db8::1",
+			expectedError:   nil,
+		},
+		{
+			name:                     "ServiceClusterIP with dual-stack auto-detection (IPv4 first)",
+			nodeBroadcastAddressType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			pod:                      pod,
+			svc: func() *corev1.Service {
+				svc := svc.DeepCopy()
+				svc.Spec.ClusterIPs = []string{"10.0.0.1", "2001:db8::svc"}
+				svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv4Protocol, corev1.IPv6Protocol}
+				return svc
+			}(),
+			preferredFamily: nil, // Auto-detect - should pick first from service
+			expected:        "10.0.0.1",
+			expectedError:   nil,
 		},
 	}
 
@@ -417,7 +610,7 @@ func TestGetScyllaNodeBroadcastAddress(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := GetScyllaBroadcastAddress(tc.nodeBroadcastAddressType, tc.svc, tc.pod)
+			actual, err := GetScyllaBroadcastAddress(tc.nodeBroadcastAddressType, tc.svc, tc.pod, tc.preferredFamily)
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %#+v, got %#+v", tc.expectedError, err)
@@ -477,8 +670,9 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 			Namespace: "test",
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP: "10.0.0.1",
-			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP:  "10.0.0.1",
+			ClusterIPs: []string{"10.0.0.1"},
+			Type:       corev1.ServiceTypeClusterIP,
 		},
 	}
 
@@ -488,8 +682,9 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 			Namespace: "test",
 		},
 		Spec: corev1.ServiceSpec{
-			ClusterIP: "10.0.0.2",
-			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP:  "10.0.0.2",
+			ClusterIPs: []string{"10.0.0.2"},
+			Type:       corev1.ServiceTypeClusterIP,
 		},
 	}
 
@@ -586,6 +781,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 					svc := secondService.DeepCopy()
 
 					svc.Spec.ClusterIP = corev1.ClusterIPNone
+					svc.Spec.ClusterIPs = []string{corev1.ClusterIPNone}
 
 					return svc
 				}(),

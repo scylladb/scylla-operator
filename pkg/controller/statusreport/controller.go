@@ -110,7 +110,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 }
 
 func getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
+	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost(corev1.IPv4Protocol)
 	if err != nil {
 		return &internalapi.NodeStatusReport{
 			Error: pointer.Ptr(fmt.Errorf("can't create Scylla client for localhost: %w", err).Error()),

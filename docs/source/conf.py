@@ -55,9 +55,9 @@ myst_heading_anchors = 6
 
 deps_versions_substitutions = {
     # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
-    "imageTag": "2025.4.0",
+    "imageTag": "2025.4.1",
     # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla-enterprise versioning=semver
-    "enterpriseImageTag": "2025.4.0",
+    "enterpriseImageTag": "2025.4.1",
     # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
     "agentVersion": "3.7.0",
 }

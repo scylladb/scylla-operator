@@ -41,7 +41,7 @@ func NewScyllaDBDatacenterInformer(client versioned.Interface, namespace string,
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredScyllaDBDatacenterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -66,7 +66,7 @@ func NewFilteredScyllaDBDatacenterInformer(client versioned.Interface, namespace
 				}
 				return client.ScyllaV1alpha1().ScyllaDBDatacenters(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&apiscyllav1alpha1.ScyllaDBDatacenter{},
 		resyncPeriod,
 		indexers,

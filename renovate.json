@@ -10,6 +10,10 @@
   "gomod": {
     "groupName": "gomod"
   },
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodVendor"
+  ],
   "packageRules": [
     {
       "description": "scylla-manager and scylla-manager-agent must be updated together",

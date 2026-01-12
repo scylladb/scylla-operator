@@ -17,6 +17,7 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
+	"k8s.io/klog/v2"
 )
 
 func GetScyllaHost(sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, pod *corev1.Pod) (string, error) {
@@ -215,12 +216,14 @@ func IsNodeConfigSelectingNode(nc *scyllav1alpha1.NodeConfig, node *corev1.Node)
 	// Check taints and tolerations.
 
 	_, isUntolerated := corev1schedulinghelpers.FindMatchingUntoleratedTaint(
+		klog.Background(),
 		node.Spec.Taints,
 		nc.Spec.Placement.Tolerations,
 		func(t *corev1.Taint) bool {
 			// We are only interested in NoSchedule and NoExecute taints.
 			return t.Effect == corev1.TaintEffectNoSchedule || t.Effect == corev1.TaintEffectNoExecute
 		},
+		true,
 	)
 	if isUntolerated {
 		return false, nil

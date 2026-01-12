@@ -225,8 +225,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.1 // indirect
 )
 
-replace github.com/gocql/gocql => github.com/scylladb/gocql v1.14.5
-
 tool (
 	k8s.io/code-generator
 	sigs.k8s.io/controller-tools/cmd/controller-gen
@@ -234,7 +232,14 @@ tool (
 
 // prometheus-operator modules are intentionally kept in sync with the version defined in `assets/metadata/metadata.yaml`.
 // Synchronization is performed automatically by the `make update-go-mod-replace` target, do not edit manually.
+//
+// If any other module version needs to be fixed to a specific version, please make sure it's also added to the `renovate.json`'s
+// `go.mod dependencies that should not be updated` package rule.
 replace (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
 	github.com/prometheus-operator/prometheus-operator/pkg/client => github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.1
 )
+
+// Use ScyllaDB's maintained fork of gocql. It's not included in the `renovate.json`'s `go.mod dependencies that should not be updated` package rule
+// because we intend to keep track of `github.com/scylladb/gocql` updates.
+replace github.com/gocql/gocql => github.com/scylladb/gocql v1.14.5

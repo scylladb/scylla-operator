@@ -10,12 +10,15 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/scylladb/scylla-operator/pkg/remoteclient/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
+	clientfeatures "k8s.io/client-go/features"
+	clientfeaturetesting "k8s.io/client-go/features/testing"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
@@ -27,7 +30,12 @@ const (
 )
 
 func TestDynamicSharedInformerFactory_EventHandlers(t *testing.T) {
-	t.Parallel()
+	// TODO: This is a temporary workaround for a breaking change in client-go making fake clients incompatible
+	// with WatchListClient feature that became enabled by default in v0.35.0. The fake client does not support watch-list
+	// semantics. Once the issue is fixed we can remove this override and make the test parallel (had to be made serial
+	// due to modification of global feature flags).
+	// See https://github.com/kubernetes/kubernetes/issues/135895 for more details.
+	clientfeaturetesting.SetFeatureDuringTest(t, clientfeatures.WatchListClient, false)
 
 	tt := []struct {
 		name        string
@@ -98,8 +106,6 @@ func TestDynamicSharedInformerFactory_EventHandlers(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -109,7 +115,7 @@ func TestDynamicSharedInformerFactory_EventHandlers(t *testing.T) {
 			}
 
 			clusterClient := client.NewClusterClient(func(_ []byte) (kubernetes.Interface, error) {
-				return fake.NewSimpleClientset(objs...), nil
+				return fake.NewClientset(objs...), nil
 			})
 
 			sharedFactory := NewSharedInformerFactory[kubernetes.Interface](clusterClient, 0)
@@ -174,7 +180,12 @@ func TestDynamicSharedInformerFactory_EventHandlers(t *testing.T) {
 }
 
 func TestDynamicSharedInformerFactory_EventHandles_MultipleClusters(t *testing.T) {
-	t.Parallel()
+	// TODO: This is a temporary workaround for a breaking change in client-go making fake clients incompatible
+	// with WatchListClient feature that became enabled by default in v0.35.0. The fake client does not support watch-list
+	// semantics. Once the issue is fixed we can remove this override and make the test parallel (had to be made serial
+	// due to modification of global feature flags).
+	// See https://github.com/kubernetes/kubernetes/issues/135895 for more details.
+	clientfeaturetesting.SetFeatureDuringTest(t, clientfeatures.WatchListClient, false)
 
 	const testTimeout = 20 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -183,7 +194,7 @@ func TestDynamicSharedInformerFactory_EventHandles_MultipleClusters(t *testing.T
 	testObject := newPod("ns", "name", "foo")
 
 	remoteClient := client.NewClusterClient(func(_ []byte) (kubernetes.Interface, error) {
-		return fake.NewSimpleClientset(testObject), nil
+		return fake.NewClientset(testObject), nil
 	})
 
 	sharedFactory := NewSharedInformerFactory[kubernetes.Interface](remoteClient, 0)
@@ -279,8 +290,10 @@ func TestDynamicSharedInformerFactory_EventHandles_MultipleClusters(t *testing.T
 		}
 
 		observedObjects := drainChannel(ctx, informerUpdateObjCh, chDrainingTimeout)
-		if !equality.Semantic.DeepEqual(ts.expectedInformerObjects, observedObjects) {
-			t.Fatalf("expected %v, got: %v, diff: %s", ts.expectedInformerObjects, observedObjects, cmp.Diff(ts.expectedInformerObjects, observedObjects))
+		// fake.Clientset keeps track of ManagedFields, but we don't care about them in this test.
+		ignoreManagedFields := cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ManagedFields")
+		if diff := cmp.Diff(ts.expectedInformerObjects, observedObjects, ignoreManagedFields); diff != "" {
+			t.Fatalf("expected %v, got: %v, diff: %s", ts.expectedInformerObjects, observedObjects, diff)
 		}
 	}
 }

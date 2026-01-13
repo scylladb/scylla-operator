@@ -1,7 +1,17 @@
 # Upgrading ScyllaDB clusters
 
-Upgrading your ScyllaDB cluster to a newer version is automated by {{productName}} and performed without any downtime.
-It is as simple as updating the ScyllaDB image reference in your ScyllaDB cluster specification.
+Upgrading your ScyllaDB cluster to a newer version is automated by {{productName}} and performed using a rolling update 
+strategy to maintain availability. It is as simple as updating the ScyllaDB image reference in your ScyllaDB cluster specification.
+
+:::{warning}
+While the cluster remains operational throughout the process, applications requiring strict consistency levels (such as `QUORUM`) 
+may experience transient unavailability. This can occur if the cluster topology view has not yet fully converged across all 
+nodes before the next node is restarted. 
+
+We recommend scheduling upgrades during periods of low application traffic to minimize potential disruptions.
+
+Issue tracking fix for this behavior: [scylla-operator #1077](https://github.com/scylladb/scylla-operator/issues/1077).
+:::
 
 :::{warning}
 ScyllaDB version upgrades must be performed consecutively, meaning **you must not skip any major or minor version on the upgrade path**.
@@ -58,6 +68,9 @@ After reapplying the manifest, wait for your ScyllaDBCluster to roll out.
 ::::
 :::::
 
+:::{include} ./../../.internal/wait-for-all-nodes-un.md
+:::
+
 ## Upgrade via Helm
 
 :::{important}
@@ -80,3 +93,6 @@ After upgrading the release, wait for your ScyllaCluster to roll out.
 
 ::::
 ::::
+
+:::{include} ./../../.internal/wait-for-all-nodes-un.md
+:::

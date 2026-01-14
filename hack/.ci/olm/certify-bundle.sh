@@ -92,6 +92,8 @@ cp -r "${script_dir}/../../../bundle/"{manifests,metadata} "${target_dir}/"
 
 (
   cd "${repo_target_dir}"
+  git config user.name "ScyllaDB Operator Continuous Delivery Bot"
+  git config user.email "251034767+scylladb-operator-cd-bot@users.noreply.github.com"
   git checkout -B "${TARGET_BRANCH}"
   git add .
   # https://github.com/redhat-openshift-ecosystem/certification-releases/blob/main/4.9/ga/troubleshooting.md#pull-request-title

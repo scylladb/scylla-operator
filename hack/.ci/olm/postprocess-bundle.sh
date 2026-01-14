@@ -23,7 +23,7 @@ function set_yaml_field_without_line_comment() {
 }
 
 readonly script_dir="$( realpath $( dirname "${BASH_SOURCE[0]}" ) )"
-source "${script_dir}/../lib/semver.sh"
+source "${script_dir}/../../lib/semver.sh"
 
 readonly semver_pattern='^([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$'
 

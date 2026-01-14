@@ -109,6 +109,18 @@ patches:
             env:
             - name: SCYLLA_OPERATOR_IMAGE
               value: "${OPERATOR_IMAGE_REF}"
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: webhook-server
+      namespace: scylla-operator
+    spec:
+      template:
+        spec:
+          containers:
+          - name: webhook-server
+            image: "${OPERATOR_IMAGE_REF}"
 - patch: |
     - op: add
       path: /spec/template/spec/containers/0/args/-

@@ -68,7 +68,8 @@ TARGET_BRANCH="${TARGET_BRANCH:-scylladb-operator-${version}}"
 target_repo=git@github.com:scylladb-operator-cd-bot/certified-operators.git
 
 repo_target_dir="${temp_dir}/certified-operators"
-git clone --depth 1 --branch main "${target_repo}" "${repo_target_dir}"
+GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i '${ssh_scylladb_operator_cd_bot_key_path}' -o StrictHostKeyChecking=accept-new" \
+  git clone --depth 1 --branch main "${target_repo}" "${repo_target_dir}"
 
 parent_target_dir="${repo_target_dir}/operators/scylladb-operator"
 mkdir -p "${parent_target_dir}"
@@ -91,6 +92,8 @@ cp -r "${script_dir}/../../../bundle/"{manifests,metadata} "${target_dir}/"
 
 (
   cd "${repo_target_dir}"
+  git config user.name "ScyllaDB Operator Continuous Delivery Bot"
+  git config user.email "251034767+scylladb-operator-cd-bot@users.noreply.github.com"
   git checkout -B "${TARGET_BRANCH}"
   git add .
   # https://github.com/redhat-openshift-ecosystem/certification-releases/blob/main/4.9/ga/troubleshooting.md#pull-request-title

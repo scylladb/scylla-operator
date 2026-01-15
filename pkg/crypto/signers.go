@@ -18,7 +18,7 @@ var (
 
 type Signer interface {
 	Now() time.Time
-	GetPublicKey() *rsa.PublicKey
+	GetSubjectKeyID() []byte
 	SignCertificate(template *x509.Certificate, requestKey *rsa.PublicKey) (*x509.Certificate, error)
 	VerifyCertificate(cert *x509.Certificate) error
 }
@@ -46,7 +46,7 @@ func (s *SelfSignedSigner) Now() time.Time {
 	return s.nowFunc()
 }
 
-func (s *SelfSignedSigner) GetPublicKey() *rsa.PublicKey {
+func (s *SelfSignedSigner) GetSubjectKeyID() []byte {
 	return nil
 }
 
@@ -98,8 +98,8 @@ func (ca *CertificateAuthority) Now() time.Time {
 	return ca.nowFunc()
 }
 
-func (ca *CertificateAuthority) GetPublicKey() *rsa.PublicKey {
-	return &ca.privateKey.PublicKey
+func (ca *CertificateAuthority) GetSubjectKeyID() []byte {
+	return ca.cert.SubjectKeyId
 }
 
 func (ca *CertificateAuthority) SignCertificate(template *x509.Certificate, requestKey *rsa.PublicKey) (*x509.Certificate, error) {

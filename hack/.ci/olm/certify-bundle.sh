@@ -128,4 +128,5 @@ tkn pipeline start operator-ci-pipeline \
   --param upstream_repo_name=redhat-openshift-ecosystem/certified-operators \
   --param submit="${SUBMIT}" \
   --use-param-defaults \
-  --showlog
+  --showlog \
+  --exit-with-pipelinerun-error

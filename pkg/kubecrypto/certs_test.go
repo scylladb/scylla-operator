@@ -809,3 +809,141 @@ func Test_getAuthorityKeyIDFromSignerKey(t *testing.T) {
 		})
 	}
 }
+
+// Test_makeCertificate_certStability verifies that a serving certificate signed by a CA is not regenerated on
+// subsequent reconciliation cycles. This test catches a regression where the operator relied on internal implementation
+// details of the crypto/x509 package:
+// - Before go 1.25, x509.CreateCertificate used SHA-1 to hash the public key for the SubjectKeyId.
+// - Starting with go 1.25, it uses truncated SHA-256 (see https://github.com/golang/go/issues/71746).
+// Operator code that relied on the SubjectKeyId being SHA-1 would always see a mismatch between the existing
+// certificate's AuthorityKeyId (SHA-1) and the newly computed one (SHA-256), causing unnecessary regeneration
+// of the serving certificate.
+func Test_makeCertificate_certStability(t *testing.T) {
+	t.Parallel()
+
+	const (
+		servingSecretName = "serving-secret"
+		testCertValidity  = 30 * 24 * time.Hour
+		testCertRefresh   = 15 * 24 * time.Hour
+	)
+
+	currentTime := time.Now()
+	nowFunc := func() time.Time { return currentTime }
+
+	keygen, err := ocrypto.NewRSAKeyGenerator(1, 1, 4096, 42*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer keygen.Close()
+	go func() {
+		keygen.Run(t.Context())
+	}()
+
+	controller := &metav1.ObjectMeta{
+		Name:      "scylla-cluster",
+		Namespace: "default",
+	}
+	controllerGVK := schema.GroupVersionKind{
+		Group:   "scylla.scylladb.com",
+		Version: "v1",
+		Kind:    "ScyllaCluster",
+	}
+
+	// Create a CA certificate.
+	caCertCreator := (&ocrypto.CACertCreatorConfig{
+		Subject: pkix.Name{
+			CommonName: "test-ca",
+		},
+	}).ToCreator()
+
+	caSigner := ocrypto.NewSelfSignedSigner(nowFunc)
+
+	caResult, err := makeCertificate(
+		t.Context(),
+		"ca-secret",
+		caCertCreator,
+		keygen,
+		caSigner,
+		testCertValidity,
+		testCertRefresh,
+		controller,
+		controllerGVK,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("failed to create CA certificate: %v", err)
+	}
+
+	caCert, err := caResult.GetCert()
+	if err != nil {
+		t.Fatalf("failed to get CA cert: %v", err)
+	}
+	caKey, err := caResult.GetKey()
+	if err != nil {
+		t.Fatalf("failed to get CA key: %v", err)
+	}
+
+	// Create a serving certificate signed by the CA.
+	servingCertCreator := (&ocrypto.ServingCertCreatorConfig{
+		Subject: pkix.Name{
+			CommonName: "test-serving",
+		},
+		DNSNames: []string{"test.example.com"},
+	}).ToCreator()
+
+	servingSigner, err := ocrypto.NewCertificateAuthority(caCert, caKey, nowFunc)
+	if err != nil {
+		t.Fatalf("failed to create certificate authority: %v", err)
+	}
+
+	servingResult1, err := makeCertificate(
+		t.Context(),
+		servingSecretName,
+		servingCertCreator,
+		keygen,
+		servingSigner,
+		testCertValidity,
+		testCertRefresh,
+		controller,
+		controllerGVK,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("failed to create serving certificate: %v", err)
+	}
+
+	servingCert1, err := servingResult1.GetCert()
+	if err != nil {
+		t.Fatalf("failed to get serving cert: %v", err)
+	}
+
+	// Verify the serving cert's AuthorityKeyId matches the CA's SubjectKeyId.
+	if !reflect.DeepEqual(servingCert1.AuthorityKeyId, caCert.SubjectKeyId) {
+		t.Errorf("serving cert AuthorityKeyId doesn't match CA SubjectKeyId: got %x, want %x",
+			servingCert1.AuthorityKeyId, caCert.SubjectKeyId)
+	}
+
+	// Simulate a reconciliation cycle - call makeCertificate again with the existing secret. This is where the regression
+	// would manifest - the old code would compute a different hash and think the issuer changed, causing unnecessary regeneration.
+	servingResult2, err := makeCertificate(
+		t.Context(),
+		servingSecretName,
+		servingCertCreator,
+		keygen,
+		servingSigner, // Same signer.
+		testCertValidity,
+		testCertRefresh,
+		controller,
+		controllerGVK,
+		servingResult1.GetSecret(), // Pass the previously created secret as existing.
+	)
+	if err != nil {
+		t.Fatalf("failed to reconcile serving certificate: %v", err)
+	}
+
+	secret1 := servingResult1.GetSecret()
+	secret2 := servingResult2.GetSecret()
+	if !reflect.DeepEqual(secret1.Data, secret2.Data) {
+		t.Errorf("serving certificate was regenerated when it should have been reused")
+	}
+}

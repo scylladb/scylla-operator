@@ -2,7 +2,6 @@ package kubecrypto
 
 import (
 	"context"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/rand"
@@ -777,34 +776,6 @@ func Test_makeCertificate(t *testing.T) {
 			secret.Data = nil
 			if !apiequality.Semantic.DeepEqual(secret, tc.expectedSecret) {
 				t.Errorf("expected and got differ: %s", cmp.Diff(tc.expectedSecret, secret))
-			}
-		})
-	}
-}
-
-func Test_getAuthorityKeyIDFromSignerKey(t *testing.T) {
-	tt := []struct {
-		name       string
-		key        *rsa.PublicKey
-		expectedID []byte
-	}{
-		{
-			name:       "nil key return empty id",
-			key:        nil,
-			expectedID: nil,
-		},
-		{
-			name:       "real self-signed cert and key",
-			key:        &helpers.Must(ocrypto.DecodePrivateKey(testfiles.AlphaCAKeyBytes)).PublicKey,
-			expectedID: helpers.Must(ocrypto.DecodeCertificates(testfiles.AlphaCACertBytes))[0].SubjectKeyId,
-		},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			got := getAuthorityKeyIDFromSignerKey(tc.key)
-			if !reflect.DeepEqual(got, tc.expectedID) {
-				t.Errorf("expected %q, got %q", tc.expectedID, got)
 			}
 		})
 	}

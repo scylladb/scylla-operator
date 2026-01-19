@@ -59,7 +59,7 @@ deps_versions_substitutions = {
     # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla-enterprise versioning=semver
     "enterpriseImageTag": "2025.4.1",
     # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
-    "agentVersion": "3.7.0",
+    "agentVersion": "3.8.0",
 }
 
 myst_substitutions = {

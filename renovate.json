@@ -10,11 +10,23 @@
   "gomod": {
     "groupName": "gomod"
   },
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodVendor"
+  ],
   "packageRules": [
     {
       "description": "scylla-manager and scylla-manager-agent must be updated together",
       "matchPackageNames": ["scylla-manager", "scylla-manager-agent"],
       "groupName": "scylla-manager"
+    },
+    {
+      "description": "go.mod dependencies that should not be updated",
+      "matchPackageNames": [
+        "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring",
+        "github.com/prometheus-operator/prometheus-operator/pkg/client"
+      ],
+      "enabled": false
     }
   ],
   "customManagers": [

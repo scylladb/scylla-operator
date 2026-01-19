@@ -1,6 +1,6 @@
 module github.com/scylladb/scylla-operator
 
-go 1.25.0
+go 1.25.1
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
@@ -23,14 +23,14 @@ require (
 	github.com/go-openapi/strfmt v0.25.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.7.0
-	github.com/godbus/dbus/v5 v5.2.0
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/google/go-cmp v0.7.0
-	github.com/grafana/grafana-openapi-client-go v0.0.0-20250925215610-d92957c70d5c
+	github.com/grafana/grafana-openapi-client-go v0.0.0-20251202103709-7ef691d4df1d
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed
 	github.com/magiconair/properties v1.8.10
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/onsi/ginkgo/v2 v2.27.3
-	github.com/onsi/gomega v1.38.3
+	github.com/onsi/ginkgo/v2 v2.27.5
+	github.com/onsi/gomega v1.39.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.2
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.2
@@ -38,9 +38,9 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v2 v2.8.0
-	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20251028150944-ac6f6b50a24c
-	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20251028150944-ac6f6b50a24c
-	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20251028150944-ac6f6b50a24c
+	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260108132715-a46b9332650a
+	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260108132715-a46b9332650a
+	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260108132715-a46b9332650a
 	github.com/scylladb/scylladb-swagger-go-client v0.2.0
 	github.com/shurcooL/githubv4 v0.0.0-20240727222349-48295856cce7
 	github.com/spf13/cobra v1.10.2
@@ -51,7 +51,7 @@ require (
 	golang.org/x/oauth2 v0.34.0
 	golang.org/x/sys v0.40.0
 	golang.org/x/time v0.14.0
-	google.golang.org/grpc v1.77.0
+	google.golang.org/grpc v1.78.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.0
 	k8s.io/apiextensions-apiserver v0.35.0
@@ -66,7 +66,7 @@ require (
 	k8s.io/kubectl v0.34.3
 	k8s.io/kubelet v0.34.3
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570
-	sigs.k8s.io/controller-runtime v0.22.3
+	sigs.k8s.io/controller-runtime v0.23.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -152,7 +152,7 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.4.0 // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lnquy/cron v1.1.1 // indirect
@@ -242,4 +242,4 @@ replace (
 
 // Use ScyllaDB's maintained fork of gocql. It's not included in the `renovate.json`'s `go.mod dependencies that should not be updated` package rule
 // because we intend to keep track of `github.com/scylladb/gocql` updates.
-replace github.com/gocql/gocql => github.com/scylladb/gocql v1.14.5
+replace github.com/gocql/gocql => github.com/scylladb/gocql v1.17.1

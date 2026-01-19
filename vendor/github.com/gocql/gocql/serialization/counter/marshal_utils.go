@@ -2,16 +2,12 @@ package counter
 
 import (
 	"fmt"
-	"math"
 	"math/big"
 	"reflect"
 	"strconv"
 )
 
-var (
-	maxBigInt = big.NewInt(math.MaxInt64)
-	minBigInt = big.NewInt(math.MinInt64)
-)
+const supportedTypes = "~int8, ~int16, ~int32, ~int64, ~int, ~uint8, ~uint16, ~uint32, ~uint64, ~uint, ~string, big.Int"
 
 func EncInt8(v int8) ([]byte, error) {
 	if v < 0 {
@@ -133,7 +129,7 @@ func EncUintR(v *uint) ([]byte, error) {
 }
 
 func EncBigInt(v big.Int) ([]byte, error) {
-	if v.Cmp(maxBigInt) == 1 || v.Cmp(minBigInt) == -1 {
+	if !v.IsInt64() {
 		return nil, fmt.Errorf("failed to marshal counter: value (%T)(%s) out of range", v, v.String())
 	}
 	return encInt64(v.Int64()), nil
@@ -143,7 +139,7 @@ func EncBigIntR(v *big.Int) ([]byte, error) {
 	if v == nil {
 		return nil, nil
 	}
-	if v.Cmp(maxBigInt) == 1 || v.Cmp(minBigInt) == -1 {
+	if !v.IsInt64() {
 		return nil, fmt.Errorf("failed to marshal counter: value (%T)(%s) out of range", v, v.String())
 	}
 	return encInt64(v.Int64()), nil
@@ -188,9 +184,9 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 		if v.Type().String() == "gocql.unsetColumn" {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to marshal counter: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal counter: unsupported value type (%T)(%[1]v), supported types: %s, unsetColumn", v.Interface(), supportedTypes)
 	default:
-		return nil, fmt.Errorf("failed to marshal counter: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal counter: unsupported value type (%T)(%[1]v), supported types: %s, unsetColumn", v.Interface(), supportedTypes)
 	}
 }
 

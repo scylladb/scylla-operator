@@ -6,7 +6,7 @@
 
 </div>
 
-<h1 align="center"> 
+<h1 align="center">
 
 Scylla Shard-Aware Fork of [apache/cassandra-gocql-driver](https://github.com/apache/cassandra-gocql-driver)
 
@@ -37,7 +37,8 @@ It also provides support for shard aware ports, a faster way to connect to all s
 - [4. Data Types](#4-data-types)
 - [5. Configuration](#5-configuration)
   - [5.1 Shard-aware port](#51-shard-aware-port)
-  - [5.2 Iterator](#52-iterator)
+  - [5.2 Client routes (PrivateLink)](#52-client-routes-privatelink)
+  - [5.3 Iterator](#53-iterator)
 - [6. Contributing](#6-contributing)
 
 ## 1. Sunsetting Model
@@ -65,7 +66,7 @@ to evaluate `latest` to a concrete tag.
 
 Your project now uses the Scylla driver fork, make sure you are using the `TokenAwareHostPolicy` to enable the shard-awareness, continue reading for details.
 
-## 3. Quick Start  
+## 3. Quick Start
 
 Spawn a ScyllaDB Instance using Docker Run command:
 
@@ -109,7 +110,7 @@ func main() {
 
 ## 4. Data Types
 
-Here's an list of all ScyllaDB Types reflected in the GoCQL environment: 
+Here's an list of all CQL Types reflected in the GoCQL environment:
 
 | ScyllaDB Type    | Go Type            |
 | ---------------- | ------------------ |
@@ -210,7 +211,27 @@ Issues with shard-aware port not being reachable are not reported in non-debug m
 
 If you suspect that this feature is causing you problems, you can completely disable it by setting the `ClusterConfig.DisableShardAwarePort` flag to true.
 
-### 5.2 Iterator
+### 5.2 Client routes (PrivateLink)
+
+Scylla Cloud exposes a `system.client_routes` table that maps hosts to PrivateLink endpoints.
+When configured, the driver can resolve and connect to the per-host PrivateLink address instead of using the public host IP.
+
+Use `WithClientRoutes` to enable it and pass the connection IDs you receive from Scylla Cloud:
+
+```go
+cluster := gocql.NewCluster("private-link.dns.name")
+cluster.WithOptions(
+	gocql.WithClientRoutes(
+		gocql.WithEndpoints(
+			gocql.ClientRoutesEndpoint{ConnectionID: "your-connection-id"},
+		),
+	),
+)
+```
+
+If you also want to seed the cluster with PrivateLink hostnames, provide `ConnectionAddr` values in the endpoints list.
+
+### 5.3 Iterator
 
 Paging is a way to parse large result sets in smaller chunks.
 The driver provides an iterator to simplify this process.
@@ -236,6 +257,28 @@ if err := iter.Close(); err != nil {
 In case of range and `ALLOW FILTERING` queries server can send empty responses for some pages.
 That is why you should never consider empty response as the end of the result set.
 Always check `iter.Scan()` result to know if there are more results, or `Iter.LastPage()` to know if the last page was reached.
+
+### 5.3 Compression
+
+To control network costs and traffic, you can enable compression.
+
+Use `ClusterConfig.Compressor` to enable compression (either Snappy or LZ4):
+
+```go
+...
+import (
+    ...
+    "github.com/gocql/gocql"
+    "github.com/gocql/gocql/lz4"
+    ...
+)
+
+config := gocql.NewCluster("10.0.12.83", "10.0.13.04", "10.0.14.12")
+config.Compressor = &gocql.SnappyCompressor{}
+//or LZ4
+config.Compressor = &lz4.LZ4Compressor{}
+...
+```
 
 ## 6. Contributing
 

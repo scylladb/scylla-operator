@@ -1,14 +1,35 @@
-// Copyright (c) 2012 The gocql Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
+ * Content before git sha 34fdeebefcbf183ed7f916f931aa0586fdaa1b40
+ * Copyright (c) 2012, The Gocql authors,
+ * provided under the BSD-3-Clause License.
+ * See the NOTICE file distributed with this work for additional information.
+ */
 
 package gocql
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
-	"net"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +39,46 @@ import (
 type RowData struct {
 	Columns []string
 	Values  []interface{}
+}
+
+// asVectorType attempts to convert a NativeType(custom) which represents a VectorType
+// into a concrete VectorType. It also works recursively (nested vectors).
+func asVectorType(t TypeInfo) (VectorType, bool) {
+	if v, ok := t.(VectorType); ok {
+		return v, true
+	}
+	n, ok := t.(NativeType)
+	if !ok || n.Type() != TypeCustom {
+		return VectorType{}, false
+	}
+	const prefix = "org.apache.cassandra.db.marshal.VectorType"
+	if !strings.HasPrefix(n.Custom(), prefix+"(") {
+		return VectorType{}, false
+	}
+
+	spec := strings.TrimPrefix(n.Custom(), prefix)
+	spec = strings.Trim(spec, "()")
+	// split last comma -> subtype spec , dimensions
+	idx := strings.LastIndex(spec, ",")
+	if idx <= 0 {
+		return VectorType{}, false
+	}
+	subStr := strings.TrimSpace(spec[:idx])
+	dimStr := strings.TrimSpace(spec[idx+1:])
+	dim, err := strconv.Atoi(dimStr)
+	if err != nil {
+		return VectorType{}, false
+	}
+	subType := getCassandraLongType(subStr, n.Version(), nopLogger{})
+	// recurse if subtype itself is still a custom vector
+	if innerVec, ok := asVectorType(subType); ok {
+		subType = innerVec
+	}
+	return VectorType{
+		NativeType: NewCustomType(n.Version(), TypeCustom, prefix),
+		SubType:    subType,
+		Dimensions: dim,
+	}, true
 }
 
 func goType(t TypeInfo) (reflect.Type, error) {
@@ -76,6 +137,20 @@ func goType(t TypeInfo) (reflect.Type, error) {
 		return reflect.TypeOf(*new(time.Time)), nil
 	case TypeDuration:
 		return reflect.TypeOf(*new(Duration)), nil
+	case TypeCustom:
+		// Handle VectorType encoded as custom
+		if vec, ok := asVectorType(t); ok {
+			innerPtr, err := vec.SubType.NewWithError()
+			if err != nil {
+				return nil, err
+			}
+			elemType := reflect.TypeOf(innerPtr)
+			if elemType.Kind() == reflect.Ptr {
+				elemType = elemType.Elem()
+			}
+			return reflect.SliceOf(elemType), nil
+		}
+		return nil, fmt.Errorf("cannot create Go type for unknown CQL type %s", t)
 	default:
 		return nil, fmt.Errorf("cannot create Go type for unknown CQL type %s", t)
 	}
@@ -142,59 +217,168 @@ func getCassandraBaseType(name string) Type {
 	}
 }
 
-func getCassandraType(name string, logger StdLogger) TypeInfo {
-	if strings.HasPrefix(name, "frozen<") {
-		return getCassandraType(strings.TrimPrefix(name[:len(name)-1], "frozen<"), logger)
-	} else if strings.HasPrefix(name, "set<") {
+// TODO: Cover with unit tests.
+// Parses long Java-style type definition to internal data structures.
+func getCassandraLongType(name string, protoVer byte, logger StdLogger) TypeInfo {
+	if strings.HasPrefix(name, "org.apache.cassandra.db.marshal.SetType") {
 		return CollectionType{
-			NativeType: NativeType{typ: TypeSet},
-			Elem:       getCassandraType(strings.TrimPrefix(name[:len(name)-1], "set<"), logger),
+			NativeType: NewNativeType(protoVer, TypeSet),
+			Elem:       getCassandraLongType(unwrapCompositeTypeDefinition(name, "org.apache.cassandra.db.marshal.SetType", '('), protoVer, logger),
 		}
-	} else if strings.HasPrefix(name, "list<") {
+	} else if strings.HasPrefix(name, "org.apache.cassandra.db.marshal.ListType") {
 		return CollectionType{
-			NativeType: NativeType{typ: TypeList},
-			Elem:       getCassandraType(strings.TrimPrefix(name[:len(name)-1], "list<"), logger),
+			NativeType: NewNativeType(protoVer, TypeList),
+			Elem:       getCassandraLongType(unwrapCompositeTypeDefinition(name, "org.apache.cassandra.db.marshal.ListType", '('), protoVer, logger),
 		}
-	} else if strings.HasPrefix(name, "map<") {
-		names := splitCompositeTypes(strings.TrimPrefix(name[:len(name)-1], "map<"))
+	} else if strings.HasPrefix(name, "org.apache.cassandra.db.marshal.MapType") {
+		names := splitJavaCompositeTypes(name, "org.apache.cassandra.db.marshal.MapType")
 		if len(names) != 2 {
-			logger.Printf("Error parsing map type, it has %d subelements, expecting 2\n", len(names))
-			return NativeType{
-				typ: TypeCustom,
-			}
+			logger.Printf("gocql: error parsing map type, it has %d subelements, expecting 2\n", len(names))
+			return NewNativeType(protoVer, TypeCustom)
 		}
 		return CollectionType{
-			NativeType: NativeType{typ: TypeMap},
-			Key:        getCassandraType(names[0], logger),
-			Elem:       getCassandraType(names[1], logger),
+			NativeType: NewNativeType(protoVer, TypeMap),
+			Key:        getCassandraLongType(names[0], protoVer, logger),
+			Elem:       getCassandraLongType(names[1], protoVer, logger),
 		}
-	} else if strings.HasPrefix(name, "tuple<") {
-		names := splitCompositeTypes(strings.TrimPrefix(name[:len(name)-1], "tuple<"))
+	} else if strings.HasPrefix(name, "org.apache.cassandra.db.marshal.TupleType") {
+		names := splitJavaCompositeTypes(name, "org.apache.cassandra.db.marshal.TupleType")
 		types := make([]TypeInfo, len(names))
 
 		for i, name := range names {
-			types[i] = getCassandraType(name, logger)
+			types[i] = getCassandraLongType(name, protoVer, logger)
 		}
 
 		return TupleTypeInfo{
-			NativeType: NativeType{typ: TypeTuple},
+			NativeType: NewNativeType(protoVer, TypeTuple),
 			Elems:      types,
 		}
+	} else if strings.HasPrefix(name, "org.apache.cassandra.db.marshal.UserType") {
+		names := splitJavaCompositeTypes(name, "org.apache.cassandra.db.marshal.UserType")
+		fields := make([]UDTField, len(names)-2)
+
+		for i := 2; i < len(names); i++ {
+			spec := strings.Split(names[i], ":")
+			fieldName, _ := hex.DecodeString(spec[0])
+			fields[i-2] = UDTField{
+				Name: string(fieldName),
+				Type: getCassandraLongType(spec[1], protoVer, logger),
+			}
+		}
+
+		udtName, _ := hex.DecodeString(names[1])
+		return UDTTypeInfo{
+			NativeType: NewNativeType(protoVer, TypeUDT),
+			KeySpace:   names[0],
+			Name:       string(udtName),
+			Elements:   fields,
+		}
+	} else if strings.HasPrefix(name, "org.apache.cassandra.db.marshal.VectorType") {
+		names := splitJavaCompositeTypes(name, "org.apache.cassandra.db.marshal.VectorType")
+		subType := getCassandraLongType(strings.TrimSpace(names[0]), protoVer, logger)
+		dim, err := strconv.Atoi(strings.TrimSpace(names[1]))
+		if err != nil {
+			logger.Printf("gocql: error parsing vector dimensions: %v\n", err)
+			return NewNativeType(protoVer, TypeCustom)
+		}
+
+		return VectorType{
+			NativeType: NewCustomType(protoVer, TypeCustom, "org.apache.cassandra.db.marshal.VectorType"),
+			SubType:    subType,
+			Dimensions: dim,
+		}
+	} else if strings.HasPrefix(name, "org.apache.cassandra.db.marshal.FrozenType") {
+		names := splitJavaCompositeTypes(name, "org.apache.cassandra.db.marshal.FrozenType")
+		return getCassandraLongType(strings.TrimSpace(names[0]), protoVer, logger)
 	} else {
+		// basic type
 		return NativeType{
-			typ: getCassandraBaseType(name),
+			proto: protoVer,
+			typ:   getApacheCassandraType(name),
 		}
 	}
 }
 
-func splitCompositeTypes(name string) []string {
-	if !strings.Contains(name, "<") {
-		return strings.Split(name, ", ")
+// Parses short CQL type representation (e.g. map<text, text>) to internal data structures.
+func getCassandraType(name string, protoVer byte, logger StdLogger) TypeInfo {
+	if strings.HasPrefix(name, "frozen<") {
+		return getCassandraType(unwrapCompositeTypeDefinition(name, "frozen", '<'), protoVer, logger)
+	} else if strings.HasPrefix(name, "set<") {
+		return CollectionType{
+			NativeType: NewNativeType(protoVer, TypeSet),
+			Elem:       getCassandraType(unwrapCompositeTypeDefinition(name, "set", '<'), protoVer, logger),
+		}
+	} else if strings.HasPrefix(name, "list<") {
+		return CollectionType{
+			NativeType: NewNativeType(protoVer, TypeList),
+			Elem:       getCassandraType(unwrapCompositeTypeDefinition(name, "list", '<'), protoVer, logger),
+		}
+	} else if strings.HasPrefix(name, "map<") {
+		names := splitCQLCompositeTypes(name, "map")
+		if len(names) != 2 {
+			logger.Printf("Error parsing map type, it has %d subelements, expecting 2\n", len(names))
+			return NewNativeType(protoVer, TypeCustom)
+		}
+		return CollectionType{
+			NativeType: NewNativeType(protoVer, TypeMap),
+			Key:        getCassandraType(names[0], protoVer, logger),
+			Elem:       getCassandraType(names[1], protoVer, logger),
+		}
+	} else if strings.HasPrefix(name, "tuple<") {
+		names := splitCQLCompositeTypes(name, "tuple")
+		types := make([]TypeInfo, len(names))
+
+		for i, name := range names {
+			types[i] = getCassandraType(name, protoVer, logger)
+		}
+
+		return TupleTypeInfo{
+			NativeType: NewNativeType(protoVer, TypeTuple),
+			Elems:      types,
+		}
+	} else if strings.HasPrefix(name, "vector<") {
+		names := splitCQLCompositeTypes(name, "vector")
+		subType := getCassandraType(strings.TrimSpace(names[0]), protoVer, logger)
+		dim, _ := strconv.Atoi(strings.TrimSpace(names[1]))
+
+		return VectorType{
+			NativeType: NewCustomType(protoVer, TypeCustom, "org.apache.cassandra.db.marshal.VectorType"),
+			SubType:    subType,
+			Dimensions: dim,
+		}
+	} else {
+		return NativeType{
+			proto: protoVer,
+			typ:   getCassandraBaseType(name),
+		}
+	}
+}
+
+func splitCQLCompositeTypes(name string, typeName string) []string {
+	return splitCompositeTypes(name, typeName, '<', '>')
+}
+
+func splitJavaCompositeTypes(name string, typeName string) []string {
+	return splitCompositeTypes(name, typeName, '(', ')')
+}
+
+func unwrapCompositeTypeDefinition(name string, typeName string, typeOpen int32) string {
+	return strings.TrimPrefix(name[:len(name)-1], typeName+string(typeOpen))
+}
+
+func splitCompositeTypes(name string, typeName string, typeOpen int32, typeClose int32) []string {
+	def := unwrapCompositeTypeDefinition(name, typeName, typeOpen)
+	if !strings.Contains(def, string(typeOpen)) {
+		parts := strings.Split(def, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		return parts
 	}
 	var parts []string
 	lessCount := 0
 	segment := ""
-	for _, char := range name {
+	for _, char := range def {
 		if char == ',' && lessCount == 0 {
 			if segment != "" {
 				parts = append(parts, strings.TrimSpace(segment))
@@ -203,9 +387,9 @@ func splitCompositeTypes(name string) []string {
 			continue
 		}
 		segment += string(char)
-		if char == '<' {
+		if char == typeOpen {
 			lessCount++
-		} else if char == '>' {
+		} else if char == typeClose {
 			lessCount--
 		}
 	}
@@ -213,20 +397,6 @@ func splitCompositeTypes(name string) []string {
 		parts = append(parts, strings.TrimSpace(segment))
 	}
 	return parts
-}
-
-func apacheToCassandraType(t string) string {
-	t = strings.Replace(t, apacheCassandraTypePrefix, "", -1)
-	t = strings.Replace(t, "(", "<", -1)
-	t = strings.Replace(t, ")", ">", -1)
-	types := strings.FieldsFunc(t, func(r rune) bool {
-		return r == '<' || r == '>' || r == ','
-	})
-	for _, typ := range types {
-		t = strings.Replace(t, typ, getApacheCassandraType(typ).String(), -1)
-	}
-	// This is done so it exactly matches what Cassandra returns
-	return strings.Replace(t, ",", ", ", -1)
 }
 
 func getApacheCassandraType(class string) Type {
@@ -277,6 +447,10 @@ func getApacheCassandraType(class string) Type {
 		return TypeTuple
 	case "DurationType":
 		return TypeDuration
+	case "SimpleDateType":
+		return TypeDate
+	case "UserType":
+		return TypeUDT
 	default:
 		return TypeCustom
 	}
@@ -285,7 +459,7 @@ func getApacheCassandraType(class string) Type {
 func (r *RowData) rowMap(m map[string]interface{}) {
 	for i, column := range r.Columns {
 		val := dereference(r.Values[i])
-		if valVal := reflect.ValueOf(val); valVal.Kind() == reflect.Slice {
+		if valVal := reflect.ValueOf(val); valVal.Kind() == reflect.Slice && !valVal.IsNil() {
 			valCopy := reflect.MakeSlice(valVal.Type(), valVal.Len(), valVal.Cap())
 			reflect.Copy(valCopy, valVal)
 			m[column] = valCopy.Interface()
@@ -302,6 +476,7 @@ func TupleColumnName(c string, n int) string {
 	return fmt.Sprintf("%s[%d]", c, n)
 }
 
+// RowData returns the RowData for the iterator.
 func (iter *Iter) RowData() (RowData, error) {
 	if iter.err != nil {
 		return RowData{}, iter.err
@@ -314,6 +489,7 @@ func (iter *Iter) RowData() (RowData, error) {
 		if c, ok := column.TypeInfo.(TupleTypeInfo); !ok {
 			val, err := column.TypeInfo.NewWithError()
 			if err != nil {
+				iter.err = err
 				return RowData{}, err
 			}
 			columns = append(columns, column.Name)
@@ -323,6 +499,7 @@ func (iter *Iter) RowData() (RowData, error) {
 				columns = append(columns, TupleColumnName(column.Name, i))
 				val, err := elem.NewWithError()
 				if err != nil {
+					iter.err = err
 					return RowData{}, err
 				}
 				values = append(values, val)
@@ -344,7 +521,10 @@ func (iter *Iter) rowMap() (map[string]interface{}, error) {
 		return nil, iter.err
 	}
 
-	rowData, _ := iter.RowData()
+	rowData, err := iter.RowData()
+	if err != nil {
+		return nil, err
+	}
 	iter.Scan(rowData.Values...)
 	m := make(map[string]interface{}, len(rowData.Columns))
 	rowData.rowMap(m)
@@ -359,7 +539,10 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 	}
 
 	// Not checking for the error because we just did
-	rowData, _ := iter.RowData()
+	rowData, err := iter.RowData()
+	if err != nil {
+		return nil, err
+	}
 	dataToReturn := make([]map[string]interface{}, 0)
 	for iter.Scan(rowData.Values...) {
 		m := make(map[string]interface{}, len(rowData.Columns))
@@ -415,8 +598,10 @@ func (iter *Iter) MapScan(m map[string]interface{}) bool {
 		return false
 	}
 
-	// Not checking for the error because we just did
-	rowData, _ := iter.RowData()
+	rowData, err := iter.RowData()
+	if err != nil {
+		return false
+	}
 
 	for i, col := range rowData.Columns {
 		if dest, ok := m[col]; ok {
@@ -435,14 +620,4 @@ func copyBytes(p []byte) []byte {
 	b := make([]byte, len(p))
 	copy(b, p)
 	return b
-}
-
-var failDNS = false
-
-func LookupIP(host string) ([]net.IP, error) {
-	if failDNS {
-		return nil, &net.DNSError{}
-	}
-	return net.LookupIP(host)
-
 }

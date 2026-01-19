@@ -36,7 +36,7 @@ func Unmarshal(data []byte, value interface{}) error {
 		rv := reflect.ValueOf(value)
 		rt := rv.Type()
 		if rt.Kind() != reflect.Ptr {
-			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v)", v)
+			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v)
 		}
 		if rt.Elem().Kind() != reflect.Ptr {
 			return DecReflect(data, rv)

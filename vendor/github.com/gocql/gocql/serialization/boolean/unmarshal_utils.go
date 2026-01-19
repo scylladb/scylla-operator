@@ -55,7 +55,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 	case reflect.Bool:
 		return decReflectBool(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal boolean: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal boolean: unsupported value type (%T)(%[1]v), supported types: ~bool", v.Interface())
 	}
 }
 
@@ -68,7 +68,7 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	case reflect.Bool:
 		return decReflectBoolR(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal boolean: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal boolean: unsupported value type (%T)(%[1]v), supported types: ~bool", v.Interface())
 	}
 }
 

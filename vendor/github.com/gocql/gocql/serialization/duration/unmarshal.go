@@ -35,7 +35,7 @@ func Unmarshal(data []byte, value interface{}) error {
 		rv := reflect.ValueOf(value)
 		rt := rv.Type()
 		if rt.Kind() != reflect.Ptr {
-			return fmt.Errorf("failed to unmarshal duration: unsupported value type (%T)(%[1]v)", value)
+			return fmt.Errorf("failed to unmarshal duration: unsupported value type (%T)(%[1]v), supported types: ~int64, ~string, time.Duration, gocql.Duration", value)
 		}
 		if rt.Elem().Kind() != reflect.Ptr {
 			return DecReflect(data, rv)

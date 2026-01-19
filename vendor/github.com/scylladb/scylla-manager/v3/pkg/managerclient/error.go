@@ -3,10 +3,17 @@
 package managerclient
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
 )
+
+// ErrRunningTasks is returned when an operation cannot be completed
+// because there are incompatible tasks running on the cluster.
+// E.g., it is returned when suspending cluster with suspend_policy=fail_if_running_tasks
+// and there are not allowed tasks running on this cluster.
+var ErrRunningTasks = errors.New("can't complete operation because tasks are running")
 
 // PrintError handles ErrorResponse and can format multierror strings.
 func PrintError(w io.Writer, err error) {

@@ -46,6 +46,9 @@ type ClientService interface {
 	GetFolderDescendantCounts(folderUID string, opts ...ClientOption) (*GetFolderDescendantCountsOK, error)
 	GetFolderDescendantCountsWithParams(params *GetFolderDescendantCountsParams, opts ...ClientOption) (*GetFolderDescendantCountsOK, error)
 
+	GetFolderPermissionList(folderUID string, opts ...ClientOption) (*GetFolderPermissionListOK, error)
+	GetFolderPermissionListWithParams(params *GetFolderPermissionListParams, opts ...ClientOption) (*GetFolderPermissionListOK, error)
+
 	GetFolders(params *GetFoldersParams, opts ...ClientOption) (*GetFoldersOK, error)
 
 	MoveFolder(folderUID string, body *models.MoveFolderCommand, opts ...ClientOption) (*MoveFolderOK, error)
@@ -53,6 +56,9 @@ type ClientService interface {
 
 	UpdateFolder(folderUID string, body *models.UpdateFolderCommand, opts ...ClientOption) (*UpdateFolderOK, error)
 	UpdateFolderWithParams(params *UpdateFolderParams, opts ...ClientOption) (*UpdateFolderOK, error)
+
+	UpdateFolderPermissions(folderUID string, body *models.UpdateDashboardACLCommand, opts ...ClientOption) (*UpdateFolderPermissionsOK, error)
+	UpdateFolderPermissionsWithParams(params *UpdateFolderPermissionsParams, opts ...ClientOption) (*UpdateFolderPermissionsOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -282,6 +288,50 @@ func (a *Client) GetFolderDescendantCountsWithParams(params *GetFolderDescendant
 }
 
 /*
+GetFolderPermissionList gets all existing permissions for the folder with the given uid
+*/
+func (a *Client) GetFolderPermissionList(folderUID string, opts ...ClientOption) (*GetFolderPermissionListOK, error) {
+	params := NewGetFolderPermissionListParams().WithFolderUID(folderUID)
+	return a.GetFolderPermissionListWithParams(params, opts...)
+}
+
+func (a *Client) GetFolderPermissionListWithParams(params *GetFolderPermissionListParams, opts ...ClientOption) (*GetFolderPermissionListOK, error) {
+	if params == nil {
+		params = NewGetFolderPermissionListParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getFolderPermissionList",
+		Method:             "GET",
+		PathPattern:        "/folders/{folder_uid}/permissions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetFolderPermissionListReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetFolderPermissionListOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getFolderPermissionList: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 GetFolders gets all folders
 
 It returns all folders that the authenticated user has permission to view.
@@ -412,6 +462,50 @@ func (a *Client) UpdateFolderWithParams(params *UpdateFolderParams, opts ...Clie
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for updateFolder: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UpdateFolderPermissions updates permissions for a folder this operation will remove existing permissions if they re not included in the request
+*/
+func (a *Client) UpdateFolderPermissions(folderUID string, body *models.UpdateDashboardACLCommand, opts ...ClientOption) (*UpdateFolderPermissionsOK, error) {
+	params := NewUpdateFolderPermissionsParams().WithBody(body).WithFolderUID(folderUID)
+	return a.UpdateFolderPermissionsWithParams(params, opts...)
+}
+
+func (a *Client) UpdateFolderPermissionsWithParams(params *UpdateFolderPermissionsParams, opts ...ClientOption) (*UpdateFolderPermissionsOK, error) {
+	if params == nil {
+		params = NewUpdateFolderPermissionsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updateFolderPermissions",
+		Method:             "POST",
+		PathPattern:        "/folders/{folder_uid}/permissions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UpdateFolderPermissionsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdateFolderPermissionsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updateFolderPermissions: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

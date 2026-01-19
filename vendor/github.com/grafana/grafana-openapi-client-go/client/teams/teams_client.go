@@ -41,8 +41,7 @@ type ClientService interface {
 	DeleteTeamByID(teamID string, opts ...ClientOption) (*DeleteTeamByIDOK, error)
 	DeleteTeamByIDWithParams(params *DeleteTeamByIDParams, opts ...ClientOption) (*DeleteTeamByIDOK, error)
 
-	GetTeamByID(teamID string, opts ...ClientOption) (*GetTeamByIDOK, error)
-	GetTeamByIDWithParams(params *GetTeamByIDParams, opts ...ClientOption) (*GetTeamByIDOK, error)
+	GetTeamByID(params *GetTeamByIDParams, opts ...ClientOption) (*GetTeamByIDOK, error)
 
 	GetTeamMembers(teamID string, opts ...ClientOption) (*GetTeamMembersOK, error)
 	GetTeamMembersWithParams(params *GetTeamMembersParams, opts ...ClientOption) (*GetTeamMembersOK, error)
@@ -204,12 +203,8 @@ func (a *Client) DeleteTeamByIDWithParams(params *DeleteTeamByIDParams, opts ...
 /*
 GetTeamByID gets team by ID
 */
-func (a *Client) GetTeamByID(teamID string, opts ...ClientOption) (*GetTeamByIDOK, error) {
-	params := NewGetTeamByIDParams().WithTeamID(teamID)
-	return a.GetTeamByIDWithParams(params, opts...)
-}
 
-func (a *Client) GetTeamByIDWithParams(params *GetTeamByIDParams, opts ...ClientOption) (*GetTeamByIDOK, error) {
+func (a *Client) GetTeamByID(params *GetTeamByIDParams, opts ...ClientOption) (*GetTeamByIDOK, error) {
 	if params == nil {
 		params = NewGetTeamByIDParams()
 	}

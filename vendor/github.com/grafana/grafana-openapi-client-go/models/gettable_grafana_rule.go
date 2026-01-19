@@ -40,6 +40,9 @@ type GettableGrafanaRule struct {
 	// is paused
 	IsPaused bool `json:"is_paused,omitempty"`
 
+	// Field is only populated when listing alert rule versions.
+	Message string `json:"message,omitempty"`
+
 	// metadata
 	Metadata *AlertRuleMetadata `json:"metadata,omitempty"`
 

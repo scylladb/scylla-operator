@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Permission Permission is the model for access control permissions.
+// Permission Permission is the model for access control permissions
 //
 // swagger:model Permission
 type Permission struct {

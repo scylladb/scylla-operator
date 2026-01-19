@@ -34,6 +34,9 @@ type PostableAPIReceiver struct {
 	// msteams configs
 	MsteamsConfigs []*MSTeamsConfig `json:"msteams_configs"`
 
+	// msteamsv2 configs
+	Msteamsv2Configs []*MSTeamsV2Config `json:"msteamsv2_configs"`
+
 	// A unique identifier for this receiver.
 	Name string `json:"name,omitempty"`
 
@@ -89,6 +92,10 @@ func (m *PostableAPIReceiver) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateMsteamsConfigs(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateMsteamsv2Configs(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -258,6 +265,32 @@ func (m *PostableAPIReceiver) validateMsteamsConfigs(formats strfmt.Registry) er
 					return ve.ValidateName("msteams_configs" + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
 					return ce.ValidateName("msteams_configs" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *PostableAPIReceiver) validateMsteamsv2Configs(formats strfmt.Registry) error {
+	if swag.IsZero(m.Msteamsv2Configs) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Msteamsv2Configs); i++ {
+		if swag.IsZero(m.Msteamsv2Configs[i]) { // not required
+			continue
+		}
+
+		if m.Msteamsv2Configs[i] != nil {
+			if err := m.Msteamsv2Configs[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("msteamsv2_configs" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("msteamsv2_configs" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -552,6 +585,10 @@ func (m *PostableAPIReceiver) ContextValidate(ctx context.Context, formats strfm
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateMsteamsv2Configs(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateOpsgenieConfigs(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -713,6 +750,31 @@ func (m *PostableAPIReceiver) contextValidateMsteamsConfigs(ctx context.Context,
 					return ve.ValidateName("msteams_configs" + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
 					return ce.ValidateName("msteams_configs" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *PostableAPIReceiver) contextValidateMsteamsv2Configs(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Msteamsv2Configs); i++ {
+
+		if m.Msteamsv2Configs[i] != nil {
+
+			if swag.IsZero(m.Msteamsv2Configs[i]) { // not required
+				return nil
+			}
+
+			if err := m.Msteamsv2Configs[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("msteamsv2_configs" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("msteamsv2_configs" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

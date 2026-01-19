@@ -110,14 +110,14 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 	switch v.Kind() {
 	case reflect.Array:
 		if l := v.Len(); v.Type().Elem().Kind() != reflect.Uint8 || (l != 16 && l != 4) {
-			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP, unsetColumn", v.Interface())
 		}
 		nv := reflect.New(v.Type())
 		nv.Elem().Set(v)
 		return nv.Elem().Bytes(), nil
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP, unsetColumn", v.Interface())
 		}
 		return encReflectBytes(v)
 	case reflect.String:
@@ -126,9 +126,9 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 		if v.Type().String() == "gocql.unsetColumn" {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP, unsetColumn", v.Interface())
 	default:
-		return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP, unsetColumn", v.Interface())
 	}
 }
 
@@ -139,18 +139,18 @@ func EncReflectR(v reflect.Value) ([]byte, error) {
 	switch ev := v.Elem(); ev.Kind() {
 	case reflect.Array:
 		if l := v.Len(); ev.Type().Elem().Kind() != reflect.Uint8 || (l != 16 && l != 4) {
-			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP, unsetColumn", v.Interface())
 		}
 		return v.Elem().Bytes(), nil
 	case reflect.Slice:
 		if ev.Type().Elem().Kind() != reflect.Uint8 {
-			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP, unsetColumn", v.Interface())
 		}
 		return encReflectBytes(ev)
 	case reflect.String:
 		return encReflectString(ev)
 	default:
-		return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP, unsetColumn", v.Interface())
 	}
 }
 

@@ -255,7 +255,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 	switch v = v.Elem(); v.Kind() {
 	case reflect.Array:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 		}
 		switch v.Len() {
 		case 4:
@@ -263,17 +263,17 @@ func DecReflect(p []byte, v reflect.Value) error {
 		case 16:
 			return decReflectArray16(p, v)
 		default:
-			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 		}
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 		}
 		return decReflectBytes(p, v)
 	case reflect.String:
 		return decReflectString(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 	}
 }
 
@@ -286,7 +286,7 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	switch evt := ev.Type().Elem(); evt.Kind() {
 	case reflect.Array:
 		if evt.Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 		}
 		switch ev.Len() {
 		case 4:
@@ -294,17 +294,17 @@ func DecReflectR(p []byte, v reflect.Value) error {
 		case 16:
 			return decReflectArray16R(p, ev)
 		default:
-			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 		}
 	case reflect.Slice:
 		if evt.Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to marshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 		}
 		return decReflectBytesR(p, ev)
 	case reflect.String:
 		return decReflectStringR(p, ev)
 	default:
-		return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal inet: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[4]byte, ~[16]byte, ~string, net.IP", v.Interface())
 	}
 }
 

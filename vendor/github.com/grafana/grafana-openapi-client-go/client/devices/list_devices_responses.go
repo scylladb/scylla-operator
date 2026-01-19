@@ -55,7 +55,7 @@ func (o *ListDevicesReader) ReadResponse(response runtime.ClientResponse, consum
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("[GET /stats] listDevices", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /anonymous/devices] listDevices", response, response.Code())
 	}
 }
 
@@ -105,12 +105,12 @@ func (o *ListDevicesOK) Code() int {
 
 func (o *ListDevicesOK) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesOk %s", 200, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesOk %s", 200, payload)
 }
 
 func (o *ListDevicesOK) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesOk %s", 200, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesOk %s", 200, payload)
 }
 
 func (o *ListDevicesOK) GetPayload() []*models.DeviceDTO {
@@ -173,12 +173,12 @@ func (o *ListDevicesUnauthorized) Code() int {
 
 func (o *ListDevicesUnauthorized) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesUnauthorized %s", 401, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesUnauthorized %s", 401, payload)
 }
 
 func (o *ListDevicesUnauthorized) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesUnauthorized %s", 401, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesUnauthorized %s", 401, payload)
 }
 
 func (o *ListDevicesUnauthorized) GetPayload() *models.ErrorResponseBody {
@@ -243,12 +243,12 @@ func (o *ListDevicesForbidden) Code() int {
 
 func (o *ListDevicesForbidden) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesForbidden %s", 403, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesForbidden %s", 403, payload)
 }
 
 func (o *ListDevicesForbidden) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesForbidden %s", 403, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesForbidden %s", 403, payload)
 }
 
 func (o *ListDevicesForbidden) GetPayload() *models.ErrorResponseBody {
@@ -313,12 +313,12 @@ func (o *ListDevicesNotFound) Code() int {
 
 func (o *ListDevicesNotFound) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesNotFound %s", 404, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesNotFound %s", 404, payload)
 }
 
 func (o *ListDevicesNotFound) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesNotFound %s", 404, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesNotFound %s", 404, payload)
 }
 
 func (o *ListDevicesNotFound) GetPayload() *models.ErrorResponseBody {
@@ -383,12 +383,12 @@ func (o *ListDevicesInternalServerError) Code() int {
 
 func (o *ListDevicesInternalServerError) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesInternalServerError %s", 500, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesInternalServerError %s", 500, payload)
 }
 
 func (o *ListDevicesInternalServerError) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[GET /stats][%d] listDevicesInternalServerError %s", 500, payload)
+	return fmt.Sprintf("[GET /anonymous/devices][%d] listDevicesInternalServerError %s", 500, payload)
 }
 
 func (o *ListDevicesInternalServerError) GetPayload() *models.ErrorResponseBody {

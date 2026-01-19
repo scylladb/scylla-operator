@@ -9,8 +9,9 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/gocql/gocql"
 	"golang.org/x/net/proxy"
+
+	"github.com/gocql/gocql"
 )
 
 // SniHostDialer is able to dial particular host through SNI proxy.

@@ -59,13 +59,13 @@ func DecReflect(p []byte, v reflect.Value) error {
 		v.SetString(decString(p))
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to marshal varchar: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to marshal varchar: unsupported value type (%T)(%[1]v), supported types: ~string, ~[]byte", v.Interface())
 		}
 		v.SetBytes(decBytes(p))
 	case reflect.Interface:
 		v.Set(reflect.ValueOf(decBytes(p)))
 	default:
-		return fmt.Errorf("failed to unmarshal varchar: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal varchar: unsupported value type (%T)(%[1]v), supported types: ~string, ~[]byte", v.Interface())
 	}
 	return nil
 }
@@ -80,11 +80,11 @@ func DecReflectR(p []byte, v reflect.Value) error {
 		return decReflectStringR(p, v)
 	case reflect.Slice:
 		if ev.Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to marshal varchar: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to marshal varchar: unsupported value type (%T)(%[1]v), supported types: ~string, ~[]byte", v.Interface())
 		}
 		return decReflectBytesR(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal varchar: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal varchar: unsupported value type (%T)(%[1]v), supported types: ~string, ~[]byte", v.Interface())
 	}
 }
 

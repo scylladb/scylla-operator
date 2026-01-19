@@ -2,9 +2,10 @@ package decimal
 
 import (
 	"fmt"
-	"gopkg.in/inf.v0"
 	"reflect"
 	"strconv"
+
+	"gopkg.in/inf.v0"
 
 	"github.com/gocql/gocql/serialization/varint"
 )
@@ -185,7 +186,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 	case reflect.String:
 		return decReflectString(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal decimal: unsupported value type (%T)(%#[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal decimal: unsupported value type (%T)(%#[1]v), supported types: ~string, inf.Dec", v.Interface())
 	}
 }
 
@@ -198,7 +199,7 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	case reflect.String:
 		return decReflectStringR(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal decimal: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal decimal: unsupported value type (%T)(%[1]v), supported types: ~string, inf.Dec", v.Interface())
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/go-openapi/runtime"
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 )
 
 // NewGetTeamByIDParams creates a new GetTeamByIDParams object,
@@ -61,6 +62,9 @@ GetTeamByIDParams contains all the parameters to send to the API endpoint
 */
 type GetTeamByIDParams struct {
 
+	// Accesscontrol.
+	Accesscontrol *bool
+
 	// TeamID.
 	TeamID string
 
@@ -81,7 +85,18 @@ func (o *GetTeamByIDParams) WithDefaults() *GetTeamByIDParams {
 //
 // All values with no default are reset to their zero value.
 func (o *GetTeamByIDParams) SetDefaults() {
-	// no default values defined for this parameter
+	var (
+		accesscontrolDefault = bool(false)
+	)
+
+	val := GetTeamByIDParams{
+		Accesscontrol: &accesscontrolDefault,
+	}
+
+	val.timeout = o.timeout
+	val.Context = o.Context
+	val.HTTPClient = o.HTTPClient
+	*o = val
 }
 
 // WithTimeout adds the timeout to the get team by ID params
@@ -117,6 +132,17 @@ func (o *GetTeamByIDParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
+// WithAccesscontrol adds the accesscontrol to the get team by ID params
+func (o *GetTeamByIDParams) WithAccesscontrol(accesscontrol *bool) *GetTeamByIDParams {
+	o.SetAccesscontrol(accesscontrol)
+	return o
+}
+
+// SetAccesscontrol adds the accesscontrol to the get team by ID params
+func (o *GetTeamByIDParams) SetAccesscontrol(accesscontrol *bool) {
+	o.Accesscontrol = accesscontrol
+}
+
 // WithTeamID adds the teamID to the get team by ID params
 func (o *GetTeamByIDParams) WithTeamID(teamID string) *GetTeamByIDParams {
 	o.SetTeamID(teamID)
@@ -135,6 +161,23 @@ func (o *GetTeamByIDParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.R
 		return err
 	}
 	var res []error
+
+	if o.Accesscontrol != nil {
+
+		// query param accesscontrol
+		var qrAccesscontrol bool
+
+		if o.Accesscontrol != nil {
+			qrAccesscontrol = *o.Accesscontrol
+		}
+		qAccesscontrol := swag.FormatBool(qrAccesscontrol)
+		if qAccesscontrol != "" {
+
+			if err := r.SetQueryParam("accesscontrol", qAccesscontrol); err != nil {
+				return err
+			}
+		}
+	}
 
 	// path param team_id
 	if err := r.SetPathParam("team_id", o.TeamID); err != nil {

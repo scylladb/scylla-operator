@@ -1,8 +1,33 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
+ * Content before git sha 34fdeebefcbf183ed7f916f931aa0586fdaa1b40
+ * Copyright (c) 2016, The Gocql authors,
+ * provided under the BSD-3-Clause License.
+ * See the NOTICE file distributed with this work for additional information.
+ */
+
 package gocql
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -20,6 +45,7 @@ type ExecutableQuery interface {
 	IsIdempotent() bool
 	IsLWT() bool
 	GetCustomPartitioner() Partitioner
+	GetHostID() string
 
 	withContext(context.Context) ExecutableQuery
 
@@ -64,12 +90,29 @@ func (q *queryExecutor) speculate(ctx context.Context, qry ExecutableQuery, sp S
 }
 
 func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
-	hostIter := q.policy.Pick(qry)
+	var hostIter NextHost
+
+	// check if the hostID is specified for the query,
+	// if true  - the query execute at the specified host.
+	// if false - the query execute at the host picked by HostSelectionPolicy
+	if hostID := qry.GetHostID(); hostID != "" {
+		pool, ok := q.pool.getPoolByHostID(hostID)
+		if !ok {
+			// if the specified host ID have no connection pool we return error
+			return nil, fmt.Errorf("query is targeting unknown host id %s: %w", hostID, ErrNoPool)
+		} else if pool.Size() == 0 {
+			// if the pool have no connection we return error
+			return nil, fmt.Errorf("query is targeting host id %s that driver is not connected to: %w", hostID, ErrNoConnectionsInPool)
+		}
+		hostIter = newSingleHost(pool.host, 5, 200*time.Millisecond).selectHost
+	} else {
+		hostIter = q.policy.Pick(qry)
+	}
 
 	// check if the query is not marked as idempotent, if
 	// it is, we force the policy to NonSpeculative
 	sp := qry.speculativeExecutionPolicy()
-	if !qry.IsIdempotent() || sp.Attempts() == 0 {
+	if qry.GetHostID() != "" || !qry.IsIdempotent() || sp.Attempts() == 0 {
 		return q.do(qry.Context(), qry, hostIter), nil
 	}
 
@@ -110,7 +153,7 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter NextHost) *Iter {
 	rt := qry.retryPolicy()
 	if rt == nil {
-		rt = &SimpleRetryPolicy{3}
+		rt = &SimpleRetryPolicy{NumRetries: 3}
 	}
 
 	lwtRT, isRTSupportsLWT := rt.(LWTRetryPolicy)
@@ -176,7 +219,7 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 
 		var qErr *QueryError
 		if errors.As(iter.err, &qErr) {
-			potentiallyExecuted = potentiallyExecuted && qErr.PotentiallyExecuted()
+			potentiallyExecuted = potentiallyExecuted || qErr.PotentiallyExecuted()
 			qErr.potentiallyExecuted = potentiallyExecuted
 			qErr.isIdempotent = qry.IsIdempotent()
 			iter.err = qErr

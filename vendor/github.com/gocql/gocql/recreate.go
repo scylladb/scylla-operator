@@ -1,6 +1,3 @@
-//go:build !cassandra
-// +build !cassandra
-
 // Copyright (C) 2017 ScyllaDB
 
 package gocql
@@ -98,7 +95,7 @@ var tableCQLTemplate = template.Must(template.New("table").
 	Parse(`
 CREATE TABLE {{ .KeyspaceName }}.{{ .Tm.Name }} (
     {{ tableColumnToCQL .Tm }}
-) WITH {{ tablePropertiesToCQL .Tm.ClusteringColumns .Tm.Options .Tm.Flags .Tm.Extensions }};
+) WITH {{ tablePropertiesToCQL .Tm.ClusteringColumns .Tm.Options .Tm.Extensions }};
 `))
 
 func (km *KeyspaceMetadata) tableToCQL(w io.Writer, kn string, tm *TableMetadata) error {
@@ -157,13 +154,12 @@ CREATE MATERIALIZED VIEW {{ .vm.KeyspaceName }}.{{ .vm.ViewName }} AS
     FROM {{ .vm.KeyspaceName }}.{{ .vm.BaseTableName }}
     WHERE {{ .vm.WhereClause }}
     PRIMARY KEY ({{ partitionKeyString .vm.PartitionKey .vm.ClusteringColumns }})
-    WITH {{ tablePropertiesToCQL .vm.ClusteringColumns .vm.Options .flags .vm.Extensions }};
+    WITH {{ tablePropertiesToCQL .vm.ClusteringColumns .vm.Options .vm.Extensions }};
 `))
 
 func (km *KeyspaceMetadata) viewToCQL(w io.Writer, vm *ViewMetadata) error {
 	if err := viewTemplate.Execute(w, map[string]interface{}{
-		"vm":    vm,
-		"flags": []string{},
+		"vm": vm,
 	}); err != nil {
 		return err
 	}
@@ -399,18 +395,10 @@ func (h toCQLHelpers) tableExtensionsToCQL(extensions map[string]interface{}) ([
 }
 
 func (h toCQLHelpers) tablePropertiesToCQL(cks []*ColumnMetadata, opts TableMetadataOptions,
-	flags []string, extensions map[string]interface{}) (string, error) {
+	extensions map[string]interface{}) (string, error) {
 	var sb strings.Builder
 
 	var properties []string
-
-	compactStorage := len(flags) > 0 && (contains(flags, TableFlagDense) ||
-		contains(flags, TableFlagSuper) ||
-		!contains(flags, TableFlagCompound))
-
-	if compactStorage {
-		properties = append(properties, "COMPACT STORAGE")
-	}
 
 	if len(cks) > 0 {
 		var inner []string
@@ -494,9 +482,9 @@ func (h toCQLHelpers) partitionKeyString(pks, cks []*ColumnMetadata) string {
 
 type scyllaEncryptionOptions struct {
 	CipherAlgorithm   string `json:"cipher_algorithm"`
-	SecretKeyStrength int    `json:"secret_key_strength"`
 	KeyProvider       string `json:"key_provider"`
 	SecretKeyFile     string `json:"secret_key_file"`
+	SecretKeyStrength int    `json:"secret_key_strength"`
 }
 
 // UnmarshalBinary deserializes blob into scyllaEncryptionOptions.

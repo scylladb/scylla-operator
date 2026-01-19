@@ -21,6 +21,29 @@ type OAuth2 struct {
 	// TLS config
 	TLSConfig *TLSConfig `json:"TLSConfig,omitempty"`
 
+	// Audience optionally specifies the intended audience of the
+	// request.  If empty, the value of TokenURL is used as the
+	// intended audience. Only used if
+	// GrantType is set to "urn:ietf:params:oauth:grant-type:jwt-bearer".
+	Audience string `json:"audience,omitempty"`
+
+	// Claims is a map of claims to be added to the JWT token. Only used if
+	// GrantType is set to "urn:ietf:params:oauth:grant-type:jwt-bearer".
+	Claims interface{} `json:"claims,omitempty"`
+
+	// client certificate key
+	ClientCertificateKey Secret `json:"client_certificate_key,omitempty"`
+
+	// client certificate key file
+	ClientCertificateKeyFile string `json:"client_certificate_key_file,omitempty"`
+
+	// client certificate key id
+	ClientCertificateKeyID string `json:"client_certificate_key_id,omitempty"`
+
+	// ClientCertificateKeyRef is the name of the secret within the secret manager to use as the client
+	// secret.
+	ClientCertificateKeyRef string `json:"client_certificate_key_ref,omitempty"`
+
 	// client id
 	ClientID string `json:"client_id,omitempty"`
 
@@ -36,6 +59,16 @@ type OAuth2 struct {
 
 	// endpoint params
 	EndpointParams map[string]string `json:"endpoint_params,omitempty"`
+
+	// GrantType is the OAuth2 grant type to use. It can be one of
+	// "client_credentials" or "urn:ietf:params:oauth:grant-type:jwt-bearer" (RFC 7523).
+	// Default value is "client_credentials"
+	GrantType string `json:"grant_type,omitempty"`
+
+	// Iss is the OAuth client identifier used when communicating with
+	// the configured OAuth provider. Default value is client_id. Only used if
+	// GrantType is set to "urn:ietf:params:oauth:grant-type:jwt-bearer".
+	Iss string `json:"iss,omitempty"`
 
 	// NoProxy contains addresses that should not use a proxy.
 	NoProxy string `json:"no_proxy,omitempty"`
@@ -53,6 +86,11 @@ type OAuth2 struct {
 	// scopes
 	Scopes []string `json:"scopes"`
 
+	// SignatureAlgorithm is the RSA algorithm used to sign JWT token. Only used if
+	// GrantType is set to "urn:ietf:params:oauth:grant-type:jwt-bearer".
+	// Default value is RS256 and valid values RS256, RS384, RS512
+	SignatureAlgorithm string `json:"signature_algorithm,omitempty"`
+
 	// token url
 	TokenURL string `json:"token_url,omitempty"`
 }
@@ -62,6 +100,10 @@ func (m *OAuth2) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateTLSConfig(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateClientCertificateKey(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -97,6 +139,23 @@ func (m *OAuth2) validateTLSConfig(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *OAuth2) validateClientCertificateKey(formats strfmt.Registry) error {
+	if swag.IsZero(m.ClientCertificateKey) { // not required
+		return nil
+	}
+
+	if err := m.ClientCertificateKey.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("client_certificate_key")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("client_certificate_key")
+		}
+		return err
 	}
 
 	return nil
@@ -165,6 +224,10 @@ func (m *OAuth2) ContextValidate(ctx context.Context, formats strfmt.Registry) e
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateClientCertificateKey(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateClientSecret(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -199,6 +262,24 @@ func (m *OAuth2) contextValidateTLSConfig(ctx context.Context, formats strfmt.Re
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *OAuth2) contextValidateClientCertificateKey(ctx context.Context, formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ClientCertificateKey) { // not required
+		return nil
+	}
+
+	if err := m.ClientCertificateKey.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("client_certificate_key")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("client_certificate_key")
+		}
+		return err
 	}
 
 	return nil

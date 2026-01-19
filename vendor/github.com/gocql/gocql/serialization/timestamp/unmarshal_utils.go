@@ -55,7 +55,8 @@ func DecTime(p []byte, v *time.Time) error {
 	}
 	switch len(p) {
 	case 0:
-		*v = zeroTimestamp
+		// supposed to be zero timestamp `time.UnixMilli(0).UTC()`, but for backward compatibility mapped to zero time
+		*v = time.Time{}
 	case 8:
 		*v = decTime(p)
 	default:
@@ -73,7 +74,8 @@ func DecTimeR(p []byte, v **time.Time) error {
 		if p == nil {
 			*v = nil
 		} else {
-			val := zeroTimestamp
+			// supposed to be zero timestamp `time.UnixMilli(0).UTC()`, but for backward compatibility mapped to zero time
+			val := time.Time{}
 			*v = &val
 		}
 	case 8:
@@ -94,7 +96,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 	case reflect.Int64:
 		return decReflectInt64(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal timestamp: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal timestamp: unsupported value type (%T)(%[1]v), supported types: ~int64, time.Time", v.Interface())
 	}
 }
 
@@ -119,7 +121,7 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	case reflect.Int64:
 		return decReflectIntsR(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal timestamp: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal timestamp: unsupported value type (%T)(%[1]v), supported types: ~int64, time.Time", v.Interface())
 	}
 }
 

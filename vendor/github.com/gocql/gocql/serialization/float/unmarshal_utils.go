@@ -55,7 +55,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 	case reflect.Float32:
 		return decReflectFloat32(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal float: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal float: unsupported value type (%T)(%[1]v), supported types: ~float32", v.Interface())
 	}
 }
 
@@ -68,7 +68,7 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	case reflect.Float32:
 		return decReflectFloat32R(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal float: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal float: unsupported value type (%T)(%[1]v), supported types: ~float32", v.Interface())
 	}
 }
 

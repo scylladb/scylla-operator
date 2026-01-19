@@ -2,26 +2,23 @@ package gocql
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net"
 	"sync"
 )
 
 // Polls system.peers at a specific interval to find new hosts
 type ringDescriber struct {
-	control         controlConnection
-	cfg             *ClusterConfig
-	logger          StdLogger
-	mu              sync.RWMutex
-	prevHosts       []*HostInfo
-	prevPartitioner string
-
+	control controlConnection
+	logger  StdLogger
+	cfg     *ClusterConfig
 	// hosts are the set of all hosts in the cassandra ring that we know of.
 	// key of map is host_id.
 	hosts map[string]*HostInfo
 	// hostIPToUUID maps host native address to host_id.
-	hostIPToUUID map[string]string
+	hostIPToUUID    map[string]string
+	prevPartitioner string
+	prevHosts       []*HostInfo
+	mu              sync.RWMutex
 }
 
 func (r *ringDescriber) setControlConn(c controlConnection) {
@@ -39,7 +36,7 @@ func (r *ringDescriber) getLocalHostInfo(conn ConnInterface) (*HostInfo, error) 
 		return nil, errNoControl
 	}
 
-	host, err := hostInfoFromIter(iter, nil, r.cfg.Port, r.cfg.translateAddressPort)
+	host, err := hostInfoFromIter(iter, r.cfg.Port)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve local host info: %w", err)
 	}
@@ -65,15 +62,15 @@ func (r *ringDescriber) getClusterPeerInfo(localHost *HostInfo, c ConnInterface)
 		return nil, fmt.Errorf("unable to fetch peer host info: %s", err)
 	}
 
-	return getPeersFromQuerySystemPeers(rows, r.cfg.Port, r.cfg.translateAddressPort, r.logger)
+	return getPeersFromQuerySystemPeers(rows, r.cfg.Port, r.logger)
 }
 
-func getPeersFromQuerySystemPeers(querySystemPeerRows []map[string]interface{}, port int, translateAddressPort func(addr net.IP, port int) (net.IP, int), logger StdLogger) ([]*HostInfo, error) {
+func getPeersFromQuerySystemPeers(querySystemPeerRows []map[string]interface{}, defaultPort int, logger StdLogger) ([]*HostInfo, error) {
 	var peers []*HostInfo
 
 	for _, row := range querySystemPeerRows {
 		// extract all available info about the peer
-		host, err := hostInfoFromMap(row, &HostInfo{port: port}, translateAddressPort)
+		host, err := hostInfoFromMap(row, defaultPort)
 		if err != nil {
 			return nil, err
 		} else if !isValidPeer(host) {
@@ -140,56 +137,6 @@ func (r *ringDescriber) GetHostsFromSystem() ([]*HostInfo, string, error) {
 	return hosts, partitioner, nil
 }
 
-// Given an ip/port return HostInfo for the specified ip/port
-func (r *ringDescriber) getHostInfo(hostID UUID) (*HostInfo, error) {
-	var host *HostInfo
-	for _, table := range []string{"system.peers", "system.local"} {
-		ch := r.control.getConn()
-		var iter *Iter
-		if ch.host.HostID() == hostID.String() {
-			host = ch.host
-			iter = nil
-		}
-
-		if table == "system.peers" {
-			if ch.conn.getIsSchemaV2() {
-				iter = ch.conn.querySystem(context.TODO(), qrySystemPeersV2)
-			} else {
-				iter = ch.conn.querySystem(context.TODO(), qrySystemPeers)
-			}
-		} else {
-			iter = ch.conn.query(context.TODO(), fmt.Sprintf("SELECT * FROM %s", table))
-		}
-
-		if iter != nil {
-			rows, err := iter.SliceMap()
-			if err != nil {
-				return nil, err
-			}
-
-			for _, row := range rows {
-				h, err := hostInfoFromMap(row, &HostInfo{port: r.cfg.Port}, r.cfg.translateAddressPort)
-				if err != nil {
-					return nil, err
-				}
-
-				if h.HostID() == hostID.String() {
-					host = h
-					break
-				}
-			}
-		}
-	}
-
-	if host == nil {
-		return nil, errors.New("unable to fetch host info: invalid control connection")
-	} else if host.invalidConnectAddr() {
-		return nil, fmt.Errorf("host ConnectAddress invalid ip=%v: %v", host.connectAddress, host)
-	}
-
-	return host, nil
-}
-
 func (r *ringDescriber) getHostByIP(ip string) (*HostInfo, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -233,7 +180,7 @@ func (r *ringDescriber) addOrUpdate(host *HostInfo) *HostInfo {
 }
 
 func (r *ringDescriber) addHostIfMissing(host *HostInfo) (*HostInfo, bool) {
-	if host.invalidConnectAddr() {
+	if !validIpAddr(host.ConnectAddress()) {
 		panic(fmt.Sprintf("invalid host: %v", host))
 	}
 	hostID := host.HostID()

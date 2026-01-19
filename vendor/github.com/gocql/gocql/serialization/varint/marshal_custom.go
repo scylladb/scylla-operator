@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+const supportedTypes = "~int8, ~int16, ~int32, ~int64, ~int, ~uint8, ~uint16, ~uint32, ~uint64, ~uint, ~string, big.Int"
+
 func EncReflect(v reflect.Value) ([]byte, error) {
 	switch v.Type().Kind() {
 	case reflect.Int8:
@@ -31,10 +33,10 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 		if v.Type().String() == "gocql.unsetColumn" {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to marshal varint: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal varint: unsupported value type (%T)(%[1]v), supported types: %s, unsetColumn", v.Interface(), supportedTypes)
 
 	default:
-		return nil, fmt.Errorf("failed to marshal varint: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal varint: unsupported value type (%T)(%[1]v), supported types: %s, unsetColumn", v.Interface(), supportedTypes)
 	}
 }
 

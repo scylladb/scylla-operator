@@ -16,6 +16,30 @@ limitations under the License.
 */
 
 // Package lru implements an LRU cache.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
+ * Content before git sha 34fdeebefcbf183ed7f916f931aa0586fdaa1b40
+ * Copyright (c) 2016, The Gocql authors,
+ * provided under the BSD-3-Clause License.
+ * See the NOTICE file distributed with this work for additional information.
+ */
+
 package lru
 
 import "container/list"
@@ -26,21 +50,19 @@ import "container/list"
 // specialized with string keys to avoid the allocations caused by wrapping them
 // in interface{}.
 type Cache struct {
-	// MaxEntries is the maximum number of cache entries before
-	// an item is evicted. Zero means no limit.
-	MaxEntries int
-
 	// OnEvicted optionally specifies a callback function to be
 	// executed when an entry is purged from the cache.
 	OnEvicted func(key string, value interface{})
-
-	ll    *list.List
-	cache map[string]*list.Element
+	ll        *list.List
+	cache     map[string]*list.Element
+	// MaxEntries is the maximum number of cache entries before
+	// an item is evicted. Zero means no limit.
+	MaxEntries int
 }
 
 type entry struct {
-	key   string
 	value interface{}
+	key   string
 }
 
 // New creates a new Cache.
@@ -65,7 +87,7 @@ func (c *Cache) Add(key string, value interface{}) {
 		ee.Value.(*entry).value = value
 		return
 	}
-	ele := c.ll.PushFront(&entry{key, value})
+	ele := c.ll.PushFront(&entry{key: key, value: value})
 	c.cache[key] = ele
 	if c.MaxEntries != 0 && c.ll.Len() > c.MaxEntries {
 		c.RemoveOldest()

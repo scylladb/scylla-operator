@@ -11,6 +11,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // TeamDTO team DTO
@@ -30,39 +31,114 @@ type TeamDTO struct {
 	// external UID
 	ExternalUID string `json:"externalUID,omitempty"`
 
-	// id
-	ID int64 `json:"id,omitempty"`
+	// @deprecated Use UID instead
+	// Required: true
+	ID *int64 `json:"id"`
 
 	// is provisioned
-	IsProvisioned bool `json:"isProvisioned,omitempty"`
+	// Required: true
+	IsProvisioned *bool `json:"isProvisioned"`
 
 	// member count
-	MemberCount int64 `json:"memberCount,omitempty"`
+	// Required: true
+	MemberCount *int64 `json:"memberCount"`
 
 	// name
-	Name string `json:"name,omitempty"`
+	// Required: true
+	Name *string `json:"name"`
 
 	// org Id
-	OrgID int64 `json:"orgId,omitempty"`
+	// Required: true
+	OrgID *int64 `json:"orgId"`
 
 	// permission
 	Permission PermissionType `json:"permission,omitempty"`
 
 	// uid
-	UID string `json:"uid,omitempty"`
+	// Required: true
+	UID *string `json:"uid"`
 }
 
 // Validate validates this team DTO
 func (m *TeamDTO) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIsProvisioned(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateMemberCount(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOrgID(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validatePermission(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUID(formats); err != nil {
 		res = append(res, err)
 	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *TeamDTO) validateID(formats strfmt.Registry) error {
+
+	if err := validate.Required("id", "body", m.ID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *TeamDTO) validateIsProvisioned(formats strfmt.Registry) error {
+
+	if err := validate.Required("isProvisioned", "body", m.IsProvisioned); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *TeamDTO) validateMemberCount(formats strfmt.Registry) error {
+
+	if err := validate.Required("memberCount", "body", m.MemberCount); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *TeamDTO) validateName(formats strfmt.Registry) error {
+
+	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *TeamDTO) validateOrgID(formats strfmt.Registry) error {
+
+	if err := validate.Required("orgId", "body", m.OrgID); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -77,6 +153,15 @@ func (m *TeamDTO) validatePermission(formats strfmt.Registry) error {
 		} else if ce, ok := err.(*errors.CompositeError); ok {
 			return ce.ValidateName("permission")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *TeamDTO) validateUID(formats strfmt.Registry) error {
+
+	if err := validate.Required("uid", "body", m.UID); err != nil {
 		return err
 	}
 

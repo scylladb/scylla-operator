@@ -47,9 +47,6 @@ type ClientService interface {
 	GetOrgByName(orgName string, opts ...ClientOption) (*GetOrgByNameOK, error)
 	GetOrgByNameWithParams(params *GetOrgByNameParams, opts ...ClientOption) (*GetOrgByNameOK, error)
 
-	GetOrgQuota(orgID int64, opts ...ClientOption) (*GetOrgQuotaOK, error)
-	GetOrgQuotaWithParams(params *GetOrgQuotaParams, opts ...ClientOption) (*GetOrgQuotaOK, error)
-
 	GetOrgUsers(orgID int64, opts ...ClientOption) (*GetOrgUsersOK, error)
 	GetOrgUsersWithParams(params *GetOrgUsersParams, opts ...ClientOption) (*GetOrgUsersOK, error)
 
@@ -66,8 +63,6 @@ type ClientService interface {
 
 	UpdateOrgAddress(orgID int64, body *models.UpdateOrgAddressForm, opts ...ClientOption) (*UpdateOrgAddressOK, error)
 	UpdateOrgAddressWithParams(params *UpdateOrgAddressParams, opts ...ClientOption) (*UpdateOrgAddressOK, error)
-
-	UpdateOrgQuota(params *UpdateOrgQuotaParams, opts ...ClientOption) (*UpdateOrgQuotaOK, error)
 
 	UpdateOrgUser(params *UpdateOrgUserParams, opts ...ClientOption) (*UpdateOrgUserOK, error)
 
@@ -258,7 +253,7 @@ func (a *Client) GetOrgByIDWithParams(params *GetOrgByIDParams, opts ...ClientOp
 }
 
 /*
-GetOrgByName gets organization by ID
+GetOrgByName gets organization by name
 */
 func (a *Client) GetOrgByName(orgName string, opts ...ClientOption) (*GetOrgByNameOK, error) {
 	params := NewGetOrgByNameParams().WithOrgName(orgName)
@@ -298,52 +293,6 @@ func (a *Client) GetOrgByNameWithParams(params *GetOrgByNameParams, opts ...Clie
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getOrgByName: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-GetOrgQuota fetches organization quota
-
-If you are running Grafana Enterprise and have Fine-grained access control enabled, you need to have a permission with action `orgs.quotas:read` and scope `org:id:1` (orgIDScope).
-*/
-func (a *Client) GetOrgQuota(orgID int64, opts ...ClientOption) (*GetOrgQuotaOK, error) {
-	params := NewGetOrgQuotaParams().WithOrgID(orgID)
-	return a.GetOrgQuotaWithParams(params, opts...)
-}
-
-func (a *Client) GetOrgQuotaWithParams(params *GetOrgQuotaParams, opts ...ClientOption) (*GetOrgQuotaOK, error) {
-	if params == nil {
-		params = NewGetOrgQuotaParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "getOrgQuota",
-		Method:             "GET",
-		PathPattern:        "/orgs/{org_id}/quotas",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &GetOrgQuotaReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*GetOrgQuotaOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for getOrgQuota: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -613,48 +562,6 @@ func (a *Client) UpdateOrgAddressWithParams(params *UpdateOrgAddressParams, opts
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for updateOrgAddress: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-UpdateOrgQuota updates user quota
-
-If you are running Grafana Enterprise and have Fine-grained access control enabled, you need to have a permission with action `orgs.quotas:write` and scope `org:id:1` (orgIDScope).
-*/
-
-func (a *Client) UpdateOrgQuota(params *UpdateOrgQuotaParams, opts ...ClientOption) (*UpdateOrgQuotaOK, error) {
-	if params == nil {
-		params = NewUpdateOrgQuotaParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "updateOrgQuota",
-		Method:             "PUT",
-		PathPattern:        "/orgs/{org_id}/quotas/{quota_target}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &UpdateOrgQuotaReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*UpdateOrgQuotaOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for updateOrgQuota: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

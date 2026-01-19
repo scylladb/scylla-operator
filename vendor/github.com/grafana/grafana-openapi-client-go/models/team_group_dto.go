@@ -25,6 +25,9 @@ type TeamGroupDTO struct {
 
 	// team Id
 	TeamID int64 `json:"teamId,omitempty"`
+
+	// uid
+	UID string `json:"uid,omitempty"`
 }
 
 // Validate validates this team group DTO

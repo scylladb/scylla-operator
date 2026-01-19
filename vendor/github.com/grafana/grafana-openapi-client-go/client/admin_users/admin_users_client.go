@@ -59,11 +59,6 @@ type ClientService interface {
 	AdminUpdateUserPermissions(userID int64, body *models.AdminUpdateUserPermissionsForm, opts ...ClientOption) (*AdminUpdateUserPermissionsOK, error)
 	AdminUpdateUserPermissionsWithParams(params *AdminUpdateUserPermissionsParams, opts ...ClientOption) (*AdminUpdateUserPermissionsOK, error)
 
-	GetUserQuota(userID int64, opts ...ClientOption) (*GetUserQuotaOK, error)
-	GetUserQuotaWithParams(params *GetUserQuotaParams, opts ...ClientOption) (*GetUserQuotaOK, error)
-
-	UpdateUserQuota(params *UpdateUserQuotaParams, opts ...ClientOption) (*UpdateUserQuotaOK, error)
-
 	SetTransport(transport runtime.ClientTransport)
 }
 
@@ -481,94 +476,6 @@ func (a *Client) AdminUpdateUserPermissionsWithParams(params *AdminUpdateUserPer
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for adminUpdateUserPermissions: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-GetUserQuota fetches user quota
-
-If you are running Grafana Enterprise and have Fine-grained access control enabled, you need to have a permission with action `users.quotas:list` and scope `global.users:1` (userIDScope).
-*/
-func (a *Client) GetUserQuota(userID int64, opts ...ClientOption) (*GetUserQuotaOK, error) {
-	params := NewGetUserQuotaParams().WithUserID(userID)
-	return a.GetUserQuotaWithParams(params, opts...)
-}
-
-func (a *Client) GetUserQuotaWithParams(params *GetUserQuotaParams, opts ...ClientOption) (*GetUserQuotaOK, error) {
-	if params == nil {
-		params = NewGetUserQuotaParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "getUserQuota",
-		Method:             "GET",
-		PathPattern:        "/admin/users/{user_id}/quotas",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &GetUserQuotaReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*GetUserQuotaOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for getUserQuota: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-UpdateUserQuota updates user quota
-
-If you are running Grafana Enterprise and have Fine-grained access control enabled, you need to have a permission with action `users.quotas:update` and scope `global.users:1` (userIDScope).
-*/
-
-func (a *Client) UpdateUserQuota(params *UpdateUserQuotaParams, opts ...ClientOption) (*UpdateUserQuotaOK, error) {
-	if params == nil {
-		params = NewUpdateUserQuotaParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "updateUserQuota",
-		Method:             "PUT",
-		PathPattern:        "/admin/users/{user_id}/quotas/{quota_target}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &UpdateUserQuotaReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*UpdateUserQuotaOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for updateUserQuota: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -17,7 +17,7 @@
   "packageRules": [
     {
       "description": "scylla-manager and scylla-manager-agent must be updated together",
-      "matchPackageNames": ["scylla-manager", "scylla-manager-agent"],
+      "matchDepNames": ["scylla-manager", "scylla-manager-agent"],
       "groupName": "scylla-manager"
     },
     {

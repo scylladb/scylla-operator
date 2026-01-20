@@ -45,7 +45,7 @@ func TestUUIDMarshalUnmarshalCQL(t *testing.T) {
 	t.Parallel()
 
 	id0 := MustRandom()
-	g := gocql.NewNativeType(1, gocql.TypeUUID, "")
+	g := gocql.NewNativeType(1, gocql.TypeUUID)
 
 	b, err := id0.MarshalCQL(g)
 	if err != nil {
@@ -68,7 +68,7 @@ func TestTimeUUIDMarshal(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
 		t.Parallel()
 
-		b, err := Nil.MarshalCQL(gocql.NewNativeType(1, gocql.TypeUUID, ""))
+		b, err := Nil.MarshalCQL(gocql.NewNativeType(1, gocql.TypeUUID))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -81,7 +81,7 @@ func TestTimeUUIDMarshal(t *testing.T) {
 		t.Parallel()
 
 		id := MustRandom()
-		_, err := id.MarshalCQL(gocql.NewNativeType(1, gocql.TypeTimeUUID, ""))
+		_, err := id.MarshalCQL(gocql.NewNativeType(1, gocql.TypeTimeUUID))
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -91,7 +91,7 @@ func TestTimeUUIDMarshal(t *testing.T) {
 		t.Parallel()
 
 		id := NewTime()
-		_, err := id.MarshalCQL(gocql.NewNativeType(1, gocql.TypeUUID, ""))
+		_, err := id.MarshalCQL(gocql.NewNativeType(1, gocql.TypeUUID))
 		if err != nil {
 			t.Fatal(err)
 		}

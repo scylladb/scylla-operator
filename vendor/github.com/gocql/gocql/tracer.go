@@ -66,7 +66,7 @@ func (t *TraceWriter) Trace(traceId []byte) {
 	for i := 0; i < fetchAttempts; i++ {
 		var duration int
 
-		iter := t.session.control.query(`SELECT duration
+		iter := t.session.control.querySystem(`SELECT duration
 			FROM system_traces.sessions
 			WHERE session_id = ?`, traceId)
 		iter.Scan(&duration)
@@ -94,7 +94,7 @@ func (t *TraceWriter) Trace(traceId []byte) {
 		duration    int
 	)
 
-	iter := t.session.control.query(`SELECT coordinator, duration
+	iter := t.session.control.querySystem(`SELECT coordinator, duration
 		FROM system_traces.sessions
 		WHERE session_id = ?`, traceId)
 
@@ -107,7 +107,7 @@ func (t *TraceWriter) Trace(traceId []byte) {
 	fmt.Fprintf(t.w, "Tracing session %016x (coordinator: %s, duration: %v):\n",
 		traceId, coordinator, time.Duration(duration)*time.Microsecond)
 
-	iter = t.session.control.query(`SELECT event_id, activity, source, source_elapsed, thread
+	iter = t.session.control.querySystem(`SELECT event_id, activity, source, source_elapsed, thread
 			FROM system_traces.events
 			WHERE session_id = ?`, traceId)
 
@@ -147,7 +147,7 @@ func (t *TracerEnhanced) IsReady(traceId []byte) (bool, error) {
 	isDone := false
 	var duration int
 
-	iter := t.session.control.query(`SELECT duration
+	iter := t.session.control.querySystem(`SELECT duration
 		FROM system_traces.sessions
 		WHERE session_id = ?`, traceId)
 	iter.Scan(&duration)
@@ -172,7 +172,7 @@ func (t *TracerEnhanced) GetCoordinatorTime(traceId []byte) (string, time.Durati
 		duration    int
 	)
 
-	iter := t.session.control.query(`SELECT coordinator, duration
+	iter := t.session.control.querySystem(`SELECT coordinator, duration
 		FROM system_traces.sessions
 		WHERE session_id = ?`, traceId)
 
@@ -188,12 +188,12 @@ type TraceEntry struct {
 	Timestamp time.Time
 	Activity  string
 	Source    string
-	Elapsed   int
 	Thread    string
+	Elapsed   int
 }
 
 func (t *TracerEnhanced) GetActivities(traceId []byte) ([]TraceEntry, error) {
-	iter := t.session.control.query(`SELECT event_id, activity, source, source_elapsed, thread
+	iter := t.session.control.querySystem(`SELECT event_id, activity, source, source_elapsed, thread
 		FROM system_traces.events
 		WHERE session_id = ?`, traceId)
 

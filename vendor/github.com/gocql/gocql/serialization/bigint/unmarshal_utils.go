@@ -505,7 +505,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 	case reflect.String:
 		return decReflectString(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal bigint: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal bigint: unsupported value type (%T)(%[1]v), supported types: %s", v.Interface(), supportedTypes)
 	}
 }
 
@@ -667,7 +667,7 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	case reflect.String:
 		return decReflectStringR(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal bigint: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal bigint: unsupported value type (%T)(%[1]v), supported types: %s", v.Interface(), supportedTypes)
 	}
 }
 

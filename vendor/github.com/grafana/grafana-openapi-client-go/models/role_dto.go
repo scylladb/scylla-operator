@@ -21,23 +21,27 @@ import (
 type RoleDTO struct {
 
 	// created
+	// Required: true
 	// Format: date-time
-	Created strfmt.DateTime `json:"created,omitempty"`
+	Created *strfmt.DateTime `json:"created"`
 
 	// delegatable
 	Delegatable bool `json:"delegatable,omitempty"`
 
 	// description
-	Description string `json:"description,omitempty"`
+	// Required: true
+	Description *string `json:"description"`
 
 	// display name
-	DisplayName string `json:"displayName,omitempty"`
+	// Required: true
+	DisplayName *string `json:"displayName"`
 
 	// global
 	Global bool `json:"global,omitempty"`
 
 	// group
-	Group string `json:"group,omitempty"`
+	// Required: true
+	Group *string `json:"group"`
 
 	// hidden
 	Hidden bool `json:"hidden,omitempty"`
@@ -46,20 +50,24 @@ type RoleDTO struct {
 	Mapped bool `json:"mapped,omitempty"`
 
 	// name
-	Name string `json:"name,omitempty"`
+	// Required: true
+	Name *string `json:"name"`
 
 	// permissions
 	Permissions []*Permission `json:"permissions"`
 
 	// uid
-	UID string `json:"uid,omitempty"`
+	// Required: true
+	UID *string `json:"uid"`
 
 	// updated
+	// Required: true
 	// Format: date-time
-	Updated strfmt.DateTime `json:"updated,omitempty"`
+	Updated *strfmt.DateTime `json:"updated"`
 
 	// version
-	Version int64 `json:"version,omitempty"`
+	// Required: true
+	Version *int64 `json:"version"`
 }
 
 // Validate validates this role DTO
@@ -70,11 +78,35 @@ func (m *RoleDTO) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateDescription(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDisplayName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateGroup(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validatePermissions(formats); err != nil {
 		res = append(res, err)
 	}
 
+	if err := m.validateUID(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateUpdated(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateVersion(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -85,11 +117,48 @@ func (m *RoleDTO) Validate(formats strfmt.Registry) error {
 }
 
 func (m *RoleDTO) validateCreated(formats strfmt.Registry) error {
-	if swag.IsZero(m.Created) { // not required
-		return nil
+
+	if err := validate.Required("created", "body", m.Created); err != nil {
+		return err
 	}
 
 	if err := validate.FormatOf("created", "body", "date-time", m.Created.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RoleDTO) validateDescription(formats strfmt.Registry) error {
+
+	if err := validate.Required("description", "body", m.Description); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RoleDTO) validateDisplayName(formats strfmt.Registry) error {
+
+	if err := validate.Required("displayName", "body", m.DisplayName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RoleDTO) validateGroup(formats strfmt.Registry) error {
+
+	if err := validate.Required("group", "body", m.Group); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RoleDTO) validateName(formats strfmt.Registry) error {
+
+	if err := validate.Required("name", "body", m.Name); err != nil {
 		return err
 	}
 
@@ -122,12 +191,31 @@ func (m *RoleDTO) validatePermissions(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *RoleDTO) validateUID(formats strfmt.Registry) error {
+
+	if err := validate.Required("uid", "body", m.UID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *RoleDTO) validateUpdated(formats strfmt.Registry) error {
-	if swag.IsZero(m.Updated) { // not required
-		return nil
+
+	if err := validate.Required("updated", "body", m.Updated); err != nil {
+		return err
 	}
 
 	if err := validate.FormatOf("updated", "body", "date-time", m.Updated.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RoleDTO) validateVersion(formats strfmt.Registry) error {
+
+	if err := validate.Required("version", "body", m.Version); err != nil {
 		return err
 	}
 

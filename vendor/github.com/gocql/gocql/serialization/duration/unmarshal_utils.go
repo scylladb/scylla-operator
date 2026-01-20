@@ -113,28 +113,14 @@ func DecString(p []byte, v *string) error {
 	case l < 3:
 		return errWrongDataLen
 	default:
-		if p[0] != 0 {
-			return fmt.Errorf("failed to unmarshal duration: to unmarshal into (string) the months value should be 0")
+		m, d, n, ok := decDuration(p)
+		if !ok {
+			return errBrokenData
 		}
-		if p[1] == 0 {
-			n, ok := decNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			*v = n.String()
-		} else {
-			d, n, ok := decDaysNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			if !validDateNanosDur(d, n) {
-				return errInvalidSign
-			}
-			if n, ok = daysToNanosDur(d, n); !ok {
-				return fmt.Errorf("failed to unmarshal duration: to unmarshal into (string) the data value should be in int64 range")
-			}
-			*v = n.String()
+		if !validDuration(m, d, n) {
+			return errInvalidSign
 		}
+		*v = decString(m, d, n)
 	}
 	return nil
 }
@@ -154,29 +140,15 @@ func DecStringR(p []byte, v **string) error {
 	case l < 3:
 		return errWrongDataLen
 	default:
-		if p[0] != 0 {
-			return fmt.Errorf("failed to unmarshal duration: to unmarshal into (*string) the months value should be 0")
-		}
 		var val string
-		if p[1] == 0 {
-			n, ok := decNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			val = n.String()
-		} else {
-			d, n, ok := decDaysNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			if !validDateNanosDur(d, n) {
-				return errInvalidSign
-			}
-			if n, ok = daysToNanosDur(d, n); !ok {
-				return fmt.Errorf("failed to unmarshal duration: to unmarshal into (*string) the data value should be in int64 range")
-			}
-			val = n.String()
+		m, d, n, ok := decDuration(p)
+		if !ok {
+			return errBrokenData
 		}
+		if !validDuration(m, d, n) {
+			return errInvalidSign
+		}
+		val = decString(m, d, n)
 		*v = &val
 	}
 	return nil
@@ -318,7 +290,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 	case reflect.String:
 		return decReflectString(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal duration: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal duration: unsupported value type (%T)(%[1]v), supported types: ~int64, ~string, time.Duration, gocql.Duration", v.Interface())
 	}
 }
 
@@ -366,30 +338,14 @@ func decReflectString(p []byte, v reflect.Value) error {
 	case l < 3:
 		return errWrongDataLen
 	default:
-		if p[0] != 0 {
-			return fmt.Errorf("failed to unmarshal duration: to unmarshal into (%T) the months value should be 0", v.Interface())
+		m, d, n, ok := decDuration(p)
+		if !ok {
+			return errBrokenData
 		}
-		var val string
-		if p[1] == 0 {
-			n, ok := decNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			val = n.String()
-		} else {
-			d, n, ok := decDaysNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			if !validDateNanosDur(d, n) {
-				return errInvalidSign
-			}
-			if n, ok = daysToNanosDur(d, n); !ok {
-				return fmt.Errorf("failed to unmarshal duration: to unmarshal into (%T) the data value should be in int64 range", v.Interface())
-			}
-			val = n.String()
+		if !validDuration(m, d, n) {
+			return errInvalidSign
 		}
-		v.SetString(val)
+		v.SetString(decString(m, d, n))
 	}
 	return nil
 }
@@ -405,7 +361,7 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	case reflect.String:
 		return decReflectStringR(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal duration: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal duration: unsupported value type (%T)(%[1]v), supported types: ~int64, ~string, time.Duration, gocql.Duration", v.Interface())
 	}
 }
 
@@ -464,29 +420,15 @@ func decReflectStringR(p []byte, v reflect.Value) error {
 	case l < 3:
 		return errWrongDataLen
 	default:
-		if p[0] != 0 {
-			return fmt.Errorf("failed to unmarshal duration: to unmarshal into (%T) the months value should be 0", v.Interface())
+		m, d, n, ok := decDuration(p)
+		if !ok {
+			return errBrokenData
+		}
+		if !validDuration(m, d, n) {
+			return errInvalidSign
 		}
 		val := reflect.New(v.Type().Elem().Elem())
-		if p[1] == 0 {
-			n, ok := decNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			val.Elem().SetString(n.String())
-		} else {
-			d, n, ok := decDaysNanosDur(p)
-			if !ok {
-				return errBrokenData
-			}
-			if !validDateNanosDur(d, n) {
-				return errInvalidSign
-			}
-			if n, ok = daysToNanosDur(d, n); !ok {
-				return fmt.Errorf("failed to unmarshal duration: to unmarshal into (%T) the data value should be in int64 range", v.Interface())
-			}
-			val.Elem().SetString(n.String())
-		}
+		val.Elem().SetString(decString(m, d, n))
 		v.Elem().Set(val)
 	}
 	return nil
@@ -534,6 +476,17 @@ func validDateNanosDur(d time.Duration, n time.Duration) bool {
 	return false
 }
 
+func decDuration(p []byte) (m int32, d int32, n int64, ok bool) {
+	if p[0] != 0 {
+		m, d, n, ok = decVints(p)
+	} else if p[1] != 0 {
+		d, n, ok = decDaysNanos(p)
+	} else {
+		n, ok = decNanos64(p)
+	}
+	return
+}
+
 func decVints(p []byte) (int32, int32, int64, bool) {
 	m, read := decVint32(p, 0)
 	if read == 0 {
@@ -548,6 +501,18 @@ func decVints(p []byte) (int32, int32, int64, bool) {
 		return 0, 0, 0, false
 	}
 	return decZigZag32(m), decZigZag32(d), decZigZag64(n), true
+}
+
+func decDaysNanos(p []byte) (int32, int64, bool) {
+	d, read := decVint32(p, 1)
+	if read == 0 {
+		return 0, 0, false
+	}
+	n, read := decVint64(p, read)
+	if read == 0 {
+		return 0, 0, false
+	}
+	return decZigZag32(d), decZigZag64(n), true
 }
 
 func decDaysNanos64(p []byte) (int64, int64, bool) {

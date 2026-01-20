@@ -33,16 +33,16 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 		return encString(v.String()), nil
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return nil, fmt.Errorf("failed to marshal text: unsupported value type (%T)(%[1]v)", v.Interface())
+			return nil, fmt.Errorf("failed to marshal text: unsupported value type (%T)(%[1]v), supported types: ~string, ~[]byte, unsetColumn", v.Interface())
 		}
 		return EncBytes(v.Bytes())
 	case reflect.Struct:
 		if v.Type().String() == "gocql.unsetColumn" {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to marshal text: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal text: unsupported value type (%T)(%[1]v), supported types: ~string, ~[]byte, unsetColumn", v.Interface())
 	default:
-		return nil, fmt.Errorf("failed to marshal text: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal text: unsupported value type (%T)(%[1]v), supported types: ~string, ~[]byte, unsetColumn", v.Interface())
 	}
 }
 

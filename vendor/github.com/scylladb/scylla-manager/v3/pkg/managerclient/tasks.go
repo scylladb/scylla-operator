@@ -11,6 +11,7 @@ const (
 	One2OneRestoreTask string = "1_1_restore"
 	HealthCheckTask    string = "healthcheck"
 	RepairTask         string = "repair"
+	TabletRepairTask   string = "tablet_repair"
 	SuspendTask        string = "suspend"
 	ValidateBackupTask string = "validate_backup"
 )
@@ -22,9 +23,16 @@ var TasksTypes = strset.New(
 	One2OneRestoreTask,
 	HealthCheckTask,
 	RepairTask,
+	TabletRepairTask,
 	SuspendTask,
 	ValidateBackupTask,
 )
+
+// TasksResilientToTopologyChanges is a slice of tasks that
+// can be running while nodes are added/removed from the cluster.
+var TasksResilientToTopologyChanges = []string{
+	TabletRepairTask,
+}
 
 // Status enumeration.
 const (

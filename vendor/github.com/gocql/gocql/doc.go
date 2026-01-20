@@ -1,6 +1,26 @@
-// Copyright (c) 2012-2015 The gocql Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
+ * Content before git sha 34fdeebefcbf183ed7f916f931aa0586fdaa1b40
+ * Copyright (c) 2016, The Gocql authors,
+ * provided under the BSD-3-Clause License.
+ * See the NOTICE file distributed with this work for additional information.
+ */
 
 // Package gocql implements a fast and robust Cassandra driver for the
 // Go programming language.
@@ -24,7 +44,7 @@
 //
 //	cluster.Keyspace = "example"
 //	cluster.Consistency = gocql.Quorum
-//	cluster.ProtoVersion = 4
+//	cluster.ProtoVersion = protoVersion4
 //
 // The driver tries to automatically detect the protocol version to use if not set, but you might want to set the
 // protocol version explicitly, as it's not defined which version will be used in certain situations (for example
@@ -135,7 +155,31 @@
 // Instead of dividing hosts with two tiers (local datacenter and remote datacenters) it divides hosts into three
 // (the local rack, the rest of the local datacenter, and everything else).
 //
-// RackAwareRoundRobinPolicy can be combined with TokenAwareHostPolicy in the same way as DCAwareRoundRobinPolicy.
+// For example, to route queries to a specific rack within a datacenter:
+//
+//	cluster := gocql.NewCluster("192.168.1.1", "192.168.1.2", "192.168.1.3")
+//	cluster.PoolConfig.HostSelectionPolicy = gocql.RackAwareRoundRobinPolicy("dc1", "rack1")
+//
+// RackAwareRoundRobinPolicy can be combined with TokenAwareHostPolicy in the same way as DCAwareRoundRobinPolicy:
+//
+//	cluster := gocql.NewCluster("192.168.1.1", "192.168.1.2", "192.168.1.3")
+//	cluster.PoolConfig.HostSelectionPolicy = gocql.TokenAwareHostPolicy(gocql.RackAwareRoundRobinPolicy("dc1", "rack1"))
+//
+// # AWS-specific considerations
+//
+// When using rack-aware policies with AWS, note that Availability Zone (AZ) names like "us-east-1a" are not consistent
+// between different AWS accounts. The same physical AZ may have different names in different accounts.
+//
+// For consistent rack-aware routing in AWS, you should use AZ IDs instead of AZ names. AZ IDs (e.g., "use1-az1") are
+// consistent identifiers across AWS accounts for the same physical location.
+//
+// To configure your Cassandra or ScyllaDB nodes with AZ IDs, you can retrieve the AZ ID using AWS CLI or APIs.
+// For more information, see AWS documentation on AZ IDs: https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html
+//
+// Example configuration for AWS using AZ IDs:
+//
+//	cluster := gocql.NewCluster("192.168.1.1", "192.168.1.2", "192.168.1.3")
+//	cluster.PoolConfig.HostSelectionPolicy = gocql.RackAwareRoundRobinPolicy("us-east-1", "use1-az1")
 //
 // # Executing queries
 //

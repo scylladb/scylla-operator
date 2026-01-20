@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocql/gocql"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
@@ -311,10 +310,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 		_, err = di.Read()
 		o.Expect(err).To(o.HaveOccurred())
-		var gocqlErr gocql.RequestError
-		o.Expect(errors.As(err, &gocqlErr)).To(o.BeTrue())
-		o.Expect(gocqlErr.Code()).To(o.Equal(gocql.ErrCodeInvalid))
-		o.Expect(gocqlErr.Error()).To(o.And(o.HavePrefix("Keyspace"), o.HaveSuffix("does not exist")))
+		o.Expect(err).To(o.MatchError(o.And(o.ContainSubstring("Keyspace"), o.ContainSubstring("does not exist"))))
 
 		// Close the existing session to avoid polluting the logs.
 		di.Close()

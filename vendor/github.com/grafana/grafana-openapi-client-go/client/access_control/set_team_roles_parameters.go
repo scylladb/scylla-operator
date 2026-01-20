@@ -15,6 +15,8 @@ import (
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+
+	"github.com/grafana/grafana-openapi-client-go/models"
 )
 
 // NewSetTeamRolesParams creates a new SetTeamRolesParams object,
@@ -61,6 +63,9 @@ SetTeamRolesParams contains all the parameters to send to the API endpoint
 	Typically these are written to a http.Request.
 */
 type SetTeamRolesParams struct {
+
+	// Body.
+	Body *models.SetTeamRolesCommand
 
 	// TeamID.
 	//
@@ -120,6 +125,17 @@ func (o *SetTeamRolesParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
+// WithBody adds the body to the set team roles params
+func (o *SetTeamRolesParams) WithBody(body *models.SetTeamRolesCommand) *SetTeamRolesParams {
+	o.SetBody(body)
+	return o
+}
+
+// SetBody adds the body to the set team roles params
+func (o *SetTeamRolesParams) SetBody(body *models.SetTeamRolesCommand) {
+	o.Body = body
+}
+
 // WithTeamID adds the teamID to the set team roles params
 func (o *SetTeamRolesParams) WithTeamID(teamID int64) *SetTeamRolesParams {
 	o.SetTeamID(teamID)
@@ -138,6 +154,11 @@ func (o *SetTeamRolesParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.
 		return err
 	}
 	var res []error
+	if o.Body != nil {
+		if err := r.SetBodyParam(o.Body); err != nil {
+			return err
+		}
+	}
 
 	// path param teamId
 	if err := r.SetPathParam("teamId", swag.FormatInt64(o.TeamID)); err != nil {

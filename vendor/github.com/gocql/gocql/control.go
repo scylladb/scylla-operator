@@ -1,3 +1,27 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
+ * Content before git sha 34fdeebefcbf183ed7f916f931aa0586fdaa1b40
+ * Copyright (c) 2016, The Gocql authors,
+ * provided under the BSD-3-Clause License.
+ * See the NOTICE file distributed with this work for additional information.
+ */
+
 package gocql
 
 import (
@@ -7,12 +31,15 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"os"
 	"regexp"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gocql/gocql/events"
+	"github.com/gocql/gocql/internal/debug"
+	frm "github.com/gocql/gocql/internal/frame"
 )
 
 var (
@@ -39,24 +66,23 @@ type controlConnection interface {
 	getConn() *connHost
 	awaitSchemaAgreement() error
 	query(statement string, values ...interface{}) (iter *Iter)
+	querySystem(statement string, values ...interface{}) (iter *Iter)
 	discoverProtocol(hosts []*HostInfo) (int, error)
 	connect(hosts []*HostInfo) error
 	close()
 	getSession() *Session
+	reconnect() error
 }
 
 // Ensure that the atomic variable is aligned to a 64bit boundary
 // so that atomic operations can be applied on 32bit architectures.
 type controlConn struct {
+	conn         atomic.Value
+	retry        RetryPolicy
+	session      *Session
+	quit         chan struct{}
 	state        int32
 	reconnecting int32
-
-	session *Session
-	conn    atomic.Value
-
-	retry RetryPolicy
-
-	quit chan struct{}
 }
 
 func (c *controlConn) getSession() *Session {
@@ -66,9 +92,9 @@ func (c *controlConn) getSession() *Session {
 func createControlConn(session *Session) *controlConn {
 
 	control := &controlConn{
-		session:            session,
-		quit:               make(chan struct{}),
-		retry:              &SimpleRetryPolicy{NumRetries: 3},
+		session: session,
+		quit:    make(chan struct{}),
+		retry:   &SimpleRetryPolicy{NumRetries: 3},
 	}
 
 	control.conn.Store((*connHost)(nil))
@@ -100,7 +126,7 @@ func (c *controlConn) heartBeat() {
 		}
 
 		switch resp.(type) {
-		case *supportedFrame:
+		case *frm.SupportedFrame:
 			// Everything ok
 			sleepTime = 30 * time.Second
 			continue
@@ -118,9 +144,7 @@ func (c *controlConn) heartBeat() {
 	}
 }
 
-var hostLookupPreferV4 = os.Getenv("GOCQL_HOST_LOOKUP_PREFER_V4") == "true"
-
-func hostInfo(addr string, defaultPort int) ([]*HostInfo, error) {
+func resolveInitialEndpoint(resolver DNSResolver, addr string, defaultPort int) ([]*HostInfo, error) {
 	var port int
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -133,39 +157,45 @@ func hostInfo(addr string, defaultPort int) ([]*HostInfo, error) {
 		}
 	}
 
-	var hosts []*HostInfo
-
 	// Check if host is a literal IP address
 	if ip := net.ParseIP(host); ip != nil {
-		hosts = append(hosts, &HostInfo{hostname: host, connectAddress: ip, port: port})
-		return hosts, nil
+		if validIpAddr(ip) {
+			hb := HostInfoBuilder{
+				// Fake hosts for initial endpoints do not need HostID
+				Hostname:       host,
+				ConnectAddress: ip,
+				Port:           port,
+			}
+			hh := hb.Build()
+			return []*HostInfo{&hh}, nil
+		}
 	}
 
 	// Look up host in DNS
-	ips, err := LookupIP(host)
+	ips, err := resolver.LookupIP(host)
 	if err != nil {
 		return nil, err
 	} else if len(ips) == 0 {
 		return nil, fmt.Errorf("no IP's returned from DNS lookup for %q", addr)
 	}
 
-	// Filter to v4 addresses if any present
-	if hostLookupPreferV4 {
-		var preferredIPs []net.IP
-		for _, v := range ips {
-			if v4 := v.To4(); v4 != nil {
-				preferredIPs = append(preferredIPs, v4)
-			}
-		}
-		if len(preferredIPs) != 0 {
-			ips = preferredIPs
-		}
-	}
-
+	var hosts []*HostInfo
 	for _, ip := range ips {
-		hosts = append(hosts, &HostInfo{hostname: host, connectAddress: ip, port: port})
+		if validIpAddr(ip) {
+			hb := HostInfoBuilder{
+				// Fake hosts for initial endpoints do not need HostID
+				Hostname:       host,
+				ConnectAddress: ip,
+				Port:           port,
+			}
+			hh := hb.Build()
+			hosts = append(hosts, &hh)
+		}
 	}
 
+	if len(hosts) == 0 {
+		return nil, fmt.Errorf("no IP's founded for %q", addr)
+	}
 	return hosts, nil
 }
 
@@ -190,7 +220,7 @@ func parseProtocolFromError(err error) int {
 	matches := protocolSupportRe.FindAllStringSubmatch(err.Error(), -1)
 	if len(matches) != 1 || len(matches[0]) != 2 {
 		if verr, ok := err.(*protocolError); ok {
-			return int(verr.frame.Header().version.version())
+			return int(verr.frame.Header().Version.Version())
 		}
 		return 0
 	}
@@ -207,7 +237,7 @@ func (c *controlConn) discoverProtocol(hosts []*HostInfo) (int, error) {
 	hosts = shuffleHosts(hosts)
 
 	connCfg := *c.session.connCfg
-	connCfg.ProtoVersion = 4 // TODO: define maxProtocol
+	connCfg.ProtoVersion = protoVersion4 // TODO: define maxProtocol
 
 	handler := connErrorHandlerFn(func(c *Conn, err error, closed bool) {
 		// we should never get here, but if we do it means we connected to a
@@ -221,6 +251,7 @@ func (c *controlConn) discoverProtocol(hosts []*HostInfo) (int, error) {
 	for _, host := range hosts {
 		var conn *Conn
 		conn, err = c.session.dial(c.session.ctx, host, &connCfg, handler)
+		// not need to call conn.finalizeConnection since this connection to be terminated right away
 		if conn != nil {
 			conn.Close()
 		}
@@ -253,6 +284,7 @@ func (c *controlConn) connect(hosts []*HostInfo) error {
 	var err error
 	for _, host := range hosts {
 		conn, err = c.session.dial(c.session.ctx, host, &cfg, c)
+		// conn.finalizeConnection() to be called outside of this function, since initialization process is not completed yet
 		if err != nil {
 			c.session.logger.Printf("gocql: unable to dial control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
 			continue
@@ -285,16 +317,10 @@ type connHost struct {
 func (c *controlConn) setupConn(conn *Conn) error {
 	// we need up-to-date host info for the filterHost call below
 	iter := conn.querySystem(context.TODO(), qrySystemLocal)
-	defaultPort := 9042
-	if tcpAddr, ok := conn.conn.RemoteAddr().(*net.TCPAddr); ok {
-		defaultPort = tcpAddr.Port
-	}
-	host, err := hostInfoFromIter(iter, conn.host.connectAddress, defaultPort, c.session.cfg.translateAddressPort)
+	host, err := hostInfoFromIter(iter, c.session.cfg.Port)
 	if err != nil {
 		return err
 	}
-
-	host = c.session.hostSource.addOrUpdate(host)
 
 	if c.session.cfg.filterHost(host) {
 		return fmt.Errorf("host was filtered: %v", host.ConnectAddress())
@@ -308,8 +334,21 @@ func (c *controlConn) setupConn(conn *Conn) error {
 		conn: conn,
 		host: host,
 	}
-
-	c.conn.Store(ch)
+	old, _ := c.conn.Swap(ch).(*connHost)
+	var oldHost events.HostInfo
+	if old != nil && old.host != nil {
+		oldHost.HostID = old.host.HostID()
+		oldHost.Host = old.host.ConnectAddress()
+		oldHost.Port = old.host.Port()
+	}
+	c.session.publishEvent(&events.ControlConnectionRecreatedEvent{
+		OldHost: oldHost,
+		NewHost: events.HostInfo{
+			HostID: host.HostID(),
+			Host:   host.ConnectAddress(),
+			Port:   host.Port(),
+		},
+	})
 	if c.session.initialized() {
 		// We connected to control conn, so add the connect the host in pool as well.
 		// Notify session we can start trying to connect to the node.
@@ -334,6 +373,9 @@ func (c *controlConn) registerEvents(conn *Conn) error {
 	if !c.session.cfg.Events.DisableSchemaEvents {
 		events = append(events, "SCHEMA_CHANGE")
 	}
+	if c.session.cfg.ClientRoutesConfig != nil {
+		events = append(events, "CLIENT_ROUTES_CHANGE")
+	}
 
 	if len(events) == 0 {
 		return nil
@@ -342,7 +384,7 @@ func (c *controlConn) registerEvents(conn *Conn) error {
 	framer, err := conn.exec(context.Background(),
 		&writeRegisterFrame{
 			events: events,
-		}, nil)
+		}, nil, conn.cfg.ConnectTimeout)
 	if err != nil {
 		return err
 	}
@@ -350,27 +392,27 @@ func (c *controlConn) registerEvents(conn *Conn) error {
 	frame, err := framer.parseFrame()
 	if err != nil {
 		return err
-	} else if _, ok := frame.(*readyFrame); !ok {
+	} else if _, ok := frame.(*frm.ReadyFrame); !ok {
 		return fmt.Errorf("unexpected frame in response to register: got %T: %v\n", frame, frame)
 	}
 
 	return nil
 }
 
-func (c *controlConn) reconnect() {
+func (c *controlConn) reconnect() error {
 	if atomic.LoadInt32(&c.state) == controlConnClosing {
-		return
+		return fmt.Errorf("control connection is closing")
 	}
 	if !atomic.CompareAndSwapInt32(&c.reconnecting, 0, 1) {
-		return
+		return fmt.Errorf("control connection is reconnecting")
 	}
 	defer atomic.StoreInt32(&c.reconnecting, 0)
 
-	conn, err := c.attemptReconnect()
-
-	if conn == nil {
-		c.session.logger.Printf("gocql: unable to reconnect control connection: %v\n", err)
-		return
+	err := c.attemptReconnect()
+	if err != nil {
+		err = fmt.Errorf("gocql: unable to reconnect control connection: %w\n", err)
+		c.session.logger.Printf(err.Error())
+		return err
 	}
 
 	err = c.session.refreshRingNow()
@@ -382,9 +424,10 @@ func (c *controlConn) reconnect() {
 	if err != nil {
 		c.session.logger.Printf("gocql: unable to refresh the schema: %v\n", err)
 	}
+	return nil
 }
 
-func (c *controlConn) attemptReconnect() (*Conn, error) {
+func (c *controlConn) attemptReconnect() error {
 	hosts := c.session.hostSource.getHostsList()
 	hosts = shuffleHosts(hosts)
 
@@ -401,29 +444,26 @@ func (c *controlConn) attemptReconnect() (*Conn, error) {
 		ch.conn.Close()
 	}
 
-	conn, err := c.attemptReconnectToAnyOfHosts(hosts)
-
-	if conn != nil {
-		return conn, err
+	err := c.attemptReconnectToAnyOfHosts(hosts)
+	if err == nil {
+		return nil
 	}
 
 	c.session.logger.Printf("gocql: unable to connect to any ring node: %v\n", err)
 	c.session.logger.Printf("gocql: control falling back to initial contact points.\n")
 	// Fallback to initial contact points, as it may be the case that all known initialHosts
 	// changed their IPs while keeping the same hostname(s).
-	initialHosts, resolvErr := addrsToHosts(c.session.cfg.Hosts, c.session.cfg.Port, c.session.logger)
+	initialHosts, resolvErr := resolveInitialEndpoints(c.session.cfg.DNSResolver, c.session.cfg.Hosts, c.session.cfg.Port, c.session.logger)
 	if resolvErr != nil {
-		return nil, fmt.Errorf("resolve contact points' hostnames: %v", resolvErr)
+		return fmt.Errorf("resolve contact points' hostnames: %v", resolvErr)
 	}
 
 	return c.attemptReconnectToAnyOfHosts(initialHosts)
 }
 
-func (c *controlConn) attemptReconnectToAnyOfHosts(hosts []*HostInfo) (*Conn, error) {
-	var conn *Conn
-	var err error
+func (c *controlConn) attemptReconnectToAnyOfHosts(hosts []*HostInfo) error {
 	for _, host := range hosts {
-		conn, err = c.session.connect(c.session.ctx, host, c)
+		conn, err := c.session.connect(c.session.ctx, host, c)
 		if err != nil {
 			if c.session.cfg.ConvictionPolicy.AddFailure(err, host) {
 				c.session.handleNodeDown(host.ConnectAddress(), host.Port())
@@ -432,14 +472,22 @@ func (c *controlConn) attemptReconnectToAnyOfHosts(hosts []*HostInfo) (*Conn, er
 			continue
 		}
 		err = c.setupConn(conn)
-		if err == nil {
-			break
+		if err != nil {
+			c.session.logger.Printf("gocql: unable setup control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
+			conn.Close()
+			continue
 		}
-		c.session.logger.Printf("gocql: unable setup control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
-		conn.Close()
-		conn = nil
+		conn.finalizeConnection()
+		c.session.publishEvent(&events.ControlConnectionRecreatedEvent{
+			NewHost: events.HostInfo{
+				Host:   host.ConnectAddress(),
+				Port:   host.Port(),
+				HostID: host.HostID(),
+			},
+		})
+		return nil
 	}
-	return conn, err
+	return fmt.Errorf("unable to connect to any known node: %v", hosts)
 }
 
 func (c *controlConn) HandleError(conn *Conn, err error, closed bool) {
@@ -455,7 +503,7 @@ func (c *controlConn) HandleError(conn *Conn, err error, closed bool) {
 		return
 	}
 
-	c.reconnect()
+	go c.reconnect()
 }
 
 func (c *controlConn) getConn() *connHost {
@@ -468,7 +516,7 @@ func (c *controlConn) writeFrame(w frameBuilder) (frame, error) {
 		return nil, errNoControl
 	}
 
-	framer, err := ch.conn.exec(context.Background(), w, nil)
+	framer, err := ch.conn.exec(context.Background(), w, nil, c.session.cfg.MetadataSchemaRequestTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -477,20 +525,33 @@ func (c *controlConn) writeFrame(w frameBuilder) (frame, error) {
 }
 
 // query will return nil if the connection is closed or nil
-func (c *controlConn) query(statement string, values ...interface{}) (iter *Iter) {
-	q := c.session.Query(statement, values...).Consistency(One).RoutingKey([]byte{}).Trace(nil)
+func (c *controlConn) querySystem(statement string, values ...interface{}) (iter *Iter) {
+	conn := c.getConn().conn.(*Conn)
+	return c.runQuery(c.session.Query(statement+conn.usingTimeoutClause, values...).
+		Consistency(One).
+		SetRequestTimeout(conn.systemRequestTimeout).
+		RoutingKey([]byte{}).
+		Trace(nil))
+}
 
+// query will return nil if the connection is closed or nil
+func (c *controlConn) query(statement string, values ...interface{}) (iter *Iter) {
+	return c.runQuery(c.session.Query(statement, values...).Consistency(One).RoutingKey([]byte{}).Trace(nil))
+}
+
+// query will return nil if the connection is closed or nil
+func (c *controlConn) runQuery(qry *Query) (iter *Iter) {
 	for {
 		ch := c.getConn()
-		q.conn = ch.conn.(*Conn)
-		iter = ch.conn.executeQuery(context.TODO(), q)
+		qry.conn = ch.conn
+		iter = ch.conn.executeQuery(context.TODO(), qry)
 
-		if gocqlDebug && iter.err != nil {
-			c.session.logger.Printf("control: error executing %q: %v\n", statement, iter.err)
+		if debug.Enabled && iter.err != nil {
+			c.session.logger.Printf("control: error executing %q: %v\n", qry.stmt, iter.err)
 		}
 
-		q.AddAttempts(1, c.getConn().host)
-		if iter.err == nil || !c.retry.Attempt(q) {
+		qry.AddAttempts(1, ch.host)
+		if iter.err == nil || !c.retry.Attempt(qry) {
 			break
 		}
 	}

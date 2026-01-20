@@ -11,14 +11,14 @@ const (
 
 // debounces requests to call a refresh function (currently used for ring refresh). It also supports triggering a refresh immediately.
 type RefreshDebouncer struct {
-	mu           sync.Mutex
-	stopped      bool
 	broadcaster  *errorBroadcaster
-	interval     time.Duration
 	timer        *time.Timer
 	refreshNowCh chan struct{}
 	quit         chan struct{}
 	refreshFn    func() error
+	interval     time.Duration
+	mu           sync.Mutex
+	stopped      bool
 }
 
 func NewRefreshDebouncer(interval time.Duration, refreshFn func() error) *RefreshDebouncer {

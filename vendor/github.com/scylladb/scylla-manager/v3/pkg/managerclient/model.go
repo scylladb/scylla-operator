@@ -3,9 +3,11 @@
 package managerclient
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
@@ -787,6 +789,133 @@ func (rp RepairProgress) addRepairTableDetailedProgress(d *table.Table, t *model
 		FormatTimePointer(t.CompletedAt),
 		FormatMsDuration(t.DurationMs),
 	)
+}
+
+// TabletRepairProgress describes tablet repair progress.
+type TabletRepairProgress struct {
+	*models.TaskRunTabletRepairProgress
+
+	Task     *Task
+	Detailed bool
+
+	ksFilter inexlist.InExList
+}
+
+// SetKeyspaceFilter adds filtering rules used for rendering keyspace details.
+func (rp *TabletRepairProgress) SetKeyspaceFilter(filters []string) error {
+	ksFilter, err := inexlist.ParseInExList(filters)
+	if err != nil {
+		return err
+	}
+	rp.ksFilter = ksFilter
+	return nil
+}
+
+func (rp *TabletRepairProgress) hideKeyspace(keyspace string) bool {
+	return rp.ksFilter.Size() > 0 && rp.ksFilter.FirstMatch(keyspace) == -1
+}
+
+// Render renders *TabletRepairProgress in a tabular format.
+func (rp *TabletRepairProgress) Render(w io.Writer) error {
+	if err := rp.addHeader(w); err != nil {
+		return err
+	}
+	if rp.Progress == nil {
+		return nil
+	}
+
+	t := table.New()
+	rp.addTableProgress(t)
+	t.SetColumnAlignment(termtables.AlignRight, 1)
+	_, err := io.WriteString(w, t.String())
+	return err
+}
+
+var tabletRepairProgressTemplate = `{{ with .Run -}}
+Run:		{{ .ID }}
+Status:		{{ .Status }}
+{{- if .Cause }}
+Cause:		{{ FormatError .Cause }}
+
+{{- end }}
+{{- if not (isZero .StartTime) }}
+Start time:	{{ FormatTime .StartTime }}
+{{- end -}}
+{{- if not (isZero .EndTime) }}
+End time:	{{ FormatTime .EndTime }}
+{{- end }}
+Duration:	{{ FormatDuration .StartTime .EndTime }}
+{{- end }}
+`
+
+func (rp *TabletRepairProgress) addHeader(w io.Writer) error {
+	temp := template.Must(template.New("tablet_repair_progress").Funcs(template.FuncMap{
+		"isZero":         isZero,
+		"FormatTime":     FormatTime,
+		"FormatDuration": FormatDuration,
+		"FormatError":    FormatError,
+	}).Parse(tabletRepairProgressTemplate))
+	return temp.Execute(w, rp)
+}
+
+func (rp *TabletRepairProgress) addTableProgress(d *table.Table) {
+	if len(rp.Progress.Tables) == 0 {
+		return
+	}
+
+	headers := []any{"Keyspace", "Table", "Progress", "Duration"}
+	if rp.Detailed {
+		headers = append(headers, "Started at", "Completed at", "Error")
+	}
+	d.AddRow(headers...)
+	d.AddSeparator()
+
+	slices.SortFunc(rp.Progress.Tables, func(a, b *models.TabletRepairTableProgress) int {
+		return cmp.Compare(a.Keyspace, b.Keyspace)
+	})
+	ks := ""
+	for _, t := range rp.Progress.Tables {
+		if rp.hideKeyspace(t.Keyspace) {
+			continue
+		}
+		if ks == "" {
+			ks = t.Keyspace
+		} else if ks != t.Keyspace {
+			ks = t.Keyspace
+			d.AddSeparator()
+		}
+
+		progress := formatTabletRepairProgress(t.StartedAt, t.CompletedAt, t.Error)
+		duration := formatTabletRepairDuration(t.StartedAt, t.CompletedAt)
+		items := []any{t.Keyspace, t.Table, progress, duration}
+		if rp.Detailed {
+			items = append(items, FormatTimePointer(t.StartedAt), FormatTimePointer(t.CompletedAt), t.Error)
+		}
+		d.AddRow(items...)
+	}
+}
+
+func formatTabletRepairProgress(startedAt *strfmt.DateTime, completedAt *strfmt.DateTime, err string) string {
+	if err != "" {
+		return "failed"
+	}
+	if startedAt == nil || startedAt.IsZero() {
+		return "-"
+	}
+	if completedAt == nil || completedAt.IsZero() {
+		return "running"
+	}
+	return "done"
+}
+
+func formatTabletRepairDuration(startedAt *strfmt.DateTime, completedAt *strfmt.DateTime) string {
+	if startedAt == nil || startedAt.IsZero() {
+		return "-"
+	}
+	if completedAt == nil || completedAt.IsZero() {
+		return FormatDuration(*startedAt, strfmt.DateTime{})
+	}
+	return FormatDuration(*startedAt, *completedAt)
 }
 
 // BackupProgress contains shard progress info.

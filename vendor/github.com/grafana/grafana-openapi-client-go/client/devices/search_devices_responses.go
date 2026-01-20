@@ -55,7 +55,7 @@ func (o *SearchDevicesReader) ReadResponse(response runtime.ClientResponse, cons
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("[POST /search] SearchDevices", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /anonymous/search] SearchDevices", response, response.Code())
 	}
 }
 
@@ -105,12 +105,12 @@ func (o *SearchDevicesOK) Code() int {
 
 func (o *SearchDevicesOK) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesOk %s", 200, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesOk %s", 200, payload)
 }
 
 func (o *SearchDevicesOK) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesOk %s", 200, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesOk %s", 200, payload)
 }
 
 func (o *SearchDevicesOK) GetPayload() *models.SearchDeviceQueryResult {
@@ -175,12 +175,12 @@ func (o *SearchDevicesUnauthorized) Code() int {
 
 func (o *SearchDevicesUnauthorized) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesUnauthorized %s", 401, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesUnauthorized %s", 401, payload)
 }
 
 func (o *SearchDevicesUnauthorized) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesUnauthorized %s", 401, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesUnauthorized %s", 401, payload)
 }
 
 func (o *SearchDevicesUnauthorized) GetPayload() *models.ErrorResponseBody {
@@ -245,12 +245,12 @@ func (o *SearchDevicesForbidden) Code() int {
 
 func (o *SearchDevicesForbidden) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesForbidden %s", 403, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesForbidden %s", 403, payload)
 }
 
 func (o *SearchDevicesForbidden) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesForbidden %s", 403, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesForbidden %s", 403, payload)
 }
 
 func (o *SearchDevicesForbidden) GetPayload() *models.ErrorResponseBody {
@@ -315,12 +315,12 @@ func (o *SearchDevicesNotFound) Code() int {
 
 func (o *SearchDevicesNotFound) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesNotFound %s", 404, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesNotFound %s", 404, payload)
 }
 
 func (o *SearchDevicesNotFound) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesNotFound %s", 404, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesNotFound %s", 404, payload)
 }
 
 func (o *SearchDevicesNotFound) GetPayload() *models.ErrorResponseBody {
@@ -385,12 +385,12 @@ func (o *SearchDevicesInternalServerError) Code() int {
 
 func (o *SearchDevicesInternalServerError) Error() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesInternalServerError %s", 500, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesInternalServerError %s", 500, payload)
 }
 
 func (o *SearchDevicesInternalServerError) String() string {
 	payload, _ := json.Marshal(o.Payload)
-	return fmt.Sprintf("[POST /search][%d] searchDevicesInternalServerError %s", 500, payload)
+	return fmt.Sprintf("[GET /anonymous/search][%d] searchDevicesInternalServerError %s", 500, payload)
 }
 
 func (o *SearchDevicesInternalServerError) GetPayload() *models.ErrorResponseBody {

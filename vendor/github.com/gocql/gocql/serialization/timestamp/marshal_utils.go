@@ -7,9 +7,8 @@ import (
 )
 
 var (
-	maxTimestamp  = time.Date(292278994, 8, 17, 7, 12, 55, 807*1000000, time.UTC)
-	zeroTimestamp = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
-	minTimestamp  = time.Date(-292275055, 5, 16, 16, 47, 4, 192*1000000, time.UTC)
+	maxTimestamp = time.Date(292278994, 8, 17, 7, 12, 55, 807*1000000, time.UTC)
+	minTimestamp = time.Date(-292275055, 5, 16, 16, 47, 4, 192*1000000, time.UTC)
 )
 
 func EncInt64(v int64) ([]byte, error) {
@@ -27,7 +26,11 @@ func EncTime(v time.Time) ([]byte, error) {
 	if v.After(maxTimestamp) || v.Before(minTimestamp) {
 		return nil, fmt.Errorf("failed to marshal timestamp: the (%T)(%s) value should be in the range from -292275055-05-16T16:47:04.192Z to 292278994-08-17T07:12:55.807", v, v.Format(time.RFC3339Nano))
 	}
-	ms := v.Unix()*1e3 + int64(v.Nanosecond())/1e6
+	// It supposed to be v.UTC().UnixMilli(), for backward compatibility map `time.Time{}` to nil value
+	if v.IsZero() {
+		return make([]byte, 0), nil
+	}
+	ms := v.UTC().UnixMilli()
 	return []byte{byte(ms >> 56), byte(ms >> 48), byte(ms >> 40), byte(ms >> 32), byte(ms >> 24), byte(ms >> 16), byte(ms >> 8), byte(ms)}, nil
 }
 
@@ -46,9 +49,9 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 		if v.Type().String() == "gocql.unsetColumn" {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to marshal timestamp: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal timestamp: unsupported value type (%T)(%[1]v), supported types: ~int64, time.Time, unsetColumn", v.Interface())
 	default:
-		return nil, fmt.Errorf("failed to marshal timestamp: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal timestamp: unsupported value type (%T)(%[1]v), supported types: ~int64, time.Time, unsetColumn", v.Interface())
 	}
 }
 

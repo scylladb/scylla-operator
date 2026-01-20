@@ -31,7 +31,7 @@ func Unmarshal(data []byte, value interface{}) error {
 		// Later, when generic-based serialization is introduced we can do that via generics.
 		rv := reflect.ValueOf(value)
 		if rv.Kind() != reflect.Ptr {
-			return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v)", v)
+			return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[16]byte, ~string", v)
 		}
 		if rv.Type().Elem().Kind() != reflect.Ptr {
 			return DecReflect(data, rv)

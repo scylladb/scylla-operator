@@ -88,7 +88,7 @@ type ClientService interface {
 	SetRoleAssignments(roleUID string, body *models.SetRoleAssignmentsCommand, opts ...ClientOption) (*SetRoleAssignmentsOK, error)
 	SetRoleAssignmentsWithParams(params *SetRoleAssignmentsParams, opts ...ClientOption) (*SetRoleAssignmentsOK, error)
 
-	SetTeamRoles(teamID int64, opts ...ClientOption) (*SetTeamRolesOK, error)
+	SetTeamRoles(teamID int64, body *models.SetTeamRolesCommand, opts ...ClientOption) (*SetTeamRolesOK, error)
 	SetTeamRolesWithParams(params *SetTeamRolesParams, opts ...ClientOption) (*SetTeamRolesOK, error)
 
 	SetUserRoles(userID int64, body *models.SetUserRolesCommand, opts ...ClientOption) (*SetUserRolesOK, error)
@@ -1075,8 +1075,8 @@ SetTeamRoles updates team role
 
 You need to have a permission with action `teams.roles:add` and `teams.roles:remove` and scope `permissions:type:delegate` for each.
 */
-func (a *Client) SetTeamRoles(teamID int64, opts ...ClientOption) (*SetTeamRolesOK, error) {
-	params := NewSetTeamRolesParams().WithTeamID(teamID)
+func (a *Client) SetTeamRoles(teamID int64, body *models.SetTeamRolesCommand, opts ...ClientOption) (*SetTeamRolesOK, error) {
+	params := NewSetTeamRolesParams().WithBody(body).WithTeamID(teamID)
 	return a.SetTeamRolesWithParams(params, opts...)
 }
 

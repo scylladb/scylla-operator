@@ -7,10 +7,14 @@ type Duration struct {
 }
 
 func (d Duration) Valid() bool {
-	if d.Months >= 0 && d.Days >= 0 && d.Nanoseconds >= 0 {
+	return validDuration(d.Months, d.Days, d.Nanoseconds)
+}
+
+func validDuration(m, d int32, n int64) bool {
+	if m >= 0 && d >= 0 && n >= 0 {
 		return true
 	}
-	if d.Months <= 0 && d.Days <= 0 && d.Nanoseconds <= 0 {
+	if m <= 0 && d <= 0 && n <= 0 {
 		return true
 	}
 	return false

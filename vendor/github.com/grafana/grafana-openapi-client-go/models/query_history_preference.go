@@ -17,7 +17,7 @@ import (
 // swagger:model QueryHistoryPreference
 type QueryHistoryPreference struct {
 
-	// one of: '' | 'query' | 'starred';
+	// home tab
 	HomeTab string `json:"homeTab,omitempty"`
 }
 

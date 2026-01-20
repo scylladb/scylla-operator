@@ -12,7 +12,7 @@ import (
 func TestDurationMarshalUnmarshalCQL(t *testing.T) {
 	t.Parallel()
 
-	g := gocql.NewNativeType(1, gocql.TypeInt, "")
+	g := gocql.NewNativeType(1, gocql.TypeInt)
 
 	d0 := Duration(time.Hour)
 

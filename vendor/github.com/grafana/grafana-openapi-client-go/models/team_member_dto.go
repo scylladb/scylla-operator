@@ -48,6 +48,9 @@ type TeamMemberDTO struct {
 	// team UID
 	TeamUID string `json:"teamUID,omitempty"`
 
+	// uid
+	UID string `json:"uid,omitempty"`
+
 	// user Id
 	UserID int64 `json:"userId,omitempty"`
 

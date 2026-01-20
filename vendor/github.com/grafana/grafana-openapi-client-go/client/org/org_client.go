@@ -32,18 +32,33 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
+	AddOrgInvite(body *models.AddInviteForm, opts ...ClientOption) (*AddOrgInviteOK, error)
+	AddOrgInviteWithParams(params *AddOrgInviteParams, opts ...ClientOption) (*AddOrgInviteOK, error)
+
 	AddOrgUserToCurrentOrg(body *models.AddOrgUserCommand, opts ...ClientOption) (*AddOrgUserToCurrentOrgOK, error)
 	AddOrgUserToCurrentOrgWithParams(params *AddOrgUserToCurrentOrgParams, opts ...ClientOption) (*AddOrgUserToCurrentOrgOK, error)
 
 	GetCurrentOrg(opts ...ClientOption) (*GetCurrentOrgOK, error)
 	GetCurrentOrgWithParams(params *GetCurrentOrgParams, opts ...ClientOption) (*GetCurrentOrgOK, error)
 
+	GetOrgPreferences(opts ...ClientOption) (*GetOrgPreferencesOK, error)
+	GetOrgPreferencesWithParams(params *GetOrgPreferencesParams, opts ...ClientOption) (*GetOrgPreferencesOK, error)
+
 	GetOrgUsersForCurrentOrg(params *GetOrgUsersForCurrentOrgParams, opts ...ClientOption) (*GetOrgUsersForCurrentOrgOK, error)
 
 	GetOrgUsersForCurrentOrgLookup(params *GetOrgUsersForCurrentOrgLookupParams, opts ...ClientOption) (*GetOrgUsersForCurrentOrgLookupOK, error)
 
+	GetPendingOrgInvites(opts ...ClientOption) (*GetPendingOrgInvitesOK, error)
+	GetPendingOrgInvitesWithParams(params *GetPendingOrgInvitesParams, opts ...ClientOption) (*GetPendingOrgInvitesOK, error)
+
+	PatchOrgPreferences(body *models.PatchPrefsCmd, opts ...ClientOption) (*PatchOrgPreferencesOK, error)
+	PatchOrgPreferencesWithParams(params *PatchOrgPreferencesParams, opts ...ClientOption) (*PatchOrgPreferencesOK, error)
+
 	RemoveOrgUserForCurrentOrg(userID int64, opts ...ClientOption) (*RemoveOrgUserForCurrentOrgOK, error)
 	RemoveOrgUserForCurrentOrgWithParams(params *RemoveOrgUserForCurrentOrgParams, opts ...ClientOption) (*RemoveOrgUserForCurrentOrgOK, error)
+
+	RevokeInvite(invitationCode string, opts ...ClientOption) (*RevokeInviteOK, error)
+	RevokeInviteWithParams(params *RevokeInviteParams, opts ...ClientOption) (*RevokeInviteOK, error)
 
 	UpdateCurrentOrg(body *models.UpdateOrgForm, opts ...ClientOption) (*UpdateCurrentOrgOK, error)
 	UpdateCurrentOrgWithParams(params *UpdateCurrentOrgParams, opts ...ClientOption) (*UpdateCurrentOrgOK, error)
@@ -51,10 +66,57 @@ type ClientService interface {
 	UpdateCurrentOrgAddress(body *models.UpdateOrgAddressForm, opts ...ClientOption) (*UpdateCurrentOrgAddressOK, error)
 	UpdateCurrentOrgAddressWithParams(params *UpdateCurrentOrgAddressParams, opts ...ClientOption) (*UpdateCurrentOrgAddressOK, error)
 
+	UpdateOrgPreferences(body *models.UpdatePrefsCmd, opts ...ClientOption) (*UpdateOrgPreferencesOK, error)
+	UpdateOrgPreferencesWithParams(params *UpdateOrgPreferencesParams, opts ...ClientOption) (*UpdateOrgPreferencesOK, error)
+
 	UpdateOrgUserForCurrentOrg(userID int64, body *models.UpdateOrgUserCommand, opts ...ClientOption) (*UpdateOrgUserForCurrentOrgOK, error)
 	UpdateOrgUserForCurrentOrgWithParams(params *UpdateOrgUserForCurrentOrgParams, opts ...ClientOption) (*UpdateOrgUserForCurrentOrgOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
+}
+
+/*
+AddOrgInvite adds invite
+*/
+func (a *Client) AddOrgInvite(body *models.AddInviteForm, opts ...ClientOption) (*AddOrgInviteOK, error) {
+	params := NewAddOrgInviteParams().WithBody(body)
+	return a.AddOrgInviteWithParams(params, opts...)
+}
+
+func (a *Client) AddOrgInviteWithParams(params *AddOrgInviteParams, opts ...ClientOption) (*AddOrgInviteOK, error) {
+	if params == nil {
+		params = NewAddOrgInviteParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "addOrgInvite",
+		Method:             "POST",
+		PathPattern:        "/org/invites",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &AddOrgInviteReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*AddOrgInviteOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for addOrgInvite: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
 }
 
 /*
@@ -151,6 +213,50 @@ func (a *Client) GetCurrentOrgWithParams(params *GetCurrentOrgParams, opts ...Cl
 }
 
 /*
+GetOrgPreferences gets current org prefs
+*/
+func (a *Client) GetOrgPreferences(opts ...ClientOption) (*GetOrgPreferencesOK, error) {
+	params := NewGetOrgPreferencesParams()
+	return a.GetOrgPreferencesWithParams(params, opts...)
+}
+
+func (a *Client) GetOrgPreferencesWithParams(params *GetOrgPreferencesParams, opts ...ClientOption) (*GetOrgPreferencesOK, error) {
+	if params == nil {
+		params = NewGetOrgPreferencesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getOrgPreferences",
+		Method:             "GET",
+		PathPattern:        "/org/preferences",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetOrgPreferencesReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetOrgPreferencesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getOrgPreferences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 GetOrgUsersForCurrentOrg gets all users within the current organization
 
 Returns all org users within the current organization. Accessible to users with org admin role.
@@ -239,6 +345,94 @@ func (a *Client) GetOrgUsersForCurrentOrgLookup(params *GetOrgUsersForCurrentOrg
 }
 
 /*
+GetPendingOrgInvites gets pending invites
+*/
+func (a *Client) GetPendingOrgInvites(opts ...ClientOption) (*GetPendingOrgInvitesOK, error) {
+	params := NewGetPendingOrgInvitesParams()
+	return a.GetPendingOrgInvitesWithParams(params, opts...)
+}
+
+func (a *Client) GetPendingOrgInvitesWithParams(params *GetPendingOrgInvitesParams, opts ...ClientOption) (*GetPendingOrgInvitesOK, error) {
+	if params == nil {
+		params = NewGetPendingOrgInvitesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getPendingOrgInvites",
+		Method:             "GET",
+		PathPattern:        "/org/invites",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetPendingOrgInvitesReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetPendingOrgInvitesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getPendingOrgInvites: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+PatchOrgPreferences patches current org prefs
+*/
+func (a *Client) PatchOrgPreferences(body *models.PatchPrefsCmd, opts ...ClientOption) (*PatchOrgPreferencesOK, error) {
+	params := NewPatchOrgPreferencesParams().WithBody(body)
+	return a.PatchOrgPreferencesWithParams(params, opts...)
+}
+
+func (a *Client) PatchOrgPreferencesWithParams(params *PatchOrgPreferencesParams, opts ...ClientOption) (*PatchOrgPreferencesOK, error) {
+	if params == nil {
+		params = NewPatchOrgPreferencesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "patchOrgPreferences",
+		Method:             "PATCH",
+		PathPattern:        "/org/preferences",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &PatchOrgPreferencesReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*PatchOrgPreferencesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for patchOrgPreferences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 RemoveOrgUserForCurrentOrg deletes user in current organization
 
 If you are running Grafana Enterprise and have Fine-grained access control enabled
@@ -282,6 +476,50 @@ func (a *Client) RemoveOrgUserForCurrentOrgWithParams(params *RemoveOrgUserForCu
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for removeOrgUserForCurrentOrg: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+RevokeInvite revokes invite
+*/
+func (a *Client) RevokeInvite(invitationCode string, opts ...ClientOption) (*RevokeInviteOK, error) {
+	params := NewRevokeInviteParams().WithInvitationCode(invitationCode)
+	return a.RevokeInviteWithParams(params, opts...)
+}
+
+func (a *Client) RevokeInviteWithParams(params *RevokeInviteParams, opts ...ClientOption) (*RevokeInviteOK, error) {
+	if params == nil {
+		params = NewRevokeInviteParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "revokeInvite",
+		Method:             "DELETE",
+		PathPattern:        "/org/invites/{invitation_code}/revoke",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RevokeInviteReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RevokeInviteOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for revokeInvite: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -370,6 +608,50 @@ func (a *Client) UpdateCurrentOrgAddressWithParams(params *UpdateCurrentOrgAddre
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for updateCurrentOrgAddress: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UpdateOrgPreferences updates current org prefs
+*/
+func (a *Client) UpdateOrgPreferences(body *models.UpdatePrefsCmd, opts ...ClientOption) (*UpdateOrgPreferencesOK, error) {
+	params := NewUpdateOrgPreferencesParams().WithBody(body)
+	return a.UpdateOrgPreferencesWithParams(params, opts...)
+}
+
+func (a *Client) UpdateOrgPreferencesWithParams(params *UpdateOrgPreferencesParams, opts ...ClientOption) (*UpdateOrgPreferencesOK, error) {
+	if params == nil {
+		params = NewUpdateOrgPreferencesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updateOrgPreferences",
+		Method:             "PUT",
+		PathPattern:        "/org/preferences",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UpdateOrgPreferencesReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdateOrgPreferencesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updateOrgPreferences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -506,13 +506,18 @@ github.com/gobwas/glob/syntax/ast
 github.com/gobwas/glob/syntax/lexer
 github.com/gobwas/glob/util/runes
 github.com/gobwas/glob/util/strings
-# github.com/gocql/gocql v1.7.0 => github.com/scylladb/gocql v1.14.5
-## explicit; go 1.13
+# github.com/gocql/gocql v1.7.0 => github.com/scylladb/gocql v1.17.1
+## explicit; go 1.25.0
 github.com/gocql/gocql
 github.com/gocql/gocql/debounce
+github.com/gocql/gocql/events
+github.com/gocql/gocql/internal/debug
+github.com/gocql/gocql/internal/eventbus
+github.com/gocql/gocql/internal/frame
 github.com/gocql/gocql/internal/lru
 github.com/gocql/gocql/internal/murmur
 github.com/gocql/gocql/internal/streams
+github.com/gocql/gocql/internal/tests
 github.com/gocql/gocql/scyllacloud
 github.com/gocql/gocql/serialization/ascii
 github.com/gocql/gocql/serialization/bigint
@@ -535,7 +540,8 @@ github.com/gocql/gocql/serialization/tinyint
 github.com/gocql/gocql/serialization/uuid
 github.com/gocql/gocql/serialization/varchar
 github.com/gocql/gocql/serialization/varint
-# github.com/godbus/dbus/v5 v5.2.0
+github.com/gocql/gocql/tablets
+# github.com/godbus/dbus/v5 v5.2.2
 ## explicit; go 1.20
 github.com/godbus/dbus/v5
 # github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
@@ -571,7 +577,7 @@ github.com/gorilla/mux
 # github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 ## explicit; go 1.20
 github.com/gorilla/websocket
-# github.com/grafana/grafana-openapi-client-go v0.0.0-20250925215610-d92957c70d5c
+# github.com/grafana/grafana-openapi-client-go v0.0.0-20251202103709-7ef691d4df1d
 ## explicit; go 1.20
 github.com/grafana/grafana-openapi-client-go/client
 github.com/grafana/grafana-openapi-client-go/client/access_control
@@ -581,18 +587,12 @@ github.com/grafana/grafana-openapi-client-go/client/admin_ldap
 github.com/grafana/grafana-openapi-client-go/client/admin_provisioning
 github.com/grafana/grafana-openapi-client-go/client/admin_users
 github.com/grafana/grafana-openapi-client-go/client/annotations
-github.com/grafana/grafana-openapi-client-go/client/correlations
-github.com/grafana/grafana-openapi-client-go/client/dashboard_permissions
-github.com/grafana/grafana-openapi-client-go/client/dashboard_public
-github.com/grafana/grafana-openapi-client-go/client/dashboard_versions
+github.com/grafana/grafana-openapi-client-go/client/convert_prometheus
 github.com/grafana/grafana-openapi-client-go/client/dashboards
 github.com/grafana/grafana-openapi-client-go/client/datasources
 github.com/grafana/grafana-openapi-client-go/client/devices
-github.com/grafana/grafana-openapi-client-go/client/ds
 github.com/grafana/grafana-openapi-client-go/client/enterprise
-github.com/grafana/grafana-openapi-client-go/client/folder_permissions
 github.com/grafana/grafana-openapi-client-go/client/folders
-github.com/grafana/grafana-openapi-client-go/client/get_current_org
 github.com/grafana/grafana-openapi-client-go/client/group_attribute_sync
 github.com/grafana/grafana-openapi-client-go/client/health
 github.com/grafana/grafana-openapi-client-go/client/ldap_debug
@@ -600,12 +600,11 @@ github.com/grafana/grafana-openapi-client-go/client/library_elements
 github.com/grafana/grafana-openapi-client-go/client/licensing
 github.com/grafana/grafana-openapi-client-go/client/migrations
 github.com/grafana/grafana-openapi-client-go/client/org
-github.com/grafana/grafana-openapi-client-go/client/org_invites
-github.com/grafana/grafana-openapi-client-go/client/org_preferences
 github.com/grafana/grafana-openapi-client-go/client/orgs
 github.com/grafana/grafana-openapi-client-go/client/playlists
 github.com/grafana/grafana-openapi-client-go/client/provisioning
 github.com/grafana/grafana-openapi-client-go/client/query_history
+github.com/grafana/grafana-openapi-client-go/client/quota
 github.com/grafana/grafana-openapi-client-go/client/recording_rules
 github.com/grafana/grafana-openapi-client-go/client/reports
 github.com/grafana/grafana-openapi-client-go/client/saml
@@ -618,7 +617,6 @@ github.com/grafana/grafana-openapi-client-go/client/sso_settings
 github.com/grafana/grafana-openapi-client-go/client/sync_team_groups
 github.com/grafana/grafana-openapi-client-go/client/teams
 github.com/grafana/grafana-openapi-client-go/client/user
-github.com/grafana/grafana-openapi-client-go/client/user_preferences
 github.com/grafana/grafana-openapi-client-go/client/users
 github.com/grafana/grafana-openapi-client-go/models
 github.com/grafana/grafana-openapi-client-go/pkg/transport
@@ -648,7 +646,7 @@ github.com/json-iterator/go
 # github.com/kevinburke/ssh_config v1.4.0
 ## explicit; go 1.18
 github.com/kevinburke/ssh_config
-# github.com/klauspost/compress v1.18.1
+# github.com/klauspost/compress v1.18.3
 ## explicit; go 1.23
 github.com/klauspost/compress/internal/le
 github.com/klauspost/compress/internal/race
@@ -718,7 +716,7 @@ github.com/mxk/go-flowrate/flowrate
 # github.com/oklog/ulid v1.3.1
 ## explicit
 github.com/oklog/ulid
-# github.com/onsi/ginkgo/v2 v2.27.3
+# github.com/onsi/ginkgo/v2 v2.27.5
 ## explicit; go 1.23.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
@@ -742,7 +740,7 @@ github.com/onsi/ginkgo/v2/internal/reporters
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.38.3
+# github.com/onsi/gomega v1.39.0
 ## explicit; go 1.23.0
 github.com/onsi/gomega
 github.com/onsi/gomega/format
@@ -844,12 +842,12 @@ github.com/scylladb/go-set/strset
 github.com/scylladb/gocqlx/v2
 github.com/scylladb/gocqlx/v2/qb
 github.com/scylladb/gocqlx/v2/table
-# github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20251028150944-ac6f6b50a24c
-## explicit; go 1.23.2
+# github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260108132715-a46b9332650a
+## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/pkg/managerclient
 github.com/scylladb/scylla-manager/v3/pkg/managerclient/table
-# github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20251028150944-ac6f6b50a24c
-## explicit; go 1.23.2
+# github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260108132715-a46b9332650a
+## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/pkg/util
 github.com/scylladb/scylla-manager/v3/pkg/util/inexlist
 github.com/scylladb/scylla-manager/v3/pkg/util/pointer
@@ -858,8 +856,8 @@ github.com/scylladb/scylla-manager/v3/pkg/util/sizesuffix
 github.com/scylladb/scylla-manager/v3/pkg/util/timeutc
 github.com/scylladb/scylla-manager/v3/pkg/util/uuid
 github.com/scylladb/scylla-manager/v3/pkg/util/version
-# github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20251028150944-ac6f6b50a24c
-## explicit; go 1.23.2
+# github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260108132715-a46b9332650a
+## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/client/operations
 github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models
 # github.com/scylladb/scylladb-swagger-go-client v0.2.0
@@ -1082,7 +1080,7 @@ golang.org/x/tools/internal/versions
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20260114163908-3f89685c29c3
 ## explicit; go 1.24.0
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.77.0
+# google.golang.org/grpc v1.78.0
 ## explicit; go 1.24.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -1810,8 +1808,8 @@ k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/trace
-# sigs.k8s.io/controller-runtime v0.22.3
-## explicit; go 1.24.0
+# sigs.k8s.io/controller-runtime v0.23.0
+## explicit; go 1.25.0
 sigs.k8s.io/controller-runtime/pkg/client
 sigs.k8s.io/controller-runtime/pkg/client/apiutil
 sigs.k8s.io/controller-runtime/pkg/client/config
@@ -1944,4 +1942,4 @@ sigs.k8s.io/yaml
 sigs.k8s.io/yaml/kyaml
 # github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
 # github.com/prometheus-operator/prometheus-operator/pkg/client => github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.1
-# github.com/gocql/gocql => github.com/scylladb/gocql v1.14.5
+# github.com/gocql/gocql => github.com/scylladb/gocql v1.17.1

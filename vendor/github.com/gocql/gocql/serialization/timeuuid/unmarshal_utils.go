@@ -181,18 +181,18 @@ func DecReflect(p []byte, v reflect.Value) error {
 	switch v = v.Elem(); v.Kind() {
 	case reflect.Array:
 		if v.Type().Elem().Kind() != reflect.Uint8 || v.Len() != 16 {
-			return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[16]byte, ~string", v.Interface())
 		}
 		return decReflectArray(p, v)
 	case reflect.Slice:
 		if v.Type().Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[16]byte, ~string", v.Interface())
 		}
 		return decReflectBytes(p, v)
 	case reflect.String:
 		return decReflectString(p, v)
 	default:
-		return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[16]byte, ~string", v.Interface())
 	}
 }
 
@@ -205,18 +205,18 @@ func DecReflectR(p []byte, v reflect.Value) error {
 	switch evt := ev.Type().Elem(); evt.Kind() {
 	case reflect.Array:
 		if evt.Elem().Kind() != reflect.Uint8 || ev.Len() != 16 {
-			return fmt.Errorf("failed to marshal timeuuid: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to marshal timeuuid: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[16]byte, ~string", v.Interface())
 		}
 		return decReflectArrayR(p, ev)
 	case reflect.Slice:
 		if evt.Elem().Kind() != reflect.Uint8 {
-			return fmt.Errorf("failed to marshal timeuuid: unsupported value type (%T)(%[1]v)", v.Interface())
+			return fmt.Errorf("failed to marshal timeuuid: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[16]byte, ~string", v.Interface())
 		}
 		return decReflectBytesR(p, ev)
 	case reflect.String:
 		return decReflectStringR(p, ev)
 	default:
-		return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v)", v.Interface())
+		return fmt.Errorf("failed to unmarshal timeuuid: unsupported value type (%T)(%[1]v), supported types: ~[]byte, ~[16]byte, ~string", v.Interface())
 	}
 }
 

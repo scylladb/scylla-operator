@@ -1,8 +1,9 @@
 package decimal
 
 import (
-	"gopkg.in/inf.v0"
 	"reflect"
+
+	"gopkg.in/inf.v0"
 )
 
 func Marshal(value interface{}) ([]byte, error) {

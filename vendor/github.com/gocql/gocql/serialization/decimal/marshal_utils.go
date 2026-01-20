@@ -2,11 +2,12 @@ package decimal
 
 import (
 	"fmt"
-	"gopkg.in/inf.v0"
 	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"gopkg.in/inf.v0"
 
 	"github.com/gocql/gocql/serialization/varint"
 )
@@ -61,9 +62,9 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 		if v.Type().String() == "gocql.unsetColumn" {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to marshal decimal: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal decimal: unsupported value type (%T)(%[1]v), supported types: ~string, inf.Dec, unsetColumn", v.Interface())
 	default:
-		return nil, fmt.Errorf("failed to marshal decimal: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal decimal: unsupported value type (%T)(%[1]v), supported types: ~string, inf.Dec, unsetColumn", v.Interface())
 	}
 }
 

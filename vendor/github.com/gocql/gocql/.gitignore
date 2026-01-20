@@ -3,3 +3,18 @@ fuzz-corpus
 fuzz-work
 gocql.test
 .idea
+
+bin/
+
+testdata/pki/.keystore
+testdata/pki/.truststore
+testdata/pki/*.crt
+testdata/pki/*.key
+testdata/pki/*.p12
+
+docs/_build/
+docs/source/.doctrees
+
+# Claude / AI assistant metadata
+CLAUDE.md
+.claude/

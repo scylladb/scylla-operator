@@ -1,6 +1,26 @@
-// Copyright (c) 2012 The gocql Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*
+ * Content before git sha 34fdeebefcbf183ed7f916f931aa0586fdaa1b40
+ * Copyright (c) 2012, The Gocql authors,
+ * provided under the BSD-3-Clause License.
+ * See the NOTICE file distributed with this work for additional information.
+ */
 
 package gocql
 
@@ -11,7 +31,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,7 +38,11 @@ import (
 	"unicode"
 
 	"github.com/gocql/gocql/debounce"
+	"github.com/gocql/gocql/events"
+	"github.com/gocql/gocql/internal/debug"
+	"github.com/gocql/gocql/internal/eventbus"
 	"github.com/gocql/gocql/internal/lru"
+	"github.com/gocql/gocql/tablets"
 )
 
 // Session is the interface used by users to interact with the database.
@@ -32,62 +55,45 @@ import (
 // and automatically sets a default consistency level on all operations
 // that do not have a consistency level set.
 type Session struct {
-	cons                Consistency
-	pageSize            int
-	prefetch            float64
-	routingKeyInfoCache routingKeyInfoLRU
-	metadataDescriber   *metadataDescriber
-	trace               Tracer
-	queryObserver       QueryObserver
-	batchObserver       BatchObserver
-	connectObserver     ConnectObserver
-	frameObserver       FrameHeaderObserver
-	streamObserver      StreamObserver
-	hostSource          *ringDescriber
-	ringRefresher       *debounce.RefreshDebouncer
-	stmtsLRU            *preparedLRU
-
-	connCfg *ConnConfig
-
-	executor *queryExecutor
-	pool     *policyConnPool
-	policy   HostSelectionPolicy
-
-	mu sync.RWMutex
-
-	control controlConnection
-
-	// event handlers
-	nodeEvents   *eventDebouncer
-	schemaEvents *eventDebouncer
-
-	// ring metadata
-	useSystemSchema           bool
+	warningHandler            WarningHandler
+	queryObserver             QueryObserver
+	control                   controlConnection
+	ctx                       context.Context
+	logger                    StdLogger
+	trace                     Tracer
+	policy                    HostSelectionPolicy
+	batchObserver             BatchObserver
+	connectObserver           ConnectObserver
+	frameObserver             FrameHeaderObserver
+	streamObserver            StreamObserver
+	initErr                   error
+	nodeEvents                *eventDebouncer
+	stmtsLRU                  *preparedLRU
+	hostSource                *ringDescriber
+	pool                      *policyConnPool
+	ringRefresher             *debounce.RefreshDebouncer
+	readyCh                   chan struct{}
+	executor                  *queryExecutor
+	cancel                    context.CancelFunc
+	schemaEvents              *eventDebouncer
+	metadataDescriber         *metadataDescriber
+	eventBus                  *eventbus.EventBus[events.Event]
+	connCfg                   *ConnConfig
+	clientRoutesHandler       *ClientRoutesHandler
+	routingKeyInfoCache       routingKeyInfoLRU
+	addressTranslator         AddressTranslator
+	cfg                       ClusterConfig
+	prefetch                  float64
+	pageSize                  int
+	mu                        sync.RWMutex
+	sessionStateMu            sync.RWMutex
+	cons                      Consistency
+	isClosing                 bool
 	hasAggregatesAndFunctions bool
-
-	cfg ClusterConfig
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	// sessionStateMu protects isClosed and isInitialized.
-	sessionStateMu sync.RWMutex
-	// isClosed is true once Session.Close is finished.
-	isClosed bool
-	// isClosing bool is true once Session.Close is started.
-	isClosing bool
-	// isInitialized is true once Session.init succeeds.
-	// you can use initialized() to read the value.
-	isInitialized bool
-	initErr       error
-	readyCh       chan struct{}
-
-	logger StdLogger
-
-	tabletsRoutingV1 bool
-
-	usingTimeoutClause string
-	warningHandler     WarningHandler
+	useSystemSchema           bool
+	tabletsRoutingV1          bool
+	isInitialized             bool
+	isClosed                  bool
 }
 
 var queryPool = &sync.Pool{
@@ -96,23 +102,21 @@ var queryPool = &sync.Pool{
 	},
 }
 
-func addrsToHosts(addrs []string, defaultPort int, logger StdLogger) ([]*HostInfo, error) {
+func resolveInitialEndpoints(resolver DNSResolver, addrs []string, defaultPort int, logger StdLogger) ([]*HostInfo, error) {
 	var hosts []*HostInfo
+	var errs []error
 	for _, hostaddr := range addrs {
-		resolvedHosts, err := hostInfo(hostaddr, defaultPort)
+		resolvedHosts, err := resolveInitialEndpoint(resolver, hostaddr, defaultPort)
 		if err != nil {
-			// Try other hosts if unable to resolve DNS name
-			if _, ok := err.(*net.DNSError); ok {
-				logger.Printf("gocql: dns error: %v\n", err)
-				continue
-			}
-			return nil, err
+			err = fmt.Errorf("failed to resolve endpoint %q: %w", hostaddr, err)
+			errs = append(errs, err)
+			logger.Println(err.Error())
+			continue
 		}
-
 		hosts = append(hosts, resolvedHosts...)
 	}
 	if len(hosts) == 0 {
-		return nil, errors.New("failed to resolve any of the provided hostnames")
+		return nil, fmt.Errorf("failed to resolve any of the provided hostnames: %w", errors.Join(errs...))
 	}
 	return hosts, nil
 }
@@ -121,20 +125,27 @@ func newSessionCommon(cfg ClusterConfig) (*Session, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("gocql: unable to create session: cluster config validation failed: %v", err)
 	}
+
 	// TODO: we should take a context in here at some point
 	ctx, cancel := context.WithCancel(context.TODO())
 
 	s := &Session{
-		cons:            cfg.Consistency,
-		prefetch:        0.25,
-		cfg:             cfg,
-		pageSize:        cfg.PageSize,
-		stmtsLRU:        &preparedLRU{lru: lru.New(cfg.MaxPreparedStmts)},
-		connectObserver: cfg.ConnectObserver,
-		ctx:             ctx,
-		cancel:          cancel,
-		logger:          cfg.logger(),
-		readyCh:         make(chan struct{}, 1),
+		cons:              cfg.Consistency,
+		prefetch:          0.25,
+		cfg:               cfg,
+		pageSize:          cfg.PageSize,
+		stmtsLRU:          &preparedLRU{lru: lru.New(cfg.MaxPreparedStmts)},
+		connectObserver:   cfg.ConnectObserver,
+		ctx:               ctx,
+		cancel:            cancel,
+		logger:            cfg.logger(),
+		addressTranslator: cfg.AddressTranslator,
+		readyCh:           make(chan struct{}, 1),
+	}
+
+	if cfg.ClientRoutesConfig != nil {
+		s.clientRoutesHandler = NewClientRoutesAddressTranslator(*cfg.ClientRoutesConfig, s.cfg.DNSResolver, s.cfg.SslOpts != nil, s.logger)
+		s.addressTranslator = s.clientRoutesHandler
 	}
 
 	// Close created resources on error otherwise they'll leak
@@ -147,6 +158,11 @@ func newSessionCommon(cfg ClusterConfig) (*Session, error) {
 
 	s.metadataDescriber = newMetadataDescriber(s)
 
+	s.eventBus = eventbus.New[events.Event](cfg.EventBusConfig, cfg.Logger)
+	if err = s.eventBus.Start(); err != nil {
+		return nil, fmt.Errorf("gocql: unable to create session: %v", err)
+	}
+
 	s.nodeEvents = newEventDebouncer("NodeEvents", s.handleNodeEvent, s.logger)
 	s.schemaEvents = newEventDebouncer("SchemaEvents", s.handleSchemaEvent, s.logger)
 
@@ -158,7 +174,7 @@ func newSessionCommon(cfg ClusterConfig) (*Session, error) {
 	})
 
 	if cfg.PoolConfig.HostSelectionPolicy == nil {
-		cfg.PoolConfig.HostSelectionPolicy = RoundRobinHostPolicy()
+		cfg.PoolConfig.HostSelectionPolicy = TokenAwareHostPolicy(RoundRobinHostPolicy())
 	}
 	s.pool = cfg.PoolConfig.buildPool(s)
 
@@ -233,34 +249,44 @@ func NewSessionNonBlocking(cfg ClusterConfig) (*Session, error) {
 	return s, nil
 }
 
+// SubscribeToEvents adds a new subscriber to the event bus.
+// name: subscriber name
+// queueSize: buffer size for the subscriber events, when buffer is overflowed events are dropped
+// filter: optional filter function (can be nil to receive all events)
+//
+// Returns a Subscriber instance that provides access to events and a Stop method.
+func (s *Session) SubscribeToEvents(name string, queueSize int, filter eventbus.FilterFunc[events.Event]) *eventbus.Subscriber[events.Event] {
+	return s.eventBus.Subscribe(name, queueSize, filter)
+}
+
 func (s *Session) init() error {
 	if s.cfg.disableInit {
 		return nil
 	}
 
-	hosts, err := addrsToHosts(s.cfg.Hosts, s.cfg.Port, s.logger)
+	hosts, err := resolveInitialEndpoints(s.cfg.DNSResolver, s.cfg.Hosts, s.cfg.Port, s.logger)
 	if err != nil {
 		return err
 	}
 
+	var partitioner string
+
 	if !s.cfg.disableControlConn {
 		s.control = createControlConn(s)
 		reconnectionPolicy := s.cfg.InitialReconnectionPolicy
-		var lastErr error
 		for i := 0; i < reconnectionPolicy.GetMaxRetries(); i++ {
-			lastErr = nil
 			if i != 0 {
 				time.Sleep(reconnectionPolicy.GetInterval(i))
 			}
 
 			if s.cfg.ProtoVersion == 0 {
-				proto, err := s.control.discoverProtocol(hosts)
+				var proto int
+				proto, err = s.control.discoverProtocol(hosts)
 				if err != nil {
-					err = fmt.Errorf("unable to discover protocol version: %v\n", err)
-					if gocqlDebug {
+					err = fmt.Errorf("unable to discover protocol version: %w\n", err)
+					if debug.Enabled {
 						s.logger.Println(err.Error())
 					}
-					lastErr = err
 					continue
 				} else if proto == 0 {
 					return errors.New("unable to discovery protocol version")
@@ -271,36 +297,39 @@ func (s *Session) init() error {
 				s.connCfg.ProtoVersion = proto
 			}
 
-			if err := s.control.connect(hosts); err != nil {
-				err = fmt.Errorf("unable to create control connection: %v\n", err)
-				if gocqlDebug {
+			if err = s.control.connect(hosts); err != nil {
+				err = fmt.Errorf("unable to create control connection: %w\n", err)
+				if debug.Enabled {
 					s.logger.Println(err.Error())
 				}
-				lastErr = err
 				continue
 			}
+			break
 		}
-		if lastErr != nil {
-			return fmt.Errorf("unable to connect to the cluster, last error: %v", lastErr.Error())
+		if err != nil {
+			return fmt.Errorf("unable to connect to the cluster, last error: %w", err)
 		}
 
 		conn := s.control.getConn().conn.(*Conn)
 		conn.mu.Lock()
 		s.tabletsRoutingV1 = conn.isTabletSupported()
-		if s.cfg.MetadataSchemaRequestTimeout > time.Duration(0) && conn.isScyllaConn() {
-			s.usingTimeoutClause = " USING TIMEOUT " + strconv.FormatInt(int64(s.cfg.MetadataSchemaRequestTimeout.Milliseconds()), 10) + "ms"
-		}
 		conn.mu.Unlock()
 
 		s.hostSource.setControlConn(s.control)
 
+		if s.clientRoutesHandler != nil {
+			if err = s.clientRoutesHandler.Initialize(s); err != nil {
+				return fmt.Errorf("unable to initialize client routes handler: %w", err)
+			}
+		}
+
 		if !s.cfg.DisableInitialHostLookup {
-			var partitioner string
-			newHosts, partitioner, err := s.hostSource.GetHostsFromSystem()
+			var newHosts []*HostInfo
+			newHosts, partitioner, err = s.hostSource.GetHostsFromSystem()
 			if err != nil {
 				return err
 			}
-			s.policy.SetPartitioner(partitioner)
+
 			filteredHosts := make([]*HostInfo, 0, len(newHosts))
 			for _, host := range newHosts {
 				if !s.cfg.filterHost(host) {
@@ -309,22 +338,22 @@ func (s *Session) init() error {
 			}
 
 			hosts = filteredHosts
+		}
 
-			if s.tabletsRoutingV1 {
-				tablets := TabletInfoList{}
-				s.metadataDescriber.setTablets(tablets)
+		newer, _ := checkSystemSchema(s.control)
+		s.useSystemSchema = newer
+		defer conn.finalizeConnection()
+	} else {
+		// For testing purposes we populate host ids
+		for _, host := range hosts {
+			if len(host.hostId) == 0 {
+				host.hostId = MustRandomUUID().String()
 			}
 		}
 	}
 
-	for _, host := range hosts {
-		// In case when host lookup is disabled and when we are in unit tests,
-		// host are not discovered, and we are missing host ID information used
-		// by internal logic.
-		// Associate random UUIDs here with all hosts missing this information.
-		if len(host.HostID()) == 0 {
-			host.SetHostID(MustRandomUUID().String())
-		}
+	if partitioner != "" {
+		s.policy.SetPartitioner(partitioner)
 	}
 
 	hostMap := make(map[string]*HostInfo, len(hosts))
@@ -369,6 +398,12 @@ func (s *Session) init() error {
 		close(connectedCh)
 	}
 
+	if s.cfg.disableControlConn {
+		version := s.hostSource.getHostsList()[0].Version()
+		s.useSystemSchema = version.AtLeast(3, 0, 0)
+		s.hasAggregatesAndFunctions = version.AtLeast(2, 2, 0)
+	}
+
 	// before waiting for them to connect, add them all to the policy so we can
 	// utilize efficiencies by calling AddHosts if the policy supports it
 	type bulkAddHosts interface {
@@ -396,19 +431,6 @@ func (s *Session) init() error {
 	// See if there are any connections in the pool
 	if s.cfg.ReconnectInterval > 0 {
 		go s.reconnectDownedHosts(s.cfg.ReconnectInterval)
-	}
-
-	// If we disable the initial host lookup, we need to still check if the
-	// cluster is using the newer system schema or not... however, if control
-	// connection is disable, we really have no choice, so we just make our
-	// best guess...
-	if !s.cfg.disableControlConn && s.cfg.DisableInitialHostLookup {
-		newer, _ := checkSystemSchema(s.control)
-		s.useSystemSchema = newer
-	} else {
-		version := s.hostSource.getHostsList()[0].Version()
-		s.useSystemSchema = version.AtLeast(3, 0, 0)
-		s.hasAggregatesAndFunctions = version.AtLeast(2, 2, 0)
 	}
 
 	if s.pool.Size() == 0 {
@@ -459,7 +481,7 @@ func (s *Session) reconnectDownedHosts(intv time.Duration) {
 			hosts := s.hostSource.getHostsList()
 
 			// Print session.hostSource for debug.
-			if gocqlDebug {
+			if debug.Enabled {
 				buf := bytes.NewBufferString("Session.hostSource:")
 				for _, h := range hosts {
 					buf.WriteString("[" + h.ConnectAddress().String() + ":" + h.State().String() + "]")
@@ -515,6 +537,13 @@ func (s *Session) SetTrace(trace Tracer) {
 	s.mu.Unlock()
 }
 
+// QueryWithContext same as Query, but adds context to it.
+func (s *Session) QueryWithContext(ctx context.Context, stmt string, values ...interface{}) *Query {
+	q := s.Query(stmt, values...)
+	q.context = ctx
+	return q
+}
+
 // Query generates a new query object for interacting with the database.
 // Further details of the query may be tweaked using the resulting query
 // value before the query is executed. Query is automatically prepared
@@ -524,8 +553,10 @@ func (s *Session) Query(stmt string, values ...interface{}) *Query {
 	qry.session = s
 	qry.stmt = stmt
 	qry.values = values
+	qry.hostID = ""
 	qry.defaultsFromSession()
 	qry.routingInfo.lwt = false
+	qry.SetRequestTimeout(s.cfg.Timeout)
 	return qry
 }
 
@@ -549,6 +580,7 @@ func (s *Session) Bind(stmt string, b func(q *QueryInfo) ([]interface{}, error))
 	qry.binding = b
 	qry.defaultsFromSession()
 	qry.routingInfo.lwt = false
+	qry.SetRequestTimeout(s.cfg.Timeout)
 	return qry
 }
 
@@ -580,6 +612,10 @@ func (s *Session) Close() {
 		s.schemaEvents.stop()
 	}
 
+	if s.eventBus != nil {
+		_ = s.eventBus.Stop()
+	}
+
 	if s.ringRefresher != nil {
 		s.ringRefresher.Stop()
 	}
@@ -588,8 +624,8 @@ func (s *Session) Close() {
 		s.cancel()
 	}
 
-	if s.policy != nil {
-		s.policy.Reset()
+	if s.clientRoutesHandler != nil {
+		s.clientRoutesHandler.Stop()
 	}
 
 	s.sessionStateMu.Lock()
@@ -668,7 +704,7 @@ func (s *Session) KeyspaceMetadata(keyspace string) (*KeyspaceMetadata, error) {
 }
 
 // TabletsMetadata returns the metadata about tablets
-func (s *Session) TabletsMetadata() (TabletInfoList, error) {
+func (s *Session) TabletsMetadata() (tablets.TabletInfoList, error) {
 	// fail fast
 	if s.Closed() {
 		return nil, ErrSessionClosed
@@ -699,12 +735,12 @@ func (s *Session) getConn() *Conn {
 	return nil
 }
 
-func (s *Session) getTablets() TabletInfoList {
-	return s.metadataDescriber.getTablets()
+func (s *Session) findTabletReplicasForToken(keyspace, table string, token int64) []tablets.ReplicaInfo {
+	return s.metadataDescriber.metadata.tabletsMetadata.FindReplicasForToken(keyspace, table, token)
 }
 
 // returns routing key indexes and type info
-func (s *Session) routingKeyInfo(ctx context.Context, stmt string) (*routingKeyInfo, error) {
+func (s *Session) routingKeyInfo(ctx context.Context, stmt string, requestTimeout time.Duration) (*routingKeyInfo, error) {
 	s.routingKeyInfoCache.mu.Lock()
 
 	entry, cached := s.routingKeyInfoCache.lru.Get(stmt)
@@ -747,7 +783,7 @@ func (s *Session) routingKeyInfo(ctx context.Context, stmt string) (*routingKeyI
 	}
 
 	// get the query info for the statement
-	info, inflight.err = conn.prepareStatement(ctx, stmt, nil)
+	info, inflight.err = conn.prepareStatement(ctx, stmt, nil, requestTimeout)
 	if inflight.err != nil {
 		// don't cache this error
 		s.routingKeyInfoCache.Remove(stmt)
@@ -872,6 +908,9 @@ func (s *Session) executeBatch(batch *Batch) *Iter {
 		return &Iter{err: err}
 	}
 
+	// Drop metrics from prior query executions
+	batch.metrics.reset()
+
 	// Prevent the execution of the batch if greater than the limit
 	// Currently batches have a limit of 65536 queries.
 	// https://datastax-oss.atlassian.net/browse/JAVA-229
@@ -913,7 +952,7 @@ func (s *Session) ExecuteBatchCAS(batch *Batch, dest ...interface{}) (applied bo
 		iter.Scan(&applied)
 	}
 
-	return applied, iter, nil
+	return applied, iter, iter.err
 }
 
 // MapExecuteBatchCAS executes a batch operation much like ExecuteBatchCAS,
@@ -926,13 +965,54 @@ func (s *Session) MapExecuteBatchCAS(batch *Batch, dest map[string]interface{}) 
 		return false, nil, err
 	}
 	iter.MapScan(dest)
-	applied = dest["[applied]"].(bool)
-	delete(dest, "[applied]")
+	if iter.err != nil {
+		return false, iter, iter.err
+	}
+	// check if [applied] was returned, otherwise it might not be CAS
+	if appliedRaw, ok := dest["[applied]"]; ok {
+		applied, ok = appliedRaw.(bool)
+		if !ok {
+			s.logger.Println("encountered non-bool \"[applied]\" key")
+		}
+		delete(dest, "[applied]")
+	}
 
 	// we usually close here, but instead of closing, just returin an error
 	// if MapScan failed. Although Close just returns err, using Close
 	// here might be confusing as we are not actually closing the iter
 	return applied, iter, iter.err
+}
+
+// translateAddressPort is a helper method that will use the given AddressTranslator
+// if defined, to translate the given address and port into a possibly new address
+// and port, If no AddressTranslator or if an error occurs, the given address and
+// port will be returned.
+func translateAddressPort(addressTranslator AddressTranslator, host *HostInfo, addr AddressPort, logger StdLogger) (AddressPort, error) {
+	if addressTranslator == nil || !addr.IsValid() {
+		return addr, nil
+	}
+	translatorV2, ok := addressTranslator.(AddressTranslatorV2)
+	if !ok {
+		newAddr, newPort := addressTranslator.Translate(addr.Address, int(addr.Port))
+		if debug.Enabled {
+			logger.Printf("gocql: translated address %q to '%v:%d'", addr, newAddr, newPort)
+		}
+		return AddressPort{
+			Address: newAddr,
+			Port:    uint16(newPort),
+		}, nil
+	}
+	newAddr, err := translatorV2.TranslateHost(host, addr)
+	if err != nil {
+		if debug.Enabled {
+			logger.Printf("gocql: failed to translate address %q: %s", addr, err.Error())
+		}
+		return addr, err
+	}
+	if debug.Enabled {
+		logger.Printf("gocql: translated address %q to %q", addr, newAddr)
+	}
+	return newAddr, nil
 }
 
 type hostMetrics struct {
@@ -945,11 +1025,11 @@ type hostMetrics struct {
 }
 
 type queryMetrics struct {
-	l sync.RWMutex
 	m map[string]*hostMetrics
 	// totalAttempts is total number of attempts.
-	// Equal to sum of all hostMetrics' Attempts.
+	// Equal to sum of all hostMetrics' Attempts
 	totalAttempts int
+	l             sync.RWMutex
 }
 
 // preFilledQueryMetrics initializes new queryMetrics based on per-host supplied data.
@@ -975,11 +1055,11 @@ func (qm *queryMetrics) hostMetrics(host *HostInfo) *hostMetrics {
 // hostMetricsLocked gets or creates host metrics for given host.
 // It must be called only while holding qm.l lock.
 func (qm *queryMetrics) hostMetricsLocked(host *HostInfo) *hostMetrics {
-	metrics, exists := qm.m[host.ConnectAddress().String()]
+	metrics, exists := qm.m[host.HostID()]
 	if !exists {
 		// if the host is not in the map, it means it's been accessed for the first time
 		metrics = &hostMetrics{}
-		qm.m[host.ConnectAddress().String()] = metrics
+		qm.m[host.HostID()] = metrics
 	}
 
 	return metrics
@@ -1010,6 +1090,14 @@ func (qm *queryMetrics) latency() int64 {
 	return 0
 }
 
+// reset resets metrics, to forget about prior query executions
+func (qm *queryMetrics) reset() {
+	qm.l.Lock()
+	qm.m = make(map[string]*hostMetrics)
+	qm.totalAttempts = 0
+	qm.l.Unlock()
+}
+
 // attempt adds given number of attempts and latency for given host.
 // It returns previous total attempts.
 // If needsHostMetrics is true, a copy of updated hostMetrics is returned.
@@ -1036,58 +1124,55 @@ func (qm *queryMetrics) attempt(addAttempts int, addLatency time.Duration,
 
 // Query represents a CQL statement that can be executed.
 type Query struct {
-	stmt                  string
-	values                []interface{}
-	cons                  Consistency
-	pageSize              int
-	routingKey            []byte
-	pageState             []byte
-	prefetch              float64
-	trace                 Tracer
-	observer              QueryObserver
-	session               *Session
-	conn                  ConnInterface
-	rt                    RetryPolicy
-	spec                  SpeculativeExecutionPolicy
-	binding               func(q *QueryInfo) ([]interface{}, error)
-	serialCons            Consistency
-	defaultTimestamp      bool
-	defaultTimestampValue int64
-	disableSkipMetadata   bool
-	context               context.Context
-	idempotent            bool
-	customPayload         map[string][]byte
-	metrics               *queryMetrics
-	refCount              uint32
-
-	disableAutoPage bool
-
+	trace    Tracer
+	context  context.Context
+	spec     SpeculativeExecutionPolicy
+	rt       RetryPolicy
+	conn     ConnInterface
+	observer QueryObserver
+	metrics  *queryMetrics
+	session  *Session
+	// Timeout on waiting for response from server
+	customPayload map[string][]byte
 	// getKeyspace is field so that it can be overriden in tests
 	getKeyspace func() string
-
-	// used by control conn queries to prevent triggering a write to systems
-	// tables in AWS MCS see
-	skipPrepare bool
-
 	// routingInfo is a pointer because Query can be copied and copyable struct can't hold a mutex.
 	routingInfo *queryRoutingInfo
+	binding     func(q *QueryInfo) ([]interface{}, error)
+	// hostID specifies the host on which the query should be executed.
+	// If it is empty, then the host is picked by HostSelectionPolicy
+	hostID     string
+	stmt       string
+	routingKey []byte
+	values     []interface{}
+	pageState  []byte
+	// requestTimeout is a timeout on waiting for response from server
+	requestTimeout        time.Duration
+	defaultTimestampValue int64
+	prefetch              float64
+	pageSize              int
+	refCount              uint32
+	cons                  Consistency
+	serialCons            Consistency
+	disableAutoPage       bool
+	idempotent            bool
+	skipPrepare           bool
+	disableSkipMetadata   bool
+	defaultTimestamp      bool
 }
 
 type queryRoutingInfo struct {
+	// partitioner is a reference to a Partitioner instance
+	// If nil default partitioner will be used.
+	partitioner Partitioner
+	keyspace    string
+	table       string
 	// mu protects contents of queryRoutingInfo.
 	mu sync.RWMutex
-
 	// "lwt" denotes the query being an LWT operation
 	// In effect if the query is of the form "INSERT/UPDATE/DELETE ... IF ..."
 	// For more details see https://docs.scylladb.com/using-scylla/lwt/
 	lwt bool
-
-	// If not nil, represents a custom partitioner for the table.
-	partitioner Partitioner
-
-	keyspace string
-
-	table string
 }
 
 func (qri *queryRoutingInfo) isLWT() bool {
@@ -1333,7 +1418,7 @@ func (q *Query) GetRoutingKey() ([]byte, error) {
 	}
 
 	// try to determine the routing key
-	routingKeyInfo, err := q.session.routingKeyInfo(q.Context(), q.stmt)
+	routingKeyInfo, err := q.session.routingKeyInfo(q.Context(), q.stmt, q.requestTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -1433,7 +1518,7 @@ func (q *Query) Bind(v ...interface{}) *Query {
 // either SERIAL or LOCAL_SERIAL and if not present, it defaults to
 // SERIAL. This option will be ignored for anything else that a
 // conditional update/insert.
-func (q *Query) SerialConsistency(cons SerialConsistency) *Query {
+func (q *Query) SerialConsistency(cons Consistency) *Query {
 	if !cons.IsSerial() {
 		panic("Serial consistency can only be SERIAL or LOCAL_SERIAL got " + cons.String())
 	}
@@ -1457,7 +1542,7 @@ func (q *Query) PageState(state []byte) *Query {
 // CAS operations which do not end in Cas.
 //
 // See https://issues.apache.org/jira/browse/CASSANDRA-11099
-// https://github.com/gocql/gocql/issues/612
+// https://github.com/apache/cassandra-gocql-driver/issues/612
 func (q *Query) NoSkipMetadata() *Query {
 	q.disableSkipMetadata = true
 	return q
@@ -1466,6 +1551,19 @@ func (q *Query) NoSkipMetadata() *Query {
 // Exec executes the query without returning any rows.
 func (q *Query) Exec() error {
 	return q.Iter().Close()
+}
+
+// GetRequestTimeout returns time driver waits for single server response
+// This timeout is applied to preparing statement request and for query execution requests
+func (b *Query) GetRequestTimeout() time.Duration {
+	return b.requestTimeout
+}
+
+// SetRequestTimeout sets time driver waits for server to respond
+// This timeout is applied to preparing statement request and for query execution requests
+func (b *Query) SetRequestTimeout(timeout time.Duration) *Query {
+	b.requestTimeout = timeout
+	return b
 }
 
 func isUseStatement(stmt string) bool {
@@ -1497,6 +1595,9 @@ func (q *Query) Iter() *Iter {
 }
 
 func (q *Query) executeQuery() *Iter {
+	// Drop metrics from prior query executions
+	q.metrics.reset()
+
 	if q.conn != nil {
 		// if the query was specifically run on a connection then re-use that
 		// connection when fetching the next results
@@ -1567,8 +1668,17 @@ func (q *Query) MapScanCAS(dest map[string]interface{}) (applied bool, err error
 		return false, err
 	}
 	iter.MapScan(dest)
-	applied = dest["[applied]"].(bool)
-	delete(dest, "[applied]")
+	if iter.err != nil {
+		return false, iter.err
+	}
+	// check if [applied] was returned, otherwise it might not be CAS
+	if appliedRaw, ok := dest["[applied]"]; ok {
+		applied, ok = appliedRaw.(bool)
+		if !ok {
+			q.session.logger.Println("encountered non-bool \"[applied]\" key")
+		}
+		delete(dest, "[applied]")
+	}
 
 	return applied, iter.Close()
 }
@@ -1610,19 +1720,32 @@ func (q *Query) releaseAfterExecution() {
 	q.decRefCount()
 }
 
+// SetHostID allows to define the host the query should be executed against. If the
+// host was filtered or otherwise unavailable, then the query will error. If an empty
+// string is sent, the default behavior, using the configured HostSelectionPolicy will
+// be used. A hostID can be obtained from HostInfo.HostID() after calling GetHosts().
+func (q *Query) SetHostID(hostID string) *Query {
+	q.hostID = hostID
+	return q
+}
+
+// GetHostID returns id of the host on which query should be executed.
+func (q *Query) GetHostID() string {
+	return q.hostID
+}
+
 // Iter represents an iterator that can be used to iterate over all rows that
 // were returned by a query. The iterator might send additional queries to the
 // database during the iteration if paging was enabled.
 type Iter struct {
 	err     error
-	pos     int
-	meta    resultMetadata
-	numRows int
+	framer  framerInterface
 	next    *nextIter
 	host    *HostInfo
-
-	framer framerInterface
-	closed int32
+	meta    resultMetadata
+	pos     int
+	numRows int
+	closed  int32
 }
 
 // Host returns the host which the query was sent to.
@@ -1891,10 +2014,10 @@ func (iter *Iter) NumRows() int {
 // single page might be attempted multiple times due to retries.
 type nextIter struct {
 	qry   *Query
+	next  *Iter
 	pos   int
 	oncea sync.Once
 	once  sync.Once
-	next  *Iter
 }
 
 func (n *nextIter) fetchAsync() {
@@ -1917,26 +2040,30 @@ func (n *nextIter) fetch() *Iter {
 }
 
 type Batch struct {
-	Type                  BatchType
-	Entries               []BatchEntry
-	Cons                  Consistency
-	routingKey            []byte
-	CustomPayload         map[string][]byte
-	rt                    RetryPolicy
-	spec                  SpeculativeExecutionPolicy
-	trace                 Tracer
-	observer              BatchObserver
-	session               *Session
-	serialCons            Consistency
-	defaultTimestamp      bool
-	defaultTimestampValue int64
-	context               context.Context
-	cancelBatch           func()
-	keyspace              string
-	metrics               *queryMetrics
-
+	context  context.Context
+	rt       RetryPolicy
+	spec     SpeculativeExecutionPolicy
+	trace    Tracer
+	observer BatchObserver
 	// routingInfo is a pointer because Query can be copied and copyable struct can't hold a mutex.
-	routingInfo *queryRoutingInfo
+	routingInfo   *queryRoutingInfo
+	metrics       *queryMetrics
+	cancelBatch   func()
+	CustomPayload map[string][]byte
+	session       *Session
+	keyspace      string
+	// hostID specifies the host on which the query should be executed.
+	// If it is empty, then the host is picked by HostSelectionPolicy
+	hostID                string
+	routingKey            []byte
+	Entries               []BatchEntry
+	defaultTimestampValue int64
+	// requestTimeout is a timeout on waiting for response from serve
+	requestTimeout   time.Duration
+	serialCons       Consistency
+	Cons             Consistency
+	defaultTimestamp bool
+	Type             BatchType
 }
 
 // NewBatch creates a new batch operation using defaults defined in the cluster
@@ -1944,6 +2071,13 @@ type Batch struct {
 // Deprecated: use session.Batch instead
 func (s *Session) NewBatch(typ BatchType) *Batch {
 	return s.Batch(typ)
+}
+
+// BatchWithContext creates a new batch operation using defaults defined in the cluster, with context
+func (s *Session) BatchWithContext(ctx context.Context, typ BatchType) *Batch {
+	b := s.Batch(typ)
+	b.context = ctx
+	return b
 }
 
 // Batch creates a new batch operation using defaults defined in the cluster
@@ -1962,6 +2096,7 @@ func (s *Session) Batch(typ BatchType) *Batch {
 		metrics:          &queryMetrics{m: make(map[string]*hostMetrics)},
 		spec:             &NonSpeculativeExecution{},
 		routingInfo:      &queryRoutingInfo{},
+		requestTimeout:   s.cfg.Timeout,
 	}
 
 	s.mu.RUnlock()
@@ -2114,7 +2249,7 @@ func (b *Batch) Size() int {
 // conditional update/insert.
 //
 // Only available for protocol 3 and above
-func (b *Batch) SerialConsistency(cons SerialConsistency) *Batch {
+func (b *Batch) SerialConsistency(cons Consistency) *Batch {
 	if !cons.IsSerial() {
 		panic("Serial consistency can only be SERIAL or LOCAL_SERIAL got " + cons.String())
 	}
@@ -2190,7 +2325,7 @@ func (b *Batch) GetRoutingKey() ([]byte, error) {
 		return nil, nil
 	}
 	// try to determine the routing key
-	routingKeyInfo, err := b.session.routingKeyInfo(b.Context(), entry.Stmt)
+	routingKeyInfo, err := b.session.routingKeyInfo(b.Context(), entry.Stmt, b.GetRequestTimeout())
 	if err != nil {
 		return nil, err
 	}
@@ -2202,6 +2337,19 @@ func (b *Batch) GetRoutingKey() ([]byte, error) {
 	}
 
 	return createRoutingKey(routingKeyInfo, entry.Args)
+}
+
+// GetRequestTimeout returns time driver waits for single server response
+// This timeout is applied to preparing statement request and for query execution requests
+func (b *Batch) GetRequestTimeout() time.Duration {
+	return b.requestTimeout
+}
+
+// SetRequestTimeout sets time driver waits for single server response
+// This timeout is applied to preparing statement request and for query execution requests
+func (b *Batch) SetRequestTimeout(timeout time.Duration) *Batch {
+	b.requestTimeout = timeout
+	return b
 }
 
 func createRoutingKey(routingKeyInfo *routingKeyInfo, values []interface{}) ([]byte, error) {
@@ -2251,6 +2399,20 @@ func (b *Batch) releaseAfterExecution() {
 	// that would race with speculative executions.
 }
 
+// SetHostID allows to define the host the query should be executed against. If the
+// host was filtered or otherwise unavailable, then the query will error. If an empty
+// string is sent, the default behavior, using the configured HostSelectionPolicy will
+// be used. A hostID can be obtained from HostInfo.HostID() after calling GetHosts().
+func (b *Batch) SetHostID(hostID string) *Batch {
+	b.hostID = hostID
+	return b
+}
+
+// GetHostID satisfies ExecutableQuery interface but does noop.
+func (b *Batch) GetHostID() string {
+	return b.hostID
+}
+
 type BatchType byte
 
 const (
@@ -2260,17 +2422,17 @@ const (
 )
 
 type BatchEntry struct {
+	binding    func(q *QueryInfo) ([]interface{}, error)
 	Stmt       string
 	Args       []interface{}
 	Idempotent bool
-	binding    func(q *QueryInfo) ([]interface{}, error)
 }
 
 type ColumnInfo struct {
+	TypeInfo TypeInfo
 	Keyspace string
 	Table    string
 	Name     string
-	TypeInfo TypeInfo
 }
 
 func (c ColumnInfo) String() string {
@@ -2284,12 +2446,12 @@ type routingKeyInfoLRU struct {
 }
 
 type routingKeyInfo struct {
-	indexes     []int
-	types       []TypeInfo
+	partitioner Partitioner
 	keyspace    string
 	table       string
+	indexes     []int
+	types       []TypeInfo
 	lwt         bool
-	partitioner Partitioner
 }
 
 func (r *routingKeyInfo) String() string {
@@ -2314,37 +2476,79 @@ func (r *routingKeyInfoLRU) Max(max int) {
 }
 
 type inflightCachedEntry struct {
-	wg    sync.WaitGroup
 	err   error
 	value interface{}
+	wg    sync.WaitGroup
+}
+
+// GetHosts return a list of hosts in the ring the driver knows of.
+func (s *Session) GetHosts() []*HostInfo {
+	return s.hostSource.getHostsList()
+}
+
+type HostInformation interface {
+	Peer() net.IP
+	ConnectAddress() net.IP
+	UntranslatedConnectAddress() net.IP
+	BroadcastAddress() net.IP
+	ListenAddress() net.IP
+	RPCAddress() net.IP
+	PreferredIP() net.IP
+	DataCenter() string
+	Rack() string
+	HostID() string
+	WorkLoad() string
+	Partitioner() string
+	ClusterName() string
+	Tokens() []string
+	Port() int
+	IsUp() bool
+	ScyllaShardAwarePort() uint16
+	ScyllaShardAwarePortTLS() uint16
+	ScyllaShardCount() int
+}
+
+type HostPoolInfo interface {
+	GetConnectionCount() int
+	GetExcessConnectionCount() int
+	GetShardCount() int
+	String() string
+	InFlight() int
+	Host() HostInformation
+	IsClosed() bool
+}
+
+func (s *Session) GetHostPoolByID(hostID string) HostPoolInfo {
+	hostPool, _ := s.pool.getPoolByHostID(hostID)
+	return hostPool
+}
+
+func (s *Session) IterateHostPools(iter func(info HostPoolInfo) bool) {
+	s.pool.iteratePool(iter)
 }
 
 type ObservedQuery struct {
+	// Start is a time when the query was attempted
+	Start time.Time
+	// End is a time when the query attempt was completed
+	End time.Time
+	// Err is the error in the query.
+	// It only tracks network errors or errors of bad cassandra syntax, in particular selects with no match return nil error
+	// Do not modify the values here, they are shared with multiple goroutines.
+	Err error
+	// Host is a reference to the host where the query was executed.
+	Host *HostInfo
+	// Metrics is the metrics for this attempt
+	Metrics   *hostMetrics
 	Keyspace  string
 	Statement string
-
 	// Values holds a slice of bound values for the query.
 	// Do not modify the values here, they are shared with multiple goroutines.
 	Values []interface{}
-
-	Start time.Time // time immediately before the query was called
-	End   time.Time // time immediately after the query returned
-
 	// Rows is the number of rows in the current iter.
 	// In paginated queries, rows from previous scans are not counted.
 	// Rows is not used in batch queries and remains at the default value
 	Rows int
-
-	// Host is the informations about the host that performed the query
-	Host *HostInfo
-
-	// The metrics per this host
-	Metrics *hostMetrics
-
-	// Err is the error in the query.
-	// It only tracks network errors or errors of bad cassandra syntax, in particular selects with no match return nil error
-	Err error
-
 	// Attempt is the index of attempt at executing this query.
 	// The first attempt is number zero and any retries have non-zero attempt number.
 	Attempt int
@@ -2359,27 +2563,23 @@ type QueryObserver interface {
 }
 
 type ObservedBatch struct {
+	// Start is a time when the batch was attempted
+	Start time.Time
+	// End is a time when the batch attempt was completed
+	End time.Time
+	// Err is the error in the batch query.
+	// It only tracks network errors or errors of bad cassandra syntax, in particular selects with no match return nil error
+	Err error
+	// Host is a reference to the host where the batch was executed.
+	Host *HostInfo
+	// Metrics is the metrics for this attempt
+	Metrics    *hostMetrics
 	Keyspace   string
 	Statements []string
-
 	// Values holds a slice of bound values for each statement.
 	// Values[i] are bound values passed to Statements[i].
 	// Do not modify the values here, they are shared with multiple goroutines.
 	Values [][]interface{}
-
-	Start time.Time // time immediately before the batch query was called
-	End   time.Time // time immediately after the batch query returned
-
-	// Host is the informations about the host that performed the batch
-	Host *HostInfo
-
-	// Err is the error in the batch query.
-	// It only tracks network errors or errors of bad cassandra syntax, in particular selects with no match return nil error
-	Err error
-
-	// The metrics per this host
-	Metrics *hostMetrics
-
 	// Attempt is the index of attempt at executing this query.
 	// The first attempt is number zero and any retries have non-zero attempt number.
 	Attempt int
@@ -2413,8 +2613,8 @@ type ConnectObserver interface {
 }
 
 type Error struct {
-	Code    int
 	Message string
+	Code    int
 }
 
 func (e Error) Error() string {
@@ -2426,7 +2626,7 @@ var (
 	ErrUnavailable          = errors.New("unavailable")
 	ErrUnsupported          = errors.New("feature not supported")
 	ErrTooManyStmts         = errors.New("too many statements")
-	ErrUseStmt              = errors.New("use statements aren't supported. Please see https://github.com/gocql/gocql for explanation.")
+	ErrUseStmt              = errors.New("use statements aren't supported. Please see https://github.com/apache/cassandra-gocql-driver for explanation.")
 	ErrSessionClosed        = errors.New("session has been closed")
 	ErrNoConnections        = errors.New("gocql: no hosts available in the pool")
 	ErrNoKeyspace           = errors.New("no keyspace provided")
@@ -2439,7 +2639,7 @@ var (
 type ErrProtocol struct{ error }
 
 func NewErrProtocol(format string, args ...interface{}) error {
-	return ErrProtocol{fmt.Errorf(format, args...)}
+	return ErrProtocol{error: fmt.Errorf(format, args...)}
 }
 
 // BatchSizeMaximum is the maximum number of statements a batch operation can have.

@@ -8,8 +8,9 @@ import (
 	"net"
 	"os"
 
-	"github.com/gocql/gocql"
 	"sigs.k8s.io/yaml"
+
+	"github.com/gocql/gocql"
 )
 
 func NewCloudCluster(bundlePath string) (*gocql.ClusterConfig, error) {

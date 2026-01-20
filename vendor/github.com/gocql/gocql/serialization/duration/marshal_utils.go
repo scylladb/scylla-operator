@@ -46,11 +46,11 @@ func EncString(v string) ([]byte, error) {
 	if v == "" {
 		return nil, nil
 	}
-	d, err := time.ParseDuration(v)
+	data, err := encString(v)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal duration: the (string)(%s) have invalid format, %v", v, err)
+		return nil, fmt.Errorf("failed to marshal duration: the parse error of the (string)(%s): %v", v, err)
 	}
-	return encDur(d), nil
+	return data, nil
 }
 
 func EncStringR(v *string) ([]byte, error) {
@@ -64,7 +64,7 @@ func EncDuration(v Duration) ([]byte, error) {
 	if !v.Valid() {
 		return nil, fmt.Errorf("failed to marshal duration: the (Duration) values of months (%d), days (%d) and nanoseconds (%d) should have the same sign", v.Months, v.Days, v.Nanoseconds)
 	}
-	return append(append(encVint32(encIntZigZag32(v.Months)), encVint32(encIntZigZag32(v.Days))...), encVint64(encIntZigZag64(v.Nanoseconds))...), nil
+	return encVintMonthsDaysNanos(v.Months, v.Days, v.Nanoseconds), nil
 }
 
 func EncDurationR(v *Duration) ([]byte, error) {
@@ -74,7 +74,7 @@ func EncDurationR(v *Duration) ([]byte, error) {
 	if !v.Valid() {
 		return nil, fmt.Errorf("failed to marshal duration: the (*Duration) values of the months (%d), days (%d) and nanoseconds (%d) should have same sign", v.Months, v.Days, v.Nanoseconds)
 	}
-	return append(append(encVint32(encIntZigZag32(v.Months)), encVint32(encIntZigZag32(v.Days))...), encVint64(encIntZigZag64(v.Nanoseconds))...), nil
+	return encVintMonthsDaysNanos(v.Months, v.Days, v.Nanoseconds), nil
 }
 
 func EncReflect(v reflect.Value) ([]byte, error) {
@@ -86,18 +86,18 @@ func EncReflect(v reflect.Value) ([]byte, error) {
 		if val == "" {
 			return nil, nil
 		}
-		d, err := time.ParseDuration(val)
+		data, err := encString(val)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal duration: the (%T)(%[1]v) have invalid format, %v", v, err)
 		}
-		return encDur(d), nil
+		return data, nil
 	case reflect.Struct:
 		if v.Type().String() == "gocql.unsetColumn" {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to marshal duration: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal duration: unsupported value type (%T)(%[1]v), supported types: ~int64, ~string, time.Duration, gocql.Duration, unsetColumn", v.Interface())
 	default:
-		return nil, fmt.Errorf("failed to marshal duration: unsupported value type (%T)(%[1]v)", v.Interface())
+		return nil, fmt.Errorf("failed to marshal duration: unsupported value type (%T)(%[1]v), supported types: ~int64, ~string, time.Duration, gocql.Duration, unsetColumn", v.Interface())
 	}
 }
 
@@ -124,6 +124,10 @@ func encInt64(v int64) []byte {
 	return encDaysNanos(encIntZigZag32(int32((v-n)/nanoDayPos)), encIntZigZag64(n))
 }
 
+func encZigZagUint64Pos(v uint64) uint64 {
+	return v << 1
+}
+
 func encIntZigZag32(v int32) uint32 {
 	return uint32((v >> 31) ^ (v << 1))
 }
@@ -137,6 +141,21 @@ func encIntZigZagDur(v time.Duration) uint64 {
 }
 
 func encVint32(v uint32) []byte {
+	switch {
+	case byte(v>>28) != 0:
+		return []byte{vintPrefix4, byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)}
+	case byte(v>>21) != 0:
+		return []byte{vintPrefix3 | byte(v>>24), byte(v >> 16), byte(v >> 8), byte(v)}
+	case byte(v>>14) != 0:
+		return []byte{vintPrefix2 | byte(v>>16), byte(v >> 8), byte(v)}
+	case byte(v>>7) != 0:
+		return []byte{vintPrefix1 | byte(v>>8), byte(v)}
+	default:
+		return []byte{byte(v)}
+	}
+}
+
+func encVint64as32(v uint64) []byte {
 	switch {
 	case byte(v>>28) != 0:
 		return []byte{vintPrefix4, byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)}
@@ -174,11 +193,56 @@ func encVint64(v uint64) []byte {
 	}
 }
 
+func encVintMonthsDaysNanos(m, d int32, n int64) []byte {
+	if m == 0 {
+		if d == 0 {
+			return encNanos(encIntZigZag64(n))
+		}
+		return append(encDays(encIntZigZag32(d)), encVint64(encIntZigZag64(n))...)
+	}
+	return append(append(encVint32(encIntZigZag32(m)), encVint32(encIntZigZag32(d))...), encVint64(encIntZigZag64(n))...)
+}
+
+func encVintMonthsDaysNanosPos(m, d, n uint64) []byte {
+	if m == 0 {
+		if d == 0 {
+			return encNanos(encZigZagUint64Pos(n))
+		}
+		return append(encDays64(encZigZagUint64Pos(d)), encVint64(encZigZagUint64Pos(n))...)
+	}
+	return append(append(encVint64as32(encZigZagUint64Pos(m)), encVint64as32(encZigZagUint64Pos(d))...), encVint64(encZigZagUint64Pos(n))...)
+}
+
+func encVintMonthsDaysNanosNeg(m, d, n uint64) []byte {
+	if m == 0 {
+		if d == 0 {
+			return encNanos(encIntZigZag64(int64(-n)))
+		}
+		return append(encDays(encIntZigZag32(int32(-d))), encVint64(encIntZigZag64(int64(-n)))...)
+	}
+	return append(append(encVint32(encIntZigZag32(int32(-m))), encVint32(encIntZigZag32(int32(-d)))...), encVint64(encIntZigZag64(int64(-n)))...)
+}
+
 func encDaysNanos(d uint32, n uint64) []byte {
 	return append(encDays(d), encVint64(n)...)
 }
 
 func encDays(v uint32) []byte {
+	switch {
+	case byte(v>>28) != 0:
+		return []byte{0, vintPrefix4, byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)}
+	case byte(v>>21) != 0:
+		return []byte{0, vintPrefix3 | byte(v>>24), byte(v >> 16), byte(v >> 8), byte(v)}
+	case byte(v>>14) != 0:
+		return []byte{0, vintPrefix2 | byte(v>>16), byte(v >> 8), byte(v)}
+	case byte(v>>7) != 0:
+		return []byte{0, vintPrefix1 | byte(v>>8), byte(v)}
+	default:
+		return []byte{0, byte(v)}
+	}
+}
+
+func encDays64(v uint64) []byte {
 	switch {
 	case byte(v>>28) != 0:
 		return []byte{0, vintPrefix4, byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)}

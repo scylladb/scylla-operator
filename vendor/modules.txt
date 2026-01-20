@@ -1345,8 +1345,8 @@ k8s.io/apimachinery/third_party/forked/golang/reflect
 k8s.io/apiserver/pkg/server/dynamiccertificates
 k8s.io/apiserver/pkg/storage/names
 k8s.io/apiserver/pkg/util/feature
-# k8s.io/cli-runtime v0.34.3
-## explicit; go 1.24.0
+# k8s.io/cli-runtime v0.35.0
+## explicit; go 1.25.0
 k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/genericiooptions
 k8s.io/cli-runtime/pkg/printers
@@ -1752,8 +1752,8 @@ k8s.io/component-base/version
 k8s.io/component-helpers/scheduling/corev1
 k8s.io/component-helpers/scheduling/corev1/nodeaffinity
 k8s.io/component-helpers/storage/volume
-# k8s.io/cri-api v0.34.3
-## explicit; go 1.24.0
+# k8s.io/cri-api v0.35.0
+## explicit; go 1.25.0
 k8s.io/cri-api/pkg/apis/runtime/v1
 # k8s.io/gengo/v2 v2.0.0-20251215205346-5ee0d033ba5b
 ## explicit; go 1.24.0
@@ -1789,13 +1789,13 @@ k8s.io/kube-openapi/pkg/util
 k8s.io/kube-openapi/pkg/util/proto
 k8s.io/kube-openapi/pkg/util/sets
 k8s.io/kube-openapi/pkg/validation/spec
-# k8s.io/kubectl v0.34.3
-## explicit; go 1.24.0
+# k8s.io/kubectl v0.35.0
+## explicit; go 1.25.0
 k8s.io/kubectl/pkg/util/interrupt
 k8s.io/kubectl/pkg/util/templates
 k8s.io/kubectl/pkg/util/term
-# k8s.io/kubelet v0.34.3
-## explicit; go 1.24.0
+# k8s.io/kubelet v0.35.0
+## explicit; go 1.25.0
 k8s.io/kubelet/pkg/apis/podresources/v1
 # k8s.io/utils v0.0.0-20260108192941-914a6e750570
 ## explicit; go 1.23

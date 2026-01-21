@@ -1,0 +1,12 @@
+# This file is populated automatically. DO NOT EDIT THE VALUES MANUALLY!
+# If you want to update the values, run `make update`.
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    operators.operatorframework.io/internal-objects: |
+      [
+        "remoteowners.scylla.scylladb.com",
+        "scylladbdatacenternodesstatusreports.scylla.scylladb.com",
+        "scylladbmanagerclusterregistrations.scylla.scylladb.com"
+      ]

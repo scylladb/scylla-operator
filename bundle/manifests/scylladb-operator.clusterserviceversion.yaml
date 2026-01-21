@@ -7,6 +7,12 @@ metadata:
     createdAt: "2025-05-13T04:42:10" # Overwritten during publishing.
     operators.operatorframework.io/builder: operator-sdk-unknown
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    operators.operatorframework.io/internal-objects: |
+      [
+        "remoteowners.scylla.scylladb.com",
+        "scylladbdatacenternodesstatusreports.scylla.scylladb.com",
+        "scylladbmanagerclusterregistrations.scylla.scylladb.com"
+      ]
     categories: Database,Developer Tools,Integration & Delivery
     description: Kubernetes Operator for ScyllaDB
     support: ScyllaDB

@@ -675,6 +675,14 @@ define update-bundle-patches-manifests-versions
 	'$(2)' '$(1)'
 endef
 
+# $1 - patch file
+define update-bundle-patches-manifests-internal-objects
+	$(YQ) eval-all -i -P '\
+	select(fi==0).metadata.annotations."operators.operatorframework.io/internal-objects" = ( [select(fi!=0) | select(.metadata.annotations."scylla-operator.scylladb.com/internal-api-type" == "true") | .metadata.name] | sort | tojson ) | \
+	select(fi==0)' \
+	'$(1)' $(CRD_FILES)
+endef
+
 # $1 - metadata file
 # $2 - bundle metadata annotations file
 define update-bundle-patches-metadata-versions
@@ -688,6 +696,7 @@ endef
 define update-bundle-patches
 	$(call update-bundle-patches-manifests-logo,./logo.svg,$(1)/patches/manifests/logo.clusterserviceversion.yaml)
 	$(call update-bundle-patches-manifests-versions,assets/metadata/metadata.yaml,$(1)/patches/manifests/versions.clusterserviceversion.yaml)
+	$(call update-bundle-patches-manifests-internal-objects,$(1)/patches/manifests/internal-objects.clusterserviceversion.yaml)
 	$(call update-bundle-patches-metadata-versions,assets/metadata/metadata.yaml,$(1)/patches/metadata/versions.annotations.yaml)
 endef
 

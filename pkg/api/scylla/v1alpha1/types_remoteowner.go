@@ -8,6 +8,7 @@ import (
 // +kubebuilder:storageversion
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:metadata:annotations=scylla-operator.scylladb.com/internal-api-type=true
 
 type RemoteOwner struct {
 	metav1.TypeMeta   `json:",inline"`

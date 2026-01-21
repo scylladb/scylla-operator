@@ -20,7 +20,8 @@
   },
   "postUpdateOptions": [
     "gomodTidy",
-    "gomodVendor"
+    "gomodVendor",
+    "gomodUpdateImportPaths"
   ],
   "lockFileMaintenance": {
     "enabled": true

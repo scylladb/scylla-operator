@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
+    scylla-operator.scylladb.com/internal-api-type: "true"
   name: scylladbmanagerclusterregistrations.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com

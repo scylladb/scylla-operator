@@ -3,6 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
+    scylla-operator.scylladb.com/internal-api-type: "true"
   creationTimestamp: null
   name: remoteowners.scylla.scylladb.com
 spec:

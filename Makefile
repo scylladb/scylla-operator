@@ -84,6 +84,8 @@ define version-ldflags
 endef
 GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/build) $(GO_LD_EXTRA_FLAGS))'
 
+RENOVATE_CONFIG ?=./renovate.json
+
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1
 export GOVERSION :=$(shell go version)
@@ -726,10 +728,21 @@ update-go-mod-replace:
 	./hack/update-go-mod-replace.sh
 .PHONY: update-go-mod-replace
 
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle
+update-renovate-config:
+	./hack/sync-renovate-config-with-go-mod-replace.sh $(RENOVATE_CONFIG)
+.PHONY: update-renovate-config
+
+verify-renovate-config: tmp_dir :=$(shell mktemp -d)
+verify-renovate-config:
+	cp $(RENOVATE_CONFIG) "$(tmp_dir)/renovate.json"
+	./hack/sync-renovate-config-with-go-mod-replace.sh "$(tmp_dir)/renovate.json"
+	$(diff) "$(tmp_dir)/renovate.json" $(RENOVATE_CONFIG) || (echo 'Renovate config is not up-to date. Please run `make update-renovate-config` to update it.' && false)
+.PHONY: verify-renovate-config
+
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config
 .PHONY: verify
 
-update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace
+update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config
 .PHONY: update
 
 test-unit:

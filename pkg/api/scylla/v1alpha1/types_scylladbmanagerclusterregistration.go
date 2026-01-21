@@ -40,6 +40,7 @@ type ScyllaDBManagerClusterRegistrationStatus struct {
 // +kubebuilder:printcolumn:name="PROGRESSING",type=string,JSONPath=".status.conditions[?(@.type=='Progressing')].status"
 // +kubebuilder:printcolumn:name="DEGRADED",type=string,JSONPath=".status.conditions[?(@.type=='Degraded')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:metadata:annotations=scylla-operator.scylladb.com/internal-api-type=true
 
 type ScyllaDBManagerClusterRegistration struct {
 	metav1.TypeMeta   `json:",inline"`

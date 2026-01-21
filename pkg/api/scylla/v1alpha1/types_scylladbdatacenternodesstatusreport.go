@@ -46,6 +46,7 @@ type RackNodesStatusReport struct {
 // +kubebuilder:storageversion
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:metadata:annotations=scylla-operator.scylladb.com/internal-api-type=true
 type ScyllaDBDatacenterNodesStatusReport struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

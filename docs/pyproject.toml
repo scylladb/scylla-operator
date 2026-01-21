@@ -3,7 +3,8 @@ name = "scylla-operator-docs"
 description = "Scylla Operator Documentation"
 dynamic = ["version"]
 authors = [{name = "ScyllaDB Documentation Contributors"}]
-requires-python = '>=3.10,<4.0'
+# Python version should be pinned to the one used in our poetry image (https://github.com/scylladb/scylla-operator-images/tree/051621a5b07ec2fbf273e58f8ed88e4216be89bb/poetry/2.1).
+requires-python = '>=3.12,<3.13'
 dependencies = [
     'pygments (>=2.18.0,<3.0.0)',
     'sphinx-scylladb-theme (>=1.8.1,<2.0.0)',

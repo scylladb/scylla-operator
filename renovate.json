@@ -23,9 +23,6 @@
     "gomodVendor",
     "gomodUpdateImportPaths"
   ],
-  "lockFileMaintenance": {
-    "enabled": true
-  },
   "packageRules": [
     {
       "description": "scylla-manager and scylla-manager-agent must be updated together",
@@ -45,13 +42,16 @@
       "enabled": false
     },
     {
-      "description": "Documentation dependencies",
+      "description": "Documentation dependencies should be updated together",
       "matchManagers": [
-        "pep621"
+        "poetry"
       ],
       "matchFileNames": [
         "docs/pyproject.toml"
       ],
+      "lockFileMaintenance": {
+        "enabled": true
+      },
       "groupName": "docs"
     },
     {

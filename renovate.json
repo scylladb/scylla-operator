@@ -6,7 +6,7 @@
   "enabledManagers": [
     "custom.regex",
     "gomod",
-    "pep621"
+    "poetry"
   ],
   "schedule": [
     "before 5am every weekday"

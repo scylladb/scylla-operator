@@ -159,19 +159,20 @@ const (
 
 	SharedDirName = "/mnt/shared"
 
-	ScyllaConfigDirName          = "/mnt/scylla-config"
-	ScyllaAgentConfigDirName     = "/mnt/scylla-agent-config"
-	ScyllaAgentConfigFileName    = "scylla-manager-agent.yaml"
-	ScyllaAgentAuthTokenFileName = "auth-token.yaml"
-	ScyllaAgentConfigDefaultFile = "/etc/scylla-manager-agent/scylla-manager-agent.yaml"
-	ScyllaClientConfigDirName    = "/mnt/scylla-client-config"
-	ScyllaDBManagedConfigDir     = "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config"
-	ScyllaDBSnitchConfigDir      = "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/snitch-config"
-	ScyllaConfigName             = "scylla.yaml"
-	ScyllaDBManagedConfigName    = "scylladb-managed-config.yaml"
-	ScyllaManagedConfigPath      = ScyllaDBManagedConfigDir + "/" + ScyllaDBManagedConfigName
-	ScyllaRackDCPropertiesName   = "cassandra-rackdc.properties"
-	ScyllaIOPropertiesName       = "io_properties.yaml"
+	ScyllaConfigDirName             = "/mnt/scylla-config"
+	ScyllaAgentConfigDirName        = "/mnt/scylla-agent-config"
+	ScyllaManagedAgentConfigDirName = "/mnt/scylla-managed-agent-config"
+	ScyllaAgentConfigFileName       = "scylla-manager-agent.yaml"
+	ScyllaAgentAuthTokenFileName    = "auth-token.yaml"
+	ScyllaAgentConfigDefaultFile    = "/etc/scylla-manager-agent/scylla-manager-agent.yaml"
+	ScyllaClientConfigDirName       = "/mnt/scylla-client-config"
+	ScyllaDBManagedConfigDir        = "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config"
+	ScyllaDBSnitchConfigDir         = "/var/run/configmaps/scylla-operator.scylladb.com/scylladb/snitch-config"
+	ScyllaConfigName                = "scylla.yaml"
+	ScyllaDBManagedConfigName       = "scylladb-managed-config.yaml"
+	ScyllaManagedConfigPath         = ScyllaDBManagedConfigDir + "/" + ScyllaDBManagedConfigName
+	ScyllaRackDCPropertiesName      = "cassandra-rackdc.properties"
+	ScyllaIOPropertiesName          = "io_properties.yaml"
 
 	ScyllaDBIgnitionDonePath = SharedDirName + "/ignition.done"
 

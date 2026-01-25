@@ -394,6 +394,19 @@
         "hostNetworking": {
           "description": "hostNetworking determines if scylla uses the host's network namespace. Setting this option\navoids going through Kubernetes SDN and exposes scylla on node's IP.\nDeprecated: `hostNetworking` is deprecated and may be ignored in the future.",
           "type": "boolean"
+        },
+        "ipFamilies": {
+          "description": "ipFamilies specifies the IP families to use.\nSupports: IPv4, IPv6.",
+          "items": {
+            "description": "IPFamily represents the IP Family (IPv4 or IPv6). This type is used\nto express the family of an IP expressed by a type (e.g. service.spec.ipFamilies).",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ipFamilyPolicy": {
+          "default": "SingleStack",
+          "description": "ipFamilyPolicy specifies the IP family policy for the cluster.\nSupports: SingleStack, PreferDualStack, RequireDualStack.",
+          "type": "string"
         }
       },
       "type": "object"

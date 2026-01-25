@@ -10,9 +10,11 @@ import (
 
 	imgreference "github.com/containers/image/v5/docker/reference"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corevalidation "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/validation"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
@@ -53,16 +55,20 @@ var (
 func ValidateScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) field.ErrorList {
 	var allErrs field.ErrorList
 
-	allErrs = append(allErrs, ValidateScyllaDBDatacenterSpec(&sdc.Spec, field.NewPath("spec"))...)
+	allErrs = append(allErrs, ValidateScyllaDBDatacenterSpec(sdc.Spec, field.NewPath("spec"))...)
 
 	return allErrs
 }
 
-func ValidateScyllaDBDatacenterSpec(spec *scyllav1alpha1.ScyllaDBDatacenterSpec, fldPath *field.Path) field.ErrorList {
+func ValidateScyllaDBDatacenterSpec(spec scyllav1alpha1.ScyllaDBDatacenterSpec, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDB(&spec.ScyllaDB, fldPath.Child("scyllaDB"))...)
 	allErrs = append(allErrs, ValidateScyllaDBDatacenterScyllaDBManagerAgent(spec.ScyllaDBManagerAgent, fldPath.Child("scyllaDBManagerAgent"))...)
+
+	if spec.ScyllaDB.AdditionalScyllaDBArguments != nil {
+		allErrs = append(allErrs, ValidateScyllaArgsIPFamily(spec.GetIPFamily(), spec.ScyllaDB.AdditionalScyllaDBArguments, fldPath.Child("scyllaDB", "additionalScyllaDBArguments"))...)
+	}
 
 	allErrs = append(allErrs, validateStructSliceFieldUniqueness(spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) string {
 		return rackSpec.Name
@@ -572,6 +578,61 @@ func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.
 
 	if !oslices.ContainsItem(supported, value) {
 		allErrs = append(allErrs, field.NotSupported(fldPath, value, oslices.ConvertSlice(supported, oslices.ToString[E])))
+	}
+
+	return allErrs
+}
+
+func ValidateScyllaArgsIPFamily(ipFamily corev1.IPFamily, scyllaArgs []string, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	if len(scyllaArgs) == 0 {
+		return allErrs
+	}
+
+	argsStr := strings.Join(scyllaArgs, " ")
+
+	allErrs = append(allErrs, validateScyllaArgIPAddress("rpc-address", ipFamily, argsStr, fldPath)...)
+	allErrs = append(allErrs, validateScyllaArgIPAddress("listen-address", ipFamily, argsStr, fldPath)...)
+
+	return allErrs
+}
+
+func validateScyllaArgIPAddress(argName string, expectedIPFamily corev1.IPFamily, argsStr string, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	parsedArgs := helpers.ParseScyllaArguments(argsStr)
+	argValue, found := parsedArgs[argName]
+	if !found {
+		return allErrs
+	}
+
+	if argValue == nil {
+		return allErrs
+	}
+
+	value := strings.Trim(*argValue, `"`)
+	if value == "" || value == "0.0.0.0" || value == "::" {
+		return allErrs
+	}
+
+	valueIsIPv6 := strings.Contains(value, ":")
+	expectedIsIPv6 := expectedIPFamily == corev1.IPv6Protocol
+
+	if valueIsIPv6 != expectedIsIPv6 {
+		expectedFamily := "IPv4"
+		gotFamily := "IPv4"
+		if expectedIsIPv6 {
+			expectedFamily = "IPv6"
+		}
+		if valueIsIPv6 {
+			gotFamily = "IPv6"
+		}
+		allErrs = append(allErrs, field.Invalid(
+			fldPath,
+			argsStr,
+			fmt.Sprintf("--%s '%s' IP family (%s) must match spec.ipFamilies[0] (%s)", argName, value, gotFamily, expectedFamily),
+		))
 	}
 
 	return allErrs

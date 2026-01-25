@@ -518,11 +518,11 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Writing an initial value for fs.aio-max-nr sysctl")
-		stdout, stderr, err := executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "sysctl", "-w", fmt.Sprintf("%s=%s", fsAioMaxNRVar, fsAioMaxNrInitialValue))
+		stdout, stderr, err := utils.ExecuteInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "", "sysctl", "-w", fmt.Sprintf("%s=%s", fsAioMaxNRVar, fsAioMaxNrInitialValue))
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 
 		framework.By("Verifying fs.aio-max-nr sysctl is set to the initial value")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "sysctl", "-n", fsAioMaxNRVar)
+		stdout, stderr, err = utils.ExecuteInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "", "sysctl", "-n", fsAioMaxNRVar)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 		o.Expect(strings.TrimSpace(stdout)).To(o.Equal(fsAioMaxNrInitialValue))
 
@@ -539,7 +539,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, func() {
 		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
 
 		framework.By("Verifying fs.aio-max-nr sysctl is set to the target value")
-		stdout, stderr, err = executeInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "sysctl", "-n", fsAioMaxNRVar)
+		stdout, stderr, err = utils.ExecuteInPod(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), clientPod, "", "sysctl", "-n", fsAioMaxNRVar)
 		o.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 		o.Expect(strings.TrimSpace(stdout)).To(o.Equal(fsAioMaxNrTargetValue))
 	})

@@ -4730,6 +4730,12 @@ object
    * - hostNetworking
      - boolean
      - hostNetworking determines if scylla uses the host's network namespace. Setting this option avoids going through Kubernetes SDN and exposes scylla on node's IP. Deprecated: `hostNetworking` is deprecated and may be ignored in the future.
+   * - ipFamilies
+     - array (string)
+     - ipFamilies specifies the IP families to use. Supports: IPv4, IPv6.
+   * - ipFamilyPolicy
+     - string
+     - ipFamilyPolicy specifies the IP family policy for the cluster. Supports: SingleStack, PreferDualStack, RequireDualStack.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.podMetadata:
 

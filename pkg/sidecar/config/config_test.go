@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/magiconair/properties"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -377,7 +378,7 @@ func TestParseScyllaArguments(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
 
-			argumentsMap := parseScyllaArguments(test.Args)
+			argumentsMap := helpers.ParseScyllaArguments(test.Args)
 			if !reflect.DeepEqual(test.ExpectedArgs, argumentsMap) {
 				t.Errorf("expected %+v, got %+v", test.ExpectedArgs, argumentsMap)
 			}

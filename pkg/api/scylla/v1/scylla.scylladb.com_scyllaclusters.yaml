@@ -3491,6 +3491,22 @@ spec:
                         avoids going through Kubernetes SDN and exposes scylla on node's IP.
                         Deprecated: `hostNetworking` is deprecated and may be ignored in the future.
                       type: boolean
+                    ipFamilies:
+                      description: |-
+                        ipFamilies specifies the IP families to use.
+                        Supports: IPv4, IPv6.
+                      items:
+                        description: |-
+                          IPFamily represents the IP Family (IPv4 or IPv6). This type is used
+                          to express the family of an IP expressed by a type (e.g. service.spec.ipFamilies).
+                        type: string
+                      type: array
+                    ipFamilyPolicy:
+                      default: SingleStack
+                      description: |-
+                        ipFamilyPolicy specifies the IP family policy for the cluster.
+                        Supports: SingleStack, PreferDualStack, RequireDualStack.
+                      type: string
                   type: object
                 podMetadata:
                   description: podMetadata controls shared metadata for all pods created based on this spec.

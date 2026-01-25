@@ -41,7 +41,8 @@ func TestMember_GetSeeds(t *testing.T) {
 				Namespace: "namespace",
 			},
 			Spec: corev1.ServiceSpec{
-				ClusterIP: ip,
+				ClusterIP:  ip,
+				ClusterIPs: []string{ip},
 			},
 		}
 		return pod, svc
@@ -58,6 +59,7 @@ func TestMember_GetSeeds(t *testing.T) {
 		memberPod                  *corev1.Pod
 		memberClientsBroadcastType scyllav1alpha1.BroadcastAddressType
 		memberNodesBroadcastType   scyllav1alpha1.BroadcastAddressType
+		ipFamily                   corev1.IPFamily
 		externalSeeds              []string
 		objects                    []runtime.Object
 		expectSeeds                []string
@@ -69,6 +71,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{},
 			expectError:                fmt.Errorf("internal error: can't find any pod for this cluster, including itself"),
 		},
@@ -78,6 +81,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService},
 			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
 			expectSeeds:                []string{"10.0.1.1", "10.0.1.2"},
@@ -88,6 +92,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
 			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
 			expectSeeds:                []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
@@ -98,6 +103,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
 			externalSeeds:              []string{"10.0.1.1", "10.0.1.2"},
 			expectSeeds:                []string{"10.0.1.1", "10.0.1.2", secondService.Spec.ClusterIP},
@@ -108,6 +114,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},
@@ -117,6 +124,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{firstService.Spec.ClusterIP},
 		},
@@ -130,6 +138,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypePodIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{"1.2.3.4"},
 		},
@@ -150,6 +159,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			}(),
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{"4.3.2.1"},
 		},
@@ -170,6 +180,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			}(),
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                []string{"node-1-hostname.scylladb.com"},
 		},
@@ -179,6 +190,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService, markPodReady(secondPod), secondService, markPodReady(thirdPod), thirdService},
 			expectSeeds:                []string{secondService.Spec.ClusterIP},
 		},
@@ -188,6 +200,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, markPodReady(thirdPod), thirdService},
 			expectSeeds:                []string{thirdService.Spec.ClusterIP},
 		},
@@ -197,6 +210,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService, thirdPod, thirdService},
 			expectSeeds:                []string{secondService.Spec.ClusterIP},
 		},
@@ -210,6 +224,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypePodIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects: []runtime.Object{
 				func() runtime.Object {
 					pod := firstPod.DeepCopy()
@@ -226,6 +241,7 @@ func TestMember_GetSeeds(t *testing.T) {
 				func() runtime.Object {
 					svc := secondService.DeepCopy()
 					svc.Spec.ClusterIP = corev1.ClusterIPNone
+					svc.Spec.ClusterIPs = []string{corev1.ClusterIPNone}
 					return svc
 				}(),
 				thirdPod,
@@ -239,6 +255,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects: []runtime.Object{
 				firstPod,
 				firstService,
@@ -246,6 +263,7 @@ func TestMember_GetSeeds(t *testing.T) {
 				func() runtime.Object {
 					svc := secondService.DeepCopy()
 					svc.Spec.ClusterIP = "1.2.3.4"
+					svc.Spec.ClusterIPs = []string{"1.2.3.4"}
 					return svc
 				}(),
 				thirdPod,
@@ -270,6 +288,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			}(),
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects: []runtime.Object{
 				firstPod,
 				func() runtime.Object {
@@ -320,6 +339,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			}(),
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects: []runtime.Object{
 				firstPod,
 				func() runtime.Object {
@@ -358,6 +378,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              secondService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{secondPod, secondService},
 			expectSeeds:                nil,
 			expectError:                fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
@@ -372,6 +393,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              firstService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService},
 			expectSeeds:                nil,
 			expectError:                fmt.Errorf("pod is not first in the cluster, but there are no other pods"),
@@ -386,8 +408,130 @@ func TestMember_GetSeeds(t *testing.T) {
 			memberService:              secondService,
 			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
 			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
 			objects:                    []runtime.Object{firstPod, firstService, secondPod, secondService},
 			expectSeeds:                []string{firstService.Spec.ClusterIP},
+		},
+		{
+			name: "IPv6-only service uses IPv6 broadcast addresses",
+			memberPod: func() *corev1.Pod {
+				pod := firstPod.DeepCopy()
+				pod.Status.PodIP = "2001:db8::1"
+				pod.Status.PodIPs = []corev1.PodIP{
+					{IP: "2001:db8::1"},
+				}
+				return pod
+			}(),
+			memberService: func() *corev1.Service {
+				svc := firstService.DeepCopy()
+				svc.Spec.ClusterIP = "fd00::1"
+				svc.Spec.ClusterIPs = []string{"fd00::1"}
+				svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv6Protocol}
+				return svc
+			}(),
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv6Protocol,
+			objects: []runtime.Object{
+				func() *corev1.Pod {
+					pod := firstPod.DeepCopy()
+					pod.Status.PodIP = "2001:db8::1"
+					pod.Status.PodIPs = []corev1.PodIP{
+						{IP: "2001:db8::1"},
+					}
+					return pod
+				}(),
+				func() *corev1.Service {
+					svc := firstService.DeepCopy()
+					svc.Spec.ClusterIP = "fd00::1"
+					svc.Spec.ClusterIPs = []string{"fd00::1"}
+					svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv6Protocol}
+					return svc
+				}(),
+			},
+			expectSeeds: []string{"fd00::1"},
+		},
+		{
+			name: "dual-stack service with IPv4 first uses IPv4 for ScyllaDB",
+			memberPod: func() *corev1.Pod {
+				pod := firstPod.DeepCopy()
+				pod.Status.PodIP = "192.168.1.1"
+				pod.Status.PodIPs = []corev1.PodIP{
+					{IP: "192.168.1.1"},
+					{IP: "2001:db8::1"},
+				}
+				return pod
+			}(),
+			memberService: func() *corev1.Service {
+				svc := firstService.DeepCopy()
+				svc.Spec.ClusterIP = "10.96.0.1"
+				svc.Spec.ClusterIPs = []string{"10.96.0.1", "fd00::1"}
+				svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv4Protocol, corev1.IPv6Protocol}
+				return svc
+			}(),
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			ipFamily:                   corev1.IPv4Protocol,
+			objects: []runtime.Object{
+				func() *corev1.Pod {
+					pod := firstPod.DeepCopy()
+					pod.Status.PodIP = "192.168.1.1"
+					pod.Status.PodIPs = []corev1.PodIP{
+						{IP: "192.168.1.1"},
+						{IP: "2001:db8::1"},
+					}
+					return pod
+				}(),
+				func() *corev1.Service {
+					svc := firstService.DeepCopy()
+					svc.Spec.ClusterIP = "10.96.0.1"
+					svc.Spec.ClusterIPs = []string{"10.96.0.1", "fd00::1"}
+					svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv4Protocol, corev1.IPv6Protocol}
+					return svc
+				}(),
+			},
+			expectSeeds: []string{"10.96.0.1"},
+		},
+		{
+			name: "IPv6 PodIP broadcast with dual-stack pod",
+			memberPod: func() *corev1.Pod {
+				pod := firstPod.DeepCopy()
+				pod.Status.PodIP = "192.168.1.1"
+				pod.Status.PodIPs = []corev1.PodIP{
+					{IP: "2001:db8::1"}, // IPv6 first in PodIPs
+					{IP: "192.168.1.1"},
+				}
+				return pod
+			}(),
+			memberService: func() *corev1.Service {
+				svc := firstService.DeepCopy()
+				svc.Spec.ClusterIP = "fd00::1"
+				svc.Spec.ClusterIPs = []string{"fd00::1"}
+				svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv6Protocol}
+				return svc
+			}(),
+			memberClientsBroadcastType: scyllav1alpha1.BroadcastAddressTypeServiceClusterIP,
+			memberNodesBroadcastType:   scyllav1alpha1.BroadcastAddressTypePodIP,
+			ipFamily:                   corev1.IPv6Protocol,
+			objects: []runtime.Object{
+				func() *corev1.Pod {
+					pod := firstPod.DeepCopy()
+					pod.Status.PodIP = "192.168.1.1"
+					pod.Status.PodIPs = []corev1.PodIP{
+						{IP: "2001:db8::1"}, // IPv6 first in PodIPs
+						{IP: "192.168.1.1"},
+					}
+					return pod
+				}(),
+				func() *corev1.Service {
+					svc := firstService.DeepCopy()
+					svc.Spec.ClusterIP = "fd00::1"
+					svc.Spec.ClusterIPs = []string{"fd00::1"}
+					svc.Spec.IPFamilies = []corev1.IPFamily{corev1.IPv6Protocol}
+					return svc
+				}(),
+			},
+			expectSeeds: []string{"2001:db8::1"}, // Should use IPv6 from PodIPs[0]
 		},
 	}
 
@@ -398,7 +542,7 @@ func TestMember_GetSeeds(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			member, err := NewMember(test.memberService, test.memberPod, test.memberNodesBroadcastType, test.memberClientsBroadcastType, nil)
+			member, err := NewMember(test.memberService, test.memberPod, test.memberNodesBroadcastType, test.memberClientsBroadcastType, test.ipFamily, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

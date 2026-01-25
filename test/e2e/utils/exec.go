@@ -64,3 +64,20 @@ func ExecWithOptions(ctx context.Context, config *rest.Config, client corev1clie
 
 	return stdout.String(), stderr.String(), err
 }
+
+// ExecuteInPod executes a command in the specified container of a pod.
+// If containerName is empty, it uses the first container in the pod.
+func ExecuteInPod(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, pod *corev1.Pod, containerName string, command string, args ...string) (string, string, error) {
+	if containerName == "" && len(pod.Spec.Containers) > 0 {
+		containerName = pod.Spec.Containers[0].Name
+	}
+
+	return ExecWithOptions(ctx, config, client, ExecOptions{
+		Command:       append([]string{command}, args...),
+		Namespace:     pod.Namespace,
+		PodName:       pod.Name,
+		ContainerName: containerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	})
+}

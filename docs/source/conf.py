@@ -19,6 +19,7 @@ extensions = [
     'sphinx_multiversion',
     "sphinx_sitemap",
     "myst_parser",
+    "sphinxcontrib.mermaid",
 ]
 
 # The suffix(es) of source filenames.
@@ -157,7 +158,7 @@ html_js_files = []
 
 sitemap_url_scheme = "/stable/{link}"
 
-#  Sphinx design configuration
+# Sphinx design configuration
 # Conditionally add sphinx_design based on version
 # to keep compatibility with older versions.
 SPHINX_DESIGN_VERSIONS = ['v1.17', 'v1.18']

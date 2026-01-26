@@ -30,5 +30,5 @@ To enable tuning using the scripts from ScyllaDB Enterprise you have to adjust t
 :substitutions:
 
  spec:
-   scyllaUtilsImage: "{{enterpriseImageRepository}}:{{enterpriseImageTag}}"
+   scyllaUtilsImage: "{{enterpriseImageRepository}}:{{scyllaDBImageTag}}"
 :::

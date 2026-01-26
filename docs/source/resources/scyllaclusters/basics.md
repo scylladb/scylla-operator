@@ -190,7 +190,7 @@ metadata:
   name: scylladb
 spec:
   repository: {{enterpriseImageRepository}}
-  version: {{enterpriseImageTag}}
+  version: {{scyllaDBImageTag}}
   # ...
 EOF
 :::

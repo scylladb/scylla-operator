@@ -7,8 +7,8 @@ package table
 import (
 	"context"
 
-	"github.com/scylladb/gocqlx/v2"
-	"github.com/scylladb/gocqlx/v2/qb"
+	"github.com/scylladb/gocqlx/v3"
+	"github.com/scylladb/gocqlx/v3/qb"
 )
 
 // Metadata represents table schema.
@@ -97,9 +97,18 @@ func (t *Table) GetQuery(session gocqlx.Session, columns ...string) *gocqlx.Quer
 	return session.Query(t.Get(columns...))
 }
 
-// GetQueryContext returns query wrapped with context which gets by partition key.
+// GetQueryContext returns query wrapped with context which gets by primary key.
 func (t *Table) GetQueryContext(ctx context.Context, session gocqlx.Session, columns ...string) *gocqlx.Queryx {
 	return t.GetQuery(session, columns...).WithContext(ctx)
+}
+
+// GetBuilder returns a builder initialised to select by primary key
+func (t *Table) GetBuilder(columns ...string) *qb.SelectBuilder {
+	if len(columns) == 0 {
+		return qb.Select(t.metadata.Name).Where(t.primaryKeyCmp...)
+	}
+
+	return qb.Select(t.metadata.Name).Columns(columns...).Where(t.primaryKeyCmp...)
 }
 
 // Select returns select by partition key statement.

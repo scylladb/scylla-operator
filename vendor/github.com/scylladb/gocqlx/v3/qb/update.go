@@ -12,7 +12,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/scylladb/gocqlx/v2"
+	"github.com/scylladb/gocqlx/v3"
 )
 
 // assignment specifies an assignment in a set operation.
@@ -31,12 +31,13 @@ func (a assignment) writeCql(cql *bytes.Buffer) (names []string) {
 
 // UpdateBuilder builds CQL UPDATE statements.
 type UpdateBuilder struct {
-	table       string
-	using       using
-	assignments []assignment
-	where       where
-	_if         _if
-	exists      bool
+	table          string
+	assignments    []assignment
+	where          where
+	_if            _if
+	using          using
+	exists         bool
+	allowFiltering bool
 }
 
 // Update returns a new UpdateBuilder with the given table name.
@@ -70,6 +71,10 @@ func (b *UpdateBuilder) ToCql() (stmt string, names []string) {
 
 	if b.exists {
 		cql.WriteString("IF EXISTS ")
+	}
+
+	if b.allowFiltering {
+		cql.WriteString("ALLOW FILTERING ")
 	}
 
 	stmt = cql.String()
@@ -194,6 +199,12 @@ func (b *UpdateBuilder) AddLit(column, literal string) *UpdateBuilder {
 // AddFunc adds SET column=column+someFunc(?...) clauses to the query.
 func (b *UpdateBuilder) AddFunc(column string, fn *Func) *UpdateBuilder {
 	return b.addValue(column, fn)
+}
+
+// AllowFiltering sets a ALLOW FILTERING clause on the query.
+func (b *UpdateBuilder) AllowFiltering() *UpdateBuilder {
+	b.allowFiltering = true
+	return b
 }
 
 func (b *UpdateBuilder) addValue(column string, value value) *UpdateBuilder {

@@ -17,10 +17,9 @@
   ],
   "packageRules": [
     {
-      "description": "Image references in assets/config/config.yaml and docs/source/conf.py should be updated every weekday",
+      "description": "Image references in assets/config/config.yaml should be updated every weekday",
       "matchFileNames": [
-        "assets/config/config.yaml",
-        "docs/source/conf.py"
+        "assets/config/config.yaml"
       ],
       "schedule": [
         "before 5am every weekday"
@@ -89,16 +88,6 @@
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*\\S+:\\s*\"?(?<currentValue>[^@\"\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?\"?"
-      ]
-    },
-    {
-      "description": "Custom manager for dependencies defined in docs/source/conf.py with Renovate annotations matching the regex.",
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^docs/source/conf\\.py$/"
-      ],
-      "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*\"\\S+\":\\s*\"(?<currentValue>[^\"]+)\""
       ]
     }
   ],

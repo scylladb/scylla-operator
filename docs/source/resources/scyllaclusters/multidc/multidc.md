@@ -112,7 +112,7 @@ metadata:
   namespace: scylla
 spec:
   agentVersion: {{agentVersion}}
-  version: {{imageTag}}
+  version: {{scyllaDBImageTag}}
   cpuset: true
   automaticOrphanedNodeCleanup: true
   exposeOptions:
@@ -366,7 +366,7 @@ metadata:
   namespace: scylla
 spec:
   agentVersion: {{ agentVersion }}
-  version: {{ imageTag }}
+  version: {{ scyllaDBImageTag }}
   cpuset: true
   automaticOrphanedNodeCleanup: true
   exposeOptions:

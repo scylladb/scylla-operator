@@ -149,7 +149,7 @@ Versions of images used in the cluster can be set via `scyllaImage` and `agentIm
 :substitutions:
 scyllaImage:
   repository: scylladb/scylla
-  tag: {{imageTag}}
+  tag: {{scyllaDBImageTag}}
 
 agentImage:
   repository: scylladb/scylla-manager-agent
@@ -173,7 +173,7 @@ racks:
       memory: 1Gi
 ```
 
-Above cluster will use {{ imageTag }} Scylla, {{ agentVersion }} Scylla Manager Agent sidecar and will have a single rack having 2 nodes. 
+Above cluster will use {{ scyllaDBImageTag }} Scylla, {{ agentVersion }} Scylla Manager Agent sidecar and will have a single rack having 2 nodes. 
 Each node will have a single CPU and 1 GiB of memory.
 
 For other customizable fields, please refer to chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla/values.yaml)'.format(repository, revision) }}) in Scylla Operator repository

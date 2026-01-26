@@ -23,7 +23,7 @@ metadata:
   name: source
 spec:
   agentVersion: {{agentVersion}}
-  version: {{imageTag}}
+  version: {{scyllaDBImageTag}}
   developerMode: true
   backups:
   - name: foo
@@ -53,7 +53,7 @@ metadata:
   name: target
 spec:
   agentVersion: {{agentVersion}}
-  version: {{imageTag}}
+  version: {{scyllaDBImageTag}}
   developerMode: true
   datacenter:
     name: us-east-1

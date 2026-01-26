@@ -118,7 +118,7 @@ metadata:
   name: dev-cluster
 spec:
   scyllaDB:
-    image: {{imageRepository}}:{{imageTag}}
+    image: {{imageRepository}}:{{scyllaDBImageTag}}
   scyllaDBManagerAgent:
     image: docker.io/scylladb/scylla-manager-agent:{{agentVersion}}
   datacenterTemplate:

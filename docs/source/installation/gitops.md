@@ -80,6 +80,7 @@ kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.
 ::::{caution}
 {{productName}} deployment references its own image that it later runs alongside each ScyllaDB instance. Therefore, you have to also replace the image in the environment variable called `SCYLLA_OPERATOR_IMAGE`:
 :::{code-block} yaml
+:substitutions:
 :linenos:
 :emphasize-lines: 16,19,20
 apiVersion: apps/v1
@@ -97,11 +98,11 @@ spec:
       containers:
       - name: scylla-operator
         # ...
-        image: docker.io/scylladb/scylla-operator:1.18.0@sha256:ea1d287c2699efdfdb040b4a8c35be74a12d19b292541d8a4204f7a079731ca6
+        image: docker.io/scylladb/scylla-operator:{{latestStableImageTag}}
         env:
           # ...
         - name: SCYLLA_OPERATOR_IMAGE
-          value: docker.io/scylladb/scylla-operator:1.18.0@sha256:ea1d287c2699efdfdb040b4a8c35be74a12d19b292541d8a4204f7a079731ca6
+          value: docker.io/scylladb/scylla-operator:{{latestStableImageTag}}
 :::
 The {{productName}} image value and the `SCYLLA_OPERATOR_IMAGE` shall always match.
 Be careful not to use a rolling tag for any of them to avoid an accidental skew!

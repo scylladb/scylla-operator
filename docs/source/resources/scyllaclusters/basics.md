@@ -60,7 +60,7 @@ metadata:
   name: scylladb
 spec:
   repository: {{imageRepository}}
-  version: {{imageTag}}
+  version: {{scyllaDBImageTag}}
   agentVersion: {{agentVersion}}
   developerMode: false
   automaticOrphanedNodeCleanup: true
@@ -190,7 +190,7 @@ metadata:
   name: scylladb
 spec:
   repository: {{enterpriseImageRepository}}
-  version: {{enterpriseImageTag}}
+  version: {{scyllaDBImageTag}}
   # ...
 EOF
 :::
@@ -215,7 +215,7 @@ kind: ScyllaCluster
 metadata:
   name: scylla-ipv6
 spec:
-  version: {{imageTag}}
+  version: {{scyllaDBImageTag}}
   
   network:
     ipFamilies:
@@ -252,7 +252,7 @@ kind: ScyllaCluster
 metadata:
   name: scylla-dual-stack
 spec:
-  version: {{imageTag}}
+  version: {{scyllaDBImageTag}}
   
   network:
     ipFamilies:

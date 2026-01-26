@@ -38,7 +38,7 @@ kind: ScyllaCluster
 metadata:
   name: scylladb
 spec:
-  version: {{imageTag}} # Specify the target ScyllaDB image tag.
+  version: {{scyllaDBImageTag}} # Specify the target ScyllaDB image tag.
   # ...
 :::
 
@@ -57,7 +57,7 @@ metadata:
   name: dev-cluster
 spec:
   scyllaDB:
-    image: {{imageRepository}}:{{imageTag}} # Specify the target ScyllaDB image reference.
+    image: {{imageRepository}}:{{scyllaDBImageTag}} # Specify the target ScyllaDB image reference.
   # ...
 :::
 
@@ -84,7 +84,7 @@ To upgrade your ScyllaDB cluster using Helm, upgrade your Helm release with the 
 :::{code-block} shell
 :substitutions:
 
-helm upgrade scylla scylla/scylla --reuse-values --set=scyllaImage.tag={{imageTag}}
+helm upgrade scylla scylla/scylla --reuse-values --set=scyllaImage.tag={{scyllaDBImageTag}}
 :::
 
 After upgrading the release, wait for your ScyllaCluster to roll out.

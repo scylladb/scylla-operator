@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
-from datetime import date
 import sys
+from datetime import date
 
 from sphinx_scylladb_theme.utils import multiversion_regex_builder
+
+# Add custom extensions directory to Python path
+sys.path.insert(0, os.path.abspath('_ext'))
 
 # -- General configuration
 
@@ -19,6 +22,7 @@ extensions = [
     'sphinx_multiversion',
     "sphinx_sitemap",
     "myst_parser",
+    "version_context_substitutions",
 ]
 
 # The suffix(es) of source filenames.
@@ -53,22 +57,12 @@ todo_include_todos = True
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_block"]
 myst_heading_anchors = 6
 
-deps_versions_substitutions = {
-    # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
-    "imageTag": "2025.4.2",
-    # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla-enterprise versioning=semver
-    "enterpriseImageTag": "2025.4.2",
-    # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
-    "agentVersion": "3.8.0",
-}
-
 myst_substitutions = {
     "productName": "Scylla Operator",
     "repository": "scylladb/scylla-operator",
-    "revision": "master",
     "imageRepository": "docker.io/scylladb/scylla",
     "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",
-    **deps_versions_substitutions,
+    # Version-related substitutions are added in build time by version_context_substitutions extension.
 }
 
 # -- Options for not found extension

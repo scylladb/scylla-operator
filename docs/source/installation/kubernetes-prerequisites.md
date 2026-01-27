@@ -46,6 +46,13 @@ nodeGroups:
 
 ::::
 
+::::{group-tab} OpenShift
+
+In Red Hat OpenShift, you can configure CPU Manager policy to `static` by creating a `KubeletConfig` resource and configuring it to select the `MachineConfigPool` dedicated to your ScyllaDB nodes.
+Please follow the steps outlined in the Red Hat documentation: [Setting up CPU Manager](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/scalability_and_performance/using-cpu-manager#setting_up_cpu_manager_using-cpu-manager-and-topology-manager).
+
+::::
+
 :::::
 
 ## Nodes

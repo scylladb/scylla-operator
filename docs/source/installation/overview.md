@@ -58,17 +58,29 @@ ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends
 
 ScyllaDB provides you with a custom [Local CSI driver](../architecture/storage/local-csi-driver.md) that lets you dynamically provision PersistentVolumes, share the disk space but still track the capacity and use quotas.
 
-## Notes
+## Installation
 
-:::{note}
-Before reporting and issue, please see our [support page](../support/overview.md) and [troubleshooting installation issues](../support/troubleshooting/installation.md#troubleshooting-installation-issues)
-:::
+You can install ScyllaDB Operator on Red Hat OpenShift using OLM (Operator Lifecycle Manager), or on any Kubernetes cluster using GitOps manifests or Helm charts.
 
-## Installation modes
+### Red Hat OpenShift
 
-Depending on your preference, there is more than one way to install ScyllaDB Operator and there may be more to come / or provided by other parties or supply chains.
+ScyllaDB Operator is available as a Red Hat Certified Operator in the embedded OperatorHub. 
+You can install it using OLM (Operator Lifecycle Manager), which handles installation, upgrades, and management of operators and their dependencies, including CRDs.
 
-At this point, we provide 2 ways to install the operator - [GitOps/manifests](#gitops) and [Helm charts](#helm). Given we provide only a subset of helm charts for the main resources and because **Helm can't update CRDs** - you still have to resort to using the manifests or GitOps anyway. For a consistent experience we'd recommend using the [GitOps flow](#gitops) which will also give you a better idea about what you actually deploy and maintain.
+The following components need to be deployed and maintained using other deployment methods:
+- [Local CSI Driver](#local-csi-driver)
+- [ScyllaDB Manager](#scylladb-manager)
+
+We provide [GitOps](#gitops) manifests and installation instructions for these components.
+
+For details, please see the [dedicated section describing the deployment on Red Hat OpenShift](./openshift.md).
+
+### Generic Kubernetes
+
+For generic Kubernetes clusters, we provide [GitOps/manifests](#gitops) and [Helm charts](#helm).
+
+Given we provide only a subset of helm charts for the main resources and because **Helm can't update CRDs** - you still have to resort to using the manifests or GitOps anyway. 
+For a consistent experience we'd recommend using the [GitOps flow](#gitops) which will also give you a better idea about what you actually deploy and maintain.
 
 :::{caution}
 Do not use rolling tags (like `latest`, `1.14`) with our manifests in production.
@@ -81,11 +93,11 @@ To avoid races, when you create a CRD, you need to wait for it to be propagated 
 :::
 
 :::{note}
-When you create [ValidatingWebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#webhook-configuration) or [MutatingWebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#webhook-configuration), you have to wait for the corresponding webhook deployments to be available, or the kubernetes-apiserver will fail all requests for resources affected by these webhhok configurations.
+When you create [ValidatingWebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#webhook-configuration) or [MutatingWebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#webhook-configuration), you have to wait for the corresponding webhook deployments to be available, or the kubernetes-apiserver will fail all requests for resources affected by these webhook configurations.
 Also note that some platforms have non-conformant networking setups by default that prevents the kube-apiserver from talking to the webhooks - [see our troubleshooting guide for more info](../support/troubleshooting/installation.md#webhooks).
 ::: 
 
-### GitOps
+#### GitOps
 
 We provide a set of Kubernetes manifest that contain all necessary objects to apply to your Kubernetes cluster.
 Depending on your preference applying them may range from using `git` with a declarative CD to `git` and `kubectl`.
@@ -93,7 +105,7 @@ To keep the instructions clear for everyone we'll demonstrate applying the manif
 
 For details, please see the [dedicated section describing the deployment using GitOps (kubectl)](./gitops.md). 
 
-### Helm
+#### Helm
 
 :::{include} ../.internal/helm-crd-warning.md
 :::

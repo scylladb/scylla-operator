@@ -1,0 +1,61 @@
+# This is a kind cluster configuration file used for testing the Scylla Operator.
+# Each node has:
+# - the KubeletInUserNamespace feature gate enabled to allow running containers in user namespaces
+# - a mount for a local containerd registry configuration
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  ipFamily: ipv4
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            feature-gates: KubeletInUserNamespace=true
+    extraMounts:
+      - hostPath: ./hack/kind/containerd-registries
+        containerPath: /etc/containerd/certs.d
+        readOnly: true
+  # Two worker nodes dedicated to Scylla as that's the minimum required in tests.
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            feature-gates: KubeletInUserNamespace=true
+            register-with-taints: "scylla-operator.scylladb.com/dedicated=scyllaclusters:NoSchedule"
+    extraMounts:
+      - hostPath: ./hack/kind/containerd-registries
+        containerPath: /etc/containerd/certs.d
+        readOnly: true
+    labels:
+      scylla.scylladb.com/node-type: scylla
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            feature-gates: KubeletInUserNamespace=true
+            register-with-taints: "scylla-operator.scylladb.com/dedicated=scyllaclusters:NoSchedule"
+    extraMounts:
+      - hostPath: ./hack/kind/containerd-registries
+        containerPath: /etc/containerd/certs.d
+        readOnly: true
+    labels:
+      scylla.scylladb.com/node-type: scylla
+  # One extra worker node for other components.
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            feature-gates: KubeletInUserNamespace=true
+    extraMounts:
+      - hostPath: ./hack/kind/containerd-registries
+        containerPath: /etc/containerd/certs.d
+        readOnly: true

@@ -86,6 +86,8 @@ GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/build) 
 
 RENOVATE_CONFIG ?=./renovate.json
 
+KIND_CLUSTER_NAME=scylla-operator-e2e
+
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1
 export GOVERSION :=$(shell go version)
@@ -814,3 +816,15 @@ helm-publish:
 
 	$(GSUTIL) setmeta -h 'Content-Type:text/yaml' -h 'Cache-Control: $(HELM_MANIFEST_CACHE_CONTROL)' '$(HELM_BUCKET)/index.yaml'
 .PHONY: helm-publish
+
+kind-setup:
+	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/cluster-setup.sh
+.PHONY: kind-setup
+
+kind-teardown:
+	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/cluster-teardown.sh
+.PHONY: kind-teardown
+
+test-e2e-kind: kind-setup
+	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/run-e2e-tests.sh
+.PHONY: test-e2e-kind

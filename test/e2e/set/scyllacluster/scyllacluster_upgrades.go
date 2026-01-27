@@ -134,7 +134,7 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			rackSize:       3,
 			initialVersion: framework.TestContext.ScyllaDBUpdateFrom,
 			updatedVersion: framework.TestContext.ScyllaDBVersion,
-		}),
+		}, framework.LongRunning),
 		g.Entry(describeEntry, &entry{
 			rackCount:      1,
 			rackSize:       1,
@@ -146,12 +146,12 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			rackSize:       3,
 			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
 			updatedVersion: framework.TestContext.ScyllaDBVersion,
-		}),
+		}, framework.LongRunning),
 		g.Entry(describeEntry, &entry{
 			rackCount:      2,
 			rackSize:       3,
 			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
 			updatedVersion: framework.TestContext.ScyllaDBVersion,
-		}),
+		}, framework.LongRunning),
 	)
 })

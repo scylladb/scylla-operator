@@ -14,6 +14,8 @@ const (
 	RequiresObjectStorageLabelName    = "RequiresObjectStorage"
 	NotSupportedOnOpenShiftLabelName  = "NotSupportedOnOpenShift"
 	SupportedOnlyOnOpenShiftLabelName = "SupportedOnlyOnOpenShift"
+	NotSupportedOnKindLabelName       = "NotSupportedOnKind"
+	LongRunningLabelName              = "LongRunning"
 )
 
 var (
@@ -27,4 +29,10 @@ var (
 	RequiresObjectStorage    = g.Label(RequiresObjectStorageLabelName)
 	NotSupportedOnOpenShift  = g.Label(NotSupportedOnOpenShiftLabelName)
 	SupportedOnlyOnOpenShift = g.Label(SupportedOnlyOnOpenShiftLabelName)
+
+	// NotSupportedOnKind is a label is for tests not supported on kind clusters (e.g., due to lack of access to host filesystem).
+	NotSupportedOnKind = g.Label(NotSupportedOnKindLabelName)
+
+	// LongRunning is a label for tests that are long-running (over ~20 minutes).
+	LongRunning = g.Label(LongRunningLabelName)
 )

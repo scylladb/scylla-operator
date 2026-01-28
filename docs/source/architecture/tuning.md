@@ -7,7 +7,7 @@ One of the most common causes of context-switching are network interrupts.
 Packets coming to a Kubernetes node need to be processed which requires using CPU shares.  
 
 On a Kubernetes node there is always a couple of other processes running, like kubelet, Kubernetes provider applications, daemons and others. 
-These processes require CPU shares, so we cannot dedicate entire node processing power to Scylla, we need to leave space for others.  
+These processes require CPU shares, so we cannot dedicate entire node processing power to ScyllaDB, we need to leave space for others.  
 We take advantage of it, and we pin IRQs to CPUs not used by any ScyllaDB Pods exclusively.
 
 Performance tuning is enabled by default **when you create a corresponding [NodeConfig](../resources/nodeconfigs.md) for your nodes**.

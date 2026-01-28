@@ -10,7 +10,7 @@ We are aiming to ship a new release approximately every 2 months. The following 
 :::
 
 ## Supported releases
-We support the latest 2 releases of Scylla Operator to give everyone time to upgrade.
+We support the latest 2 releases of ScyllaDB Operator to give everyone time to upgrade.
 
 :::{table}
 | Release | General availability |  Support ends   |
@@ -62,7 +62,7 @@ GA images aren't built from scratch but rather promoted from an existing release
 
 ## Support matrix
 
-The support matrix table shows version requirements for a particular **Scylla Operator** version. Be sure to match these requirements, otherwise some functionality will not work.
+The support matrix table shows version requirements for a particular **ScyllaDB Operator** version. Be sure to match these requirements, otherwise some functionality will not work.
 
 :::{table}
 | Component           | master                            | v1.19                     | v1.18             |

@@ -48,14 +48,14 @@ The following sections cover what every field controls and what the configuratio
 
 ### Node Service Template
 
-`nodeService` serves as a template for a node-dedicated Service managed by the Scylla Operator for each node within a ScyllaDB cluster. 
+`nodeService` serves as a template for a node-dedicated Service managed by the ScyllaDB Operator for each node within a ScyllaDB cluster. 
 The properties of the Services depend on the selected type. 
 Additionally, there's an option to define custom annotations, incorporated into each node's Service,
 which might be useful for further tweaking the Service properties or related objects.
 
 #### Headless Type
 
-For `Headless` type, Scylla Operator creates a Headless Service with a selector pointing to the particular node in the ScyllaDB cluster.
+For `Headless` type, ScyllaDB Operator creates a Headless Service with a selector pointing to the particular node in the ScyllaDB cluster.
 Such Service doesn't provide any additional IP addresses, and the internal DNS record resolves to the PodIP of a node.
 
 This type of Service is useful when ScyllaDB cluster nodes broadcast PodIPs to clients and other nodes.
@@ -87,7 +87,7 @@ spec:
 
 #### ClusterIP Type
 
-For `ClusterIP` type, Scylla Operator creates a ClusterIP Service backed by a specific node in the ScyllaDB cluster.
+For `ClusterIP` type, ScyllaDB Operator creates a ClusterIP Service backed by a specific node in the ScyllaDB cluster.
 
 These IP addresses are only routable within the same Kubernetes cluster, so it's a good fit, if you don't want to expose them to other networks.
 
@@ -120,7 +120,7 @@ spec:
 
 #### LoadBalancer Type
 
-For the `LoadBalancer` type, Scylla Operator generates a LoadBalancer Service that directs traffic to a specific node within the ScyllaCluster. 
+For the `LoadBalancer` type, ScyllaDB Operator generates a LoadBalancer Service that directs traffic to a specific node within the ScyllaCluster. 
 On platforms with support for external load balancers, this Service provisions one. 
 The accessibility of this load balancer's address depends on the platform and any customizations made; in some cases it may be reachable from the internal network or public Internet.
 
@@ -510,7 +510,7 @@ spec:
 ::::
 
 We assume that a Kubernetes cluster has been deployed in a cloud provider environment that supports external load balancers. 
-By specifying the LoadBalancer type in the nodeService template, the Scylla Operator generates a dedicated LB Service for each node. 
+By specifying the LoadBalancer type in the nodeService template, the ScyllaDB Operator generates a dedicated LB Service for each node. 
 The cloud provider then establishes an external load balancer with an internet-accessible address. 
 ScyllaDB nodes broadcast this external address to clients, enabling drivers to connect and discover other nodes. 
 Since all ScyllaDB nodes reside within the same Kubernetes cluster, there is no need to route traffic through the internet. 

@@ -16,7 +16,7 @@ Alternator protocol is based on HTTP and you can also expose the service "manual
 
 ## Credentials
 
-Scylla Operator enables Alternator authorization by default. 
+ScyllaDB Operator enables Alternator authorization by default. 
 Here is a quick example of how to get the token for accessing Alternator API.
 To find out more, please refer to [ScyllaDB Alternator documentation](https://docs.scylladb.com/manual/stable/alternator/compatibility.html#authentication-and-authorization).
 

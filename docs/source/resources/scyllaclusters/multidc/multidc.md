@@ -46,7 +46,7 @@ The `externalSeeds` field in ScyllaCluster's specification enables control over 
 In this context, external should be understood as "external to the datacenter being specified by the API".
 The provided seeds are used by the nodes as initial points of contact, which allows them to discover the cluster ring topology when joining it.
 
-Refer to [Scylla Seed Nodes](https://opensource.docs.scylladb.com/stable/kb/seed-nodes.html) in ScyllaDB documentation for more information regarding the function of seed nodes in ScyllaDB.
+Refer to [ScyllaDB Seed Nodes](https://opensource.docs.scylladb.com/stable/kb/seed-nodes.html) in ScyllaDB documentation for more information regarding the function of seed nodes in ScyllaDB.
 For more details regarding the function and implementation of external seeds, refer to [the original enhancement proposal](https://github.com/scylladb/scylla-operator/tree/v1.11/enhancements/proposals/1304-external-seeds).
 
 ### Networking
@@ -568,19 +568,19 @@ UN  172.16.25.18   759 KB     256          ?       665dde7e-e420-4db3-8c54-ca71e
 UN  172.16.87.27   503 KB     256          ?       c19c89cb-e24c-4062-9df4-2aa90ab29a99  c
 ```
 
-## Scylla Manager
+## ScyllaDB Manager
 
-To integrate a multi-datacenter ScyllaDB cluster with Scylla Manager, you must deploy the Scylla Manager in only one datacenter.
+To integrate a multi-datacenter ScyllaDB cluster with ScyllaDB Manager, you must deploy the ScyllaDB Manager in only one datacenter.
 
 In this example, let's choose the Kubernetes cluster deployed in the first datacenter to host it.
-To deploy Scylla Manager, follow the steps described in [Deploying Scylla Manager on a Kubernetes Cluster](../../../architecture/manager.md)
+To deploy ScyllaDB Manager, follow the steps described in [Deploying ScyllaDB Manager on a Kubernetes Cluster](../../../architecture/manager.md)
 in {{productName}} documentation. 
 
-In order to define the Scylla Manager tasks, add them to the ScyllaCluster object deployed in the same Kubernetes cluster 
-in which your Scylla Manager is running.
+In order to define the ScyllaDB Manager tasks, add them to the ScyllaCluster object deployed in the same Kubernetes cluster 
+in which your ScyllaDB Manager is running.
 
-Every datacenter (represented by ScyllaCluster CR) is, by default, provisioned with a new, random Scylla Manager Agent auth token.
-To use Scylla Manager with multiple datacenter (represented by ScyllaClusters), you have to make sure they all use the same token.
+Every datacenter (represented by ScyllaCluster CR) is, by default, provisioned with a new, random ScyllaDB Manager Agent auth token.
+To use ScyllaDB Manager with multiple datacenter (represented by ScyllaClusters), you have to make sure they all use the same token.
 
 Extract it from the first datacenter with the below command:
 ```shell

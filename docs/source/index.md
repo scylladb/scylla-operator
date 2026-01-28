@@ -8,7 +8,7 @@ hide-pre-content:
 hide-post-content:
 ---
 
-```{title} Scylla Operator Documentation
+```{title} ScyllaDB Operator Documentation
 ```
 
 :::{toctree}
@@ -25,7 +25,7 @@ reference/index
 :::
 
 ```{hero-box}
-:title: Scylla Operator
+:title: ScyllaDB Operator
 :image: /_static/mascots/logo.svg
 
 {{productName}} project helps users to run ScyllaDB on Kubernetes. 
@@ -60,7 +60,7 @@ It extends the Kubernetes APIs using [CustomResourceDefinitions(CRDs)](https://k
 :anchor: Learn more »
 :class: large-4
 
-Learn about the components of Scylla Operator and how they fit together.
+Learn about the components of ScyllaDB Operator and how they fit together.
 ```
 
 ```{topic-box}

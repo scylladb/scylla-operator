@@ -75,7 +75,7 @@ scylla   3       3         1       True        False         False      62m
    kubectl apply --server-side -f scyllaClusterDefinition.yaml 
    ```
 
-   The ScyllaDBDatacenter and StatefulSets will be recreated by the Scylla Operator with the new storage size.
+   The ScyllaDBDatacenter and StatefulSets will be recreated by the ScyllaDB Operator with the new storage size.
 8. Depending on your storage provisioner, affected Pods may or may not require a restart.
    Verify if storage was resized by checking volume size from within the affected Pod.
    ```bash

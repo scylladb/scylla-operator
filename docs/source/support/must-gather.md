@@ -1,6 +1,6 @@
 # Gathering data with must-gather
 
-`must-gather` is an embedded tool in Scylla Operator that helps collecting all the necessary info when something goes wrong.
+`must-gather` is an embedded tool in ScyllaDB Operator that helps collecting all the necessary info when something goes wrong.
 The tool talks to the Kubernetes API, retrieves a predefined set of resources and saves them into a folder in your current directory.
 
 By default, sensitive resources (`Secrets` and `bitnami.com.SealedSecrets`) are omitted from the collection.

@@ -1,4 +1,4 @@
-# Upgrading version of Scylla
+# Upgrading version of ScyllaDB
 
 **Review Release Notes Before Upgrading**
 
@@ -8,7 +8,7 @@ You can find the release notes for ScyllaDB versions at [ScyllaDB Release Notes]
 
 ---
 
-To upgrade Scylla version using Operator user have to modify existing ScyllaCluster definition.
+To upgrade ScyllaDB version using Operator user have to modify existing ScyllaCluster definition.
 
 In this example cluster will be upgraded to version `4.4.5`.
 ```bash
@@ -23,7 +23,7 @@ Operator supports two types of version upgrades:
 **Patch upgrade**
 
 Patch upgrade is executed when only patch version change is detected according to [semantic versioning format](https://semver.org/).
-Procedure simply rolls out a restart of whole cluster and upgrades Scylla container image for each node one by one.
+Procedure simply rolls out a restart of whole cluster and upgrades ScyllaDB container image for each node one by one.
 
 Example: `4.0.0 -> 4.0.1`
 
@@ -61,7 +61,7 @@ This allows Operator have a full control over when Pod image is changed.
 
 When a node is being upgraded, [maintenance mode](#maintenance-mode) is enabled, then the node is drained and snapshot of all data keyspaces is taken.
 Snapshot tag is saved under `Data Snapshot Tag` and is the same for all nodes during the procedure.
-Once everything is set up, maintenance mode is disabled and Scylla Pod is deleted. Underlying StatefulSet will bring up a new
+Once everything is set up, maintenance mode is disabled and ScyllaDB Pod is deleted. Underlying StatefulSet will bring up a new
 Pod with upgraded version.
 Once Pod will become ready, data snapshot from this particular node is removed, and Operator moves to next node.
 
@@ -84,8 +84,8 @@ Current state of upgrade can be traced using `Current Node`, `Current Rack` and 
 * `drain_node` - node is being drained
 * `backup_data` - snapshot of data keyspaces is being taken
 * `disable_maintenance_mode` - maintenance mode is being disabled
-* `delete_pod` - Scylla Pod is being deleted
-* `validate_upgrade` - Operator validates if new pod enters Ready state and if Scylla version is upgraded
+* `delete_pod` - ScyllaDB Pod is being deleted
+* `validate_upgrade` - Operator validates if new pod enters Ready state and if ScyllaDB version is upgraded
 * `clear_data_backup` - snapshot of data keyspaces is being removed
 * `clear_system_backup` - snapshot of system keyspaces is being removed
 * `restore_upgrade_strategy` - restore UpgradeStrategy in underlying StatefulSet
@@ -93,16 +93,16 @@ Current state of upgrade can be traced using `Current Node`, `Current Rack` and 
 
 **Recovering from upgrade failure**
 
-Upgrade may get stuck on `validate_upgrade` stage. This happens when Scylla Pod refuses to properly boot up.
+Upgrade may get stuck on `validate_upgrade` stage. This happens when ScyllaDB Pod refuses to properly boot up.
 
 To continue with upgrade, first turn off operator by scaling Operator replicas to zero:
 ```bash
 kubectl -n scylla-operator scale deployment.apps/scylla-operator --replicas=0
 ```
-Then user have to manually resolve issue with Scylla by checking what is the root cause of a failure in Scylla container logs.
+Then user have to manually resolve issue with ScyllaDB by checking what is the root cause of a failure in ScyllaDB container logs.
 If needed data and system keyspaces SSTable snapshots are available on the node. You can check ScyllaCluster status for their names.
 
-Once issue is resolved and Scylla Pod is up and running (Pod is in Ready state), scale Operator back to two replicas:
+Once issue is resolved and ScyllaDB Pod is up and running (Pod is in Ready state), scale Operator back to two replicas:
 ```bash
 kubectl -n scylla-operator scale deployment.apps/scylla-operator --replicas=2
 ```

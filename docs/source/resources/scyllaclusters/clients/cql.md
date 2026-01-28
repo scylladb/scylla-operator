@@ -51,7 +51,7 @@ Use HELP for help.
 
 This paragraph shows how to use `cqlsh` to remotely connect to a ScyllaDB node.
 It is strongly recommended to access CQL over TLS connections on port `9142` instead of unencrypted `9042`.
-Note that Scylla Operator sets up TLS certificates by default and makes them accessible in the Kubernetes API,
+Note that ScyllaDB Operator sets up TLS certificates by default and makes them accessible in the Kubernetes API,
 so the encrypted port `9142` works by default.
 
 :::{caution}

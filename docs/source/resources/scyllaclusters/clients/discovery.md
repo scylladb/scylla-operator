@@ -8,7 +8,7 @@ This has several disadvantages because this particular subset of nodes can be do
 or the nodes can be replaced and change their IP addresses.
 The latter can be mitigated by using DNS and updating the records.
 
-Scylla Operator allows setting up ScyllaDB in several network configurations, some of which are based on ephemeral IPs.
+ScyllaDB Operator allows setting up ScyllaDB in several network configurations, some of which are based on ephemeral IPs.
 This makes solving the above-mentioned issues more pressing.  
 
 ## ScyllaDB Discovery Endpoint

@@ -1,8 +1,8 @@
 # Known issues
 
-## Scylla Manager does not boot up on Minikube
+## ScyllaDB Manager does not boot up on Minikube
 
-If your Scylla Manager is failing to apply 8th migration (008_*), then apply fix for [TRUNCATE queries](#truncate-queries-does-not-work-on-minikube).
+If your ScyllaDB Manager is failing to apply 8th migration (008_*), then apply fix for [TRUNCATE queries](#truncate-queries-does-not-work-on-minikube).
 
 ## TRUNCATE queries does not work on Minikube
 

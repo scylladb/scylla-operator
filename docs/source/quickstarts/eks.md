@@ -27,9 +27,9 @@ With the config ready, we can easily create an EKS cluster by running
 eksctl create cluster -f=clusterconfig.eksctl.yaml
 :::
 
-## Deploying {{productName}}
+## Deploying ScyllaDB Operator
 
-To deploy {{productName}} follow the [installation guide](../installation/overview.md).
+To deploy ScyllaDB Operator follow the [installation guide](../installation/overview.md).
 
 ## Creating ScyllaDB
 

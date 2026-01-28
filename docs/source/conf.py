@@ -38,9 +38,9 @@ autosectionlabel_prefix_document = True
 master_doc = 'index'
 
 # General information about the project.
-project = 'Scylla Operator'
+project = 'ScyllaDB Operator'
 copyright = str(date.today().year) + ', ScyllaDB. All rights reserved.'
-author = u'Scylla Project Contributors'
+author = u'ScyllaDB Project Contributors'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -58,7 +58,6 @@ myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_
 myst_heading_anchors = 6
 
 myst_substitutions = {
-    "productName": "Scylla Operator",
     "repository": "scylladb/scylla-operator",
     "imageRepository": "docker.io/scylladb/scylla",
     "enterpriseImageRepository": "docker.io/scylladb/scylla-enterprise",

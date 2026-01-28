@@ -1,8 +1,8 @@
-# Upgrading {{productName}}
+# Upgrading ScyllaDB Operator
 
-{{productName}} supports N+1 upgrades only.
+ScyllaDB Operator supports N+1 upgrades only.
 That means to you can only update by 1 minor version at the time and wait for it to successfully roll out and then update
-all ScyllaClusters that also run using the image that's being updated. ({{productName}} injects it as a sidecar to help run and manage ScyllaDB.)
+all ScyllaClusters that also run using the image that's being updated. (ScyllaDB Operator injects it as a sidecar to help run and manage ScyllaDB.)
 
 We value the stability of our APIs and all API changes are backwards compatible.
 
@@ -13,14 +13,14 @@ If any additional steps are required for a specific version upgrade, they will b
 ## Upgrade via GitOps (kubectl)
 
 A typical upgrade flow using GitOps (kubectl) requires re-applying the manifests using ones from the release you want to upgrade to.
-Note that {{productName}}'s dependencies also need to be updated to the versions compatible with the target {{productName}} version.
+Note that ScyllaDB Operator's dependencies also need to be updated to the versions compatible with the target ScyllaDB Operator version.
 
 Please refer to the [GitOps installation instructions](./../../installation/gitops.md) for details.
 
 ## Upgrade via Helm
 
 ### Prerequisites
-- Update {{productName}} dependencies to the versions compatible with the target {{productName}} version.
+- Update ScyllaDB Operator dependencies to the versions compatible with the target ScyllaDB Operator version.
   Refer to the [Helm installation instructions](./../../installation/helm.md) for details.
 
 - Make sure Helm chart repository is up-to-date:
@@ -37,9 +37,9 @@ Replace `<release_name>` with the name of your Helm release for ScyllaDB Manager
 helm upgrade --version <version> <release_name> scylla/scylla-manager
 ```
 
-### Upgrade {{productName}} 
+### Upgrade ScyllaDB Operator 
 
-Replace `<release_name>` with the name of your Helm release for {{productName}} and replace `<version>` with the version number you want to install:
+Replace `<release_name>` with the name of your Helm release for ScyllaDB Operator and replace `<version>` with the version number you want to install:
 
 1. Update CRD resources. We recommend using `--server-side` flag for `kubectl apply`, if your version supports it.
    ```
@@ -48,7 +48,7 @@ Replace `<release_name>` with the name of your Helm release for {{productName}} 
      && find "${tmpdir}"/scylla-operator/crds/ -name '*.yaml' -printf '-f=%p ' \
      | xargs kubectl apply
    ```
-2. Update {{productName}}.
+2. Update ScyllaDB Operator.
    ```
    helm upgrade --version <version> <release_name> scylla/scylla-operator
    ```
@@ -63,8 +63,8 @@ Make sure to familiarize yourself with both the standard upgrade procedure and t
 ### 1.17 to 1.18
 
 Upgrading from v1.17.x requires extra actions due to the removal of the standalone ScyllaDB Manager controller.
-The controller becomes an integral part of {{productName}}. As a result, the standalone ScyllaDB Manager controller deployment and its related resources
-need to be removed before upgrading {{productName}}.
+The controller becomes an integral part of ScyllaDB Operator. As a result, the standalone ScyllaDB Manager controller deployment and its related resources
+need to be removed before upgrading ScyllaDB Operator.
 
 {#steps-1-17-to-1-18-upgrade-via-gitops}
 #### Upgrade via GitOps (kubectl)
@@ -82,6 +82,6 @@ kubectl delete -n scylla-manager \
 {#steps-1-17-to-1-18-upgrade-via-helm}
 #### Upgrade via Helm
 
-ScyllaDB Manager Helm installation has to be upgraded before upgrading {{productName}} Helm installation, following
+ScyllaDB Manager Helm installation has to be upgraded before upgrading ScyllaDB Operator Helm installation, following
 the standard [Helm upgrade procedure](#upgrade-via-helm). This will ensure that the ScyllaDB Manager Controller
-is removed before upgrading the {{productName}}.
+is removed before upgrading the ScyllaDB Operator.

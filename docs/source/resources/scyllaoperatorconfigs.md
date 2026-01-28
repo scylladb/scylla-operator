@@ -1,7 +1,7 @@
 # ScyllaOperatorConfigs
 
-[ScyllaOperatorConfig](../reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst) holds the global configuration for {{productName}}.
-It is automatically created by {{productName}}, if it's missing, and also reports some of the configuration (like auxiliary images) that are in use.
+[ScyllaOperatorConfig](../reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst) holds the global configuration for ScyllaDB Operator.
+It is automatically created by ScyllaDB Operator, if it's missing, and also reports some of the configuration (like auxiliary images) that are in use.
 
 This is a singleton resource where only a single instance named `cluster` is valid.
 

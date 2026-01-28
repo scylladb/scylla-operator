@@ -3,12 +3,12 @@
 :::{include} ../.internal/helm-crd-warning.md
 :::
 
-In this example we will install Scylla stack on Kubernetes. This includes the following components:
-- Scylla Operator
-- Scylla Manager
-- Scylla
+In this example we will install ScyllaDB stack on Kubernetes. This includes the following components:
+- ScyllaDB Operator
+- ScyllaDB Manager
+- ScyllaDB
 
-We will use Minikube K8s cluster, but this could be any K8s cluster supported by the Scylla Operator.
+We will use Minikube K8s cluster, but this could be any K8s cluster supported by the ScyllaDB Operator.
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ helm install scylla scylla/scylla --create-namespace --namespace scylla
 ## Deploy Cert Manager
 
 This step is optional if you want to use your own certificate. 
-If you don't have one, make sure to not disable autogeneration using Scylla Operator Helm Chart.
+If you don't have one, make sure to not disable autogeneration using ScyllaDB Operator Helm Chart.
 
 First deploy Cert Manager, you can either follow [upsteam instructions](https://cert-manager.io/docs/installation/) or use following command:
 
@@ -48,7 +48,7 @@ kubectl wait -n cert-manager --for=condition=ready pod -l app=cert-manager --tim
 
 ## Helm Chart repository
 
-To install Scylla Helm Chart repository execute the following commands:
+To install ScyllaDB Helm Chart repository execute the following commands:
 ```
 helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable
 helm repo update
@@ -66,14 +66,14 @@ scylla/scylla-operator 1.0.1           v1.0.1          Scylla Operator is a Kube
 All these charts should be installable without any need of customizing (defaults are provided). 
 Although Helm is used for this particular reason, so lets customize them a bit.
 
-## Scylla Operator Chart
+## ScyllaDB Operator Chart
 
 This chart is very simple, most interesting customizable fields are `image`, `resources` and `webhook`. 
-All others can be looked up in Chart source in Scylla Operator repository.
+All others can be looked up in Chart source in ScyllaDB Operator repository.
 
 ### image
 
-Image allows to define which Scylla Operator image will be used. By default it downloads the image from main 
+Image allows to define which ScyllaDB Operator image will be used. By default it downloads the image from main 
 Docker Hub repository, using version defined in Helm Chart. 
 You can also change `pullPolicy` if default one does not
 fullfill your needs. In [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/images/) you 
@@ -120,26 +120,26 @@ webhook:
 ### Customization
 
 You can customize all these fields and others by providing file containing desired values. 
-Please refer to the {{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla-operator/values.yaml)'.format(repository, revision) }} file in Scylla Operator repository for all available fields.
+Please refer to the {{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla-operator/values.yaml)'.format(repository, revision) }} file in ScyllaDB Operator repository for all available fields.
 
 You can copy the default `values.yaml` file and modify it to your needs.
 
 ### Installation
 
-To deploy Scylla Operator using default values execute the following command:
+To deploy ScyllaDB Operator using default values execute the following command:
 ```
 helm install scylla-operator scylla/scylla-operator --create-namespace --namespace scylla-operator
 ```
 
-To deploy Scylla Operator using customized values file (as described in the [Customization](#customization) section), execute the following command:
+To deploy ScyllaDB Operator using customized values file (as described in the [Customization](#customization) section), execute the following command:
 ```
 helm install scylla-operator scylla/scylla-operator --values <path-to-values-file> --create-namespace --namespace scylla-operator
 ```
 
-## Scylla Helm Chart
+## ScyllaDB Helm Chart
 
-Scylla Chart allows to customize and deploy Scylla cluster.
-By default Scylla Helm charts deploys working Scylla cluster, but of course we can customize it.
+ScyllaDB Chart allows to customize and deploy ScyllaDB cluster.
+By default ScyllaDB Helm charts deploys working ScyllaDB cluster, but of course we can customize it.
 
 ### Customization
 
@@ -156,7 +156,7 @@ agentImage:
   tag: {{agentVersion}}
 :::
 
-A minimal Scylla cluster can be expressed as:
+A minimal ScyllaDB cluster can be expressed as:
 ```yaml
 datacenter: us-east-1
 racks:
@@ -173,10 +173,10 @@ racks:
       memory: 1Gi
 ```
 
-Above cluster will use {{ scyllaDBImageTag }} Scylla, {{ agentVersion }} Scylla Manager Agent sidecar and will have a single rack having 2 nodes. 
+Above cluster will use {{ scyllaDBImageTag }} ScyllaDB, {{ agentVersion }} ScyllaDB Manager Agent sidecar and will have a single rack having 2 nodes. 
 Each node will have a single CPU and 1 GiB of memory.
 
-For other customizable fields, please refer to chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla/values.yaml)'.format(repository, revision) }}) in Scylla Operator repository
+For other customizable fields, please refer to chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla/values.yaml)'.format(repository, revision) }}) in ScyllaDB Operator repository
 and [ScyllaCluster CRD](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst).
 The CRD's `spec.rack` and Helm chart `rack` should have the same fields.
 
@@ -184,28 +184,28 @@ You can copy the default `values.yaml` file and modify it to your needs.
 
 ### Installation
 
-To deploy Scylla cluster using default values execute the following command:
+To deploy ScyllaDB cluster using default values execute the following command:
 ```
 helm install scylla scylla/scylla --create-namespace --namespace scylla
 ```
 
-To deploy Scylla cluster using customzied values file execute the following command:
+To deploy ScyllaDB cluster using customzied values file execute the following command:
 ```
 helm install scylla scylla/scylla --values <path-to-values-file> --create-namespace --namespace scylla
 ```
 
-Scylla Operator will provision this cluster on your K8s environment.
+ScyllaDB Operator will provision this cluster on your K8s environment.
 
-## Scylla Manager Helm Chart
+## ScyllaDB Manager Helm Chart
 
-Scylla Manager Chart allows to customize and deploy Scylla Manager in K8s environment.
-Besides Scylla Manager, it deploys an additional Scylla cluster for the Manager’s needs.
+ScyllaDB Manager Chart allows to customize and deploy ScyllaDB Manager in K8s environment.
+Besides ScyllaDB Manager, it deploys an additional ScyllaDB cluster for the Manager’s needs.
 
-To read more about Scylla Manager see [Manager guide](../architecture/manager.md).
+To read more about ScyllaDB Manager see [Manager guide](../architecture/manager.md).
 
-### Scylla Manager
+### ScyllaDB Manager
 
-To set version of used Scylla Manager you can use `image` field:
+To set version of used ScyllaDB Manager you can use `image` field:
 :::{code-block} yaml
 :substitutions:
 image:
@@ -214,7 +214,7 @@ image:
   tag: {{agentVersion}}
 :::
 
-To control how many resources are allocated for Scylla Manager use `resource` field:
+To control how many resources are allocated for ScyllaDB Manager use `resource` field:
 ```yaml
 resources:
   limits:
@@ -225,32 +225,32 @@ resources:
     memory: 500Mi
 ```
 
-### Scylla
+### ScyllaDB
 
-To customize internal Scylla instance dedicated to Scylla Manager, see guide above customizing Scylla Helm Chart.
+To customize internal ScyllaDB instance dedicated to ScyllaDB Manager, see guide above customizing ScyllaDB Helm Chart.
 It's definition should land as a `scylla` field.
 
-All others customizable fields can be looked up in Chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla-manager/values.yaml)'.format(repository, revision) }}) in Scylla Operator repository.
+All others customizable fields can be looked up in Chart source ({{ '[values.yaml](https://raw.githubusercontent.com/{}/{}/helm/scylla-manager/values.yaml)'.format(repository, revision) }}) in ScyllaDB Operator repository.
 You can copy the default `values.yaml` file and modify it to your needs.
 
 ### Installation
 
-To deploy Scylla Manager using default values execute the following command:
+To deploy ScyllaDB Manager using default values execute the following command:
 ```
 helm install scylla-manager scylla/scylla-manager --create-namespace --namespace scylla-manager
 ```
 
-To deploy Scylla Manager using customized values file execute the following command:
+To deploy ScyllaDB Manager using customized values file execute the following command:
 ```
 helm install scylla-manager scylla/scylla-manager --values <path-to-values-file> --create-namespace --namespace scylla-manager
 ```
 
 ## Results
 
-Scylla need some time to bootstrap all nodes, but after some time you should be ready to roll. It was simple isn't it?
+ScyllaDB need some time to bootstrap all nodes, but after some time you should be ready to roll. It was simple isn't it?
 You can validate if everything was set up correctly by looking at the all resources created in used namespaces.
 
-Scylla Operator:
+ScyllaDB Operator:
 ```shell
 $ kubectl -n scylla-operator get all
 
@@ -271,7 +271,7 @@ replicaset.apps/scylla-operator-5dbcb54f5c   2         2         2       51s
 
 Operator is running!
 
-Scylla Manager:
+ScyllaDB Manager:
 ```shell
 $ kubectl -n scylla-manager get all 
 

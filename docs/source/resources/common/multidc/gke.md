@@ -79,7 +79,7 @@ gcloud container clusters create scylladb-us-east1 \
     --services-secondary-range-name=services
 ```
 
-Refer to [Creating a GKE cluster](../../../quickstarts/gke.md#creating-a-gke-cluster) section of {{productName}} documentation for more information regarding the configuration and deployment of additional node pools, including the one dedicated for ScyllaDB nodes.
+Refer to [Creating a GKE cluster](../../../quickstarts/gke.md#creating-a-gke-cluster) section of ScyllaDB Operator documentation for more information regarding the configuration and deployment of additional node pools, including the one dedicated for ScyllaDB nodes.
 
 You will need to get the cluster's context for future operations. To do so, use the below command:
 ```shell
@@ -88,9 +88,9 @@ kubectl config current-context
 
 For any `kubectl` commands that you will want to run against this cluster, use the `--context` flag with the value returned by the above command.
 
-#### Deploy {{productName}}
+#### Deploy ScyllaDB Operator
 
-To deploy {{productName}} follow the [installation guide](../../../installation/overview.md).
+To deploy ScyllaDB Operator follow the [installation guide](../../../installation/overview.md).
 
 ### Create the second GKE cluster
 
@@ -149,4 +149,4 @@ Refer to [Automatically created firewall rules](https://cloud.google.com/kuberne
 ---
 
 Having followed the above steps, you should now have a platform prepared for deploying a multi-datacenter ScyllaDB cluster.
-Refer to [Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters](../../scyllaclusters/multidc/multidc.md) in {{productName}} documentation for guidance.
+Refer to [Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters](../../scyllaclusters/multidc/multidc.md) in ScyllaDB Operator documentation for guidance.

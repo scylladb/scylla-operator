@@ -1,6 +1,6 @@
 # Restore from backup
 
-This procedure will describe how to restore from backup taken using [Scylla Manager](../../../architecture/manager.md) to a fresh **empty** cluster of any size.
+This procedure will describe how to restore from backup taken using [ScyllaDB Manager](../../../architecture/manager.md) to a fresh **empty** cluster of any size.
 
 :::{warning}
 Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management` isn’t supported.
@@ -70,7 +70,7 @@ spec:
 ::::
 :::::
 
-Make sure your target cluster is already registered in Scylla Manager. To get a list of all registered clusters, execute the following command:
+Make sure your target cluster is already registered in ScyllaDB Manager. To get a list of all registered clusters, execute the following command:
 ```console
 $ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool cluster list
 +--------------------------------------+---------------------------------------+---------+-----------------+

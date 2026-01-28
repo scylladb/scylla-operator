@@ -2,11 +2,11 @@
 
 ## Kubernetes
 
-{{productName}} is a set of controllers and Kubernetes API extensions.
+ScyllaDB Operator is a set of controllers and Kubernetes API extensions.
 Therefore, we assume you either have an existing, conformant Kubernetes cluster and/or are already familiar with how a Kubernetes cluster is deployed and operated.
 
-{{productName}} controllers and API extensions may have dependencies on some of the newer Kubernetes features and APIs that need to be available.
-More over, {{productName}} implements additional features like performance tuning, some of which are platform/OS specific.
+ScyllaDB Operator controllers and API extensions may have dependencies on some of the newer Kubernetes features and APIs that need to be available.
+More over, ScyllaDB Operator implements additional features like performance tuning, some of which are platform/OS specific.
 While we do our best to implement these routines as generically as possible, sometimes there isn't any low level API to base them on and they may work only on a subset of platforms.
 
 :::{caution}
@@ -18,9 +18,9 @@ Issues on unsupported environments are unlikely to be addressed.
 Before reporting an issue, please see our [support page](../support/overview.md) and [troubleshooting installation issues](../support/troubleshooting/installation)
 :::
 
-## {{productName}} components
+## ScyllaDB Operator components
 
-{{productName}} consists of multiple components that need to be installed in your cluster.
+ScyllaDB Operator consists of multiple components that need to be installed in your cluster.
 This is by no means a complete list of all resources, rather it aims to show the major components in one place.
 
 
@@ -33,26 +33,26 @@ This is by no means a complete list of all resources, rather it aims to show the
 Depending on [which storage provisioner you choose](../architecture/storage/overview.md), the `local-csi-driver` may be replaced or complemented by a different component.
 :::
 
-### {{productName}}
+### ScyllaDB Operator
 
-{{productName}} contains the Kubernetes API extensions and corresponding controllers and admission hooks that run inside `scylla-operator` namespace.
+ScyllaDB Operator contains the Kubernetes API extensions and corresponding controllers and admission hooks that run inside `scylla-operator` namespace.
 
 You can learn more about the APIs in [resources section](../resources/overview.md) and the [generated API reference](../reference/api/index.rst). 
 
 ### ScyllaDB Manager
 
 ScyllaDB Manager is a global deployment that is responsible for operating all [ScyllaClusters](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) and runs inside `scylla-manager` namespace.
-{{productName}} syncs the [ScyllaCluster](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) metadata, [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) and [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) tasks into the manager (and vice versa). This way it allows avoiding direct access to the shared instance by users. Unfortunately, at this point, other task like restoring from a backup require executing into the shared ScyllaDB Manager deployment which effectively needs administrator privileges. 
+ScyllaDB Operator syncs the [ScyllaCluster](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) metadata, [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) and [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) tasks into the manager (and vice versa). This way it allows avoiding direct access to the shared instance by users. Unfortunately, at this point, other task like restoring from a backup require executing into the shared ScyllaDB Manager deployment which effectively needs administrator privileges. 
 
-ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends on the {{productName}} deployment and the CRD it provides.
+ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends on the ScyllaDB Operator deployment and the CRD it provides.
 
 ### NodeConfig
 
-[NodeConfig](../resources/nodeconfigs.md) is a cluster-scoped custom resource provided by {{productName}} that helps you set local disks on Kubernetes nodes, create and mount a file system, configure performance tuning and more. 
+[NodeConfig](../resources/nodeconfigs.md) is a cluster-scoped custom resource provided by ScyllaDB Operator that helps you set local disks on Kubernetes nodes, create and mount a file system, configure performance tuning and more. 
 
 ### ScyllaOperatorConfig
 
-[ScyllaOperatorConfig](../resources/scyllaoperatorconfigs.md) is a cluster-coped custom resource provided by {{productName}} to help you configure {{productName}}. It helps you configure auxiliary images, see which ones are in use and more. 
+[ScyllaOperatorConfig](../resources/scyllaoperatorconfigs.md) is a cluster-coped custom resource provided by ScyllaDB Operator to help you configure ScyllaDB Operator. It helps you configure auxiliary images, see which ones are in use and more. 
 
 ### Local CSI driver
 
@@ -66,7 +66,7 @@ Before reporting and issue, please see our [support page](../support/overview.md
 
 ## Installation modes
 
-Depending on your preference, there is more than one way to install {{productName}} and there may be more to come / or provided by other parties or supply chains.
+Depending on your preference, there is more than one way to install ScyllaDB Operator and there may be more to come / or provided by other parties or supply chains.
 
 At this point, we provide 2 ways to install the operator - [GitOps/manifests](#gitops) and [Helm charts](#helm). Given we provide only a subset of helm charts for the main resources and because **Helm can't update CRDs** - you still have to resort to using the manifests or GitOps anyway. For a consistent experience we'd recommend using the [GitOps flow](#gitops) which will also give you a better idea about what you actually deploy and maintain.
 

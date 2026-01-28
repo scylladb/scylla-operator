@@ -60,9 +60,9 @@ kubectl config current-context
 
 For any `kubectl` commands that you will want to run against this cluster, use the `--context` flag with the value returned by the above command.
 
-#### Deploy {{productName}}
+#### Deploy ScyllaDB Operator
 
-To deploy {{productName}} follow the [installation guide](../../../installation/overview.md).
+To deploy ScyllaDB Operator follow the [installation guide](../../../installation/overview.md).
 
 ### Create the second EKS cluster
 

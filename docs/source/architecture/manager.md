@@ -1,12 +1,12 @@
 # ScyllaDB Manager
 
-{{productName}} has a basic integration with ScyllaDB Manager. At this point there is one global ScyllaDBManager instance that manages all [ScyllaClusters](../resources/scyllaclusters/basics.md). {{productName}} automatically configures the ScyllaDB Manager to monitor the ScyllaDB instances and sync [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) and [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) tasks based on [ScyllaCluster](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) definition. Unfortunately, the rest of the functionality is not yet implemented in ScyllaCluster APIs and e.g. a restore of a cluster from a backup needs to be performed by executing into the shared ScyllaDB Manager deployment and using `sctool` directly by an administrator.
+ScyllaDB Operator has a basic integration with ScyllaDB Manager. At this point there is one global ScyllaDBManager instance that manages all [ScyllaClusters](../resources/scyllaclusters/basics.md). ScyllaDB Operator automatically configures the ScyllaDB Manager to monitor the ScyllaDB instances and sync [repair](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.repairs[]) and [backup](#api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]) tasks based on [ScyllaCluster](../reference/api/groups/scylla.scylladb.com/scyllaclusters.rst) definition. Unfortunately, the rest of the functionality is not yet implemented in ScyllaCluster APIs and e.g. a restore of a cluster from a backup needs to be performed by executing into the shared ScyllaDB Manager deployment and using `sctool` directly by an administrator.
 
 :::{caution}
 Because ScyllaDB Manager instance is shared by all users and their ScyllaClusters, only administrators should have privileges to access the `scylla-manager` namespace.
 :::
 
-ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends on the {{productName}} deployment and the CRD it provides.
+ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends on the ScyllaDB Operator deployment and the CRD it provides.
 
 :::{include} ../.internal/manager-license-note.md
 :::

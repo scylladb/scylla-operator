@@ -1,10 +1,10 @@
 # Feature Gates
 
-{{productName}} lets you enable or disable features using feature gates. This document provides an overview of the available feature gates and instructions on how to use them.
+ScyllaDB Operator lets you enable or disable features using feature gates. This document provides an overview of the available feature gates and instructions on how to use them.
 
 ## Available feature gates
 
-The following feature gates are available in {{productName}}:
+The following feature gates are available in ScyllaDB Operator:
 
 :::{list-table}
 :widths: 60 20 20
@@ -22,12 +22,12 @@ The following feature gates are available in {{productName}}:
 :::
 
 - The "Default" indicates if the feature is enabled when you don't set it explicitly.
-- The "Since" column indicates the {{productName}} version in which the feature gate was introduced or its default was changed.
+- The "Since" column indicates the ScyllaDB Operator version in which the feature gate was introduced or its default was changed.
 
 ### AutomaticTLSCertificates
 
 `AutomaticTLSCertificates` enables mTLS client connections to ScyllaDB. 
-When this feature is enabled, {{productName}} automatically generates and rotates serving and client TLS certificates.
+When this feature is enabled, ScyllaDB Operator automatically generates and rotates serving and client TLS certificates.
 It also configures ScyllaDB nodes to use these certificates for secure client-to-node communication.
 
 :::{note}
@@ -38,7 +38,7 @@ Client certificates are validated by ScyllaDB nodes (the certificate chain must 
 mTLS for node-to-node communication is [not yet supported](https://github.com/scylladb/scylla-operator/issues/2434).
 :::
 
-Refer to [this document](../resources/scyllaclusters/clients/cql.md#remote-cqlsh) for a guide to configuring ScyllaDB clients to use TLS certificates managed by {{productName}}.
+Refer to [this document](../resources/scyllaclusters/clients/cql.md#remote-cqlsh) for a guide to configuring ScyllaDB clients to use TLS certificates managed by ScyllaDB Operator.
 
 ### BootstrapSynchronisation
 
@@ -46,20 +46,20 @@ Refer to [this document](../resources/scyllaclusters/clients/cql.md#remote-cqlsh
 :::
 
 `BootstrapSynchronisation` automates the process of ensuring that no nodes are down when a bootstrap operation is performed.
-{{productName}} will verify the status of all nodes in the cluster before allowing a new ScyllaDB node to bootstrap.
+ScyllaDB Operator will verify the status of all nodes in the cluster before allowing a new ScyllaDB node to bootstrap.
 
 For more information, refer to the [](../management/bootstrap-sync.md) document explaining the feature in detail.
 
 ## Using feature gates
 
-Feature gates can be enabled or disabled by configuring the `--feature-gates` command-line argument of {{productName}}. 
+Feature gates can be enabled or disabled by configuring the `--feature-gates` command-line argument of ScyllaDB Operator. 
 It is a comma-separated list of key-value pairs, where the key is the feature gate name and the value is a boolean indicating whether to enable or disable the feature.
 For example, to enable the `AutomaticTLSCertificates` and `BootstrapSynchronisation` feature gates, set the argument to `AutomaticTLSCertificates=true,BootstrapSynchronisation=true`.
 
 :::::{tabs}
 
 ::::{group-tab} GitOps (kubectl)
-To configure feature gates with GitOps (kubectl), modify the {{productName}} Deployment by configuring the `--feature-gates` command-line argument in the {{productName}} container.
+To configure feature gates with GitOps (kubectl), modify the ScyllaDB Operator Deployment by configuring the `--feature-gates` command-line argument in the ScyllaDB Operator container.
 
 :::{code-block} yaml
 :emphasize-lines: 13
@@ -81,7 +81,7 @@ spec:
 ::::
 
 ::::{group-tab} Helm
-To configure feature gates with Helm, configure the `--feature-gates` command-line argument through {{productName}}'s `values.yaml`:
+To configure feature gates with Helm, configure the `--feature-gates` command-line argument through ScyllaDB Operator's `values.yaml`:
 
 :::{code-block} yaml
 :emphasize-lines: 2

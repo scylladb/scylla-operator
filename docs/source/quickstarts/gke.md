@@ -62,9 +62,9 @@ node-pools create 'scyllaclusters' \
 ::::{include} ../.internal/gke-1-32-xfsprogs.md
 ::::
 
-## Deploying {{productName}}
+## Deploying ScyllaDB Operator
 
-To deploy {{productName}} follow the [installation guide](../installation/overview.md).
+To deploy ScyllaDB Operator follow the [installation guide](../installation/overview.md).
 
 ## Creating ScyllaDB
 

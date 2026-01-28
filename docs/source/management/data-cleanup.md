@@ -1,16 +1,16 @@
 # Automatic data cleanup
 
-This document explains the automatic data cleanup feature in {{productName}}.
+This document explains the automatic data cleanup feature in ScyllaDB Operator.
 
 ## Overview
 
-{{productName}} automates the execution of [node cleanup](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cleanup.html)
+ScyllaDB Operator automates the execution of [node cleanup](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cleanup.html)
 procedures following cluster scaling operations. This feature ensures that your ScyllaDB cluster maintains storage
 efficiency and data integrity by removing stale data and preventing data resurrection.
 
 :::{note}
 While ScyllaDB performs automatic data cleanup for tablet-enabled keyspaces, it does not cover system or standard vnode-based
-keyspaces. To bridge this gap, {{productName}} implements automatic cleanup for these remaining keyspaces.
+keyspaces. To bridge this gap, ScyllaDB Operator implements automatic cleanup for these remaining keyspaces.
 :::
 
 ## Reasons for running cleanup
@@ -32,20 +32,20 @@ During scale-out, cleanup runs on all nodes except the last one added, as it doe
 
 ### How cleanup is triggered
 
-{{productName}} tracks changes in the token ring of the cluster. When a mismatch is detected between the current state
+ScyllaDB Operator tracks changes in the token ring of the cluster. When a mismatch is detected between the current state
 of the ring and the last cleaned-up state, it triggers a cleanup job for the affected nodes. Before triggering
-cleanup jobs, {{productName}} ensures the cluster is stable (conditions: `StatefulSetControllerProgressing=False`,
+cleanup jobs, ScyllaDB Operator ensures the cluster is stable (conditions: `StatefulSetControllerProgressing=False`,
 `Available=True`, and `Degraded=False`).
 
 :::{note}
-Because {{productName}} relies strictly on token ring changes, there are some limitations, which are described in the
+Because ScyllaDB Operator relies strictly on token ring changes, there are some limitations, which are described in the
 [Known limitations](#known-limitations) section.
 :::
 
 ## Inspecting cleanup jobs
 
-{{productName}} creates a Job for each node that requires cleanup. If any job is still running, the `ScyllaCluster`
-status contains the `JobControllerProgressing` condition set to `True`. When a job completes successfully, {{productName}} removes it
+ScyllaDB Operator creates a Job for each node that requires cleanup. If any job is still running, the `ScyllaCluster`
+status contains the `JobControllerProgressing` condition set to `True`. When a job completes successfully, ScyllaDB Operator removes it
 from the cluster. The condition's message contains the name of the running job(s).
 
 When no cleanup jobs are running, the `JobControllerProgressing` condition is set to `False`.
@@ -95,18 +95,18 @@ You can see that for each cleanup job, there are events for job creation, pod cr
 
 ## Known limitations
 
-{{productName}} triggers cleanup based on token ring changes. While this approach is safe, it has some side effects where
+ScyllaDB Operator triggers cleanup based on token ring changes. While this approach is safe, it has some side effects where
 cleanup may be triggered unnecessarily or not at all.
 
 ### Unnecessary cleanups on node decommission
 
 When you decommission a node, tokens are redistributed to the remaining nodes. These nodes do not require cleanup since
-they are not losing any tokens. However, {{productName}} still triggers cleanup for these nodes due to the token ring change.
+they are not losing any tokens. However, ScyllaDB Operator still triggers cleanup for these nodes due to the token ring change.
 This is a safe operation, but it may lead to an unnecessary spike in I/O load.
 
 ### Missed cleanup on RF changes
 
-When you decrease the replication factor (RF) of a keyspace, the token ring remains unchanged. Thus, {{productName}} does
+When you decrease the replication factor (RF) of a keyspace, the token ring remains unchanged. Thus, ScyllaDB Operator does
 not detect the need for cleanup. You should trigger [cluster cleanup](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cluster/cleanup.html)
 manually in such cases (run on any node):
 

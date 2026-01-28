@@ -29,7 +29,7 @@ kubectl -n haproxy-ingress rollout status --timeout=5m deployments.apps/haproxy-
 
 ## Expose Grafana using Ingress
 
-{{productName}} creates a `ClusterIP` Service named `<scyllaDBMonitoringName>-grafana` for each `ScyllaDBMonitoring`.
+ScyllaDB Operator creates a `ClusterIP` Service named `<scyllaDBMonitoringName>-grafana` for each `ScyllaDBMonitoring`.
 Grafana serves TLS using a self-signed certificate that's signed by a CA stored in a Secret named `<scyllaDBMonitoringName>-grafana-serving-ca` by default. 
 
 :::{note}

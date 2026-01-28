@@ -31,14 +31,14 @@ We assume you have four interconnected Kubernetes clusters that can communicate 
 The Control Plane cluster does not have to be a separate Kubernetes cluster. One of the Worker clusters can also serve as the Control Plane cluster.
 ::::
 
-Select one cluster to act as the Control Plane and install {{productName}} along with its prerequisites.
+Select one cluster to act as the Control Plane and install ScyllaDB Operator along with its prerequisites.
 The remaining clusters will serve as Worker clusters and must meet the following criteria:
 - Include a dedicated node pool for ScyllaDB nodes, consisting of at least three nodes deployed across different zones (each with a unique `topology.kubernetes.io/zone` label), configured for ScyllaDB, and labeled with `scylla.scylladb.com/node-type: scylla`.
-- Have {{productName}} and its prerequisites installed.
+- Have ScyllaDB Operator and its prerequisites installed.
 - Run a storage provisioner capable of provisioning XFS volumes with the StorageClass `scylladb-local-xfs` on each node dedicated to ScyllaDB.
 
 :::{caution}
-You are strongly advised to [enable bootstrap synchronisation](../../reference/feature-gates.md#bootstrapsynchronisation) in your {{productName}} installations to avoid potential stability issues when adding new nodes to your ScyllaDB clusters.
+You are strongly advised to [enable bootstrap synchronisation](../../reference/feature-gates.md#bootstrapsynchronisation) in your ScyllaDB Operator installations to avoid potential stability issues when adding new nodes to your ScyllaDB clusters.
 :::
 
 For guidance on setting up such infrastructure, refer to one of the following resources:
@@ -59,7 +59,7 @@ A NodeConfig resource should be deployed in each Worker cluster.
 
 ### Control Plane access
 
-The Control Plane cluster, along with {{productName}} running in it, must have access to the Worker clusters to reconcile the datacenters.  
+The Control Plane cluster, along with ScyllaDB Operator running in it, must have access to the Worker clusters to reconcile the datacenters.  
 To abstract the connection details, you'll create a RemoteKubernetesCluster resource in the Control Plane cluster for each Worker cluster.
 
 Refer to the [RemoteKubernetesCluster documentation](../remotekubernetesclusters.md) for instructions on setting up credentials.  

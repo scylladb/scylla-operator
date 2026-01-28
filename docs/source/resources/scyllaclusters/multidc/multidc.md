@@ -14,7 +14,7 @@ For details of ScyllaDB cluster deployments and their configuration, see the [Sc
 As this document describes the procedure of deploying a Multi Datacenter ScyllaDB cluster, you are expected to have the required infrastructure prepared.
 Let's assume two interconnected Kubernetes clusters, capable of communicating with each other over PodIPs, with each cluster meeting the following requirements:
 - a node pool dedicated to ScyllaDB nodes composed of at least 3 nodes running in different zones (with unique `topology.kubernetes.io/zone` label), configured to run ScyllaDB, each labeled with `scylla.scylladb.com/node-type: scylla`
-- running {{productName}} and its prerequisites
+- running ScyllaDB Operator and its prerequisites
 - running a storage provisioner capable of provisioning XFS volumes of StorageClass `scylladb-local-xfs` in each of the nodes dedicated to ScyllaDB instances
 
 You can refer to one of our guides describing the process of preparing such infrastructure:
@@ -28,11 +28,11 @@ See [Install Tools](https://kubernetes.io/docs/tasks/tools/) in Kubernetes docum
 
 ## Multi Datacenter ScyllaDB Cluster
 
-In v1.11, {{productName}} introduced support for manual multi-datacenter ScyllaDB cluster deployments.
+In v1.11, ScyllaDB Operator introduced support for manual multi-datacenter ScyllaDB cluster deployments.
 
 :::{warning}
-{{productName}} only supports *manual configuration* of multi-datacenter ScyllaDB clusters.
-In other words, although ScyllaCluster API exposes the machinery necessary for setting up multi-datacenter ScylaDB clusters, the {{productName}} only automates operations for a single datacenter.
+ScyllaDB Operator only supports *manual configuration* of multi-datacenter ScyllaDB clusters.
+In other words, although ScyllaCluster API exposes the machinery necessary for setting up multi-datacenter ScylaDB clusters, the ScyllaDB Operator only automates operations for a single datacenter.
 
 Operations related to multiple datacenters may require manual intervention of a human operator.
 Most notably, destroying one of the Kubernetes clusters or ScyllaDB datacenters is going to leave DN nodes behind in other datacenters, and their removal has to be carried out manually.
@@ -46,7 +46,7 @@ The `externalSeeds` field in ScyllaCluster's specification enables control over 
 In this context, external should be understood as "external to the datacenter being specified by the API".
 The provided seeds are used by the nodes as initial points of contact, which allows them to discover the cluster ring topology when joining it.
 
-Refer to [Scylla Seed Nodes](https://opensource.docs.scylladb.com/stable/kb/seed-nodes.html) in ScyllaDB documentation for more information regarding the function of seed nodes in ScyllaDB.
+Refer to [ScyllaDB Seed Nodes](https://opensource.docs.scylladb.com/stable/kb/seed-nodes.html) in ScyllaDB documentation for more information regarding the function of seed nodes in ScyllaDB.
 For more details regarding the function and implementation of external seeds, refer to [the original enhancement proposal](https://github.com/scylladb/scylla-operator/tree/v1.11/enhancements/proposals/1304-external-seeds).
 
 ### Networking
@@ -69,7 +69,7 @@ spec:
         type: PodIP
 ```
 
-However, other configuration options allow for the manual deployment of multi-datacenter ScyllaDB clusters in different network setups. For details, refer to [Exposing ScyllaClusters](../../common/exposing.md) in {{productName}} documentation.
+However, other configuration options allow for the manual deployment of multi-datacenter ScyllaDB clusters in different network setups. For details, refer to [Exposing ScyllaClusters](../../common/exposing.md) in ScyllaDB Operator documentation.
 
 #### Deploy a multi-datacenter ScyllaDB Cluster
 
@@ -568,19 +568,19 @@ UN  172.16.25.18   759 KB     256          ?       665dde7e-e420-4db3-8c54-ca71e
 UN  172.16.87.27   503 KB     256          ?       c19c89cb-e24c-4062-9df4-2aa90ab29a99  c
 ```
 
-## Scylla Manager
+## ScyllaDB Manager
 
-To integrate a multi-datacenter ScyllaDB cluster with Scylla Manager, you must deploy the Scylla Manager in only one datacenter.
+To integrate a multi-datacenter ScyllaDB cluster with ScyllaDB Manager, you must deploy the ScyllaDB Manager in only one datacenter.
 
 In this example, let's choose the Kubernetes cluster deployed in the first datacenter to host it.
-To deploy Scylla Manager, follow the steps described in [Deploying Scylla Manager on a Kubernetes Cluster](../../../architecture/manager.md)
-in {{productName}} documentation. 
+To deploy ScyllaDB Manager, follow the steps described in [Deploying ScyllaDB Manager on a Kubernetes Cluster](../../../architecture/manager.md)
+in ScyllaDB Operator documentation. 
 
-In order to define the Scylla Manager tasks, add them to the ScyllaCluster object deployed in the same Kubernetes cluster 
-in which your Scylla Manager is running.
+In order to define the ScyllaDB Manager tasks, add them to the ScyllaCluster object deployed in the same Kubernetes cluster 
+in which your ScyllaDB Manager is running.
 
-Every datacenter (represented by ScyllaCluster CR) is, by default, provisioned with a new, random Scylla Manager Agent auth token.
-To use Scylla Manager with multiple datacenter (represented by ScyllaClusters), you have to make sure they all use the same token.
+Every datacenter (represented by ScyllaCluster CR) is, by default, provisioned with a new, random ScyllaDB Manager Agent auth token.
+To use ScyllaDB Manager with multiple datacenter (represented by ScyllaClusters), you have to make sure they all use the same token.
 
 Extract it from the first datacenter with the below command:
 ```shell
@@ -604,4 +604,4 @@ kubectl --context="${CONTEXT_DC2}" -n=scylla patch scyllacluster/scylla-cluster 
 ## ScyllaDBMonitoring
 
 To monitor your cluster, deploy ScyllaDBMonitoring in every datacenter independently.
-To deploy ScyllaDB Monitoring, follow the steps described in [ScyllaDB Monitoring setup](../../../management/monitoring/setup.md) in {{productName}} documentation.
+To deploy ScyllaDB Monitoring, follow the steps described in [ScyllaDB Monitoring setup](../../../management/monitoring/setup.md) in ScyllaDB Operator documentation.

@@ -7,4 +7,5 @@ overview
 kubernetes-prerequisites
 gitops
 helm
+OpenShift <openshift>
 :::

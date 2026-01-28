@@ -28,7 +28,7 @@ reference/index
 :title: ScyllaDB Operator
 :image: /_static/mascots/logo.svg
 
-{{productName}} project helps users to run ScyllaDB on Kubernetes. 
+ScyllaDB Operator project helps users to run ScyllaDB on Kubernetes. 
 It extends the Kubernetes APIs using [CustomResourceDefinitions(CRDs)](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/) and runs controllers that reconcile the desired state declared using these APIs.
 ```
 
@@ -37,7 +37,7 @@ It extends the Kubernetes APIs using [CustomResourceDefinitions(CRDs)](https://k
 ```
 
 ```{note}
-{{productName}} works with both ScyllaDB Open Source and ScyllaDB Enterprise. By default, our examples use ScyllaDB Open Source. To make the switch to ScyllaDB Enterprise, you only have to [change the ScyllaCluster image repository](#scyllacluster-enterprise) and [adjust the ScyllaDB utils image using ScyllaOperatorConfig](resources/scyllaoperatorconfigs.md#tuning-with-scylladb-enterprise).
+ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. By default, our examples use ScyllaDB Open Source. To make the switch to ScyllaDB Enterprise, you only have to [change the ScyllaCluster image repository](#scyllacluster-enterprise) and [adjust the ScyllaDB utils image using ScyllaOperatorConfig](resources/scyllaoperatorconfigs.md#tuning-with-scylladb-enterprise).
 ```
 
 ```{raw} html
@@ -70,7 +70,7 @@ Learn about the components of ScyllaDB Operator and how they fit together.
 :anchor: Learn more »
 :class: large-4
 
-Configure your Kubernetes platform, install prerequisites and all components of {{productName}}.
+Configure your Kubernetes platform, install prerequisites and all components of ScyllaDB Operator.
 ```
 
 ```{topic-box}
@@ -80,7 +80,7 @@ Configure your Kubernetes platform, install prerequisites and all components of 
 :anchor: Learn more »
 :class: large-4
 
-Manage your ScyllaDB clusters using {{productName}}. 
+Manage your ScyllaDB clusters using ScyllaDB Operator. 
 ```
 
 ```{topic-box}
@@ -90,7 +90,7 @@ Manage your ScyllaDB clusters using {{productName}}.
 :anchor: Learn more »
 :class: large-4
 
-Learn about the APIs that {{productName}} provides.
+Learn about the APIs that ScyllaDB Operator provides.
 ```
 
 ```{topic-box}
@@ -130,7 +130,7 @@ FAQs, support matrix, must-gather and more.
 :anchor: Learn more »
 :class: large-4
 
-Reference of {{productName}} APIs and configuration options.
+Reference of ScyllaDB Operator APIs and configuration options.
 ```
 ````
 

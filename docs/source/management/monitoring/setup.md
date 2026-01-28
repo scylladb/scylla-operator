@@ -9,8 +9,8 @@ see the [`ScyllaDBMonitoring` API reference](../../reference/api/groups/scylla.s
 
 ## Requirements
 
-Before you can set up your ScyllaDB monitoring, you need {{productName}} (along with the Prometheus Operator) and a `ScyllaCluster`
-already installed in your Kubernetes cluster. For more information on how to deploy {{productName}}, see [the installation guide](../../installation/overview.md).
+Before you can set up your ScyllaDB monitoring, you need ScyllaDB Operator (along with the Prometheus Operator) and a `ScyllaCluster`
+already installed in your Kubernetes cluster. For more information on how to deploy ScyllaDB Operator, see [the installation guide](../../installation/overview.md).
 
 ## Deploy external Prometheus
 
@@ -147,7 +147,7 @@ If you want to customize the `ScyllaDBMonitoring` configuration, we will explain
 :::
 
 This field is used to select the ScyllaDB nodes that will be monitored. In `matchLabels` you should specify the labels that match the ScyllaDB
-Services' labels that are added by {{productName}}:
+Services' labels that are added by ScyllaDB Operator:
 
 - `scylla-operator.scylladb.com/scylla-service-type: member` - This is a static label that's always added to each ScyllaDB node Service.
 - `scylla/cluster` - This label's value depends on your ScyllaCluster name. Replace it with the actual name of your `ScyllaCluster`.

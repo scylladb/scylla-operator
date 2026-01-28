@@ -2,7 +2,7 @@
 
 This guide explains how to configure Linux kernel parameters (sysctls) for nodes running production-grade ScyllaDB deployments.
 
-{{productName}} enables you to manage sysctl settings in a Kubernetes-native way using the NodeConfig resource.
+ScyllaDB Operator enables you to manage sysctl settings in a Kubernetes-native way using the NodeConfig resource.
 
 :::{note}
 To configure sysctls for multi-datacenter ScyllaDB deployments, simply perform the steps outlined in this guide in each worker cluster.
@@ -48,4 +48,4 @@ After applying the manifest, wait for the NodeConfig to be reconciled.
 ### Configuring sysctls via Helm
 
 We do not currently provide Helm charts for NodeConfig configuration.
-In case you installed {{productName}} using Helm, you still need use the GitOps (kubectl) instructions for NodeConfig setup.
+In case you installed ScyllaDB Operator using Helm, you still need use the GitOps (kubectl) instructions for NodeConfig setup.

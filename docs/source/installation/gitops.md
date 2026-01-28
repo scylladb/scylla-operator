@@ -5,7 +5,7 @@
 The following commands reference manifests that come from the same repository as the source code is being built from.
 This means we can't have a pinned reference to the latest release as that is a [chicken-egg problem](https://en.wikipedia.org/wiki/Chicken_or_the_egg). Therefore, we use a rolling tag (e.g., `{major}.{minor}` or `latest`) for the particular branch in our manifests.
 :::{caution}
-For production deployment, you should always replace the {{productName}} image in all the manifests that contain it with a stable (full version) reference.
+For production deployment, you should always replace the ScyllaDB Operator image in all the manifests that contain it with a stable (full version) reference.
 We'd encourage you to use a sha reference, although using full-version tags is also fine.
 :::
 
@@ -16,7 +16,7 @@ We'd encourage you to use a sha reference, although using full-version tags is a
 
 ### Prerequisites
 
-{{productName}} has a few dependencies that you need to install to your cluster first.
+ScyllaDB Operator has a few dependencies that you need to install to your cluster first.
 
 In case you already have a supported version of each of these dependencies installed in your cluster, you can skip this part.
 
@@ -46,11 +46,11 @@ done
 #### Prometheus Operator
 
 :::{note}
-{{productName}} currently relies on the Prometheus Operator CRDs being present in the cluster even if you do not use the
+ScyllaDB Operator currently relies on the Prometheus Operator CRDs being present in the cluster even if you do not use the
 monitoring stack (`ScyllaDBMonitoring` CRD).
 
-If the CRDs are not installed, {{productName}} may report errors about missing Prometheus types. These errors do
-not affect the core functionality of {{productName}}.
+If the CRDs are not installed, ScyllaDB Operator may report errors about missing Prometheus types. These errors do
+not affect the core functionality of ScyllaDB Operator.
 
 Support for making Prometheus Operator installation fully optional is being tracked in issue [#3075](https://github.com/scylladb/scylla-operator/issues/3075).
 :::
@@ -68,9 +68,9 @@ kubectl wait --for='condition=established' crd/prometheuses.monitoring.coreos.co
 kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prometheus-operator
 ```
 
-### {{productName}}
+### ScyllaDB Operator
 
-Once you have the dependencies installed and available in your cluster, it is the time to install {{productName}}.
+Once you have the dependencies installed and available in your cluster, it is the time to install ScyllaDB Operator.
 
 :::{code-block} shell
 :substitutions:
@@ -78,7 +78,7 @@ kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.
 :::
 
 ::::{caution}
-{{productName}} deployment references its own image that it later runs alongside each ScyllaDB instance. Therefore, you have to also replace the image in the environment variable called `SCYLLA_OPERATOR_IMAGE`:
+ScyllaDB Operator deployment references its own image that it later runs alongside each ScyllaDB instance. Therefore, you have to also replace the image in the environment variable called `SCYLLA_OPERATOR_IMAGE`:
 :::{code-block} yaml
 :substitutions:
 :linenos:
@@ -104,7 +104,7 @@ spec:
         - name: SCYLLA_OPERATOR_IMAGE
           value: docker.io/scylladb/scylla-operator:{{latestStableImageTag}}
 :::
-The {{productName}} image value and the `SCYLLA_OPERATOR_IMAGE` shall always match.
+The ScyllaDB Operator image value and the `SCYLLA_OPERATOR_IMAGE` shall always match.
 Be careful not to use a rolling tag for any of them to avoid an accidental skew!
 ::::
 
@@ -222,4 +222,4 @@ Please refer to the [ScyllaDB Monitoring setup](../management/monitoring/setup.m
 
 ## Next steps
 
-Now that you've successfully installed {{productName}}, it's time to look at [how to run ScyllaDB](../resources/scyllaclusters/basics.md).
+Now that you've successfully installed ScyllaDB Operator, it's time to look at [how to run ScyllaDB](../resources/scyllaclusters/basics.md).

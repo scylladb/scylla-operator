@@ -76,7 +76,7 @@ NodeConfig manages setup and tuning for a set of Kubernetes nodes.
 :anchor: Learn more »
 :class: large-6
 
-ScyllaOperatorConfig configures the {{productName}} deployment and reports the status.
+ScyllaOperatorConfig configures the ScyllaDB Operator deployment and reports the status.
 ```
 
 ```{topic-box}
@@ -86,6 +86,6 @@ ScyllaOperatorConfig configures the {{productName}} deployment and reports the s
 :anchor: Learn more »
 :class: large-6
 
-RemoteKubernetesCluster configures the access for {{productName}} to remotely deployed Kubernetes clusters.
+RemoteKubernetesCluster configures the access for ScyllaDB Operator to remotely deployed Kubernetes clusters.
 ```
 ````

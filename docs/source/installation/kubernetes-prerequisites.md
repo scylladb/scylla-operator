@@ -1,6 +1,6 @@
 # Kubernetes prerequisites
 
-Because {{productName}} aims to leverage the best performance available, there are a few extra steps that need to be configured on your Kubernetes cluster.
+Because ScyllaDB Operator aims to leverage the best performance available, there are a few extra steps that need to be configured on your Kubernetes cluster.
 
 ## Kubelet
 
@@ -58,7 +58,7 @@ For the purposes of the installation guides, we assume that the nodes meant to r
 
 #### xfsprogs
 
-{{productName}}'s [NodeConfig](../resources/nodeconfigs.md) controller requires `xfsprogs` to be installed on the Kubernetes
+ScyllaDB Operator's [NodeConfig](../resources/nodeconfigs.md) controller requires `xfsprogs` to be installed on the Kubernetes
 nodes to format the local disks with XFS file system.
 
 This package may be not installed by default on some Kubernetes platforms, like GKE starting with version `1.32.1-gke.1002000`.

@@ -76,7 +76,7 @@ The support matrix table shows version requirements for a particular **ScyllaDB 
 
 ### Architectures
 
-{{productName}} image is published as a manifest list to `docker.io/scylladb/scylla-operator:X.Y.Z` containing image build for `amd64` and `aarch64`.
+ScyllaDB Operator image is published as a manifest list to `docker.io/scylladb/scylla-operator:X.Y.Z` containing image build for `amd64` and `aarch64`.
 
 ### Supported Kubernetes environments
 

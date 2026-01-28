@@ -1,6 +1,6 @@
 # Synchronising bootstrap operations in ScyllaDB clusters
 
-This document explains the automated bootstrap synchronisation in {{productName}}.
+This document explains the automated bootstrap synchronisation in ScyllaDB Operator.
 
 ## Overview
 
@@ -8,7 +8,7 @@ This document explains the automated bootstrap synchronisation in {{productName}
 Precisely speaking, no node in the cluster can consider any other node to be down when a topology change operation is performed.
 If this is not the case and a non-idempotent operation of bootstrapping a new node is started, the coordinator will deny the node joining the cluster and leave it in a state which is difficult to recover from automatically.
 
-To address this issue, by extending ScyllaDB `Pods` with init containers, {{productName}} implements a barrier which observes the statuses of all nodes in the cluster in order to verify that no node in the cluster is down before allowing a new ScyllaDB node to bootstrap.
+To address this issue, by extending ScyllaDB `Pods` with init containers, ScyllaDB Operator implements a barrier which observes the statuses of all nodes in the cluster in order to verify that no node in the cluster is down before allowing a new ScyllaDB node to bootstrap.
 Any restarting nodes which have already been bootstrapped are exempt from meeting this precondition.
 The status of the nodes is propagated in the cluster using the internal `ScyllaDBDatacenterNodeStatuses` CRD. Please refer to the [ScyllaDBDatacenterNodeStatuses API reference](../reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst) for more information.
 
@@ -27,8 +27,8 @@ Before adding a new datacenter or a new node to an existing datacenter in a mult
 :::{include} ../.internal/bootstrap-sync-min-scylladb-version-caution.md
 :::
 
-Due to the fact that {{productName}} does not currently have a reliable way of determining the effective ScyllaDB version used in a `ScyllaCluster` and the required ScyllaDB version for this feature is 2025.2 or later,
-this feature can only be enabled via the `BootstrapSynchronisation` feature gate. This feature will remain opt-in while versions prior to 2025.2 are supported by {{productName}}.
+Due to the fact that ScyllaDB Operator does not currently have a reliable way of determining the effective ScyllaDB version used in a `ScyllaCluster` and the required ScyllaDB version for this feature is 2025.2 or later,
+this feature can only be enabled via the `BootstrapSynchronisation` feature gate. This feature will remain opt-in while versions prior to 2025.2 are supported by ScyllaDB Operator.
 
 Please refer to [](../reference/feature-gates.md) for instructions on how enable or disable a feature gate.
 

@@ -1,6 +1,6 @@
 # Upgrading ScyllaDB clusters
 
-Upgrading your ScyllaDB cluster to a newer version is automated by {{productName}} and performed using a rolling update 
+Upgrading your ScyllaDB cluster to a newer version is automated by ScyllaDB Operator and performed using a rolling update 
 strategy to maintain availability. It is as simple as updating the ScyllaDB image reference in your ScyllaDB cluster specification.
 
 :::{warning}
@@ -20,7 +20,7 @@ For details, refer to the [Upgrade procedure in ScyllaDB's documentation](https:
 :::
 
 :::{caution}
-Before upgrading ScyllaDB, ensure the target version is supported by the version of {{productName}} you are using.
+Before upgrading ScyllaDB, ensure the target version is supported by the version of ScyllaDB Operator you are using.
 Refer to the [support matrix](./../../support/releases.md#support-matrix) for information on version compatibility.
 :::
 
@@ -74,7 +74,7 @@ After reapplying the manifest, wait for your ScyllaDBCluster to roll out.
 ## Upgrade via Helm
 
 :::{important}
-{{productName}} does not yet support Helm installation path for managed multi-datacenter ScyllaDB clusters.
+ScyllaDB Operator does not yet support Helm installation path for managed multi-datacenter ScyllaDB clusters.
 :::
 
 To upgrade your ScyllaDB cluster using Helm, upgrade your Helm release with the target ScyllaDB image tag/reference.

@@ -8,11 +8,11 @@ The guide assumes you have read the [overview](overview.md) and [setup](setup.md
 
 ## Requirements
 
-This guide assumes you have {{productName}} and a `ScyllaCluster` already installed in your OpenShift cluster.
-For more information on how to deploy {{productName}}, see [the installation guide](../../installation/overview.md).
+This guide assumes you have ScyllaDB Operator and a `ScyllaCluster` already installed in your OpenShift cluster.
+For more information on how to deploy ScyllaDB Operator, see [the installation guide](../../installation/overview.md).
 
 :::{note}
-The {{productName}} installation process on OpenShift is the same as on vanilla Kubernetes. However, unlike Kubernetes,
+The ScyllaDB Operator installation process on OpenShift is the same as on vanilla Kubernetes. However, unlike Kubernetes,
 OpenShift includes a built-in Prometheus Operator and [User Workload Monitoring (UWM)][user-workload-monitoring] for user
 workloads. Therefore, instead of deploying Prometheus using ScyllaDBMonitoring, we configure it to use the external
 Prometheus instance provided by OpenShift UWM.

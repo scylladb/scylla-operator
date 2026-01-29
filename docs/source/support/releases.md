@@ -142,6 +142,10 @@ The support matrix table shows version requirements for a particular **ScyllaDB 
   - 1.31 - 1.34
   - 1.31 - 1.34
   - 1.30 - 1.33
+* - OpenShift
+  - {{supportedOpenShiftVersionRange}}
+  - Not supported
+  - Not supported
 * - CRI API
   - v1
   - v1

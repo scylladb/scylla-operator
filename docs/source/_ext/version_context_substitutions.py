@@ -7,12 +7,58 @@ Sphinx extension to extend myst_substitutions with version context in build time
 import os
 import re
 import subprocess
-from typing import Any, Optional
+from functools import reduce
+from typing import Any, Optional, cast
 
 import yaml
 from sphinx.application import Sphinx
 from sphinx.config import Config
 from sphinx.errors import ExtensionError
+
+DEFAULT_BRANCH = 'master'
+
+
+def read_yaml_file(file_path: str) -> dict[str, Any]:
+    """
+    Read and parse a YAML file.
+
+    Args:
+        file_path: Path to the YAML file.
+
+    Returns:
+        Parsed YAML data as a dictionary.
+
+    Raises:
+        ExtensionError: If the file doesn't exist or parsing fails.
+    """
+    if not os.path.exists(file_path):
+        raise ExtensionError(f"File not found: {file_path}")
+
+    try:
+        with open(file_path, 'r') as f:
+            return yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ExtensionError(f"Failed to parse YAML file {file_path}: {e}")
+    except Exception as e:
+        raise ExtensionError(f"Error reading YAML file {file_path}: {e}")
+
+
+def get_nested_value(data: dict, key_path: str) -> Optional[str]:
+    """
+    Get a value from a nested dictionary using dot notation (e.g., 'operator.scyllaDBVersion').
+
+    Args:
+        data: The dictionary to query.
+        key_path: Dot-separated path to the value (e.g., 'operator.scyllaDBVersion').
+
+    Returns:
+        The string value at the specified path, or None if not found.
+    """
+    try:
+        result = reduce(lambda d, key: d.get(key) if isinstance(d, dict) else None, key_path.split('.'), data)
+        return cast(Optional[str], cast(object, result))
+    except (KeyError, TypeError):
+        return None
 
 
 def get_versions_from_config(repo_root: str) -> dict[str, str]:
@@ -27,37 +73,86 @@ def get_versions_from_config(repo_root: str) -> dict[str, str]:
         Dictionary with versions extracted from config.yaml.
     """
     config_path = os.path.join(repo_root, 'assets', 'config', 'config.yaml')
+    config_data = read_yaml_file(config_path)
 
-    if not os.path.exists(config_path):
-        raise ExtensionError(f"Config file not found: {config_path}")
+    # Strip digest if present (e.g., "3.8.0@sha256:..." -> "3.8.0")
+    def strip_digest(version: str) -> str:
+        return version.split('@')[0] if '@' in version else version
 
-    try:
-        with open(config_path, 'r') as f:
-            config_data = yaml.safe_load(f)
+    result = {}
 
-        operator = config_data.get('operator', {})
+    scylla_db_version = get_nested_value(config_data, 'operator.scyllaDBVersion')
+    if not scylla_db_version:
+        raise ExtensionError(f"operator.scyllaDBVersion not found in {config_path}")
 
-        scylla_db_version = operator.get('scyllaDBVersion')
-        if not scylla_db_version:
-            raise ExtensionError("operator.scyllaDBVersion not found in config.yaml")
+    result['scyllaDBImageTag'] = strip_digest(scylla_db_version)
 
-        scylla_db_manager_agent_version = operator.get('scyllaDBManagerAgentVersion')
-        if not scylla_db_manager_agent_version:
-            raise ExtensionError("operator.scyllaDBManagerAgentVersion not found in config.yaml")
+    scylla_db_manager_agent_version = get_nested_value(config_data, 'operator.scyllaDBManagerAgentVersion')
+    if not scylla_db_manager_agent_version:
+        raise ExtensionError(f"operator.scyllaDBManagerAgentVersion not found in {config_path}")
 
-        # Strip digest if present (e.g., "3.8.0@sha256:..." -> "3.8.0")
-        def strip_digest(version: str) -> str:
-            return version.split('@')[0] if '@' in version else version
+    result['agentVersion'] = strip_digest(scylla_db_manager_agent_version)
 
-        return {
-            'scyllaDBVersion': strip_digest(scylla_db_version),
-            'scyllaDBManagerAgentVersion': strip_digest(scylla_db_manager_agent_version),
-        }
+    return result
 
-    except yaml.YAMLError as e:
-        raise ExtensionError(f"Failed to parse config.yaml: {e}")
-    except Exception as e:
-        raise ExtensionError(f"Error reading config.yaml: {e}")
+
+def should_have_metadata(version: str) -> bool:
+    """
+    Check if a version should have metadata.yaml file and required keys.
+
+    Args:
+        version: Version string (e.g., 'master', 'v1.19', 'v1.20').
+
+    Returns:
+        True if version is master or >1.19, False otherwise.
+    """
+    if version == DEFAULT_BRANCH:
+        return True
+
+    # Parse version from branch name (e.g., 'v1.19' -> (1, 19))
+    match = re.match(r'^v(\d+)\.(\d+)$', version)
+    if not match:
+        return False
+
+    major = int(match.group(1))
+    minor = int(match.group(2))
+
+    # Metadata exists for versions > 1.19
+    return (major, minor) > (1, 19)
+
+
+def get_versions_from_metadata(repo_root: str) -> dict[str, str]:
+    """
+    Read version information from assets/metadata/metadata.yaml.
+
+    Args:
+        repo_root: Path to the repository root directory. Should point to the version-specific
+                   directory (sphinx-multiversion temporary directory when building multi-version docs).
+
+    Returns:
+        Dictionary with versions extracted from metadata.yaml.
+    """
+    metadata_path = os.path.join(repo_root, 'assets', 'metadata', 'metadata.yaml')
+    metadata_data = read_yaml_file(metadata_path)
+
+    result = {}
+
+    min_openshift_version = get_nested_value(metadata_data, 'operator.minOpenShiftVersion')
+    if not min_openshift_version:
+        raise ExtensionError(f"operator.minOpenShiftVersion not found in {metadata_path}")
+
+    max_openshift_version = get_nested_value(metadata_data, 'operator.maxOpenShiftVersion')
+    if not max_openshift_version:
+        raise ExtensionError(f"operator.maxOpenShiftVersion not found in {metadata_path}")
+
+    if min_openshift_version == max_openshift_version:
+        openshift_version_range = min_openshift_version
+    else:
+        openshift_version_range = f"{min_openshift_version} - {max_openshift_version}"
+
+    result['supportedOpenShiftVersionRange'] = openshift_version_range
+
+    return result
 
 
 def get_latest_release_for_revision(revision: str, repo_root: str) -> Optional[str]:
@@ -95,10 +190,11 @@ def get_latest_release_for_revision(revision: str, repo_root: str) -> Optional[s
         stable_tags.sort(key=lambda x: [int(y) for y in x.lstrip('v').split('.')], reverse=True)
 
         # For versioned branches (vX.Y), try to find matching releases.
-        if revision != "master":
+        if revision != DEFAULT_BRANCH:
             match = re.match(r'^v(\d+\.\d+)$', revision)
             if not match:
-                raise ExtensionError(f"Could not parse version from revision '{revision}'. Expected format: 'master' or vX.Y")
+                raise ExtensionError(
+                    f"Could not parse version from revision '{revision}'. Expected format: '{DEFAULT_BRANCH}' or vX.Y")
 
             major_minor = match.group(1)
             matching_tags = [tag for tag in stable_tags if re.match(rf'^v{re.escape(major_minor)}\.', tag)]
@@ -106,7 +202,7 @@ def get_latest_release_for_revision(revision: str, repo_root: str) -> Optional[s
             if matching_tags:
                 return matching_tags[0]
 
-        # For master or branches with no stable releases, return the latest stable release.
+        # For default branch or branches with no stable releases, return the latest stable release.
         return stable_tags[0]
 
     except subprocess.CalledProcessError as e:
@@ -134,8 +230,8 @@ def setup_version_context_substitutions(app: Sphinx, config: Config) -> None:
     # With sphinx-multiversion, this points to the temporary directory containing version-specific files.
     current_repo_root = os.path.abspath(os.path.join(app.srcdir, '..', '..'))
 
-    # Get current version being built (from sphinx-multiversion or default to master).
-    current_version = os.environ.get('SPHINX_MULTIVERSION_NAME', 'master')
+    # Get current version being built (from sphinx-multiversion or default).
+    current_version = os.environ.get('SPHINX_MULTIVERSION_NAME', DEFAULT_BRANCH)
 
     # Update myst_substitutions with version context.
 
@@ -157,9 +253,13 @@ def setup_version_context_substitutions(app: Sphinx, config: Config) -> None:
 
     # Add version information from config.yaml.
     # Use the version-specific repo root to read the correct config file.
-    config_versions = get_versions_from_config(current_repo_root)
-    config.myst_substitutions['scyllaDBImageTag'] = config_versions['scyllaDBVersion']
-    config.myst_substitutions['agentVersion'] = config_versions['scyllaDBManagerAgentVersion']
+    config.myst_substitutions.update(get_versions_from_config(current_repo_root))
+
+    # Add version information from metadata.yaml.
+    # Only fetch metadata for versions >1.19 or master.
+    if should_have_metadata(current_version):
+        # Use the version-specific repo root to read the correct metadata file.
+        config.myst_substitutions.update(get_versions_from_metadata(current_repo_root))
 
 
 def setup(app: Sphinx) -> dict[str, Any]:

@@ -37,7 +37,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
-	github.com/scylladb/gocqlx/v2 v2.8.0
+	github.com/scylladb/gocqlx/v3 v3.0.4
 	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260108132715-a46b9332650a
 	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260108132715-a46b9332650a
 	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260108132715-a46b9332650a

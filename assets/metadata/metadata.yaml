@@ -1,8 +1,8 @@
 # This file contains metadata for the Scylla Operator.
 # It serves as a single source of truth, and its values should propagate to all other places that rely on this information.
 operator:
-  minOpenShiftVersion: 4.19
-  maxOpenShiftVersion: 4.19
+  minOpenShiftVersion: 4.20
+  maxOpenShiftVersion: 4.20
   minKubernetesVersion: 1.31.0
   redHatCertificationProjectID: "678641799dbe477195796c15"
 operatorTests:

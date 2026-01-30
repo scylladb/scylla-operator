@@ -1,99 +1,146 @@
 groups:
 - name: scylla.rules
   rules:
-  - record: wlatencyp99ks
-    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
+  - record: scylla_column_family_write_latency_summary
+    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_write_latency_bucket{shard!=""}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
     labels:
       by: "instance,shard"
-  - record: wlatencyp99ks
+      quantile: "0.99"
+  - record: scylla_column_family_write_latency_summary
     expr: histogram_quantile(0.99, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, instance, le,ks,cf))
     labels:
       by: "instance"
-  - record: wlatencyp99ks
+      quantile: "0.99"
+  - record: scylla_column_family_write_latency_summary
     expr: histogram_quantile(0.99, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, le,ks,cf))
     labels:
       by: "dc"
-  - record: wlatencyp99ks
+      quantile: "0.99"
+  - record: scylla_column_family_write_latency_summary
     expr: histogram_quantile(0.99, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, le,ks,cf))
     labels:
       by: "cluster"
-  - record: rlatencyp99ks
-    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
+      quantile: "0.99"
+  - record: scylla_column_family_write_latency_summary
+    expr: histogram_quantile(0.95, sum(rate(scylla_column_family_write_latency_bucket{shard!=""}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
     labels:
       by: "instance,shard"
-  - record: rlatencyp99ks
-    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, instance, le,ks,cf))
-    labels:
-      by: "instance"
-  - record: rlatencyp99ks
-    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, le,ks,cf))
-    labels:
-      by: "dc"
-  - record: rlatencyp99ks
-    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, le,ks,cf))
-    labels:
-      by: "cluster"
-  - record: wlatencyp95ks
-    expr: histogram_quantile(0.95, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
-    labels:
-      by: "instance,shard"
-  - record: wlatencyp95ks
+      quantile: "0.95"
+  - record: scylla_column_family_write_latency_summary
     expr: histogram_quantile(0.95, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, instance, le,ks,cf))
     labels:
       by: "instance"
-  - record: wlatencyp95ks
+      quantile: "0.95"
+  - record: scylla_column_family_write_latency_summary
     expr: histogram_quantile(0.95, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, le,ks,cf))
     labels:
       by: "dc"
-  - record: wlatencyp95ks
+      quantile: "0.95"
+  - record: scylla_column_family_write_latency_summary
     expr: histogram_quantile(0.95, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, le,ks,cf))
     labels:
       by: "cluster"
-  - record: rlatencyp95ks
-    expr: histogram_quantile(0.95, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
+      quantile: "0.95"
+  - record: scylla_column_family_write_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_write_latency_bucket{shard!=""}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
     labels:
       by: "instance,shard"
-  - record: rlatencyp95ks
+      quantile: "0.5"
+  - record: scylla_column_family_write_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, instance, le,ks,cf))
+    labels:
+      by: "instance"
+      quantile: "0.5"
+  - record: scylla_column_family_write_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, dc, le,ks,cf))
+    labels:
+      by: "dc"
+      quantile: "0.5"
+  - record: scylla_column_family_write_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_write_latency_bucket{}[60s])) by (cluster, le,ks,cf))
+    labels:
+      by: "cluster"
+      quantile: "0.5"
+ 
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{shard!=""}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
+    labels:
+      by: "instance,shard"
+      quantile: "0.99"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, instance, le,ks,cf))
+    labels:
+      by: "instance"
+      quantile: "0.99"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, le,ks,cf))
+    labels:
+      by: "dc"
+      quantile: "0.99"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.99, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, le,ks,cf))
+    labels:
+      by: "cluster"
+      quantile: "0.99"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.95, sum(rate(scylla_column_family_read_latency_bucket{shard!=""}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
+    labels:
+      by: "instance,shard"
+      quantile: "0.95"
+  - record: scylla_column_family_read_latency_summary
     expr: histogram_quantile(0.95, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, instance, le,ks,cf))
     labels:
       by: "instance"
-  - record: rlatencyp95ks
+      quantile: "0.95"
+  - record: scylla_column_family_read_latency_summary
     expr: histogram_quantile(0.95, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, le,ks,cf))
     labels:
       by: "dc"
-  - record: rlatencyp95ks
+      quantile: "0.95"
+  - record: scylla_column_family_read_latency_summary
     expr: histogram_quantile(0.95, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, le,ks,cf))
     labels:
       by: "cluster"
-  - record: wlatencyaks
-    expr: sum(rate(scylla_column_family_write_latency_sum{}[60s])) by (cluster, dc, instance, shard,ks,cf)/sum(rate(scylla_column_family_write_latency_count{}[60s])) by (cluster, dc, instance, shard,ks,cf)
+      quantile: "0.95"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_read_latency_bucket{shard!=""}[60s])) by (cluster, dc, instance, shard, le,ks,cf))
     labels:
       by: "instance,shard"
-  - record: wlatencyaks
-    expr: sum(rate(scylla_column_family_write_latency_sum{}[60s])) by (cluster, dc, instance,ks,cf)/sum(rate(scylla_column_family_write_latency_count{}[60s])) by (cluster, dc, instance,ks,cf)
+      quantile: "0.5"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, instance, le,ks,cf))
     labels:
       by: "instance"
-  - record: wlatencyaks
-    expr: sum(rate(scylla_column_family_write_latency_sum{}[60s])) by (cluster, dc,ks,cf)/sum(rate(scylla_column_family_write_latency_count{}[60s])) by (cluster, dc,ks,cf)
+      quantile: "0.5"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, dc, le,ks,cf))
     labels:
       by: "dc"
+      quantile: "0.5"
+  - record: scylla_column_family_read_latency_summary
+    expr: histogram_quantile(0.5, sum(rate(scylla_column_family_read_latency_bucket{}[60s])) by (cluster, le,ks,cf))
+    labels:
+      by: "cluster"
+      quantile: "0.5"
+  - record: wlatencyp99ks
+    expr: scylla_column_family_write_latency_summary{quantile="0.99"}
+  - record: rlatencyp99ks
+    expr: scylla_column_family_read_latency_summary{quantile="0.99"}
+  - record: wlatencyp95ks
+    expr: scylla_column_family_write_latency_summary{quantile="0.95"}
+  - record: rlatencyp95ks
+    expr: scylla_column_family_read_latency_summary{quantile="0.95"}
   - record: wlatencyaks
-    expr: sum(rate(scylla_column_family_write_latency_sum{}[60s])) by (cluster,ks,cf)/sum(rate(scylla_column_family_write_latency_count{}[60s])) by (cluster,ks,cf)
+    expr: scylla_column_family_write_latency_summary{quantile="0.5"}
+  - record: rlatencyaks
+    expr: scylla_column_family_read_latency_summary{quantile="0.5"}
+  - record: scylla_column_family_write_total
+    expr: label_join(sum(scylla_column_family_write_latency_count) by (cluster,ks,cf) or  0 * sum(scylla_column_family_cache_hit_rate) by (cluster,ks,cf), "ks_cf", ":", "ks", "cf")
     labels:
       by: "cluster"
-  - record: rlatencyaks
-    expr: sum(rate(scylla_column_family_read_latency_sum{}[60s])) by (cluster, dc, instance, shard,ks,cf)/sum(rate(scylla_column_family_read_latency_count{}[60s])) by (cluster, dc, instance, shard,ks,cf)
-    labels:
-      by: "instance,shard"
-  - record: rlatencyaks
-    expr: sum(rate(scylla_column_family_read_latency_sum{}[60s])) by (cluster, dc, instance,ks,cf)/sum(rate(scylla_column_family_read_latency_count{}[60s])) by (cluster, dc, instance,ks,cf)
-    labels:
-      by: "instance"
-  - record: rlatencyaks
-    expr: sum(rate(scylla_column_family_read_latency_sum{}[60s])) by (cluster, dc,ks,cf)/sum(rate(scylla_column_family_read_latency_count{}[60s])) by (cluster, dc,ks,cf)
-    labels:
-      by: "dc"
-  - record: rlatencyaks
-    expr: sum(rate(scylla_column_family_read_latency_sum{}[60s])) by (cluster,ks,cf)/sum(rate(scylla_column_family_read_latency_count{}[60s])) by (cluster,ks,cf)
+      dd: "1"
+  - record: scylla_column_family_read_total
+    expr: label_join(sum(scylla_column_family_read_latency_count) by (cluster,ks,cf) or  0 * sum(scylla_column_family_cache_hit_rate) by (cluster,ks,cf), "ks_cf", ":", "ks", "cf")
     labels:
       by: "cluster"
+      dd: "1"

@@ -1634,7 +1634,17 @@
                         "desc": true
                     },
                     "span": 12,
-                    "targets": [],
+                    "targets": [
+                        {
+                            "allHosts": true,
+                            "dashversion": [
+                                ">2024.2"
+                            ],
+                            "queryHost": "$original_ip",
+                            "queryText": "select keyspace_name, table_name, partition_key, partition_size, compaction_time, rows, dead_rows, range_tombstones from system.large_partitions",
+                            "refId": "A"
+                        }
+                    ],
                     "title": "Large Partitions",
                     "transform": "table",
                     "type": "table"
@@ -4619,7 +4629,7 @@
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "master"
+        "2026.1"
     ],
     "templating": {
         "list": [
@@ -4922,8 +4932,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "master",
-                    "value": "master"
+                    "text": "2026-1",
+                    "value": "2026-1"
                 },
                 "error": null,
                 "hide": 2,
@@ -4934,11 +4944,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "master",
-                        "value": "master"
+                        "text": "2026-1",
+                        "value": "2026-1"
                     }
                 ],
-                "query": "master",
+                "query": "2026-1",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -4946,8 +4956,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "master",
-                    "value": "master"
+                    "text": "2026.1",
+                    "value": "2026.1"
                 },
                 "error": null,
                 "hide": 2,
@@ -4958,11 +4968,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "master",
-                        "value": "master"
+                        "text": "2026.1",
+                        "value": "2026.1"
                     }
                 ],
-                "query": "master",
+                "query": "2026.1",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -5024,6 +5034,6 @@
     },
     "timezone": "utc",
     "title": "Scylla CQL",
-    "uid": "cql-master",
+    "uid": "cql-2026-1",
     "version": 1
 }

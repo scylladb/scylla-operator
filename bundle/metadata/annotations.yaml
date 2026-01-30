@@ -8,4 +8,4 @@ annotations:
   operators.operatorframework.io.metrics.builder: operator-sdk-unknown
   operators.operatorframework.io.metrics.mediatype.v1: metrics+v1
   operators.operatorframework.io.metrics.project_layout: go.kubebuilder.io/v4
-  com.redhat.openshift.versions: v4.19-v4.19
+  com.redhat.openshift.versions: v4.20-v4.20

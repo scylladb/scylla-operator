@@ -29,7 +29,24 @@ fi
 
 # Ensure KinD cluster exists.
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
-    kind create cluster --name="${CLUSTER_NAME}" --config="${parent_dir}/cluster-config.yaml"
+    KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${parent_dir}/cluster-config.yaml" --retain)
+
+    # Ensure kind uses podman.
+    export KIND_EXPERIMENTAL_PROVIDER=podman
+
+    # As we rely on rootless Podman, we need to delegate cgroup management to the user systemd instance (this is implicitly
+    # done on systems with systemd >= 252, but needs to be explicit on older systems).
+    # See https://kind.sigs.k8s.io/docs/user/rootless/ for more details.
+
+    # Check if systemd is the init system.
+    if [ -d /run/systemd/system ] && command -v systemd-run >/dev/null 2>&1; then
+        echo "Systemd detected. Delegating cgroups via systemd-run."
+        systemd-run --scope --user -p "Delegate=yes" "${KIND_CREATE_CMD[@]}"
+    else
+        # Most likely in a container with no systemd (e.g., in CI).
+        echo "No systemd detected. Running kind directly."
+        "${KIND_CREATE_CMD[@]}"
+    fi
 else
     echo "Reusing existing KinD cluster: ${CLUSTER_NAME}"
 fi

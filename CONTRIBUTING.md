@@ -35,8 +35,11 @@ it's up to the developer to ensure they are available in the environment:
 
 ### Running E2E tests locally
 
-We use [Kind](https://kind.sigs.k8s.io/) for basic local testing. There's a Makefile target to create a Kind cluster with a local registry configured
-so we can use locally built images. To set up the Kind cluster, run:
+We use [Kind](https://kind.sigs.k8s.io/) for basic local testing. We rely on a kind with rootless Podman setup, so before
+proceeding, make sure your host system is configured accordingly to [Kind Podman rootless guide](https://kind.sigs.k8s.io/docs/user/rootless/).
+
+There's a Makefile target to create a Kind cluster with a local registry configured so we can use locally built images.
+To set up the Kind cluster, run:
 
 ```bash
 make kind-setup

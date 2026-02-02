@@ -264,7 +264,7 @@ github.com/containers/storage/pkg/reexec
 github.com/containers/storage/pkg/regexp
 github.com/containers/storage/pkg/system
 github.com/containers/storage/pkg/unshare
-# github.com/coreos/go-systemd/v22 v22.6.0
+# github.com/coreos/go-systemd/v22 v22.7.0
 ## explicit; go 1.23
 github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/unit
@@ -565,7 +565,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/pprof v0.0.0-20251007162407-5df77e3f7d1d
+# github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83
 ## explicit; go 1.24.0
 github.com/google/pprof/profile
 # github.com/google/uuid v1.6.0
@@ -716,8 +716,8 @@ github.com/mxk/go-flowrate/flowrate
 # github.com/oklog/ulid v1.3.1
 ## explicit
 github.com/oklog/ulid
-# github.com/onsi/ginkgo/v2 v2.27.5
-## explicit; go 1.23.0
+# github.com/onsi/ginkgo/v2 v2.28.1
+## explicit; go 1.24.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
 github.com/onsi/ginkgo/v2/formatter
@@ -740,8 +740,8 @@ github.com/onsi/ginkgo/v2/internal/reporters
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.39.0
-## explicit; go 1.23.0
+# github.com/onsi/gomega v1.39.1
+## explicit; go 1.24.0
 github.com/onsi/gomega
 github.com/onsi/gomega/format
 github.com/onsi/gomega/internal
@@ -842,11 +842,11 @@ github.com/scylladb/go-set/strset
 github.com/scylladb/gocqlx/v2
 github.com/scylladb/gocqlx/v2/qb
 github.com/scylladb/gocqlx/v2/table
-# github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260108132715-a46b9332650a
+# github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260128142811-4618ae4ab7b7
 ## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/pkg/managerclient
 github.com/scylladb/scylla-manager/v3/pkg/managerclient/table
-# github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260108132715-a46b9332650a
+# github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260128142811-4618ae4ab7b7
 ## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/pkg/util
 github.com/scylladb/scylla-manager/v3/pkg/util/inexlist
@@ -856,7 +856,7 @@ github.com/scylladb/scylla-manager/v3/pkg/util/sizesuffix
 github.com/scylladb/scylla-manager/v3/pkg/util/timeutc
 github.com/scylladb/scylla-manager/v3/pkg/util/uuid
 github.com/scylladb/scylla-manager/v3/pkg/util/version
-# github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260108132715-a46b9332650a
+# github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260128142811-4618ae4ab7b7
 ## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/client/operations
 github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models
@@ -1808,7 +1808,7 @@ k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/trace
-# sigs.k8s.io/controller-runtime v0.23.0
+# sigs.k8s.io/controller-runtime v0.23.1
 ## explicit; go 1.25.0
 sigs.k8s.io/controller-runtime/pkg/client
 sigs.k8s.io/controller-runtime/pkg/client/apiutil
@@ -1929,7 +1929,7 @@ sigs.k8s.io/kustomize/kyaml/yaml/walk
 ## explicit; go 1.18
 sigs.k8s.io/randfill
 sigs.k8s.io/randfill/bytesource
-# sigs.k8s.io/structured-merge-diff/v6 v6.3.1
+# sigs.k8s.io/structured-merge-diff/v6 v6.3.2-0.20260122202528-d9cc6641c482
 ## explicit; go 1.23
 sigs.k8s.io/structured-merge-diff/v6/fieldpath
 sigs.k8s.io/structured-merge-diff/v6/merge

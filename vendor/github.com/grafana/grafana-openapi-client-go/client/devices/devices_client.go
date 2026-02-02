@@ -53,8 +53,8 @@ func (a *Client) SearchDevicesWithParams(params *SearchDevicesParams, opts ...Cl
 	}
 	op := &runtime.ClientOperation{
 		ID:                 "SearchDevices",
-		Method:             "POST",
-		PathPattern:        "/search",
+		Method:             "GET",
+		PathPattern:        "/anonymous/search",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http", "https"},
@@ -98,7 +98,7 @@ func (a *Client) ListDevicesWithParams(params *ListDevicesParams, opts ...Client
 	op := &runtime.ClientOperation{
 		ID:                 "listDevices",
 		Method:             "GET",
-		PathPattern:        "/stats",
+		PathPattern:        "/anonymous/devices",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http", "https"},

@@ -29,6 +29,8 @@ type ClientService interface {
 
 	DeleteClusterClusterIDBackups(params *DeleteClusterClusterIDBackupsParams) (*DeleteClusterClusterIDBackupsOK, error)
 
+	DeleteClusterClusterIDBackupsLocalSnapshots(params *DeleteClusterClusterIDBackupsLocalSnapshotsParams) (*DeleteClusterClusterIDBackupsLocalSnapshotsOK, error)
+
 	DeleteClusterClusterIDTaskTaskTypeTaskID(params *DeleteClusterClusterIDTaskTaskTypeTaskIDParams) (*DeleteClusterClusterIDTaskTaskTypeTaskIDOK, error)
 
 	GetClusterClusterID(params *GetClusterClusterIDParams) (*GetClusterClusterIDOK, error)
@@ -52,6 +54,8 @@ type ClientService interface {
 	GetClusterClusterIDTaskRepairTaskIDRunID(params *GetClusterClusterIDTaskRepairTaskIDRunIDParams) (*GetClusterClusterIDTaskRepairTaskIDRunIDOK, error)
 
 	GetClusterClusterIDTaskRestoreTaskIDRunID(params *GetClusterClusterIDTaskRestoreTaskIDRunIDParams) (*GetClusterClusterIDTaskRestoreTaskIDRunIDOK, error)
+
+	GetClusterClusterIDTaskTabletRepairTaskIDRunID(params *GetClusterClusterIDTaskTabletRepairTaskIDRunIDParams) (*GetClusterClusterIDTaskTabletRepairTaskIDRunIDOK, error)
 
 	GetClusterClusterIDTaskTaskTypeTaskID(params *GetClusterClusterIDTaskTaskTypeTaskIDParams) (*GetClusterClusterIDTaskTaskTypeTaskIDOK, error)
 
@@ -155,6 +159,39 @@ func (a *Client) DeleteClusterClusterIDBackups(params *DeleteClusterClusterIDBac
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*DeleteClusterClusterIDBackupsDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+DeleteClusterClusterIDBackupsLocalSnapshots Delete SM snapshots from all nodes' disks in the cluster
+*/
+func (a *Client) DeleteClusterClusterIDBackupsLocalSnapshots(params *DeleteClusterClusterIDBackupsLocalSnapshotsParams) (*DeleteClusterClusterIDBackupsLocalSnapshotsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewDeleteClusterClusterIDBackupsLocalSnapshotsParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "DeleteClusterClusterIDBackupsLocalSnapshots",
+		Method:             "DELETE",
+		PathPattern:        "/cluster/{cluster_id}/backups/local_snapshots",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &DeleteClusterClusterIDBackupsLocalSnapshotsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DeleteClusterClusterIDBackupsLocalSnapshotsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*DeleteClusterClusterIDBackupsLocalSnapshotsDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 
@@ -551,6 +588,39 @@ func (a *Client) GetClusterClusterIDTaskRestoreTaskIDRunID(params *GetClusterClu
 	}
 	// unexpected success response
 	unexpectedSuccess := result.(*GetClusterClusterIDTaskRestoreTaskIDRunIDDefault)
+	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
+}
+
+/*
+GetClusterClusterIDTaskTabletRepairTaskIDRunID get cluster cluster ID task tablet repair task ID run ID API
+*/
+func (a *Client) GetClusterClusterIDTaskTabletRepairTaskIDRunID(params *GetClusterClusterIDTaskTabletRepairTaskIDRunIDParams) (*GetClusterClusterIDTaskTabletRepairTaskIDRunIDOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetClusterClusterIDTaskTabletRepairTaskIDRunIDParams()
+	}
+
+	result, err := a.transport.Submit(&runtime.ClientOperation{
+		ID:                 "GetClusterClusterIDTaskTabletRepairTaskIDRunID",
+		Method:             "GET",
+		PathPattern:        "/cluster/{cluster_id}/task/tablet_repair/{task_id}/{run_id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetClusterClusterIDTaskTabletRepairTaskIDRunIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetClusterClusterIDTaskTabletRepairTaskIDRunIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	unexpectedSuccess := result.(*GetClusterClusterIDTaskTabletRepairTaskIDRunIDDefault)
 	return nil, runtime.NewAPIError("unexpected success response: content available as default response in error", unexpectedSuccess, unexpectedSuccess.Code())
 }
 
@@ -1017,7 +1087,7 @@ func (a *Client) PutClusterClusterIDRepairsParallel(params *PutClusterClusterIDR
 }
 
 /*
-PutClusterClusterIDSuspended put cluster cluster ID suspended API
+PutClusterClusterIDSuspended RPC-style endpoint for suspending and resuming cluster
 */
 func (a *Client) PutClusterClusterIDSuspended(params *PutClusterClusterIDSuspendedParams) (*PutClusterClusterIDSuspendedOK, error) {
 	// TODO: Validate the params before sending

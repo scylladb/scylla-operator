@@ -50,8 +50,11 @@ type ClientService interface {
 	GetUserAuthTokens(opts ...ClientOption) (*GetUserAuthTokensOK, error)
 	GetUserAuthTokensWithParams(params *GetUserAuthTokensParams, opts ...ClientOption) (*GetUserAuthTokensOK, error)
 
-	GetUserQuotas(opts ...ClientOption) (*GetUserQuotasOK, error)
-	GetUserQuotasWithParams(params *GetUserQuotasParams, opts ...ClientOption) (*GetUserQuotasOK, error)
+	GetUserPreferences(opts ...ClientOption) (*GetUserPreferencesOK, error)
+	GetUserPreferencesWithParams(params *GetUserPreferencesParams, opts ...ClientOption) (*GetUserPreferencesOK, error)
+
+	PatchUserPreferences(body *models.PatchPrefsCmd, opts ...ClientOption) (*PatchUserPreferencesOK, error)
+	PatchUserPreferencesWithParams(params *PatchUserPreferencesParams, opts ...ClientOption) (*PatchUserPreferencesOK, error)
 
 	RevokeUserAuthToken(body *models.RevokeAuthTokenCmd, opts ...ClientOption) (*RevokeUserAuthTokenOK, error)
 	RevokeUserAuthTokenWithParams(params *RevokeUserAuthTokenParams, opts ...ClientOption) (*RevokeUserAuthTokenOK, error)
@@ -59,20 +62,17 @@ type ClientService interface {
 	SetHelpFlag(flagID string, opts ...ClientOption) (*SetHelpFlagOK, error)
 	SetHelpFlagWithParams(params *SetHelpFlagParams, opts ...ClientOption) (*SetHelpFlagOK, error)
 
-	StarDashboard(dashboardID string, opts ...ClientOption) (*StarDashboardOK, error)
-	StarDashboardWithParams(params *StarDashboardParams, opts ...ClientOption) (*StarDashboardOK, error)
-
 	StarDashboardByUID(dashboardUID string, opts ...ClientOption) (*StarDashboardByUIDOK, error)
 	StarDashboardByUIDWithParams(params *StarDashboardByUIDParams, opts ...ClientOption) (*StarDashboardByUIDOK, error)
-
-	UnstarDashboard(dashboardID string, opts ...ClientOption) (*UnstarDashboardOK, error)
-	UnstarDashboardWithParams(params *UnstarDashboardParams, opts ...ClientOption) (*UnstarDashboardOK, error)
 
 	UnstarDashboardByUID(dashboardUID string, opts ...ClientOption) (*UnstarDashboardByUIDOK, error)
 	UnstarDashboardByUIDWithParams(params *UnstarDashboardByUIDParams, opts ...ClientOption) (*UnstarDashboardByUIDOK, error)
 
 	UpdateSignedInUser(body *models.UpdateUserCommand, opts ...ClientOption) (*UpdateSignedInUserOK, error)
 	UpdateSignedInUserWithParams(params *UpdateSignedInUserParams, opts ...ClientOption) (*UpdateSignedInUserOK, error)
+
+	UpdateUserPreferences(body *models.UpdatePrefsCmd, opts ...ClientOption) (*UpdateUserPreferencesOK, error)
+	UpdateUserPreferencesWithParams(params *UpdateUserPreferencesParams, opts ...ClientOption) (*UpdateUserPreferencesOK, error)
 
 	UserSetUsingOrg(orgID int64, opts ...ClientOption) (*UserSetUsingOrgOK, error)
 	UserSetUsingOrgWithParams(params *UserSetUsingOrgParams, opts ...ClientOption) (*UserSetUsingOrgOK, error)
@@ -353,26 +353,26 @@ func (a *Client) GetUserAuthTokensWithParams(params *GetUserAuthTokensParams, op
 }
 
 /*
-GetUserQuotas fetches user quota
+GetUserPreferences gets user preferences
 */
-func (a *Client) GetUserQuotas(opts ...ClientOption) (*GetUserQuotasOK, error) {
-	params := NewGetUserQuotasParams()
-	return a.GetUserQuotasWithParams(params, opts...)
+func (a *Client) GetUserPreferences(opts ...ClientOption) (*GetUserPreferencesOK, error) {
+	params := NewGetUserPreferencesParams()
+	return a.GetUserPreferencesWithParams(params, opts...)
 }
 
-func (a *Client) GetUserQuotasWithParams(params *GetUserQuotasParams, opts ...ClientOption) (*GetUserQuotasOK, error) {
+func (a *Client) GetUserPreferencesWithParams(params *GetUserPreferencesParams, opts ...ClientOption) (*GetUserPreferencesOK, error) {
 	if params == nil {
-		params = NewGetUserQuotasParams()
+		params = NewGetUserPreferencesParams()
 	}
 	op := &runtime.ClientOperation{
-		ID:                 "getUserQuotas",
+		ID:                 "getUserPreferences",
 		Method:             "GET",
-		PathPattern:        "/user/quotas",
+		PathPattern:        "/user/preferences",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http", "https"},
 		Params:             params,
-		Reader:             &GetUserQuotasReader{formats: a.formats},
+		Reader:             &GetUserPreferencesReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
@@ -386,13 +386,57 @@ func (a *Client) GetUserQuotasWithParams(params *GetUserQuotasParams, opts ...Cl
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*GetUserQuotasOK)
+	success, ok := result.(*GetUserPreferencesOK)
 	if ok {
 		return success, nil
 	}
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for getUserQuotas: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	msg := fmt.Sprintf("unexpected success response for getUserPreferences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+PatchUserPreferences patches user preferences
+*/
+func (a *Client) PatchUserPreferences(body *models.PatchPrefsCmd, opts ...ClientOption) (*PatchUserPreferencesOK, error) {
+	params := NewPatchUserPreferencesParams().WithBody(body)
+	return a.PatchUserPreferencesWithParams(params, opts...)
+}
+
+func (a *Client) PatchUserPreferencesWithParams(params *PatchUserPreferencesParams, opts ...ClientOption) (*PatchUserPreferencesOK, error) {
+	if params == nil {
+		params = NewPatchUserPreferencesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "patchUserPreferences",
+		Method:             "PATCH",
+		PathPattern:        "/user/preferences",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &PatchUserPreferencesReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*PatchUserPreferencesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for patchUserPreferences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -487,52 +531,6 @@ func (a *Client) SetHelpFlagWithParams(params *SetHelpFlagParams, opts ...Client
 }
 
 /*
-StarDashboard stars a dashboard
-
-Stars the given Dashboard for the actual user.
-*/
-func (a *Client) StarDashboard(dashboardID string, opts ...ClientOption) (*StarDashboardOK, error) {
-	params := NewStarDashboardParams().WithDashboardID(dashboardID)
-	return a.StarDashboardWithParams(params, opts...)
-}
-
-func (a *Client) StarDashboardWithParams(params *StarDashboardParams, opts ...ClientOption) (*StarDashboardOK, error) {
-	if params == nil {
-		params = NewStarDashboardParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "starDashboard",
-		Method:             "POST",
-		PathPattern:        "/user/stars/dashboard/{dashboard_id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &StarDashboardReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*StarDashboardOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for starDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
 StarDashboardByUID stars a dashboard
 
 Stars the given Dashboard for the actual user.
@@ -575,52 +573,6 @@ func (a *Client) StarDashboardByUIDWithParams(params *StarDashboardByUIDParams, 
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for starDashboardByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-UnstarDashboard unstars a dashboard
-
-Deletes the starring of the given Dashboard for the actual user.
-*/
-func (a *Client) UnstarDashboard(dashboardID string, opts ...ClientOption) (*UnstarDashboardOK, error) {
-	params := NewUnstarDashboardParams().WithDashboardID(dashboardID)
-	return a.UnstarDashboardWithParams(params, opts...)
-}
-
-func (a *Client) UnstarDashboardWithParams(params *UnstarDashboardParams, opts ...ClientOption) (*UnstarDashboardOK, error) {
-	if params == nil {
-		params = NewUnstarDashboardParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "unstarDashboard",
-		Method:             "DELETE",
-		PathPattern:        "/user/stars/dashboard/{dashboard_id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &UnstarDashboardReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*UnstarDashboardOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for unstarDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -711,6 +663,52 @@ func (a *Client) UpdateSignedInUserWithParams(params *UpdateSignedInUserParams, 
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for updateSignedInUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UpdateUserPreferences updates user preferences
+
+Omitting a key (`theme`, `homeDashboardUID`, `timezone`) will cause the current value to be replaced with the system default value.
+*/
+func (a *Client) UpdateUserPreferences(body *models.UpdatePrefsCmd, opts ...ClientOption) (*UpdateUserPreferencesOK, error) {
+	params := NewUpdateUserPreferencesParams().WithBody(body)
+	return a.UpdateUserPreferencesWithParams(params, opts...)
+}
+
+func (a *Client) UpdateUserPreferencesWithParams(params *UpdateUserPreferencesParams, opts ...ClientOption) (*UpdateUserPreferencesOK, error) {
+	if params == nil {
+		params = NewUpdateUserPreferencesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updateUserPreferences",
+		Method:             "PUT",
+		PathPattern:        "/user/preferences",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UpdateUserPreferencesReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdateUserPreferencesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updateUserPreferences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

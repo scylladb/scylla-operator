@@ -62,6 +62,9 @@ SearchTeamsParams contains all the parameters to send to the API endpoint
 */
 type SearchTeamsParams struct {
 
+	// Accesscontrol.
+	Accesscontrol *bool
+
 	// Name.
 	Name *string
 
@@ -87,6 +90,9 @@ type SearchTeamsParams struct {
 	*/
 	Query *string
 
+	// Sort.
+	Sort *string
+
 	timeout    time.Duration
 	Context    context.Context
 	HTTPClient *http.Client
@@ -105,14 +111,17 @@ func (o *SearchTeamsParams) WithDefaults() *SearchTeamsParams {
 // All values with no default are reset to their zero value.
 func (o *SearchTeamsParams) SetDefaults() {
 	var (
+		accesscontrolDefault = bool(false)
+
 		pageDefault = int64(1)
 
 		perpageDefault = int64(1000)
 	)
 
 	val := SearchTeamsParams{
-		Page:    &pageDefault,
-		Perpage: &perpageDefault,
+		Accesscontrol: &accesscontrolDefault,
+		Page:          &pageDefault,
+		Perpage:       &perpageDefault,
 	}
 
 	val.timeout = o.timeout
@@ -152,6 +161,17 @@ func (o *SearchTeamsParams) WithHTTPClient(client *http.Client) *SearchTeamsPara
 // SetHTTPClient adds the HTTPClient to the search teams params
 func (o *SearchTeamsParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
+}
+
+// WithAccesscontrol adds the accesscontrol to the search teams params
+func (o *SearchTeamsParams) WithAccesscontrol(accesscontrol *bool) *SearchTeamsParams {
+	o.SetAccesscontrol(accesscontrol)
+	return o
+}
+
+// SetAccesscontrol adds the accesscontrol to the search teams params
+func (o *SearchTeamsParams) SetAccesscontrol(accesscontrol *bool) {
+	o.Accesscontrol = accesscontrol
 }
 
 // WithName adds the name to the search teams params
@@ -198,6 +218,17 @@ func (o *SearchTeamsParams) SetQuery(query *string) {
 	o.Query = query
 }
 
+// WithSort adds the sort to the search teams params
+func (o *SearchTeamsParams) WithSort(sort *string) *SearchTeamsParams {
+	o.SetSort(sort)
+	return o
+}
+
+// SetSort adds the sort to the search teams params
+func (o *SearchTeamsParams) SetSort(sort *string) {
+	o.Sort = sort
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *SearchTeamsParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -205,6 +236,23 @@ func (o *SearchTeamsParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.R
 		return err
 	}
 	var res []error
+
+	if o.Accesscontrol != nil {
+
+		// query param accesscontrol
+		var qrAccesscontrol bool
+
+		if o.Accesscontrol != nil {
+			qrAccesscontrol = *o.Accesscontrol
+		}
+		qAccesscontrol := swag.FormatBool(qrAccesscontrol)
+		if qAccesscontrol != "" {
+
+			if err := r.SetQueryParam("accesscontrol", qAccesscontrol); err != nil {
+				return err
+			}
+		}
+	}
 
 	if o.Name != nil {
 
@@ -269,6 +317,23 @@ func (o *SearchTeamsParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.R
 		if qQuery != "" {
 
 			if err := r.SetQueryParam("query", qQuery); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Sort != nil {
+
+		// query param sort
+		var qrSort string
+
+		if o.Sort != nil {
+			qrSort = *o.Sort
+		}
+		qSort := qrSort
+		if qSort != "" {
+
+			if err := r.SetQueryParam("sort", qSort); err != nil {
 				return err
 			}
 		}

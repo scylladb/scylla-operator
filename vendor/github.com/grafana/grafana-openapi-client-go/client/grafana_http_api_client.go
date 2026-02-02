@@ -30,18 +30,12 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/client/admin_provisioning"
 	"github.com/grafana/grafana-openapi-client-go/client/admin_users"
 	"github.com/grafana/grafana-openapi-client-go/client/annotations"
-	"github.com/grafana/grafana-openapi-client-go/client/correlations"
-	"github.com/grafana/grafana-openapi-client-go/client/dashboard_permissions"
-	"github.com/grafana/grafana-openapi-client-go/client/dashboard_public"
-	"github.com/grafana/grafana-openapi-client-go/client/dashboard_versions"
+	"github.com/grafana/grafana-openapi-client-go/client/convert_prometheus"
 	"github.com/grafana/grafana-openapi-client-go/client/dashboards"
 	"github.com/grafana/grafana-openapi-client-go/client/datasources"
 	"github.com/grafana/grafana-openapi-client-go/client/devices"
-	"github.com/grafana/grafana-openapi-client-go/client/ds"
 	"github.com/grafana/grafana-openapi-client-go/client/enterprise"
-	"github.com/grafana/grafana-openapi-client-go/client/folder_permissions"
 	"github.com/grafana/grafana-openapi-client-go/client/folders"
-	"github.com/grafana/grafana-openapi-client-go/client/get_current_org"
 	"github.com/grafana/grafana-openapi-client-go/client/group_attribute_sync"
 	"github.com/grafana/grafana-openapi-client-go/client/health"
 	"github.com/grafana/grafana-openapi-client-go/client/ldap_debug"
@@ -49,12 +43,11 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/client/licensing"
 	"github.com/grafana/grafana-openapi-client-go/client/migrations"
 	"github.com/grafana/grafana-openapi-client-go/client/org"
-	"github.com/grafana/grafana-openapi-client-go/client/org_invites"
-	"github.com/grafana/grafana-openapi-client-go/client/org_preferences"
 	"github.com/grafana/grafana-openapi-client-go/client/orgs"
 	"github.com/grafana/grafana-openapi-client-go/client/playlists"
 	"github.com/grafana/grafana-openapi-client-go/client/provisioning"
 	"github.com/grafana/grafana-openapi-client-go/client/query_history"
+	"github.com/grafana/grafana-openapi-client-go/client/quota"
 	"github.com/grafana/grafana-openapi-client-go/client/recording_rules"
 	"github.com/grafana/grafana-openapi-client-go/client/reports"
 	"github.com/grafana/grafana-openapi-client-go/client/saml"
@@ -67,7 +60,6 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/client/sync_team_groups"
 	"github.com/grafana/grafana-openapi-client-go/client/teams"
 	"github.com/grafana/grafana-openapi-client-go/client/user"
-	"github.com/grafana/grafana-openapi-client-go/client/user_preferences"
 	"github.com/grafana/grafana-openapi-client-go/client/users"
 )
 
@@ -125,18 +117,12 @@ func New(transport runtime.ClientTransport, cfg *TransportConfig, formats strfmt
 	cli.AdminProvisioning = admin_provisioning.New(transport, formats)
 	cli.AdminUsers = admin_users.New(transport, formats)
 	cli.Annotations = annotations.New(transport, formats)
-	cli.Correlations = correlations.New(transport, formats)
-	cli.DashboardPermissions = dashboard_permissions.New(transport, formats)
-	cli.DashboardPublic = dashboard_public.New(transport, formats)
-	cli.DashboardVersions = dashboard_versions.New(transport, formats)
+	cli.ConvertPrometheus = convert_prometheus.New(transport, formats)
 	cli.Dashboards = dashboards.New(transport, formats)
 	cli.Datasources = datasources.New(transport, formats)
 	cli.Devices = devices.New(transport, formats)
-	cli.Ds = ds.New(transport, formats)
 	cli.Enterprise = enterprise.New(transport, formats)
-	cli.FolderPermissions = folder_permissions.New(transport, formats)
 	cli.Folders = folders.New(transport, formats)
-	cli.GetCurrentOrg = get_current_org.New(transport, formats)
 	cli.GroupAttributeSync = group_attribute_sync.New(transport, formats)
 	cli.Health = health.New(transport, formats)
 	cli.LDAPDebug = ldap_debug.New(transport, formats)
@@ -144,12 +130,11 @@ func New(transport runtime.ClientTransport, cfg *TransportConfig, formats strfmt
 	cli.Licensing = licensing.New(transport, formats)
 	cli.Migrations = migrations.New(transport, formats)
 	cli.Org = org.New(transport, formats)
-	cli.OrgInvites = org_invites.New(transport, formats)
-	cli.OrgPreferences = org_preferences.New(transport, formats)
 	cli.Orgs = orgs.New(transport, formats)
 	cli.Playlists = playlists.New(transport, formats)
 	cli.Provisioning = provisioning.New(transport, formats)
 	cli.QueryHistory = query_history.New(transport, formats)
+	cli.Quota = quota.New(transport, formats)
 	cli.RecordingRules = recording_rules.New(transport, formats)
 	cli.Reports = reports.New(transport, formats)
 	cli.Saml = saml.New(transport, formats)
@@ -162,7 +147,6 @@ func New(transport runtime.ClientTransport, cfg *TransportConfig, formats strfmt
 	cli.SyncTeamGroups = sync_team_groups.New(transport, formats)
 	cli.Teams = teams.New(transport, formats)
 	cli.User = user.New(transport, formats)
-	cli.UserPreferences = user_preferences.New(transport, formats)
 	cli.Users = users.New(transport, formats)
 	return cli
 }
@@ -254,13 +238,7 @@ type GrafanaHTTPAPI struct {
 
 	Annotations annotations.ClientService
 
-	Correlations correlations.ClientService
-
-	DashboardPermissions dashboard_permissions.ClientService
-
-	DashboardPublic dashboard_public.ClientService
-
-	DashboardVersions dashboard_versions.ClientService
+	ConvertPrometheus convert_prometheus.ClientService
 
 	Dashboards dashboards.ClientService
 
@@ -268,15 +246,9 @@ type GrafanaHTTPAPI struct {
 
 	Devices devices.ClientService
 
-	Ds ds.ClientService
-
 	Enterprise enterprise.ClientService
 
-	FolderPermissions folder_permissions.ClientService
-
 	Folders folders.ClientService
-
-	GetCurrentOrg get_current_org.ClientService
 
 	GroupAttributeSync group_attribute_sync.ClientService
 
@@ -292,10 +264,6 @@ type GrafanaHTTPAPI struct {
 
 	Org org.ClientService
 
-	OrgInvites org_invites.ClientService
-
-	OrgPreferences org_preferences.ClientService
-
 	Orgs orgs.ClientService
 
 	Playlists playlists.ClientService
@@ -303,6 +271,8 @@ type GrafanaHTTPAPI struct {
 	Provisioning provisioning.ClientService
 
 	QueryHistory query_history.ClientService
+
+	Quota quota.ClientService
 
 	RecordingRules recording_rules.ClientService
 
@@ -328,8 +298,6 @@ type GrafanaHTTPAPI struct {
 
 	User user.ClientService
 
-	UserPreferences user_preferences.ClientService
-
 	Users users.ClientService
 
 	Transport runtime.ClientTransport
@@ -348,18 +316,12 @@ func (c *GrafanaHTTPAPI) SetTransport(transport runtime.ClientTransport) {
 	c.AdminProvisioning.SetTransport(transport)
 	c.AdminUsers.SetTransport(transport)
 	c.Annotations.SetTransport(transport)
-	c.Correlations.SetTransport(transport)
-	c.DashboardPermissions.SetTransport(transport)
-	c.DashboardPublic.SetTransport(transport)
-	c.DashboardVersions.SetTransport(transport)
+	c.ConvertPrometheus.SetTransport(transport)
 	c.Dashboards.SetTransport(transport)
 	c.Datasources.SetTransport(transport)
 	c.Devices.SetTransport(transport)
-	c.Ds.SetTransport(transport)
 	c.Enterprise.SetTransport(transport)
-	c.FolderPermissions.SetTransport(transport)
 	c.Folders.SetTransport(transport)
-	c.GetCurrentOrg.SetTransport(transport)
 	c.GroupAttributeSync.SetTransport(transport)
 	c.Health.SetTransport(transport)
 	c.LDAPDebug.SetTransport(transport)
@@ -367,12 +329,11 @@ func (c *GrafanaHTTPAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Licensing.SetTransport(transport)
 	c.Migrations.SetTransport(transport)
 	c.Org.SetTransport(transport)
-	c.OrgInvites.SetTransport(transport)
-	c.OrgPreferences.SetTransport(transport)
 	c.Orgs.SetTransport(transport)
 	c.Playlists.SetTransport(transport)
 	c.Provisioning.SetTransport(transport)
 	c.QueryHistory.SetTransport(transport)
+	c.Quota.SetTransport(transport)
 	c.RecordingRules.SetTransport(transport)
 	c.Reports.SetTransport(transport)
 	c.Saml.SetTransport(transport)
@@ -385,7 +346,6 @@ func (c *GrafanaHTTPAPI) SetTransport(transport runtime.ClientTransport) {
 	c.SyncTeamGroups.SetTransport(transport)
 	c.Teams.SetTransport(transport)
 	c.User.SetTransport(transport)
-	c.UserPreferences.SetTransport(transport)
 	c.Users.SetTransport(transport)
 }
 

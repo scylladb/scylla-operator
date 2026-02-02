@@ -41,6 +41,9 @@ type AnnotationQuery struct {
 	// Name of annotation.
 	Name string `json:"name,omitempty"`
 
+	// Placement can be used to display the annotation query somewhere else on the dashboard other than the default location.
+	Placement string `json:"placement,omitempty"`
+
 	// target
 	Target *AnnotationTarget `json:"target,omitempty"`
 

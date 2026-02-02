@@ -29,6 +29,12 @@ func (o *PutClusterClusterIDSuspendedReader) ReadResponse(response runtime.Clien
 			return nil, err
 		}
 		return result, nil
+	case 409:
+		result := NewPutClusterClusterIDSuspendedConflict()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		result := NewPutClusterClusterIDSuspendedDefault(response.Code())
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -59,6 +65,40 @@ func (o *PutClusterClusterIDSuspendedOK) Error() string {
 }
 
 func (o *PutClusterClusterIDSuspendedOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewPutClusterClusterIDSuspendedConflict creates a PutClusterClusterIDSuspendedConflict with default headers values
+func NewPutClusterClusterIDSuspendedConflict() *PutClusterClusterIDSuspendedConflict {
+	return &PutClusterClusterIDSuspendedConflict{}
+}
+
+/*
+PutClusterClusterIDSuspendedConflict handles this case with default header values.
+
+Can't suspend cluster because tasks (other than 'allowed_task_type') are running. Use suspend_policy='stop_running_tasks' to stop those tasks before suspending cluster
+*/
+type PutClusterClusterIDSuspendedConflict struct {
+	Payload *models.ErrorResponse
+}
+
+func (o *PutClusterClusterIDSuspendedConflict) Error() string {
+	return fmt.Sprintf("[PUT /cluster/{cluster_id}/suspended][%d] putClusterClusterIdSuspendedConflict  %+v", 409, o.Payload)
+}
+
+func (o *PutClusterClusterIDSuspendedConflict) GetPayload() *models.ErrorResponse {
+	return o.Payload
+}
+
+func (o *PutClusterClusterIDSuspendedConflict) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ErrorResponse)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }

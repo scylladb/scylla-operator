@@ -8,8 +8,10 @@ package models
 import (
 	"context"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // AddTeamMemberCommand add team member command
@@ -18,11 +20,30 @@ import (
 type AddTeamMemberCommand struct {
 
 	// user Id
-	UserID int64 `json:"userId,omitempty"`
+	// Required: true
+	UserID *int64 `json:"userId"`
 }
 
 // Validate validates this add team member command
 func (m *AddTeamMemberCommand) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateUserID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AddTeamMemberCommand) validateUserID(formats strfmt.Registry) error {
+
+	if err := validate.Required("userId", "body", m.UserID); err != nil {
+		return err
+	}
+
 	return nil
 }
 

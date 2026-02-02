@@ -40,7 +40,7 @@ trap gracefully-shutdown-e2es INT
 if [ -z "${SO_IMAGE:-}" ]; then
   SO_IMAGE="localhost:5001/scylladb/scylla-operator:e2e-$( date +%Y%m%d%H%M%S )"
   export SO_IMAGE
-  podman build -t "${SO_IMAGE}" -f "${parent_dir}/../../Dockerfile" "${parent_dir}/../.."
+  podman build --format docker -t "${SO_IMAGE}" -f "${parent_dir}/../../Dockerfile" "${parent_dir}/../.."
 
   # Push the image to the local registry. Use --tls-verify=false as we're running local registry without TLS.
   podman push --tls-verify=false "${SO_IMAGE}"

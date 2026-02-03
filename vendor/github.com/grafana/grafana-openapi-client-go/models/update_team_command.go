@@ -18,16 +18,10 @@ import (
 type UpdateTeamCommand struct {
 
 	// email
-	Email string `json:"Email,omitempty"`
-
-	// external UID
-	ExternalUID string `json:"ExternalUID,omitempty"`
-
-	// ID
-	ID int64 `json:"ID,omitempty"`
+	Email string `json:"email,omitempty"`
 
 	// name
-	Name string `json:"Name,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // Validate validates this update team command

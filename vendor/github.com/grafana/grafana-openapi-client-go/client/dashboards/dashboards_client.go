@@ -32,51 +32,116 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	CalculateDashboardDiff(body *models.CalculateDashboardDiffParamsBody, opts ...ClientOption) (*CalculateDashboardDiffOK, error)
-	CalculateDashboardDiffWithParams(params *CalculateDashboardDiffParams, opts ...ClientOption) (*CalculateDashboardDiffOK, error)
+	CreateDashboardSnapshot(body *models.CreateDashboardSnapshotCommand, opts ...ClientOption) (*CreateDashboardSnapshotOK, error)
+	CreateDashboardSnapshotWithParams(params *CreateDashboardSnapshotParams, opts ...ClientOption) (*CreateDashboardSnapshotOK, error)
+
+	CreatePublicDashboard(dashboardUID string, body *models.PublicDashboardDTO, opts ...ClientOption) (*CreatePublicDashboardOK, error)
+	CreatePublicDashboardWithParams(params *CreatePublicDashboardParams, opts ...ClientOption) (*CreatePublicDashboardOK, error)
 
 	DeleteDashboardByUID(uid string, opts ...ClientOption) (*DeleteDashboardByUIDOK, error)
 	DeleteDashboardByUIDWithParams(params *DeleteDashboardByUIDParams, opts ...ClientOption) (*DeleteDashboardByUIDOK, error)
 
+	DeleteDashboardSnapshot(key string, opts ...ClientOption) (*DeleteDashboardSnapshotOK, error)
+	DeleteDashboardSnapshotWithParams(params *DeleteDashboardSnapshotParams, opts ...ClientOption) (*DeleteDashboardSnapshotOK, error)
+
+	DeleteDashboardSnapshotByDeleteKey(deleteKey string, opts ...ClientOption) (*DeleteDashboardSnapshotByDeleteKeyOK, error)
+	DeleteDashboardSnapshotByDeleteKeyWithParams(params *DeleteDashboardSnapshotByDeleteKeyParams, opts ...ClientOption) (*DeleteDashboardSnapshotByDeleteKeyOK, error)
+
+	DeletePublicDashboard(uid string, dashboardUID string, opts ...ClientOption) (*DeletePublicDashboardOK, error)
+	DeletePublicDashboardWithParams(params *DeletePublicDashboardParams, opts ...ClientOption) (*DeletePublicDashboardOK, error)
+
 	GetDashboardByUID(uid string, opts ...ClientOption) (*GetDashboardByUIDOK, error)
 	GetDashboardByUIDWithParams(params *GetDashboardByUIDParams, opts ...ClientOption) (*GetDashboardByUIDOK, error)
+
+	GetDashboardPermissionsListByID(dashboardID int64, opts ...ClientOption) (*GetDashboardPermissionsListByIDOK, error)
+	GetDashboardPermissionsListByIDWithParams(params *GetDashboardPermissionsListByIDParams, opts ...ClientOption) (*GetDashboardPermissionsListByIDOK, error)
+
+	GetDashboardPermissionsListByUID(uid string, opts ...ClientOption) (*GetDashboardPermissionsListByUIDOK, error)
+	GetDashboardPermissionsListByUIDWithParams(params *GetDashboardPermissionsListByUIDParams, opts ...ClientOption) (*GetDashboardPermissionsListByUIDOK, error)
+
+	GetDashboardSnapshot(key string, opts ...ClientOption) (*GetDashboardSnapshotOK, error)
+	GetDashboardSnapshotWithParams(params *GetDashboardSnapshotParams, opts ...ClientOption) (*GetDashboardSnapshotOK, error)
 
 	GetDashboardTags(opts ...ClientOption) (*GetDashboardTagsOK, error)
 	GetDashboardTagsWithParams(params *GetDashboardTagsParams, opts ...ClientOption) (*GetDashboardTagsOK, error)
 
+	GetDashboardVersionByID(dashboardVersionID int64, dashboardID int64, opts ...ClientOption) (*GetDashboardVersionByIDOK, error)
+	GetDashboardVersionByIDWithParams(params *GetDashboardVersionByIDParams, opts ...ClientOption) (*GetDashboardVersionByIDOK, error)
+
+	GetDashboardVersionByUID(uid string, dashboardVersionID int64, opts ...ClientOption) (*GetDashboardVersionByUIDOK, error)
+	GetDashboardVersionByUIDWithParams(params *GetDashboardVersionByUIDParams, opts ...ClientOption) (*GetDashboardVersionByUIDOK, error)
+
+	GetDashboardVersionsByID(dashboardID int64, opts ...ClientOption) (*GetDashboardVersionsByIDOK, error)
+	GetDashboardVersionsByIDWithParams(params *GetDashboardVersionsByIDParams, opts ...ClientOption) (*GetDashboardVersionsByIDOK, error)
+
+	GetDashboardVersionsByUID(params *GetDashboardVersionsByUIDParams, opts ...ClientOption) (*GetDashboardVersionsByUIDOK, error)
+
 	GetHomeDashboard(opts ...ClientOption) (*GetHomeDashboardOK, error)
 	GetHomeDashboardWithParams(params *GetHomeDashboardParams, opts ...ClientOption) (*GetHomeDashboardOK, error)
+
+	GetPublicAnnotations(accessToken string, opts ...ClientOption) (*GetPublicAnnotationsOK, error)
+	GetPublicAnnotationsWithParams(params *GetPublicAnnotationsParams, opts ...ClientOption) (*GetPublicAnnotationsOK, error)
+
+	GetPublicDashboard(dashboardUID string, opts ...ClientOption) (*GetPublicDashboardOK, error)
+	GetPublicDashboardWithParams(params *GetPublicDashboardParams, opts ...ClientOption) (*GetPublicDashboardOK, error)
 
 	ImportDashboard(body *models.ImportDashboardRequest, opts ...ClientOption) (*ImportDashboardOK, error)
 	ImportDashboardWithParams(params *ImportDashboardParams, opts ...ClientOption) (*ImportDashboardOK, error)
 
+	InterpolateDashboard(opts ...ClientOption) (*InterpolateDashboardOK, error)
+	InterpolateDashboardWithParams(params *InterpolateDashboardParams, opts ...ClientOption) (*InterpolateDashboardOK, error)
+
+	ListPublicDashboards(opts ...ClientOption) (*ListPublicDashboardsOK, error)
+	ListPublicDashboardsWithParams(params *ListPublicDashboardsParams, opts ...ClientOption) (*ListPublicDashboardsOK, error)
+
 	PostDashboard(body *models.SaveDashboardCommand, opts ...ClientOption) (*PostDashboardOK, error)
 	PostDashboardWithParams(params *PostDashboardParams, opts ...ClientOption) (*PostDashboardOK, error)
+
+	QueryPublicDashboard(panelID int64, accessToken string, opts ...ClientOption) (*QueryPublicDashboardOK, error)
+	QueryPublicDashboardWithParams(params *QueryPublicDashboardParams, opts ...ClientOption) (*QueryPublicDashboardOK, error)
+
+	RestoreDashboardVersionByUID(uid string, body *models.RestoreDashboardVersionCommand, opts ...ClientOption) (*RestoreDashboardVersionByUIDOK, error)
+	RestoreDashboardVersionByUIDWithParams(params *RestoreDashboardVersionByUIDParams, opts ...ClientOption) (*RestoreDashboardVersionByUIDOK, error)
+
+	SearchDashboardSnapshots(params *SearchDashboardSnapshotsParams, opts ...ClientOption) (*SearchDashboardSnapshotsOK, error)
+
+	UpdateDashboardPermissionsByID(dashboardID int64, body *models.UpdateDashboardACLCommand, opts ...ClientOption) (*UpdateDashboardPermissionsByIDOK, error)
+	UpdateDashboardPermissionsByIDWithParams(params *UpdateDashboardPermissionsByIDParams, opts ...ClientOption) (*UpdateDashboardPermissionsByIDOK, error)
+
+	UpdateDashboardPermissionsByUID(uid string, body *models.UpdateDashboardACLCommand, opts ...ClientOption) (*UpdateDashboardPermissionsByUIDOK, error)
+	UpdateDashboardPermissionsByUIDWithParams(params *UpdateDashboardPermissionsByUIDParams, opts ...ClientOption) (*UpdateDashboardPermissionsByUIDOK, error)
+
+	UpdatePublicDashboard(params *UpdatePublicDashboardParams, opts ...ClientOption) (*UpdatePublicDashboardOK, error)
+
+	ViewPublicDashboard(accessToken string, opts ...ClientOption) (*ViewPublicDashboardOK, error)
+	ViewPublicDashboardWithParams(params *ViewPublicDashboardParams, opts ...ClientOption) (*ViewPublicDashboardOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
 
 /*
-CalculateDashboardDiff performs diff on two dashboards
+CreateDashboardSnapshot whens creating a snapshot using the API you have to provide the full dashboard payload including the snapshot data this endpoint is designed for the grafana UI
+
+Snapshot public mode should be enabled or authentication is required.
 */
-func (a *Client) CalculateDashboardDiff(body *models.CalculateDashboardDiffParamsBody, opts ...ClientOption) (*CalculateDashboardDiffOK, error) {
-	params := NewCalculateDashboardDiffParams().WithBody(body)
-	return a.CalculateDashboardDiffWithParams(params, opts...)
+func (a *Client) CreateDashboardSnapshot(body *models.CreateDashboardSnapshotCommand, opts ...ClientOption) (*CreateDashboardSnapshotOK, error) {
+	params := NewCreateDashboardSnapshotParams().WithBody(body)
+	return a.CreateDashboardSnapshotWithParams(params, opts...)
 }
 
-func (a *Client) CalculateDashboardDiffWithParams(params *CalculateDashboardDiffParams, opts ...ClientOption) (*CalculateDashboardDiffOK, error) {
+func (a *Client) CreateDashboardSnapshotWithParams(params *CreateDashboardSnapshotParams, opts ...ClientOption) (*CreateDashboardSnapshotOK, error) {
 	if params == nil {
-		params = NewCalculateDashboardDiffParams()
+		params = NewCreateDashboardSnapshotParams()
 	}
 	op := &runtime.ClientOperation{
-		ID:                 "calculateDashboardDiff",
+		ID:                 "createDashboardSnapshot",
 		Method:             "POST",
-		PathPattern:        "/dashboards/calculate-diff",
-		ProducesMediaTypes: []string{"application/json", "text/html"},
+		PathPattern:        "/snapshots",
+		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http", "https"},
 		Params:             params,
-		Reader:             &CalculateDashboardDiffReader{formats: a.formats},
+		Reader:             &CreateDashboardSnapshotReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}
@@ -90,13 +155,57 @@ func (a *Client) CalculateDashboardDiffWithParams(params *CalculateDashboardDiff
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*CalculateDashboardDiffOK)
+	success, ok := result.(*CreateDashboardSnapshotOK)
 	if ok {
 		return success, nil
 	}
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for calculateDashboardDiff: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	msg := fmt.Sprintf("unexpected success response for createDashboardSnapshot: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+CreatePublicDashboard Create public dashboard for a dashboard
+*/
+func (a *Client) CreatePublicDashboard(dashboardUID string, body *models.PublicDashboardDTO, opts ...ClientOption) (*CreatePublicDashboardOK, error) {
+	params := NewCreatePublicDashboardParams().WithBody(body).WithDashboardUID(dashboardUID)
+	return a.CreatePublicDashboardWithParams(params, opts...)
+}
+
+func (a *Client) CreatePublicDashboardWithParams(params *CreatePublicDashboardParams, opts ...ClientOption) (*CreatePublicDashboardOK, error) {
+	if params == nil {
+		params = NewCreatePublicDashboardParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "createPublicDashboard",
+		Method:             "POST",
+		PathPattern:        "/dashboards/uid/{dashboardUid}/public-dashboards",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &CreatePublicDashboardReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreatePublicDashboardOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createPublicDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -147,6 +256,140 @@ func (a *Client) DeleteDashboardByUIDWithParams(params *DeleteDashboardByUIDPara
 }
 
 /*
+DeleteDashboardSnapshot deletes snapshot by key
+*/
+func (a *Client) DeleteDashboardSnapshot(key string, opts ...ClientOption) (*DeleteDashboardSnapshotOK, error) {
+	params := NewDeleteDashboardSnapshotParams().WithKey(key)
+	return a.DeleteDashboardSnapshotWithParams(params, opts...)
+}
+
+func (a *Client) DeleteDashboardSnapshotWithParams(params *DeleteDashboardSnapshotParams, opts ...ClientOption) (*DeleteDashboardSnapshotOK, error) {
+	if params == nil {
+		params = NewDeleteDashboardSnapshotParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "deleteDashboardSnapshot",
+		Method:             "DELETE",
+		PathPattern:        "/snapshots/{key}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &DeleteDashboardSnapshotReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DeleteDashboardSnapshotOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for deleteDashboardSnapshot: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+DeleteDashboardSnapshotByDeleteKey deletes snapshot by delete key
+
+Snapshot public mode should be enabled or authentication is required.
+*/
+func (a *Client) DeleteDashboardSnapshotByDeleteKey(deleteKey string, opts ...ClientOption) (*DeleteDashboardSnapshotByDeleteKeyOK, error) {
+	params := NewDeleteDashboardSnapshotByDeleteKeyParams().WithDeleteKey(deleteKey)
+	return a.DeleteDashboardSnapshotByDeleteKeyWithParams(params, opts...)
+}
+
+func (a *Client) DeleteDashboardSnapshotByDeleteKeyWithParams(params *DeleteDashboardSnapshotByDeleteKeyParams, opts ...ClientOption) (*DeleteDashboardSnapshotByDeleteKeyOK, error) {
+	if params == nil {
+		params = NewDeleteDashboardSnapshotByDeleteKeyParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "deleteDashboardSnapshotByDeleteKey",
+		Method:             "GET",
+		PathPattern:        "/snapshots-delete/{deleteKey}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &DeleteDashboardSnapshotByDeleteKeyReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DeleteDashboardSnapshotByDeleteKeyOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for deleteDashboardSnapshotByDeleteKey: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+DeletePublicDashboard Delete public dashboard for a dashboard
+*/
+func (a *Client) DeletePublicDashboard(uid string, dashboardUID string, opts ...ClientOption) (*DeletePublicDashboardOK, error) {
+	params := NewDeletePublicDashboardParams().WithDashboardUID(dashboardUID).WithUID(uid)
+	return a.DeletePublicDashboardWithParams(params, opts...)
+}
+
+func (a *Client) DeletePublicDashboardWithParams(params *DeletePublicDashboardParams, opts ...ClientOption) (*DeletePublicDashboardOK, error) {
+	if params == nil {
+		params = NewDeletePublicDashboardParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "deletePublicDashboard",
+		Method:             "DELETE",
+		PathPattern:        "/dashboards/uid/{dashboardUid}/public-dashboards/{uid}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &DeletePublicDashboardReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DeletePublicDashboardOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for deletePublicDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 GetDashboardByUID gets dashboard by uid
 
 Will return the dashboard given the dashboard unique identifier (uid).
@@ -189,6 +432,140 @@ func (a *Client) GetDashboardByUIDWithParams(params *GetDashboardByUIDParams, op
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getDashboardByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetDashboardPermissionsListByID gets all existing permissions for the given dashboard
+
+Please refer to [updated API](#/dashboards/getDashboardPermissionsListByUID) instead
+*/
+func (a *Client) GetDashboardPermissionsListByID(dashboardID int64, opts ...ClientOption) (*GetDashboardPermissionsListByIDOK, error) {
+	params := NewGetDashboardPermissionsListByIDParams().WithDashboardID(dashboardID)
+	return a.GetDashboardPermissionsListByIDWithParams(params, opts...)
+}
+
+func (a *Client) GetDashboardPermissionsListByIDWithParams(params *GetDashboardPermissionsListByIDParams, opts ...ClientOption) (*GetDashboardPermissionsListByIDOK, error) {
+	if params == nil {
+		params = NewGetDashboardPermissionsListByIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getDashboardPermissionsListByID",
+		Method:             "GET",
+		PathPattern:        "/dashboards/id/{DashboardID}/permissions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetDashboardPermissionsListByIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetDashboardPermissionsListByIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getDashboardPermissionsListByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetDashboardPermissionsListByUID gets all existing permissions for the given dashboard
+*/
+func (a *Client) GetDashboardPermissionsListByUID(uid string, opts ...ClientOption) (*GetDashboardPermissionsListByUIDOK, error) {
+	params := NewGetDashboardPermissionsListByUIDParams().WithUID(uid)
+	return a.GetDashboardPermissionsListByUIDWithParams(params, opts...)
+}
+
+func (a *Client) GetDashboardPermissionsListByUIDWithParams(params *GetDashboardPermissionsListByUIDParams, opts ...ClientOption) (*GetDashboardPermissionsListByUIDOK, error) {
+	if params == nil {
+		params = NewGetDashboardPermissionsListByUIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getDashboardPermissionsListByUID",
+		Method:             "GET",
+		PathPattern:        "/dashboards/uid/{uid}/permissions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetDashboardPermissionsListByUIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetDashboardPermissionsListByUIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getDashboardPermissionsListByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetDashboardSnapshot gets snapshot by key
+*/
+func (a *Client) GetDashboardSnapshot(key string, opts ...ClientOption) (*GetDashboardSnapshotOK, error) {
+	params := NewGetDashboardSnapshotParams().WithKey(key)
+	return a.GetDashboardSnapshotWithParams(params, opts...)
+}
+
+func (a *Client) GetDashboardSnapshotWithParams(params *GetDashboardSnapshotParams, opts ...ClientOption) (*GetDashboardSnapshotOK, error) {
+	if params == nil {
+		params = NewGetDashboardSnapshotParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getDashboardSnapshot",
+		Method:             "GET",
+		PathPattern:        "/snapshots/{key}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetDashboardSnapshotReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetDashboardSnapshotOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getDashboardSnapshot: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -237,6 +614,182 @@ func (a *Client) GetDashboardTagsWithParams(params *GetDashboardTagsParams, opts
 }
 
 /*
+GetDashboardVersionByID gets a specific dashboard version
+
+Please refer to [updated API](#/dashboards/getDashboardVersionByUID) instead
+*/
+func (a *Client) GetDashboardVersionByID(dashboardVersionID int64, dashboardID int64, opts ...ClientOption) (*GetDashboardVersionByIDOK, error) {
+	params := NewGetDashboardVersionByIDParams().WithDashboardID(dashboardID).WithDashboardVersionID(dashboardVersionID)
+	return a.GetDashboardVersionByIDWithParams(params, opts...)
+}
+
+func (a *Client) GetDashboardVersionByIDWithParams(params *GetDashboardVersionByIDParams, opts ...ClientOption) (*GetDashboardVersionByIDOK, error) {
+	if params == nil {
+		params = NewGetDashboardVersionByIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getDashboardVersionByID",
+		Method:             "GET",
+		PathPattern:        "/dashboards/id/{DashboardID}/versions/{DashboardVersionID}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetDashboardVersionByIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetDashboardVersionByIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getDashboardVersionByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetDashboardVersionByUID gets a specific dashboard version using UID
+*/
+func (a *Client) GetDashboardVersionByUID(uid string, dashboardVersionID int64, opts ...ClientOption) (*GetDashboardVersionByUIDOK, error) {
+	params := NewGetDashboardVersionByUIDParams().WithDashboardVersionID(dashboardVersionID).WithUID(uid)
+	return a.GetDashboardVersionByUIDWithParams(params, opts...)
+}
+
+func (a *Client) GetDashboardVersionByUIDWithParams(params *GetDashboardVersionByUIDParams, opts ...ClientOption) (*GetDashboardVersionByUIDOK, error) {
+	if params == nil {
+		params = NewGetDashboardVersionByUIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getDashboardVersionByUID",
+		Method:             "GET",
+		PathPattern:        "/dashboards/uid/{uid}/versions/{DashboardVersionID}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetDashboardVersionByUIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetDashboardVersionByUIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getDashboardVersionByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetDashboardVersionsByID gets all existing versions for the dashboard
+
+Please refer to [updated API](#/dashboards/getDashboardVersionsByUID) instead
+*/
+func (a *Client) GetDashboardVersionsByID(dashboardID int64, opts ...ClientOption) (*GetDashboardVersionsByIDOK, error) {
+	params := NewGetDashboardVersionsByIDParams().WithDashboardID(dashboardID)
+	return a.GetDashboardVersionsByIDWithParams(params, opts...)
+}
+
+func (a *Client) GetDashboardVersionsByIDWithParams(params *GetDashboardVersionsByIDParams, opts ...ClientOption) (*GetDashboardVersionsByIDOK, error) {
+	if params == nil {
+		params = NewGetDashboardVersionsByIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getDashboardVersionsByID",
+		Method:             "GET",
+		PathPattern:        "/dashboards/id/{DashboardID}/versions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetDashboardVersionsByIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetDashboardVersionsByIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getDashboardVersionsByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetDashboardVersionsByUID gets all existing versions for the dashboard using UID
+*/
+
+func (a *Client) GetDashboardVersionsByUID(params *GetDashboardVersionsByUIDParams, opts ...ClientOption) (*GetDashboardVersionsByUIDOK, error) {
+	if params == nil {
+		params = NewGetDashboardVersionsByUIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getDashboardVersionsByUID",
+		Method:             "GET",
+		PathPattern:        "/dashboards/uid/{uid}/versions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetDashboardVersionsByUIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetDashboardVersionsByUIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getDashboardVersionsByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 GetHomeDashboard gets home dashboard
 */
 func (a *Client) GetHomeDashboard(opts ...ClientOption) (*GetHomeDashboardOK, error) {
@@ -277,6 +830,94 @@ func (a *Client) GetHomeDashboardWithParams(params *GetHomeDashboardParams, opts
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getHomeDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetPublicAnnotations Get annotations for a public dashboard
+*/
+func (a *Client) GetPublicAnnotations(accessToken string, opts ...ClientOption) (*GetPublicAnnotationsOK, error) {
+	params := NewGetPublicAnnotationsParams().WithAccessToken(accessToken)
+	return a.GetPublicAnnotationsWithParams(params, opts...)
+}
+
+func (a *Client) GetPublicAnnotationsWithParams(params *GetPublicAnnotationsParams, opts ...ClientOption) (*GetPublicAnnotationsOK, error) {
+	if params == nil {
+		params = NewGetPublicAnnotationsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getPublicAnnotations",
+		Method:             "GET",
+		PathPattern:        "/public/dashboards/{accessToken}/annotations",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetPublicAnnotationsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetPublicAnnotationsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getPublicAnnotations: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetPublicDashboard Get public dashboard by dashboardUid
+*/
+func (a *Client) GetPublicDashboard(dashboardUID string, opts ...ClientOption) (*GetPublicDashboardOK, error) {
+	params := NewGetPublicDashboardParams().WithDashboardUID(dashboardUID)
+	return a.GetPublicDashboardWithParams(params, opts...)
+}
+
+func (a *Client) GetPublicDashboardWithParams(params *GetPublicDashboardParams, opts ...ClientOption) (*GetPublicDashboardOK, error) {
+	if params == nil {
+		params = NewGetPublicDashboardParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getPublicDashboard",
+		Method:             "GET",
+		PathPattern:        "/dashboards/uid/{dashboardUid}/public-dashboards",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetPublicDashboardReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetPublicDashboardOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getPublicDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -325,6 +966,94 @@ func (a *Client) ImportDashboardWithParams(params *ImportDashboardParams, opts .
 }
 
 /*
+InterpolateDashboard interpolates dashboard this is an experimental endpoint under dashboard library or suggested dashboards feature flags and is subject to change
+*/
+func (a *Client) InterpolateDashboard(opts ...ClientOption) (*InterpolateDashboardOK, error) {
+	params := NewInterpolateDashboardParams()
+	return a.InterpolateDashboardWithParams(params, opts...)
+}
+
+func (a *Client) InterpolateDashboardWithParams(params *InterpolateDashboardParams, opts ...ClientOption) (*InterpolateDashboardOK, error) {
+	if params == nil {
+		params = NewInterpolateDashboardParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "interpolateDashboard",
+		Method:             "POST",
+		PathPattern:        "/dashboards/interpolate",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &InterpolateDashboardReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*InterpolateDashboardOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for interpolateDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+ListPublicDashboards Get list of public dashboards
+*/
+func (a *Client) ListPublicDashboards(opts ...ClientOption) (*ListPublicDashboardsOK, error) {
+	params := NewListPublicDashboardsParams()
+	return a.ListPublicDashboardsWithParams(params, opts...)
+}
+
+func (a *Client) ListPublicDashboardsWithParams(params *ListPublicDashboardsParams, opts ...ClientOption) (*ListPublicDashboardsOK, error) {
+	if params == nil {
+		params = NewListPublicDashboardsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "listPublicDashboards",
+		Method:             "GET",
+		PathPattern:        "/dashboards/public-dashboards",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &ListPublicDashboardsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListPublicDashboardsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for listPublicDashboards: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 PostDashboard creates update dashboard
 
 Creates a new dashboard or updates an existing dashboard.
@@ -368,6 +1097,312 @@ func (a *Client) PostDashboardWithParams(params *PostDashboardParams, opts ...Cl
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for postDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+QueryPublicDashboard Get results for a given panel on a public dashboard
+*/
+func (a *Client) QueryPublicDashboard(panelID int64, accessToken string, opts ...ClientOption) (*QueryPublicDashboardOK, error) {
+	params := NewQueryPublicDashboardParams().WithAccessToken(accessToken).WithPanelID(panelID)
+	return a.QueryPublicDashboardWithParams(params, opts...)
+}
+
+func (a *Client) QueryPublicDashboardWithParams(params *QueryPublicDashboardParams, opts ...ClientOption) (*QueryPublicDashboardOK, error) {
+	if params == nil {
+		params = NewQueryPublicDashboardParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "queryPublicDashboard",
+		Method:             "POST",
+		PathPattern:        "/public/dashboards/{accessToken}/panels/{panelId}/query",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &QueryPublicDashboardReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*QueryPublicDashboardOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for queryPublicDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+RestoreDashboardVersionByUID restores a dashboard to a given dashboard version using UID
+*/
+func (a *Client) RestoreDashboardVersionByUID(uid string, body *models.RestoreDashboardVersionCommand, opts ...ClientOption) (*RestoreDashboardVersionByUIDOK, error) {
+	params := NewRestoreDashboardVersionByUIDParams().WithBody(body).WithUID(uid)
+	return a.RestoreDashboardVersionByUIDWithParams(params, opts...)
+}
+
+func (a *Client) RestoreDashboardVersionByUIDWithParams(params *RestoreDashboardVersionByUIDParams, opts ...ClientOption) (*RestoreDashboardVersionByUIDOK, error) {
+	if params == nil {
+		params = NewRestoreDashboardVersionByUIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "restoreDashboardVersionByUID",
+		Method:             "POST",
+		PathPattern:        "/dashboards/uid/{uid}/restore",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &RestoreDashboardVersionByUIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RestoreDashboardVersionByUIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for restoreDashboardVersionByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+SearchDashboardSnapshots lists snapshots
+*/
+
+func (a *Client) SearchDashboardSnapshots(params *SearchDashboardSnapshotsParams, opts ...ClientOption) (*SearchDashboardSnapshotsOK, error) {
+	if params == nil {
+		params = NewSearchDashboardSnapshotsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "searchDashboardSnapshots",
+		Method:             "GET",
+		PathPattern:        "/dashboard/snapshots",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &SearchDashboardSnapshotsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*SearchDashboardSnapshotsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for searchDashboardSnapshots: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UpdateDashboardPermissionsByID updates permissions for a dashboard
+
+Please refer to [updated API](#/dashboards/updateDashboardPermissionsByUID) instead
+
+This operation will remove existing permissions if they’re not included in the request.
+*/
+func (a *Client) UpdateDashboardPermissionsByID(dashboardID int64, body *models.UpdateDashboardACLCommand, opts ...ClientOption) (*UpdateDashboardPermissionsByIDOK, error) {
+	params := NewUpdateDashboardPermissionsByIDParams().WithBody(body).WithDashboardID(dashboardID)
+	return a.UpdateDashboardPermissionsByIDWithParams(params, opts...)
+}
+
+func (a *Client) UpdateDashboardPermissionsByIDWithParams(params *UpdateDashboardPermissionsByIDParams, opts ...ClientOption) (*UpdateDashboardPermissionsByIDOK, error) {
+	if params == nil {
+		params = NewUpdateDashboardPermissionsByIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updateDashboardPermissionsByID",
+		Method:             "POST",
+		PathPattern:        "/dashboards/id/{DashboardID}/permissions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UpdateDashboardPermissionsByIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdateDashboardPermissionsByIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updateDashboardPermissionsByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UpdateDashboardPermissionsByUID updates permissions for a dashboard
+
+This operation will remove existing permissions if they’re not included in the request.
+*/
+func (a *Client) UpdateDashboardPermissionsByUID(uid string, body *models.UpdateDashboardACLCommand, opts ...ClientOption) (*UpdateDashboardPermissionsByUIDOK, error) {
+	params := NewUpdateDashboardPermissionsByUIDParams().WithBody(body).WithUID(uid)
+	return a.UpdateDashboardPermissionsByUIDWithParams(params, opts...)
+}
+
+func (a *Client) UpdateDashboardPermissionsByUIDWithParams(params *UpdateDashboardPermissionsByUIDParams, opts ...ClientOption) (*UpdateDashboardPermissionsByUIDOK, error) {
+	if params == nil {
+		params = NewUpdateDashboardPermissionsByUIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updateDashboardPermissionsByUID",
+		Method:             "POST",
+		PathPattern:        "/dashboards/uid/{uid}/permissions",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UpdateDashboardPermissionsByUIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdateDashboardPermissionsByUIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updateDashboardPermissionsByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UpdatePublicDashboard Update public dashboard for a dashboard
+*/
+
+func (a *Client) UpdatePublicDashboard(params *UpdatePublicDashboardParams, opts ...ClientOption) (*UpdatePublicDashboardOK, error) {
+	if params == nil {
+		params = NewUpdatePublicDashboardParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updatePublicDashboard",
+		Method:             "PATCH",
+		PathPattern:        "/dashboards/uid/{dashboardUid}/public-dashboards/{uid}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UpdatePublicDashboardReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdatePublicDashboardOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updatePublicDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+ViewPublicDashboard Get public dashboard for view
+*/
+func (a *Client) ViewPublicDashboard(accessToken string, opts ...ClientOption) (*ViewPublicDashboardOK, error) {
+	params := NewViewPublicDashboardParams().WithAccessToken(accessToken)
+	return a.ViewPublicDashboardWithParams(params, opts...)
+}
+
+func (a *Client) ViewPublicDashboardWithParams(params *ViewPublicDashboardParams, opts ...ClientOption) (*ViewPublicDashboardOK, error) {
+	if params == nil {
+		params = NewViewPublicDashboardParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "viewPublicDashboard",
+		Method:             "GET",
+		PathPattern:        "/public/dashboards/{accessToken}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &ViewPublicDashboardReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ViewPublicDashboardOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for viewPublicDashboard: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

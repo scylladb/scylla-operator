@@ -19,6 +19,9 @@ import (
 // swagger:model Hit
 type Hit struct {
 
+	// description
+	Description string `json:"description,omitempty"`
+
 	// folder Id
 	FolderID int64 `json:"folderId,omitempty"`
 

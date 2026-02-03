@@ -29,7 +29,7 @@ func TaskSplit(s string) (taskType string, taskID uuid.UUID, taskName string, er
 		return
 	}
 
-	i := strings.LastIndex(s, "/")
+	i := strings.Index(s, "/")
 	if i != -1 {
 		taskType = s[:i]
 	} else {

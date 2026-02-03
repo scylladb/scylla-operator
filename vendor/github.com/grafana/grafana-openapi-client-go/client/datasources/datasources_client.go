@@ -47,6 +47,9 @@ type ClientService interface {
 	CheckDatasourceHealthWithUID(uid string, opts ...ClientOption) (*CheckDatasourceHealthWithUIDOK, error)
 	CheckDatasourceHealthWithUIDWithParams(params *CheckDatasourceHealthWithUIDParams, opts ...ClientOption) (*CheckDatasourceHealthWithUIDOK, error)
 
+	CreateCorrelation(sourceUID string, body *models.CreateCorrelationCommand, opts ...ClientOption) (*CreateCorrelationOK, error)
+	CreateCorrelationWithParams(params *CreateCorrelationParams, opts ...ClientOption) (*CreateCorrelationOK, error)
+
 	DatasourceProxyDELETEByUIDcalls(uid string, datasourceProxyRoute string, opts ...ClientOption) (*DatasourceProxyDELETEByUIDcallsAccepted, error)
 	DatasourceProxyDELETEByUIDcallsWithParams(params *DatasourceProxyDELETEByUIDcallsParams, opts ...ClientOption) (*DatasourceProxyDELETEByUIDcallsAccepted, error)
 
@@ -63,6 +66,9 @@ type ClientService interface {
 
 	DatasourceProxyPOSTcalls(params *DatasourceProxyPOSTcallsParams, opts ...ClientOption) (*DatasourceProxyPOSTcallsCreated, *DatasourceProxyPOSTcallsAccepted, error)
 
+	DeleteCorrelation(uid string, correlationUID string, opts ...ClientOption) (*DeleteCorrelationOK, error)
+	DeleteCorrelationWithParams(params *DeleteCorrelationParams, opts ...ClientOption) (*DeleteCorrelationOK, error)
+
 	DeleteDataSourceByID(id string, opts ...ClientOption) (*DeleteDataSourceByIDOK, error)
 	DeleteDataSourceByIDWithParams(params *DeleteDataSourceByIDParams, opts ...ClientOption) (*DeleteDataSourceByIDOK, error)
 
@@ -71,6 +77,14 @@ type ClientService interface {
 
 	DeleteDataSourceByUID(uid string, opts ...ClientOption) (*DeleteDataSourceByUIDOK, error)
 	DeleteDataSourceByUIDWithParams(params *DeleteDataSourceByUIDParams, opts ...ClientOption) (*DeleteDataSourceByUIDOK, error)
+
+	GetCorrelation(sourceUID string, correlationUID string, opts ...ClientOption) (*GetCorrelationOK, error)
+	GetCorrelationWithParams(params *GetCorrelationParams, opts ...ClientOption) (*GetCorrelationOK, error)
+
+	GetCorrelations(params *GetCorrelationsParams, opts ...ClientOption) (*GetCorrelationsOK, error)
+
+	GetCorrelationsBySourceUID(sourceUID string, opts ...ClientOption) (*GetCorrelationsBySourceUIDOK, error)
+	GetCorrelationsBySourceUIDWithParams(params *GetCorrelationsBySourceUIDParams, opts ...ClientOption) (*GetCorrelationsBySourceUIDOK, error)
 
 	GetDataSourceByID(id string, opts ...ClientOption) (*GetDataSourceByIDOK, error)
 	GetDataSourceByIDWithParams(params *GetDataSourceByIDParams, opts ...ClientOption) (*GetDataSourceByIDOK, error)
@@ -86,6 +100,11 @@ type ClientService interface {
 
 	GetDataSources(opts ...ClientOption) (*GetDataSourcesOK, error)
 	GetDataSourcesWithParams(params *GetDataSourcesParams, opts ...ClientOption) (*GetDataSourcesOK, error)
+
+	QueryMetricsWithExpressions(body *models.MetricRequest, opts ...ClientOption) (*QueryMetricsWithExpressionsOK, *QueryMetricsWithExpressionsMultiStatus, error)
+	QueryMetricsWithExpressionsWithParams(params *QueryMetricsWithExpressionsParams, opts ...ClientOption) (*QueryMetricsWithExpressionsOK, *QueryMetricsWithExpressionsMultiStatus, error)
+
+	UpdateCorrelation(params *UpdateCorrelationParams, opts ...ClientOption) (*UpdateCorrelationOK, error)
 
 	UpdateDataSourceByID(id string, body *models.UpdateDataSourceCommand, opts ...ClientOption) (*UpdateDataSourceByIDOK, error)
 	UpdateDataSourceByIDWithParams(params *UpdateDataSourceByIDParams, opts ...ClientOption) (*UpdateDataSourceByIDOK, error)
@@ -324,6 +343,50 @@ func (a *Client) CheckDatasourceHealthWithUIDWithParams(params *CheckDatasourceH
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for checkDatasourceHealthWithUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+CreateCorrelation adds correlation
+*/
+func (a *Client) CreateCorrelation(sourceUID string, body *models.CreateCorrelationCommand, opts ...ClientOption) (*CreateCorrelationOK, error) {
+	params := NewCreateCorrelationParams().WithBody(body).WithSourceUID(sourceUID)
+	return a.CreateCorrelationWithParams(params, opts...)
+}
+
+func (a *Client) CreateCorrelationWithParams(params *CreateCorrelationParams, opts ...ClientOption) (*CreateCorrelationOK, error) {
+	if params == nil {
+		params = NewCreateCorrelationParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "createCorrelation",
+		Method:             "POST",
+		PathPattern:        "/datasources/uid/{sourceUID}/correlations",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &CreateCorrelationReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreateCorrelationOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createCorrelation: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -604,6 +667,50 @@ func (a *Client) DatasourceProxyPOSTcalls(params *DatasourceProxyPOSTcallsParams
 }
 
 /*
+DeleteCorrelation deletes a correlation
+*/
+func (a *Client) DeleteCorrelation(uid string, correlationUID string, opts ...ClientOption) (*DeleteCorrelationOK, error) {
+	params := NewDeleteCorrelationParams().WithCorrelationUID(correlationUID).WithUID(uid)
+	return a.DeleteCorrelationWithParams(params, opts...)
+}
+
+func (a *Client) DeleteCorrelationWithParams(params *DeleteCorrelationParams, opts ...ClientOption) (*DeleteCorrelationOK, error) {
+	if params == nil {
+		params = NewDeleteCorrelationParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "deleteCorrelation",
+		Method:             "DELETE",
+		PathPattern:        "/datasources/uid/{uid}/correlations/{correlationUID}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &DeleteCorrelationReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DeleteCorrelationOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for deleteCorrelation: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 DeleteDataSourceByID deletes an existing data source by id
 
 If you are running Grafana Enterprise and have Fine-grained access control enabled
@@ -743,6 +850,134 @@ func (a *Client) DeleteDataSourceByUIDWithParams(params *DeleteDataSourceByUIDPa
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for deleteDataSourceByUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetCorrelation gets a correlation
+*/
+func (a *Client) GetCorrelation(sourceUID string, correlationUID string, opts ...ClientOption) (*GetCorrelationOK, error) {
+	params := NewGetCorrelationParams().WithCorrelationUID(correlationUID).WithSourceUID(sourceUID)
+	return a.GetCorrelationWithParams(params, opts...)
+}
+
+func (a *Client) GetCorrelationWithParams(params *GetCorrelationParams, opts ...ClientOption) (*GetCorrelationOK, error) {
+	if params == nil {
+		params = NewGetCorrelationParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getCorrelation",
+		Method:             "GET",
+		PathPattern:        "/datasources/uid/{sourceUID}/correlations/{correlationUID}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetCorrelationReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetCorrelationOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getCorrelation: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetCorrelations gets all correlations
+*/
+
+func (a *Client) GetCorrelations(params *GetCorrelationsParams, opts ...ClientOption) (*GetCorrelationsOK, error) {
+	if params == nil {
+		params = NewGetCorrelationsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getCorrelations",
+		Method:             "GET",
+		PathPattern:        "/datasources/correlations",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetCorrelationsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetCorrelationsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getCorrelations: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetCorrelationsBySourceUID gets all correlations originating from the given data source
+*/
+func (a *Client) GetCorrelationsBySourceUID(sourceUID string, opts ...ClientOption) (*GetCorrelationsBySourceUIDOK, error) {
+	params := NewGetCorrelationsBySourceUIDParams().WithSourceUID(sourceUID)
+	return a.GetCorrelationsBySourceUIDWithParams(params, opts...)
+}
+
+func (a *Client) GetCorrelationsBySourceUIDWithParams(params *GetCorrelationsBySourceUIDParams, opts ...ClientOption) (*GetCorrelationsBySourceUIDOK, error) {
+	if params == nil {
+		params = NewGetCorrelationsBySourceUIDParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getCorrelationsBySourceUID",
+		Method:             "GET",
+		PathPattern:        "/datasources/uid/{sourceUID}/correlations",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetCorrelationsBySourceUIDReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetCorrelationsBySourceUIDOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getCorrelationsBySourceUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -980,6 +1215,94 @@ func (a *Client) GetDataSourcesWithParams(params *GetDataSourcesParams, opts ...
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getDataSources: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+QueryMetricsWithExpressions data source query metrics with expressions
+
+If you are running Grafana Enterprise and have Fine-grained access control enabled
+you need to have a permission with action: `datasources:query`.
+*/
+func (a *Client) QueryMetricsWithExpressions(body *models.MetricRequest, opts ...ClientOption) (*QueryMetricsWithExpressionsOK, *QueryMetricsWithExpressionsMultiStatus, error) {
+	params := NewQueryMetricsWithExpressionsParams().WithBody(body)
+	return a.QueryMetricsWithExpressionsWithParams(params, opts...)
+}
+
+func (a *Client) QueryMetricsWithExpressionsWithParams(params *QueryMetricsWithExpressionsParams, opts ...ClientOption) (*QueryMetricsWithExpressionsOK, *QueryMetricsWithExpressionsMultiStatus, error) {
+	if params == nil {
+		params = NewQueryMetricsWithExpressionsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "queryMetricsWithExpressions",
+		Method:             "POST",
+		PathPattern:        "/ds/query",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &QueryMetricsWithExpressionsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch value := result.(type) {
+	case *QueryMetricsWithExpressionsOK:
+		return value, nil, nil
+	case *QueryMetricsWithExpressionsMultiStatus:
+		return nil, value, nil
+	}
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for datasources: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+UpdateCorrelation updates a correlation
+*/
+
+func (a *Client) UpdateCorrelation(params *UpdateCorrelationParams, opts ...ClientOption) (*UpdateCorrelationOK, error) {
+	if params == nil {
+		params = NewUpdateCorrelationParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updateCorrelation",
+		Method:             "PATCH",
+		PathPattern:        "/datasources/uid/{sourceUID}/correlations/{correlationUID}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &UpdateCorrelationReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdateCorrelationOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updateCorrelation: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -478,6 +478,22 @@ func (c *Client) RepairProgress(ctx context.Context, clusterID, taskID, runID st
 	}, nil
 }
 
+// TabletRepairProgress returns tablet repair progress.
+func (c *Client) TabletRepairProgress(ctx context.Context, clusterID, taskID, runID string) (TabletRepairProgress, error) {
+	resp, err := c.operations.GetClusterClusterIDTaskTabletRepairTaskIDRunID(&operations.GetClusterClusterIDTaskTabletRepairTaskIDRunIDParams{
+		Context:   ctx,
+		ClusterID: clusterID,
+		TaskID:    taskID,
+		RunID:     runID,
+	})
+	if err != nil {
+		return TabletRepairProgress{}, err
+	}
+	return TabletRepairProgress{
+		TaskRunTabletRepairProgress: resp.GetPayload(),
+	}, nil
+}
+
 // BackupProgress returns backup progress.
 func (c *Client) BackupProgress(ctx context.Context, clusterID, taskID, runID string) (BackupProgress, error) {
 	tr := &models.TaskRunBackupProgress{
@@ -654,6 +670,16 @@ func (c *Client) DeleteSnapshot(ctx context.Context, clusterID string,
 	return err
 }
 
+// DeleteLocalSnapshots deletes SM snapshots from nodes' disks.
+func (c *Client) DeleteLocalSnapshots(ctx context.Context, clusterID string) error {
+	p := &operations.DeleteClusterClusterIDBackupsLocalSnapshotsParams{
+		Context:   ctx,
+		ClusterID: clusterID,
+	}
+	_, err := c.operations.DeleteClusterClusterIDBackupsLocalSnapshots(p)
+	return err
+}
+
 // Version returns server version.
 func (c *Client) Version(ctx context.Context) (*models.Version, error) {
 	resp, err := c.operations.GetVersion(&operations.GetVersionParams{
@@ -717,6 +743,52 @@ func (c *Client) Suspend(ctx context.Context, clusterID string) error {
 	return err
 }
 
+// SuspendParams describes additional params for suspending the cluster.
+type SuspendParams struct {
+	AllowedTaskType string
+	SuspendPolicy   SuspendPolicy
+	NoContinue      bool
+}
+
+// SuspendPolicy describes behavior towards running tasks (other than AllowedTaskType) when suspend is requested.
+type SuspendPolicy = string
+
+const (
+	// SuspendPolicyStopRunningTasks results in stopping running tasks.
+	SuspendPolicyStopRunningTasks SuspendPolicy = "stop_running_tasks"
+	// SuspendPolicyFailIfRunningTasks results in failing to suspend cluster and returning ErrRunningTasks.
+	SuspendPolicyFailIfRunningTasks SuspendPolicy = "fail_if_running_tasks"
+)
+
+// SuspendWithParams suspend the cluster.
+func (c *Client) SuspendWithParams(ctx context.Context, clusterID string, sp SuspendParams) error {
+	p := &operations.PutClusterClusterIDSuspendedParams{
+		Context:    ctx,
+		ClusterID:  clusterID,
+		Suspended:  true,
+		NoContinue: &sp.NoContinue,
+	}
+	if sp.AllowedTaskType != "" {
+		p.SetAllowTaskType(&sp.AllowedTaskType)
+	}
+	if sp.SuspendPolicy != "" {
+		p.SetSuspendPolicy(&sp.SuspendPolicy)
+	}
+	_, err := c.operations.PutClusterClusterIDSuspended(p)
+	if err != nil {
+		var conflictErr *operations.PutClusterClusterIDSuspendedConflict
+		if errors.As(err, &conflictErr) {
+			if conflictErr.GetPayload() != nil {
+				return errors.Wrap(ErrRunningTasks, conflictErr.GetPayload().Message)
+			}
+			return ErrRunningTasks
+		}
+
+		return err
+	}
+	return nil
+}
+
 // Resume updates cluster suspended property.
 func (c *Client) Resume(ctx context.Context, clusterID string, startTasks bool) error {
 	p := &operations.PutClusterClusterIDSuspendedParams{
@@ -727,6 +799,27 @@ func (c *Client) Resume(ctx context.Context, clusterID string, startTasks bool) 
 	}
 
 	_, err := c.operations.PutClusterClusterIDSuspended(p) // nolint: errcheck
+	return err
+}
+
+// ResumeParams describes additional params for resuming the cluster.
+type ResumeParams struct {
+	StartTasks                 bool
+	StartTasksMissedActivation bool
+	NoContinue                 bool
+}
+
+// ResumeWithParams resumes the cluster.
+func (c *Client) ResumeWithParams(ctx context.Context, clusterID string, rp ResumeParams) error {
+	p := &operations.PutClusterClusterIDSuspendedParams{
+		Context:                    ctx,
+		ClusterID:                  clusterID,
+		Suspended:                  false,
+		StartTasks:                 rp.StartTasks,
+		StartTasksMissedActivation: &rp.StartTasksMissedActivation,
+		NoContinue:                 &rp.NoContinue,
+	}
+	_, err := c.operations.PutClusterClusterIDSuspended(p)
 	return err
 }
 

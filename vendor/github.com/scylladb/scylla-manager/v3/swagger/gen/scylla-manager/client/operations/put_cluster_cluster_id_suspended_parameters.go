@@ -22,8 +22,11 @@ import (
 // NewPutClusterClusterIDSuspendedParams creates a new PutClusterClusterIDSuspendedParams object
 // with the default values initialized.
 func NewPutClusterClusterIDSuspendedParams() *PutClusterClusterIDSuspendedParams {
-	var ()
+	var (
+		suspendPolicyDefault = string("stop_running_tasks")
+	)
 	return &PutClusterClusterIDSuspendedParams{
+		SuspendPolicy: &suspendPolicyDefault,
 
 		timeout: cr.DefaultTimeout,
 	}
@@ -32,8 +35,11 @@ func NewPutClusterClusterIDSuspendedParams() *PutClusterClusterIDSuspendedParams
 // NewPutClusterClusterIDSuspendedParamsWithTimeout creates a new PutClusterClusterIDSuspendedParams object
 // with the default values initialized, and the ability to set a timeout on a request
 func NewPutClusterClusterIDSuspendedParamsWithTimeout(timeout time.Duration) *PutClusterClusterIDSuspendedParams {
-	var ()
+	var (
+		suspendPolicyDefault = string("stop_running_tasks")
+	)
 	return &PutClusterClusterIDSuspendedParams{
+		SuspendPolicy: &suspendPolicyDefault,
 
 		timeout: timeout,
 	}
@@ -42,8 +48,11 @@ func NewPutClusterClusterIDSuspendedParamsWithTimeout(timeout time.Duration) *Pu
 // NewPutClusterClusterIDSuspendedParamsWithContext creates a new PutClusterClusterIDSuspendedParams object
 // with the default values initialized, and the ability to set a context for a request
 func NewPutClusterClusterIDSuspendedParamsWithContext(ctx context.Context) *PutClusterClusterIDSuspendedParams {
-	var ()
+	var (
+		suspendPolicyDefault = string("stop_running_tasks")
+	)
 	return &PutClusterClusterIDSuspendedParams{
+		SuspendPolicy: &suspendPolicyDefault,
 
 		Context: ctx,
 	}
@@ -52,9 +61,12 @@ func NewPutClusterClusterIDSuspendedParamsWithContext(ctx context.Context) *PutC
 // NewPutClusterClusterIDSuspendedParamsWithHTTPClient creates a new PutClusterClusterIDSuspendedParams object
 // with the default values initialized, and the ability to set a custom HTTPClient for a request
 func NewPutClusterClusterIDSuspendedParamsWithHTTPClient(client *http.Client) *PutClusterClusterIDSuspendedParams {
-	var ()
+	var (
+		suspendPolicyDefault = string("stop_running_tasks")
+	)
 	return &PutClusterClusterIDSuspendedParams{
-		HTTPClient: client,
+		SuspendPolicy: &suspendPolicyDefault,
+		HTTPClient:    client,
 	}
 }
 
@@ -68,8 +80,26 @@ type PutClusterClusterIDSuspendedParams struct {
 	AllowTaskType *string
 	/*ClusterID*/
 	ClusterID string
-	/*StartTasks*/
+	/*NoContinue
+	  Start tasks from scratch on resume. Setting it on suspend allows for performing additional cleanup of disabled tasks
+
+	*/
+	NoContinue *bool
+	/*StartTasks
+	  Start tasks stopped by suspend on resume
+
+	*/
 	StartTasks bool
+	/*StartTasksMissedActivation
+	  Start tasks which missed their activation during suspend on resume
+
+	*/
+	StartTasksMissedActivation *bool
+	/*SuspendPolicy
+	  Describes behavior towards running tasks (other than 'allowed_task_type') when suspend is requested. 'stop_running_tasks' results in stopping running tasks. 'fail_if_running_tasks' results in failing to suspend cluster and returning 409 HTTP status code
+
+	*/
+	SuspendPolicy *string
 	/*Suspended*/
 	Suspended models.Suspended
 
@@ -133,6 +163,17 @@ func (o *PutClusterClusterIDSuspendedParams) SetClusterID(clusterID string) {
 	o.ClusterID = clusterID
 }
 
+// WithNoContinue adds the noContinue to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) WithNoContinue(noContinue *bool) *PutClusterClusterIDSuspendedParams {
+	o.SetNoContinue(noContinue)
+	return o
+}
+
+// SetNoContinue adds the noContinue to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) SetNoContinue(noContinue *bool) {
+	o.NoContinue = noContinue
+}
+
 // WithStartTasks adds the startTasks to the put cluster cluster ID suspended params
 func (o *PutClusterClusterIDSuspendedParams) WithStartTasks(startTasks bool) *PutClusterClusterIDSuspendedParams {
 	o.SetStartTasks(startTasks)
@@ -142,6 +183,28 @@ func (o *PutClusterClusterIDSuspendedParams) WithStartTasks(startTasks bool) *Pu
 // SetStartTasks adds the startTasks to the put cluster cluster ID suspended params
 func (o *PutClusterClusterIDSuspendedParams) SetStartTasks(startTasks bool) {
 	o.StartTasks = startTasks
+}
+
+// WithStartTasksMissedActivation adds the startTasksMissedActivation to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) WithStartTasksMissedActivation(startTasksMissedActivation *bool) *PutClusterClusterIDSuspendedParams {
+	o.SetStartTasksMissedActivation(startTasksMissedActivation)
+	return o
+}
+
+// SetStartTasksMissedActivation adds the startTasksMissedActivation to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) SetStartTasksMissedActivation(startTasksMissedActivation *bool) {
+	o.StartTasksMissedActivation = startTasksMissedActivation
+}
+
+// WithSuspendPolicy adds the suspendPolicy to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) WithSuspendPolicy(suspendPolicy *string) *PutClusterClusterIDSuspendedParams {
+	o.SetSuspendPolicy(suspendPolicy)
+	return o
+}
+
+// SetSuspendPolicy adds the suspendPolicy to the put cluster cluster ID suspended params
+func (o *PutClusterClusterIDSuspendedParams) SetSuspendPolicy(suspendPolicy *string) {
+	o.SuspendPolicy = suspendPolicy
 }
 
 // WithSuspended adds the suspended to the put cluster cluster ID suspended params
@@ -184,6 +247,22 @@ func (o *PutClusterClusterIDSuspendedParams) WriteToRequest(r runtime.ClientRequ
 		return err
 	}
 
+	if o.NoContinue != nil {
+
+		// query param no_continue
+		var qrNoContinue bool
+		if o.NoContinue != nil {
+			qrNoContinue = *o.NoContinue
+		}
+		qNoContinue := swag.FormatBool(qrNoContinue)
+		if qNoContinue != "" {
+			if err := r.SetQueryParam("no_continue", qNoContinue); err != nil {
+				return err
+			}
+		}
+
+	}
+
 	// query param start_tasks
 	qrStartTasks := o.StartTasks
 	qStartTasks := swag.FormatBool(qrStartTasks)
@@ -191,6 +270,38 @@ func (o *PutClusterClusterIDSuspendedParams) WriteToRequest(r runtime.ClientRequ
 		if err := r.SetQueryParam("start_tasks", qStartTasks); err != nil {
 			return err
 		}
+	}
+
+	if o.StartTasksMissedActivation != nil {
+
+		// query param start_tasks_missed_activation
+		var qrStartTasksMissedActivation bool
+		if o.StartTasksMissedActivation != nil {
+			qrStartTasksMissedActivation = *o.StartTasksMissedActivation
+		}
+		qStartTasksMissedActivation := swag.FormatBool(qrStartTasksMissedActivation)
+		if qStartTasksMissedActivation != "" {
+			if err := r.SetQueryParam("start_tasks_missed_activation", qStartTasksMissedActivation); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	if o.SuspendPolicy != nil {
+
+		// query param suspend_policy
+		var qrSuspendPolicy string
+		if o.SuspendPolicy != nil {
+			qrSuspendPolicy = *o.SuspendPolicy
+		}
+		qSuspendPolicy := qrSuspendPolicy
+		if qSuspendPolicy != "" {
+			if err := r.SetQueryParam("suspend_policy", qSuspendPolicy); err != nil {
+				return err
+			}
+		}
+
 	}
 
 	if err := r.SetBodyParam(o.Suspended); err != nil {

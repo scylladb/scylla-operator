@@ -1,3 +1,44 @@
+# v1.20.31 (2026-01-22)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.30 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.29 (2025-12-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.28 (2025-12-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.27 (2025-12-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.24.0. Notably this version of the library reduces the allocation footprint of the middleware system. We observe a ~10% reduction in allocations per SDK call with this change.
+
+# v1.20.26 (2025-11-25)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.25 (2025-11-19.2)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.24 (2025-11-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.23 (2025-11-12)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.20.22 (2025-11-11)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.20.21 (2025-11-04)
 
 * **Dependency Update**: Updated to the latest SDK module versions

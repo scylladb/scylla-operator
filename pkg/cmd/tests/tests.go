@@ -103,7 +103,7 @@ var Suites = ginkgotest.TestSuites{
 			framework.SupportedOnlyOnOpenShiftLabelName,
 			framework.IPv6LabelName,
 		),
-		DefaultParallelism: 42,
+		DefaultParallelism: 60,
 	},
 }
 

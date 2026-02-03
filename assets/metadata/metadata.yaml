@@ -1,14 +1,14 @@
 # This file contains metadata for the Scylla Operator.
 # It serves as a single source of truth, and its values should propagate to all other places that rely on this information.
 operator:
-  minOpenShiftVersion: 4.20
-  maxOpenShiftVersion: 4.20
-  minKubernetesVersion: 1.31.0
+  minOpenShiftVersion: "4.20"
+  maxOpenShiftVersion: "4.20"
+  minKubernetesVersion: "1.31.0"
   redHatCertificationProjectID: "678641799dbe477195796c15"
 operatorTests:
   olm:
-    channel: dev # Channel to use for OLM tests in CI/CD.
+    channel: "dev" # Channel to use for OLM tests in CI/CD.
 thirdParty:
   prometheusOperator:
-    version: 0.86.1 # Latest compatible with Prometheus version defined in assets/config/config.yaml (https://prometheus-operator.dev/docs/getting-started/compatibility/)
-    namespace: prometheus-operator
+    version: "0.86.1" # Latest compatible with Prometheus version defined in assets/config/config.yaml (https://prometheus-operator.dev/docs/getting-started/compatibility/)
+    namespace: "prometheus-operator"

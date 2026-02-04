@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/home/scylla/.cache/go-build,uid=1001,gid=1001 \
     make build --warn-undefined-variables
 
 # renovate: datasource=docker depName=base-ubi-minimal packageName=quay.io/scylladb/scylla-operator-images versioning=regex:^base-ubi-(?<major>\d+)\.(?<minor>\d+)-minimal$
-FROM quay.io/scylladb/scylla-operator-images:base-ubi-9.6-minimal
+FROM quay.io/scylladb/scylla-operator-images:base-ubi-9.7-minimal
 
 LABEL org.opencontainers.image.title="Scylla Operator" \
       org.opencontainers.image.description="ScyllaDB Operator for Kubernetes" \

@@ -1,7 +1,20 @@
-# 🚀 GocqlX [![GoDoc](https://pkg.go.dev/badge/github.com/scylladb/gocqlx/v2.svg)](https://pkg.go.dev/github.com/scylladb/gocqlx/v2) [![Go Report Card](https://goreportcard.com/badge/github.com/scylladb/gocqlx)](https://goreportcard.com/report/github.com/scylladb/gocqlx) [![Build Status](https://travis-ci.org/scylladb/gocqlx.svg?branch=master)](https://travis-ci.org/scylladb/gocqlx)
+# 🚀 GocqlX [![GoDoc](https://pkg.go.dev/badge/github.com/scylladb/gocqlx/v3.svg)](https://pkg.go.dev/github.com/scylladb/gocqlx/v3) [![Go Report Card](https://goreportcard.com/badge/github.com/scylladb/gocqlx)](https://goreportcard.com/report/github.com/scylladb/gocqlx) [![Build Status](https://travis-ci.org/scylladb/gocqlx.svg?branch=master)](https://travis-ci.org/scylladb/gocqlx)
 
 GocqlX makes working with Scylla easy and less error-prone.
 It’s inspired by [Sqlx](https://github.com/jmoiron/sqlx), a tool for working with SQL databases, but it goes beyond what Sqlx provides.
+
+## Compatibility
+
+Versions of GocqlX prior to v3.0.0 are compatible with both [Apache Cassandra’s gocql](https://github.com/apache/cassandra-gocql-driver) and [ScyllaDB’s fork](https://github.com/scylladb/gocql).
+However, starting with v3.0.0, GocqlX exclusively supports the scylladb/gocql driver.
+If you are using GocqlX v3.0.0 or newer, you must ensure your `go.mod` includes a replace directive to point to ScyllaDB’s fork:
+
+```go
+// Use the latest version of scylladb/gocql; check for updates at https://github.com/scylladb/gocql/releases
+replace github.com/gocql/gocql => github.com/scylladb/gocql v1.15.3
+```
+
+This is required because GocqlX relies on ScyllaDB-specific extensions and bug fixes introduced in the gocql fork. Attempting to use the standard gocql driver with GocqlX v3.0.0+ may lead to build or runtime issues.
 
 ## Features
 
@@ -20,7 +33,9 @@ Subpackages provide additional functionality:
 ## Installation
 
 ```bash
-    go get -u github.com/scylladb/gocqlx/v2
+git clone git@github.com:scylladb/gocqlx.git
+cd gocqlx/cmd/schemagen/
+go install .
 ```
 
 ## Getting started
@@ -52,7 +67,7 @@ var personMetadata = table.Metadata{
 var personTable = table.New(personMetadata)
 
 // Person represents a row in person table.
-// Field names are converted to camel case by default, no need to add special tags.
+// Field names are converted to snake case by default, no need to add special tags.
 // A field will not be persisted by adding the `db:"-"` tag or making it unexported.
 type Person struct {
 	FirstName string
@@ -112,12 +127,12 @@ t.Log(people)
 Installation
 
 ```bash
-go get -u "github.com/scylladb/gocqlx/v2/cmd/schemagen"
+go get -u "github.com/scylladb/gocqlx/v3/cmd/schemagen"
 ```
 
 Usage:
 ```bash
-$GOBIN/schemagen [flags]
+schemagen [flags]
 
 Flags:
   -cluster string
@@ -134,7 +149,7 @@ Example:
 
 Running the following command for `examples` keyspace: 
 ```bash
-$GOBIN/schemagen -cluster="127.0.0.1:9042" -keyspace="examples" -output="models" -pkgname="models"
+schemagen -cluster="127.0.0.1:9042" -keyspace="examples" -output="models" -pkgname="models"
 ```
 
 Generates `models/models.go` as follows:
@@ -143,7 +158,7 @@ Generates `models/models.go` as follows:
 
 package models
 
-import "github.com/scylladb/gocqlx/v2/table"
+import "github.com/scylladb/gocqlx/v3/table"
 
 // Table models.
 var (
@@ -194,6 +209,10 @@ Go and run them locally:
 make run-scylla
 make run-examples
 ```
+
+## Training
+
+The course [Using Scylla Drivers](https://university.scylladb.com/courses/using-scylla-drivers) in Scylla University explains how to use drivers in different languages to interact with a Scylla cluster. The lesson, [Golang and Scylla Part 3 - GoCQLX](https://university.scylladb.com/courses/using-scylla-drivers/lessons/golang-and-scylla-part-3-gocqlx/), goes over a sample application that, using GoCQLX, interacts with a three-node Scylla cluster. It connects to a Scylla cluster, displays the contents of a table, inserts and deletes data, and shows the contents of the table after each action. [Scylla University](https://university.scylladb.com/) includes other training material and online courses which will help you become a Scylla NoSQL database expert.
 
 ## Performance
 

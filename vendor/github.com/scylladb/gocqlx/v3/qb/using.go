@@ -21,12 +21,12 @@ func Timestamp(t time.Time) int64 {
 }
 
 type using struct {
-	ttl           int64
 	ttlName       string
-	timestamp     int64
 	timestampName string
-	timeout       time.Duration
 	timeoutName   string
+	ttl           int64
+	timestamp     int64
+	timeout       time.Duration
 }
 
 func (u *using) TTL(d time.Duration) *using {
@@ -94,7 +94,7 @@ func (u *using) writeCql(cql *bytes.Buffer) (names []string) {
 
 	if u.timeout != 0 {
 		writePreamble(cql)
-		fmt.Fprintf(cql, "TIMEOUT %s ", u.timeout)
+		fmt.Fprintf(cql, "TIMEOUT %s ", formatDuration(u.timeout))
 	} else if u.timeoutName != "" {
 		writePreamble(cql)
 		cql.WriteString("TIMEOUT ? ")

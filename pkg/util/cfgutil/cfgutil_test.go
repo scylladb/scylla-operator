@@ -3,9 +3,11 @@
 package cfgutil
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	// go.uber.org/config uses gopkg.in/yaml.v2 internally
 	"gopkg.in/yaml.v2"
 )
 
@@ -90,12 +92,12 @@ func TestParseYAML(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			got := &result{}
 			if err := ParseYAML(got, test.Input...); err != nil {
-				if test.ErrorExpected {
-					if _, ok := err.(*yaml.TypeError); ok {
-						return
-					}
+				var typeError *yaml.TypeError
+				if test.ErrorExpected && errors.As(err, &typeError) {
+					return
 				}
-				t.Error(err)
+
+				t.Fatal(err)
 			}
 			if diff := cmp.Diff(*got, test.Golden); diff != "" {
 				t.Errorf("%s", diff)

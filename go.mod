@@ -7,9 +7,9 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.7
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.31
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.32
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.54.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.55.0
 	github.com/aws/smithy-go v1.24.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/blang/semver/v4 v4.0.0
@@ -38,9 +38,9 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v2 v2.8.0
-	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260128142811-4618ae4ab7b7
-	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260128142811-4618ae4ab7b7
-	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260128142811-4618ae4ab7b7
+	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260204124158-4faf7b47bf16
+	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260204124158-4faf7b47bf16
+	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260204124158-4faf7b47bf16
 	github.com/scylladb/scylladb-swagger-go-client v0.2.0
 	github.com/shurcooL/githubv4 v0.0.0-20240727222349-48295856cce7
 	github.com/spf13/cobra v1.10.2

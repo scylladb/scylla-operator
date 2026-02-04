@@ -89,6 +89,16 @@
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*\\S+:\\s*\"?(?<currentValue>[^@\"\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?\"?"
       ]
+    },
+    {
+      "description": "Custom manager for Dockerfile with Renovate annotations matching the regex.",
+      "customType": "regex",
+      "fileMatch": [
+        "^Dockerfile$"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\nFROM\\s+\\S+:(?<currentValue>\\S+)"
+      ]
     }
   ],
   "customDatasources": {

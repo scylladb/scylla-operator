@@ -38,8 +38,8 @@ null
 			},
 			expectedContent: []byte(strings.TrimLeft(`
 managedUnits:
-- foo
-- bar
+    - foo
+    - bar
 `, "\n")),
 		},
 	}
@@ -82,11 +82,25 @@ null
 			expectedStatus: &unitManagerStatus{},
 		},
 		{
-			name: "testing values are deserialized correctly",
+			name: "testing values with no indents are deserialized correctly (yaml.v2 backward compatibility)",
 			content: []byte(strings.TrimLeft(`
 managedUnits:
 - foo
 - bar
+`, "\n")),
+			expectedStatus: &unitManagerStatus{
+				ManagedUnits: []string{
+					"foo",
+					"bar",
+				},
+			},
+		},
+		{
+			name: "testing values are deserialized correctly",
+			content: []byte(strings.TrimLeft(`
+managedUnits:
+    - foo
+    - bar
 `, "\n")),
 			expectedStatus: &unitManagerStatus{
 				ManagedUnits: []string{

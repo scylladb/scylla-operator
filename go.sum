@@ -387,8 +387,8 @@ github.com/scylladb/go-set v1.0.2 h1:SkvlMCKhP0wyyct6j+0IHJkBkSZL+TDzZ4E7f7BCcRE
 github.com/scylladb/go-set v1.0.2/go.mod h1:DkpGd78rljTxKAnTDPFqXSGxvETQnJyuSOQwsHycqfs=
 github.com/scylladb/gocql v1.17.1 h1:SbD85ooKK3O3HcpzSuMQ0QNbrILArtzKu7Tgk661Psk=
 github.com/scylladb/gocql v1.17.1/go.mod h1:Sf1nUgIj6BbxvzI6cVMJmmjB6lcMvgcNxHYv/jrGTpA=
-github.com/scylladb/gocqlx/v2 v2.8.0 h1:f/oIgoEPjKDKd+RIoeHqexsIQVIbalVmT+axwvUqQUg=
-github.com/scylladb/gocqlx/v2 v2.8.0/go.mod h1:4/+cga34PVqjhgSoo5Nr2fX1MQIqZB5eCE5DK4xeDig=
+github.com/scylladb/gocqlx/v3 v3.0.4 h1:37rMVFEUlsGGNYB7OLR7991KwBYR2WA5TU7wtduClas=
+github.com/scylladb/gocqlx/v3 v3.0.4/go.mod h1:3vBkGO+HRh/BYypLWXzurQ45u1BAO0VGBhg5VgperPY=
 github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260204124158-4faf7b47bf16 h1:ata+z1b5nJMALWQUAYG1qrXLZSUkIiaVsQR76a9t0yo=
 github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260204124158-4faf7b47bf16/go.mod h1:zo2cjBXkEhuLbunHBCw3qU5kf6PpNeFyOp+ywPH/Ybg=
 github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260204124158-4faf7b47bf16 h1:na/WsKJ2bvEf6PZvXf2SumG0dixjqNnifriQ/vwlvak=

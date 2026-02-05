@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/util/images"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -200,4 +202,30 @@ func TestProjectConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestScyllaDBMonitoringAndGrafanaDefaultPlatformDashboardCompatibility(t *testing.T) {
+	t.Parallel()
+
+	// Verify that grafanaDefaultPlatformDashboard matches scyllaDBVersion (up to minor).
+	t.Run("grafanaDefaultPlatformDashboard matches scyllaDBVersion", func(t *testing.T) {
+		scyllaDBVersion, err := semver.Parse(Project.Operator.ScyllaDBVersion)
+		if err != nil {
+			t.Fatalf("failed to parse scyllaDBVersion: %v", err)
+		}
+
+		expectedMajorMinor := fmt.Sprintf("%d.%d", scyllaDBVersion.Major, scyllaDBVersion.Minor)
+		expectedDefaultPlatformDashboard := fmt.Sprintf("scylladb-%s/scylla-overview.%s.json", expectedMajorMinor, expectedMajorMinor)
+
+		if Project.Operator.GrafanaDefaultPlatformDashboard != expectedDefaultPlatformDashboard {
+			t.Errorf("grafanaDefaultPlatformDashboard %q does not match expected %q based on scyllaDBVersion %q", Project.Operator.GrafanaDefaultPlatformDashboard, expectedDefaultPlatformDashboard, Project.Operator.ScyllaDBVersion)
+		}
+	})
+
+	t.Run("grafanaDefaultPlatformDashboard exists", func(t *testing.T) {
+		dashboardPath := "../../assets/monitoring/grafana/v1alpha1/dashboards/platform/" + Project.Operator.GrafanaDefaultPlatformDashboard
+		if _, err := os.Stat(dashboardPath); os.IsNotExist(err) {
+			t.Errorf("grafanaDefaultPlatformDashboard %q does not exist at path %q", Project.Operator.GrafanaDefaultPlatformDashboard, dashboardPath)
+		}
+	})
 }

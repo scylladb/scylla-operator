@@ -760,10 +760,26 @@ verify-in-tree-prometheus-operator-exports:
 	$(diff) -r "$(tmp_dir)" ./pkg/thirdparty/github.com/prometheus-operator/prometheus-operator || (echo 'In-tree prometheus-operator exports are not up to date. Please run `make update-in-tree-prometheus-operator-exports` to update them.' && false)
 .PHONY: verify-in-tree-prometheus-operator-exports
 
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports
+# $1 - config file path
+define patch-config-monitoring
+	./hack/sync-config-with-monitoring-versions.sh "$(1)"
+endef
+
+update-config:
+	$(call patch-config-monitoring,./assets/config/config.yaml)
+.PHONY: update-config
+
+verify-config: tmp_dir :=$(shell mktemp -d)
+verify-config:
+	cp ./assets/config/config.yaml "$(tmp_dir)/config.yaml"
+	$(call patch-config-monitoring,"$(tmp_dir)/config.yaml")
+	$(diff) "$(tmp_dir)/config.yaml" ./assets/config/config.yaml || (echo 'Config is not up to date. Please run `make update-config` to update it.' && false)
+.PHONY: verify-config
+
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config
 .PHONY: verify
 
-update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports
+update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports update-config
 .PHONY: update
 
 test-unit:

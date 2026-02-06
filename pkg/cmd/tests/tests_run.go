@@ -48,6 +48,7 @@ type RunOptions struct {
 	Quiet                 bool
 	ShowProgress          bool
 	FlakeAttempts         int
+	MustPassRepeatedly    int
 	FailFast              bool
 	LabelFilter           string
 	FocusStrings          []string
@@ -134,6 +135,7 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&o.Quiet, "quiet", "", o.Quiet, "Reduces the tests output.")
 	cmd.Flags().BoolVarP(&o.ShowProgress, "progress", "", o.ShowProgress, "Shows progress during test run. Only applies to serial execution.")
 	cmd.Flags().IntVarP(&o.FlakeAttempts, "flake-attempts", "", o.FlakeAttempts, "Retries a failed test up to N times. If it succeeds at least once the test will be considered a success.")
+	cmd.Flags().IntVarP(&o.MustPassRepeatedly, "must-pass-repeatedly", "", o.MustPassRepeatedly, "A test case must pass N times in a row to be considered a success.")
 	cmd.Flags().BoolVarP(&o.FailFast, "fail-fast", "", o.FailFast, "Stops execution after first failed test.")
 	cmd.Flags().StringVarP(&o.LabelFilter, "label-filter", "", o.LabelFilter, "Ginkgo label filter.")
 	cmd.Flags().StringSliceVarP(&o.FocusStrings, "focus", "", o.FocusStrings, "Regex to select a subset of tests to run.")
@@ -240,6 +242,10 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	suiteConfig.FlakeAttempts = o.FlakeAttempts + 1
 	if suiteConfig.FlakeAttempts > 1 {
 		klog.Infof("Flakes will be retried up to %d times.", suiteConfig.FlakeAttempts-1)
+	}
+	suiteConfig.MustPassRepeatedly = o.MustPassRepeatedly
+	if suiteConfig.MustPassRepeatedly >= 1 {
+		klog.Infof("Tests must pass %d times in a row to be considered successful.", suiteConfig.MustPassRepeatedly)
 	}
 	suiteConfig.FailFast = o.FailFast
 	suiteConfig.RandomSeed = o.RandomSeed

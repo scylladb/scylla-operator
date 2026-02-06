@@ -50,7 +50,6 @@ Now we can create a simple ScyllaCluster to get ScyllaDB running.
 :::
 
 :::{code-block} bash
-:linenos:
 :substitutions:
 
 kubectl apply --server-side -f=- <<EOF
@@ -80,6 +79,13 @@ spec:
         limits:
           cpu: 1
           memory: 8Gi
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 100Mi
+        limits:
+          cpu: 100m
+          memory: 100Mi
       placement:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -111,6 +117,13 @@ spec:
         limits:
           cpu: 1
           memory: 8Gi
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 100Mi
+        limits:
+          cpu: 100m
+          memory: 100Mi
       placement:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -142,6 +155,13 @@ spec:
         limits:
           cpu: 1
           memory: 8Gi
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 100Mi
+        limits:
+          cpu: 100m
+          memory: 100Mi
       placement:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

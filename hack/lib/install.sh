@@ -8,7 +8,7 @@ shopt -s inherit_errexit
 
 source "$( dirname "${BASH_SOURCE[0]}" )/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/kube.sh"
-source "$( dirname "${BASH_SOURCE[0]}" )/metadata.sh"
+source "$( dirname "${BASH_SOURCE[0]}" )/assets.sh"
 
 # install-operator installs the Scylla Operator and its dependencies in the cluster through the specified method.
 # $1 - root source path to use. It can either be an absolute file path or a URL.

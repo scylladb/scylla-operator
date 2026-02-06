@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
+	prometheusoperator "github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/prometheus-operator/prometheus-operator/pkg/operator"
 	"github.com/scylladb/scylla-operator/pkg/util/images"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -191,6 +193,27 @@ func TestProjectConfig(t *testing.T) {
 				validateMultiPlatformImage(ctx),
 			),
 		},
+		{
+			name:        "envTestKubernetesVersion",
+			configField: Project.OperatorTests.EnvTestKubernetesVersion,
+			testFn: composeValidators(
+				validateRequired,
+				validateSemanticVersion,
+			),
+		},
+		{
+			name:        "thirdParty.prometheusOperator.version",
+			configField: Project.ThirdParty.PrometheusOperatorConfig.Version,
+			testFn: composeValidators(
+				validateRequired,
+				validateSemanticVersion,
+			),
+		},
+		{
+			name:        "thirdParty.prometheusOperator.namespace",
+			configField: Project.ThirdParty.PrometheusOperatorConfig.Namespace,
+			testFn:      validateRequired,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -226,6 +249,19 @@ func TestScyllaDBMonitoringAndGrafanaDefaultPlatformDashboardCompatibility(t *te
 		dashboardPath := "../../assets/monitoring/grafana/v1alpha1/dashboards/platform/" + Project.Operator.GrafanaDefaultPlatformDashboard
 		if _, err := os.Stat(dashboardPath); os.IsNotExist(err) {
 			t.Errorf("grafanaDefaultPlatformDashboard %q does not exist at path %q", Project.Operator.GrafanaDefaultPlatformDashboard, dashboardPath)
+		}
+	})
+}
+
+func TestPrometheusOperatorCompatibility(t *testing.T) {
+	t.Parallel()
+
+	t.Run("prometheus operator version supports prometheus version", func(t *testing.T) {
+		t.Parallel()
+
+		prometheusVersion := Project.Operator.PrometheusVersion
+		if !slices.Contains(prometheusoperator.PrometheusCompatibilityMatrix, prometheusVersion) {
+			t.Errorf("prometheus operator version %q compatibility matrix does not contain prometheus version %q", Project.ThirdParty.PrometheusOperatorConfig.Version, prometheusVersion)
 		}
 	})
 }

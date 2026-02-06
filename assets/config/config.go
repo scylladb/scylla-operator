@@ -43,7 +43,17 @@ type OperatorTestsConfig struct {
 	EnvTestKubernetesVersion string               `json:"envTestKubernetesVersion"`
 }
 
+type PrometheusOperatorConfig struct {
+	Version   string `json:"version"`
+	Namespace string `json:"namespace"`
+}
+
+type ThirdPartyConfig struct {
+	PrometheusOperatorConfig PrometheusOperatorConfig `json:"prometheusOperator"`
+}
+
 type ProjectConfig struct {
 	Operator      OperatorConfig      `json:"operator"`
 	OperatorTests OperatorTestsConfig `json:"operatorTests"`
+	ThirdParty    ThirdPartyConfig    `json:"thirdParty"`
 }

@@ -10,7 +10,7 @@ set -euExo pipefail
 shopt -s inherit_errexit
 
 readonly script_dir="$( realpath $( dirname "${BASH_SOURCE[0]}" ) )"
-source "${script_dir}/../../lib/metadata.sh"
+source "${script_dir}/../../lib/assets.sh"
 
 readonly semver_pattern='^([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$'
 

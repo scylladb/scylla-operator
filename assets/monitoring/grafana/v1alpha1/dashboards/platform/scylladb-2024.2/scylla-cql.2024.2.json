@@ -18,11 +18,11 @@
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
-                "name": "node_restart",
+                "name": "Node Restart",
                 "showIn": 0,
                 "tagKeys": "instance,dc,cluster",
                 "tags": [],
-                "titleFormat": "restart",
+                "titleFormat": "Node Restart",
                 "type": "tags"
             },
             {
@@ -212,7 +212,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -243,7 +243,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -251,7 +251,7 @@
                     "step": 1
                 }
             ],
-            "title": "CQL Insert",
+            "title": "CQL Insert by [[by]]",
             "type": "timeseries"
         },
         {
@@ -297,7 +297,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -328,7 +328,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -336,7 +336,7 @@
                     "step": 1
                 }
             ],
-            "title": "CQL Reads",
+            "title": "CQL Reads by [[by]]",
             "type": "timeseries"
         },
         {
@@ -382,7 +382,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -413,7 +413,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -421,7 +421,7 @@
                     "step": 1
                 }
             ],
-            "title": "CQL Deletes",
+            "title": "CQL Deletes by [[by]]",
             "type": "timeseries"
         },
         {
@@ -467,7 +467,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -498,7 +498,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -506,7 +506,7 @@
                     "step": 1
                 }
             ],
-            "title": "CQL Updates",
+            "title": "CQL Updates by [[by]]",
             "type": "timeseries"
         },
         {
@@ -581,7 +581,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(scylla_transport_current_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(scylla_transport_current_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_transport_current_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -664,7 +664,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_transport_cql_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_transport_cql_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_transport_cql_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -718,7 +718,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -749,7 +749,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_select_bypass_caches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_select_bypass_caches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_select_bypass_caches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "format": "time_series",
                     "hide": false,
                     "intervalFactor": 2,
@@ -839,7 +839,7 @@
                     "step": 30
                 }
             ],
-            "title": "CQL Errors [[by]]",
+            "title": "CQL Errors by [[by]]",
             "type": "timeseries"
         },
         {
@@ -914,7 +914,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_batches_pure_unlogged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_batches_pure_unlogged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_batches_pure_unlogged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -997,7 +997,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_statements_in_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_statements_in_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_statements_in_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1080,7 +1080,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_rows_read{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_rows_read{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_rows_read{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1088,7 +1088,7 @@
                     "step": 30
                 }
             ],
-            "title": "CQL Row Reads [[by]]",
+            "title": "CQL Row Reads by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1163,7 +1163,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_secondary_index_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_secondary_index_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_secondary_index_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1171,7 +1171,7 @@
                     "step": 30
                 }
             ],
-            "title": "Secondary indexes Reads [[by]]",
+            "title": "Secondary indexes Reads by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1246,7 +1246,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])>0) by ([[by]], consistency_level)) or on ([[by]],consistency_level) bottomk([[bottomk]], sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])>0) by ([[by]], consistency_level))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])>0) by ([[by]], consistency_level))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1254,7 +1254,7 @@
                     "step": 30
                 }
             ],
-            "title": "Requests by Consistency Level [[by]]",
+            "title": "Requests by Consistency Level by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1638,7 +1638,6 @@
                         {
                             "allHosts": true,
                             "dashversion": [
-                                ">6.0",
                                 ">2024.2"
                             ],
                             "queryHost": "$original_ip",
@@ -1741,7 +1740,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -1772,7 +1771,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "topk([[topk]], sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "metric": "",
@@ -1826,7 +1825,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -1857,7 +1856,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "topk([[topk]], sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "metric": "",
@@ -1911,7 +1910,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -1942,7 +1941,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "topk([[topk]], sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "metric": "",
@@ -1996,7 +1995,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -2027,7 +2026,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "topk([[topk]], sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "metric": "",
@@ -2133,7 +2132,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2164,7 +2163,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -2218,7 +2217,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2249,7 +2248,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -2303,7 +2302,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2334,7 +2333,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -2417,7 +2416,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "topk([[topk]], sum(rate(scylla_cql_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]])) or on ([[by]]) bottomk([[bottomk]], sum(rate(scylla_cql_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -2600,7 +2599,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2766,7 +2765,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2930,7 +2929,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3105,7 +3104,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3269,7 +3268,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -3432,7 +3431,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -3612,7 +3611,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3778,7 +3777,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3944,7 +3943,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4110,7 +4109,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4307,7 +4306,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4473,7 +4472,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4616,7 +4615,7 @@
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.12.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.13.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4832,7 +4831,41 @@
             },
             {
                 "allValue": null,
-                "class": "topk_limit",
+                "class": "topbottom",
+                "current": {
+                    "tags": [],
+                    "text": "top",
+                    "value": "topk"
+                },
+                "hide": 0,
+                "includeAll": false,
+                "label": "Filter",
+                "multi": false,
+                "name": "topbottom",
+                "options": [
+                    {
+                        "selected": true,
+                        "text": "top",
+                        "value": "topk"
+                    },
+                    {
+                        "selected": false,
+                        "text": "bottom",
+                        "value": "bottomk"
+                    },
+                    {
+                        "selected": false,
+                        "text": "limit",
+                        "value": "limitk"
+                    }
+                ],
+                "query": "top : topk,bottom : bottomk,limit : limitk",
+                "skipUrlSync": false,
+                "type": "custom"
+            },
+            {
+                "allValue": null,
+                "class": "filter_limit",
                 "current": {
                     "tags": [],
                     "text": "256",
@@ -4841,85 +4874,10 @@
                 "error": null,
                 "hide": 0,
                 "includeAll": false,
-                "label": "Filter Highest",
+                "label": "",
                 "multi": false,
-                "name": "topk",
+                "name": "filter_limit",
                 "options": [
-                    {
-                        "selected": false,
-                        "text": "0",
-                        "value": "0"
-                    },
-                    {
-                        "selected": false,
-                        "text": "5",
-                        "value": "5"
-                    },
-                    {
-                        "selected": false,
-                        "text": "10",
-                        "value": "10"
-                    },
-                    {
-                        "selected": false,
-                        "text": "20",
-                        "value": "20"
-                    },
-                    {
-                        "selected": false,
-                        "text": "50",
-                        "value": "50"
-                    },
-                    {
-                        "selected": false,
-                        "text": "100",
-                        "value": "100"
-                    },
-                    {
-                        "selected": true,
-                        "text": "256",
-                        "value": "256"
-                    },
-                    {
-                        "selected": false,
-                        "text": "512",
-                        "value": "512"
-                    },
-                    {
-                        "selected": false,
-                        "text": "1000",
-                        "value": "1000"
-                    },
-                    {
-                        "selected": false,
-                        "text": "10000",
-                        "value": "10000"
-                    }
-                ],
-                "query": "0, 5, 10, 20, 50, 100, 256, 500, 1000, 10000",
-                "skipUrlSync": false,
-                "type": "custom"
-            },
-            {
-                "allValue": null,
-                "class": "botomk_limit",
-                "current": {
-                    "tags": [],
-                    "text": "0",
-                    "value": "0"
-                },
-                "error": null,
-                "hide": 0,
-                "includeAll": false,
-                "label": "Filter Lowest",
-                "multi": false,
-                "name": "bottomk",
-                "options": [
-                    {
-                        "selected": true,
-                        "text": "0",
-                        "value": "0"
-                    },
                     {
                         "selected": false,
                         "text": "5",
@@ -5022,8 +4980,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.12.1",
-                    "value": "4.12.1"
+                    "text": "4.13.0",
+                    "value": "4.13.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -5034,11 +4992,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.12.1",
-                        "value": "4.12.1"
+                        "text": "4.13.0",
+                        "value": "4.13.0"
                     }
                 ],
-                "query": "4.12.1",
+                "query": "4.13.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

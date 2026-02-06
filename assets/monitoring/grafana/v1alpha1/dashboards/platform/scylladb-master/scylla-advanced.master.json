@@ -18,11 +18,11 @@
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
-                "name": "node_restart",
+                "name": "Node Restart",
                 "showIn": 0,
                 "tagKeys": "instance,dc,cluster",
                 "tags": [],
-                "titleFormat": "restart",
+                "titleFormat": "Node Restart",
                 "type": "tags"
             },
             {
@@ -197,12 +197,37 @@
                                 ]
                             }
                         ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Timeouts"
+                        },
+                        "properties": [
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "from": 0,
+                                            "result": {
+                                                "color": "red",
+                                                "index": 0,
+                                                "text": "Timeouts"
+                                            },
+                                            "to": null
+                                        },
+                                        "type": "range"
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             },
             "gridPos": {
                 "h": 4,
-                "w": 3,
+                "w": 2,
                 "x": 0,
                 "y": 0
             },
@@ -230,6 +255,21 @@
                     "step": 40
                 },
                 {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "P1809F7CD0C75ACF3"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "(sum(rate(scylla_storage_proxy_coordinator_write_timeouts{cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) or on() vector(0)) + (sum(rate(scylla_storage_proxy_coordinator_read_timeouts{cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) or on() vector(0))>0",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "Timeouts",
+                    "range": false,
+                    "refId": "B"
+                },
+                {
                     "expr": "count(scrape_samples_scraped{job=~\"$cluster|$^\", cluster=\"$cluster\"}==0) > 0",
                     "instant": true,
                     "interval": "",
@@ -253,7 +293,7 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Status",
+            "title": "Cluster Status",
             "type": "stat"
         },
         {
@@ -299,7 +339,7 @@
             "gridPos": {
                 "h": 4,
                 "w": 2,
-                "x": 3,
+                "x": 2,
                 "y": 0
             },
             "id": 2,
@@ -363,7 +403,7 @@
             "gridPos": {
                 "h": 4,
                 "w": 2,
-                "x": 5,
+                "x": 4,
                 "y": 0
             },
             "id": 3,
@@ -397,7 +437,7 @@
         {
             "class": "small_stat",
             "datasource": "prometheus",
-            "description": "The number of tables",
+            "description": "Disk Usage",
             "fieldConfig": {
                 "defaults": {
                     "mappings": [],
@@ -409,13 +449,14 @@
                                 "value": null
                             }
                         ]
-                    }
+                    },
+                    "unit": "decbytes"
                 }
             },
             "gridPos": {
                 "h": 4,
                 "w": 2,
-                "x": 7,
+                "x": 6,
                 "y": 0
             },
             "id": 4,
@@ -435,7 +476,7 @@
             },
             "targets": [
                 {
-                    "expr": "count(count(scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks!~\"system.*\"}) by(cf, ks))",
+                    "expr": "sum(scylla_column_family_live_disk_space{cluster=\"$cluster\", ks!~\"system.*\"})",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A"
@@ -443,12 +484,13 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "# Tables",
+            "title": "Disk",
             "type": "stat"
         },
         {
             "class": "small_stat_area",
             "datasource": "prometheus",
+            "description": "Writes operations reaching the cluster",
             "fieldConfig": {
                 "defaults": {
                     "custom": {},
@@ -463,14 +505,14 @@
                             }
                         ]
                     },
-                    "unit": "si:"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
             "gridPos": {
                 "h": 4,
-                "w": 3,
-                "x": 9,
+                "w": 2,
+                "x": 8,
                 "y": 0
             },
             "id": 5,
@@ -494,13 +536,13 @@
             },
             "targets": [
                 {
-                    "expr": "sum(rate(scylla_transport_requests_served{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) + (sum(rate(scylla_thrift_served{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) or on() vector(0))",
+                    "expr": "sum(rate(scylla_storage_proxy_coordinator_write_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", scheduling_group_name=~\"sl:.*\"}[$__rate_interval])) or vector(0)",
                     "refId": "A"
                 }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Requests/s",
+            "title": "Writes/s",
             "type": "stat"
         },
         {
@@ -532,7 +574,7 @@
             "gridPos": {
                 "h": 4,
                 "w": 2,
-                "x": 12,
+                "x": 10,
                 "y": 0
             },
             "id": 6,
@@ -594,7 +636,7 @@
             "gridPos": {
                 "h": 4,
                 "w": 2,
-                "x": 14,
+                "x": 12,
                 "y": 0
             },
             "id": 7,
@@ -630,6 +672,64 @@
         {
             "class": "small_stat_area",
             "datasource": "prometheus",
+            "description": "Reads operations reaching the cluster",
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {},
+                    "decimals": 1,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    },
+                    "unit": "rps"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 2,
+                "x": 14,
+                "y": 0
+            },
+            "id": 8,
+            "options": {
+                "class": "stats_area_options",
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(scylla_storage_proxy_coordinator_read_latency_count{cluster=\"$cluster\", dc=~\"$dc\", scheduling_group_name=~\"sl:.*\"}[$__rate_interval])) or vector(0)",
+                    "refId": "A"
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Reads/s",
+            "type": "stat"
+        },
+        {
+            "class": "small_stat_area",
+            "datasource": "prometheus",
             "description": "Average Read Latency",
             "fieldConfig": {
                 "defaults": {
@@ -659,7 +759,7 @@
                 "x": 16,
                 "y": 0
             },
-            "id": 8,
+            "id": 9,
             "options": {
                 "class": "stats_area_options",
                 "colorMode": "value",
@@ -722,7 +822,7 @@
                 "x": 18,
                 "y": 0
             },
-            "id": 9,
+            "id": 10,
             "options": {
                 "class": "stats_area_options",
                 "colorMode": "value",
@@ -785,67 +885,6 @@
                 "x": 20,
                 "y": 0
             },
-            "id": 10,
-            "options": {
-                "class": "stats_area_options",
-                "colorMode": "value",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "auto",
-                "wideLayout": true
-            },
-            "targets": [
-                {
-                    "expr": "sum(avg(rate(scylla_scheduler_runtime_ms{group=~\"sl:.*|commitlog\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[1m])) by (group)/10)",
-                    "legendFormat": "",
-                    "refId": "A"
-                }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "Load",
-            "type": "stat"
-        },
-        {
-            "class": "small_stat_area",
-            "datasource": "prometheus",
-            "description": "The rate of timeouts (read and write).\n\nTimeouts are an indication of an overloaded system",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 1
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 2,
-                "x": 22,
-                "y": 0
-            },
             "id": 11,
             "options": {
                 "class": "stats_area_options",
@@ -867,13 +906,14 @@
             },
             "targets": [
                 {
-                    "expr": "(sum(rate(scylla_storage_proxy_coordinator_write_timeouts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) or on() vector(0)) + (sum(rate(scylla_storage_proxy_coordinator_read_timeouts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) or on() vector(0))",
+                    "expr": "sum(avg(rate(scylla_scheduler_runtime_ms{group=~\"sl:.*|commitlog\",cluster=\"$cluster\", dc=~\"$dc\"}[1m])) by (group)/10)",
+                    "legendFormat": "",
                     "refId": "A"
                 }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Timeouts",
+            "title": "Load",
             "type": "stat"
         },
         {
@@ -1819,7 +1859,7 @@
                     "step": 30
                 }
             ],
-            "title": "Time used by [[by]] - $sg",
+            "title": "Time used $func by [[by]] - $sg",
             "type": "timeseries"
         },
         {
@@ -1904,7 +1944,7 @@
                     "step": 30
                 }
             ],
-            "title": "Time spent in task quota violations by [[by]] - $sg",
+            "title": "Time spent in task quota violations $func by [[by]] - $sg",
             "type": "timeseries"
         },
         {
@@ -1989,7 +2029,7 @@
                     "step": 30
                 }
             ],
-            "title": "Starvation time by [[by]] - $sg",
+            "title": "Starvation time $func by [[by]] - $sg",
             "type": "timeseries"
         },
         {
@@ -2073,7 +2113,7 @@
                     "step": 30
                 }
             ],
-            "title": "Scheduler shares [[by]] - $sg",
+            "title": "Scheduler shares $func by [[by]] - $sg",
             "type": "timeseries"
         },
         {
@@ -2164,7 +2204,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -2247,7 +2287,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -2413,7 +2453,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -2496,7 +2536,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -2579,7 +2619,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2665,7 +2705,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2751,7 +2791,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2837,7 +2877,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3134,7 +3174,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3220,7 +3260,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3306,7 +3346,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3392,7 +3432,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3478,7 +3518,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3564,7 +3604,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3650,7 +3690,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3695,7 +3735,8 @@
         },
         {
             "class": "collapsible_row_panel",
-            "collapsed": true,
+            "collapsed": false,
+            "dashproductreject": "no-your-pannels",
             "datasource": null,
             "gridPos": {
                 "h": 1,
@@ -3704,683 +3745,6 @@
                 "y": 78
             },
             "id": 53,
-            "panels": [
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "scylla_rpc_client_count",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 0,
-                        "y": 79
-                    },
-                    "id": 54,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(scylla_rpc_client_count{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}) by ([[by]], domain)>0)",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC Client count by [[by]]",
-                    "type": "timeseries"
-                },
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "scylla_rpc_client_sent_messages",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 4,
-                        "y": 79
-                    },
-                    "id": 55,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_rpc_client_sent_messages{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}[$__rate_interval])>0) by ([[by]],domain))",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC sent messages by [[by]]",
-                    "type": "timeseries"
-                },
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "scylla_rpc_client_replied",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 8,
-                        "y": 79
-                    },
-                    "id": 56,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_rpc_client_replied{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}[$__rate_interval])>0) by ([[by]],domain))",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC replied messages by [[by]]",
-                    "type": "timeseries"
-                },
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "scylla_rpc_client_exception_received",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 12,
-                        "y": 79
-                    },
-                    "id": 57,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_rpc_client_exception_received{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}[$__rate_interval])>0) by ([[by]],domain))",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC exceptional replied messages by [[by]]",
-                    "type": "timeseries"
-                },
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "scylla_rpc_client_timeout",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 16,
-                        "y": 79
-                    },
-                    "id": 58,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_rpc_client_timeout{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}[$__rate_interval])>0) by ([[by]],domain))",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC requests timeout by [[by]]",
-                    "type": "timeseries"
-                },
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "the number of requests queued for sending, but not yet sent\n\nscylla_rpc_client_pending",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 20,
-                        "y": 79
-                    },
-                    "id": 59,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(scylla_rpc_client_pending{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}) by ([[by]],domain)>0)",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC Pending Messages by [[by]]",
-                    "type": "timeseries"
-                },
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "the number of requests waiting for the reply\n\nscylla_rpc_client_wait_reply",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 0,
-                        "y": 85
-                    },
-                    "id": 60,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(scylla_rpc_client_wait_reply{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}) by ([[by]],domain)>0)",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC Wait for Reply by [[by]]",
-                    "type": "timeseries"
-                },
-                {
-                    "class": "us_panel",
-                    "datasource": "prometheus",
-                    "description": "The total time it takes an RPC message to travel back and forth between verb caller and server.\n\nscylla_rpc_client_delay_samples",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "\u00b5s"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 4,
-                        "x": 4,
-                        "y": 85
-                    },
-                    "id": 61,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "seriesOverrides": [
-                        {}
-                    ],
-                    "span": 2,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(rate(scylla_rpc_client_delay_samples{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", domain=\"$domain\"}[$__rate_interval])>0) by ([[by]],domain))",
-                            "intervalFactor": 1,
-                            "legendFormat": "",
-                            "metric": "",
-                            "refId": "A",
-                            "step": 1
-                        }
-                    ],
-                    "title": "RPC Delay [[by]]",
-                    "type": "timeseries"
-                }
-            ],
-            "repeat": "domain",
-            "title": "RPC metrics - $domain",
-            "type": "row"
-        },
-        {
-            "class": "collapsible_row_panel",
-            "collapsed": false,
-            "dashproductreject": "no-your-pannels",
-            "datasource": null,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 91
-            },
-            "id": 62,
             "panels": [],
             "repeat": "",
             "title": "Your panels",
@@ -4401,9 +3765,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 92
+                "y": 79
             },
-            "id": 63,
+            "id": 54,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4460,7 +3824,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4468,9 +3832,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 94
+                "y": 81
             },
-            "id": 64,
+            "id": 55,
             "isNew": true,
             "links": [],
             "options": {
@@ -4535,7 +3899,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4543,9 +3907,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 94
+                "y": 81
             },
-            "id": 65,
+            "id": 56,
             "isNew": true,
             "links": [],
             "options": {
@@ -4583,14 +3947,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 100
+                "y": 87
             },
-            "id": 66,
+            "id": 57,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.12.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.13.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4846,42 +4210,6 @@
                         "$__all"
                     ]
                 },
-                "dashversion": [
-                    ">5.4",
-                    ">2024.1"
-                ],
-                "datasource": "prometheus",
-                "definition": "",
-                "error": null,
-                "hide": 0,
-                "includeAll": true,
-                "label": "iogroup",
-                "multi": true,
-                "name": "iogroup",
-                "options": [],
-                "query": "label_values(scylla_io_queue_consumption,iogroup)",
-                "refresh": 2,
-                "regex": "",
-                "skipUrlSync": false,
-                "sort": 1,
-                "tagValuesQuery": "",
-                "tags": [],
-                "tagsQuery": "",
-                "type": "query",
-                "useTags": false
-            },
-            {
-                "allValue": ".*",
-                "class": "template_variable_all",
-                "current": {
-                    "selected": true,
-                    "text": [
-                        "All"
-                    ],
-                    "value": [
-                        "$__all"
-                    ]
-                },
                 "datasource": "prometheus",
                 "definition": "",
                 "error": null,
@@ -4910,6 +4238,7 @@
                     "text": "avg",
                     "value": "avg"
                 },
+                "description": "Selects how the data is aggregated (sum, average, max, etc.)",
                 "hide": 0,
                 "includeAll": false,
                 "label": "Function",
@@ -4918,36 +4247,36 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "sum",
+                        "text": "Sum",
                         "value": "sum"
                     },
                     {
                         "selected": false,
-                        "text": "avg",
+                        "text": "Average",
                         "value": "avg"
                     },
                     {
                         "selected": false,
-                        "text": "max",
+                        "text": "Maximum",
                         "value": "max"
                     },
                     {
                         "selected": false,
-                        "text": "min",
+                        "text": "Minimum",
                         "value": "min"
                     },
                     {
                         "selected": false,
-                        "text": "stddev",
+                        "text": "standard deviation",
                         "value": "stddev"
                     },
                     {
                         "selected": false,
-                        "text": "stdvar",
+                        "text": "standard variance",
                         "value": "stdvar"
                     }
                 ],
-                "query": "sum,avg,max,min,stddev,stdvar",
+                "query": "Sum : sum,Average : avg,Maximum : max,Minimum : min,Standard Deviation : stddev,Standard Variance : stdvar",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -5078,8 +4407,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.12.1",
-                    "value": "4.12.1"
+                    "text": "4.13.0",
+                    "value": "4.13.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -5090,11 +4419,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.12.1",
-                        "value": "4.12.1"
+                        "text": "4.13.0",
+                        "value": "4.13.0"
                     }
                 ],
-                "query": "4.12.1",
+                "query": "4.13.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

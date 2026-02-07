@@ -8,7 +8,3 @@ operator:
 operatorTests:
   olm:
     channel: "dev" # Channel to use for OLM tests in CI/CD.
-thirdParty:
-  prometheusOperator:
-    version: "0.86.1" # Latest compatible with Prometheus version defined in assets/config/config.yaml (https://prometheus-operator.dev/docs/getting-started/compatibility/)
-    namespace: "prometheus-operator"

@@ -12,9 +12,9 @@ operator:
   # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
   scyllaDBManagerAgentVersion: "3.8.0@sha256:2fb6552788d112c1c008f8de27f8abeba12e3a067d58a5260eaea477ef7ddaf2"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
-  grafanaImage: "docker.io/grafana/grafana:12.2.0@sha256:74144189b38447facf737dfd0f3906e42e0776212bf575dc3334c3609183adf7" # Tracks scylla-monitoring/versions.sh GRAFANA_VERSION
-  grafanaDefaultPlatformDashboard: "scylladb-2025.3/scylla-overview.2025.3.json"
-  prometheusVersion: "v3.6.0" # Tracks scylla-monitoring/versions.sh PROMETHEUS_VERSION
+  grafanaImage: "docker.io/grafana/grafana:12.2.0" # Generated from scylla-monitoring/versions.sh GRAFANA_VERSION.
+  grafanaDefaultPlatformDashboard: "scylladb-2025.4/scylla-overview.2025.4.json"
+  prometheusVersion: "v3.6.0" # Generated from scylla-monitoring/versions.sh PROMETHEUS_VERSION.
 operatorTests:
   scyllaDBVersions:
     updateFrom: "2025.4.0-rc7" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
@@ -22,3 +22,7 @@ operatorTests:
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.4@sha256:8d77b91db6cffb40337e3db9c9a2f73f190eda9f9e547a752f0beab8aea322ef"
   # renovate: datasource=custom.envtest depName=envtest versioning=semver
   envTestKubernetesVersion: "v1.35.0"
+thirdParty:
+  prometheusOperator:
+    version: "0.86.1" # Latest compatible with .operator.prometheusVersion (https://prometheus-operator.dev/docs/getting-started/compatibility/)
+    namespace: "prometheus-operator"

@@ -8,7 +8,7 @@
 set -euxEo pipefail
 shopt -s inherit_errexit
 
-source "$( dirname "${BASH_SOURCE[0]}" )/../lib/metadata.sh"
+source "$( dirname "${BASH_SOURCE[0]}" )/../lib/assets.sh"
 
 if [[ -n "${1+x}" ]]; then
     target="${1}"
@@ -24,8 +24,8 @@ function get-url() {
     echo "https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/refs/tags/v${version}/${file}"
 }
 
-version=$( get-metadata ".thirdParty.prometheusOperator.version" )
-namespace=$( get-metadata ".thirdParty.prometheusOperator.namespace" )
+version=$( get-config ".thirdParty.prometheusOperator.version" )
+namespace=$( get-config ".thirdParty.prometheusOperator.namespace" )
 
 tmp_dir=$( mktemp -d )
 trap 'rm -rf "${tmp_dir}"' EXIT

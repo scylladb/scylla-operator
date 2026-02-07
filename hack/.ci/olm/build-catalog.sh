@@ -7,7 +7,7 @@
 set -euxEo pipefail
 shopt -s inherit_errexit
 
-source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/metadata.sh"
+source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/assets.sh"
 
 if [[ "$#" -ne 2 ]]; then
     echo -e "Missing arguments.\nUsage: ${0} <bundle_image_ref> <dest_dir>" >&2

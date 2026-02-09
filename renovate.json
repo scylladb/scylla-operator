@@ -5,9 +5,13 @@
   ],
   "enabledManagers": [
     "custom.regex",
+    "git-submodules",
     "gomod",
     "poetry"
   ],
+  "git-submodules": {
+    "enabled": true
+  },
   "schedule": [
     "before 5am on monday"
   ],
@@ -18,6 +22,9 @@
   "packageRules": [
     {
       "description": "Image references in assets/config/config.yaml should be updated every weekday",
+      "matchDatasources": [
+        "docker"
+      ],
       "matchFileNames": [
         "assets/config/config.yaml"
       ],
@@ -77,6 +84,17 @@
         "docs/pyproject.toml"
       ],
       "enabled": false
+    },
+    {
+      "description": "Monitoring dependencies should be grouped and updated every weekday",
+      "matchDepNames": [
+        "submodules/github.com/scylladb/scylla-monitoring",
+        "prometheus-operator"
+      ],
+      "groupName": "monitoring",
+      "schedule": [
+        "before 5am every weekday"
+      ]
     }
   ],
   "customManagers": [

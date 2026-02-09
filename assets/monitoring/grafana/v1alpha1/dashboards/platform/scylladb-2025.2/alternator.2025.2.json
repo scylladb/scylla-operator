@@ -18,11 +18,11 @@
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
-                "name": "node_restart",
+                "name": "Node Restart",
                 "showIn": 0,
                 "tagKeys": "instance,dc,cluster",
                 "tags": [],
-                "titleFormat": "restart",
+                "titleFormat": "Node Restart",
                 "type": "tags"
             },
             {
@@ -91,672 +91,232 @@
             "type": "row"
         },
         {
-            "class": "text_panel",
-            "dashproductreject": "no-version-check",
-            "datasource": null,
-            "editable": true,
-            "error": false,
+            "class": "cluster_stat_panel",
+            "datasource": "prometheus",
+            "description": "The cluster status",
             "fieldConfig": {
                 "defaults": {
-                    "custom": {}
+                    "noValue": " Normal",
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
                 },
-                "overrides": []
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Manager"
+                        },
+                        "properties": [
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "1": {
+                                                "index": 3,
+                                                "text": "Backup"
+                                            },
+                                            "2": {
+                                                "index": 2,
+                                                "text": "Repair"
+                                            },
+                                            "3": {
+                                                "index": 1,
+                                                "text": "Backup Repair"
+                                            }
+                                        },
+                                        "type": "value"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Unreachable"
+                        },
+                        "properties": [
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "from": 0,
+                                            "result": {
+                                                "color": "red",
+                                                "index": 0,
+                                                "text": "Unreachable Nodes"
+                                            },
+                                            "to": null
+                                        },
+                                        "type": "range"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Leaving"
+                        },
+                        "properties": [
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "from": 0,
+                                            "result": {
+                                                "color": "orange",
+                                                "index": 0,
+                                                "text": "Leaving Nodes"
+                                            },
+                                            "to": null
+                                        },
+                                        "type": "range"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Joining"
+                        },
+                        "properties": [
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "from": 0,
+                                            "result": {
+                                                "color": "orange",
+                                                "index": 0,
+                                                "text": "Joining Nodes"
+                                            },
+                                            "to": null
+                                        },
+                                        "type": "range"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Timeouts"
+                        },
+                        "properties": [
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "from": 0,
+                                            "result": {
+                                                "color": "red",
+                                                "index": 0,
+                                                "text": "Timeouts"
+                                            },
+                                            "to": null
+                                        },
+                                        "type": "range"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
             },
             "gridPos": {
-                "h": 1,
-                "w": 6,
+                "h": 6,
+                "w": 2,
                 "x": 0,
                 "y": 1
             },
             "id": 2,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
             "options": {
-                "content": "<img src=\"https://repositories.scylladb.com/scylla/imgversion/$monitoring_version/scylla-monitoring\">",
-                "mode": "html"
-            },
-            "span": 12,
-            "title": "",
-            "transparent": false,
-            "type": "text"
-        },
-        {
-            "class": "text_panel",
-            "datasource": null,
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 1,
-                "w": 3,
-                "x": 6,
-                "y": 1
-            },
-            "id": 3,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {
-                "content": "",
-                "mode": "html"
-            },
-            "span": 12,
-            "title": "Manager",
-            "transparent": false,
-            "type": "text"
-        },
-        {
-            "class": "text_panel",
-            "datasource": null,
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 1,
-                "w": 4,
-                "x": 9,
-                "y": 1
-            },
-            "id": 4,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {
-                "content": ""
-            },
-            "span": 12,
-            "title": "Average latencies",
-            "transparent": false,
-            "type": "text"
-        },
-        {
-            "class": "text_panel",
-            "datasource": null,
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 1,
-                "w": 4,
-                "x": 13,
-                "y": 1
-            },
-            "id": 5,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {
-                "content": ""
-            },
-            "span": 12,
-            "title": "P99 Latencies",
-            "transparent": false,
-            "type": "text"
-        },
-        {
-            "class": "text_panel",
-            "datasource": null,
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 1,
-                "w": 7,
-                "x": 17,
-                "y": 1
-            },
-            "id": 6,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {
-                "content": "# "
-            },
-            "span": 12,
-            "title": "",
-            "transparent": false,
-            "type": "text"
-        },
-        {
-            "class": "small_stat",
-            "datasource": "prometheus",
-            "description": "The number of nodes configured in the cluster.",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 2,
-                "x": 0,
-                "y": 2
-            },
-            "id": 7,
-            "options": {
-                "colorMode": "value",
+                "class": "stats_area_options",
+                "colorMode": "background_solid",
                 "graphMode": "none",
                 "justifyMode": "auto",
                 "orientation": "auto",
+                "percentChangeColorMode": "standard",
                 "reduceOptions": {
                     "calcs": [
-                        "last"
+                        "lastNotNull"
                     ],
                     "fields": "",
                     "values": false
                 },
-                "textMode": "auto"
-            },
-            "targets": [
-                {
-                    "expr": "count(scylla_scylladb_current_version{job=~\"$cluster|$^\", cluster=\"$cluster\"})",
-                    "intervalFactor": 1,
-                    "legendFormat": "Total Nodes",
-                    "refId": "A",
-                    "step": 40
-                }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "# Nodes",
-            "type": "stat"
-        },
-        {
-            "class": "small_stat",
-            "datasource": "prometheus",
-            "description": "The number of unreachable nodes.\nUsually because a machine is down or unreachable.",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "green",
-                                "value": 0
-                            },
-                            {
-                                "color": "red",
-                                "value": 1
-                            }
-                        ]
-                    }
-                }
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 2,
-                "x": 2,
-                "y": 2
-            },
-            "id": 8,
-            "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": [
-                        "last"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "textMode": "auto"
-            },
-            "targets": [
-                {
-                    "expr": "(count(scrape_samples_scraped{job=~\"$cluster|$^\", cluster=\"$cluster\"}==0) OR vector(0))",
-                    "intervalFactor": 1,
-                    "legendFormat": "Offline ",
-                    "refId": "A",
-                    "step": 20
-                }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "Unreachable",
-            "type": "stat"
-        },
-        {
-            "class": "small_stat",
-            "datasource": "prometheus",
-            "description": "The number of joining and leaving nodes.\nThe number of nodes that are up but not actively part of the cluster, either because they are still joining or because they are leaving.",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "green",
-                                "value": 0
-                            },
-                            {
-                                "color": "red",
-                                "value": 1
-                            }
-                        ]
-                    }
-                }
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 2,
-                "x": 4,
-                "y": 2
-            },
-            "id": 9,
-            "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": [
-                        "last"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "textMode": "auto"
-            },
-            "targets": [
-                {
-                    "expr": "count(scylla_node_operation_mode{cluster=\"$cluster\"}!=3)OR vector(0)",
-                    "intervalFactor": 1,
-                    "legendFormat": "Offline ",
-                    "refId": "A",
-                    "step": 20
-                }
-            ],
-            "thresholds": "1,2",
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "Inactive",
-            "type": "stat"
-        },
-        {
-            "class": "small_stat",
-            "datasource": "prometheus",
-            "fieldConfig": {
-                "defaults": {
-                    "mappings": [
-                        {
-                            "from": "",
-                            "id": 0,
-                            "text": "Backup",
-                            "to": "",
-                            "type": 1,
-                            "value": "2"
-                        },
-                        {
-                            "from": "",
-                            "id": 1,
-                            "text": "Repair",
-                            "to": "",
-                            "type": 1,
-                            "value": "1"
-                        },
-                        {
-                            "from": "",
-                            "id": 2,
-                            "text": "Online",
-                            "to": "",
-                            "type": 1,
-                            "value": "0"
-                        },
-                        {
-                            "from": "",
-                            "id": 3,
-                            "text": "Offline",
-                            "to": "",
-                            "type": 1,
-                            "value": "-1"
-                        },
-                        {
-                            "from": "",
-                            "id": 4,
-                            "text": "Backup Repair",
-                            "to": "",
-                            "type": 1,
-                            "value": "3"
-                        }
-                    ],
-                    "noValue": " Offline",
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "red",
-                                "value": null
-                            },
-                            {
-                                "color": "green",
-                                "value": 0
-                            }
-                        ]
-                    }
-                }
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 2,
-                "x": 6,
-                "y": 2
-            },
-            "id": 10,
-            "options": {
-                "": {
-                    "calcs": [
-                        "last"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
                 "showPercentChange": false,
-                "textMode": "value",
+                "textMode": "auto",
                 "wideLayout": true
             },
             "targets": [
                 {
-                    "expr": "(max(scylla_manager_scheduler_run_indicator{type=~\"repair\",cluster=\"$cluster\"}) or on() vector(0)) + (max(scylla_manager_scheduler_run_indicator{type=~\"backup\",cluster=\"$cluster\"})*2 or on() vector(0)) + (sum(scylla_manager_server_current_version{}) or on() vector(-1))",
+                    "expr": "(max(scylla_manager_scheduler_run_indicator{type=~\"repair\",cluster=\"$cluster\"})*2 + max(scylla_manager_scheduler_run_indicator{type=~\"backup\",cluster=\"$cluster\"}))>0",
                     "intervalFactor": 1,
+                    "legendFormat": "Manager",
                     "refId": "A",
                     "step": 40
-                }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "",
-            "type": "stat"
-        },
-        {
-            "class": "vertical_lcd",
-            "datasource": "prometheus",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "decimals": 0,
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
-                    },
-                    "unit": "percent"
                 },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 1,
-                "x": 8,
-                "y": 2
-            },
-            "id": 11,
-            "options": {
-                "displayMode": "lcd",
-                "orientation": "vertical",
-                "reduceOptions": {
-                    "calcs": [
-                        "last"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "showUnfilled": true
-            },
-            "pluginVersion": "7.1.3",
-            "targets": [
                 {
-                    "expr": "(avg(scylla_manager_repair_progress{cluster=\"$cluster\", job=\"scylla_manager\"}) * max(scylla_manager_scheduler_run_indicator{type=\"repair\",cluster=\"$cluster\"})) or on ()  (100*avg(manager:backup_progress{cluster=\"$cluster\"}) * max(scylla_manager_scheduler_run_indicator{type=\"backup\",cluster=\"$cluster\"})) or on () vector(0)",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "P1809F7CD0C75ACF3"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "(sum(rate(scylla_storage_proxy_coordinator_write_timeouts{cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) or on() vector(0)) + (sum(rate(scylla_storage_proxy_coordinator_read_timeouts{cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) or on() vector(0))>0",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "Timeouts",
+                    "range": false,
+                    "refId": "B"
+                },
+                {
+                    "expr": "count(scrape_samples_scraped{job=~\"$cluster|$^\", cluster=\"$cluster\"}==0) > 0",
                     "instant": true,
                     "interval": "",
-                    "legendFormat": "",
-                    "refId": "A"
-                }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "",
-            "type": "bargauge"
-        },
-        {
-            "class": "small_stat",
-            "datasource": "prometheus",
-            "description": "",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "decimals": 0,
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 50000
-                            }
-                        ]
-                    },
-                    "unit": "\u00b5s"
+                    "legendFormat": "Unreachable",
+                    "refId": "C"
                 },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 4,
-                "x": 9,
-                "y": 2
-            },
-            "id": 12,
-            "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": [
-                        "last"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "textMode": "auto"
-            },
-            "targets": [
                 {
-                    "expr": "sum(rate(scylla_alternator_op_latency_sum{cluster=~\"$cluster\", op=~\"$ops\"}[$__rate_interval])) by (op)/sum(rate(scylla_alternator_op_latency_count{cluster=~\"$cluster|^$\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
+                    "expr": "count(scylla_node_operation_mode{cluster=\"$cluster\"}<3)>0",
                     "instant": true,
-                    "intervalFactor": 1,
-                    "legendFormat": "{{op}}",
-                    "refId": "A",
-                    "step": 4
+                    "interval": "",
+                    "legendFormat": "Joining",
+                    "refId": "D"
+                },
+                {
+                    "expr": "count(scylla_node_operation_mode{cluster=\"$cluster\"}>3)>0",
+                    "instant": true,
+                    "interval": "",
+                    "legendFormat": "Leaving",
+                    "refId": "E"
                 }
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "",
+            "title": "Status",
             "type": "stat"
         },
         {
-            "class": "small_stat",
-            "datasource": "prometheus",
-            "description": "",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "decimals": 0,
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 50000
-                            }
-                        ]
-                    },
-                    "unit": "\u00b5s"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 4,
-                "x": 13,
-                "y": 2
-            },
-            "id": 13,
-            "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": [
-                        "last"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "textMode": "auto"
-            },
-            "targets": [
-                {
-                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops\"}[$__rate_interval])>0) by (op, le))",
-                    "instant": true,
-                    "intervalFactor": 1,
-                    "legendFormat": "{{op}}",
-                    "refId": "A",
-                    "step": 4
-                }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "",
-            "type": "stat"
-        },
-        {
-            "class": "small_stat",
-            "datasource": "prometheus",
-            "description": "Total Operations per seconds",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "decimals": 1,
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
-                    },
-                    "unit": "si:"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 3,
-                "x": 17,
-                "y": 2
-            },
-            "id": 14,
-            "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "reduceOptions": {
-                    "calcs": [
-                        "last"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "textMode": "auto"
-            },
-            "targets": [
-                {
-                    "dashversion": [
-                        ">6.2",
-                        ">2025.1"
-                    ],
-                    "expr": "(sum(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", op !~\"Batch.*\"}[$__rate_interval])) or vector(0))+ on() (sum(rate(scylla_alternator_batch_item_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) or vector(0))",
-                    "instant": true,
-                    "intervalFactor": 1,
-                    "refId": "A",
-                    "step": 40
-                }
-            ],
-            "timeFrom": null,
-            "timeShift": null,
-            "title": "Total Operations/s",
-            "type": "stat"
-        },
-        {
-            "class": "small_stat",
+            "class": "small_stat_area",
             "datasource": "prometheus",
             "description": "The percentage of the time during which Scylla utilized the CPU. Note that because Scylla does busy polling for some time before going idle, CPU utilization as seen by the operating system may be much higher. Your system is not yet CPU-bottlenecked until this metric is high.",
             "fieldConfig": {
@@ -782,34 +342,35 @@
                 "overrides": []
             },
             "gridPos": {
-                "h": 4,
+                "h": 6,
                 "w": 2,
-                "x": 20,
-                "y": 2
+                "x": 2,
+                "y": 1
             },
-            "id": 15,
+            "id": 3,
             "options": {
+                "class": "stats_area_options",
                 "colorMode": "value",
-                "graphMode": "none",
+                "graphMode": "area",
                 "justifyMode": "auto",
                 "orientation": "auto",
+                "percentChangeColorMode": "standard",
                 "reduceOptions": {
                     "calcs": [
-                        "last"
+                        "lastNotNull"
                     ],
                     "fields": "",
                     "values": false
                 },
-                "textMode": "auto"
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
             },
             "targets": [
                 {
-                    "expr": "avg(scylla_reactor_utilization{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} )",
-                    "instant": true,
-                    "intervalFactor": 1,
+                    "expr": "sum(avg(rate(scylla_scheduler_runtime_ms{group=~\"sl:.*|commitlog\",cluster=\"$cluster\", dc=~\"$dc\"}[1m])) by (group)/10)",
                     "legendFormat": "",
-                    "refId": "A",
-                    "step": 4
+                    "refId": "A"
                 }
             ],
             "timeFrom": null,
@@ -818,36 +379,52 @@
             "type": "stat"
         },
         {
-            "class": "small_stat",
+            "class": "num_nodes_panel",
             "datasource": "prometheus",
-            "description": "The rate of timeouts (read and write).\n\nTimeouts are an indication of an overloaded system",
+            "description": "The number of nodes configured in the cluster.",
             "fieldConfig": {
                 "defaults": {
-                    "custom": {},
                     "mappings": [],
                     "thresholds": {
                         "mode": "absolute",
                         "steps": [
                             {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
                                 "color": "red",
-                                "value": 1
+                                "value": null
                             }
                         ]
                     }
                 },
-                "overrides": []
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Total"
+                        },
+                        "properties": [
+                            {
+                                "id": "thresholds",
+                                "value": {
+                                    "mode": "absolute",
+                                    "steps": [
+                                        {
+                                            "color": "green",
+                                            "value": null
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
             },
             "gridPos": {
-                "h": 4,
+                "h": 6,
                 "w": 2,
-                "x": 22,
-                "y": 2
+                "x": 4,
+                "y": 1
             },
-            "id": 16,
+            "id": 4,
             "options": {
                 "colorMode": "value",
                 "graphMode": "none",
@@ -864,7 +441,199 @@
             },
             "targets": [
                 {
-                    "expr": "(sum(rate(scylla_storage_proxy_coordinator_write_timeouts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) or on() vector(0)) + (sum(rate(scylla_storage_proxy_coordinator_read_timeouts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) or on() vector(0))",
+                    "expr": "count(scylla_scylladb_current_version{job=~\"$cluster|$^\", cluster=\"$cluster\"})",
+                    "instant": true,
+                    "intervalFactor": 1,
+                    "legendFormat": "Total",
+                    "range": false,
+                    "refId": "A"
+                },
+                {
+                    "expr": "count(scylla_node_operation_mode!=3) >0",
+                    "instant": true,
+                    "legendFormat": "Inactive",
+                    "range": false,
+                    "refId": "B"
+                },
+                {
+                    "expr": "(count(scrape_samples_scraped{job=~\"$cluster|$^\", cluster=\"$cluster\"}==0) OR vector(0))>0",
+                    "instant": true,
+                    "legendFormat": "Unreachable",
+                    "range": false,
+                    "refId": "C"
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "# Nodes",
+            "type": "stat"
+        },
+        {
+            "class": "num_cores_panel",
+            "datasource": "prometheus",
+            "description": "The number of CPU Cores actively used in the cluster.\n\nNote that CPU Cores that belongs to unreachable nodes, or nodes that are not in normal mode, will not be counted",
+            "fieldConfig": {
+                "defaults": {
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "dark-blue",
+                                "value": null
+                            }
+                        ]
+                    }
+                }
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 6,
+                "y": 1
+            },
+            "id": 5,
+            "options": {
+                "class": "stats_area_options",
+                "colorMode": "background_solid",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "targets": [
+                {
+                    "expr": "sum(count(scylla_reactor_utilization{job=~\"$cluster|$^\", cluster=\"$cluster\"}) by (instance) * on(instance) (scylla_node_operation_mode{job=~\"$cluster|$^\", cluster=\"$cluster\"}== bool 3))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A"
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "# Cores",
+            "type": "stat"
+        },
+        {
+            "class": "small_stat",
+            "datasource": "prometheus",
+            "description": "Disk Usage",
+            "fieldConfig": {
+                "defaults": {
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "dark-blue",
+                                "value": null
+                            }
+                        ]
+                    },
+                    "unit": "decbytes"
+                }
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 8,
+                "y": 1
+            },
+            "id": 6,
+            "options": {
+                "class": "stats_area_options",
+                "colorMode": "background_solid",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "targets": [
+                {
+                    "expr": "sum(scylla_column_family_live_disk_space{cluster=\"$cluster\", ks!~\"system.*\"})",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A"
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Disk",
+            "type": "stat"
+        },
+        {
+            "class": "small_stat",
+            "datasource": "prometheus",
+            "description": "Total Operations per seconds",
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {},
+                    "decimals": 1,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "dark-blue",
+                                "value": null
+                            }
+                        ]
+                    },
+                    "unit": "si:"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 2,
+                "x": 10,
+                "y": 1
+            },
+            "id": 7,
+            "options": {
+                "class": "stats_area_options",
+                "colorMode": "background_solid",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "targets": [
+                {
+                    "dashversion": [
+                        ">2025.1"
+                    ],
+                    "expr": "(sum(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", op !~\"Batch.*\"}[$__rate_interval])) or vector(0))+ on() (sum(rate(scylla_alternator_batch_item_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) or vector(0))",
                     "instant": true,
                     "intervalFactor": 1,
                     "refId": "A",
@@ -873,7 +642,139 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Timeouts",
+            "title": "Total Operations/s",
+            "type": "stat"
+        },
+        {
+            "class": "small_stat",
+            "datasource": "prometheus",
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {},
+                    "decimals": 0,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "dark-blue",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 50000
+                            }
+                        ]
+                    },
+                    "unit": "\u00b5s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 5,
+                "x": 12,
+                "y": 1
+            },
+            "id": 8,
+            "options": {
+                "class": "stats_area_options",
+                "colorMode": "background_solid",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "value_and_name",
+                "wideLayout": false
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(scylla_alternator_op_latency_sum{cluster=~\"$cluster\", op=~\"$ops\"}[$__rate_interval])) by (op)/sum(rate(scylla_alternator_op_latency_count{cluster=~\"$cluster|^$\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
+                    "instant": true,
+                    "intervalFactor": 1,
+                    "legendFormat": "{{op}}",
+                    "refId": "A",
+                    "step": 4
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "Avg Latencies",
+            "type": "stat"
+        },
+        {
+            "class": "small_stat",
+            "datasource": "prometheus",
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {},
+                    "decimals": 0,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "dark-blue",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 50000
+                            }
+                        ]
+                    },
+                    "unit": "\u00b5s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 5,
+                "x": 17,
+                "y": 1
+            },
+            "id": 9,
+            "options": {
+                "class": "stats_area_options",
+                "colorMode": "background_solid",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "value_and_name",
+                "wideLayout": false
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_table_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops\"}[$__rate_interval])>0) by (op, le))",
+                    "instant": true,
+                    "intervalFactor": 1,
+                    "legendFormat": "{{op}}",
+                    "refId": "A",
+                    "step": 4
+                }
+            ],
+            "timeFrom": null,
+            "timeShift": null,
+            "title": "P99 Latencies",
             "type": "stat"
         },
         {
@@ -886,7 +787,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 6
+                "y": 7
             },
             "options": {
                 "alertInstanceLabelFilter": "job!=\"scylla_manager\"",
@@ -959,9 +860,9 @@
                 "h": 6,
                 "w": 3,
                 "x": 8,
-                "y": 6
+                "y": 7
             },
-            "id": 17,
+            "id": 10,
             "isNew": true,
             "links": [],
             "options": {
@@ -1041,7 +942,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -1049,9 +950,9 @@
                 "h": 6,
                 "w": 5,
                 "x": 11,
-                "y": 6
+                "y": 7
             },
-            "id": 18,
+            "id": 11,
             "isNew": true,
             "links": [],
             "options": {
@@ -1072,7 +973,7 @@
             "span": 5,
             "targets": [
                 {
-                    "expr": "$func(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
+                    "expr": "sum(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
                     "metric": "",
@@ -1080,7 +981,7 @@
                     "step": 4
                 }
             ],
-            "title": "Operations/s",
+            "title": "Total Operations/s",
             "type": "timeseries"
         },
         {
@@ -1134,9 +1035,9 @@
                 "h": 6,
                 "w": 4,
                 "x": 16,
-                "y": 6
+                "y": 7
             },
-            "id": 19,
+            "id": 12,
             "isNew": true,
             "links": [],
             "options": {
@@ -1219,9 +1120,9 @@
                 "h": 6,
                 "w": 4,
                 "x": 20,
-                "y": 6
+                "y": 7
             },
-            "id": 20,
+            "id": 13,
             "isNew": true,
             "links": [],
             "options": {
@@ -1260,9 +1161,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 12
+                "y": 13
             },
-            "id": 21,
+            "id": 14,
             "panels": [],
             "repeat": "dc",
             "title": "",
@@ -1270,7 +1171,6 @@
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Information for $dc</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -1284,13 +1184,21 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 13
+                "y": 14
             },
-            "id": 22,
+            "id": 15,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Information for $dc</h1>",
+                "mode": "html"
+            },
             "span": 12,
             "style": {},
             "title": "",
@@ -1679,10 +1587,6 @@
                         ]
                     },
                     {
-                        "dashversion": [
-                            ">5.2",
-                            ">2023.1"
-                        ],
                         "matcher": {
                             "id": "byName",
                             "options": "Value #E"
@@ -1932,9 +1836,9 @@
                 "h": 14,
                 "w": 24,
                 "x": 0,
-                "y": 15
+                "y": 16
             },
-            "id": 23,
+            "id": 16,
             "scopedVars": {
                 "dc": {
                     "selected": false,
@@ -1978,10 +1882,6 @@
                     "refId": "D"
                 },
                 {
-                    "dashversion": [
-                        ">5.2",
-                        ">2023.1"
-                    ],
                     "expr": "(min(scylla_streaming_finished_percentage{cluster=\"$cluster\", dc=~\"$dc\"}*100) by (instance) < 100) or on (instance)  0*sum(scylla_scylladb_current_version{cluster=\"$cluster\", dc=~\"$dc\"}) by (instance)",
                     "format": "table",
                     "instant": true,
@@ -2111,9 +2011,9 @@
                 "h": 1,
                 "w": 10,
                 "x": 0,
-                "y": 29
+                "y": 30
             },
-            "id": 24,
+            "id": 17,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2135,9 +2035,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 30
+                "y": 31
             },
-            "id": 25,
+            "id": 18,
             "panels": [],
             "repeat": "",
             "title": "Cluster wide Data Plane Actions",
@@ -2145,7 +2045,6 @@
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Cluster wide Data Plane Actions</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -2159,13 +2058,21 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 31
+                "y": 32
             },
-            "id": 26,
+            "id": 19,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Cluster wide Data Plane Action</h1>",
+                "mode": "html"
+            },
             "span": 12,
             "style": {},
             "title": "",
@@ -2214,7 +2121,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2222,9 +2129,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 33
+                "y": 34
             },
-            "id": 27,
+            "id": 20,
             "isNew": true,
             "links": [],
             "options": {
@@ -2252,7 +2159,7 @@
                     "step": 1
                 }
             ],
-            "title": "GetItem by [[by]]",
+            "title": "GetItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2297,7 +2204,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2305,9 +2212,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 33
+                "y": 34
             },
-            "id": 28,
+            "id": 21,
             "isNew": true,
             "links": [],
             "options": {
@@ -2335,7 +2242,7 @@
                     "step": 1
                 }
             ],
-            "title": "PutItem by [[by]]",
+            "title": "PutItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2380,7 +2287,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2388,9 +2295,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 33
+                "y": 34
             },
-            "id": 29,
+            "id": 22,
             "isNew": true,
             "links": [],
             "options": {
@@ -2418,7 +2325,7 @@
                     "step": 1
                 }
             ],
-            "title": "UpdateItem by [[by]]",
+            "title": "UpdateItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2463,7 +2370,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2471,9 +2378,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 39
+                "y": 40
             },
-            "id": 30,
+            "id": 23,
             "isNew": true,
             "links": [],
             "options": {
@@ -2501,7 +2408,7 @@
                     "step": 1
                 }
             ],
-            "title": "DeleteItem by [[by]]",
+            "title": "DeleteItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2546,7 +2453,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2554,9 +2461,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 39
+                "y": 40
             },
-            "id": 31,
+            "id": 24,
             "isNew": true,
             "links": [],
             "options": {
@@ -2584,7 +2491,7 @@
                     "step": 1
                 }
             ],
-            "title": "Query by [[by]]",
+            "title": "Query $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2629,7 +2536,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2637,9 +2544,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 39
+                "y": 40
             },
-            "id": 32,
+            "id": 25,
             "isNew": true,
             "links": [],
             "options": {
@@ -2667,7 +2574,7 @@
                     "step": 1
                 }
             ],
-            "title": "Scan by [[by]]",
+            "title": "Scan $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2712,7 +2619,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2720,9 +2627,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 45
+                "y": 46
             },
-            "id": 33,
+            "id": 26,
             "isNew": true,
             "links": [],
             "options": {
@@ -2750,7 +2657,7 @@
                     "step": 1
                 }
             ],
-            "title": "BatchWriteItem by [[by]]",
+            "title": "BatchWriteItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2796,7 +2703,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2804,9 +2711,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 45
+                "y": 46
             },
-            "id": 34,
+            "id": 27,
             "isNew": true,
             "links": [],
             "options": {
@@ -2828,7 +2735,6 @@
             "targets": [
                 {
                     "dashversion": [
-                        ">6.2",
                         ">2025.1"
                     ],
                     "expr": "$func(rate(scylla_alternator_batch_item_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"BatchWriteItem\"}[$__rate_interval])) by ([[by]])",
@@ -2838,7 +2744,7 @@
                     "step": 1
                 }
             ],
-            "title": "Operations from BatchWriteItem by [[by]]",
+            "title": "Operations from BatchWriteItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2884,7 +2790,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2892,9 +2798,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 45
+                "y": 46
             },
-            "id": 35,
+            "id": 28,
             "isNew": true,
             "links": [],
             "options": {
@@ -2916,7 +2822,6 @@
             "targets": [
                 {
                     "dashversion": [
-                        ">6.2",
                         ">2025.1"
                     ],
                     "expr": "$func(rate(scylla_alternator_batch_item_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"BatchWriteItem\"}[$__rate_interval])) by ([[by]])/$func(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"BatchWriteItem\"}[$__rate_interval])) by ([[by]])",
@@ -2926,7 +2831,7 @@
                     "step": 1
                 }
             ],
-            "title": "Average Batch size of BatchWriteItem by [[by]]",
+            "title": "Average Batch size of BatchWriteItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2971,7 +2876,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -2979,9 +2884,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 51
+                "y": 52
             },
-            "id": 36,
+            "id": 29,
             "isNew": true,
             "links": [],
             "options": {
@@ -3009,7 +2914,7 @@
                     "step": 1
                 }
             ],
-            "title": "BatchGetItem by [[by]]",
+            "title": "BatchGetItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3055,7 +2960,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3063,9 +2968,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 51
+                "y": 52
             },
-            "id": 37,
+            "id": 30,
             "isNew": true,
             "links": [],
             "options": {
@@ -3087,7 +2992,6 @@
             "targets": [
                 {
                     "dashversion": [
-                        ">6.2",
                         ">2025.1"
                     ],
                     "expr": "$func(rate(scylla_alternator_batch_item_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"BatchGetItem\"}[$__rate_interval])) by ([[by]])",
@@ -3097,7 +3001,7 @@
                     "step": 1
                 }
             ],
-            "title": "Operations from BatchGetItem by [[by]]",
+            "title": "Operations from BatchGetItem $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3143,7 +3047,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3151,9 +3055,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 51
+                "y": 52
             },
-            "id": 38,
+            "id": 31,
             "isNew": true,
             "links": [],
             "options": {
@@ -3175,7 +3079,6 @@
             "targets": [
                 {
                     "dashversion": [
-                        ">6.2",
                         ">2025.1"
                     ],
                     "expr": "$func(rate(scylla_alternator_batch_item_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"BatchGetItem\"}[$__rate_interval])) by ([[by]])/$func(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"BatchGetItem\"}[$__rate_interval])) by ([[by]])",
@@ -3185,13 +3088,13 @@
                     "step": 1
                 }
             ],
-            "title": "Average Batch size of BatchGetItem by [[by]]",
+            "title": "Average Batch size of BatchGetItem $func by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "ops_panel",
             "datasource": "prometheus",
-            "description": "The number of items deleted by their TTL",
+            "description": "The number of items deleted $func by their TTL",
             "editable": true,
             "error": false,
             "fieldConfig": {
@@ -3231,7 +3134,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3239,9 +3142,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 57
+                "y": 58
             },
-            "id": 39,
+            "id": 32,
             "isNew": true,
             "links": [],
             "options": {
@@ -3269,12 +3172,11 @@
                     "step": 1
                 }
             ],
-            "title": "Expired Item Deleted by [[by]]",
+            "title": "Expired Item Deleted $func by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Data Plane Latencies</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -3288,13 +3190,21 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 63
+                "y": 64
             },
-            "id": 40,
+            "id": 33,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Data Plane Latencies</h1>",
+                "mode": "html"
+            },
             "span": 12,
             "style": {},
             "title": "",
@@ -3308,9 +3218,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 65
+                "y": 66
             },
-            "id": 41,
+            "id": 34,
             "panels": [],
             "repeat": "alternator_latency_ops",
             "title": "$alternator_latency_ops",
@@ -3358,7 +3268,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3366,9 +3276,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 66
+                "y": 67
             },
-            "id": 42,
+            "id": 35,
             "isNew": true,
             "links": [],
             "options": {
@@ -3396,7 +3306,7 @@
                     "step": 1
                 }
             ],
-            "title": "Completed $alternator_latency_ops",
+            "title": "Completed $alternator_latency_ops $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3449,9 +3359,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 66
+                "y": 67
             },
-            "id": 43,
+            "id": 36,
             "isNew": true,
             "links": [],
             "options": {
@@ -3479,7 +3389,7 @@
                     "step": 1
                 }
             ],
-            "title": "Average $alternator_latency_ops latency by [[by]]",
+            "title": "Average $alternator_latency_ops latency $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3532,9 +3442,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 66
+                "y": 67
             },
-            "id": 44,
+            "id": 37,
             "isNew": true,
             "links": [],
             "options": {
@@ -3563,7 +3473,7 @@
                     "step": 1
                 }
             ],
-            "title": "95th percentile $alternator_latency_ops latency by [[by]]",
+            "title": "95th percentile $alternator_latency_ops latency $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3616,9 +3526,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 66
+                "y": 67
             },
-            "id": 45,
+            "id": 38,
             "isNew": true,
             "links": [],
             "options": {
@@ -3647,7 +3557,7 @@
                     "step": 1
                 }
             ],
-            "title": "99th percentile $alternator_latency_ops latency by [[by]]",
+            "title": "99th percentile $alternator_latency_ops latency $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3658,9 +3568,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 72
+                "y": 73
             },
-            "id": 46,
+            "id": 39,
             "panels": [],
             "repeat": "",
             "title": "Streams",
@@ -3668,7 +3578,6 @@
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Streams Actions</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -3682,13 +3591,21 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 73
+                "y": 74
             },
-            "id": 47,
+            "id": 40,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Streams Actions</h1>",
+                "mode": "html"
+            },
             "span": 12,
             "style": {},
             "title": "",
@@ -3737,7 +3654,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3745,9 +3662,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 75
+                "y": 76
             },
-            "id": 48,
+            "id": 41,
             "isNew": true,
             "links": [],
             "options": {
@@ -3775,7 +3692,7 @@
                     "step": 1
                 }
             ],
-            "title": "ListStreams by [[by]]",
+            "title": "ListStreams $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3820,7 +3737,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3828,9 +3745,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 75
+                "y": 76
             },
-            "id": 49,
+            "id": 42,
             "isNew": true,
             "links": [],
             "options": {
@@ -3858,7 +3775,7 @@
                     "step": 1
                 }
             ],
-            "title": "DescribeStream by [[by]]",
+            "title": "DescribeStream $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3903,7 +3820,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3911,9 +3828,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 75
+                "y": 76
             },
-            "id": 50,
+            "id": 43,
             "isNew": true,
             "links": [],
             "options": {
@@ -3941,7 +3858,7 @@
                     "step": 1
                 }
             ],
-            "title": "GetShardIterator by [[by]]",
+            "title": "GetShardIterator $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3986,7 +3903,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -3994,9 +3911,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 81
+                "y": 82
             },
-            "id": 51,
+            "id": 44,
             "isNew": true,
             "links": [],
             "options": {
@@ -4024,12 +3941,11 @@
                     "step": 1
                 }
             ],
-            "title": "GetRecords by [[by]]",
+            "title": "GetRecords $func by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Streams Latencies</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -4043,13 +3959,21 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 87
+                "y": 88
             },
-            "id": 52,
+            "id": 45,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Streams Latencies</h1>",
+                "mode": "html"
+            },
             "span": 12,
             "style": {},
             "title": "",
@@ -4063,9 +3987,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 89
+                "y": 90
             },
-            "id": 53,
+            "id": 46,
             "panels": [],
             "repeat": "alternator_streams_latency_ops",
             "title": "$alternator_streams_latency_ops",
@@ -4113,7 +4037,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4121,9 +4045,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 90
+                "y": 91
             },
-            "id": 54,
+            "id": 47,
             "isNew": true,
             "links": [],
             "options": {
@@ -4151,7 +4075,7 @@
                     "step": 1
                 }
             ],
-            "title": "Completed $alternator_streams_latency_ops",
+            "title": "Completed $alternator_streams_latency_ops $func by [[by]",
             "type": "timeseries"
         },
         {
@@ -4204,9 +4128,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 90
+                "y": 91
             },
-            "id": 55,
+            "id": 48,
             "isNew": true,
             "links": [],
             "options": {
@@ -4287,9 +4211,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 90
+                "y": 91
             },
-            "id": 56,
+            "id": 49,
             "isNew": true,
             "links": [],
             "options": {
@@ -4371,9 +4295,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 90
+                "y": 91
             },
-            "id": 57,
+            "id": 50,
             "isNew": true,
             "links": [],
             "options": {
@@ -4413,9 +4337,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 96
+                "y": 97
             },
-            "id": 58,
+            "id": 51,
             "panels": [],
             "repeat": "",
             "title": "Control plane",
@@ -4423,7 +4347,6 @@
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Control Plane Actions</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -4437,13 +4360,21 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 97
+                "y": 98
             },
-            "id": 59,
+            "id": 52,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Control Plane Actions</h1>",
+                "mode": "html"
+            },
             "span": 12,
             "style": {},
             "title": "",
@@ -4492,7 +4423,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4500,9 +4431,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 99
+                "y": 100
             },
-            "id": 60,
+            "id": 53,
             "isNew": true,
             "links": [],
             "options": {
@@ -4530,7 +4461,7 @@
                     "step": 1
                 }
             ],
-            "title": "CreateTable by [[by]]",
+            "title": "CreateTable $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4575,7 +4506,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4583,9 +4514,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 99
+                "y": 100
             },
-            "id": 61,
+            "id": 54,
             "isNew": true,
             "links": [],
             "options": {
@@ -4613,7 +4544,7 @@
                     "step": 1
                 }
             ],
-            "title": "DeleteTable by [[by]]",
+            "title": "DeleteTable $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4658,7 +4589,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4666,9 +4597,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 99
+                "y": 100
             },
-            "id": 62,
+            "id": 55,
             "isNew": true,
             "links": [],
             "options": {
@@ -4696,7 +4627,7 @@
                     "step": 1
                 }
             ],
-            "title": "DescribeTable by [[by]]",
+            "title": "DescribeTable $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4741,7 +4672,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4749,9 +4680,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 105
+                "y": 106
             },
-            "id": 63,
+            "id": 56,
             "isNew": true,
             "links": [],
             "options": {
@@ -4779,7 +4710,7 @@
                     "step": 1
                 }
             ],
-            "title": "ListTables by [[by]]",
+            "title": "ListTables $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4824,7 +4755,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4832,9 +4763,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 105
+                "y": 106
             },
-            "id": 64,
+            "id": 57,
             "isNew": true,
             "links": [],
             "options": {
@@ -4862,12 +4793,11 @@
                     "step": 1
                 }
             ],
-            "title": "DescribeEndpoints by [[by]]",
+            "title": "DescribeEndpoints $func by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Cache</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -4881,13 +4811,21 @@
                 "h": 2,
                 "w": 12,
                 "x": 0,
-                "y": 111
+                "y": 112
             },
-            "id": 65,
+            "id": 58,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Cache</h1>",
+                "mode": "html"
+            },
             "span": 6,
             "style": {},
             "title": "",
@@ -4896,7 +4834,6 @@
         },
         {
             "class": "plain_text",
-            "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Timeouts</h1>",
             "datasource": null,
             "editable": true,
             "error": false,
@@ -4910,13 +4847,21 @@
                 "h": 2,
                 "w": 12,
                 "x": 12,
-                "y": 111
+                "y": 112
             },
-            "id": 66,
+            "id": 59,
             "isNew": true,
             "links": [],
             "mode": "html",
-            "options": {},
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<h1 style=\"color:#FFF; background-color:#1250b0; line-height: 150%; padding-left: 5px\">Timeouts</h1>",
+                "mode": "html"
+            },
             "span": 6,
             "style": {},
             "title": "",
@@ -4966,7 +4911,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4974,9 +4919,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 113
+                "y": 114
             },
-            "id": 67,
+            "id": 60,
             "isNew": true,
             "links": [],
             "options": {
@@ -5004,7 +4949,7 @@
                     "step": 10
                 }
             ],
-            "title": "Cache Hits",
+            "title": "Cache Hits $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5050,7 +4995,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5058,9 +5003,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 113
+                "y": 114
             },
-            "id": 68,
+            "id": 61,
             "isNew": true,
             "links": [],
             "options": {
@@ -5088,11 +5033,11 @@
                     "step": 10
                 }
             ],
-            "title": "Cache Misses",
+            "title": "Cache Misses $func by [[by]]",
             "type": "timeseries"
         },
         {
-            "class": "wpm_panel",
+            "class": "wps_panel",
             "datasource": "prometheus",
             "description": "Requests that Scylla tried to write but timed out. Timeouts are counted in the node that received the request (the coordinator), not at the replicas.",
             "editable": true,
@@ -5134,7 +5079,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -5142,9 +5087,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 113
+                "y": 114
             },
-            "id": 69,
+            "id": 62,
             "isNew": true,
             "links": [],
             "options": {
@@ -5169,11 +5114,11 @@
                     "step": 10
                 }
             ],
-            "title": "Write Timeouts/Minutes by [[by]]",
+            "title": "Write Timeouts/s $func by [[by]]",
             "type": "timeseries"
         },
         {
-            "class": "rpm_panel",
+            "class": "rps_panel",
             "datasource": "prometheus",
             "description": "Requests that Scylla tried to read but timed out. Timeouts are counted in the node that received the request (the coordinator), not at the replicas.",
             "editable": true,
@@ -5215,7 +5160,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/m"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -5223,9 +5168,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 113
+                "y": 114
             },
-            "id": 70,
+            "id": 63,
             "isNew": true,
             "links": [],
             "options": {
@@ -5250,7 +5195,7 @@
                     "step": 10
                 }
             ],
-            "title": "Read Timeouts/Minutes by [[by]]",
+            "title": "Read Timeouts/s $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5304,9 +5249,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 119
+                "y": 120
             },
-            "id": 71,
+            "id": 64,
             "isNew": true,
             "links": [],
             "options": {
@@ -5331,11 +5276,11 @@
                     "step": 10
                 }
             ],
-            "title": "HTTP Opened connections by [[by]]",
+            "title": "HTTP Opened connections $func by [[by]]",
             "type": "timeseries"
         },
         {
-            "class": "rpm_panel",
+            "class": "connectionsps_panel",
             "datasource": "prometheus",
             "description": "Rate of new HTTP connections creation. High number may indicate a problem",
             "editable": true,
@@ -5386,9 +5331,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 119
+                "y": 120
             },
-            "id": 72,
+            "id": 65,
             "isNew": true,
             "links": [],
             "options": {
@@ -5413,7 +5358,7 @@
                     "step": 10
                 }
             ],
-            "title": "HTTP New connections by [[by]]",
+            "title": "HTTP New connections $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5431,9 +5376,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 125
+                "y": 126
             },
-            "id": 73,
+            "id": 66,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -5490,7 +5435,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5498,9 +5443,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 127
+                "y": 128
             },
-            "id": 74,
+            "id": 67,
             "isNew": true,
             "links": [],
             "options": {
@@ -5565,7 +5510,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5573,9 +5518,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 127
+                "y": 128
             },
-            "id": 75,
+            "id": 68,
             "isNew": true,
             "links": [],
             "options": {
@@ -5613,14 +5558,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 133
+                "y": 134
             },
-            "id": 76,
+            "id": 69,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.12.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.14.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -5835,9 +5780,10 @@
                 "class": "aggregation_function",
                 "current": {
                     "tags": [],
-                    "text": "sum",
+                    "text": "Sum",
                     "value": "sum"
                 },
+                "description": "Selects how the data is aggregated (sum, average, max, etc.)",
                 "hide": 0,
                 "includeAll": false,
                 "label": "Function",
@@ -5846,36 +5792,36 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "sum",
+                        "text": "Sum",
                         "value": "sum"
                     },
                     {
                         "selected": false,
-                        "text": "avg",
+                        "text": "Average",
                         "value": "avg"
                     },
                     {
                         "selected": false,
-                        "text": "max",
+                        "text": "Maximum",
                         "value": "max"
                     },
                     {
                         "selected": false,
-                        "text": "min",
+                        "text": "Minimum",
                         "value": "min"
                     },
                     {
                         "selected": false,
-                        "text": "stddev",
+                        "text": "standard deviation",
                         "value": "stddev"
                     },
                     {
                         "selected": false,
-                        "text": "stdvar",
+                        "text": "standard variance",
                         "value": "stdvar"
                     }
                 ],
-                "query": "sum,avg,max,min,stddev,stdvar",
+                "query": "Sum : sum,Average : avg,Maximum : max,Minimum : min,Standard Deviation : stddev,Standard Variance : stdvar",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -5931,8 +5877,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.12.1",
-                    "value": "4.12.1"
+                    "text": "4.14.0",
+                    "value": "4.14.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -5943,11 +5889,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.12.1",
-                        "value": "4.12.1"
+                        "text": "4.14.0",
+                        "value": "4.14.0"
                     }
                 ],
-                "query": "4.12.1",
+                "query": "4.14.0",
                 "skipUrlSync": false,
                 "type": "custom"
             },

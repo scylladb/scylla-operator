@@ -60,6 +60,8 @@ type AlertmanagerSpecApplyConfiguration struct {
 	ServiceName                          *string                                                 `json:"serviceName,omitempty"`
 	ServiceAccountName                   *string                                                 `json:"serviceAccountName,omitempty"`
 	ListenLocal                          *bool                                                   `json:"listenLocal,omitempty"`
+	PodManagementPolicy                  *monitoringv1.PodManagementPolicyType                   `json:"podManagementPolicy,omitempty"`
+	UpdateStrategy                       *StatefulSetUpdateStrategyApplyConfiguration            `json:"updateStrategy,omitempty"`
 	Containers                           []corev1.Container                                      `json:"containers,omitempty"`
 	InitContainers                       []corev1.Container                                      `json:"initContainers,omitempty"`
 	PriorityClassName                    *string                                                 `json:"priorityClassName,omitempty"`
@@ -76,6 +78,7 @@ type AlertmanagerSpecApplyConfiguration struct {
 	AlertmanagerConfigMatcherStrategy    *AlertmanagerConfigMatcherStrategyApplyConfiguration    `json:"alertmanagerConfigMatcherStrategy,omitempty"`
 	MinReadySeconds                      *int32                                                  `json:"minReadySeconds,omitempty"`
 	HostAliases                          []HostAliasApplyConfiguration                           `json:"hostAliases,omitempty"`
+	HostNetwork                          *bool                                                   `json:"hostNetwork,omitempty"`
 	Web                                  *AlertmanagerWebSpecApplyConfiguration                  `json:"web,omitempty"`
 	Limits                               *AlertmanagerLimitsSpecApplyConfiguration               `json:"limits,omitempty"`
 	ClusterTLS                           *ClusterTLSConfigApplyConfiguration                     `json:"clusterTLS,omitempty"`
@@ -385,6 +388,22 @@ func (b *AlertmanagerSpecApplyConfiguration) WithListenLocal(value bool) *Alertm
 	return b
 }
 
+// WithPodManagementPolicy sets the PodManagementPolicy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PodManagementPolicy field is set to the value of the last call.
+func (b *AlertmanagerSpecApplyConfiguration) WithPodManagementPolicy(value monitoringv1.PodManagementPolicyType) *AlertmanagerSpecApplyConfiguration {
+	b.PodManagementPolicy = &value
+	return b
+}
+
+// WithUpdateStrategy sets the UpdateStrategy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the UpdateStrategy field is set to the value of the last call.
+func (b *AlertmanagerSpecApplyConfiguration) WithUpdateStrategy(value *StatefulSetUpdateStrategyApplyConfiguration) *AlertmanagerSpecApplyConfiguration {
+	b.UpdateStrategy = value
+	return b
+}
+
 // WithContainers adds the given value to the Containers field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Containers field.
@@ -521,6 +540,14 @@ func (b *AlertmanagerSpecApplyConfiguration) WithHostAliases(values ...*HostAlia
 		}
 		b.HostAliases = append(b.HostAliases, *values[i])
 	}
+	return b
+}
+
+// WithHostNetwork sets the HostNetwork field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the HostNetwork field is set to the value of the last call.
+func (b *AlertmanagerSpecApplyConfiguration) WithHostNetwork(value bool) *AlertmanagerSpecApplyConfiguration {
+	b.HostNetwork = &value
 	return b
 }
 

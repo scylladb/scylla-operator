@@ -18,11 +18,11 @@
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
-                "name": "node_restart",
+                "name": "Node Restart",
                 "showIn": 0,
                 "tagKeys": "instance,dc,cluster",
                 "tags": [],
-                "titleFormat": "restart",
+                "titleFormat": "Node Restart",
                 "type": "tags"
             },
             {
@@ -658,7 +658,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -747,7 +747,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -1967,36 +1967,379 @@
             "type": "timeseries"
         },
         {
-            "class": "plain_text",
-            "dashproductreject": "no-your-pannels",
+            "collapsed": true,
             "datasource": null,
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
             "gridPos": {
-                "h": 3,
+                "h": 1,
                 "w": 24,
                 "x": 0,
                 "y": 65
             },
             "id": 31,
-            "isNew": true,
-            "links": [],
-            "mode": "html",
-            "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.12.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
-                "mode": "html"
-            },
-            "span": 12,
-            "style": {},
-            "title": "",
-            "transparent": true,
-            "type": "text"
+            "panels": [
+                {
+                    "class": "graph_panel",
+                    "datasource": "prometheus",
+                    "description": "Outbound bandwidth allowance exceed events per second \u2014 the rate at which the NIC attempts to transmit above its allowed egress bandwidth limit (often indicating throttling/shaping).",
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "class": "fieldConfig_defaults",
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "class": "fieldConfig_defaults_custom",
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "unit": "short"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 6,
+                        "w": 6,
+                        "x": 0,
+                        "y": 66
+                    },
+                    "id": 32,
+                    "isNew": true,
+                    "links": [],
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "hidden",
+                            "placement": "bottom"
+                        },
+                        "tooltip": {
+                            "maxHeight": 600,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "span": 3,
+                    "targets": [
+                        {
+                            "expr": "sum(rate(node_ethtool_bw_out_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                            "intervalFactor": 1,
+                            "legendFormat": "",
+                            "metric": "",
+                            "refId": "A",
+                            "step": 1
+                        }
+                    ],
+                    "title": "Bandwidth-Out allowance exceeded",
+                    "type": "timeseries"
+                },
+                {
+                    "class": "graph_panel",
+                    "datasource": "prometheus",
+                    "description": "Inbound bandwidth allowance exceed events per second \u2014 the rate at which the NIC receives above its allowed ingress bandwidth limit (often indicating ingress shaping/throttling).",
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "class": "fieldConfig_defaults",
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "class": "fieldConfig_defaults_custom",
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "unit": "short"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 6,
+                        "w": 6,
+                        "x": 6,
+                        "y": 66
+                    },
+                    "id": 33,
+                    "isNew": true,
+                    "links": [],
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "hidden",
+                            "placement": "bottom"
+                        },
+                        "tooltip": {
+                            "maxHeight": 600,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "span": 3,
+                    "targets": [
+                        {
+                            "expr": "sum(rate(node_ethtool_bw_in_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                            "intervalFactor": 1,
+                            "legendFormat": "",
+                            "metric": "",
+                            "refId": "A",
+                            "step": 1
+                        }
+                    ],
+                    "title": "Bandwidth-In allowance exceeded",
+                    "type": "timeseries"
+                },
+                {
+                    "class": "graph_panel",
+                    "datasource": "prometheus",
+                    "description": "Conntrack allowance exceed events per second \u2014 the rate at which the system/NIC exceeds its allowed connection-tracking (conntrack) limit, often indicating connection pressure and potential drops or throttling.",
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "class": "fieldConfig_defaults",
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "class": "fieldConfig_defaults_custom",
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "unit": "short"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 6,
+                        "w": 6,
+                        "x": 12,
+                        "y": 66
+                    },
+                    "id": 34,
+                    "isNew": true,
+                    "links": [],
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "hidden",
+                            "placement": "bottom"
+                        },
+                        "tooltip": {
+                            "maxHeight": 600,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "span": 3,
+                    "targets": [
+                        {
+                            "expr": "sum(rate(node_ethtool_conntrack_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                            "intervalFactor": 1,
+                            "legendFormat": "",
+                            "metric": "",
+                            "refId": "A",
+                            "step": 1
+                        }
+                    ],
+                    "title": "Conntrack allowance exceed",
+                    "type": "timeseries"
+                },
+                {
+                    "class": "graph_panel",
+                    "datasource": "prometheus",
+                    "description": "Link-local allowance exceed events per second \u2014 the rate at which the NIC exceeds its allowed link-local traffic limit (e.g., ARP/ND or other local control traffic), often indicating local-network chatter and possible throttling",
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "class": "fieldConfig_defaults",
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "class": "fieldConfig_defaults_custom",
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "unit": "short"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 6,
+                        "w": 6,
+                        "x": 18,
+                        "y": 66
+                    },
+                    "id": 35,
+                    "isNew": true,
+                    "links": [],
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "hidden",
+                            "placement": "bottom"
+                        },
+                        "tooltip": {
+                            "maxHeight": 600,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "span": 3,
+                    "targets": [
+                        {
+                            "expr": "sum(rate(node_ethtool_linklocal_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                            "intervalFactor": 1,
+                            "legendFormat": "",
+                            "metric": "",
+                            "refId": "A",
+                            "step": 1
+                        }
+                    ],
+                    "title": "Link-local allowance exceed",
+                    "type": "timeseries"
+                },
+                {
+                    "class": "plain_text",
+                    "dashproductreject": "no-your-pannels",
+                    "datasource": null,
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {}
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 3,
+                        "w": 24,
+                        "x": 0,
+                        "y": 72
+                    },
+                    "id": 36,
+                    "isNew": true,
+                    "links": [],
+                    "mode": "html",
+                    "options": {
+                        "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.14.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                        "mode": "html"
+                    },
+                    "span": 12,
+                    "style": {},
+                    "title": "",
+                    "transparent": true,
+                    "type": "text"
+                }
+            ],
+            "title": "ethtool limitations - only applicable if ethtool is enabled on nodetool_exporter",
+            "type": "row"
         }
     ],
     "refresh": "5m",
@@ -2239,8 +2582,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.12.1",
-                    "value": "4.12.1"
+                    "text": "4.14.0",
+                    "value": "4.14.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -2251,11 +2594,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.12.1",
-                        "value": "4.12.1"
+                        "text": "4.14.0",
+                        "value": "4.14.0"
                     }
                 ],
-                "query": "4.12.1",
+                "query": "4.14.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

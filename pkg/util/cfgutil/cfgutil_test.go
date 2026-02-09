@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	// go.uber.org/config uses gopkg.in/yaml.v2 internally
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseYAML(t *testing.T) {

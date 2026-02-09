@@ -1,4 +1,4 @@
 [submodule "scylla-monitoring"]
 	path = submodules/github.com/scylladb/scylla-monitoring
 	url = https://github.com/scylladb/scylla-monitoring.git
-	branch = 4.12.1
+	branch = 4.14.0

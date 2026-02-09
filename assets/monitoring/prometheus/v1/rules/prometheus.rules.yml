@@ -303,6 +303,13 @@ groups:
       severity: "warn"
       description: 'Cluster {{ $labels.cluster }} in a split-brain mode'
       summary: Some nodes in the cluster do not see all of the other live nodes
+  - alert: aioRetries
+    expr: rate(scylla_reactor_aio_retries[1m])/(rate(scylla_reactor_aio_writes[1m]) + rate(scylla_reactor_aio_reads[1m])) > 0.05 
+    for: 10m
+    labels:
+      severity: "warn"
+      description: 'Node {{ $labels.instance }} has a high aio retries rate'
+      summary: Node {{ $labels.instance }} has a high aio retries rate
   - alert: bloomFilterSize
     expr: scylla_sstables_bloom_filter_memory_size/scylla_memory_total_memory > 0.2
     for: 10m

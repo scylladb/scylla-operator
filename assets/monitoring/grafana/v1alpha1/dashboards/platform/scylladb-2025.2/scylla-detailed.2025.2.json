@@ -22,11 +22,11 @@
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
-                "name": "node_restart",
+                "name": "Node Restart",
                 "showIn": 0,
                 "tagKeys": "instance,dc,cluster",
                 "tags": [],
-                "titleFormat": "restart",
+                "titleFormat": "Node Restart",
                 "type": "tags"
             },
             {
@@ -130,26 +130,22 @@
                 "hide": false,
                 "iconColor": "rgb(50, 176, 0, 128)",
                 "limit": 100,
-                "name": "ops",
+                "name": "Node Operations",
                 "showIn": 0,
                 "tagKeys": "ops,dc,instance",
                 "tags": [],
-                "titleFormat": "Operation",
+                "titleFormat": "Node Operation",
                 "type": "tags"
             },
             {
                 "class": "stream_annotation",
-                "dashversion": [
-                    ">5.2",
-                    ">2023.1"
-                ],
                 "datasource": "prometheus",
                 "enable": true,
                 "expr": "10*min(scylla_streaming_finished_percentage{cluster=\"$cluster\"}) by (ops, dc,instance) < 10",
                 "hide": false,
                 "iconColor": "rgb(50, 176, 0, 128)",
                 "limit": 100,
-                "name": "streaming",
+                "name": "Streaming",
                 "showIn": 0,
                 "tagKeys": "ops,dc,instance",
                 "tags": [],
@@ -333,7 +329,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -372,7 +368,7 @@
                     "step": 1
                 }
             ],
-            "title": "Requests Served per [[by]] - Coordinator",
+            "title": "Requests Served $func by [[by]] - Coordinator",
             "type": "timeseries"
         },
         {
@@ -418,7 +414,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -453,7 +449,7 @@
                     "step": 1
                 }
             ],
-            "title": "Reads per [[by]] - Replica",
+            "title": "Reads $func by [[by]] - Replica",
             "type": "timeseries"
         },
         {
@@ -499,7 +495,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -535,7 +531,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes per [[by]] - Replica",
+            "title": "Writes $func by [[by]] - Replica",
             "type": "timeseries"
         },
         {
@@ -621,7 +617,7 @@
         },
         {
             "class": "collapsible_row_panel",
-            "collapsed": true,
+            "collapsed": false,
             "datasource": null,
             "gridPos": {
                 "h": 1,
@@ -630,273 +626,180 @@
                 "y": 9
             },
             "id": 7,
-            "panels": [
-                {
-                    "class": "heatmap_panel",
-                    "datasource": "prometheus",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "custom": {
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                }
-                            }
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 13,
-                        "w": 24,
-                        "x": 0,
-                        "y": 10
-                    },
-                    "id": 8,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "barRadius": 0,
-                        "barWidth": 0.89,
-                        "calculate": false,
-                        "cellGap": 1,
-                        "color": {
-                            "exponent": 0.5,
-                            "fill": "dark-orange",
-                            "min": 0,
-                            "mode": "scheme",
-                            "reverse": false,
-                            "scale": "exponential",
-                            "scheme": "Oranges",
-                            "steps": 64
-                        },
-                        "exemplars": {
-                            "color": "rgba(255,0,255,0.7)"
-                        },
-                        "filterValues": {
-                            "le": 1e-09
-                        },
-                        "fullHighlight": false,
-                        "groupWidth": 0.7,
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "list",
-                            "placement": "bottom",
-                            "show": true,
-                            "showLegend": false
-                        },
-                        "orientation": "auto",
-                        "rowsFrame": {
-                            "layout": "auto"
-                        },
-                        "showValue": "always",
-                        "stacking": "none",
-                        "tooltip": {
-                            "mode": "single",
-                            "showColorScale": false,
-                            "sort": "none",
-                            "yHistogram": false
-                        },
-                        "xTickLabelRotation": 0,
-                        "xTickLabelSpacing": 0,
-                        "yAxis": {
-                            "axisPlacement": "left",
-                            "reverse": false
-                        }
-                    },
-                    "span": 5,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(scylla_tablets_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by([[by]])) or on() vector(0)",
-                            "format": "time_series",
-                            "instant": false,
-                            "legendFormat": "{{dc}} {{instance}} {{shard}}",
-                            "range": false,
-                            "refId": "A"
-                        }
-                    ],
-                    "title": "Tablets over time per [[by]]",
-                    "type": "heatmap"
-                },
-                {
-                    "class": "barchart_panel",
-                    "datasource": "prometheus",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisBorderShow": false,
-                                "axisCenteredZero": false,
-                                "axisColorMode": "text",
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "fillOpacity": 80,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineWidth": 1,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "thresholds": {
-                                "mode": "absolute",
-                                "steps": [
-                                    {
-                                        "color": "green",
-                                        "value": null
-                                    }
-                                ]
-                            }
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 18,
-                        "x": 0,
-                        "y": 23
-                    },
-                    "id": 9,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "barRadius": 0,
-                        "barWidth": 0.89,
-                        "fullHighlight": false,
-                        "groupWidth": 0.7,
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "list",
-                            "placement": "bottom",
-                            "showLegend": false
-                        },
-                        "orientation": "auto",
-                        "showValue": "always",
-                        "stacking": "none",
-                        "tooltip": {
-                            "mode": "single",
-                            "sort": "none"
-                        },
-                        "xTickLabelRotation": 0,
-                        "xTickLabelSpacing": 0
-                    },
-                    "span": 9,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(scylla_tablets_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by([[by]]))",
-                            "format": "table",
-                            "instant": true,
-                            "legendFormat": "__auto",
-                            "range": false,
-                            "refId": "A"
-                        }
-                    ],
-                    "title": "Tablets per [[by]]",
-                    "type": "barchart"
-                },
-                {
-                    "class": "graph_panel",
-                    "datasource": "prometheus",
-                    "description": "Represents the \u2018load\u2019 value the balancer equalizes across instances.\n\nIt is based on the number of tablets assigned to each instance, adjusted so larger disks are expected to hold proportionally more tablets.\n\nscylla_load_balancer_load",
-                    "editable": true,
-                    "error": false,
-                    "fieldConfig": {
-                        "defaults": {
-                            "class": "fieldConfig_defaults",
-                            "color": {
-                                "mode": "palette-classic"
-                            },
-                            "custom": {
-                                "axisLabel": "",
-                                "axisPlacement": "auto",
-                                "axisSoftMin": 0,
-                                "barAlignment": 0,
-                                "class": "fieldConfig_defaults_custom",
-                                "drawStyle": "line",
-                                "fillOpacity": 0,
-                                "gradientMode": "none",
-                                "hideFrom": {
-                                    "legend": false,
-                                    "tooltip": false,
-                                    "viz": false
-                                },
-                                "lineInterpolation": "linear",
-                                "lineWidth": 1,
-                                "pointSize": 5,
-                                "scaleDistribution": {
-                                    "type": "linear"
-                                },
-                                "showPoints": "never",
-                                "spanNulls": false,
-                                "stacking": {
-                                    "group": "A",
-                                    "mode": "none"
-                                },
-                                "thresholdsStyle": {
-                                    "mode": "off"
-                                }
-                            },
-                            "mappings": [],
-                            "unit": "short"
-                        },
-                        "overrides": []
-                    },
-                    "gridPos": {
-                        "h": 6,
-                        "w": 6,
-                        "x": 18,
-                        "y": 23
-                    },
-                    "id": 10,
-                    "isNew": true,
-                    "links": [],
-                    "options": {
-                        "legend": {
-                            "calcs": [],
-                            "displayMode": "hidden",
-                            "placement": "bottom"
-                        },
-                        "tooltip": {
-                            "maxHeight": 600,
-                            "mode": "multi",
-                            "sort": "desc"
-                        }
-                    },
-                    "span": 3,
-                    "targets": [
-                        {
-                            "expr": "$topbottom([[filter_limit]], sum(scylla_load_balancer_load{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by(target_node, [[by]]))",
-                            "format": "time_series",
-                            "instant": false,
-                            "legendFormat": "{{dc}} {{target_node}} {{instance}} {{shard}}",
-                            "range": false,
-                            "refId": "A"
-                        }
-                    ],
-                    "title": "Tablets load by [[by]]",
-                    "type": "timeseries"
-                }
-            ],
+            "panels": [],
             "repeat": "",
             "title": "Tablets information",
             "type": "row"
+        },
+        {
+            "class": "barchart_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "fillOpacity": 80,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineWidth": 1,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 18,
+                "x": 0,
+                "y": 10
+            },
+            "id": 8,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "barRadius": 0,
+                "barWidth": 0.89,
+                "fullHighlight": false,
+                "groupWidth": 0.7,
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "orientation": "auto",
+                "showValue": "always",
+                "stacking": "none",
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                },
+                "xTickLabelRotation": 0,
+                "xTickLabelSpacing": 0
+            },
+            "span": 9,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_tablets_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by([[by]]))",
+                    "format": "table",
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "A"
+                }
+            ],
+            "title": "Tablets per [[by]]",
+            "type": "barchart"
+        },
+        {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "Represents the \u2018load\u2019 value the balancer equalizes across instances.\n\nIt is based on the number of tablets assigned to each instance, adjusted so larger disks are expected to hold proportionally more tablets.\n\nscylla_load_balancer_load",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 10
+            },
+            "id": 9,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_load_balancer_load{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by(target_node, [[by]]))",
+                    "format": "time_series",
+                    "instant": false,
+                    "legendFormat": "{{dc}} {{target_node}} {{instance}} {{shard}}",
+                    "range": false,
+                    "refId": "A"
+                }
+            ],
+            "title": "Tablets load by [[by]]",
+            "type": "timeseries"
         },
         {
             "class": "collapsible_row_panel",
@@ -906,9 +809,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 29
+                "y": 16
             },
-            "id": 11,
+            "id": 10,
             "panels": [],
             "repeat": "",
             "title": "reads and writes",
@@ -930,9 +833,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 30
+                "y": 17
             },
-            "id": 12,
+            "id": 11,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -986,7 +889,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -994,9 +897,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 32
+                "y": 19
             },
-            "id": 13,
+            "id": 12,
             "isNew": true,
             "links": [],
             "options": {
@@ -1021,7 +924,7 @@
                     "step": 1
                 }
             ],
-            "title": "Foreground Writes per [[by]]",
+            "title": "Foreground Writes $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1067,7 +970,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -1075,9 +978,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 32
+                "y": 19
             },
-            "id": 14,
+            "id": 13,
             "isNew": true,
             "links": [],
             "options": {
@@ -1102,7 +1005,7 @@
                     "step": 1
                 }
             ],
-            "title": "Background Writes per [[by]]",
+            "title": "Background Writes $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1148,7 +1051,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -1156,9 +1059,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 32
+                "y": 19
             },
-            "id": 15,
+            "id": 14,
             "isNew": true,
             "links": [],
             "options": {
@@ -1184,7 +1087,7 @@
                     "step": 1
                 }
             ],
-            "title": "Foreground Reads per [[by]]",
+            "title": "Foreground Reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1230,7 +1133,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -1238,9 +1141,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 32
+                "y": 19
             },
-            "id": 16,
+            "id": 15,
             "isNew": true,
             "links": [],
             "options": {
@@ -1265,7 +1168,7 @@
                     "step": 4
                 }
             ],
-            "title": "Background Reads per [[by]]",
+            "title": "Background Reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1311,7 +1214,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -1319,9 +1222,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 38
+                "y": 25
             },
-            "id": 17,
+            "id": 16,
             "isNew": true,
             "links": [],
             "options": {
@@ -1346,7 +1249,7 @@
                     "step": 1
                 }
             ],
-            "title": "Hints Written per [[by]]",
+            "title": "Hints Written $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1392,7 +1295,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -1400,9 +1303,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 38
+                "y": 25
             },
-            "id": 18,
+            "id": 17,
             "isNew": true,
             "links": [],
             "options": {
@@ -1433,7 +1336,88 @@
                     "step": 4
                 }
             ],
-            "title": "Hints sent per [[by]]",
+            "title": "Hints sent $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "wps_panel",
+            "datasource": "prometheus",
+            "description": "Number of unexpected errors during sending, sending will be retried later\n\nscylla_hints_manager_send_errors",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "wps"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 25
+            },
+            "id": 18,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_hints_manager_send_errors{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Hints-Send Errors $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1479,15 +1463,15 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 12,
-                "y": 38
+                "x": 18,
+                "y": 25
             },
             "id": 19,
             "isNew": true,
@@ -1514,7 +1498,7 @@
                     "step": 4
                 }
             ],
-            "title": "Speculative Digest Reads By [[by]]",
+            "title": "Speculative Digest Reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1560,15 +1544,15 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 18,
-                "y": 38
+                "x": 0,
+                "y": 31
             },
             "id": 20,
             "isNew": true,
@@ -1595,7 +1579,7 @@
                     "step": 4
                 }
             ],
-            "title": "Speculative Data Reads By [[by]]",
+            "title": "Speculative Data Reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1641,15 +1625,15 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:requests/s"
+                    "unit": "reqps"
                 },
                 "overrides": []
             },
             "gridPos": {
                 "h": 6,
                 "w": 6,
-                "x": 0,
-                "y": 44
+                "x": 6,
+                "y": 31
             },
             "id": 21,
             "isNew": true,
@@ -1676,7 +1660,7 @@
                     "step": 1
                 }
             ],
-            "title": "Requests Shed",
+            "title": "Requests Shed $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1687,7 +1671,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 50
+                "y": 37
             },
             "id": 22,
             "panels": [],
@@ -1738,7 +1722,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -1746,7 +1730,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 51
+                "y": 38
             },
             "id": 23,
             "isNew": true,
@@ -1773,7 +1757,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes by [[by]]",
+            "title": "Writes $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1827,7 +1811,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 51
+                "y": 38
             },
             "id": 24,
             "isNew": true,
@@ -1918,7 +1902,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 51
+                "y": 38
             },
             "id": 25,
             "isNew": true,
@@ -2010,7 +1994,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 51
+                "y": 38
             },
             "id": 26,
             "isNew": true,
@@ -2094,7 +2078,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -2102,7 +2086,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 57
+                "y": 44
             },
             "id": 27,
             "isNew": true,
@@ -2129,7 +2113,7 @@
                     "step": 1
                 }
             ],
-            "title": "Reads by [[by]]",
+            "title": "Reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2183,7 +2167,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 57
+                "y": 44
             },
             "id": 28,
             "isNew": true,
@@ -2274,7 +2258,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 57
+                "y": 44
             },
             "id": 29,
             "isNew": true,
@@ -2366,7 +2350,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 57
+                "y": 44
             },
             "id": 30,
             "isNew": true,
@@ -2415,7 +2399,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 63
+                "y": 50
             },
             "id": 31,
             "panels": [],
@@ -2439,7 +2423,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 64
+                "y": 51
             },
             "id": 32,
             "isNew": true,
@@ -2495,7 +2479,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -2503,7 +2487,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 66
+                "y": 53
             },
             "id": 33,
             "isNew": true,
@@ -2530,7 +2514,7 @@
                     "step": 1
                 }
             ],
-            "title": "Write Timeouts/Seconds per [[by]]",
+            "title": "Write Timeouts/Seconds $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2576,7 +2560,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -2584,7 +2568,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 66
+                "y": 53
             },
             "id": 34,
             "isNew": true,
@@ -2611,7 +2595,7 @@
                     "step": 1
                 }
             ],
-            "title": "Write Unavailable/Seconds per [[by]]",
+            "title": "Write Unavailable/Seconds $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2657,7 +2641,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -2665,7 +2649,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 66
+                "y": 53
             },
             "id": 35,
             "isNew": true,
@@ -2706,7 +2690,7 @@
                     "step": 1
                 }
             ],
-            "title": "Read Timeouts/Seconds per [[by]]",
+            "title": "Read Timeouts/Seconds $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2752,7 +2736,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -2760,7 +2744,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 66
+                "y": 53
             },
             "id": 36,
             "isNew": true,
@@ -2788,7 +2772,7 @@
                     "step": 4
                 }
             ],
-            "title": "Read Unavailable/Seconds per [[by]]",
+            "title": "Read Unavailable/Seconds $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2799,7 +2783,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 72
+                "y": 59
             },
             "id": 37,
             "panels": [],
@@ -2823,7 +2807,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 73
+                "y": 60
             },
             "id": 38,
             "isNew": true,
@@ -2879,7 +2863,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -2887,7 +2871,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 75
+                "y": 62
             },
             "id": 39,
             "isNew": true,
@@ -2914,7 +2898,7 @@
                     "step": 1
                 }
             ],
-            "title": "Active reads",
+            "title": "Active reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -2960,7 +2944,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -2968,7 +2952,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 75
+                "y": 62
             },
             "id": 40,
             "isNew": true,
@@ -2995,7 +2979,7 @@
                     "step": 1
                 }
             ],
-            "title": "Queued reads",
+            "title": "Queued reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3041,7 +3025,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -3049,7 +3033,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 75
+                "y": 62
             },
             "id": 41,
             "isNew": true,
@@ -3076,7 +3060,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes currently blocked on dirty",
+            "title": "Writes currently blocked on dirty $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3122,7 +3106,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -3130,7 +3114,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 75
+                "y": 62
             },
             "id": 42,
             "isNew": true,
@@ -3157,7 +3141,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes currently blocked on commitlog",
+            "title": "Writes currently blocked on commitlog $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3211,7 +3195,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 81
+                "y": 68
             },
             "id": 43,
             "isNew": true,
@@ -3284,7 +3268,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -3292,7 +3276,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 81
+                "y": 68
             },
             "id": 44,
             "isNew": true,
@@ -3319,7 +3303,7 @@
                     "step": 1
                 }
             ],
-            "title": "Reads failed",
+            "title": "Reads failed $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3365,7 +3349,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -3373,7 +3357,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 81
+                "y": 68
             },
             "id": 45,
             "isNew": true,
@@ -3400,7 +3384,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes blocked on dirty",
+            "title": "Writes blocked on dirty $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3446,7 +3430,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -3454,7 +3438,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 81
+                "y": 68
             },
             "id": 46,
             "isNew": true,
@@ -3481,14 +3465,11 @@
                     "step": 1
                 }
             ],
-            "title": "Writes blocked on commitlog",
+            "title": "Writes blocked on commitlog $func by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "percentunit_panel",
-            "dashversion": [
-                ">2024.1"
-            ],
             "datasource": "prometheus",
             "description": "Data compression percentage by using compressed algorithm\n\nscylla_rpc_compression_compressed_bytes_sent",
             "editable": true,
@@ -3539,7 +3520,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 87
+                "y": 74
             },
             "id": 47,
             "isNew": true,
@@ -3559,7 +3540,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_rpc_compression_compressed_bytes_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", algorithm!~\"raw\"}[$__rate_interval])) by ([[by]], algorithm)/$func(rate(scylla_rpc_compression_bytes_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", algorithm!~\"raw\"}[$__rate_interval])) by ([[by]], algorithm))",
+                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_rpc_compression_compressed_bytes_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", algorithm!~\"raw\"}[$__rate_interval])) by ([[by]], algorithm)/sum(rate(scylla_rpc_compression_bytes_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", algorithm!~\"raw\"}[$__rate_interval])) by ([[by]], algorithm))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -3571,9 +3552,6 @@
         },
         {
             "class": "bytes_panel",
-            "dashversion": [
-                ">2024.1"
-            ],
             "datasource": "prometheus",
             "description": "Bytes sent using compressed algorithm\n\nscylla_rpc_compression_compressed_bytes_sent",
             "editable": true,
@@ -3623,7 +3601,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 87
+                "y": 74
             },
             "id": 48,
             "isNew": true,
@@ -3650,7 +3628,7 @@
                     "step": 1
                 }
             ],
-            "title": "Compressed Bytes Sent by Algorithm",
+            "title": "Compressed Bytes Sent by Algorithm $func by [[by]]",
             "transformations": [
                 {
                     "id": "calculateField",
@@ -3702,7 +3680,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -3710,7 +3688,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 87
+                "y": 74
             },
             "id": 49,
             "isNew": true,
@@ -3737,7 +3715,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes failed",
+            "title": "Writes failed $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3783,7 +3761,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -3791,7 +3769,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 87
+                "y": 74
             },
             "id": 50,
             "isNew": true,
@@ -3818,7 +3796,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes timed out",
+            "title": "Writes timed out $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3829,7 +3807,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 93
+                "y": 80
             },
             "id": 51,
             "panels": [],
@@ -3888,7 +3866,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 94
+                "y": 81
             },
             "id": 52,
             "isNew": true,
@@ -3915,7 +3893,7 @@
                     "step": 1
                 }
             ],
-            "title": "Open sstables for reading",
+            "title": "Open sstables for reading $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -3969,7 +3947,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 94
+                "y": 81
             },
             "id": 53,
             "isNew": true,
@@ -3996,7 +3974,7 @@
                     "step": 1
                 }
             ],
-            "title": "SStable reads",
+            "title": "SStable reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4050,7 +4028,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 94
+                "y": 81
             },
             "id": 54,
             "isNew": true,
@@ -4077,7 +4055,7 @@
                     "step": 1
                 }
             ],
-            "title": "SStables disk reads",
+            "title": "SStables disk reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4088,7 +4066,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 100
+                "y": 87
             },
             "id": 55,
             "panels": [
@@ -4143,7 +4121,7 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 101
+                        "y": 88
                     },
                     "id": 56,
                     "isNew": true,
@@ -4170,7 +4148,7 @@
                             "step": 1
                         }
                     ],
-                    "title": "S3 Writes Bytes/s by [[by]]",
+                    "title": "S3 Writes Bytes/s $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -4224,7 +4202,7 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 101
+                        "y": 88
                     },
                     "id": 57,
                     "isNew": true,
@@ -4251,7 +4229,7 @@
                             "step": 1
                         }
                     ],
-                    "title": "S3 Writes latency",
+                    "title": "S3 Writes latency $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -4305,7 +4283,7 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 101
+                        "y": 88
                     },
                     "id": 58,
                     "isNew": true,
@@ -4332,7 +4310,7 @@
                             "step": 1
                         }
                     ],
-                    "title": "S3 reads Bytes/s by [[by]]",
+                    "title": "S3 reads Bytes/s $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -4386,7 +4364,7 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 101
+                        "y": 88
                     },
                     "id": 59,
                     "isNew": true,
@@ -4429,7 +4407,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 107
+                "y": 94
             },
             "id": 60,
             "panels": [],
@@ -4453,7 +4431,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 108
+                "y": 95
             },
             "id": 61,
             "isNew": true,
@@ -4509,7 +4487,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -4517,7 +4495,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 110
+                "y": 97
             },
             "id": 62,
             "isNew": true,
@@ -4544,7 +4522,7 @@
                     "step": 1
                 }
             ],
-            "title": "Reads with no misses",
+            "title": "Reads with no misses $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4590,7 +4568,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -4598,7 +4576,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 110
+                "y": 97
             },
             "id": 63,
             "isNew": true,
@@ -4625,7 +4603,7 @@
                     "step": 1
                 }
             ],
-            "title": "Reads with misses",
+            "title": "Reads with misses $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4671,7 +4649,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4679,7 +4657,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 116
+                "y": 103
             },
             "id": 64,
             "isNew": true,
@@ -4709,7 +4687,7 @@
                     "step": 1
                 }
             ],
-            "title": "Row Hits",
+            "title": "Row Hits $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4755,7 +4733,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4763,7 +4741,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 116
+                "y": 103
             },
             "id": 65,
             "isNew": true,
@@ -4793,7 +4771,7 @@
                     "step": 1
                 }
             ],
-            "title": "Row Misses",
+            "title": "Row Misses $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4839,7 +4817,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4847,7 +4825,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 116
+                "y": 103
             },
             "id": 66,
             "isNew": true,
@@ -4877,7 +4855,7 @@
                     "step": 1
                 }
             ],
-            "title": "Partition Hits",
+            "title": "Partition Hits $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -4923,7 +4901,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -4931,7 +4909,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 116
+                "y": 103
             },
             "id": 67,
             "isNew": true,
@@ -4961,7 +4939,7 @@
                     "step": 1
                 }
             ],
-            "title": "Partition Misses",
+            "title": "Partition Misses $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5007,7 +4985,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5015,7 +4993,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 122
+                "y": 109
             },
             "id": 68,
             "isNew": true,
@@ -5045,7 +5023,7 @@
                     "step": 1
                 }
             ],
-            "title": "Row Insertions",
+            "title": "Row Insertions $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5091,7 +5069,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5099,7 +5077,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 122
+                "y": 109
             },
             "id": 69,
             "isNew": true,
@@ -5129,7 +5107,7 @@
                     "step": 1
                 }
             ],
-            "title": "Row Evictions",
+            "title": "Row Evictions $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5175,7 +5153,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5183,7 +5161,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 122
+                "y": 109
             },
             "id": 70,
             "isNew": true,
@@ -5213,7 +5191,7 @@
                     "step": 1
                 }
             ],
-            "title": "Partition Insertions",
+            "title": "Partition Insertions $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5259,7 +5237,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5267,7 +5245,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 122
+                "y": 109
             },
             "id": 71,
             "isNew": true,
@@ -5297,7 +5275,7 @@
                     "step": 1
                 }
             ],
-            "title": "Partition Evictions",
+            "title": "Partition Evictions $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5343,7 +5321,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5351,7 +5329,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 128
+                "y": 115
             },
             "id": 72,
             "isNew": true,
@@ -5381,7 +5359,7 @@
                     "step": 1
                 }
             ],
-            "title": "Row Merges",
+            "title": "Row Merges $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5427,7 +5405,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5435,7 +5413,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 128
+                "y": 115
             },
             "id": 73,
             "isNew": true,
@@ -5465,7 +5443,7 @@
                     "step": 1
                 }
             ],
-            "title": "Row Removals",
+            "title": "Row Removals $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5511,7 +5489,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5519,7 +5497,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 128
+                "y": 115
             },
             "id": 74,
             "isNew": true,
@@ -5549,7 +5527,7 @@
                     "step": 1
                 }
             ],
-            "title": "Partition Merges",
+            "title": "Partition Merges $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5595,7 +5573,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -5603,7 +5581,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 128
+                "y": 115
             },
             "id": 75,
             "isNew": true,
@@ -5633,7 +5611,7 @@
                     "step": 1
                 }
             ],
-            "title": "Partition Removals",
+            "title": "Partition Removals $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5687,7 +5665,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 134
+                "y": 121
             },
             "id": 76,
             "isNew": true,
@@ -5714,7 +5692,7 @@
                     "step": 1
                 }
             ],
-            "title": "Rows",
+            "title": "Rows $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5768,7 +5746,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 134
+                "y": 121
             },
             "id": 77,
             "isNew": true,
@@ -5795,7 +5773,7 @@
                     "step": 1
                 }
             ],
-            "title": "Partitions",
+            "title": "Partitions $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5849,7 +5827,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 134
+                "y": 121
             },
             "id": 78,
             "isNew": true,
@@ -5876,7 +5854,7 @@
                     "step": 1
                 }
             ],
-            "title": "Used Bytes",
+            "title": "Used Bytes $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -5930,7 +5908,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 134
+                "y": 121
             },
             "id": 79,
             "isNew": true,
@@ -5957,7 +5935,7 @@
                     "step": 1
                 }
             ],
-            "title": "Total Bytes",
+            "title": "Total Bytes $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -6011,7 +5989,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 140
+                "y": 127
             },
             "id": 80,
             "isNew": true,
@@ -6038,7 +6016,7 @@
                     "step": 1
                 }
             ],
-            "title": "Prepared Statements Cache Eviction",
+            "title": "Prepared Statements Cache Eviction $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -6092,7 +6070,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 140
+                "y": 127
             },
             "id": 81,
             "isNew": true,
@@ -6119,7 +6097,7 @@
                     "step": 1
                 }
             ],
-            "title": "Authorized Prepared Statements Cache Eviction",
+            "title": "Authorized Prepared Statements Cache Eviction $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -6173,7 +6151,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 140
+                "y": 127
             },
             "id": 82,
             "isNew": true,
@@ -6200,7 +6178,7 @@
                     "step": 1
                 }
             ],
-            "title": "Querier cache population",
+            "title": "Querier cache population $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -6246,7 +6224,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -6254,7 +6232,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 140
+                "y": 127
             },
             "id": 83,
             "isNew": true,
@@ -6284,7 +6262,7 @@
                     "step": 1
                 }
             ],
-            "title": "Querier Cache Lookups",
+            "title": "Querier Cache Lookups $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -6330,7 +6308,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -6338,7 +6316,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 146
+                "y": 133
             },
             "id": 84,
             "isNew": true,
@@ -6368,7 +6346,1003 @@
                     "step": 1
                 }
             ],
-            "title": "Querier Cache Misses",
+            "title": "Querier Cache Misses $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "Counts sstables checked after applying the bloom filter. High value indicates that bloom filter is not very efficient.",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 133
+            },
+            "id": 85,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_database_clustering_filter_sstables_checked{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "SStables checked after applying the bloom filter $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "Counts sstables that survived the clustering key filtering. High value indicates that bloom filter is not very efficient and still have to access a lot of sstables to get data.",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 133
+            },
+            "id": 86,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_database_clustering_filter_surviving_sstables{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "SStables that survived the clustering key filtering $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "bytes_panel",
+            "datasource": "prometheus",
+            "description": "Total number of bytes cached in the index page cache",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "bytes"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 139
+            },
+            "id": 87,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_sstables_index_page_cache_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable index file page cache used bytes $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Index page cache requests which were served from cache",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 139
+            },
+            "id": 88,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_cache_hits{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable index file page cache hits $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Index page cache requests which had to perform I/O",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 139
+            },
+            "id": 89,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_cache_misses{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable index file page cache misses $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Total number of index page cache pages which have been evicted",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 139
+            },
+            "id": 90,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_cache_evictions{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable index file page cache evictions $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Total number of index page cache pages which were inserted into the cache",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 145
+            },
+            "id": 91,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_cache_populations{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable index file page cache populations $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "bytes_panel",
+            "datasource": "prometheus",
+            "description": "Amount of bytes used by index pages in memory",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "bytes"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 145
+            },
+            "id": 92,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_sstables_index_page_used_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable partition index cache used bytes $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Index page requests which could be satisfied without waiting",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 145
+            },
+            "id": 93,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_hits{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable partition index cache hits $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Index page requests which initiated a read from disk",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 145
+            },
+            "id": 94,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_misses{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable partition index cache misses $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Index pages which got evicted from memory",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 151
+            },
+            "id": 95,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_evictions{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable partition index cache evictions $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "description": "Index pages which got populated into memory",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 151
+            },
+            "id": 96,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_sstables_index_page_populations{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "sstable partition index cache populations $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -6379,9 +7353,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 152
+                "y": 157
             },
-            "id": 85,
+            "id": 97,
             "panels": [
                 {
                     "class": "text_panel",
@@ -6399,9 +7373,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 153
+                        "y": 158
                     },
-                    "id": 86,
+                    "id": 98,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -6455,7 +7429,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -6463,9 +7437,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 155
+                        "y": 160
                     },
-                    "id": 87,
+                    "id": 99,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6490,7 +7464,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Local view updates",
+                    "title": "Local view updates $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -6536,7 +7510,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -6544,9 +7518,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 155
+                        "y": 160
                     },
-                    "id": 88,
+                    "id": 100,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6571,7 +7545,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Remote view updates",
+                    "title": "Remote view updates $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -6625,9 +7599,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 155
+                        "y": 160
                     },
-                    "id": 89,
+                    "id": 101,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6652,7 +7626,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "View Update Backlog",
+                    "title": "View Update Backlog $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -6698,7 +7672,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -6706,9 +7680,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 155
+                        "y": 160
                     },
-                    "id": 90,
+                    "id": 102,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6736,7 +7710,88 @@
                             "step": 10
                         }
                     ],
-                    "title": "Dropped View Updates",
+                    "title": "Dropped View Updates $func by [[by]]",
+                    "type": "timeseries"
+                },
+                {
+                    "class": "writes_panel",
+                    "datasource": "prometheus",
+                    "description": "Number of successfully written hints.\n\nscylla_hints_for_views_manager_written",
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "class": "fieldConfig_defaults",
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "class": "fieldConfig_defaults_custom",
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "unit": "wps"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 6,
+                        "w": 6,
+                        "x": 0,
+                        "y": 166
+                    },
+                    "id": 103,
+                    "isNew": true,
+                    "links": [],
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "hidden",
+                            "placement": "bottom"
+                        },
+                        "tooltip": {
+                            "maxHeight": 600,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "span": 3,
+                    "targets": [
+                        {
+                            "expr": "$topbottom([[filter_limit]], $func(scylla_hints_for_views_manager_written{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}) by ([[by]]))",
+                            "intervalFactor": 1,
+                            "legendFormat": "",
+                            "refId": "A",
+                            "step": 10
+                        }
+                    ],
+                    "title": "Hints written for view $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -6782,17 +7837,17 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
                     "gridPos": {
                         "h": 6,
                         "w": 6,
-                        "x": 0,
-                        "y": 161
+                        "x": 6,
+                        "y": 166
                     },
-                    "id": 91,
+                    "id": 104,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6820,7 +7875,88 @@
                             "step": 10
                         }
                     ],
-                    "title": "Hints for view",
+                    "title": "Hints for view $func by [[by]]",
+                    "type": "timeseries"
+                },
+                {
+                    "class": "writes_panel",
+                    "datasource": "prometheus",
+                    "description": "Number of unexpected errors during sending, sending will be retried later.\n\nscylla_hints_for_views_manager_send_errors",
+                    "editable": true,
+                    "error": false,
+                    "fieldConfig": {
+                        "defaults": {
+                            "class": "fieldConfig_defaults",
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "custom": {
+                                "axisLabel": "",
+                                "axisPlacement": "auto",
+                                "axisSoftMin": 0,
+                                "barAlignment": 0,
+                                "class": "fieldConfig_defaults_custom",
+                                "drawStyle": "line",
+                                "fillOpacity": 0,
+                                "gradientMode": "none",
+                                "hideFrom": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": false
+                                },
+                                "lineInterpolation": "linear",
+                                "lineWidth": 1,
+                                "pointSize": 5,
+                                "scaleDistribution": {
+                                    "type": "linear"
+                                },
+                                "showPoints": "never",
+                                "spanNulls": false,
+                                "stacking": {
+                                    "group": "A",
+                                    "mode": "none"
+                                },
+                                "thresholdsStyle": {
+                                    "mode": "off"
+                                }
+                            },
+                            "mappings": [],
+                            "unit": "wps"
+                        },
+                        "overrides": []
+                    },
+                    "gridPos": {
+                        "h": 6,
+                        "w": 6,
+                        "x": 12,
+                        "y": 166
+                    },
+                    "id": 105,
+                    "isNew": true,
+                    "links": [],
+                    "options": {
+                        "legend": {
+                            "calcs": [],
+                            "displayMode": "hidden",
+                            "placement": "bottom"
+                        },
+                        "tooltip": {
+                            "maxHeight": 600,
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "span": 3,
+                    "targets": [
+                        {
+                            "expr": "$topbottom([[filter_limit]], $func(scylla_hints_for_views_manager_send_errors{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}) by ([[by]]))",
+                            "intervalFactor": 1,
+                            "legendFormat": "",
+                            "refId": "A",
+                            "step": 10
+                        }
+                    ],
+                    "title": "Hints-Send Errors for view $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -6866,17 +8002,17 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
                     "gridPos": {
                         "h": 6,
                         "w": 6,
-                        "x": 6,
-                        "y": 161
+                        "x": 18,
+                        "y": 166
                     },
-                    "id": 92,
+                    "id": 106,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6901,7 +8037,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Throttled Base Writes",
+                    "title": "Throttled Base Writes $func by [[by]]",
                     "type": "timeseries"
                 }
             ],
@@ -6917,9 +8053,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 167
+                "y": 172
             },
-            "id": 93,
+            "id": 107,
             "panels": [
                 {
                     "class": "rps_panel",
@@ -6964,7 +8100,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -6972,9 +8108,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 168
+                        "y": 173
                     },
-                    "id": 94,
+                    "id": 108,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -6999,7 +8135,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Range Tombstones reads",
+                    "title": "Range Tombstones reads $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7045,7 +8181,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -7053,9 +8189,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 168
+                        "y": 173
                     },
-                    "id": 95,
+                    "id": 109,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7080,7 +8216,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Cache Range Tombstones Read",
+                    "title": "Cache Range Tombstones Read $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7126,7 +8262,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -7134,9 +8270,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 168
+                        "y": 173
                     },
-                    "id": 96,
+                    "id": 110,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7161,7 +8297,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Row Tombstones reads",
+                    "title": "Row Tombstones reads $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7207,7 +8343,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -7215,9 +8351,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 168
+                        "y": 173
                     },
-                    "id": 97,
+                    "id": 111,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7242,7 +8378,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Cache Row Tombstones reads",
+                    "title": "Cache Row Tombstones reads $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7288,7 +8424,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -7296,9 +8432,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 174
+                        "y": 179
                     },
-                    "id": 98,
+                    "id": 112,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7323,7 +8459,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Tombstones found in SSTables",
+                    "title": "Tombstones found in SSTables $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7369,7 +8505,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -7377,9 +8513,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 174
+                        "y": 179
                     },
-                    "id": 99,
+                    "id": 113,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7404,7 +8540,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Range Tombstones found in SSTables",
+                    "title": "Range Tombstones found in SSTables $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7450,7 +8586,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -7458,9 +8594,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 174
+                        "y": 179
                     },
-                    "id": 100,
+                    "id": 114,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7485,7 +8621,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Cell Tombstones found in SSTables",
+                    "title": "Cell Tombstones found in SSTables $func by [[by]]",
                     "type": "timeseries"
                 }
             ],
@@ -7501,9 +8637,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 180
+                "y": 185
             },
-            "id": 101,
+            "id": 115,
             "panels": [
                 {
                     "class": "text_panel",
@@ -7521,9 +8657,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 181
+                        "y": 186
                     },
-                    "id": 102,
+                    "id": 116,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -7577,7 +8713,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -7585,9 +8721,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 183
+                        "y": 188
                     },
-                    "id": 103,
+                    "id": 117,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7612,7 +8748,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Reads",
+                    "title": "LWT Reads $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7666,9 +8802,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 183
+                        "y": 188
                     },
-                    "id": 104,
+                    "id": 118,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7750,9 +8886,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 183
+                        "y": 188
                     },
-                    "id": 105,
+                    "id": 119,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7826,7 +8962,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -7834,9 +8970,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 183
+                        "y": 188
                     },
-                    "id": 106,
+                    "id": 120,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7861,7 +8997,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Read Timeouts",
+                    "title": "LWT Read Timeouts $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7907,7 +9043,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -7915,9 +9051,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 189
+                        "y": 194
                     },
-                    "id": 107,
+                    "id": 121,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7942,7 +9078,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Writes",
+                    "title": "LWT Writes $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -7996,9 +9132,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 189
+                        "y": 194
                     },
-                    "id": 108,
+                    "id": 122,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8080,9 +9216,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 189
+                        "y": 194
                     },
-                    "id": 109,
+                    "id": 123,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8156,7 +9292,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -8164,9 +9300,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 189
+                        "y": 194
                     },
-                    "id": 110,
+                    "id": 124,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8191,7 +9327,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Write Timeouts",
+                    "title": "LWT Write Timeouts $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8237,7 +9373,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -8245,9 +9381,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 195
+                        "y": 200
                     },
-                    "id": 111,
+                    "id": 125,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8275,7 +9411,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Paxos operations",
+                    "title": "Paxos operations $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8329,9 +9465,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 195
+                        "y": 200
                     },
-                    "id": 112,
+                    "id": 126,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8356,7 +9492,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Paxos Foreground operations",
+                    "title": "Paxos Foreground operations $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8410,9 +9546,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 195
+                        "y": 200
                     },
-                    "id": 113,
+                    "id": 127,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8437,7 +9573,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Paxos Background operations",
+                    "title": "Paxos Background operations $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8455,9 +9591,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 195
+                        "y": 200
                     },
-                    "id": 114,
+                    "id": 128,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -8512,7 +9648,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -8520,9 +9656,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 201
+                        "y": 206
                     },
-                    "id": 115,
+                    "id": 129,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8547,7 +9683,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Condition-Not-Met",
+                    "title": "LWT Condition-Not-Met $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8593,7 +9729,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -8601,9 +9737,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 201
+                        "y": 206
                     },
-                    "id": 116,
+                    "id": 130,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8628,7 +9764,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Write Contention",
+                    "title": "LWT Write Contention $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8674,7 +9810,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -8682,9 +9818,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 201
+                        "y": 206
                     },
-                    "id": 117,
+                    "id": 131,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8709,7 +9845,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Read Contention",
+                    "title": "LWT Read Contention $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8755,7 +9891,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -8763,9 +9899,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 201
+                        "y": 206
                     },
-                    "id": 118,
+                    "id": 132,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8790,7 +9926,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Write Timeout Due to Uncertainty",
+                    "title": "LWT Write Timeout Due to Uncertainty $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8836,7 +9972,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -8844,9 +9980,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 207
+                        "y": 212
                     },
-                    "id": 119,
+                    "id": 133,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8871,7 +10007,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Write Unavailable",
+                    "title": "LWT Write Unavailable $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8917,7 +10053,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -8925,9 +10061,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 207
+                        "y": 212
                     },
-                    "id": 120,
+                    "id": 134,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8952,7 +10088,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Read Unavailable",
+                    "title": "LWT Read Unavailable $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -8998,7 +10134,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:writes/s"
+                            "unit": "wps"
                         },
                         "overrides": []
                     },
@@ -9006,9 +10142,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 207
+                        "y": 212
                     },
-                    "id": 121,
+                    "id": 135,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9033,7 +10169,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Write Unfinished - Repair Attempts",
+                    "title": "LWT Write Unfinished - Repair Attempts $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -9079,7 +10215,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -9087,9 +10223,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 207
+                        "y": 212
                     },
-                    "id": 122,
+                    "id": 136,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9114,7 +10250,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Read Unfinished - Repair Attempts",
+                    "title": "LWT Read Unfinished - Repair Attempts $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -9160,7 +10296,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:reads/s"
+                            "unit": "rps"
                         },
                         "overrides": []
                     },
@@ -9168,9 +10304,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 213
+                        "y": 218
                     },
-                    "id": 123,
+                    "id": 137,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9195,7 +10331,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Failed Read-Round Optimization",
+                    "title": "Failed Read-Round Optimization $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -9241,7 +10377,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -9249,9 +10385,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 213
+                        "y": 218
                     },
-                    "id": 124,
+                    "id": 138,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9279,7 +10415,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Prune",
+                    "title": "LWT Prune $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -9325,7 +10461,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -9333,9 +10469,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 213
+                        "y": 218
                     },
-                    "id": 125,
+                    "id": 139,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9363,7 +10499,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "LWT Dropped Prune",
+                    "title": "LWT Dropped Prune $func by [[by]]",
                     "type": "timeseries"
                 }
             ],
@@ -9379,9 +10515,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 219
+                "y": 224
             },
-            "id": 126,
+            "id": 140,
             "panels": [
                 {
                     "class": "text_panel",
@@ -9399,9 +10535,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 220
+                        "y": 225
                     },
-                    "id": 127,
+                    "id": 141,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -9455,7 +10591,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -9463,9 +10599,9 @@
                         "h": 6,
                         "w": 8,
                         "x": 0,
-                        "y": 222
+                        "y": 227
                     },
-                    "id": 128,
+                    "id": 142,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9493,7 +10629,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "CDC Operations",
+                    "title": "CDC Operations $func by [[by]]",
                     "type": "timeseries"
                 },
                 {
@@ -9539,7 +10675,7 @@
                                 }
                             },
                             "mappings": [],
-                            "unit": "si:ops/s"
+                            "unit": "ops"
                         },
                         "overrides": []
                     },
@@ -9547,9 +10683,9 @@
                         "h": 6,
                         "w": 8,
                         "x": 8,
-                        "y": 222
+                        "y": 227
                     },
-                    "id": 129,
+                    "id": 143,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9577,7 +10713,7 @@
                             "step": 10
                         }
                     ],
-                    "title": "Failed CDC operations",
+                    "title": "Failed CDC operations $func by [[by]]",
                     "type": "timeseries"
                 }
             ],
@@ -9593,9 +10729,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 228
+                "y": 233
             },
-            "id": 130,
+            "id": 144,
             "panels": [],
             "repeat": "",
             "title": "Memory",
@@ -9617,9 +10753,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 229
+                "y": 234
             },
-            "id": 131,
+            "id": 145,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -9681,9 +10817,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 231
+                "y": 236
             },
-            "id": 132,
+            "id": 146,
             "isNew": true,
             "links": [],
             "options": {
@@ -9708,7 +10844,7 @@
                     "step": 1
                 }
             ],
-            "title": "LSA total memory",
+            "title": "LSA total memory $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -9762,9 +10898,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 231
+                "y": 236
             },
-            "id": 133,
+            "id": 147,
             "isNew": true,
             "links": [],
             "options": {
@@ -9789,7 +10925,7 @@
                     "step": 1
                 }
             ],
-            "title": "Non-LSA used memory",
+            "title": "Non-LSA used memory $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -9844,9 +10980,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 231
+                "y": 236
             },
-            "id": 134,
+            "id": 148,
             "isNew": true,
             "links": [],
             "options": {
@@ -9871,7 +11007,7 @@
                     "step": 1
                 }
             ],
-            "title": "Bloom Filter memory usage (percentage)",
+            "title": "Bloom Filter memory usage (percentage )",
             "type": "timeseries"
         },
         {
@@ -9882,9 +11018,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 237
+                "y": 242
             },
-            "id": 135,
+            "id": 149,
             "panels": [],
             "repeat": "",
             "title": "Compaction",
@@ -9906,9 +11042,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 238
+                "y": 243
             },
-            "id": 136,
+            "id": 150,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -9918,6 +11054,86 @@
             "title": "",
             "transparent": true,
             "type": "text"
+        },
+        {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "Shares assigned to the compaction",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 3,
+                "x": 0,
+                "y": 245
+            },
+            "id": 151,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 5,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_scheduler_shares{group=\"compaction\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "format": "time_series",
+                    "intervalFactor": 1,
+                    "refId": "A"
+                }
+            ],
+            "title": "Compactions Shares",
+            "type": "timeseries"
         },
         {
             "class": "graph_panel_int",
@@ -9968,11 +11184,11 @@
             },
             "gridPos": {
                 "h": 6,
-                "w": 8,
-                "x": 0,
-                "y": 240
+                "w": 5,
+                "x": 3,
+                "y": 245
             },
-            "id": 137,
+            "id": 152,
             "isNew": true,
             "links": [],
             "options": {
@@ -9987,7 +11203,7 @@
                     "sort": "desc"
                 }
             },
-            "span": 4,
+            "span": 5,
             "targets": [
                 {
                     "expr": "$topbottom([[filter_limit]], $func(scylla_compaction_manager_compactions{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
@@ -9998,7 +11214,7 @@
                     "step": 1
                 }
             ],
-            "title": "Running Compactions",
+            "title": "Running Compactions $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -10050,11 +11266,11 @@
             },
             "gridPos": {
                 "h": 6,
-                "w": 8,
+                "w": 5,
                 "x": 8,
-                "y": 240
+                "y": 245
             },
-            "id": 138,
+            "id": 153,
             "isNew": true,
             "links": [],
             "options": {
@@ -10072,7 +11288,7 @@
             "seriesOverrides": [
                 {}
             ],
-            "span": 4,
+            "span": 5,
             "targets": [
                 {
                     "expr": "$topbottom([[filter_limit]], ($func(rate(scylla_scheduler_runtime_ms{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", group=\"compaction\"}[$__rate_interval])) by ([[by]]))/10)",
@@ -10087,86 +11303,6 @@
             "type": "timeseries"
         },
         {
-            "class": "graph_panel",
-            "datasource": "prometheus",
-            "description": "Shares assigned to the compaction",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "class": "fieldConfig_defaults",
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "axisSoftMin": 0,
-                        "barAlignment": 0,
-                        "class": "fieldConfig_defaults_custom",
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "lineInterpolation": "linear",
-                        "lineWidth": 1,
-                        "pointSize": 5,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "showPoints": "never",
-                        "spanNulls": false,
-                        "stacking": {
-                            "group": "A",
-                            "mode": "none"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "unit": "short"
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 6,
-                "w": 8,
-                "x": 16,
-                "y": 240
-            },
-            "id": 139,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "hidden",
-                    "placement": "bottom"
-                },
-                "tooltip": {
-                    "maxHeight": 600,
-                    "mode": "multi",
-                    "sort": "desc"
-                }
-            },
-            "span": 4,
-            "targets": [
-                {
-                    "expr": "$topbottom([[filter_limit]], avg(scylla_scheduler_shares{group=\"compaction\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
-                    "format": "time_series",
-                    "intervalFactor": 1,
-                    "refId": "A"
-                }
-            ],
-            "title": "Compactions Shares",
-            "type": "timeseries"
-        },
-        {
             "class": "collapsible_row_panel",
             "collapsed": false,
             "datasource": null,
@@ -10174,9 +11310,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 246
+                "y": 251
             },
-            "id": 140,
+            "id": 154,
             "panels": [],
             "repeat": "sg",
             "title": "Latencies - $sg",
@@ -10225,7 +11361,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -10233,9 +11369,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 247
+                "y": 252
             },
-            "id": 141,
+            "id": 155,
             "isNew": true,
             "links": [],
             "options": {
@@ -10260,7 +11396,7 @@
                     "step": 1
                 }
             ],
-            "title": "Writes by [[by]]",
+            "title": "Writes $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -10313,9 +11449,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 247
+                "y": 252
             },
-            "id": 142,
+            "id": 156,
             "isNew": true,
             "links": [],
             "options": {
@@ -10403,9 +11539,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 247
+                "y": 252
             },
-            "id": 143,
+            "id": 157,
             "isNew": true,
             "links": [],
             "options": {
@@ -10494,9 +11630,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 247
+                "y": 252
             },
-            "id": 144,
+            "id": 158,
             "isNew": true,
             "links": [],
             "options": {
@@ -10578,7 +11714,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -10586,9 +11722,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 253
+                "y": 258
             },
-            "id": 145,
+            "id": 159,
             "isNew": true,
             "links": [],
             "options": {
@@ -10613,7 +11749,7 @@
                     "step": 1
                 }
             ],
-            "title": "Reads by [[by]]",
+            "title": "Reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -10666,9 +11802,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 253
+                "y": 258
             },
-            "id": 146,
+            "id": 160,
             "isNew": true,
             "links": [],
             "options": {
@@ -10756,9 +11892,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 253
+                "y": 258
             },
-            "id": 147,
+            "id": 161,
             "isNew": true,
             "links": [],
             "options": {
@@ -10847,9 +11983,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 253
+                "y": 258
             },
-            "id": 148,
+            "id": 162,
             "isNew": true,
             "links": [],
             "options": {
@@ -10890,10 +12026,6 @@
         },
         {
             "class": "bps_panel",
-            "dashversion": [
-                ">5.3",
-                ">2022.1"
-            ],
             "datasource": "prometheus",
             "description": "Bytes received in CQL messages",
             "editable": true,
@@ -10943,9 +12075,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 259
+                "y": 264
             },
-            "id": 149,
+            "id": 163,
             "isNew": true,
             "links": [],
             "options": {
@@ -10963,7 +12095,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_transport_cql_request_bytes{kind=~\"$kind\",instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_transport_cql_request_bytes{kind=~\"$kind\",instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -10971,15 +12103,11 @@
                     "step": 1
                 }
             ],
-            "title": "Received payload by [[by]]",
+            "title": "Received payload $func by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "bps_panel",
-            "dashversion": [
-                ">5.3",
-                ">2022.1"
-            ],
             "datasource": "prometheus",
             "description": "Average CQL message size (received)",
             "editable": true,
@@ -11029,9 +12157,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 259
+                "y": 264
             },
-            "id": 150,
+            "id": 164,
             "isNew": true,
             "links": [],
             "options": {
@@ -11062,10 +12190,6 @@
         },
         {
             "class": "bps_panel",
-            "dashversion": [
-                ">5.3",
-                ">2022.1"
-            ],
             "datasource": "prometheus",
             "description": "Bytes sent in CQL messages",
             "editable": true,
@@ -11115,9 +12239,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 259
+                "y": 264
             },
-            "id": 151,
+            "id": 165,
             "isNew": true,
             "links": [],
             "options": {
@@ -11135,7 +12259,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], sum(rate(scylla_transport_cql_response_bytes{kind=~\"$kind\",instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_transport_cql_response_bytes{kind=~\"$kind\",instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -11143,15 +12267,11 @@
                     "step": 1
                 }
             ],
-            "title": "Response payload by [[by]]",
+            "title": "Response payload $func by [[by]]",
             "type": "timeseries"
         },
         {
             "class": "bps_panel",
-            "dashversion": [
-                ">5.3",
-                ">2022.1"
-            ],
             "datasource": "prometheus",
             "description": "Average CQL message size (sent)",
             "editable": true,
@@ -11201,9 +12321,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 259
+                "y": 264
             },
-            "id": 152,
+            "id": 166,
             "isNew": true,
             "links": [],
             "options": {
@@ -11234,10 +12354,6 @@
         },
         {
             "class": "bytes_panel",
-            "dashversion": [
-                ">5.3",
-                ">2022.1"
-            ],
             "datasource": "prometheus",
             "description": "This is a ballpark estimation of the write-messages size (like insert and update).\n\nIt is based on the assumption that write-messages are responsible for most inwards traffic.",
             "editable": true,
@@ -11287,9 +12403,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 265
+                "y": 270
             },
-            "id": 153,
+            "id": 167,
             "isNew": true,
             "links": [],
             "options": {
@@ -11320,10 +12436,6 @@
         },
         {
             "class": "bytes_panel",
-            "dashversion": [
-                ">5.3",
-                ">2022.1"
-            ],
             "datasource": "prometheus",
             "description": "This is a ballpark estimation of the read-messages size (like select).\n\nIt is based on the assumption that read-messages are responsible for most outbound traffic.",
             "editable": true,
@@ -11373,9 +12485,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 265
+                "y": 270
             },
-            "id": 154,
+            "id": 168,
             "isNew": true,
             "links": [],
             "options": {
@@ -11447,7 +12559,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:reads/s"
+                    "unit": "rps"
                 },
                 "overrides": []
             },
@@ -11455,9 +12567,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 265
+                "y": 270
             },
-            "id": 155,
+            "id": 169,
             "isNew": true,
             "links": [],
             "options": {
@@ -11475,7 +12587,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], sum(scylla_storage_proxy_coordinator_foreground_reads{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}) by (scheduling_group_name, [[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_storage_proxy_coordinator_foreground_reads{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}) by (scheduling_group_name, [[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "{{scheduling_group_name}} {{dc}} {{instance}} {{shard}}",
                     "metric": "",
@@ -11483,7 +12595,7 @@
                     "step": 1
                 }
             ],
-            "title": "Foreground Reads by [[by]]",
+            "title": "Foreground Reads $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -11529,7 +12641,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:writes/s"
+                    "unit": "wps"
                 },
                 "overrides": []
             },
@@ -11537,9 +12649,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 265
+                "y": 270
             },
-            "id": 156,
+            "id": 170,
             "isNew": true,
             "links": [],
             "options": {
@@ -11557,7 +12669,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$topbottom([[filter_limit]], sum(scylla_storage_proxy_coordinator_foreground_writes{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}) by (scheduling_group_name, [[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_storage_proxy_coordinator_foreground_writes{instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\",scheduling_group_name=~\"$sg\"}) by (scheduling_group_name, [[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "{{scheduling_group_name}} {{dc}} {{instance}} {{shard}}",
                     "metric": "",
@@ -11565,7 +12677,7 @@
                     "step": 1
                 }
             ],
-            "title": "Foreground Writes by [[by]]",
+            "title": "Foreground Writes $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -11577,9 +12689,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 271
+                "y": 276
             },
-            "id": 157,
+            "id": 171,
             "panels": [],
             "repeat": "",
             "title": "Your panels",
@@ -11600,9 +12712,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 272
+                "y": 277
             },
-            "id": 158,
+            "id": 172,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -11659,7 +12771,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -11667,9 +12779,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 274
+                "y": 279
             },
-            "id": 159,
+            "id": 173,
             "isNew": true,
             "links": [],
             "options": {
@@ -11734,7 +12846,7 @@
                         }
                     },
                     "mappings": [],
-                    "unit": "si:ops/s"
+                    "unit": "ops"
                 },
                 "overrides": []
             },
@@ -11742,9 +12854,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 274
+                "y": 279
             },
-            "id": 160,
+            "id": 174,
             "isNew": true,
             "links": [],
             "options": {
@@ -11782,14 +12894,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 280
+                "y": 285
             },
-            "id": 161,
+            "id": 175,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.12.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.14.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -12017,10 +13129,6 @@
                         "$__all"
                     ]
                 },
-                "dashversion": [
-                    ">5.3",
-                    ">2022.1"
-                ],
                 "datasource": "prometheus",
                 "definition": "",
                 "error": null,
@@ -12046,9 +13154,10 @@
                 "class": "aggregation_function",
                 "current": {
                     "tags": [],
-                    "text": "sum",
+                    "text": "Sum",
                     "value": "sum"
                 },
+                "description": "Selects how the data is aggregated (sum, average, max, etc.)",
                 "hide": 0,
                 "includeAll": false,
                 "label": "Function",
@@ -12057,36 +13166,36 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "sum",
+                        "text": "Sum",
                         "value": "sum"
                     },
                     {
                         "selected": false,
-                        "text": "avg",
+                        "text": "Average",
                         "value": "avg"
                     },
                     {
                         "selected": false,
-                        "text": "max",
+                        "text": "Maximum",
                         "value": "max"
                     },
                     {
                         "selected": false,
-                        "text": "min",
+                        "text": "Minimum",
                         "value": "min"
                     },
                     {
                         "selected": false,
-                        "text": "stddev",
+                        "text": "standard deviation",
                         "value": "stddev"
                     },
                     {
                         "selected": false,
-                        "text": "stdvar",
+                        "text": "standard variance",
                         "value": "stdvar"
                     }
                 ],
-                "query": "sum,avg,max,min,stddev,stdvar",
+                "query": "Sum : sum,Average : avg,Maximum : max,Minimum : min,Standard Deviation : stddev,Standard Variance : stdvar",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -12217,8 +13326,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.12.1",
-                    "value": "4.12.1"
+                    "text": "4.14.0",
+                    "value": "4.14.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -12229,11 +13338,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.12.1",
-                        "value": "4.12.1"
+                        "text": "4.14.0",
+                        "value": "4.14.0"
                     }
                 ],
-                "query": "4.12.1",
+                "query": "4.14.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

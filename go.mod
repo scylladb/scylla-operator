@@ -18,7 +18,7 @@ require (
 	github.com/containers/image/v5 v5.36.2
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/evanphx/json-patch v5.9.11+incompatible
-	github.com/go-git/go-git/v5 v5.16.4
+	github.com/go-git/go-git/v5 v5.16.5
 	github.com/go-openapi/runtime v0.29.2
 	github.com/go-openapi/strfmt v0.25.0
 	github.com/gobwas/glob v0.2.3
@@ -38,18 +38,18 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v3 v3.0.4
-	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260204124158-4faf7b47bf16
-	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260204124158-4faf7b47bf16
-	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260204124158-4faf7b47bf16
+	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260209152745-c7073322c593
+	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260209152745-c7073322c593
+	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260209152745-c7073322c593
 	github.com/scylladb/scylladb-swagger-go-client v0.2.0
-	github.com/shurcooL/githubv4 v0.0.0-20240727222349-48295856cce7
+	github.com/shurcooL/githubv4 v0.0.0-20260209031235-2402fdf4a9ed
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	go.uber.org/config v1.4.0
-	golang.org/x/oauth2 v0.34.0
-	golang.org/x/sys v0.40.0
+	golang.org/x/oauth2 v0.35.0
+	golang.org/x/sys v0.41.0
 	golang.org/x/time v0.14.0
 	google.golang.org/grpc v1.78.0
 	gopkg.in/yaml.v2 v2.4.0

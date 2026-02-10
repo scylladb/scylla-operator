@@ -95,6 +95,18 @@
       "schedule": [
         "before 5am every weekday"
       ]
+    },
+    {
+      "description": "Dockerfile base images should be updated every weekday",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchFileNames": [
+        "Dockerfile"
+      ],
+      "schedule": [
+        "before 5am every weekday"
+      ]
     }
   ],
   "customManagers": [

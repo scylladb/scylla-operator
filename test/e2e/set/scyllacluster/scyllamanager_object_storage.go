@@ -121,8 +121,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			return false, nil
 		}
 
-		taskSchedulingCtx, taskSchedulingCtxCancel := utils.ContextForManagerSync(ctx, sourceSC)
+		taskSchedulingCtx, taskSchedulingCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("backup task %q has not been scheduled in ScyllaDB Manager in time", sourceSC.Spec.Backups[0].Name),
+		)
 		defer taskSchedulingCtxCancel()
+
 		sourceSC, err = controllerhelpers.WaitForScyllaClusterState(taskSchedulingCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sourceSC.Namespace), sourceSC.Name, controllerhelpers.WaitForStateOptions{}, backupTaskScheduledCond)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sourceSC.Status.Repairs).To(o.BeEmpty())
@@ -175,9 +180,20 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			return false, nil
 		}
 
-		taskUpdateCtx, taskUpdateCtxCancel := utils.ContextForManagerSync(ctx, sourceSC)
+		taskUpdateCtx, taskUpdateCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("backup task %q update has not been reconciled in time", sourceSC.Spec.Backups[0].Name),
+		)
 		defer taskUpdateCtxCancel()
-		sourceSC, err = controllerhelpers.WaitForScyllaClusterState(taskUpdateCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sourceSC.Namespace), sourceSC.Name, controllerhelpers.WaitForStateOptions{}, backupTaskUpdatedCond)
+
+		sourceSC, err = controllerhelpers.WaitForScyllaClusterState(
+			taskUpdateCtx,
+			f.ScyllaClient().ScyllaV1().ScyllaClusters(sourceSC.Namespace),
+			sourceSC.Name,
+			controllerhelpers.WaitForStateOptions{},
+			backupTaskUpdatedCond,
+		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		o.Expect(sourceSC.Status.Backups).To(o.HaveLen(1))
@@ -203,9 +219,15 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(sourceManagerClusterID).NotTo(o.BeEmpty())
 
 		framework.By("Waiting for the backup task to finish")
+		backupTaskCompletionCtx, backupTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("backup task %q has not completed in time", backupTask.ID),
+		)
+		defer backupTaskCompletionCtxCancel()
+
 		o.Eventually(verification.VerifyScyllaDBManagerBackupTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(backupTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, sourceManagerClusterID, backupTask.ID).
 			Should(o.Succeed())
@@ -231,8 +253,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			return len(cluster.Status.Backups) == 0, nil
 		}
 
-		taskDeletionCtx, taskDeletionCtxCancel := utils.ContextForManagerSync(ctx, sourceSC)
+		taskDeletionCtx, taskDeletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("backup task deletion has not been reconciled in time"),
+		)
 		defer taskDeletionCtxCancel()
+
 		sourceSC, err = controllerhelpers.WaitForScyllaClusterState(taskDeletionCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sourceSC.Namespace), sourceSC.Name, controllerhelpers.WaitForStateOptions{}, backupTaskDeletedCond)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -240,13 +267,19 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		// Progressing conditions of the underlying ScyllaDBManagerTasks are not propagated to ScyllaClusters by the migration controller,
 		// neither does the controller await the deletion of ScyllaDBManagerTasks.
 		// Task deletion from ScyllaDB Manager state is asynchronous to ScyllaCluster state update.
+		backupTaskDeletionCtx, backupTaskDeletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("backup task has not been deleted from ScyllaDB Manager state in time"),
+		)
+		defer backupTaskDeletionCtxCancel()
+
 		o.Eventually(func(eo o.Gomega, ctx context.Context) {
 			tasks, err = managerClient.ListTasks(ctx, sourceManagerClusterID, "backup", false, "", "")
 			eo.Expect(err).NotTo(o.HaveOccurred())
 			eo.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
 		}).
-			WithContext(ctx).
-			WithTimeout(utils.SyncTimeout).
+			WithContext(backupTaskDeletionCtx).
 			WithPolling(5 * time.Second).
 			Should(o.Succeed())
 
@@ -264,7 +297,12 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for source ScyllaCluster to be deleted")
-		sourceScyllaClusterDeletionCtx, sourceScyllaClusterDeletionCtxCancel := context.WithCancel(ctx)
+		sourceScyllaClusterDeletionCtx, sourceScyllaClusterDeletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBTerminationTimeout,
+			fmt.Errorf("ScyllaCluster %q has not been deleted in time", naming.ObjRef(sourceSC)),
+		)
+
 		defer sourceScyllaClusterDeletionCtxCancel()
 		err = framework.WaitForObjectDeletion(
 			sourceScyllaClusterDeletionCtx,
@@ -316,9 +354,20 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		di.Close()
 
 		framework.By("Waiting for ScyllaDB Manager cluster ID to propagate to target ScyllaCluster's status")
-		targetRegistrationCtx, targetRegistrationCtxCancel := utils.ContextForManagerSync(ctx, targetSC)
+		targetRegistrationCtx, targetRegistrationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerClusterSyncTimeout,
+			fmt.Errorf("ScyllaCluster %q has not registered with global ScyllaDB Manager instance in time", naming.ObjRef(targetSC)),
+		)
 		defer targetRegistrationCtxCancel()
-		targetSC, err = controllerhelpers.WaitForScyllaClusterState(targetRegistrationCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRegisteredWithManager)
+
+		targetSC, err = controllerhelpers.WaitForScyllaClusterState(
+			targetRegistrationCtx,
+			f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace),
+			targetSC.Name,
+			controllerhelpers.WaitForStateOptions{},
+			utils.IsScyllaClusterRegisteredWithManager,
+		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		// Assert presence of target SC's manager ID before using it to register a restore task.
@@ -358,9 +407,15 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for schema restore to finish")
+		schemaRestoreTaskCompletionCtx, schemaRestoreTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("schema restore task %q has not completed in time", schemaRestoreTaskID),
+		)
+		defer schemaRestoreTaskCompletionCtxCancel()
+
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(schemaRestoreTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
@@ -393,9 +448,15 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for tables restore to finish")
+		tablesRestoreTaskCompletionCtx, tablesRestoreTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("tables restore task %q has not completed in time", tablesRestoreTaskID),
+		)
+		defer tablesRestoreTaskCompletionCtxCancel()
+
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(tablesRestoreTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, tablesRestoreTaskID.String()).
 			Should(o.Succeed())
@@ -497,8 +558,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 
 		// We get the ScyllaDB Manager cluster ID from the ScyllaCluster's status explicitly as the tasks may report errors without the cluster being registered with ScyllaDB Manager first.
 		framework.By("Waiting for ScyllaDB Manager cluster ID to propagate to ScyllaCluster's status")
-		registrationCtx, registrationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		registrationCtx, registrationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerClusterSyncTimeout,
+			fmt.Errorf("ScyllaCluster %q has not registered with global ScyllaDB Manager instance in time", naming.ObjRef(sc)),
+		)
 		defer registrationCtxCancel()
+
 		sc, err = controllerhelpers.WaitForScyllaClusterState(registrationCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRegisteredWithManager)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -553,8 +619,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			return false, nil
 		}
 
-		taskErrorSyncCtx, taskErrorSyncCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		taskErrorSyncCtx, taskErrorSyncCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("task errors have not been propagated to ScyllaCluster %q status in time", naming.ObjRef(sc)),
+		)
 		defer taskErrorSyncCtxCancel()
+
 		sc, err = controllerhelpers.WaitForScyllaClusterState(
 			taskErrorSyncCtx,
 			f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),
@@ -662,8 +733,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			return false, nil
 		}
 
-		taskSchedulingCtx, taskSchedulingCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		taskSchedulingCtx, taskSchedulingCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("valid tasks for ScyllaCluster %q have not been scheduled with ScyllaDB Manager in time", naming.ObjRef(sc)),
+		)
 		defer taskSchedulingCtxCancel()
+
 		sc, err = controllerhelpers.WaitForScyllaClusterState(
 			taskSchedulingCtx,
 			f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),
@@ -731,8 +807,13 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(sc.Spec.Repairs[0].Host).To(o.Equal(pointer.Ptr("invalid")))
 
 		framework.By("Waiting for ScyllaCluster to sync task errors with Scylla Manager")
-		taskUpdateErrorSyncCtx, taskUpdateErrorSyncCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		taskUpdateErrorSyncCtx, taskUpdateErrorSyncCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("task update errors have not been propagated to ScyllaCluster %q status in time", naming.ObjRef(sc)),
+		)
 		defer taskUpdateErrorSyncCtxCancel()
+
 		sc, err = controllerhelpers.WaitForScyllaClusterState(
 			taskUpdateErrorSyncCtx,
 			f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),

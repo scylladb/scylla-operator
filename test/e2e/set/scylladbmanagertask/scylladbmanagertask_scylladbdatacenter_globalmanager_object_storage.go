@@ -109,8 +109,13 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for ScyllaDBManagerTask to register with global ScyllaDB Manager instance")
-		scyllaDBManagerTaskRegistrationCtx, scyllaDBManagerTaskRegistrationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		scyllaDBManagerTaskRegistrationCtx, scyllaDBManagerTaskRegistrationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q has not registered with global ScyllaDB Manager instance in time", naming.ObjRef(smt)),
+		)
 		defer scyllaDBManagerTaskRegistrationCtxCancel()
+
 		smt, err = controllerhelpers.WaitForScyllaDBManagerTaskState(
 			scyllaDBManagerTaskRegistrationCtx,
 			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name),
@@ -161,9 +166,14 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(smt.Spec.Backup.Retention).NotTo(o.BeNil())
 		o.Expect(*smt.Spec.Backup.Retention).To(o.Equal(int64(1)))
 
-		framework.By("Waiting for ScyllaDBManagerTask update to propagate")
-		updateCtx, updateCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		framework.By("Waiting for ScyllaDBManagerTask update to be reconciled")
+		updateCtx, updateCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q update has not been reconciled in time", naming.ObjRef(smt)),
+		)
 		defer updateCtxCancel()
+
 		smt, err = controllerhelpers.WaitForScyllaDBManagerTaskState(
 			updateCtx,
 			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name),
@@ -174,16 +184,27 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that the ScyllaDBManagerTask update propagated to ScyllaDB Manager state")
-		updatePropagationCtx, updatePropagationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		updatePropagationCtx, updatePropagationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q update has not propagated to global ScyllaDB Manager instance in time", naming.ObjRef(smt)),
+		)
 		defer updatePropagationCtxCancel()
+
 		managerTask, err = managerClient.GetTask(updatePropagationCtx, sourceManagerClusterID, managerclient.BackupTask, managerTaskID)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(managerTask.Properties.(map[string]interface{})["retention"].(json.Number).Int64()).To(o.Equal(*smt.Spec.Backup.Retention))
 
 		framework.By("Waiting for the backup task to finish")
+		backupTaskCompletionCtx, backupTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("backup task %q has not finished in time", managerTaskID),
+		)
+		defer backupTaskCompletionCtxCancel()
+
 		o.Eventually(verification.VerifyScyllaDBManagerBackupTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(backupTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, sourceManagerClusterID, managerTask.ID).
 			Should(o.Succeed())
@@ -207,8 +228,13 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By(`Waiting for ScyllaDBManagerTask to be deleted`)
-		taskDeletionCtx, taskDeletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		taskDeletionCtx, taskDeletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q has not been deleted in time", naming.ObjRef(smt)),
+		)
 		defer taskDeletionCtxCancel()
+
 		err = framework.WaitForObjectDeletion(
 			taskDeletionCtx,
 			nsClient.DynamicClient(),
@@ -246,8 +272,13 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the source ScyllaDBDatacenter to be deleted")
-		sourceSDCDeletionCtx, sourceSDCDeletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		sourceSDCDeletionCtx, sourceSDCDeletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBTerminationTimeout,
+			fmt.Errorf("source ScyllaDBDatacenter %q has not been deleted in time", naming.ObjRef(sourceSDC)),
+		)
 		defer sourceSDCDeletionCtxCancel()
+
 		err = framework.WaitForObjectDeletion(
 			sourceSDCDeletionCtx,
 			nsClient.DynamicClient(),
@@ -300,7 +331,11 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for target ScyllaDBDatacenter to register with global ScyllaDB Manager instance")
-		targetSDCRegistrationCtx, targetSDCRegistrationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		targetSDCRegistrationCtx, targetSDCRegistrationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerClusterSyncTimeout,
+			fmt.Errorf("target ScyllaDBDatacenter %q has not registered with global ScyllaDB Manager instance in time", naming.ObjRef(targetSDC)),
+		)
 		defer targetSDCRegistrationCtxCancel()
 		targetSMCR, err := controllerhelpers.WaitForScyllaDBManagerClusterRegistrationState(targetSDCRegistrationCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerClusterRegistrations(ns.Name), targetSMCRName, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBManagerClusterRegistrationRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -317,7 +352,11 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		globalScyllaDBManagerInstancePod := globalScyllaDBManagerInstancePods.Items[0]
 
 		framework.By("Creating a schema restore task against global ScyllaDB Manager instance")
-		schemaRestoreCreationCtx, schemaRestoreCreationCtxCancel := context.WithTimeoutCause(ctx, utils.SyncTimeout, fmt.Errorf("schema restore task creation has not completed in time"))
+		schemaRestoreCreationCtx, schemaRestoreCreationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("schema restore task creation has not completed in time"),
+		)
 		defer schemaRestoreCreationCtxCancel()
 		stdout, stderr, err := utils.ExecWithOptions(schemaRestoreCreationCtx, f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
 			Command: []string{
@@ -341,10 +380,16 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		_, schemaRestoreTaskID, err := managerClient.TaskSplit(ctx, targetManagerClusterID, strings.TrimSpace(stdout))
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		schemaRestoreTaskCompletionCtx, schemaRestoreTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("schema restore task %q has not finished in time", schemaRestoreTaskID),
+		)
+		defer schemaRestoreTaskCompletionCtxCancel()
+
 		framework.By("Waiting for the schema restore task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(schemaRestoreTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
@@ -354,7 +399,11 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		}
 
 		framework.By("Creating a tables restore task against global ScyllaDB Manager instance")
-		tablesRestoreCreationCtx, tablesRestoreCreationCtxCancel := context.WithTimeoutCause(ctx, utils.SyncTimeout, fmt.Errorf("tables restore task creation has not completed in time"))
+		tablesRestoreCreationCtx, tablesRestoreCreationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("tables restore task creation has not completed in time"),
+		)
 		defer tablesRestoreCreationCtxCancel()
 		stdout, stderr, err = utils.ExecWithOptions(tablesRestoreCreationCtx, f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
 			Command: []string{
@@ -378,10 +427,16 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		_, tablesRestoreTaskID, err := managerClient.TaskSplit(ctx, targetManagerClusterID, strings.TrimSpace(stdout))
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		tablesRestoreTaskCompletionCtx, tablesRestoreTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("tables restore task %q has not finished in time", tablesRestoreTaskID),
+		)
+		defer tablesRestoreTaskCompletionCtxCancel()
+
 		framework.By("Waiting for the tables restore task to finish")
 		o.Eventually(verification.VerifyScyllaDBManagerRestoreTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(tablesRestoreTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, targetManagerClusterID, tablesRestoreTaskID.String()).
 			Should(o.Succeed())

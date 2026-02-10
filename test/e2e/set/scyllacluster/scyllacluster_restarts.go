@@ -23,12 +23,8 @@ import (
 )
 
 const (
-	// terminationTimeout is the amount of time that the pod needs to terminate gracefully.
-	// In addition to process termination, this needs to account for kubelet sending signals, state propagation
-	// and generally being busy in the CI.
-	terminationTimeout = 5 * time.Minute
 	// A high enough grace period so it can never terminate gracefully in an e2e run.
-	gracePeriod = terminationTimeout + (7 * 24 * time.Hour)
+	gracePeriod = utils.ScyllaDBTerminationTimeout + (7 * 24 * time.Hour)
 )
 
 var _ = g.Describe("ScyllaCluster graceful termination", func() {
@@ -131,7 +127,7 @@ done
 		framework.By("Waiting for the ScyllaDB Pod to be deleted")
 		deletionCtx, deletionCtxCancel := context.WithTimeoutCause(
 			ctx,
-			terminationTimeout,
+			utils.ScyllaDBTerminationTimeout,
 			fmt.Errorf("pod %q has not finished termination in time", naming.ObjRef(pod)),
 		)
 		defer deletionCtxCancel()
@@ -197,7 +193,7 @@ done
 		framework.By("Waiting for the ScyllaDB Pod to be deleted")
 		deletionCtx, deletionCtxCancel := context.WithTimeoutCause(
 			ctx,
-			terminationTimeout,
+			utils.ScyllaDBTerminationTimeout,
 			fmt.Errorf("pod %q has not finished termination in time", naming.ObjRef(pod)),
 		)
 		defer deletionCtxCancel()

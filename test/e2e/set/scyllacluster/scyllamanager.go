@@ -54,8 +54,13 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		defer di.Close()
 
 		framework.By("Waiting for ScyllaDB Manager cluster ID to propagate to ScyllaCluster's status")
-		registrationCtx, registrationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		registrationCtx, registrationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerClusterSyncTimeout,
+			fmt.Errorf("ScyllaCluster %q has not registered with global ScyllaDB Manager instance in time", naming.ObjRef(sc)),
+		)
 		defer registrationCtxCancel()
+
 		sc, err = controllerhelpers.WaitForScyllaClusterState(
 			registrationCtx,
 			nsClient.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),
@@ -77,20 +82,26 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			eo.Expect(err).NotTo(o.HaveOccurred())
 		}).
 			WithContext(ctx).
-			WithTimeout(utils.SyncTimeout).
+			WithTimeout(utils.ScyllaDBManagerClusterSyncTimeout).
 			WithPolling(5 * time.Second).
 			Should(o.Succeed())
 
 		deregistrationHook(ctx, sc)
 
 		framework.By("Verifying that the cluster was removed from the global ScyllaDB Manager state")
+		managerClusterDeletionCtx, managerClusterDeletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerClusterSyncTimeout,
+			fmt.Errorf("ScyllaCluster %q has not been deleted from global ScyllaDB Manager state in time", naming.ObjRef(sc)),
+		)
+		defer managerClusterDeletionCtxCancel()
+
 		o.Eventually(func(eo o.Gomega, ctx context.Context) {
 			_, err := managerClient.GetCluster(ctx, managerClusterID)
 			eo.Expect(err).To(o.HaveOccurred())
 			eo.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
 		}).
-			WithContext(ctx).
-			WithTimeout(utils.SyncTimeout).
+			WithContext(managerClusterDeletionCtx).
 			WithPolling(5 * time.Second).
 			Should(o.Succeed())
 	},
@@ -111,7 +122,7 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}),
-		g.Entry("when is deleted", func(ctx context.Context, sc *scyllav1.ScyllaCluster) {
+		g.Entry("when ScyllaCluster is deleted", func(ctx context.Context, sc *scyllav1.ScyllaCluster) {
 			framework.By("Deleting ScyllaCluster")
 			err := f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace).Delete(
 				ctx,
@@ -125,7 +136,12 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			framework.By("Waiting for ScyllaCluster to be deleted")
-			deletionCtx, deletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+			deletionCtx, deletionCtxCancel := context.WithTimeoutCause(
+				ctx,
+				utils.ScyllaDBTerminationTimeout,
+				fmt.Errorf("ScyllaCluster %q has not been deleted in time", naming.ObjRef(sc)),
+			)
+
 			defer deletionCtxCancel()
 			err = framework.WaitForObjectDeletion(
 				deletionCtx,
@@ -210,9 +226,20 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return false, nil
 		}
 
-		taskSchedulingCtx, taskSchedulingCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		taskSchedulingCtx, taskSchedulingCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("task has not been scheduled in ScyllaDB Manager in time"),
+		)
 		defer taskSchedulingCtxCancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(taskSchedulingCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskScheduledCond)
+
+		sc, err = controllerhelpers.WaitForScyllaClusterState(
+			taskSchedulingCtx,
+			f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),
+			sc.Name,
+			controllerhelpers.WaitForStateOptions{},
+			repairTaskScheduledCond,
+		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Status.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Status.Repairs[0].ID).NotTo(o.BeNil())
@@ -270,9 +297,20 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return false, nil
 		}
 
-		taskUpdateCtx, taskUpdateCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		taskUpdateCtx, taskUpdateCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("task update has not been reconciled in time"),
+		)
 		defer taskUpdateCtxCancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(taskUpdateCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskUpdatedCond)
+
+		sc, err = controllerhelpers.WaitForScyllaClusterState(
+			taskUpdateCtx,
+			f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),
+			sc.Name,
+			controllerhelpers.WaitForStateOptions{},
+			repairTaskUpdatedCond,
+		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(sc.Status.Repairs).To(o.HaveLen(1))
 		o.Expect(sc.Status.Repairs[0].Name).To(o.Equal(sc.Spec.Repairs[0].Name))
@@ -292,9 +330,15 @@ var _ = g.Describe("Scylla Manager integration", func() {
 		o.Expect(repairTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(*sc.Status.Repairs[0].Parallel))
 
 		framework.By("Waiting for repair to finish")
+
+		repairTaskCompletionCtx, repairTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("repair task has not completed in time"),
+		)
+		defer repairTaskCompletionCtxCancel()
 		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(repairTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, managerClusterID, repairTask.ID).
 			Should(o.Succeed())
@@ -306,9 +350,19 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			return len(cluster.Status.Repairs) == 0, nil
 		}
 
-		taskDeletionCtx, taskDeletionCtxCancel := utils.ContextForManagerSync(ctx, sc)
+		taskDeletionCtx, taskDeletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("repair task deletion has not been reconciled in time"),
+		)
 		defer taskDeletionCtxCancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(taskDeletionCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, repairTaskDeletedCond)
+		sc, err = controllerhelpers.WaitForScyllaClusterState(
+			taskDeletionCtx,
+			f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace),
+			sc.Name,
+			controllerhelpers.WaitForStateOptions{},
+			repairTaskDeletedCond,
+		)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		// Progressing conditions of the underlying ScyllaDBManagerTasks are not propagated to ScyllaClusters by the migration controller,
@@ -336,13 +390,19 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			},
 			managerStateVerificationHook: func(ctx context.Context, managerClient *managerclient.Client, managerClusterID string) {
 				framework.By("Verifying that the cluster was removed from the manager state")
+				scyllaDBManagerClusterDeletionCtx, scyllaDBManagerClusterDeletionCtxCancel := context.WithTimeoutCause(
+					ctx,
+					utils.ScyllaDBManagerClusterSyncTimeout,
+					fmt.Errorf("ScyllaCluster with manager cluster ID %q has not been deleted from ScyllaDB Manager state in time", managerClusterID),
+				)
+				defer scyllaDBManagerClusterDeletionCtxCancel()
+
 				o.Eventually(func(eo o.Gomega, ctx context.Context) {
 					_, err := managerClient.GetCluster(ctx, managerClusterID)
 					eo.Expect(err).To(o.HaveOccurred())
 					eo.Expect(err).To(o.Satisfy(managerclienterrors.IsNotFound))
 				}).
-					WithContext(ctx).
-					WithTimeout(utils.SyncTimeout).
+					WithContext(scyllaDBManagerClusterDeletionCtx).
 					WithPolling(5 * time.Second).
 					Should(o.Succeed())
 			},
@@ -362,13 +422,19 @@ var _ = g.Describe("Scylla Manager integration", func() {
 			},
 			managerStateVerificationHook: func(ctx context.Context, managerClient *managerclient.Client, managerClusterID string) {
 				framework.By("Verifying that the repair task was removed from the manager state")
+				repairTaskDeletionCtx, repairTaskDeletionCtxCancel := context.WithTimeoutCause(
+					ctx,
+					utils.ScyllaDBManagerTaskSyncTimeout,
+					fmt.Errorf("repair task has not been deleted from ScyllaDB Manager state in time"),
+				)
+				defer repairTaskDeletionCtxCancel()
+
 				o.Eventually(func(eo o.Gomega, ctx context.Context) {
 					tasks, err := managerClient.ListTasks(ctx, managerClusterID, "repair", false, "", "")
 					eo.Expect(err).NotTo(o.HaveOccurred())
 					eo.Expect(tasks.TaskListItemSlice).To(o.BeEmpty())
 				}).
-					WithContext(ctx).
-					WithTimeout(utils.SyncTimeout).
+					WithContext(repairTaskDeletionCtx).
 					WithPolling(5 * time.Second).
 					Should(o.Succeed())
 			},

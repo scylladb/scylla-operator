@@ -5,6 +5,7 @@ package scylladbmanagertask
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"time"
 
@@ -86,8 +87,13 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for ScyllaDBManagerTask to register with global ScyllaDB Manager instance")
-		registrationCtx, registrationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		registrationCtx, registrationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q has not registered with global ScyllaDB Manager instance in time", naming.ObjRef(smt)),
+		)
 		defer registrationCtxCancel()
+
 		smt, err = controllerhelpers.WaitForScyllaDBManagerTaskState(
 			registrationCtx,
 			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name),
@@ -137,9 +143,14 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(smt.Spec.Repair.Parallel).NotTo(o.BeNil())
 		o.Expect(*smt.Spec.Repair.Parallel).To(o.Equal(int64(1)))
 
-		framework.By("Waiting for ScyllaDBManagerTask update to propagate")
-		updateCtx, updateCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		framework.By("Waiting for ScyllaDBManagerTask update to be reconciled")
+		updateCtx, updateCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q update has not been reconciled in time", naming.ObjRef(smt)),
+		)
 		defer updateCtxCancel()
+
 		smt, err = controllerhelpers.WaitForScyllaDBManagerTaskState(
 			updateCtx,
 			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name),
@@ -150,16 +161,28 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that the ScyllaDBManagerTask update propagated to ScyllaDB Manager state")
-		updatePropagationCtx, updatePropagationCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		updatePropagationCtx, updatePropagationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q update has not propagated to global ScyllaDB Manager instance in time", naming.ObjRef(smt)),
+		)
+
 		defer updatePropagationCtxCancel()
+
 		managerTask, err = managerClient.GetTask(updatePropagationCtx, managerClusterID, managerclient.RepairTask, managerTaskID)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(managerTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(*smt.Spec.Repair.Parallel))
 
 		framework.By("Waiting for the repair task to finish")
+		repairTaskCompletionCtx, repairTaskCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskCompletionTimeout,
+			fmt.Errorf("repair task %q has not completed in time", managerTaskID),
+		)
+		defer repairTaskCompletionCtxCancel()
+
 		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
-			WithContext(ctx).
-			WithTimeout(utils.ScyllaDBManagerTaskCompletionTimeout).
+			WithContext(repairTaskCompletionCtx).
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, managerClusterID, managerTask.ID).
 			Should(o.Succeed())
@@ -178,8 +201,13 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By(`Waiting for ScyllaDBManagerTask to be deleted`)
-		deletionCtx, deletionCtxCancel := context.WithTimeout(ctx, utils.SyncTimeout)
+		deletionCtx, deletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q has not been deleted in time", naming.ObjRef(smt)),
+		)
 		defer deletionCtxCancel()
+
 		err = framework.WaitForObjectDeletion(
 			deletionCtx,
 			f.DynamicClient(),

@@ -98,20 +98,19 @@ func GetMemberCount(sc *scyllav1.ScyllaCluster) int32 {
 }
 
 func ContextForRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, RolloutTimeoutForScyllaCluster(sc))
+	return context.WithTimeoutCause(
+		parent,
+		RolloutTimeoutForScyllaCluster(sc),
+		fmt.Errorf("ScyllaCluster %q has not rolled out in time", naming.ObjRef(sc)),
+	)
 }
 
 func ContextForMultiDatacenterRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, RolloutTimeoutForMultiDatacenterScyllaCluster(sc))
-}
-
-func SyncTimeoutForScyllaCluster(sc *scyllav1.ScyllaCluster) time.Duration {
-	tasks := int64(len(sc.Spec.Repairs) + len(sc.Spec.Backups))
-	return baseManagerSyncTimeout + time.Duration(tasks)*managerTaskSyncTimeout
-}
-
-func ContextForManagerSync(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(parent, SyncTimeoutForScyllaCluster(sc))
+	return context.WithTimeoutCause(
+		parent,
+		RolloutTimeoutForMultiDatacenterScyllaCluster(sc),
+		fmt.Errorf("ScyllaCluster %q has not rolled out in time", naming.ObjRef(sc)),
+	)
 }
 
 func ContextForPodStartup(parent context.Context) (context.Context, context.CancelFunc) {
@@ -130,16 +129,16 @@ func ContextForRemoteKubernetesClusterRollout(ctx context.Context, rkc *scyllav1
 	return context.WithTimeout(ctx, RolloutTimeoutForRemoteKubernetesCluster(rkc))
 }
 
-func RolloutTimeoutForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) time.Duration {
-	return SyncTimeout + time.Duration(controllerhelpers.GetScyllaDBClusterNodeCount(sc))*memberRolloutTimeout
-}
-
 func RolloutTimeoutForMultiDatacenterScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) time.Duration {
 	return SyncTimeout + time.Duration(controllerhelpers.GetScyllaDBClusterNodeCount(sc))*multiDatacenterMemberRolloutTimeout
 }
 
 func ContextForMultiDatacenterScyllaDBClusterRollout(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx, RolloutTimeoutForMultiDatacenterScyllaDBCluster(sc))
+	return context.WithTimeoutCause(
+		ctx,
+		RolloutTimeoutForMultiDatacenterScyllaDBCluster(sc),
+		fmt.Errorf("ScyllaDBCluster %q has not rolled out in time", naming.ObjRef(sc)),
+	)
 }
 
 func IsScyllaClusterRolledOut(sc *scyllav1.ScyllaCluster) (bool, error) {

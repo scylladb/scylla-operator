@@ -13,9 +13,6 @@ inputs:
   goVersion:
     description: "Version of Go"
     required: true
-  genReleaseNotesVersionRef:
-    description: "Version ref of gen-release-notes"
-    required: true
   containerImageName:
     description: "Full name of the container image"
     required: true
@@ -26,31 +23,18 @@ runs:
     uses: actions/setup-go@v3
     with:
       go-version: ${{ inputs.goVersion }}
-  
-  - uses: actions/checkout@v3
-    with:
-      ref: ${{ inputs.genReleaseNotesVersionRef }}
-      repository: scylladb/scylla-operator
-      path: ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
-      fetch-depth: 0
-  
+
   - name: Install release notes generator
     shell: bash
     run: |
       set -euExo pipefail
       shopt -s inherit_errexit
       
-      cd ${{ github.workspace }}/go/src/github.com/scylladb/scylla-operator
+      cd ${{ github.workspace }}/go/src/github.com/${{ inputs.githubRepository }}
       make build GO_BUILD_PACKAGES=./cmd/gen-release-notes --warn-undefined-variables
       
       sudo mv ./gen-release-notes /usr/local/bin/gen-release-notes
-  
-  - uses: actions/checkout@v3
-    with:
-      repository: ${{ inputs.githubRepository }}
-      path: ${{ github.workspace }}/go/src/github.com/${{ inputs.githubRepository }}
-      fetch-depth: 0
-  
+
   - name: Create release
     working-directory: ${{ github.workspace }}/go/src/github.com/${{ inputs.githubRepository }}
     shell: bash

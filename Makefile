@@ -4,7 +4,7 @@ SHELL :=/bin/bash -euEo pipefail -O inherit_errexit
 
 comma :=,
 
-IMAGE_TAG ?= latest
+IMAGE_TAG ?= 1.20
 IMAGE_REF ?= docker.io/scylladb/scylla-operator:$(IMAGE_TAG)
 BUNDLE_IMAGE_REF ?= docker.io/scylladb/scylla-operator-bundle:$(IMAGE_TAG)
 

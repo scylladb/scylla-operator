@@ -21,13 +21,24 @@ type ObserverEvent[T kubeinterfaces.ObjectInterface] struct {
 }
 
 type ObjectObserver[T kubeinterfaces.ObjectInterface] struct {
-	Events []ObserverEvent[T]
+	events []ObserverEvent[T]
+	mu     sync.RWMutex
 
 	lw cache.ListerWatcher
 
 	errChan chan error
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
+}
+
+// Events returns a copy of the observed events in a thread-safe manner - can be called while the observer is running.
+func (o *ObjectObserver[T]) Events() []ObserverEvent[T] {
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+
+	eventsCopy := make([]ObserverEvent[T], len(o.events))
+	copy(eventsCopy, o.events)
+	return eventsCopy
 }
 
 func (o *ObjectObserver[T]) Start(ctx context.Context) error {
@@ -47,10 +58,12 @@ func (o *ObjectObserver[T]) Start(ctx context.Context) error {
 		defer watcher.Stop()
 
 		_, err := watch.UntilWithoutRetry(ctx, watcher, func(e watchutils.Event) (bool, error) {
-			o.Events = append(o.Events, ObserverEvent[T]{
+			o.mu.Lock()
+			o.events = append(o.events, ObserverEvent[T]{
 				Action: e.Type,
 				Obj:    e.Object.DeepCopyObject().(T),
 			})
+			o.mu.Unlock()
 			return false, nil
 		})
 
@@ -74,7 +87,7 @@ func (o *ObjectObserver[T]) Stop() ([]ObserverEvent[T], error) {
 	o.wg.Wait()
 	err := <-o.errChan
 
-	return o.Events, err
+	return o.Events(), err
 }
 
 func ObserveObjects[T kubeinterfaces.ObjectInterface](lw cache.ListerWatcher) ObjectObserver[T] {

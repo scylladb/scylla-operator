@@ -27,7 +27,7 @@ The lesson includes some hands-on examples which you can run yourself.
 
 ## Releases
 
-To find out more about our releases and support matrix there is a [dedicated docs page](https://operator.docs.scylladb.com/stable/support/releases.html).
+To find out more about our releases and support matrix, please refer to the [Releases](https://operator.docs.scylladb.com/stable/support/releases.html) documentation page.
 
 ## Support
 

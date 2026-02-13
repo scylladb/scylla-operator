@@ -139,7 +139,7 @@ The support matrix table shows version requirements for a particular **ScyllaDB 
   - v1.19
   - v1.18
 * - Kubernetes
-  - 1.31 - 1.34
+  - {{supportedKubernetesVersionRange}}
   - 1.31 - 1.34
   - 1.30 - 1.33
 * - OpenShift

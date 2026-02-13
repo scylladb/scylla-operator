@@ -5,8 +5,13 @@ operator:
   maxOpenShiftVersion: "4.20"
   # minKubernetesVersion specifies the minimum Kubernetes version that the operator supports.
   # This value is propagated the ClusterServiceVersion and must be a valid semver version in the format "X.Y.Z".
-  # Conventionally, we only specify the major and minor versions, and always set the patch version to 0
+  # It is also used in the compatibility matrix to determine which Kubernetes versions are supported by the operator.
+  # Conventionally, we only specify the major and minor versions, and always set the patch version to 0.
   minKubernetesVersion: "1.32.0"
+  # maxKubernetesVersion specifies the maximum Kubernetes version that the operator supports.
+  # This value is used in the compatibility matrix to determine which Kubernetes versions are supported by the operator.
+  # Conventionally, we only specify the major and minor versions.
+  maxKubernetesVersion: "1.35"
   redHatCertificationProjectID: "678641799dbe477195796c15"
 operatorTests:
   olm:

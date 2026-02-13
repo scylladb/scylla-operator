@@ -8,7 +8,7 @@ import os
 import re
 import subprocess
 from functools import reduce
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 import yaml
 from sphinx.application import Sphinx
@@ -53,10 +53,14 @@ def get_nested_value(data: dict, key_path: str) -> Optional[str]:
 
     Returns:
         The string value at the specified path, or None if not found.
+        Non-string values (e.g., numbers parsed by YAML) are converted to strings.
     """
     try:
         result = reduce(lambda d, key: d.get(key) if isinstance(d, dict) else None, key_path.split('.'), data)
-        return cast(Optional[str], cast(object, result))
+        if result is not None:
+            return str(result)
+
+        return None
     except (KeyError, TypeError):
         return None
 
@@ -65,14 +69,30 @@ def get_versions_from_config(repo_root: str) -> dict[str, str]:
     """
     Read version information from assets/config/config.yaml.
 
+    This function gracefully handles missing files and fields, but will raise an error
+    if the file exists but is invalid (unparseable YAML).
+
+    Note: If substitution variables are not set here, references to them in documentation
+    will cause build failures. Ensure the config file contains the required fields
+    for the documentation being built.
+
     Args:
         repo_root: Path to the repository root directory. Should point to the version-specific
                    directory (sphinx-multiversion temporary directory when building multi-version docs).
 
     Returns:
         Dictionary with versions extracted from config.yaml.
+
+    Raises:
+        ExtensionError: If the config file exists but cannot be parsed.
     """
     config_path = os.path.join(repo_root, 'assets', 'config', 'config.yaml')
+
+    # If config file doesn't exist, return empty dict (graceful handling for older branches)
+    if not os.path.exists(config_path):
+        return {}
+
+    # If file exists but can't be parsed, raise an error
     config_data = read_yaml_file(config_path)
 
     # Strip digest if present (e.g., "3.8.0@sha256:..." -> "3.8.0")
@@ -81,49 +101,76 @@ def get_versions_from_config(repo_root: str) -> dict[str, str]:
 
     result = {}
 
+    # Try to extract ScyllaDB version
     scylla_db_version = get_nested_value(config_data, 'operator.scyllaDBVersion')
-    if not scylla_db_version:
-        raise ExtensionError(f"operator.scyllaDBVersion not found in {config_path}")
+    if scylla_db_version is not None:
+        result['scyllaDBImageTag'] = strip_digest(scylla_db_version)
 
-    result['scyllaDBImageTag'] = strip_digest(scylla_db_version)
-
+    # Try to extract ScyllaDB Manager Agent version
     scylla_db_manager_agent_version = get_nested_value(config_data, 'operator.scyllaDBManagerAgentVersion')
-    if not scylla_db_manager_agent_version:
-        raise ExtensionError(f"operator.scyllaDBManagerAgentVersion not found in {config_path}")
-
-    result['agentVersion'] = strip_digest(scylla_db_manager_agent_version)
+    if scylla_db_manager_agent_version is not None:
+        result['agentVersion'] = strip_digest(scylla_db_manager_agent_version)
 
     return result
 
-
-def should_have_metadata(version: str) -> bool:
+def format_version_range(min_version: str, max_version: str) -> str:
     """
-    Check if a version should have metadata.yaml file and required keys.
+    Format a version range from min and max versions.
 
     Args:
-        version: Version string (e.g., 'master', 'v1.19', 'v1.20').
+        min_version: Minimum version string.
+        max_version: Maximum version string.
 
     Returns:
-        True if version is master or >1.19, False otherwise.
+        Version range string. If min and max are the same, returns just the version.
+        Otherwise, returns the range in the format "min_version - max_version".
     """
-    if version == DEFAULT_BRANCH:
-        return True
+    if min_version == max_version:
+        return min_version
+    else:
+        return f"{min_version} - {max_version}"
 
-    # Parse version from branch name (e.g., 'v1.19' -> (1, 19))
-    match = re.match(r'^v(\d+)\.(\d+)$', version)
-    if not match:
-        return False
 
-    major = int(match.group(1))
-    minor = int(match.group(2))
+def extract_version_range(
+    data: dict,
+    min_key: str,
+    max_key: str,
+) -> Optional[str]:
+    """
+    Extract and format a version range from nested dictionary data.
 
-    # Metadata exists for versions > 1.19
-    return (major, minor) > (1, 19)
+    Both min and max values must be present together. If either is missing,
+    returns None.
+
+    Args:
+        data: Dictionary containing the version data.
+        min_key: Dot-separated path to minimum version (e.g., 'operator.minOpenShiftVersion').
+        max_key: Dot-separated path to maximum version (e.g., 'operator.maxOpenShiftVersion').
+
+    Returns:
+        Formatted version range string, or None if either min or max is missing.
+    """
+    min_version = get_nested_value(data, min_key)
+    max_version = get_nested_value(data, max_key)
+
+    # Both values must be present together
+    if min_version is None or max_version is None:
+        return None
+
+    return format_version_range(min_version, max_version)
 
 
 def get_versions_from_metadata(repo_root: str) -> dict[str, str]:
     """
     Read version information from assets/metadata/metadata.yaml.
+
+    This function gracefully handles missing files and fields, but will raise an error
+    if the file exists but is invalid (unparseable YAML). Version ranges are only added
+    to the result if both min and max values are present together.
+
+    Note: If substitution variables are not set here, references to them in documentation
+    will cause build failures. Ensure the metadata file contains the required fields
+    for the documentation being built.
 
     Args:
         repo_root: Path to the repository root directory. Should point to the version-specific
@@ -131,26 +178,29 @@ def get_versions_from_metadata(repo_root: str) -> dict[str, str]:
 
     Returns:
         Dictionary with versions extracted from metadata.yaml.
+
+    Raises:
+        ExtensionError: If the metadata file exists but cannot be parsed.
     """
     metadata_path = os.path.join(repo_root, 'assets', 'metadata', 'metadata.yaml')
+
+    # If metadata file doesn't exist, return empty dict (graceful handling for older branches)
+    if not os.path.exists(metadata_path):
+        return {}
+
+    # If file exists but can't be parsed, raise an error
     metadata_data = read_yaml_file(metadata_path)
 
     result = {}
 
-    min_openshift_version = get_nested_value(metadata_data, 'operator.minOpenShiftVersion')
-    if not min_openshift_version:
-        raise ExtensionError(f"operator.minOpenShiftVersion not found in {metadata_path}")
-
-    max_openshift_version = get_nested_value(metadata_data, 'operator.maxOpenShiftVersion')
-    if not max_openshift_version:
-        raise ExtensionError(f"operator.maxOpenShiftVersion not found in {metadata_path}")
-
-    if min_openshift_version == max_openshift_version:
-        openshift_version_range = min_openshift_version
-    else:
-        openshift_version_range = f"{min_openshift_version} - {max_openshift_version}"
-
-    result['supportedOpenShiftVersionRange'] = openshift_version_range
+    # Try to extract OpenShift version range (both min and max must be present)
+    openshift_range = extract_version_range(
+        metadata_data,
+        'operator.minOpenShiftVersion',
+        'operator.maxOpenShiftVersion',
+    )
+    if openshift_range is not None:
+        result['supportedOpenShiftVersionRange'] = openshift_range
 
     return result
 
@@ -256,10 +306,8 @@ def setup_version_context_substitutions(app: Sphinx, config: Config) -> None:
     config.myst_substitutions.update(get_versions_from_config(current_repo_root))
 
     # Add version information from metadata.yaml.
-    # Only fetch metadata for versions >1.19 or master.
-    if should_have_metadata(current_version):
-        # Use the version-specific repo root to read the correct metadata file.
-        config.myst_substitutions.update(get_versions_from_metadata(current_repo_root))
+    # Use the version-specific repo root to read the correct metadata file.
+    config.myst_substitutions.update(get_versions_from_metadata(current_repo_root))
 
 
 def setup(app: Sphinx) -> dict[str, Any]:

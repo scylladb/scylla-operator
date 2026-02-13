@@ -5,6 +5,7 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
+	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -51,10 +52,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = scaleClusterAndWaitForRollout(ctx, f, sc, 3)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		jobEvents, err = jobObserver.Stop()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver, []int32{0, 1})
 
-		verifyCleanupJobsCreated(ctx, f, sc, jobEvents, []int32{0, 1})
+		_, err = jobObserver.Stop()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		jobObserver = utils.ObserveObjects[*batchv1.Job](jobListWatcher)
 		err = jobObserver.Start(ctx)
@@ -63,10 +64,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err = scaleClusterAndWaitForRollout(ctx, f, sc, 2)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		jobEvents, err = jobObserver.Stop()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver, []int32{0, 1})
 
-		verifyCleanupJobsCreated(ctx, f, sc, jobEvents, []int32{0, 1})
+		_, err = jobObserver.Stop()
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 
 	g.It("multi-node cluster nodes are cleaned up right after provisioning", func() {
@@ -81,10 +82,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 		sc, err := createClusterAndWaitForRollout(ctx, f, 3)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		jobEvents, err := jobObserver.Stop()
-		o.Expect(err).NotTo(o.HaveOccurred())
+		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver, []int32{0, 1})
 
-		verifyCleanupJobsCreated(ctx, f, sc, jobEvents, []int32{0, 1})
+		_, err = jobObserver.Stop()
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 })
 
@@ -107,35 +108,42 @@ func nodeJobMatcher(nodeName string) func(utils.ObserverEvent[*batchv1.Job]) boo
 	}
 }
 
-// verifyCleanupJobsCreated verifies that cleanup jobs were created for the expected nodes.
-func verifyCleanupJobsCreated(
+// verifyCleanupJobsCreatedEventually verifies that cleanup jobs were created for the expected nodes.
+// It polls the observer's events since cleanup jobs may be created asynchronously after the cluster
+// is marked as rolled out - each node service is annotated with the token ring hash independently,
+// which triggers cleanup job creation for that node.
+func verifyCleanupJobsCreatedEventually(
 	ctx context.Context,
 	f *framework.Framework,
 	sc *scyllav1.ScyllaCluster,
-	jobEvents []utils.ObserverEvent[*batchv1.Job],
+	jobObserver *utils.ObjectObserver[*batchv1.Job],
 	expectedNodeIndices []int32,
 ) {
-	o.Expect(jobEvents).NotTo(o.BeEmpty())
-
 	tokenRingHash, err := utils.GetCurrentTokenRingHash(ctx, f.KubeClient().CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	framework.Infof("Current token ring hash of the cluster is %q", tokenRingHash)
 
 	framework.Infof("Verifying cleanup jobs were created for nodes: %v", expectedNodeIndices)
-	cleanupJobsCreated := oslices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
-		return e.Action == watch.Added &&
-			e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup) &&
-			e.Obj.Annotations[naming.CleanupJobTokenRingHashAnnotation] == tokenRingHash
-	})
-
-	o.Expect(cleanupJobsCreated).To(o.HaveLen(len(expectedNodeIndices)))
 
 	expectedMatchers := make([]interface{}, len(expectedNodeIndices))
 	for i, nodeIndex := range expectedNodeIndices {
 		nodeName := naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, int(nodeIndex))
 		expectedMatchers[i] = o.Satisfy(nodeJobMatcher(nodeName))
 	}
-	o.Expect(cleanupJobsCreated).To(o.ConsistOf(expectedMatchers...))
+
+	o.Eventually(func(g o.Gomega) {
+		jobEvents := jobObserver.Events()
+		cleanupJobsCreated := oslices.Filter(jobEvents, func(e utils.ObserverEvent[*batchv1.Job]) bool {
+			return e.Action == watch.Added &&
+				e.Obj.Labels[naming.NodeJobTypeLabel] == string(naming.JobTypeCleanup) &&
+				e.Obj.Annotations[naming.CleanupJobTokenRingHashAnnotation] == tokenRingHash
+		})
+
+		g.Expect(cleanupJobsCreated).To(o.HaveLen(len(expectedNodeIndices)),
+			"expected %d cleanup jobs with token ring hash %q, got %d",
+			len(expectedNodeIndices), tokenRingHash, len(cleanupJobsCreated))
+		g.Expect(cleanupJobsCreated).To(o.ConsistOf(expectedMatchers...))
+	}).WithTimeout(30 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
 }
 
 // createClusterAndWaitForRollout creates a ScyllaCluster with the specified number of members and waits for rollout.

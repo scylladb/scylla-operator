@@ -113,6 +113,32 @@ def get_versions_from_config(repo_root: str) -> dict[str, str]:
 
     return result
 
+
+def strip_patch_version(version: str) -> str:
+    """
+    Parse a semantic X.Y.Z version string and reduce it to X.Y format.
+
+    Args:
+        version: Semantic version string (e.g., '1.28.0', '1.28.0', '1.28').
+
+    Returns:
+        Version string in major.minor format (e.g., '1.28').
+
+    Raises:
+        ExtensionError: If the version string cannot be parsed.
+    """
+
+    # Match semantic version pattern (major.minor.patch or major.minor)
+    match = re.match(r'^(\d+)\.(\d+)(?:\.\d+)?$', version)
+    if not match:
+        raise ExtensionError(f"Invalid semantic version format: {version}")
+
+    major = match.group(1)
+    minor = match.group(2)
+
+    return f"{major}.{minor}"
+
+
 def format_version_range(min_version: str, max_version: str) -> str:
     """
     Format a version range from min and max versions.
@@ -135,6 +161,7 @@ def extract_version_range(
     data: dict,
     min_key: str,
     max_key: str,
+    transform_fn: Optional[callable] = None
 ) -> Optional[str]:
     """
     Extract and format a version range from nested dictionary data.
@@ -146,6 +173,7 @@ def extract_version_range(
         data: Dictionary containing the version data.
         min_key: Dot-separated path to minimum version (e.g., 'operator.minOpenShiftVersion').
         max_key: Dot-separated path to maximum version (e.g., 'operator.maxOpenShiftVersion').
+        transform_fn: Optional function to transform version strings before formatting.
 
     Returns:
         Formatted version range string, or None if either min or max is missing.
@@ -156,6 +184,11 @@ def extract_version_range(
     # Both values must be present together
     if min_version is None or max_version is None:
         return None
+
+    # Apply transformation if provided
+    if transform_fn is not None:
+        min_version = transform_fn(min_version)
+        max_version = transform_fn(max_version)
 
     return format_version_range(min_version, max_version)
 
@@ -198,9 +231,21 @@ def get_versions_from_metadata(repo_root: str) -> dict[str, str]:
         metadata_data,
         'operator.minOpenShiftVersion',
         'operator.maxOpenShiftVersion',
+        transform_fn=None
     )
     if openshift_range is not None:
         result['supportedOpenShiftVersionRange'] = openshift_range
+
+    # Try to extract Kubernetes version range with patch version stripping
+    # (both min and max must be present)
+    kubernetes_range = extract_version_range(
+        metadata_data,
+        'operator.minKubernetesVersion',
+        'operator.maxKubernetesVersion',
+        transform_fn=strip_patch_version
+    )
+    if kubernetes_range is not None:
+        result['supportedKubernetesVersionRange'] = kubernetes_range
 
     return result
 

@@ -108,12 +108,9 @@ The ScyllaDB Operator image value and the `SCYLLA_OPERATOR_IMAGE` shall always m
 Be careful not to use a rolling tag for any of them to avoid an accidental skew!
 ::::
 
-:::{code-block} shell
-# Wait for CRDs to propagate to all apiservers.
-kubectl wait --for='condition=established' crd/scyllaclusters.scylla.scylladb.com crd/nodeconfigs.scylla.scylladb.com crd/scyllaoperatorconfigs.scylla.scylladb.com crd/scylladbmonitorings.scylla.scylladb.com
+### Verify the ScyllaDB Operator installation
 
-# Wait for the components to deploy.
-kubectl -n=scylla-operator rollout status --timeout=10m deployment.apps/{scylla-operator,webhook-server}
+:::{include} ./../.internal/verify-operator-installation-gitops.md
 :::
 
 ### Setting up local storage on nodes and enabling tuning
@@ -164,8 +161,7 @@ kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.
 
 :::::
 
-:::{note}
-Performance tuning is enabled for all nodes that are selected by [NodeConfig](../resources/nodeconfigs.md) by default, unless opted-out.
+:::{include} ../.internal/node-tuning.note.md
 :::
 
 After applying the manifest, wait for the NodeConfig to apply changes to the Kubernetes nodes.

@@ -179,3 +179,7 @@ linkcheck_ignore = [
 linkcheck_anchors_ignore_for_url = [
     'https://github.com/prometheus-operator/prometheus-operator/blob/e4c727291acc543dab531bc4aaf16637067c1b86/pkg/apis/monitoring/v1/.*',
 ]
+
+# Linkcheck timeout and retry configuration to handle slow-responding external sites.
+linkcheck_timeout = 60  # Increase from default 30s to 60s for slow sites like docs.redhat.com.
+linkcheck_retries = 3   # Retry 3 times before failing to handle transient network issues.

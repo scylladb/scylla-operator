@@ -449,7 +449,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: nodeconfigs.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
@@ -1601,7 +1601,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: remotekubernetesclusters.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
@@ -1749,7 +1749,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     scylla-operator.scylladb.com/internal-api-type: "true"
   name: remoteowners.scylla.scylladb.com
 spec:
@@ -1792,7 +1792,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: scyllaclusters.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
@@ -5764,7 +5764,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: scylladbclusters.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
@@ -35476,7 +35476,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     scylla-operator.scylladb.com/internal-api-type: "true"
   name: scylladbdatacenternodesstatusreports.scylla.scylladb.com
 spec:
@@ -35558,7 +35558,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: scylladbdatacenters.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
@@ -45808,7 +45808,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
     scylla-operator.scylladb.com/internal-api-type: "true"
   name: scylladbmanagerclusterregistrations.scylla.scylladb.com
 spec:
@@ -45948,7 +45948,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: scylladbmanagertasks.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
@@ -46242,7 +46242,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: scylladbmonitorings.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com
@@ -48791,7 +48791,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: scyllaoperatorconfigs.scylla.scylladb.com
 spec:
   group: scylla.scylladb.com

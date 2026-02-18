@@ -10,9 +10,9 @@ We are aiming to ship a new release approximately every 2 months. The following 
 * - Release
   - Code freeze
   - General availability
-* - 1.20
-  - 2026-02-09
-  - 2026-02-23
+* - 1.21
+  - 2026-04-13
+  - 2026-04-27
 :::
 
 ## Supported releases
@@ -25,12 +25,15 @@ We support the latest 2 releases of ScyllaDB Operator to give everyone time to u
 * - Release
   - General availability
   - Support ends
+* - 1.20
+  - 2026-02-23
+  - Release of 1.22
 * - 1.19
   - 2025-11-19
   - Release of 1.21
 * - 1.18
   - 2025-08-11
-  - Release of 1.20
+  - 2026-02-23
 * - 1.17
   - 2025-05-12
   - 2025-11-19
@@ -136,15 +139,15 @@ The support matrix table shows version requirements for a particular **ScyllaDB 
 
 * - Component
   - master
+  - v1.20
   - v1.19
-  - v1.18
 * - Kubernetes
   - {{supportedKubernetesVersionRange}}
+  - 1.32 - 1.35
   - 1.31 - 1.34
-  - 1.30 - 1.33
 * - OpenShift
   - {{supportedOpenShiftVersionRange}}
-  - Not supported
+  - 4.20
   - Not supported
 * - CRI API
   - v1
@@ -152,12 +155,12 @@ The support matrix table shows version requirements for a particular **ScyllaDB 
   - v1
 * - ScyllaDB
   - 2024.1, 2025.1, 2025.3 - 2025.4
+  - 2024.1, 2025.1, 2025.3 - 2025.4
   - 2024.1, 2025.1 - 2025.3
-  - 2024.1 - 2025.1
 * - ScyllaDB Manager
+  - 3.7 - 3.8
   - 3.5, 3.7
   - 3.5, 3.7
-  - 3.5
 * - ScyllaDB Monitoring
   - (CRD)
   - (CRD)

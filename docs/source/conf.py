@@ -82,14 +82,14 @@ redirects_file = "./redirections.yaml"
 TAGS = []
 smv_tag_whitelist = multiversion_regex_builder(TAGS)
 # Whitelist pattern for branches (set to None to ignore all branches)
-BRANCHES = ['master', 'v1.17', 'v1.18', 'v1.19', 'v1.20']
+BRANCHES = ['master', 'v1.18', 'v1.19', 'v1.20']
 # Set which versions are not released yet.
-UNSTABLE_VERSIONS = ["master", "v1.20"]
-DEPRECATED_VERSIONS = ['v1.17']
+UNSTABLE_VERSIONS = ["master"]
+DEPRECATED_VERSIONS = ['v1.18']
 smv_branch_whitelist = multiversion_regex_builder(BRANCHES)
 # Defines which version is considered to be the latest stable version.
 # Must be listed in smv_tag_whitelist or smv_branch_whitelist.
-smv_latest_version = 'v1.19'
+smv_latest_version = 'v1.20'
 smv_rename_latest_version = 'stable'
 # Whitelist pattern for remotes (set to None to use local branches only)
 smv_remote_whitelist = r"^origin$"
@@ -150,10 +150,10 @@ html_js_files = []
 
 sitemap_url_scheme = "/stable/{link}"
 
-#  Sphinx design configuration
+# Sphinx design configuration
 # Conditionally add sphinx_design based on version
 # to keep compatibility with older versions.
-SPHINX_DESIGN_VERSIONS = ['v1.17', 'v1.18']
+SPHINX_DESIGN_VERSIONS = ['v1.18']
 current_version = os.environ.get('SPHINX_MULTIVERSION_NAME', 'master')
 
 if current_version in SPHINX_DESIGN_VERSIONS:

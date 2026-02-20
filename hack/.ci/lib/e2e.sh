@@ -256,6 +256,7 @@ function run-e2e {
   SO_BUCKET_NAME="${SO_BUCKET_NAME:-}"
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
   SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
+  SO_TESTS_MUST_PASS_REPEATEDLY="${SO_TESTS_MUST_PASS_REPEATEDLY:0}"
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
   SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
@@ -355,6 +356,7 @@ function run-e2e {
     "--loglevel=2"
     "--color=false"
     "--artifacts-dir=/tmp/artifacts"
+    "--must-pass-repeatedly=${SO_TESTS_MUST_PASS_REPEATEDLY}"
     "--parallelism=${SO_E2E_PARALLELISM}"
     "--timeout=${SO_E2E_TIMEOUT}"
     "--feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}"

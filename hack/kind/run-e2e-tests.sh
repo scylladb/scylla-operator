@@ -29,6 +29,7 @@ export IN_CLUSTER_KUBECONFIG
 
 readonly parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
+source "${parent_dir}/lib.sh"
 source "${parent_dir}/../lib/kube.sh"
 source "${parent_dir}/../.ci/lib/e2e.sh"
 source "${parent_dir}/../.ci/run-e2e-shared.env.sh"
@@ -36,15 +37,7 @@ source "${parent_dir}/../.ci/run-e2e-shared.env.sh"
 trap 'gather-artifacts-on-exit; rm -f "${KUBECONFIG}" "${IN_CLUSTER_KUBECONFIG}"' EXIT
 trap gracefully-shutdown-e2es INT
 
-# If SO_IMAGE is not set, build the image.
-if [ -z "${SO_IMAGE:-}" ]; then
-  SO_IMAGE="localhost:5001/scylladb/scylla-operator:e2e-$( date +%Y%m%d%H%M%S )"
-  export SO_IMAGE
-  podman build --format docker -t "${SO_IMAGE}" -f "${parent_dir}/../../Dockerfile" "${parent_dir}/../.."
-
-  # Push the image to the local registry. Use --tls-verify=false as we're running local registry without TLS.
-  podman push --tls-verify=false "${SO_IMAGE}"
-fi
+build-and-push-operator-image "${parent_dir}/../.."
 
 # Use 'standard' storage class that comes with KinD by default.
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="standard"

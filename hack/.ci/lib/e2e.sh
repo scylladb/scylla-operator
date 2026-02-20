@@ -256,6 +256,7 @@ function run-e2e {
   SO_BUCKET_NAME="${SO_BUCKET_NAME:-}"
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
   SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
+  SO_WAIT_FOR_E2E_POD_DELETE="${SO_WAIT_FOR_E2E_POD_DELETE:-false}"
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
   SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
@@ -476,7 +477,7 @@ EOF
 
   ls -l "${ARTIFACTS}"
 
-  kubectl -n=e2e delete pod/e2e --wait=false
+  kubectl -n=e2e delete pod/e2e --wait="${SO_WAIT_FOR_E2E_POD_DELETE}"
 
   if [[ "${exit_code}" != "0" ]]; then
     echo "E2E tests failed"

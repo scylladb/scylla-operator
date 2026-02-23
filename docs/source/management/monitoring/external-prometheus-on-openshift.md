@@ -43,7 +43,7 @@ We assume you have `ScyllaCluster` deployed in `scylla` namespace/project. Repla
 You can create the `ServiceAccount` and `ClusterRoleBinding` using the following commands:
 
 ```shell
-oc create serviceaccount scylla-grafana-monitoring-viewer
+oc create -n=scylla serviceaccount scylla-grafana-monitoring-viewer
 oc create clusterrolebinding scylla-monitoring-grafana-cluster-monitoring-view --clusterrole=cluster-monitoring-view --serviceaccount=scylla:scylla-grafana-monitoring-viewer
 ```
 

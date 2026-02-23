@@ -4,13 +4,13 @@ go 1.25.1
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0
-	github.com/aws/aws-sdk-go-v2 v1.41.1
-	github.com/aws/aws-sdk-go-v2/config v1.32.7
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.7
-	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.32
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.55.0
-	github.com/aws/smithy-go v1.24.0
+	github.com/aws/aws-sdk-go-v2 v1.41.2
+	github.com/aws/aws-sdk-go-v2/config v1.32.10
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.10
+	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.33
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.18
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.56.0
+	github.com/aws/smithy-go v1.24.1
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/blang/semver/v4 v4.0.0
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
@@ -38,9 +38,9 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v3 v3.0.4
-	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260212105701-2e1255070f5c
-	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260212105701-2e1255070f5c
-	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260212105701-2e1255070f5c
+	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260223155510-29952a4c75d9
+	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260223155510-29952a4c75d9
+	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260223155510-29952a4c75d9
 	github.com/scylladb/scylladb-swagger-go-client v0.2.0
 	github.com/shurcooL/githubv4 v0.0.0-20260209031235-2402fdf4a9ed
 	github.com/spf13/cobra v1.10.2
@@ -79,17 +79,17 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.18 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.18 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.32.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.13 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.32.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.0.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.41.7 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect

@@ -5,13 +5,9 @@
   ],
   "enabledManagers": [
     "custom.regex",
-    "git-submodules",
     "gomod",
     "poetry"
   ],
-  "git-submodules": {
-    "enabled": true
-  },
   "schedule": [
     "before 5am on monday"
   ],
@@ -88,7 +84,7 @@
     {
       "description": "Monitoring dependencies should be grouped and updated every weekday",
       "matchDepNames": [
-        "submodules/github.com/scylladb/scylla-monitoring",
+        "scylladb/scylla-monitoring",
         "prometheus-operator"
       ],
       "groupName": "monitoring",
@@ -106,6 +102,36 @@
       ],
       "schedule": [
         "before 5am every weekday"
+      ]
+    },
+    {
+      "matchManagers": [
+        "regex"
+      ],
+      "matchDepNames": [
+        "scylladb/scylla-monitoring"
+      ],
+      "addLabels": [
+        "do-not-merge/hold"
+      ],
+      "prBodyNotes": [
+        "### ⚠️ Manual Action Required",
+        "Renovate has detected a new GitHub Release for `scylla-monitoring`, but cannot automatically update the Git submodule's commit and update sub-dependencies.",
+        "",
+        "**Please complete the following steps before merging:**",
+        "1. Check out this branch locally.",
+        "2. Update the submodule and sub-dependencies:",
+        "   ```bash",
+        "   cd submodules/github.com/scylladb/scylla-monitoring",
+        "   git fetch --tags",
+        "   git checkout tags/{{{newValue}}}",
+        "   cd ../../../..",
+        "   git add submodules/github.com/scylladb/scylla-monitoring",
+        "   make update",
+        "   git add .",
+        "   git commit --amend && git push --force",
+        "   ```",
+        "3. Remove the `do-not-merge/hold` label."
       ]
     }
   ],
@@ -128,6 +154,16 @@
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\nFROM\\s+\\S+:(?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "description": "Custom manager for git submodules with Renovate annotations matching the regex.",
+      "customType": "regex",
+      "fileMatch": [
+        "^\\.gitmodules$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\s+branch = (?<currentValue>.*)"
       ]
     }
   ],

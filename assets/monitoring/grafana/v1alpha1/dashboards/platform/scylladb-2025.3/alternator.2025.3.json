@@ -698,7 +698,10 @@
             },
             "targets": [
                 {
-                    "expr": "sum(rate(scylla_alternator_op_latency_sum{cluster=~\"$cluster\", op=~\"$ops\"}[$__rate_interval])) by (op)/sum(rate(scylla_alternator_op_latency_count{cluster=~\"$cluster|^$\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
+                    "dashversion": [
+                        ">2025.3"
+                    ],
+                    "expr": "sum(rate(scylla_alternator_op_latency_sum{cluster=~\"$cluster\", op=~\"$ops|$ops_batch\"}[$__rate_interval])) by (op)/sum(rate(scylla_alternator_op_latency_count{cluster=~\"$cluster|^$\", op=~\"$ops|$ops_batch\"}[$__rate_interval])>0) by (op)",
                     "instant": true,
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
@@ -708,7 +711,7 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Avg Latencies",
+            "title": "Average Latencies",
             "type": "stat"
         },
         {
@@ -769,6 +772,17 @@
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
                     "refId": "A",
+                    "step": 4
+                },
+                {
+                    "dashversion": [
+                        ">2025.3"
+                    ],
+                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops_batch\"}[$__rate_interval])>0) by (op, le))",
+                    "instant": true,
+                    "intervalFactor": 1,
+                    "legendFormat": "{{op}}",
+                    "refId": "B",
                     "step": 4
                 }
             ],
@@ -973,7 +987,10 @@
             "span": 5,
             "targets": [
                 {
-                    "expr": "sum(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
+                    "dashversion": [
+                        ">2025.3"
+                    ],
+                    "expr": "sum(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\", op=~\"$ops|$ops_batch\"}[$__rate_interval])>0) by (op)",
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
                     "metric": "",
@@ -1058,7 +1075,10 @@
             "span": 5,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops\"}[$__rate_interval])>0) by (op, le))",
+                    "dashversion": [
+                        ">2025.3"
+                    ],
+                    "expr": "histogram_quantile(0.95, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops|$ops_batch\"}[$__rate_interval])>0) by (op, le))",
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
                     "metric": "",
@@ -1143,7 +1163,10 @@
             "span": 5,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops\"}[$__rate_interval])>0) by (op, le))",
+                    "dashversion": [
+                        ">2025.3"
+                    ],
+                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops|$ops_batch\"}[$__rate_interval])>0) by (op, le))",
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
                     "metric": "",
@@ -1201,8 +1224,8 @@
             },
             "id": 15,
             "panels": [],
-            "repeat": "ops",
-            "title": "$ops",
+            "repeat": "latency_ops",
+            "title": "$latency_ops",
             "type": "row"
         },
         {
@@ -1278,14 +1301,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$func(rate(scylla_alternator_table_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops\"}[$__rate_interval])) by ([[by]])",
+                    "expr": "$func(rate(scylla_alternator_table_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$latency_ops\"}[$__rate_interval])) by ([[by]], cf)",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 1
                 }
             ],
-            "title": "Completed $ops $func by [[by]]",
+            "title": "Completed $latency_ops $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1361,14 +1384,14 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "$func(rate(scylla_alternator_table_op_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_alternator_table_op_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops\"}[$__rate_interval])) by ([[by]]) + 1)",
+                    "expr": "$func(rate(scylla_alternator_table_op_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$latency_ops\"}[$__rate_interval])) by ([[by]], cf)/($func(rate(scylla_alternator_table_op_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$latency_ops\"}[$__rate_interval])) by ([[by]], cf) + 1)",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
                     "step": 1
                 }
             ],
-            "title": "Average $ops latency $func by [[by]]",
+            "title": "Average $latency_ops latency $func by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1444,7 +1467,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(scylla_alternator_table_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops\"}[$__rate_interval])) by ([[by]], le))",
+                    "expr": "histogram_quantile(0.95, sum(rate(scylla_alternator_table_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$latency_ops\"}[$__rate_interval])) by ([[by]], cf, le))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1452,7 +1475,7 @@
                     "step": 1
                 }
             ],
-            "title": "95th percentile $ops latency by [[by]]",
+            "title": "95th percentile $latency_ops latency by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1528,7 +1551,7 @@
             "span": 3,
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_table_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops\"}[$__rate_interval])) by ([[by]], le))",
+                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_table_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$latency_ops\"}[$__rate_interval])) by ([[by]], cf, le))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "metric": "",
@@ -1536,7 +1559,7 @@
                     "step": 1
                 }
             ],
-            "title": "99th percentile $ops latency by [[by]]",
+            "title": "99th percentile $latency_ops latency by [[by]]",
             "type": "timeseries"
         },
         {
@@ -1549,6 +1572,455 @@
                 "y": 22
             },
             "id": 20,
+            "panels": [],
+            "repeat": "ops_batch",
+            "title": "$ops_batch",
+            "type": "row"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 23
+            },
+            "id": 21,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$func(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops_batch\"}[$__rate_interval])) by ([[by]])",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Completed $ops_batch $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "us_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "\u00b5s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 6,
+                "y": 23
+            },
+            "id": 22,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$func(rate(scylla_alternator_op_latency_sum{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops_batch\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_alternator_op_latency_count{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops_batch\"}[$__rate_interval])) by ([[by]]) + 1)",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Average $ops_batch latency $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "us_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "\u00b5s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 12,
+                "y": 23
+            },
+            "id": 23,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops_batch\"}[$__rate_interval])) by ([[by]], le))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "95th percentile $ops_batch latency by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "us_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "\u00b5s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 23
+            },
+            "id": 24,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops_batch\"}[$__rate_interval])) by ([[by]], le))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "99th percentile $ops_batch latency by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "collapsible_row_panel",
+            "collapsed": false,
+            "datasource": null,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 29
+            },
+            "id": 25,
+            "panels": [],
+            "repeat": "",
+            "title": "",
+            "type": "row"
+        },
+        {
+            "class": "ops_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "ops"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 0,
+                "y": 30
+            },
+            "id": 26,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "repeat": "ops",
+            "seriesOverrides": [
+                {}
+            ],
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$func(rate(scylla_alternator_table_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=\"$ops\"}[$__rate_interval])) by ([[by]], cf)",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Completed $ops $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "collapsed": false,
+            "datasource": null,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 36
+            },
+            "id": 27,
             "panels": [],
             "repeat": "dc",
             "title": "",
@@ -1569,9 +2041,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 23
+                "y": 37
             },
-            "id": 21,
+            "id": 28,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2221,9 +2693,9 @@
                 "h": 14,
                 "w": 24,
                 "x": 0,
-                "y": 25
+                "y": 39
             },
-            "id": 22,
+            "id": 29,
             "scopedVars": {
                 "dc": {
                     "selected": false,
@@ -2396,9 +2868,9 @@
                 "h": 1,
                 "w": 10,
                 "x": 0,
-                "y": 39
+                "y": 53
             },
-            "id": 23,
+            "id": 30,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2420,9 +2892,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 40
+                "y": 54
             },
-            "id": 24,
+            "id": 31,
             "panels": [],
             "repeat": "",
             "title": "Cluster wide Data Plane Actions",
@@ -2443,9 +2915,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 41
+                "y": 55
             },
-            "id": 25,
+            "id": 32,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2514,9 +2986,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 43
+                "y": 57
             },
-            "id": 26,
+            "id": 33,
             "isNew": true,
             "links": [],
             "options": {
@@ -2597,9 +3069,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 43
+                "y": 57
             },
-            "id": 27,
+            "id": 34,
             "isNew": true,
             "links": [],
             "options": {
@@ -2680,9 +3152,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 43
+                "y": 57
             },
-            "id": 28,
+            "id": 35,
             "isNew": true,
             "links": [],
             "options": {
@@ -2763,9 +3235,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 49
+                "y": 63
             },
-            "id": 29,
+            "id": 36,
             "isNew": true,
             "links": [],
             "options": {
@@ -2846,9 +3318,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 49
+                "y": 63
             },
-            "id": 30,
+            "id": 37,
             "isNew": true,
             "links": [],
             "options": {
@@ -2929,9 +3401,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 49
+                "y": 63
             },
-            "id": 31,
+            "id": 38,
             "isNew": true,
             "links": [],
             "options": {
@@ -3012,9 +3484,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 55
+                "y": 69
             },
-            "id": 32,
+            "id": 39,
             "isNew": true,
             "links": [],
             "options": {
@@ -3096,9 +3568,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 55
+                "y": 69
             },
-            "id": 33,
+            "id": 40,
             "isNew": true,
             "links": [],
             "options": {
@@ -3183,9 +3655,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 55
+                "y": 69
             },
-            "id": 34,
+            "id": 41,
             "isNew": true,
             "links": [],
             "options": {
@@ -3269,9 +3741,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 61
+                "y": 75
             },
-            "id": 35,
+            "id": 42,
             "isNew": true,
             "links": [],
             "options": {
@@ -3353,9 +3825,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 61
+                "y": 75
             },
-            "id": 36,
+            "id": 43,
             "isNew": true,
             "links": [],
             "options": {
@@ -3440,9 +3912,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 61
+                "y": 75
             },
-            "id": 37,
+            "id": 44,
             "isNew": true,
             "links": [],
             "options": {
@@ -3527,9 +3999,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 67
+                "y": 81
             },
-            "id": 38,
+            "id": 45,
             "isNew": true,
             "links": [],
             "options": {
@@ -3568,9 +4040,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 73
+                "y": 87
             },
-            "id": 39,
+            "id": 46,
             "panels": [],
             "repeat": "",
             "title": "Streams",
@@ -3591,9 +4063,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 74
+                "y": 88
             },
-            "id": 40,
+            "id": 47,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -3662,9 +4134,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 76
+                "y": 90
             },
-            "id": 41,
+            "id": 48,
             "isNew": true,
             "links": [],
             "options": {
@@ -3745,9 +4217,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 76
+                "y": 90
             },
-            "id": 42,
+            "id": 49,
             "isNew": true,
             "links": [],
             "options": {
@@ -3828,9 +4300,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 76
+                "y": 90
             },
-            "id": 43,
+            "id": 50,
             "isNew": true,
             "links": [],
             "options": {
@@ -3911,9 +4383,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 82
+                "y": 96
             },
-            "id": 44,
+            "id": 51,
             "isNew": true,
             "links": [],
             "options": {
@@ -3959,9 +4431,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 88
+                "y": 102
             },
-            "id": 45,
+            "id": 52,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -3987,9 +4459,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 90
+                "y": 104
             },
-            "id": 46,
+            "id": 53,
             "panels": [],
             "repeat": "alternator_streams_latency_ops",
             "title": "$alternator_streams_latency_ops",
@@ -4045,9 +4517,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 91
+                "y": 105
             },
-            "id": 47,
+            "id": 54,
             "isNew": true,
             "links": [],
             "options": {
@@ -4128,9 +4600,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 91
+                "y": 105
             },
-            "id": 48,
+            "id": 55,
             "isNew": true,
             "links": [],
             "options": {
@@ -4211,9 +4683,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 91
+                "y": 105
             },
-            "id": 49,
+            "id": 56,
             "isNew": true,
             "links": [],
             "options": {
@@ -4295,9 +4767,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 91
+                "y": 105
             },
-            "id": 50,
+            "id": 57,
             "isNew": true,
             "links": [],
             "options": {
@@ -4337,9 +4809,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 97
+                "y": 111
             },
-            "id": 51,
+            "id": 58,
             "panels": [],
             "repeat": "",
             "title": "Control plane",
@@ -4360,9 +4832,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 98
+                "y": 112
             },
-            "id": 52,
+            "id": 59,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4431,9 +4903,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 100
+                "y": 114
             },
-            "id": 53,
+            "id": 60,
             "isNew": true,
             "links": [],
             "options": {
@@ -4514,9 +4986,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 100
+                "y": 114
             },
-            "id": 54,
+            "id": 61,
             "isNew": true,
             "links": [],
             "options": {
@@ -4597,9 +5069,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 100
+                "y": 114
             },
-            "id": 55,
+            "id": 62,
             "isNew": true,
             "links": [],
             "options": {
@@ -4680,9 +5152,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 106
+                "y": 120
             },
-            "id": 56,
+            "id": 63,
             "isNew": true,
             "links": [],
             "options": {
@@ -4763,9 +5235,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 106
+                "y": 120
             },
-            "id": 57,
+            "id": 64,
             "isNew": true,
             "links": [],
             "options": {
@@ -4811,9 +5283,9 @@
                 "h": 2,
                 "w": 12,
                 "x": 0,
-                "y": 112
+                "y": 126
             },
-            "id": 58,
+            "id": 65,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4847,9 +5319,9 @@
                 "h": 2,
                 "w": 12,
                 "x": 12,
-                "y": 112
+                "y": 126
             },
-            "id": 59,
+            "id": 66,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4919,9 +5391,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 114
+                "y": 128
             },
-            "id": 60,
+            "id": 67,
             "isNew": true,
             "links": [],
             "options": {
@@ -5003,9 +5475,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 114
+                "y": 128
             },
-            "id": 61,
+            "id": 68,
             "isNew": true,
             "links": [],
             "options": {
@@ -5087,9 +5559,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 114
+                "y": 128
             },
-            "id": 62,
+            "id": 69,
             "isNew": true,
             "links": [],
             "options": {
@@ -5168,9 +5640,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 114
+                "y": 128
             },
-            "id": 63,
+            "id": 70,
             "isNew": true,
             "links": [],
             "options": {
@@ -5249,9 +5721,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 120
+                "y": 134
             },
-            "id": 64,
+            "id": 71,
             "isNew": true,
             "links": [],
             "options": {
@@ -5331,9 +5803,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 120
+                "y": 134
             },
-            "id": 65,
+            "id": 72,
             "isNew": true,
             "links": [],
             "options": {
@@ -5376,9 +5848,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 126
+                "y": 140
             },
-            "id": 66,
+            "id": 73,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -5443,9 +5915,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 128
+                "y": 142
             },
-            "id": 67,
+            "id": 74,
             "isNew": true,
             "links": [],
             "options": {
@@ -5518,9 +5990,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 128
+                "y": 142
             },
-            "id": 68,
+            "id": 75,
             "isNew": true,
             "links": [],
             "options": {
@@ -5558,9 +6030,9 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 134
+                "y": 148
             },
-            "id": 69,
+            "id": 76,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -5915,7 +6387,7 @@
                 "hide": 0,
                 "includeAll": false,
                 "label": "Table",
-                "multi": false,
+                "multi": true,
                 "name": "table",
                 "options": [],
                 "query": "label_values(scylla_alternator_table_operation, cf)",
@@ -5953,7 +6425,7 @@
                 "multi": true,
                 "name": "ops",
                 "options": [],
-                "query": "label_values(scylla_alternator_table_operation{cf=\"$table\"}, op)",
+                "query": "label_values(scylla_alternator_table_operation{cf=~\"$table\", op!~\"Batch.*\"}, op)",
                 "refresh": 2,
                 "regex": "",
                 "skipUrlSync": false,
@@ -5963,6 +6435,63 @@
                 "tagsQuery": "",
                 "type": "query",
                 "useTags": false
+            },
+            {
+                "allValue": "",
+                "class": "template_variable_all",
+                "current": {
+                    "selected": true,
+                    "text": [
+                        "All"
+                    ],
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "dashversion": [
+                    ">2025.3"
+                ],
+                "datasource": "prometheus",
+                "definition": "",
+                "error": null,
+                "hide": 0,
+                "includeAll": true,
+                "label": "ops_batch",
+                "multi": true,
+                "name": "ops_batch",
+                "options": [],
+                "query": "label_values(scylla_alternator_operation{op=~\"Batch.*\"}, op)",
+                "refresh": 2,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "tagValuesQuery": "",
+                "tags": [],
+                "tagsQuery": "",
+                "type": "query",
+                "useTags": false
+            },
+            {
+                "allowCustomValue": false,
+                "current": {
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "dashversion": [
+                    ">2025.3"
+                ],
+                "definition": "label_values(scylla_alternator_table_op_latency_count{cf=~\"$table\"},op)",
+                "includeAll": true,
+                "name": "latency_ops",
+                "options": [],
+                "query": {
+                    "qryType": 1,
+                    "query": "label_values(scylla_alternator_table_op_latency_count{cf=~\"$table\"},op)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
             },
             {
                 "allValue": null,

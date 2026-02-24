@@ -698,6 +698,9 @@
             },
             "targets": [
                 {
+                    "dashversion": [
+                        "<2025.3"
+                    ],
                     "expr": "sum(rate(scylla_alternator_op_latency_sum{cluster=~\"$cluster\", op=~\"$ops\"}[$__rate_interval])) by (op)/sum(rate(scylla_alternator_op_latency_count{cluster=~\"$cluster|^$\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
                     "instant": true,
                     "intervalFactor": 1,
@@ -708,7 +711,7 @@
             ],
             "timeFrom": null,
             "timeShift": null,
-            "title": "Avg Latencies",
+            "title": "Average Latencies",
             "type": "stat"
         },
         {
@@ -973,6 +976,9 @@
             "span": 5,
             "targets": [
                 {
+                    "dashversion": [
+                        "<2025.3"
+                    ],
                     "expr": "sum(rate(scylla_alternator_operation{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]\", op=~\"$ops\"}[$__rate_interval])>0) by (op)",
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
@@ -1058,6 +1064,9 @@
             "span": 5,
             "targets": [
                 {
+                    "dashversion": [
+                        "<2025.3"
+                    ],
                     "expr": "histogram_quantile(0.95, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops\"}[$__rate_interval])>0) by (op, le))",
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",
@@ -1143,6 +1152,9 @@
             "span": 5,
             "targets": [
                 {
+                    "dashversion": [
+                        "<2025.3"
+                    ],
                     "expr": "histogram_quantile(0.99, sum(rate(scylla_alternator_op_latency_bucket{instance=~\"[[node]]\",cluster=~\"$cluster|$^\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", op=~\"$ops\"}[$__rate_interval])>0) by (op, le))",
                     "intervalFactor": 1,
                     "legendFormat": "{{op}}",

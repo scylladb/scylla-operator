@@ -151,6 +151,12 @@ if [[ "${channel}" == "stable" ]]; then
   skip_range="${skip_range}" yq -e -i '
     .metadata.annotations."olm.skipRange" = strenv(skip_range)
   ' "${target_bundle_dir}/manifests/scylladb-operator.clusterserviceversion.yaml"
+
+  # Add default channel annotation to stable releases.
+  # It is not added to dev releases in case there is no stable channel release for a particular OpenShift version yet.
+  yq -e -i '
+    .metadata.annotations."operators.operatorframework.io.bundle.channel.default.v1" = "stable"
+  ' "${target_bundle_dir}/metadata/annotations.yaml"
 else
   yq -e -i 'del(.spec.replaces)' "${target_bundle_dir}/manifests/scylladb-operator.clusterserviceversion.yaml" 2>/dev/null || true
   yq -e -i 'del(.metadata.annotations."olm.skipRange")' "${target_bundle_dir}/manifests/scylladb-operator.clusterserviceversion.yaml" 2>/dev/null || true

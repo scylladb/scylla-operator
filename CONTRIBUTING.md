@@ -100,6 +100,8 @@ Once you have implemented the feature or bug fix in your branch, open a PR to th
 - Unit tests are included.
 - End-to-end tests are passing.
 - Your commit history is clean.
+- Your commit message and PR title follow the guidelines outlined in this section.
+- If your changes are user-facing, you have added an appropriate entry to the changelog.
 
 ### Commit History
 
@@ -110,7 +112,7 @@ To maintain a clean commit history, aim for a minimal number of logical commits.
 The **subject line** of your commit message **and the PR title** should summarize the change in one clear sentence that would be meaningful to a user of the Operator. The sentence should be **written in the imperative**, i.e. written as if giving a command or instruction, e.g. "Add support for XYZ". A properly formed Git commit subject line should always be able to complete the sentence "If applied, this commit will...", e.g.  "If applied, this commit will **Add support for XYZ**".
 Changelog entries are verbatim PR titles, so make them concise yet informative.
 
-Further details should be added after a blank line. Explain why the change was necessary, not just what was changed. In the general case, extensive descriptions are well-received. Comparing the behavior before and after the change is especially helpful. Write the message with the mindset that you’ll need to revisit the code in the future.
+Further details should be added after a blank line. Explain why the change was necessary, not just what was changed. In the general case, extensive descriptions are well-received. Comparing the behavior before and after the change is especially helpful. Write the message with the mindset that you'll need to revisit the code in the future.
 If your PR fixes an issue, include "Resolves #1234" in the description, replacing "1234" with the issue number.
 
 ```
@@ -123,6 +125,15 @@ API change was discussed in the following enhancement: <link>.
 **Which issue is resolved by this Pull Request:**
 Resolves #1234 
 ```
+
+### Changelog entries
+
+If your changes are user-facing (new features, bug fixes, behavior changes, deprecations, or breaking changes), add an entry to the [CHANGELOG.md](./CHANGELOG.md) in the `Unreleased` section.
+Link to your PR using the format `[#1234](https://github.com/scylladb/scylla-operator/pull/1234)`. The entry should describe the change from the user's perspective, not implementation details.
+
+If multiple PRs are working together to deliver a single feature from the user's perspective, it's advised to group them as a single entry in the changelog.
+
+Internal refactoring, test improvements, and CI changes typically don't require changelog entries unless they significantly impact users.
 
 ### Code review
 

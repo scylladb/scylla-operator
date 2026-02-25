@@ -30,11 +30,6 @@ if [[ "${SO_DISABLE_NODECONFIG:-false}" == "true" ]]; then
   SO_CSI_DRIVER_PATH=""
 fi
 
-# Beginning with GKE version 1.32.1-gke.1002000, the Ubuntu image used by GKE clusters no longer provides the xfsprogs package by default.
-# This package is required for ScyllaDB to function correctly, so we need to ensure it is installed on all nodes.
-SO_INSTALL_XFSPROGS_ON_NODES="${SO_INSTALL_XFSPROGS_ON_NODES:-true}"
-export SO_INSTALL_XFSPROGS_ON_NODES
-
 run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy.sh"
 
 apply-e2e-workarounds-in-all-clusters

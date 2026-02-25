@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+### Dependencies
+
+- Updated ScyllaDB Monitoring (`github.com/scylladb/scylla-monitoring` git submodule) from `4.14.0` (`88dd086`) pre-release version
+  to the final `4.14.0` (`9dcb579`). The update includes several Grafana dashboard improvements and bug fixes, as well as
+  a patch update to the Grafana image used (`docker.io/grafana/grafana` from `12.3.2` to `12.3.3`).
+  [#3282](https://github.com/scylladb/scylla-operator/pull/3282), [#3284](https://github.com/scylladb/scylla-operator/pull/3284)
+
 ## 1.20.0 and older
 
 For those versions, the changelog information can be found in two places:

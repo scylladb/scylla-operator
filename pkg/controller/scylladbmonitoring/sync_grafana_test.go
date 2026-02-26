@@ -1024,7 +1024,7 @@ data:
       version: 1
       editable: false
       jsonData:
-        timeInterval: "5s"
+        timeInterval: "30s"
         tlsAuthWithCACert: true
       secureJsonData:
         tlsCACert: "$__file{/var/run/configmaps/prometheus-serving-ca/ca-bundle.crt}"
@@ -1102,7 +1102,7 @@ data:
       version: 1
       editable: false
       jsonData:
-        timeInterval: "5s"
+        timeInterval: "30s"
         tlsAuthWithCACert: true
         httpHeaderName1: "Authorization"
       secureJsonData:
@@ -1167,7 +1167,7 @@ data:
       version: 1
       editable: false
       jsonData:
-        timeInterval: "5s"
+        timeInterval: "30s"
         tlsSkipVerify: true
   notifiers.yaml: ""
   plugins.yaml: ""
@@ -1222,7 +1222,7 @@ data:
       version: 1
       editable: false
       jsonData:
-        timeInterval: "5s"
+        timeInterval: "30s"
   notifiers.yaml: ""
   plugins.yaml: ""
 `, "\n"),
@@ -1286,7 +1286,7 @@ data:
       version: 1
       editable: false
       jsonData:
-        timeInterval: "5s"
+        timeInterval: "30s"
         httpHeaderName1: "Authorization"
       secureJsonData:
         httpHeaderValue1: "Bearer $__file{/var/run/secrets/prometheus-bearer-token/token-key}"

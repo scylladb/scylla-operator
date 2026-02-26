@@ -23,11 +23,6 @@ trap gracefully-shutdown-e2es INT
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig.yaml}"
 export SO_NODECONFIG_PATH
 
-# Beginning with GKE version 1.32.1-gke.1002000, the Ubuntu image used by GKE clusters no longer provides the xfsprogs package by default.
-# This package is required for ScyllaDB to function correctly, so we need to ensure it is installed on all nodes.
-SO_INSTALL_XFSPROGS_ON_NODES="${SO_INSTALL_XFSPROGS_ON_NODES:-true}"
-export SO_INSTALL_XFSPROGS_ON_NODES
-
 run-deploy-script-in-all-clusters "${parent_dir}/../ci-deploy-release.sh"
 
 apply-e2e-workarounds-in-all-clusters

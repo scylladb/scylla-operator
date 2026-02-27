@@ -4,6 +4,14 @@
 
 ## Unreleased
 
+### API Changes
+
+- Extended the admission webhook to emit warnings when ScyllaCluster's backup or repair task names do not adhere to RFC 1123
+  subdomain requirements. Invalid task names currently cause silent failures where the underlying ScyllaDBManagerTask objects fail to be created.
+  **In the next minor release, these warnings will become validation errors that prevent ScyllaCluster creation or updates.**
+  Users must update their resources to comply with the requirements.
+  [#3295](https://github.com/scylladb/scylla-operator/pull/3295)
+
 ### Dependencies
 
 - Updated ScyllaDB Monitoring (`github.com/scylladb/scylla-monitoring` git submodule) from `4.14.0` (`88dd086`) pre-release version

@@ -510,16 +510,50 @@ func isRackStatusUpToDate(sc *scyllav1.ScyllaCluster, rack string) bool {
 func GetWarningsOnScyllaClusterCreate(sc *scyllav1.ScyllaCluster) []string {
 	var warnings []string
 
-	warnings = append(warnings, warningsForScyllaClusterSpec(&sc.Spec, field.NewPath("spec"))...)
+	warnings = append(warnings, getWarningsForScyllaClusterSpec(&sc.Spec, field.NewPath("spec"))...)
 
 	return warnings
 }
 
-func warningsForScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) []string {
+func getWarningsForScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) []string {
 	var warnings []string
 
 	if len(spec.Sysctls) > 0 {
 		warnings = append(warnings, fmt.Sprintf("%s: deprecated; use NodeConfig's .spec.sysctls instead", fldPath.Child("sysctls")))
+	}
+
+	for i, b := range spec.Backups {
+		warnings = append(warnings, getWarningsForBackupTaskSpec(&b, fldPath.Child("backups").Index(i))...)
+	}
+
+	for i, r := range spec.Repairs {
+		warnings = append(warnings, getWarningsForRepairTaskSpec(&r, fldPath.Child("repairs").Index(i))...)
+	}
+
+	return warnings
+}
+
+func getWarningsForBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	warnings = append(warnings, getWarningsForTaskSpec(&backupTaskSpec.TaskSpec, fldPath)...)
+
+	return warnings
+}
+
+func getWarningsForRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	warnings = append(warnings, getWarningsForTaskSpec(&repairTaskSpec.TaskSpec, fldPath)...)
+
+	return warnings
+}
+
+func getWarningsForTaskSpec(taskSpec *scyllav1.TaskSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(taskSpec.Name, false) {
+		warnings = append(warnings, fmt.Sprintf("%s. An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.", field.Invalid(fldPath.Child("name"), taskSpec.Name, msg)))
 	}
 
 	return warnings
@@ -528,7 +562,7 @@ func warningsForScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *fie
 func GetWarningsOnScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) []string {
 	var warnings []string
 
-	warnings = append(warnings, warningsForScyllaClusterSpec(&new.Spec, field.NewPath("spec"))...)
+	warnings = append(warnings, getWarningsForScyllaClusterSpec(&new.Spec, field.NewPath("spec"))...)
 
 	return warnings
 }

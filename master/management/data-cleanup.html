@@ -1,0 +1,858 @@
+
+
+<!DOCTYPE html>
+<html class="no-js" lang="en" style="visibility: hidden;">
+    
+    
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>
+             Automatic data cleanup | ScyllaDB Docs 
+        </title>
+        <meta name="description" content="ScyllaDB is an Apache Cassandra-compatible NoSQL data store that can handle 1 million transactions per second on a single server." />
+        <link rel="icon" href="../_static/img/favicon.ico" type="image/x-icon" />
+        <link rel="icon" href="../_static/img/favicon-32x32.png" sizes="32x32" />
+        <link rel="icon" href="../_static/img/favicon-228x228.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="../_static/img/favicon-228x228.png" />
+        <meta name="msapplication-TileImage" href="../_static/img/favicon-228x228.png" />
+
+        
+            
+            
+        
+
+        
+            
+            <link rel="canonical" href="https://operator.docs.scylladb.com/stable/management/data-cleanup.html"/>
+        
+
+        <link rel="author" href="mailto:info@scylladb.com" />
+
+        
+            
+        <!-- increase expertrec loading priority-->
+        <link rel="dns-prefetch" href="https://cse.expertrec.com">
+
+        <!-- increase font loading priority -->
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preload" as="style"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- async CSS -->
+        <link rel="stylesheet" media="print" onload="this.onload=null;this.removeAttribute('media');"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- no-JS fallback -->
+        <noscript>
+            <link rel="stylesheet"
+                  href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+        </noscript>
+
+        
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.css">
+            <script type="module" src="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.esm.js"></script>
+        
+
+        
+            
+                <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../_static/css/main.css?v=0ebb4bd5" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../_static/sphinx_collapse.css?v=226d88b4" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=714c36fc" />
+            
+        
+    
+        
+        
+            
+        <script type="text/javascript" src="../_static/js/runtime.bundle.js"></script>
+        <script type="text/javascript" src="../_static/js/main.bundle.js"></script>
+        
+            
+                <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+            
+        
+            
+                <script src="../_static/doctools.js?v=9bcbadda"></script>
+            
+        
+            
+                <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+            
+        
+            
+                <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+            
+        
+            
+                <script src="../_static/copybutton.js?v=f281be69"></script>
+            
+        
+    
+            
+                <!-- Local meta tags -->
+            
+            
+                <!-- Google Tag Manager docs -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-54NWVS4");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager global -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-T8P2JP");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Expertrec -->
+<script>
+    var id = "e2077224-9ccf-11e9-a0c9-0242ac130002";
+    var ci_search = document.createElement("script");
+    ci_search.type = "text/javascript";
+    ci_search.async = true;
+    ci_search.src = "https://cse.expertrec.com/api/js/ci_common.js?id=" + id;
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(ci_search, s);
+</script>
+<!-- End Expertrec -->
+            
+        
+    </head>
+
+    <body class="brand-product">
+        <section class="promo-banner  promo-banner--hide" style="display: none;">
+    <div class="promo-banner-wrapper">
+        <div class="promo-banner__content">
+            
+            <div class="promo-banner__title">ScyllaDB University Live | Free Virtual Training Event</div>
+            <a class="promo-banner__button button button--reverse" href="#"
+               target="_blank" rel="noopener noreferrer">Learn more</a>
+        </div>
+        <button class="promo-banner__close">
+            <i class="icon-cancel"></i>
+        </button>
+    </div>
+</section>
+        <header class="header">
+    <div class="header-logo">
+        <a class="header-logo__img" href="https://scylladb.com/">
+            <img src="../_static/img/scylladb-logo-horizontal.svg" alt="ScyllaDB Documentation Logo" />
+        </a>
+        <span class="header-logo__bar"></span>
+        <a class="header-logo__text" href="https://docs.scylladb.com/">
+            Documentation
+        </a>
+    </div>
+    <div class="header-navigation">
+        <ul class="dropdown menu scylla-dropdown scylla-dropdown--header" data-dropdown-menu>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Deployments <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/scylla-cloud/">
+                            <i class="icon-docs-cloud"></i>Cloud</a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/manual/">
+                            <i class="icon-server"></i>Server</a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Tools <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://manager.docs.scylladb.com/">
+                            <i class="icon-docs-manager"></i>ScyllaDB Manager</a>
+                    </li>
+                    <li>
+                        <a href="https://monitoring.docs.scylladb.com/">
+                            <i class="icon-docs-monitoring"></i>ScyllaDB
+                            Monitoring Stack</a>
+                    </li>
+                    <li>
+                        <a href="https://operator.docs.scylladb.com/">
+                            <i class="icon-docs-operator"></i>ScyllaDB Operator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Drivers <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/cql-drivers">
+                            <i class="icon-docs-nsql-guides"></i>CQL Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/dynamo-drivers">
+                            <i class="icon-docs-alternator"></i>DynamoDB Drivers
+                        </a>
+
+                        <li>
+                            <a href="https://docs.scylladb.com/stable/versioning/driver-support">
+                                <i class="icon-docs-blog"></i>Supported Driver Versions
+                            </a>
+                        </li>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Resources
+                    <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://university.scylladb.com">
+                            <i class="icon-university"></i>
+                            ScyllaDB University
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://forum.scylladb.com">
+                            <i class="icon-docs-community"></i>
+                            Community Forum
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html">
+                            <i class="icon-docs-training"></i>
+                            Tutorials
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="header-button">
+            <a href="https://docs.scylladb.com/manual/stable/getting-started/installation-common/scylla-web-installer.html" class="button"><i class="icon-download me-2"></i> Install</a>
+        </div>
+    </div>
+    <div class="header-search-box">
+        <i class="dark-theme-toggler icon-theme"></i>
+        <div class="search-box">
+            <ci-search></ci-search>
+        </div>
+        
+            <biel-button class="header-ask-ai" project="ddfdo8m94k"
+                         header-title="ScyllaDB chatbot (beta)"
+                         button-position="default"
+                         modal-position="bottom-right"
+                         button-style="dark">
+                Ask AI
+            </biel-button>
+        
+    </div>
+    <div class="side-nav-toggle">
+    <i class="dark-theme-toggler icon-theme"></i>
+    <div class="side-nav-toggle__button" data-toggle="side-nav">
+        <i class="icon-menu"></i>
+    </div>
+</div>
+</header>
+        <div class="title"></div>
+        <section
+            class="layout  layout--sidebar layout--has-secondary-sidebar ">
+            <div class="content large-order-2">
+                
+                    <div class="pre-content">
+                        <div class="breadcrumbs">
+    <span class="bread__item">
+        <a href="https://docs.scylladb.com"
+           class="bread__highlight">
+            <i class="icon-home"></i> ScyllaDB Docs
+        </a>
+    </span>
+    <span class="bread__item">
+        <a href="../index.html"
+           class="bread__highlight">
+            ScyllaDB Operator
+        </a>
+    </span>
+    
+        <span class="bread__item">
+            <a href="index.html" class="bread__highlight">
+                Management
+            </a>
+        </span>
+    
+    <span class="bread__item bread__item--last">Automatic data cleanup</span>
+</div>
+                    </div>
+                
+                
+                    <div class="sidebar-right-layout">
+                        <div class="body-container">
+                
+
+                <div class="content-body">
+                    
+                        
+    <div class="admonition caution">
+        <p class="admonition-title">Caution</p>
+        <p>
+            
+                You're viewing documentation for an unstable version of ScyllaDB Operator.
+            
+            <a href="../../stable/management/data-cleanup.html">Switch to the latest stable version.</a>
+        </p>
+    </div>
+
+                    
+
+                    <section id="automatic-data-cleanup">
+<h1>Automatic data cleanup<a class="headerlink" href="#automatic-data-cleanup" title="Link to this heading">¶</a></h1>
+<p>This document explains the automatic data cleanup feature in ScyllaDB Operator.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
+<p>ScyllaDB Operator automates the execution of <a class="reference external" href="https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cleanup.html">node cleanup</a>
+procedures following cluster scaling operations. This feature ensures that your ScyllaDB cluster maintains storage
+efficiency and data integrity by removing stale data and preventing data resurrection.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>While ScyllaDB performs automatic data cleanup for tablet-enabled keyspaces, it does not cover system or standard vnode-based
+keyspaces. To bridge this gap, ScyllaDB Operator implements automatic cleanup for these remaining keyspaces.</p>
+</div>
+</section>
+<section id="reasons-for-running-cleanup">
+<h2>Reasons for running cleanup<a class="headerlink" href="#reasons-for-running-cleanup" title="Link to this heading">¶</a></h2>
+<p>When you scale a ScyllaDB cluster horizontally (adding or removing nodes), the ownership of data tokens changes across
+the cluster (topology changes). Data ownership is determined by the token ranges assigned to each node in the cluster.
+Cleanups address the issues that may arise from the redistribution of token ownership:</p>
+<ol class="arabic simple">
+<li><p><strong>Stale data</strong>: When a node loses ownership of certain tokens, the data associated with those tokens remains on the node’s disk.</p></li>
+<li><p><strong>Data resurrection</strong>: If you do not remove this stale data, it can lead to data resurrection later.</p></li>
+</ol>
+</section>
+<section id="cleanup-triggering-mechanism">
+<h2>Cleanup triggering mechanism<a class="headerlink" href="#cleanup-triggering-mechanism" title="Link to this heading">¶</a></h2>
+<p>Cleanup is triggered after scaling operations (adding or removing nodes/racks) are complete. It runs on all nodes that
+have changed token ownership as a result of the scaling operation. This also includes the cluster bootstrap as nodes are
+added one by one and the token ring changes with each addition.</p>
+<p>During scale-out, cleanup runs on all nodes except the last one added, as it does not lose any tokens.</p>
+<section id="how-cleanup-is-triggered">
+<h3>How cleanup is triggered<a class="headerlink" href="#how-cleanup-is-triggered" title="Link to this heading">¶</a></h3>
+<p>ScyllaDB Operator tracks changes in the token ring of the cluster. When a mismatch is detected between the current state
+of the ring and the last cleaned-up state, it triggers a cleanup job for the affected nodes. Before triggering
+cleanup jobs, ScyllaDB Operator ensures the cluster is stable (conditions: <code class="docutils literal notranslate"><span class="pre">StatefulSetControllerProgressing=False</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Available=True</span></code>, and <code class="docutils literal notranslate"><span class="pre">Degraded=False</span></code>).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Because ScyllaDB Operator relies strictly on token ring changes, there are some limitations, which are described in the
+<a class="reference internal" href="#known-limitations">Known limitations</a> section.</p>
+</div>
+</section>
+</section>
+<section id="inspecting-cleanup-jobs">
+<h2>Inspecting cleanup jobs<a class="headerlink" href="#inspecting-cleanup-jobs" title="Link to this heading">¶</a></h2>
+<p>ScyllaDB Operator creates a Job for each node that requires cleanup. If any job is still running, the <code class="docutils literal notranslate"><span class="pre">ScyllaCluster</span></code>
+status contains the <code class="docutils literal notranslate"><span class="pre">JobControllerProgressing</span></code> condition set to <code class="docutils literal notranslate"><span class="pre">True</span></code>. When a job completes successfully, ScyllaDB Operator removes it
+from the cluster. The condition’s message contains the name of the running job(s).</p>
+<p>When no cleanup jobs are running, the <code class="docutils literal notranslate"><span class="pre">JobControllerProgressing</span></code> condition is set to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+<p>You can inspect the condition by running:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>get<span class="w"> </span>scyllacluster<span class="w"> </span>&lt;sc-name&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.conditions[?(@.type==&quot;JobControllerProgressing&quot;)]}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">&lt;sc-name&gt;</span></code> is the name of your ScyllaCluster.</p>
+<p>You should see output similar to this (when no jobs are running):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;lastTransitionTime&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-12-12T13:51:52Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;observedGeneration&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AsExpected&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;False&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;JobControllerProgressing&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>You may not see the cleanup jobs in the cluster if they complete quickly (e.g., on small datasets or cluster bootstrap)
+and are removed before you can inspect them.</p>
+<p>To ensure they were created and completed, you can inspect Kubernetes events:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>get<span class="w"> </span>events<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>job
+</pre></div>
+</div>
+<p>The output should contain entries similar to:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>30m<span class="w">  </span>Normal<span class="w">  </span>JobCreated<span class="w">        </span>job/cleanup-scylla-us-east-1-us-east-1a-0<span class="w">  </span>Job<span class="w"> </span>default/cleanup-scylla-us-east-1-us-east-1a-0<span class="w"> </span>created
+30m<span class="w">  </span>Normal<span class="w">  </span>SuccessfulCreate<span class="w">  </span>job/cleanup-scylla-us-east-1-us-east-1a-0<span class="w">  </span>Created<span class="w"> </span>pod:<span class="w"> </span>cleanup-scylla-us-east-1-us-east-1a-0-tpd7x
+30m<span class="w">  </span>Normal<span class="w">  </span>Completed<span class="w">         </span>job/cleanup-scylla-us-east-1-us-east-1a-0<span class="w">  </span>Job<span class="w"> </span>completed
+30m<span class="w">  </span>Normal<span class="w">  </span>JobDeleted<span class="w">        </span>job/cleanup-scylla-us-east-1-us-east-1a-0<span class="w">  </span>Job<span class="w"> </span>default/cleanup-scylla-us-east-1-us-east-1a-0<span class="w"> </span>deleted
+</pre></div>
+</div>
+<p>You can see that for each cleanup job, there are events for job creation, pod creation, job completion, and job deletion.</p>
+</div>
+</section>
+<section id="known-limitations">
+<h2>Known limitations<a class="headerlink" href="#known-limitations" title="Link to this heading">¶</a></h2>
+<p>ScyllaDB Operator triggers cleanup based on token ring changes. While this approach is safe, it has some side effects where
+cleanup may be triggered unnecessarily or not at all.</p>
+<section id="unnecessary-cleanups-on-node-decommission">
+<h3>Unnecessary cleanups on node decommission<a class="headerlink" href="#unnecessary-cleanups-on-node-decommission" title="Link to this heading">¶</a></h3>
+<p>When you decommission a node, tokens are redistributed to the remaining nodes. These nodes do not require cleanup since
+they are not losing any tokens. However, ScyllaDB Operator still triggers cleanup for these nodes due to the token ring change.
+This is a safe operation, but it may lead to an unnecessary spike in I/O load.</p>
+</section>
+<section id="missed-cleanup-on-rf-changes">
+<h3>Missed cleanup on RF changes<a class="headerlink" href="#missed-cleanup-on-rf-changes" title="Link to this heading">¶</a></h3>
+<p>When you decrease the replication factor (RF) of a keyspace, the token ring remains unchanged. Thus, ScyllaDB Operator does
+not detect the need for cleanup. You should trigger <a class="reference external" href="https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cluster/cleanup.html">cluster cleanup</a>
+manually in such cases (run on any node):</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>service/&lt;sc-name&gt;-client<span class="w"> </span>-c<span class="w"> </span>scylla<span class="w"> </span>--<span class="w"> </span>nodetool<span class="w"> </span>cluster<span class="w"> </span>cleanup
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">&lt;sc-name&gt;</span></code> correspond to your ScyllaCluster name.</p>
+</section>
+</section>
+</section>
+
+                </div>
+                
+                    <div class="post-content">
+                        
+    <div class="feedback-container">
+        <p class="feedback-container__title">Was this page helpful?</p>
+        <span data-tooltip tabindex="1" title="Yes" data-position="top">
+            <button class="feedback-container__button" id="feedback-positive">
+                <i class="feedback-container__icon icon-docs-thumbs-up"></i>
+            </button>
+        </span>
+        <span data-tooltip tabindex="1" title="No" data-position="top">
+            <button class="feedback-container__button" id="feedback-negative">
+                <i class="feedback-container__icon icon-docs-thumbs-down"></i>
+            </button>
+        </span>
+        <div class="feedback-container__message" id="feedback-message"></div>
+    </div>
+
+    <script>
+        function resetFeedbackButtonActive() {
+            const feedbackButtons = document.getElementsByClassName('feedback-container__button');
+            for (let i = 0; i < feedbackButtons.length; i++) {
+                feedbackButtons[i].classList.remove('active');
+            }
+        }
+
+        function showMessage(liked) {
+            const feedbackMessage = document.getElementById('feedback-message');
+            const themeGithubRepository = true;
+            let message = 'Great! Thanks for your feedback.';
+            if (themeGithubRepository && !liked) {
+                message = "Thanks for your feedback! Please don't hesitate to <a href='https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Automatic data cleanup&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/master/management/data-cleanup%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation'>create an issue</a> if you have any suggestions on how we can improve.";
+            }
+            feedbackMessage.innerHTML = message;
+        }
+
+        function sendGaEvent(liked) {
+            const event_label = liked ? "positive" : "negative";
+            const event = "feedback_" + event_label;
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': event,
+            });
+        }
+
+        const positiveFeebackButton = document.getElementById('feedback-positive');
+        const negativeFeedbackButton = document.getElementById('feedback-negative');
+
+        positiveFeebackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(true);
+            showMessage(true);
+            positiveFeebackButton.classList.add('active');
+        });
+
+        negativeFeedbackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(false);
+            showMessage(false);
+            negativeFeedbackButton.classList.add('active');
+        });
+    </script>
+
+                        <div class="content-navigation">
+    <div class="navigation navigation--prev">
+        
+            <a class="navigation__link" href="bootstrap-sync.html">
+                <button class="navigation__button">
+                    <i class="icon-chevron-left"></i>
+                </button>
+                <div class="navigation__title">
+                    <span class="colored">PREVIOUS</span> <br />Synchronising bootstrap operations in ScyllaDB clusters
+                </div>
+            </a>
+        
+    </div>
+    <div class="navigation navigation--next">
+        
+            <a class="navigation__link" href="upgrading/index.html">
+                <div class="navigation__title">
+                    <span class="colored">NEXT</span> <br />Upgrading
+                </div>
+                <button class="navigation__button">
+                    <i class="icon-chevron-right"></i>
+                </button>
+            </a>
+        
+    </div>
+</div>
+                        <!-- Post content text -->
+                    </div>
+                
+
+                
+                    </div>
+                    <div class="sidebar-right large-order-3">
+                        <div class="secondary-side-nav custom-scroll-bar">
+    
+    <ul class="contribute">
+        <li class="contribute__item">
+            <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Automatic data cleanup&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/master/management/data-cleanup%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation"
+               target="_blank">
+                <i class="icon-github" aria-hidden="true"></i>Create an issue
+            </a>
+        </li>
+        
+            <li class="contribute__item">
+                <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/edit/master/docs/source/management/data-cleanup.md"
+                   target="_blank">
+                    <i class="icon-edit" aria-hidden="true"></i>Edit this page
+                </a>
+            </li>
+        
+    </ul>
+
+    
+        <div class="secondary-side-nav__content">
+            <p class="topic-title">On this page</p>
+            <ul>
+<li><a class="reference internal" href="#">Automatic data cleanup</a><ul>
+<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#reasons-for-running-cleanup">Reasons for running cleanup</a></li>
+<li><a class="reference internal" href="#cleanup-triggering-mechanism">Cleanup triggering mechanism</a><ul>
+<li><a class="reference internal" href="#how-cleanup-is-triggered">How cleanup is triggered</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#inspecting-cleanup-jobs">Inspecting cleanup jobs</a></li>
+<li><a class="reference internal" href="#known-limitations">Known limitations</a><ul>
+<li><a class="reference internal" href="#unnecessary-cleanups-on-node-decommission">Unnecessary cleanups on node decommission</a></li>
+<li><a class="reference internal" href="#missed-cleanup-on-rf-changes">Missed cleanup on RF changes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    
+</div>
+                    </div>
+                    </div>
+                
+            </div>
+            <div class="sidebar-left  large-order-1">
+                
+                    
+                        <div id="side-nav" class="side-nav custom-scroll-bar" data-closable data-toggler=".show">
+    <button class="collapsible-button">
+        <i class="icon-docs-menu-collapse"></i>
+    </button>
+    <div class="side-nav-content custom-scroll-bar">
+        <div class="side-nav__title">
+            <a href="../index.html">ScyllaDB Operator</a>
+        </div>
+        <div class="side-nav__search">
+            <div class="search-box">
+                <ci-search></ci-search>
+            </div>
+        </div>
+        <div class="side-nav__versions"><ul class="dropdown menu scylla-dropdown scylla-dropdown--versions" data-dropdown-menu>
+    <li class="scylla-dropdown__item">
+        <a class="scylla-dropdown__title" href="#">
+            
+                master
+            
+            <i class="chevron icon-docs-chevron-right"></i>
+        </a>
+        <ul class="menu scylla-dropdown__content">
+            
+                
+                    <li>
+                        <a href="data-cleanup.html">master</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../stable/management/data-cleanup.html">v1.20</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../v1.19/index.html">v1.19</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../v1.18/index.html">v1.18</a>
+                    </li>
+                
+            
+            
+        </ul>
+    </li>
+</ul></div>
+        <div class="side-nav__content">
+            <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/overview.html">Overview</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../architecture/storage/index.html">Storage</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../architecture/storage/overview.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../architecture/storage/local-csi-driver.html">Local CSI Driver</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/tuning.html">Tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/manager.html">ScyllaDB Manager</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../installation/index.html">Installation</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../installation/overview.html">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation/kubernetes-prerequisites.html">Kubernetes prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation/gitops.html">GitOps (kubectl)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation/helm.html">Helm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../installation/openshift.html">OpenShift</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Management</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="sysctls.html">Configuring kernel parameters (sysctls)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bootstrap-sync.html">Synchronising bootstrap operations in ScyllaDB clusters</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Automatic data cleanup</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="upgrading/index.html">Upgrading</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="upgrading/upgrade.html">Upgrading ScyllaDB Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="upgrading/upgrade-scylladb.html">Upgrading ScyllaDB clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="monitoring/index.html">Monitoring</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="monitoring/overview.html">ScyllaDB Monitoring overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="monitoring/setup.html">Setting up ScyllaDB Monitoring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="monitoring/exposing-grafana.html">Exposing Grafana</a></li>
+<li class="toctree-l3"><a class="reference internal" href="monitoring/external-prometheus-on-openshift.html">Setting up ScyllaDB Monitoring on OpenShift</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="networking/index.html">Networking</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="networking/ipv6/index.html">IPv6 networking</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label for="toctree-checkbox-8"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/tutorials/ipv6-getting-started.html">Getting started with IPv6 networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/how-to/ipv6-configure.html">Configure dual-stack networking with IPv4</a></li>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/how-to/ipv6-configure-ipv6-first.html">Configure dual-stack networking with IPv6</a></li>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/how-to/ipv6-configure-ipv6-only.html">Configure IPv6-only networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/how-to/ipv6-migrate.html">Migrate clusters to IPv6</a></li>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/how-to/ipv6-troubleshoot.html">Troubleshoot IPv6 networking issues</a></li>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/reference/ipv6-configuration.html">IPv6 configuration reference</a></li>
+<li class="toctree-l4"><a class="reference internal" href="networking/ipv6/concepts/ipv6-networking.html">IPv6 networking concepts</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../resources/index.html">Resources</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label for="toctree-checkbox-9"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../resources/overview.html">Overview</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../resources/scyllaclusters/index.html">ScyllaClusters</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label for="toctree-checkbox-10"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../resources/scyllaclusters/basics.html">ScyllaClusters</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../resources/scyllaclusters/clients/index.html">ScyllaDB clients</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label for="toctree-checkbox-11"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/clients/discovery.html">Discovering ScyllaDB Nodes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/clients/cql.html">Using CQL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/clients/alternator.html">Using Alternator (DynamoDB)</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../resources/scyllaclusters/nodeoperations/index.html">Node operations using Scylla Operator</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label for="toctree-checkbox-12"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/nodeoperations/scylla-upgrade.html">Upgrading version of ScyllaDB</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/nodeoperations/replace-node.html">Replacing a ScyllaDB node</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/nodeoperations/automatic-cleanup.html">Automatic cleanup and replacement in case when k8s node is lost</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/nodeoperations/maintenance-mode.html">Maintenance mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/nodeoperations/restore.html">Restore from backup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/nodeoperations/volume-expansion.html">Resizing storage in ScyllaCluster</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../resources/scyllaclusters/multidc/index.html">Deploying multi-datacenter ScyllaDB clusters in Kubernetes</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label for="toctree-checkbox-13"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../resources/common/multidc/eks.html">Build multiple Amazon EKS clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/common/multidc/gke.html">Build multiple GKE clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../resources/scyllaclusters/multidc/multidc.html">Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../resources/common/exposing.html">Exposing ScyllaDB cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../resources/scylladbclusters/index.html">ScyllaDBClusters</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" type="checkbox"/><label for="toctree-checkbox-14"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../resources/scylladbclusters/scylladbclusters.html">ScyllaDBClusters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../resources/common/exposing.html">Exposing ScyllaDB cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/nodeconfigs.html">NodeConfigs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/scyllaoperatorconfigs.html">ScyllaOperatorConfigs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/remotekubernetesclusters.html">RemoteKubernetesCluster</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../quickstarts/index.html">Quickstarts</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" type="checkbox"/><label for="toctree-checkbox-15"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstarts/gke.html">Deploying ScyllaDB on GKE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstarts/eks.html">Deploying ScyllaDB on EKS</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../support/index.html">Support</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" type="checkbox"/><label for="toctree-checkbox-16"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../support/overview.html">Support overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../support/known-issues.html">Known issues</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../support/troubleshooting/index.html">Troubleshooting</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" type="checkbox"/><label for="toctree-checkbox-17"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../support/troubleshooting/installation.html">Troubleshooting installation issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../support/must-gather.html">Gathering data with must-gather</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../support/releases.html">Releases</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../reference/index.html">Reference</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" type="checkbox"/><label for="toctree-checkbox-18"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../reference/api/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" type="checkbox"/><label for="toctree-checkbox-19"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com.html">scylla.scylladb.com</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" type="checkbox"/><label for="toctree-checkbox-20"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/nodeconfigs.html">NodeConfig (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.html">RemoteKubernetesCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/remoteowners.html">RemoteOwner (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scyllaclusters.html">ScyllaCluster (scylla.scylladb.com/v1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scylladbclusters.html">ScyllaDBCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.html">ScyllaDBDatacenterNodesStatusReport (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scylladbdatacenters.html">ScyllaDBDatacenter (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.html">ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.html">ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.html">ScyllaDBMonitoring (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.html">ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../reference/feature-gates.html">Feature Gates</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    </div>
+</div>
+                    
+                
+            </div>
+
+        </section>
+
+        <footer class="footer">
+    <div class="footer-group">
+        <div class="footer-top">
+            <a class="footer-logo" href="https://www.scylladb.com"></a>
+            <div class="footer-links">
+                <a class="footer-links__link" href="https://docs.scylladb.com/" target="_blank">Docs</a>
+                <a class="footer-links__link" href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html" target="_blank">Tutorials</a>
+                <a class="footer-links__link" href="https://university.scylladb.com/" target="_blank">University</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/contact-us/"
+                   target="_blank">Contact Us</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/" target="_blank">About Us</a>
+            </div>
+            <div class="footer-actions">
+                <a class="footer-actions__link" href="http://slack.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="User Slack channel" data-position="bottom">
+                        <i class="icon-slack"></i>
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="https://forum.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="Community forum" data-position="bottom">
+                        <i class="icon-docs-community"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        
+            <div class="footer-copyright">
+                
+                    
+                        &#169; 2026, ScyllaDB. All rights reserved.
+                    
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/tos/" target="_blank">Terms of Service</a>
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/privacy/" target="_blank">Privacy Policy</a>
+                    | ScyllaDB, and ScyllaDB Cloud, are registered trademarks of ScyllaDB, Inc.
+                
+            </div>
+        
+
+
+        <div class="footer-bottom">
+            
+                <div class="footer-bottom__last-updated">
+                    
+                        Last updated on 02 March 2026.
+                    
+                </div>
+            
+            <div class="footer-bottom__version">
+                Powered by
+                <a class="footer-bottom__link" href="http://sphinx-doc.org/">Sphinx 8.2.3</a> &amp;
+                <a class="footer-bottom__link" href="https://sphinx-theme.scylladb.com/">ScyllaDB Theme 1.8.10</a>
+            </div>
+        </div>
+    </div>
+    
+        <biel-button class="footer-ask-ai" project="ddfdo8m94k"
+                     header-title="ScyllaDB chatbot (beta)"
+                     button-position="bottom-right"
+                     modal-position="bottom-right"
+                     button-style="dark">
+            Ask AI
+        </biel-button>
+    
+</footer>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8P2JP" height="0" width="0"
+                    style="display: none; visibility: hidden"></iframe>
+        </noscript>
+    </body>
+
+</html>

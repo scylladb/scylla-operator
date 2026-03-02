@@ -1,0 +1,33 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: minimal-dual-stack
+  namespace: scylla
+spec:
+  version: 2025.4.0
+  datacenter:
+    name: dual-stack-dc
+    racks:
+    - name: dual-stack-rack
+      members: 3
+      storage:
+        capacity: 100Gi
+        storageClassName: scylladb-local-xfs
+      resources:
+        requests:
+          cpu: 2
+          memory: 8Gi
+        limits:
+          cpu: 2
+          memory: 8Gi
+  
+  exposeOptions:
+    broadcastOptions:
+      nodes:
+        type: PodIP
+        podIP:
+          source: Status
+      clients:
+        type: PodIP
+        podIP:
+          source: Status

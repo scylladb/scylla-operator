@@ -1,0 +1,3002 @@
+
+
+<!DOCTYPE html>
+<html class="no-js" lang="en" style="visibility: hidden;">
+    
+    
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>
+             NodeConfig (scylla.scylladb.com/v1alpha1) | ScyllaDB Docs 
+        </title>
+        <meta name="description" content="ScyllaDB is an Apache Cassandra-compatible NoSQL data store that can handle 1 million transactions per second on a single server." />
+        <link rel="icon" href="../../../../_static/img/favicon.ico" type="image/x-icon" />
+        <link rel="icon" href="../../../../_static/img/favicon-32x32.png" sizes="32x32" />
+        <link rel="icon" href="../../../../_static/img/favicon-228x228.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="../../../../_static/img/favicon-228x228.png" />
+        <meta name="msapplication-TileImage" href="../../../../_static/img/favicon-228x228.png" />
+
+        
+            
+            
+        
+
+        
+            
+            <link rel="canonical" href="https://operator.docs.scylladb.com/stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.html"/>
+        
+
+        <link rel="author" href="mailto:info@scylladb.com" />
+
+        
+            
+        <!-- increase expertrec loading priority-->
+        <link rel="dns-prefetch" href="https://cse.expertrec.com">
+
+        <!-- increase font loading priority -->
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preload" as="style"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- async CSS -->
+        <link rel="stylesheet" media="print" onload="this.onload=null;this.removeAttribute('media');"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- no-JS fallback -->
+        <noscript>
+            <link rel="stylesheet"
+                  href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+        </noscript>
+
+        
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.css">
+            <script type="module" src="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.esm.js"></script>
+        
+
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../../../_static/css/main.css?v=0ebb4bd5" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx_collapse.css?v=226d88b4" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../../../_static/copybutton.css?v=76b2166b" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=714c36fc" />
+            
+        
+    
+        
+        
+            
+        <script type="text/javascript" src="../../../../_static/js/runtime.bundle.js"></script>
+        <script type="text/javascript" src="../../../../_static/js/main.bundle.js"></script>
+        
+            
+                <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+            
+        
+            
+                <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+            
+        
+            
+                <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+            
+        
+            
+                <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
+            
+        
+            
+                <script src="../../../../_static/copybutton.js?v=f281be69"></script>
+            
+        
+    
+            
+                <!-- Local meta tags -->
+            
+            
+                <!-- Google Tag Manager docs -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-54NWVS4");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager global -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-T8P2JP");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Expertrec -->
+<script>
+    var id = "e2077224-9ccf-11e9-a0c9-0242ac130002";
+    var ci_search = document.createElement("script");
+    ci_search.type = "text/javascript";
+    ci_search.async = true;
+    ci_search.src = "https://cse.expertrec.com/api/js/ci_common.js?id=" + id;
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(ci_search, s);
+</script>
+<!-- End Expertrec -->
+            
+        
+    </head>
+
+    <body class="brand-product">
+        <section class="promo-banner  promo-banner--hide" style="display: none;">
+    <div class="promo-banner-wrapper">
+        <div class="promo-banner__content">
+            
+            <div class="promo-banner__title">ScyllaDB University Live | Free Virtual Training Event</div>
+            <a class="promo-banner__button button button--reverse" href="#"
+               target="_blank" rel="noopener noreferrer">Learn more</a>
+        </div>
+        <button class="promo-banner__close">
+            <i class="icon-cancel"></i>
+        </button>
+    </div>
+</section>
+        <header class="header">
+    <div class="header-logo">
+        <a class="header-logo__img" href="https://scylladb.com/">
+            <img src="../../../../_static/img/scylladb-logo-horizontal.svg" alt="ScyllaDB Documentation Logo" />
+        </a>
+        <span class="header-logo__bar"></span>
+        <a class="header-logo__text" href="https://docs.scylladb.com/">
+            Documentation
+        </a>
+    </div>
+    <div class="header-navigation">
+        <ul class="dropdown menu scylla-dropdown scylla-dropdown--header" data-dropdown-menu>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Deployments <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/scylla-cloud/">
+                            <i class="icon-docs-cloud"></i>Cloud</a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/manual/">
+                            <i class="icon-server"></i>Server</a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Tools <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://manager.docs.scylladb.com/">
+                            <i class="icon-docs-manager"></i>ScyllaDB Manager</a>
+                    </li>
+                    <li>
+                        <a href="https://monitoring.docs.scylladb.com/">
+                            <i class="icon-docs-monitoring"></i>ScyllaDB
+                            Monitoring Stack</a>
+                    </li>
+                    <li>
+                        <a href="https://operator.docs.scylladb.com/">
+                            <i class="icon-docs-operator"></i>ScyllaDB Operator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Drivers <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/cql-drivers">
+                            <i class="icon-docs-nsql-guides"></i>CQL Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/dynamo-drivers">
+                            <i class="icon-docs-alternator"></i>DynamoDB Drivers
+                        </a>
+
+                        <li>
+                            <a href="https://docs.scylladb.com/stable/versioning/driver-support">
+                                <i class="icon-docs-blog"></i>Supported Driver Versions
+                            </a>
+                        </li>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Resources
+                    <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://university.scylladb.com">
+                            <i class="icon-university"></i>
+                            ScyllaDB University
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://forum.scylladb.com">
+                            <i class="icon-docs-community"></i>
+                            Community Forum
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html">
+                            <i class="icon-docs-training"></i>
+                            Tutorials
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="header-button">
+            <a href="https://docs.scylladb.com/manual/stable/getting-started/installation-common/scylla-web-installer.html" class="button"><i class="icon-download me-2"></i> Install</a>
+        </div>
+    </div>
+    <div class="header-search-box">
+        <i class="dark-theme-toggler icon-theme"></i>
+        <div class="search-box">
+            <ci-search></ci-search>
+        </div>
+        
+            <biel-button class="header-ask-ai" project="ddfdo8m94k"
+                         header-title="ScyllaDB chatbot (beta)"
+                         button-position="default"
+                         modal-position="bottom-right"
+                         button-style="dark">
+                Ask AI
+            </biel-button>
+        
+    </div>
+    <div class="side-nav-toggle">
+    <i class="dark-theme-toggler icon-theme"></i>
+    <div class="side-nav-toggle__button" data-toggle="side-nav">
+        <i class="icon-menu"></i>
+    </div>
+</div>
+</header>
+        <div class="title"></div>
+        <section
+            class="layout  layout--sidebar layout--has-secondary-sidebar ">
+            <div class="content large-order-2">
+                
+                    <div class="pre-content">
+                        <div class="breadcrumbs">
+    <span class="bread__item">
+        <a href="https://docs.scylladb.com"
+           class="bread__highlight">
+            <i class="icon-home"></i> ScyllaDB Docs
+        </a>
+    </span>
+    <span class="bread__item">
+        <a href="../../../../index.html"
+           class="bread__highlight">
+            ScyllaDB Operator
+        </a>
+    </span>
+    
+        <span class="bread__item">
+            <a href="../../../index.html" class="bread__highlight">
+                Reference
+            </a>
+        </span>
+    
+        <span class="bread__item">
+            <a href="../../index.html" class="bread__highlight">
+                API Reference
+            </a>
+        </span>
+    
+        <span class="bread__item">
+            <a href="../scylla.scylladb.com.html" class="bread__highlight">
+                scylla.scylladb.com
+            </a>
+        </span>
+    
+    <span class="bread__item bread__item--last">NodeConfig (scylla.scylladb.com/v1alpha1)</span>
+</div>
+                    </div>
+                
+                
+                    <div class="sidebar-right-layout">
+                        <div class="body-container">
+                
+
+                <div class="content-body">
+                    
+                        
+    <div class="admonition caution">
+        <p class="admonition-title">Caution</p>
+        <p>
+            
+                You're viewing documentation for a previous version of ScyllaDB Operator.
+            
+            <a href="../../../../../stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.html">Switch to the latest stable version.</a>
+        </p>
+    </div>
+
+                    
+
+                    <section id="nodeconfig-scylla-scylladb-com-v1alpha1">
+<h1>NodeConfig (scylla.scylladb.com/v1alpha1)<a class="headerlink" href="#nodeconfig-scylla-scylladb-com-v1alpha1" title="Link to this heading">¶</a></h1>
+<div class="line-block">
+<div class="line"><strong>APIVersion</strong>: scylla.scylladb.com/v1alpha1</div>
+<div class="line"><strong>Kind</strong>: NodeConfig</div>
+<div class="line"><strong>PluralName</strong>: nodeconfigs</div>
+<div class="line"><strong>SingularName</strong>: nodeconfig</div>
+<div class="line"><strong>Scope</strong>: Cluster</div>
+<div class="line"><strong>ListKind</strong>: NodeConfigList</div>
+<div class="line"><strong>Served</strong>: true</div>
+<div class="line"><strong>Storage</strong>: true</div>
+</div>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Link to this heading">¶</a></h2>
+</section>
+<section id="specification">
+<h2>Specification<a class="headerlink" href="#specification" title="Link to this heading">¶</a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>apiVersion</p></td>
+<td><p>string</p></td>
+<td><p>APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: <a class="reference external" href="https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources">https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>kind</p></td>
+<td><p>string</p></td>
+<td><p>Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: <a class="reference external" href="https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds">https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-metadata"><span class="std std-ref">metadata</span></a></p></td>
+<td><p>object</p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec"><span class="std std-ref">spec</span></a></p></td>
+<td><p>object</p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-status"><span class="std std-ref">status</span></a></p></td>
+<td><p>object</p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<section id="metadata">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-metadata"></span><h3>.metadata<a class="headerlink" href="#metadata" title="Link to this heading">¶</a></h3>
+<section id="id1">
+<h4>Description<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h4>
+</section>
+<section id="type">
+<h4>Type<a class="headerlink" href="#type" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec"></span><h3>.spec<a class="headerlink" href="#spec" title="Link to this heading">¶</a></h3>
+<section id="id2">
+<h4>Description<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h4>
+</section>
+<section id="id3">
+<h4>Type<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>disableOptimizations</p></td>
+<td><p>boolean</p></td>
+<td><p>disableOptimizations controls if nodes matching placement requirements are going to be optimized for performance. Turning off optimizations on already optimized Nodes does not revert changes. See <a class="reference external" href="https://operator.docs.scylladb.com/stable/architecture/tuning.html">https://operator.docs.scylladb.com/stable/architecture/tuning.html</a> for details.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup"><span class="std std-ref">localDiskSetup</span></a></p></td>
+<td><p>object</p></td>
+<td><p>localDiskSetup contains options of automatic local disk setup.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement"><span class="std std-ref">placement</span></a></p></td>
+<td><p>object</p></td>
+<td><p>placement contains scheduling rules for NodeConfig Pods.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-sysctls"><span class="std std-ref">sysctls</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>sysctls specifies a list of sysctls to configure on the node. Removing parameters from this list does not revert already applied configurations.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-localdisksetup">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup"></span><h3>.spec.localDiskSetup<a class="headerlink" href="#spec-localdisksetup" title="Link to this heading">¶</a></h3>
+<section id="id4">
+<h4>Description<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h4>
+<p>localDiskSetup contains options of automatic local disk setup.</p>
+</section>
+<section id="id5">
+<h4>Type<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-filesystems"><span class="std std-ref">filesystems</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>filesystems is a list of filesystem configurations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-loopdevices"><span class="std std-ref">loopDevices</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>loops is a list of loop device configurations.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-mounts"><span class="std std-ref">mounts</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>mounts is a list of mount configuration.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-raids"><span class="std std-ref">raids</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>raids is a list of raid configurations.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-localdisksetup-filesystems">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-filesystems"></span><h3>.spec.localDiskSetup.filesystems[]<a class="headerlink" href="#spec-localdisksetup-filesystems" title="Link to this heading">¶</a></h3>
+<section id="id6">
+<h4>Description<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h4>
+<p>FilesystemConfiguration specifies filesystem configuration options.</p>
+</section>
+<section id="id7">
+<h4>Type<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>device</p></td>
+<td><p>string</p></td>
+<td><p>device is a path to the device where the desired filesystem should be created.</p></td>
+</tr>
+<tr class="row-odd"><td><p>type</p></td>
+<td><p>string</p></td>
+<td><p>type is a desired filesystem type.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-localdisksetup-loopdevices">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-loopdevices"></span><h3>.spec.localDiskSetup.loopDevices[]<a class="headerlink" href="#spec-localdisksetup-loopdevices" title="Link to this heading">¶</a></h3>
+<section id="id8">
+<h4>Description<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h4>
+<p>LoopDeviceConfiguration specifies loop device configuration options.</p>
+</section>
+<section id="id9">
+<h4>Type<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>imagePath</p></td>
+<td><p>string</p></td>
+<td><p>imagePath specifies path on host where backing image file for loop device should be located.</p></td>
+</tr>
+<tr class="row-odd"><td><p>name</p></td>
+<td><p>string</p></td>
+<td><p>name specifies the name of the symlink that will point to actual loop device, created under <cite>/dev/loops/</cite>.</p></td>
+</tr>
+<tr class="row-even"><td><p>size</p></td>
+<td></td>
+<td><p>size specifies the size of the loop device.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-localdisksetup-mounts">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-mounts"></span><h3>.spec.localDiskSetup.mounts[]<a class="headerlink" href="#spec-localdisksetup-mounts" title="Link to this heading">¶</a></h3>
+<section id="id10">
+<h4>Description<a class="headerlink" href="#id10" title="Link to this heading">¶</a></h4>
+<p>MountConfiguration specifies mount configuration options.</p>
+</section>
+<section id="id11">
+<h4>Type<a class="headerlink" href="#id11" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>device</p></td>
+<td><p>string</p></td>
+<td><p>device is path to a device that should be mounted.</p></td>
+</tr>
+<tr class="row-odd"><td><p>fsType</p></td>
+<td><p>string</p></td>
+<td><p>fsType specifies the filesystem on the device.</p></td>
+</tr>
+<tr class="row-even"><td><p>mountPoint</p></td>
+<td><p>string</p></td>
+<td><p>mountPoint is a path where the device should be mounted at. If the mountPoint is a symlink, the mount will be set up for the target.</p></td>
+</tr>
+<tr class="row-odd"><td><p>unsupportedOptions</p></td>
+<td><p>array (string)</p></td>
+<td><p>unsupportedOptions is a list of mount options used during device mounting. unsupported in this field name means that we won’t support all the available options passed down using this field.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-localdisksetup-raids">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-raids"></span><h3>.spec.localDiskSetup.raids[]<a class="headerlink" href="#spec-localdisksetup-raids" title="Link to this heading">¶</a></h3>
+<section id="id12">
+<h4>Description<a class="headerlink" href="#id12" title="Link to this heading">¶</a></h4>
+<p>RAIDConfiguration is a configuration of a raid array.</p>
+</section>
+<section id="id13">
+<h4>Type<a class="headerlink" href="#id13" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-raids-raid0"><span class="std std-ref">RAID0</span></a></p></td>
+<td><p>object</p></td>
+<td><p>RAID0 specifies RAID0 options.</p></td>
+</tr>
+<tr class="row-odd"><td><p>name</p></td>
+<td><p>string</p></td>
+<td><p>name specifies the name of the raid device to be created under in <cite>/dev/md/</cite>.</p></td>
+</tr>
+<tr class="row-even"><td><p>type</p></td>
+<td><p>string</p></td>
+<td><p>type is a type of raid array.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-localdisksetup-raids-raid0">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-raids-raid0"></span><h3>.spec.localDiskSetup.raids[].RAID0<a class="headerlink" href="#spec-localdisksetup-raids-raid0" title="Link to this heading">¶</a></h3>
+<section id="id14">
+<h4>Description<a class="headerlink" href="#id14" title="Link to this heading">¶</a></h4>
+<p>RAID0 specifies RAID0 options.</p>
+</section>
+<section id="id15">
+<h4>Type<a class="headerlink" href="#id15" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-raids-raid0-devices"><span class="std std-ref">devices</span></a></p></td>
+<td><p>object</p></td>
+<td><p>devices defines which devices constitute the raid array.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-localdisksetup-raids-raid0-devices">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-localdisksetup-raids-raid0-devices"></span><h3>.spec.localDiskSetup.raids[].RAID0.devices<a class="headerlink" href="#spec-localdisksetup-raids-raid0-devices" title="Link to this heading">¶</a></h3>
+<section id="id16">
+<h4>Description<a class="headerlink" href="#id16" title="Link to this heading">¶</a></h4>
+<p>devices defines which devices constitute the raid array.</p>
+</section>
+<section id="id17">
+<h4>Type<a class="headerlink" href="#id17" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>modelRegex</p></td>
+<td><p>string</p></td>
+<td><p>modelRegex is a regular expression filtering devices by their model name.</p></td>
+</tr>
+<tr class="row-odd"><td><p>nameRegex</p></td>
+<td><p>string</p></td>
+<td><p>nameRegex is a regular expression filtering devices by their name.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement"></span><h3>.spec.placement<a class="headerlink" href="#spec-placement" title="Link to this heading">¶</a></h3>
+<section id="id18">
+<h4>Description<a class="headerlink" href="#id18" title="Link to this heading">¶</a></h4>
+<p>placement contains scheduling rules for NodeConfig Pods.</p>
+</section>
+<section id="id19">
+<h4>Type<a class="headerlink" href="#id19" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity"><span class="std std-ref">affinity</span></a></p></td>
+<td><p>object</p></td>
+<td><p>affinity is a group of affinity scheduling rules for NodeConfig Pods.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-nodeselector"><span class="std std-ref">nodeSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>nodeSelector is a selector which must be true for the NodeConfig Pod to fit on a node. Selector which must match a node’s labels for the pod to be scheduled on that node.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-tolerations"><span class="std std-ref">tolerations</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>tolerations is a group of tolerations NodeConfig Pods are going to have.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity"></span><h3>.spec.placement.affinity<a class="headerlink" href="#spec-placement-affinity" title="Link to this heading">¶</a></h3>
+<section id="id20">
+<h4>Description<a class="headerlink" href="#id20" title="Link to this heading">¶</a></h4>
+<p>affinity is a group of affinity scheduling rules for NodeConfig Pods.</p>
+</section>
+<section id="id21">
+<h4>Type<a class="headerlink" href="#id21" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity"><span class="std std-ref">nodeAffinity</span></a></p></td>
+<td><p>object</p></td>
+<td><p>Describes node affinity scheduling rules for the pod.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity"><span class="std std-ref">podAffinity</span></a></p></td>
+<td><p>object</p></td>
+<td><p>Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity"><span class="std std-ref">podAntiAffinity</span></a></p></td>
+<td><p>object</p></td>
+<td><p>Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity"></span><h3>.spec.placement.affinity.nodeAffinity<a class="headerlink" href="#spec-placement-affinity-nodeaffinity" title="Link to this heading">¶</a></h3>
+<section id="id22">
+<h4>Description<a class="headerlink" href="#id22" title="Link to this heading">¶</a></h4>
+<p>Describes node affinity scheduling rules for the pod.</p>
+</section>
+<section id="id23">
+<h4>Type<a class="headerlink" href="#id23" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution"><span class="std std-ref">preferredDuringSchedulingIgnoredDuringExecution</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding “weight” to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution"><span class="std std-ref">requiredDuringSchedulingIgnoredDuringExecution</span></a></p></td>
+<td><p>object</p></td>
+<td><p>If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution"></span><h3>.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[]<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution" title="Link to this heading">¶</a></h3>
+<section id="id24">
+<h4>Description<a class="headerlink" href="#id24" title="Link to this heading">¶</a></h4>
+<p>An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it’s a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).</p>
+</section>
+<section id="id25">
+<h4>Type<a class="headerlink" href="#id25" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference"><span class="std std-ref">preference</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A node selector term, associated with the corresponding weight.</p></td>
+</tr>
+<tr class="row-odd"><td><p>weight</p></td>
+<td><p>integer</p></td>
+<td><p>Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference"></span><h3>.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference" title="Link to this heading">¶</a></h3>
+<section id="id26">
+<h4>Description<a class="headerlink" href="#id26" title="Link to this heading">¶</a></h4>
+<p>A node selector term, associated with the corresponding weight.</p>
+</section>
+<section id="id27">
+<h4>Type<a class="headerlink" href="#id27" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>A list of node selector requirements by node’s labels.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchfields"><span class="std std-ref">matchFields</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>A list of node selector requirements by node’s fields.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchexpressions"></span><h3>.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id28">
+<h4>Description<a class="headerlink" href="#id28" title="Link to this heading">¶</a></h4>
+<p>A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id29">
+<h4>Type<a class="headerlink" href="#id29" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>The label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchfields">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchfields"></span><h3>.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference.matchFields[]<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchfields" title="Link to this heading">¶</a></h3>
+<section id="id30">
+<h4>Description<a class="headerlink" href="#id30" title="Link to this heading">¶</a></h4>
+<p>A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id31">
+<h4>Type<a class="headerlink" href="#id31" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>The label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution"></span><h3>.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution" title="Link to this heading">¶</a></h3>
+<section id="id32">
+<h4>Description<a class="headerlink" href="#id32" title="Link to this heading">¶</a></h4>
+<p>If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.</p>
+</section>
+<section id="id33">
+<h4>Type<a class="headerlink" href="#id33" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms"><span class="std std-ref">nodeSelectorTerms</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>Required. A list of node selector terms. The terms are ORed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms"></span><h3>.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[]<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms" title="Link to this heading">¶</a></h3>
+<section id="id34">
+<h4>Description<a class="headerlink" href="#id34" title="Link to this heading">¶</a></h4>
+<p>A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.</p>
+</section>
+<section id="id35">
+<h4>Type<a class="headerlink" href="#id35" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>A list of node selector requirements by node’s labels.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchfields"><span class="std std-ref">matchFields</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>A list of node selector requirements by node’s fields.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchexpressions"></span><h3>.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id36">
+<h4>Description<a class="headerlink" href="#id36" title="Link to this heading">¶</a></h4>
+<p>A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id37">
+<h4>Type<a class="headerlink" href="#id37" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>The label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchfields">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchfields"></span><h3>.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchFields[]<a class="headerlink" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchfields" title="Link to this heading">¶</a></h3>
+<section id="id38">
+<h4>Description<a class="headerlink" href="#id38" title="Link to this heading">¶</a></h4>
+<p>A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id39">
+<h4>Type<a class="headerlink" href="#id39" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>The label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity"></span><h3>.spec.placement.affinity.podAffinity<a class="headerlink" href="#spec-placement-affinity-podaffinity" title="Link to this heading">¶</a></h3>
+<section id="id40">
+<h4>Description<a class="headerlink" href="#id40" title="Link to this heading">¶</a></h4>
+<p>Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).</p>
+</section>
+<section id="id41">
+<h4>Type<a class="headerlink" href="#id41" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution"><span class="std std-ref">preferredDuringSchedulingIgnoredDuringExecution</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding “weight” to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution"><span class="std std-ref">requiredDuringSchedulingIgnoredDuringExecution</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[]<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution" title="Link to this heading">¶</a></h3>
+<section id="id42">
+<h4>Description<a class="headerlink" href="#id42" title="Link to this heading">¶</a></h4>
+<p>The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)</p>
+</section>
+<section id="id43">
+<h4>Type<a class="headerlink" href="#id43" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm"><span class="std std-ref">podAffinityTerm</span></a></p></td>
+<td><p>object</p></td>
+<td><p>Required. A pod affinity term, associated with the corresponding weight.</p></td>
+</tr>
+<tr class="row-odd"><td><p>weight</p></td>
+<td><p>integer</p></td>
+<td><p>weight associated with matching the corresponding podAffinityTerm, in the range 1-100.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm" title="Link to this heading">¶</a></h3>
+<section id="id44">
+<h4>Description<a class="headerlink" href="#id44" title="Link to this heading">¶</a></h4>
+<p>Required. A pod affinity term, associated with the corresponding weight.</p>
+</section>
+<section id="id45">
+<h4>Type<a class="headerlink" href="#id45" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector"><span class="std std-ref">labelSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p></td>
+</tr>
+<tr class="row-odd"><td><p>matchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key in (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-even"><td><p>mismatchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key notin (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector"><span class="std std-ref">namespaceSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p></td>
+</tr>
+<tr class="row-even"><td><p>namespaces</p></td>
+<td><p>array (string)</p></td>
+<td><p>namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.</p></td>
+</tr>
+<tr class="row-odd"><td><p>topologyKey</p></td>
+<td><p>string</p></td>
+<td><p>This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector" title="Link to this heading">¶</a></h3>
+<section id="id46">
+<h4>Description<a class="headerlink" href="#id46" title="Link to this heading">¶</a></h4>
+<p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p>
+</section>
+<section id="id47">
+<h4>Type<a class="headerlink" href="#id47" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id48">
+<h4>Description<a class="headerlink" href="#id48" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id49">
+<h4>Type<a class="headerlink" href="#id49" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id50">
+<h4>Description<a class="headerlink" href="#id50" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id51">
+<h4>Type<a class="headerlink" href="#id51" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector" title="Link to this heading">¶</a></h3>
+<section id="id52">
+<h4>Description<a class="headerlink" href="#id52" title="Link to this heading">¶</a></h4>
+<p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p>
+</section>
+<section id="id53">
+<h4>Type<a class="headerlink" href="#id53" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id54">
+<h4>Description<a class="headerlink" href="#id54" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id55">
+<h4>Type<a class="headerlink" href="#id55" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels"></span><h3>.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id56">
+<h4>Description<a class="headerlink" href="#id56" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id57">
+<h4>Type<a class="headerlink" href="#id57" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution"></span><h3>.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[]<a class="headerlink" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution" title="Link to this heading">¶</a></h3>
+<section id="id58">
+<h4>Description<a class="headerlink" href="#id58" title="Link to this heading">¶</a></h4>
+<p>Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key &lt;topologyKey&gt; matches that of any node on which a pod of the set of pods is running</p>
+</section>
+<section id="id59">
+<h4>Type<a class="headerlink" href="#id59" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector"><span class="std std-ref">labelSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p></td>
+</tr>
+<tr class="row-odd"><td><p>matchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key in (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-even"><td><p>mismatchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key notin (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector"><span class="std std-ref">namespaceSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p></td>
+</tr>
+<tr class="row-even"><td><p>namespaces</p></td>
+<td><p>array (string)</p></td>
+<td><p>namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.</p></td>
+</tr>
+<tr class="row-odd"><td><p>topologyKey</p></td>
+<td><p>string</p></td>
+<td><p>This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector"></span><h3>.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector<a class="headerlink" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector" title="Link to this heading">¶</a></h3>
+<section id="id60">
+<h4>Description<a class="headerlink" href="#id60" title="Link to this heading">¶</a></h4>
+<p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p>
+</section>
+<section id="id61">
+<h4>Type<a class="headerlink" href="#id61" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions"></span><h3>.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id62">
+<h4>Description<a class="headerlink" href="#id62" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id63">
+<h4>Type<a class="headerlink" href="#id63" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels"></span><h3>.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id64">
+<h4>Description<a class="headerlink" href="#id64" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id65">
+<h4>Type<a class="headerlink" href="#id65" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector"></span><h3>.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector<a class="headerlink" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector" title="Link to this heading">¶</a></h3>
+<section id="id66">
+<h4>Description<a class="headerlink" href="#id66" title="Link to this heading">¶</a></h4>
+<p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p>
+</section>
+<section id="id67">
+<h4>Type<a class="headerlink" href="#id67" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions"></span><h3>.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id68">
+<h4>Description<a class="headerlink" href="#id68" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id69">
+<h4>Type<a class="headerlink" href="#id69" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels"></span><h3>.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id70">
+<h4>Description<a class="headerlink" href="#id70" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id71">
+<h4>Type<a class="headerlink" href="#id71" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity"></span><h3>.spec.placement.affinity.podAntiAffinity<a class="headerlink" href="#spec-placement-affinity-podantiaffinity" title="Link to this heading">¶</a></h3>
+<section id="id72">
+<h4>Description<a class="headerlink" href="#id72" title="Link to this heading">¶</a></h4>
+<p>Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).</p>
+</section>
+<section id="id73">
+<h4>Type<a class="headerlink" href="#id73" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution"><span class="std std-ref">preferredDuringSchedulingIgnoredDuringExecution</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and subtracting “weight” from the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution"><span class="std std-ref">requiredDuringSchedulingIgnoredDuringExecution</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>If the anti-affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the anti-affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[]<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution" title="Link to this heading">¶</a></h3>
+<section id="id74">
+<h4>Description<a class="headerlink" href="#id74" title="Link to this heading">¶</a></h4>
+<p>The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)</p>
+</section>
+<section id="id75">
+<h4>Type<a class="headerlink" href="#id75" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm"><span class="std std-ref">podAffinityTerm</span></a></p></td>
+<td><p>object</p></td>
+<td><p>Required. A pod affinity term, associated with the corresponding weight.</p></td>
+</tr>
+<tr class="row-odd"><td><p>weight</p></td>
+<td><p>integer</p></td>
+<td><p>weight associated with matching the corresponding podAffinityTerm, in the range 1-100.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm" title="Link to this heading">¶</a></h3>
+<section id="id76">
+<h4>Description<a class="headerlink" href="#id76" title="Link to this heading">¶</a></h4>
+<p>Required. A pod affinity term, associated with the corresponding weight.</p>
+</section>
+<section id="id77">
+<h4>Type<a class="headerlink" href="#id77" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector"><span class="std std-ref">labelSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p></td>
+</tr>
+<tr class="row-odd"><td><p>matchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key in (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-even"><td><p>mismatchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key notin (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector"><span class="std std-ref">namespaceSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p></td>
+</tr>
+<tr class="row-even"><td><p>namespaces</p></td>
+<td><p>array (string)</p></td>
+<td><p>namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.</p></td>
+</tr>
+<tr class="row-odd"><td><p>topologyKey</p></td>
+<td><p>string</p></td>
+<td><p>This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector" title="Link to this heading">¶</a></h3>
+<section id="id78">
+<h4>Description<a class="headerlink" href="#id78" title="Link to this heading">¶</a></h4>
+<p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p>
+</section>
+<section id="id79">
+<h4>Type<a class="headerlink" href="#id79" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id80">
+<h4>Description<a class="headerlink" href="#id80" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id81">
+<h4>Type<a class="headerlink" href="#id81" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id82">
+<h4>Description<a class="headerlink" href="#id82" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id83">
+<h4>Type<a class="headerlink" href="#id83" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector" title="Link to this heading">¶</a></h3>
+<section id="id84">
+<h4>Description<a class="headerlink" href="#id84" title="Link to this heading">¶</a></h4>
+<p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p>
+</section>
+<section id="id85">
+<h4>Type<a class="headerlink" href="#id85" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id86">
+<h4>Description<a class="headerlink" href="#id86" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id87">
+<h4>Type<a class="headerlink" href="#id87" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels"></span><h3>.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id88">
+<h4>Description<a class="headerlink" href="#id88" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id89">
+<h4>Type<a class="headerlink" href="#id89" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution"></span><h3>.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[]<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution" title="Link to this heading">¶</a></h3>
+<section id="id90">
+<h4>Description<a class="headerlink" href="#id90" title="Link to this heading">¶</a></h4>
+<p>Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key &lt;topologyKey&gt; matches that of any node on which a pod of the set of pods is running</p>
+</section>
+<section id="id91">
+<h4>Type<a class="headerlink" href="#id91" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector"><span class="std std-ref">labelSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p></td>
+</tr>
+<tr class="row-odd"><td><p>matchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key in (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-even"><td><p>mismatchLabelKeys</p></td>
+<td><p>array (string)</p></td>
+<td><p>MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with <cite>labelSelector</cite> as <cite>key notin (value)</cite> to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector"><span class="std std-ref">namespaceSelector</span></a></p></td>
+<td><p>object</p></td>
+<td><p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p></td>
+</tr>
+<tr class="row-even"><td><p>namespaces</p></td>
+<td><p>array (string)</p></td>
+<td><p>namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.</p></td>
+</tr>
+<tr class="row-odd"><td><p>topologyKey</p></td>
+<td><p>string</p></td>
+<td><p>This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector"></span><h3>.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector" title="Link to this heading">¶</a></h3>
+<section id="id92">
+<h4>Description<a class="headerlink" href="#id92" title="Link to this heading">¶</a></h4>
+<p>A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.</p>
+</section>
+<section id="id93">
+<h4>Type<a class="headerlink" href="#id93" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions"></span><h3>.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id94">
+<h4>Description<a class="headerlink" href="#id94" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id95">
+<h4>Type<a class="headerlink" href="#id95" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels"></span><h3>.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id96">
+<h4>Description<a class="headerlink" href="#id96" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id97">
+<h4>Type<a class="headerlink" href="#id97" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector"></span><h3>.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector" title="Link to this heading">¶</a></h3>
+<section id="id98">
+<h4>Description<a class="headerlink" href="#id98" title="Link to this heading">¶</a></h4>
+<p>A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.</p>
+</section>
+<section id="id99">
+<h4>Type<a class="headerlink" href="#id99" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions"><span class="std std-ref">matchExpressions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>matchExpressions is a list of label selector requirements. The requirements are ANDed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels"><span class="std std-ref">matchLabels</span></a></p></td>
+<td><p>object</p></td>
+<td><p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions"></span><h3>.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchExpressions[]<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions" title="Link to this heading">¶</a></h3>
+<section id="id100">
+<h4>Description<a class="headerlink" href="#id100" title="Link to this heading">¶</a></h4>
+<p>A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.</p>
+</section>
+<section id="id101">
+<h4>Type<a class="headerlink" href="#id101" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>key is the label key that the selector applies to.</p></td>
+</tr>
+<tr class="row-odd"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.</p></td>
+</tr>
+<tr class="row-even"><td><p>values</p></td>
+<td><p>array (string)</p></td>
+<td><p>values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels"></span><h3>.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchLabels<a class="headerlink" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels" title="Link to this heading">¶</a></h3>
+<section id="id102">
+<h4>Description<a class="headerlink" href="#id102" title="Link to this heading">¶</a></h4>
+<p>matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.</p>
+</section>
+<section id="id103">
+<h4>Type<a class="headerlink" href="#id103" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-nodeselector">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-nodeselector"></span><h3>.spec.placement.nodeSelector<a class="headerlink" href="#spec-placement-nodeselector" title="Link to this heading">¶</a></h3>
+<section id="id104">
+<h4>Description<a class="headerlink" href="#id104" title="Link to this heading">¶</a></h4>
+<p>nodeSelector is a selector which must be true for the NodeConfig Pod to fit on a node. Selector which must match a node’s labels for the pod to be scheduled on that node.</p>
+</section>
+<section id="id105">
+<h4>Type<a class="headerlink" href="#id105" title="Link to this heading">¶</a></h4>
+<p>object</p>
+</section>
+</section>
+<section id="spec-placement-tolerations">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-placement-tolerations"></span><h3>.spec.placement.tolerations[]<a class="headerlink" href="#spec-placement-tolerations" title="Link to this heading">¶</a></h3>
+<section id="id106">
+<h4>Description<a class="headerlink" href="#id106" title="Link to this heading">¶</a></h4>
+<p>The pod this Toleration is attached to tolerates any taint that matches the triple &lt;key,value,effect&gt; using the matching operator &lt;operator&gt;.</p>
+</section>
+<section id="id107">
+<h4>Type<a class="headerlink" href="#id107" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>effect</p></td>
+<td><p>string</p></td>
+<td><p>Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.</p></td>
+</tr>
+<tr class="row-odd"><td><p>key</p></td>
+<td><p>string</p></td>
+<td><p>Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.</p></td>
+</tr>
+<tr class="row-even"><td><p>operator</p></td>
+<td><p>string</p></td>
+<td><p>Operator represents a key’s relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.</p></td>
+</tr>
+<tr class="row-odd"><td><p>tolerationSeconds</p></td>
+<td><p>integer</p></td>
+<td><p>TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.</p></td>
+</tr>
+<tr class="row-even"><td><p>value</p></td>
+<td><p>string</p></td>
+<td><p>Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="spec-sysctls">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-spec-sysctls"></span><h3>.spec.sysctls[]<a class="headerlink" href="#spec-sysctls" title="Link to this heading">¶</a></h3>
+<section id="id108">
+<h4>Description<a class="headerlink" href="#id108" title="Link to this heading">¶</a></h4>
+<p>Sysctl defines a kernel parameter to be set</p>
+</section>
+<section id="id109">
+<h4>Type<a class="headerlink" href="#id109" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>name</p></td>
+<td><p>string</p></td>
+<td><p>Name of a property to set</p></td>
+</tr>
+<tr class="row-odd"><td><p>value</p></td>
+<td><p>string</p></td>
+<td><p>Value of a property to set</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="status">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-status"></span><h3>.status<a class="headerlink" href="#status" title="Link to this heading">¶</a></h3>
+<section id="id110">
+<h4>Description<a class="headerlink" href="#id110" title="Link to this heading">¶</a></h4>
+</section>
+<section id="id111">
+<h4>Type<a class="headerlink" href="#id111" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-status-conditions"><span class="std std-ref">conditions</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>conditions represents the latest available observations of current state.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#api-scylla-scylladb-com-nodeconfigs-v1alpha1-status-nodestatuses"><span class="std std-ref">nodeStatuses</span></a></p></td>
+<td><p>array (object)</p></td>
+<td><p>nodeStatuses hold the status for each tuned node.</p></td>
+</tr>
+<tr class="row-even"><td><p>observedGeneration</p></td>
+<td><p>integer</p></td>
+<td><p>observedGeneration indicates the most recent generation observed by the controller.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="status-conditions">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-status-conditions"></span><h3>.status.conditions[]<a class="headerlink" href="#status-conditions" title="Link to this heading">¶</a></h3>
+<section id="id112">
+<h4>Description<a class="headerlink" href="#id112" title="Link to this heading">¶</a></h4>
+</section>
+<section id="id113">
+<h4>Type<a class="headerlink" href="#id113" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>lastTransitionTime</p></td>
+<td><p>string</p></td>
+<td><p>lastTransitionTime is last time the condition transitioned from one status to another.</p></td>
+</tr>
+<tr class="row-odd"><td><p>message</p></td>
+<td><p>string</p></td>
+<td><p>message is a human-readable message indicating details about the transition.</p></td>
+</tr>
+<tr class="row-even"><td><p>observedGeneration</p></td>
+<td><p>integer</p></td>
+<td><p>observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.</p></td>
+</tr>
+<tr class="row-odd"><td><p>reason</p></td>
+<td><p>string</p></td>
+<td><p>reason is the reason for condition’s last transition.</p></td>
+</tr>
+<tr class="row-even"><td><p>status</p></td>
+<td><p>string</p></td>
+<td><p>status represents the state of the condition, one of True, False, or Unknown.</p></td>
+</tr>
+<tr class="row-odd"><td><p>type</p></td>
+<td><p>string</p></td>
+<td><p>type is the type of the NodeConfig condition.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="status-nodestatuses">
+<span id="api-scylla-scylladb-com-nodeconfigs-v1alpha1-status-nodestatuses"></span><h3>.status.nodeStatuses[]<a class="headerlink" href="#status-nodestatuses" title="Link to this heading">¶</a></h3>
+<section id="id114">
+<h4>Description<a class="headerlink" href="#id114" title="Link to this heading">¶</a></h4>
+</section>
+<section id="id115">
+<h4>Type<a class="headerlink" href="#id115" title="Link to this heading">¶</a></h4>
+<p>object</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 13.5%" />
+<col style="width: 5.4%" />
+<col style="width: 81.1%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Property</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>name</p></td>
+<td><p>string</p></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p>tunedContainers</p></td>
+<td><p>array (string)</p></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p>tunedNode</p></td>
+<td><p>boolean</p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+</section>
+
+                </div>
+                
+                    <div class="post-content">
+                        
+    <div class="feedback-container">
+        <p class="feedback-container__title">Was this page helpful?</p>
+        <span data-tooltip tabindex="1" title="Yes" data-position="top">
+            <button class="feedback-container__button" id="feedback-positive">
+                <i class="feedback-container__icon icon-docs-thumbs-up"></i>
+            </button>
+        </span>
+        <span data-tooltip tabindex="1" title="No" data-position="top">
+            <button class="feedback-container__button" id="feedback-negative">
+                <i class="feedback-container__icon icon-docs-thumbs-down"></i>
+            </button>
+        </span>
+        <div class="feedback-container__message" id="feedback-message"></div>
+    </div>
+
+    <script>
+        function resetFeedbackButtonActive() {
+            const feedbackButtons = document.getElementsByClassName('feedback-container__button');
+            for (let i = 0; i < feedbackButtons.length; i++) {
+                feedbackButtons[i].classList.remove('active');
+            }
+        }
+
+        function showMessage(liked) {
+            const feedbackMessage = document.getElementById('feedback-message');
+            const themeGithubRepository = true;
+            let message = 'Great! Thanks for your feedback.';
+            if (themeGithubRepository && !liked) {
+                message = "Thanks for your feedback! Please don't hesitate to <a href='https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page NodeConfig (scylla.scylladb.com/v1alpha1)&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.19/reference/api/groups/scylla.scylladb.com/nodeconfigs%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation'>create an issue</a> if you have any suggestions on how we can improve.";
+            }
+            feedbackMessage.innerHTML = message;
+        }
+
+        function sendGaEvent(liked) {
+            const event_label = liked ? "positive" : "negative";
+            const event = "feedback_" + event_label;
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': event,
+            });
+        }
+
+        const positiveFeebackButton = document.getElementById('feedback-positive');
+        const negativeFeedbackButton = document.getElementById('feedback-negative');
+
+        positiveFeebackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(true);
+            showMessage(true);
+            positiveFeebackButton.classList.add('active');
+        });
+
+        negativeFeedbackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(false);
+            showMessage(false);
+            negativeFeedbackButton.classList.add('active');
+        });
+    </script>
+
+                        <div class="content-navigation">
+    <div class="navigation navigation--prev">
+        
+            <a class="navigation__link" href="../scylla.scylladb.com.html">
+                <button class="navigation__button">
+                    <i class="icon-chevron-left"></i>
+                </button>
+                <div class="navigation__title">
+                    <span class="colored">PREVIOUS</span> <br />scylla.scylladb.com
+                </div>
+            </a>
+        
+    </div>
+    <div class="navigation navigation--next">
+        
+            <a class="navigation__link" href="remotekubernetesclusters.html">
+                <div class="navigation__title">
+                    <span class="colored">NEXT</span> <br />RemoteKubernetesCluster (scylla.scylladb.com/v1alpha1)
+                </div>
+                <button class="navigation__button">
+                    <i class="icon-chevron-right"></i>
+                </button>
+            </a>
+        
+    </div>
+</div>
+                        <!-- Post content text -->
+                    </div>
+                
+
+                
+                    </div>
+                    <div class="sidebar-right large-order-3">
+                        <div class="secondary-side-nav custom-scroll-bar">
+    
+    <ul class="contribute">
+        <li class="contribute__item">
+            <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page NodeConfig (scylla.scylladb.com/v1alpha1)&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.19/reference/api/groups/scylla.scylladb.com/nodeconfigs%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation"
+               target="_blank">
+                <i class="icon-github" aria-hidden="true"></i>Create an issue
+            </a>
+        </li>
+        
+            <li class="contribute__item">
+                <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/edit/master/docs/source/reference/api/groups/scylla.scylladb.com/nodeconfigs.rst"
+                   target="_blank">
+                    <i class="icon-edit" aria-hidden="true"></i>Edit this page
+                </a>
+            </li>
+        
+    </ul>
+
+    
+        <div class="secondary-side-nav__content">
+            <p class="topic-title">On this page</p>
+            <ul>
+<li><a class="reference internal" href="#">NodeConfig (scylla.scylladb.com/v1alpha1)</a><ul>
+<li><a class="reference internal" href="#description">Description</a></li>
+<li><a class="reference internal" href="#specification">Specification</a><ul>
+<li><a class="reference internal" href="#metadata">.metadata</a><ul>
+<li><a class="reference internal" href="#id1">Description</a></li>
+<li><a class="reference internal" href="#type">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec">.spec</a><ul>
+<li><a class="reference internal" href="#id2">Description</a></li>
+<li><a class="reference internal" href="#id3">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-localdisksetup">.spec.localDiskSetup</a><ul>
+<li><a class="reference internal" href="#id4">Description</a></li>
+<li><a class="reference internal" href="#id5">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-localdisksetup-filesystems">.spec.localDiskSetup.filesystems[]</a><ul>
+<li><a class="reference internal" href="#id6">Description</a></li>
+<li><a class="reference internal" href="#id7">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-localdisksetup-loopdevices">.spec.localDiskSetup.loopDevices[]</a><ul>
+<li><a class="reference internal" href="#id8">Description</a></li>
+<li><a class="reference internal" href="#id9">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-localdisksetup-mounts">.spec.localDiskSetup.mounts[]</a><ul>
+<li><a class="reference internal" href="#id10">Description</a></li>
+<li><a class="reference internal" href="#id11">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-localdisksetup-raids">.spec.localDiskSetup.raids[]</a><ul>
+<li><a class="reference internal" href="#id12">Description</a></li>
+<li><a class="reference internal" href="#id13">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-localdisksetup-raids-raid0">.spec.localDiskSetup.raids[].RAID0</a><ul>
+<li><a class="reference internal" href="#id14">Description</a></li>
+<li><a class="reference internal" href="#id15">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-localdisksetup-raids-raid0-devices">.spec.localDiskSetup.raids[].RAID0.devices</a><ul>
+<li><a class="reference internal" href="#id16">Description</a></li>
+<li><a class="reference internal" href="#id17">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement">.spec.placement</a><ul>
+<li><a class="reference internal" href="#id18">Description</a></li>
+<li><a class="reference internal" href="#id19">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity">.spec.placement.affinity</a><ul>
+<li><a class="reference internal" href="#id20">Description</a></li>
+<li><a class="reference internal" href="#id21">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity">.spec.placement.affinity.nodeAffinity</a><ul>
+<li><a class="reference internal" href="#id22">Description</a></li>
+<li><a class="reference internal" href="#id23">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution">.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[]</a><ul>
+<li><a class="reference internal" href="#id24">Description</a></li>
+<li><a class="reference internal" href="#id25">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference">.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference</a><ul>
+<li><a class="reference internal" href="#id26">Description</a></li>
+<li><a class="reference internal" href="#id27">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchexpressions">.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id28">Description</a></li>
+<li><a class="reference internal" href="#id29">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchfields">.spec.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference.matchFields[]</a><ul>
+<li><a class="reference internal" href="#id30">Description</a></li>
+<li><a class="reference internal" href="#id31">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution">.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution</a><ul>
+<li><a class="reference internal" href="#id32">Description</a></li>
+<li><a class="reference internal" href="#id33">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms">.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[]</a><ul>
+<li><a class="reference internal" href="#id34">Description</a></li>
+<li><a class="reference internal" href="#id35">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchexpressions">.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id36">Description</a></li>
+<li><a class="reference internal" href="#id37">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchfields">.spec.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchFields[]</a><ul>
+<li><a class="reference internal" href="#id38">Description</a></li>
+<li><a class="reference internal" href="#id39">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity">.spec.placement.affinity.podAffinity</a><ul>
+<li><a class="reference internal" href="#id40">Description</a></li>
+<li><a class="reference internal" href="#id41">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[]</a><ul>
+<li><a class="reference internal" href="#id42">Description</a></li>
+<li><a class="reference internal" href="#id43">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm</a><ul>
+<li><a class="reference internal" href="#id44">Description</a></li>
+<li><a class="reference internal" href="#id45">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector</a><ul>
+<li><a class="reference internal" href="#id46">Description</a></li>
+<li><a class="reference internal" href="#id47">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id48">Description</a></li>
+<li><a class="reference internal" href="#id49">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id50">Description</a></li>
+<li><a class="reference internal" href="#id51">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector</a><ul>
+<li><a class="reference internal" href="#id52">Description</a></li>
+<li><a class="reference internal" href="#id53">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id54">Description</a></li>
+<li><a class="reference internal" href="#id55">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels">.spec.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id56">Description</a></li>
+<li><a class="reference internal" href="#id57">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution">.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[]</a><ul>
+<li><a class="reference internal" href="#id58">Description</a></li>
+<li><a class="reference internal" href="#id59">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector">.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector</a><ul>
+<li><a class="reference internal" href="#id60">Description</a></li>
+<li><a class="reference internal" href="#id61">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions">.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id62">Description</a></li>
+<li><a class="reference internal" href="#id63">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels">.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id64">Description</a></li>
+<li><a class="reference internal" href="#id65">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector">.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector</a><ul>
+<li><a class="reference internal" href="#id66">Description</a></li>
+<li><a class="reference internal" href="#id67">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions">.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id68">Description</a></li>
+<li><a class="reference internal" href="#id69">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels">.spec.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id70">Description</a></li>
+<li><a class="reference internal" href="#id71">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity">.spec.placement.affinity.podAntiAffinity</a><ul>
+<li><a class="reference internal" href="#id72">Description</a></li>
+<li><a class="reference internal" href="#id73">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[]</a><ul>
+<li><a class="reference internal" href="#id74">Description</a></li>
+<li><a class="reference internal" href="#id75">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm</a><ul>
+<li><a class="reference internal" href="#id76">Description</a></li>
+<li><a class="reference internal" href="#id77">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector</a><ul>
+<li><a class="reference internal" href="#id78">Description</a></li>
+<li><a class="reference internal" href="#id79">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id80">Description</a></li>
+<li><a class="reference internal" href="#id81">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id82">Description</a></li>
+<li><a class="reference internal" href="#id83">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector</a><ul>
+<li><a class="reference internal" href="#id84">Description</a></li>
+<li><a class="reference internal" href="#id85">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id86">Description</a></li>
+<li><a class="reference internal" href="#id87">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels">.spec.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id88">Description</a></li>
+<li><a class="reference internal" href="#id89">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution">.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[]</a><ul>
+<li><a class="reference internal" href="#id90">Description</a></li>
+<li><a class="reference internal" href="#id91">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector">.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector</a><ul>
+<li><a class="reference internal" href="#id92">Description</a></li>
+<li><a class="reference internal" href="#id93">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions">.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id94">Description</a></li>
+<li><a class="reference internal" href="#id95">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels">.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id96">Description</a></li>
+<li><a class="reference internal" href="#id97">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector">.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector</a><ul>
+<li><a class="reference internal" href="#id98">Description</a></li>
+<li><a class="reference internal" href="#id99">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions">.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchExpressions[]</a><ul>
+<li><a class="reference internal" href="#id100">Description</a></li>
+<li><a class="reference internal" href="#id101">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-affinity-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels">.spec.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchLabels</a><ul>
+<li><a class="reference internal" href="#id102">Description</a></li>
+<li><a class="reference internal" href="#id103">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-nodeselector">.spec.placement.nodeSelector</a><ul>
+<li><a class="reference internal" href="#id104">Description</a></li>
+<li><a class="reference internal" href="#id105">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-placement-tolerations">.spec.placement.tolerations[]</a><ul>
+<li><a class="reference internal" href="#id106">Description</a></li>
+<li><a class="reference internal" href="#id107">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#spec-sysctls">.spec.sysctls[]</a><ul>
+<li><a class="reference internal" href="#id108">Description</a></li>
+<li><a class="reference internal" href="#id109">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#status">.status</a><ul>
+<li><a class="reference internal" href="#id110">Description</a></li>
+<li><a class="reference internal" href="#id111">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#status-conditions">.status.conditions[]</a><ul>
+<li><a class="reference internal" href="#id112">Description</a></li>
+<li><a class="reference internal" href="#id113">Type</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#status-nodestatuses">.status.nodeStatuses[]</a><ul>
+<li><a class="reference internal" href="#id114">Description</a></li>
+<li><a class="reference internal" href="#id115">Type</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    
+</div>
+                    </div>
+                    </div>
+                
+            </div>
+            <div class="sidebar-left  large-order-1">
+                
+                    
+                        <div id="side-nav" class="side-nav custom-scroll-bar" data-closable data-toggler=".show">
+    <button class="collapsible-button">
+        <i class="icon-docs-menu-collapse"></i>
+    </button>
+    <div class="side-nav-content custom-scroll-bar">
+        <div class="side-nav__title">
+            <a href="../../../../index.html">ScyllaDB Operator</a>
+        </div>
+        <div class="side-nav__search">
+            <div class="search-box">
+                <ci-search></ci-search>
+            </div>
+        </div>
+        <div class="side-nav__versions"><ul class="dropdown menu scylla-dropdown scylla-dropdown--versions" data-dropdown-menu>
+    <li class="scylla-dropdown__item">
+        <a class="scylla-dropdown__title" href="#">
+            
+                v1.19
+            
+            <i class="chevron icon-docs-chevron-right"></i>
+        </a>
+        <ul class="menu scylla-dropdown__content">
+            
+                
+                    <li>
+                        <a href="../../../../../master/reference/api/groups/scylla.scylladb.com/nodeconfigs.html">master</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../../../stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.html">v1.20</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="nodeconfigs.html">v1.19</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../../../v1.18/index.html">v1.18</a>
+                    </li>
+                
+            
+            
+        </ul>
+    </li>
+</ul></div>
+        <div class="side-nav__content">
+            <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../architecture/overview.html">Overview</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../architecture/storage/index.html">Storage</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../architecture/storage/overview.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../architecture/storage/local-csi-driver.html">Local CSI Driver</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../architecture/tuning.html">Tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../architecture/manager.html">ScyllaDB Manager</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../installation/index.html">Installation</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../installation/overview.html">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../installation/kubernetes-prerequisites.html">Kubernetes prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../installation/gitops.html">GitOps (kubectl)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../installation/helm.html">Helm</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../management/index.html">Management</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../management/sysctls.html">Configuring kernel parameters (sysctls)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../management/bootstrap-sync.html">Synchronising bootstrap operations in ScyllaDB clusters</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../management/upgrading/index.html">Upgrading</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../management/upgrading/upgrade.html">Upgrading Scylla Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../management/upgrading/upgrade-scylladb.html">Upgrading ScyllaDB clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../management/monitoring/index.html">Monitoring</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../management/monitoring/overview.html">ScyllaDB Monitoring overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../management/monitoring/setup.html">Setting up ScyllaDB Monitoring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../management/monitoring/exposing-grafana.html">Exposing Grafana</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../management/monitoring/external-prometheus-on-openshift.html">Setting up ScyllaDB Monitoring on OpenShift</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../resources/index.html">Resources</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../resources/overview.html">Overview</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../resources/scyllaclusters/index.html">ScyllaClusters</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label for="toctree-checkbox-8"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../resources/scyllaclusters/basics.html">ScyllaClusters</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../resources/scyllaclusters/clients/index.html">ScyllaDB clients</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label for="toctree-checkbox-9"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/clients/discovery.html">Discovering ScyllaDB Nodes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/clients/cql.html">Using CQL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/clients/alternator.html">Using Alternator (DynamoDB)</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../resources/scyllaclusters/nodeoperations/index.html">Node operations using Scylla Operator</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label for="toctree-checkbox-10"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/nodeoperations/scylla-upgrade.html">Upgrading version of Scylla</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/nodeoperations/replace-node.html">Replacing a Scylla node</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/nodeoperations/automatic-cleanup.html">Automatic cleanup and replacement in case when k8s node is lost</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/nodeoperations/maintenance-mode.html">Maintenance mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/nodeoperations/restore.html">Restore from backup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/nodeoperations/volume-expansion.html">Resizing storage in ScyllaCluster</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../../resources/scyllaclusters/multidc/index.html">Deploying multi-datacenter ScyllaDB clusters in Kubernetes</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label for="toctree-checkbox-11"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/common/multidc/eks.html">Build multiple Amazon EKS clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/common/multidc/gke.html">Build multiple GKE clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../resources/scyllaclusters/multidc/multidc.html">Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../resources/common/exposing.html">Exposing ScyllaDB cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../resources/scylladbclusters/index.html">ScyllaDBClusters</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label for="toctree-checkbox-12"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../resources/scylladbclusters/scylladbclusters.html">ScyllaDBClusters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../../resources/common/exposing.html">Exposing ScyllaDB cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../resources/nodeconfigs.html">NodeConfigs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../resources/scyllaoperatorconfigs.html">ScyllaOperatorConfigs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../resources/remotekubernetesclusters.html">RemoteKubernetesCluster</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../quickstarts/index.html">Quickstarts</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label for="toctree-checkbox-13"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../quickstarts/gke.html">Deploying ScyllaDB on GKE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../quickstarts/eks.html">Deploying ScyllaDB on EKS</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../../support/index.html">Support</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" type="checkbox"/><label for="toctree-checkbox-14"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../../support/overview.html">Support overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../support/known-issues.html">Known issues</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../../support/troubleshooting/index.html">Troubleshooting</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" type="checkbox"/><label for="toctree-checkbox-15"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../../support/troubleshooting/installation.html">Troubleshooting installation issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../support/must-gather.html">Gathering data with must-gather</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../../support/releases.html">Releases</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../../index.html">Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" type="checkbox"/><label for="toctree-checkbox-16"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../../index.html">API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" type="checkbox"/><label for="toctree-checkbox-17"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l3 current has-children"><a class="reference internal" href="../scylla.scylladb.com.html">scylla.scylladb.com</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" type="checkbox"/><label for="toctree-checkbox-18"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l4 current current-page"><a class="current reference internal" href="#">NodeConfig (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="remotekubernetesclusters.html">RemoteKubernetesCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="remoteowners.html">RemoteOwner (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scyllaclusters.html">ScyllaCluster (scylla.scylladb.com/v1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scylladbclusters.html">ScyllaDBCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scylladbdatacenternodesstatusreports.html">ScyllaDBDatacenterNodesStatusReport (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scylladbdatacenters.html">ScyllaDBDatacenter (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scylladbmanagerclusterregistrations.html">ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scylladbmanagertasks.html">ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scylladbmonitorings.html">ScyllaDBMonitoring (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="scyllaoperatorconfigs.html">ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../feature-gates.html">Feature Gates</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    </div>
+</div>
+                    
+                
+            </div>
+
+        </section>
+
+        <footer class="footer">
+    <div class="footer-group">
+        <div class="footer-top">
+            <a class="footer-logo" href="https://www.scylladb.com"></a>
+            <div class="footer-links">
+                <a class="footer-links__link" href="https://docs.scylladb.com/" target="_blank">Docs</a>
+                <a class="footer-links__link" href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html" target="_blank">Tutorials</a>
+                <a class="footer-links__link" href="https://university.scylladb.com/" target="_blank">University</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/contact-us/"
+                   target="_blank">Contact Us</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/" target="_blank">About Us</a>
+            </div>
+            <div class="footer-actions">
+                <a class="footer-actions__link" href="http://slack.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="User Slack channel" data-position="bottom">
+                        <i class="icon-slack"></i>
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="https://forum.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="Community forum" data-position="bottom">
+                        <i class="icon-docs-community"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        
+            <div class="footer-copyright">
+                
+                    
+                        &#169; 2026, ScyllaDB. All rights reserved.
+                    
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/tos/" target="_blank">Terms of Service</a>
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/privacy/" target="_blank">Privacy Policy</a>
+                    | ScyllaDB, and ScyllaDB Cloud, are registered trademarks of ScyllaDB, Inc.
+                
+            </div>
+        
+
+
+        <div class="footer-bottom">
+            
+                <div class="footer-bottom__last-updated">
+                    
+                        Last updated on 02 March 2026.
+                    
+                </div>
+            
+            <div class="footer-bottom__version">
+                Powered by
+                <a class="footer-bottom__link" href="http://sphinx-doc.org/">Sphinx 8.2.3</a> &amp;
+                <a class="footer-bottom__link" href="https://sphinx-theme.scylladb.com/">ScyllaDB Theme 1.8.10</a>
+            </div>
+        </div>
+    </div>
+    
+        <biel-button class="footer-ask-ai" project="ddfdo8m94k"
+                     header-title="ScyllaDB chatbot (beta)"
+                     button-position="bottom-right"
+                     modal-position="bottom-right"
+                     button-style="dark">
+            Ask AI
+        </biel-button>
+    
+</footer>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8P2JP" height="0" width="0"
+                    style="display: none; visibility: hidden"></iframe>
+        </noscript>
+    </body>
+
+</html>

@@ -1,0 +1,1010 @@
+
+
+<!DOCTYPE html>
+<html class="no-js" lang="en" style="visibility: hidden;">
+    
+    
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>
+             Setting up ScyllaDB Monitoring | ScyllaDB Docs 
+        </title>
+        <meta name="description" content="ScyllaDB is an Apache Cassandra-compatible NoSQL data store that can handle 1 million transactions per second on a single server." />
+        <link rel="icon" href="../../_static/img/favicon.ico" type="image/x-icon" />
+        <link rel="icon" href="../../_static/img/favicon-32x32.png" sizes="32x32" />
+        <link rel="icon" href="../../_static/img/favicon-228x228.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="../../_static/img/favicon-228x228.png" />
+        <meta name="msapplication-TileImage" href="../../_static/img/favicon-228x228.png" />
+
+        
+            
+            
+        
+
+        
+            
+            <link rel="canonical" href="https://operator.docs.scylladb.com/stable/management/monitoring/setup.html"/>
+        
+
+        <link rel="author" href="mailto:info@scylladb.com" />
+
+        
+            
+        <!-- increase expertrec loading priority-->
+        <link rel="dns-prefetch" href="https://cse.expertrec.com">
+
+        <!-- increase font loading priority -->
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preload" as="style"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- async CSS -->
+        <link rel="stylesheet" media="print" onload="this.onload=null;this.removeAttribute('media');"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- no-JS fallback -->
+        <noscript>
+            <link rel="stylesheet"
+                  href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+        </noscript>
+
+        
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.css">
+            <script type="module" src="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.esm.js"></script>
+        
+
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/css/main.css?v=0ebb4bd5" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/sphinx_collapse.css?v=226d88b4" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=714c36fc" />
+            
+        
+    
+        
+        
+            
+        <script type="text/javascript" src="../../_static/js/runtime.bundle.js"></script>
+        <script type="text/javascript" src="../../_static/js/main.bundle.js"></script>
+        
+            
+                <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+            
+        
+            
+                <script src="../../_static/doctools.js?v=9bcbadda"></script>
+            
+        
+            
+                <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+            
+        
+            
+                <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+            
+        
+            
+                <script src="../../_static/copybutton.js?v=f281be69"></script>
+            
+        
+    
+            
+                <!-- Local meta tags -->
+            
+            
+                <!-- Google Tag Manager docs -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-54NWVS4");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager global -->
+<script>
+    (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-T8P2JP");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Expertrec -->
+<script>
+    var id = "e2077224-9ccf-11e9-a0c9-0242ac130002";
+    var ci_search = document.createElement("script");
+    ci_search.type = "text/javascript";
+    ci_search.async = true;
+    ci_search.src = "https://cse.expertrec.com/api/js/ci_common.js?id=" + id;
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(ci_search, s);
+</script>
+<!-- End Expertrec -->
+            
+        
+    </head>
+
+    <body class="brand-product">
+        <section class="promo-banner  promo-banner--hide" style="display: none;">
+    <div class="promo-banner-wrapper">
+        <div class="promo-banner__content">
+            
+            <div class="promo-banner__title">ScyllaDB University Live | Free Virtual Training Event</div>
+            <a class="promo-banner__button button button--reverse" href="#"
+               target="_blank" rel="noopener noreferrer">Learn more</a>
+        </div>
+        <button class="promo-banner__close">
+            <i class="icon-cancel"></i>
+        </button>
+    </div>
+</section>
+        <header class="header">
+    <div class="header-logo">
+        <a class="header-logo__img" href="https://scylladb.com/">
+            <img src="../../_static/img/scylladb-logo-horizontal.svg" alt="ScyllaDB Documentation Logo" />
+        </a>
+        <span class="header-logo__bar"></span>
+        <a class="header-logo__text" href="https://docs.scylladb.com/">
+            Documentation
+        </a>
+    </div>
+    <div class="header-navigation">
+        <ul class="dropdown menu scylla-dropdown scylla-dropdown--header" data-dropdown-menu>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Deployments <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/scylla-cloud/">
+                            <i class="icon-docs-cloud"></i>Cloud</a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/manual/">
+                            <i class="icon-server"></i>Server</a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Tools <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://manager.docs.scylladb.com/">
+                            <i class="icon-docs-manager"></i>ScyllaDB Manager</a>
+                    </li>
+                    <li>
+                        <a href="https://monitoring.docs.scylladb.com/">
+                            <i class="icon-docs-monitoring"></i>ScyllaDB
+                            Monitoring Stack</a>
+                    </li>
+                    <li>
+                        <a href="https://operator.docs.scylladb.com/">
+                            <i class="icon-docs-operator"></i>ScyllaDB Operator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Drivers <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/cql-drivers">
+                            <i class="icon-docs-nsql-guides"></i>CQL Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/dynamo-drivers">
+                            <i class="icon-docs-alternator"></i>DynamoDB Drivers
+                        </a>
+
+                        <li>
+                            <a href="https://docs.scylladb.com/stable/versioning/driver-support">
+                                <i class="icon-docs-blog"></i>Supported Driver Versions
+                            </a>
+                        </li>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Resources
+                    <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://university.scylladb.com">
+                            <i class="icon-university"></i>
+                            ScyllaDB University
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://forum.scylladb.com">
+                            <i class="icon-docs-community"></i>
+                            Community Forum
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html">
+                            <i class="icon-docs-training"></i>
+                            Tutorials
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="header-button">
+            <a href="https://docs.scylladb.com/manual/stable/getting-started/installation-common/scylla-web-installer.html" class="button"><i class="icon-download me-2"></i> Install</a>
+        </div>
+    </div>
+    <div class="header-search-box">
+        <i class="dark-theme-toggler icon-theme"></i>
+        <div class="search-box">
+            <ci-search></ci-search>
+        </div>
+        
+            <biel-button class="header-ask-ai" project="ddfdo8m94k"
+                         header-title="ScyllaDB chatbot (beta)"
+                         button-position="default"
+                         modal-position="bottom-right"
+                         button-style="dark">
+                Ask AI
+            </biel-button>
+        
+    </div>
+    <div class="side-nav-toggle">
+    <i class="dark-theme-toggler icon-theme"></i>
+    <div class="side-nav-toggle__button" data-toggle="side-nav">
+        <i class="icon-menu"></i>
+    </div>
+</div>
+</header>
+        <div class="title"></div>
+        <section
+            class="layout  layout--sidebar layout--has-secondary-sidebar ">
+            <div class="content large-order-2">
+                
+                    <div class="pre-content">
+                        <div class="breadcrumbs">
+    <span class="bread__item">
+        <a href="https://docs.scylladb.com"
+           class="bread__highlight">
+            <i class="icon-home"></i> ScyllaDB Docs
+        </a>
+    </span>
+    <span class="bread__item">
+        <a href="../../index.html"
+           class="bread__highlight">
+            ScyllaDB Operator
+        </a>
+    </span>
+    
+        <span class="bread__item">
+            <a href="../index.html" class="bread__highlight">
+                Management
+            </a>
+        </span>
+    
+        <span class="bread__item">
+            <a href="index.html" class="bread__highlight">
+                Monitoring
+            </a>
+        </span>
+    
+    <span class="bread__item bread__item--last">Setting up ScyllaDB Monitoring</span>
+</div>
+                    </div>
+                
+                
+                    <div class="sidebar-right-layout">
+                        <div class="body-container">
+                
+
+                <div class="content-body">
+                    
+                        
+    <div class="admonition caution">
+        <p class="admonition-title">Caution</p>
+        <p>
+            
+                You're viewing documentation for a previous version of ScyllaDB Operator.
+            
+            <a href="../../../stable/management/monitoring/setup.html">Switch to the latest stable version.</a>
+        </p>
+    </div>
+
+                    
+
+                    <section id="setting-up-scylladb-monitoring">
+<h1>Setting up ScyllaDB Monitoring<a class="headerlink" href="#setting-up-scylladb-monitoring" title="Link to this heading">¶</a></h1>
+<p>This guide will walk you through setting up a complete monitoring stack for your ScyllaDB clusters using the
+<a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code></span></a> custom resource and an external <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance.</p>
+<p>The guide assumes you have read the <a class="reference internal" href="overview.html"><span class="std std-doc">overview</span></a> of ScyllaDB monitoring and are familiar with the concepts of Prometheus and Grafana.
+It doesn’t cover every possible configuration option, but it will highlight the most important ones. For a complete reference of all configuration options,
+see the <a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code> API reference</span></a>.</p>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">¶</a></h2>
+<p>Before you can set up your ScyllaDB monitoring, you need Scylla Operator (along with the Prometheus Operator) and a <code class="docutils literal notranslate"><span class="pre">ScyllaCluster</span></code>
+already installed in your Kubernetes cluster. For more information on how to deploy Scylla Operator, see <a class="reference internal" href="../../installation/overview.html"><span class="std std-doc">the installation guide</span></a>.</p>
+</section>
+<section id="deploy-external-prometheus">
+<h2>Deploy external Prometheus<a class="headerlink" href="#deploy-external-prometheus" title="Link to this heading">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In this guide, we will deploy an external <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance that will be managed outside of <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code> by the Prometheus Operator.
+If you already have an existing <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance in your cluster that you want to use, you can skip this step.</p>
+</div>
+<section id="create-serviceaccount-for-prometheus">
+<h3>Create ServiceAccount for Prometheus<a class="headerlink" href="#create-serviceaccount-for-prometheus" title="Link to this heading">¶</a></h3>
+<p>Prometheus needs a <code class="docutils literal notranslate"><span class="pre">ServiceAccount</span></code> to operate. You can create it using the following manifest:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>create<span class="w"> </span>serviceaccount<span class="w"> </span>prometheus<span class="w"> </span>-n<span class="w"> </span>scylla
+</pre></div>
+</div>
+</section>
+<section id="create-clusterrole-and-clusterrolebinding-for-prometheus">
+<h3>Create ClusterRole and ClusterRoleBinding for Prometheus<a class="headerlink" href="#create-clusterrole-and-clusterrolebinding-for-prometheus" title="Link to this heading">¶</a></h3>
+<p>Prometheus needs certain permissions to operate. You can create a <code class="docutils literal notranslate"><span class="pre">ClusterRole</span></code> and a <code class="docutils literal notranslate"><span class="pre">ClusterRoleBinding</span></code> that will bind
+the role to the <code class="docutils literal notranslate"><span class="pre">ServiceAccount</span></code> created above using the following manifests:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rbac.authorization.k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterRole</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="nt">rules</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nodes</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nodes/metrics</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">services</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">endpoints</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pods</span>
+<span class="w">    </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;get&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;list&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;watch&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">configmaps</span>
+<span class="w">    </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;get&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">apiGroups</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">discovery.k8s.io</span>
+<span class="w">    </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">endpointslices</span>
+<span class="w">    </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;get&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;list&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;watch&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">apiGroups</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">networking.k8s.io</span>
+<span class="w">    </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ingresses</span>
+<span class="w">    </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;get&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;list&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;watch&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">nonResourceURLs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;/metrics&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;get&quot;</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rbac.authorization.k8s.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterRoleBinding</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="nt">roleRef</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">apiGroup</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rbac.authorization.k8s.io</span>
+<span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterRole</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="nt">subjects</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ServiceAccount</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scylla</span>
+</pre></div>
+</div>
+<p>Apply them using the following commands:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>apply<span class="w"> </span>-n<span class="w"> </span>scylla<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="o">=</span>https://raw.githubusercontent.com/scylladb/scylla-operator/v1.19/examples/monitoring/v1alpha1/prometheus.clusterrole.yaml
+kubectl<span class="w"> </span>apply<span class="w"> </span>-n<span class="w"> </span>scylla<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="o">=</span>https://raw.githubusercontent.com/scylladb/scylla-operator/v1.19/examples/monitoring/v1alpha1/prometheus.clusterrolebinding.yaml
+</pre></div>
+</div>
+</section>
+<section id="create-service-for-prometheus">
+<h3>Create Service for Prometheus<a class="headerlink" href="#create-service-for-prometheus" title="Link to this heading">¶</a></h3>
+<p>Prometheus needs a <code class="docutils literal notranslate"><span class="pre">Service</span></code> to be accessible within the cluster. You can create it using the following manifest:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Service</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterIP</span>
+<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">app.kubernetes.io/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="w">      </span><span class="nt">app.kubernetes.io/instance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="w">      </span><span class="nt">prometheus</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="w">  </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">web</span>
+<span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TCP</span>
+<span class="w">      </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9090</span>
+</pre></div>
+</div>
+<p>Apply it using the following command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>apply<span class="w"> </span>-n<span class="w"> </span>scylla<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="o">=</span>https://raw.githubusercontent.com/scylladb/scylla-operator/v1.19/examples/monitoring/v1alpha1/prometheus.service.yaml
+</pre></div>
+</div>
+</section>
+<section id="deploy-prometheus-instance">
+<h3>Deploy Prometheus instance<a class="headerlink" href="#deploy-prometheus-instance" title="Link to this heading">¶</a></h3>
+<p>When deploying a <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code>, you need to ensure <code class="docutils literal notranslate"><span class="pre">serviceAccountName</span></code> and <code class="docutils literal notranslate"><span class="pre">serviceName</span></code> are set correctly to the values created above:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">serviceAccountName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;prometheus&quot;</span>
+<span class="w">  </span><span class="nt">serviceName</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;prometheus&quot;</span>
+</pre></div>
+</div>
+<p>You also need to ensure that your <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance is configured to discover and scrape the
+<code class="docutils literal notranslate"><span class="pre">ServiceMonitor</span></code> and <code class="docutils literal notranslate"><span class="pre">PrometheusRule</span></code> resources created by <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code>. This requires setting the
+<code class="docutils literal notranslate"><span class="pre">serviceMonitorSelector</span></code> and <code class="docutils literal notranslate"><span class="pre">ruleSelector</span></code> in the <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> resource to match the labels used by <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code>, like so:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">serviceMonitorSelector</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">scylla-operator.scylladb.com/scylladbmonitoring-name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;example&quot;</span>
+<span class="nt">ruleSelector</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">scylla-operator.scylladb.com/scylladbmonitoring-name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;example&quot;</span>
+</pre></div>
+</div>
+<section id="monitoring-multiple-scyllaclusters-with-a-single-prometheus">
+<h4>Monitoring multiple ScyllaClusters with a single Prometheus<a class="headerlink" href="#monitoring-multiple-scyllaclusters-with-a-single-prometheus" title="Link to this heading">¶</a></h4>
+<p>If you have more than one <code class="docutils literal notranslate"><span class="pre">ScyllaCluster</span></code> in your Kubernetes cluster, and you want to monitor all of them using the same <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance,
+you can customize the selectors to match <code class="docutils literal notranslate"><span class="pre">ServiceMonitors</span></code> and <code class="docutils literal notranslate"><span class="pre">PrometheusRules</span></code> created for multiple <code class="docutils literal notranslate"><span class="pre">ScyllaClusters</span></code>.</p>
+<p>Assuming you’re going to create two <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code> objects named <code class="docutils literal notranslate"><span class="pre">cluster-1-monitoring</span></code> and <code class="docutils literal notranslate"><span class="pre">cluster-2-monitoring</span></code>
+for two different <code class="docutils literal notranslate"><span class="pre">ScyllaClusters</span></code> in two distinct namespaces, you can set the selectors like this so that the <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance
+will scrape both of them:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">serviceMonitorNamespaceSelector</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span><span class="w"> </span><span class="c1"># Select ServiceMonitors in all namespaces.</span>
+<span class="nt">serviceMonitorSelector</span><span class="p">:</span><span class="w"> </span><span class="c1"># Select ServiceMonitors created by multiple ScyllaDBMonitoring instances.</span>
+<span class="w">  </span><span class="nt">matchExpressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scylla-operator.scylladb.com/scylladbmonitoring-name</span>
+<span class="w">      </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">In</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;cluster-1-monitoring&quot;</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;cluster-2-monitoring&quot;</span>
+<span class="nt">ruleNamespaceSelector</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span><span class="w"> </span><span class="c1"># Select Rules in all namespaces.</span>
+<span class="nt">ruleSelector</span><span class="p">:</span><span class="w"> </span><span class="c1"># Select Rules created by multiple ScyllaDBMonitoring instances.</span>
+<span class="w">  </span><span class="nt">matchExpressions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scylla-operator.scylladb.com/scylladbmonitoring-name</span>
+<span class="w">      </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">In</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;cluster-1-monitoring&quot;</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;cluster-2-monitoring&quot;</span>
+</pre></div>
+</div>
+<p>In this case, we’re setting <code class="docutils literal notranslate"><span class="pre">serviceMonitorNamespaceSelector</span></code> and <code class="docutils literal notranslate"><span class="pre">ruleNamespaceSelector</span></code> to an empty selector, which means that <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code>
+will look for <code class="docutils literal notranslate"><span class="pre">ServiceMonitors</span></code> and <code class="docutils literal notranslate"><span class="pre">PrometheusRules</span></code> in all namespaces.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If you want to monitor multiple <code class="docutils literal notranslate"><span class="pre">ScyllaClusters</span></code> using a single <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance, ensure all selected <code class="docutils literal notranslate"><span class="pre">ScyllaClusters</span></code>
+have unique names across the entire Kubernetes cluster (not just within their namespaces).
+Our monitoring setup cannot currently distinguish metrics collected from <code class="docutils literal notranslate"><span class="pre">ScyllaClusters</span></code> with colliding names, even if
+they are in different namespaces.</p>
+</div>
+<p>Please refer to the <a class="reference external" href="https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.PrometheusSpec">Prometheus Operator documentation</a>
+for more details on how to configure selectors in the <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> specification.</p>
+</section>
+<section id="deploy-prometheus">
+<h4>Deploy Prometheus<a class="headerlink" href="#deploy-prometheus" title="Link to this heading">¶</a></h4>
+<p>You can deploy a <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance by executing the following command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>apply<span class="w"> </span>-n<span class="w"> </span>scylla<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="o">=</span>https://raw.githubusercontent.com/scylladb/scylla-operator/v1.19/examples/monitoring/v1alpha1/prometheus.yaml
+</pre></div>
+</div>
+</section>
+<section id="wait-for-prometheus-to-roll-out">
+<h4>Wait for Prometheus to roll out<a class="headerlink" href="#wait-for-prometheus-to-roll-out" title="Link to this heading">¶</a></h4>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n scylla rollout status --timeout=5m statefulset.apps/prometheus-prometheus</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="configure-scylladbmonitoring">
+<h2>Configure ScyllaDBMonitoring<a class="headerlink" href="#configure-scylladbmonitoring" title="Link to this heading">¶</a></h2>
+<p>To set up the monitoring stack, you, finally, need to create a <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code> object.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you want to customize the <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code> configuration, we will explain the important configuration options in the following sections.</p>
+</div>
+<section id="endpoints-selector">
+<h3>Endpoints selector<a class="headerlink" href="#endpoints-selector" title="Link to this heading">¶</a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">endpointsSelector</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">app.kubernetes.io/name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scylla</span>
+<span class="w">    </span><span class="nt">scylla-operator.scylladb.com/scylla-service-type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">member</span>
+<span class="w">    </span><span class="nt">scylla/cluster</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scylla</span><span class="w"> </span><span class="c1"># Replace with your ScyllaCluster name.</span>
+</pre></div>
+</div>
+<p>This field is used to select the ScyllaDB nodes that will be monitored. In <code class="docutils literal notranslate"><span class="pre">matchLabels</span></code> you should specify the labels that match the ScyllaDB
+Services’ labels that are added by Scylla Operator:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scylla-operator.scylladb.com/scylla-service-type:</span> <span class="pre">member</span></code> - This is a static label that’s always added to each ScyllaDB node Service.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scylla/cluster</span></code> - This label’s value depends on your ScyllaCluster name. Replace it with the actual name of your <code class="docutils literal notranslate"><span class="pre">ScyllaCluster</span></code>.</p></li>
+</ul>
+</section>
+<section id="prometheus-configuration">
+<h3>Prometheus configuration<a class="headerlink" href="#prometheus-configuration" title="Link to this heading">¶</a></h3>
+<p>By default, <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code> deploys a <code class="docutils literal notranslate"><span class="pre">Prometheus</span></code> instance for you (Managed mode). However, this mode is deprecated,
+and we recommend using an existing Prometheus instance instead (External mode). External mode is used in the example manifest.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">components</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">prometheus</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">External</span>
+</pre></div>
+</div>
+</section>
+<section id="grafana-configuration">
+<h3>Grafana configuration<a class="headerlink" href="#grafana-configuration" title="Link to this heading">¶</a></h3>
+<p>You can configure various aspects of the Grafana instance that will be deployed for you under <code class="docutils literal notranslate"><span class="pre">spec.components.grafana</span></code>). You can set resource requests
+and limits (under <code class="docutils literal notranslate"><span class="pre">resources</span></code>), persistency (under <code class="docutils literal notranslate"><span class="pre">storage</span></code>), workload placement (under <code class="docutils literal notranslate"><span class="pre">placement</span></code>), Grafana authentication
+(under <code class="docutils literal notranslate"><span class="pre">authentication</span></code>), and serving certificate (under <code class="docutils literal notranslate"><span class="pre">servingCertSecretName</span></code>).</p>
+<p>If you use the <code class="docutils literal notranslate"><span class="pre">External</span></code> Prometheus mode, you should configure a datasource (under <code class="docutils literal notranslate"><span class="pre">datasources</span></code>) that points to your existing Prometheus instance.
+In the datasource configuration, you should use the internal Kubernetes <code class="docutils literal notranslate"><span class="pre">Service</span></code> name of your Prometheus instance as the URL (<code class="docutils literal notranslate"><span class="pre">http://prometheus.scylla.svc.cluster.local:9090</span></code> in this example).
+Depending on your Prometheus configuration, you may also need to configure TLS (under <code class="docutils literal notranslate"><span class="pre">tls</span></code>) and authentication (under <code class="docutils literal notranslate"><span class="pre">auth</span></code>).</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">datasources</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prometheus</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://prometheus.scylla.svc.cluster.local:9090</span>
+<span class="w">    </span><span class="nt">prometheusOptions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="deploy-scylladbmonitoring">
+<h2>Deploy ScyllaDBMonitoring<a class="headerlink" href="#deploy-scylladbmonitoring" title="Link to this heading">¶</a></h2>
+<p>Deploy the monitoring using kubectl:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>kubectl<span class="w"> </span>apply<span class="w"> </span>-n<span class="w"> </span>scylla<span class="w"> </span>--server-side<span class="w"> </span>-f<span class="o">=</span>https://raw.githubusercontent.com/scylladb/scylla-operator/v1.19/examples/monitoring/v1alpha1/scylladbmonitoring.yaml
+</pre></div>
+</div>
+<p>ScyllaDB Operator will notice the new <code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code> object, and it will reconcile all necessary resources.</p>
+<section id="wait-for-scylladbmonitoring-to-roll-out">
+<h3>Wait for ScyllaDBMonitoring to roll out<a class="headerlink" href="#wait-for-scylladbmonitoring-to-roll-out" title="Link to this heading">¶</a></h3>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl wait -n scylla --timeout=5m --for=&#39;condition=Available=True&#39; scylladbmonitorings.scylla.scylladb.com/example</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">ScyllaDBMonitoring</span></code>’s <code class="docutils literal notranslate"><span class="pre">Available</span></code> condition will be set to <code class="docutils literal notranslate"><span class="pre">True</span></code> when all managed resources are created. However, it doesn’t
+guarantee that all resources are fully rolled out. You should still wait for Grafana to be fully rolled out
+before accessing it.</p>
+</div>
+</section>
+<section id="wait-for-grafana-to-roll-out">
+<h3>Wait for Grafana to roll out<a class="headerlink" href="#wait-for-grafana-to-roll-out" title="Link to this heading">¶</a></h3>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl rollout status -n scylla --timeout=5m deployments.apps/example-grafana</span>
+</pre></div>
+</div>
+<p>At this point, you should have a fully functional monitoring stack for your ScyllaDB cluster.</p>
+<p>To learn how to access Grafana, see the <a class="reference internal" href="exposing-grafana.html"><span class="std std-doc">Exposing Grafana</span></a> guide.</p>
+</section>
+</section>
+</section>
+
+                </div>
+                
+                    <div class="post-content">
+                        
+    <div class="feedback-container">
+        <p class="feedback-container__title">Was this page helpful?</p>
+        <span data-tooltip tabindex="1" title="Yes" data-position="top">
+            <button class="feedback-container__button" id="feedback-positive">
+                <i class="feedback-container__icon icon-docs-thumbs-up"></i>
+            </button>
+        </span>
+        <span data-tooltip tabindex="1" title="No" data-position="top">
+            <button class="feedback-container__button" id="feedback-negative">
+                <i class="feedback-container__icon icon-docs-thumbs-down"></i>
+            </button>
+        </span>
+        <div class="feedback-container__message" id="feedback-message"></div>
+    </div>
+
+    <script>
+        function resetFeedbackButtonActive() {
+            const feedbackButtons = document.getElementsByClassName('feedback-container__button');
+            for (let i = 0; i < feedbackButtons.length; i++) {
+                feedbackButtons[i].classList.remove('active');
+            }
+        }
+
+        function showMessage(liked) {
+            const feedbackMessage = document.getElementById('feedback-message');
+            const themeGithubRepository = true;
+            let message = 'Great! Thanks for your feedback.';
+            if (themeGithubRepository && !liked) {
+                message = "Thanks for your feedback! Please don't hesitate to <a href='https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Setting up ScyllaDB Monitoring&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.19/management/monitoring/setup%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation'>create an issue</a> if you have any suggestions on how we can improve.";
+            }
+            feedbackMessage.innerHTML = message;
+        }
+
+        function sendGaEvent(liked) {
+            const event_label = liked ? "positive" : "negative";
+            const event = "feedback_" + event_label;
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': event,
+            });
+        }
+
+        const positiveFeebackButton = document.getElementById('feedback-positive');
+        const negativeFeedbackButton = document.getElementById('feedback-negative');
+
+        positiveFeebackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(true);
+            showMessage(true);
+            positiveFeebackButton.classList.add('active');
+        });
+
+        negativeFeedbackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(false);
+            showMessage(false);
+            negativeFeedbackButton.classList.add('active');
+        });
+    </script>
+
+                        <div class="content-navigation">
+    <div class="navigation navigation--prev">
+        
+            <a class="navigation__link" href="overview.html">
+                <button class="navigation__button">
+                    <i class="icon-chevron-left"></i>
+                </button>
+                <div class="navigation__title">
+                    <span class="colored">PREVIOUS</span> <br />ScyllaDB Monitoring overview
+                </div>
+            </a>
+        
+    </div>
+    <div class="navigation navigation--next">
+        
+            <a class="navigation__link" href="exposing-grafana.html">
+                <div class="navigation__title">
+                    <span class="colored">NEXT</span> <br />Exposing Grafana
+                </div>
+                <button class="navigation__button">
+                    <i class="icon-chevron-right"></i>
+                </button>
+            </a>
+        
+    </div>
+</div>
+                        <!-- Post content text -->
+                    </div>
+                
+
+                
+                    </div>
+                    <div class="sidebar-right large-order-3">
+                        <div class="secondary-side-nav custom-scroll-bar">
+    
+    <ul class="contribute">
+        <li class="contribute__item">
+            <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Setting up ScyllaDB Monitoring&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/v1.19/management/monitoring/setup%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation"
+               target="_blank">
+                <i class="icon-github" aria-hidden="true"></i>Create an issue
+            </a>
+        </li>
+        
+            <li class="contribute__item">
+                <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/edit/master/docs/source/management/monitoring/setup.md"
+                   target="_blank">
+                    <i class="icon-edit" aria-hidden="true"></i>Edit this page
+                </a>
+            </li>
+        
+    </ul>
+
+    
+        <div class="secondary-side-nav__content">
+            <p class="topic-title">On this page</p>
+            <ul>
+<li><a class="reference internal" href="#">Setting up ScyllaDB Monitoring</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#deploy-external-prometheus">Deploy external Prometheus</a><ul>
+<li><a class="reference internal" href="#create-serviceaccount-for-prometheus">Create ServiceAccount for Prometheus</a></li>
+<li><a class="reference internal" href="#create-clusterrole-and-clusterrolebinding-for-prometheus">Create ClusterRole and ClusterRoleBinding for Prometheus</a></li>
+<li><a class="reference internal" href="#create-service-for-prometheus">Create Service for Prometheus</a></li>
+<li><a class="reference internal" href="#deploy-prometheus-instance">Deploy Prometheus instance</a><ul>
+<li><a class="reference internal" href="#monitoring-multiple-scyllaclusters-with-a-single-prometheus">Monitoring multiple ScyllaClusters with a single Prometheus</a></li>
+<li><a class="reference internal" href="#deploy-prometheus">Deploy Prometheus</a></li>
+<li><a class="reference internal" href="#wait-for-prometheus-to-roll-out">Wait for Prometheus to roll out</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#configure-scylladbmonitoring">Configure ScyllaDBMonitoring</a><ul>
+<li><a class="reference internal" href="#endpoints-selector">Endpoints selector</a></li>
+<li><a class="reference internal" href="#prometheus-configuration">Prometheus configuration</a></li>
+<li><a class="reference internal" href="#grafana-configuration">Grafana configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#deploy-scylladbmonitoring">Deploy ScyllaDBMonitoring</a><ul>
+<li><a class="reference internal" href="#wait-for-scylladbmonitoring-to-roll-out">Wait for ScyllaDBMonitoring to roll out</a></li>
+<li><a class="reference internal" href="#wait-for-grafana-to-roll-out">Wait for Grafana to roll out</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    
+</div>
+                    </div>
+                    </div>
+                
+            </div>
+            <div class="sidebar-left  large-order-1">
+                
+                    
+                        <div id="side-nav" class="side-nav custom-scroll-bar" data-closable data-toggler=".show">
+    <button class="collapsible-button">
+        <i class="icon-docs-menu-collapse"></i>
+    </button>
+    <div class="side-nav-content custom-scroll-bar">
+        <div class="side-nav__title">
+            <a href="../../index.html">ScyllaDB Operator</a>
+        </div>
+        <div class="side-nav__search">
+            <div class="search-box">
+                <ci-search></ci-search>
+            </div>
+        </div>
+        <div class="side-nav__versions"><ul class="dropdown menu scylla-dropdown scylla-dropdown--versions" data-dropdown-menu>
+    <li class="scylla-dropdown__item">
+        <a class="scylla-dropdown__title" href="#">
+            
+                v1.19
+            
+            <i class="chevron icon-docs-chevron-right"></i>
+        </a>
+        <ul class="menu scylla-dropdown__content">
+            
+                
+                    <li>
+                        <a href="../../../master/management/monitoring/setup.html">master</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../stable/management/monitoring/setup.html">v1.20</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="setup.html">v1.19</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../v1.18/index.html">v1.18</a>
+                    </li>
+                
+            
+            
+        </ul>
+    </li>
+</ul></div>
+        <div class="side-nav__content">
+            <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../architecture/index.html">Architecture</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../architecture/overview.html">Overview</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../architecture/storage/index.html">Storage</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../architecture/storage/overview.html">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../architecture/storage/local-csi-driver.html">Local CSI Driver</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../architecture/tuning.html">Tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../architecture/manager.html">ScyllaDB Manager</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../installation/index.html">Installation</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../installation/overview.html">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation/kubernetes-prerequisites.html">Kubernetes prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation/gitops.html">GitOps (kubectl)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../installation/helm.html">Helm</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Management</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../sysctls.html">Configuring kernel parameters (sysctls)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bootstrap-sync.html">Synchronising bootstrap operations in ScyllaDB clusters</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../upgrading/index.html">Upgrading</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/upgrade.html">Upgrading Scylla Operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../upgrading/upgrade-scylladb.html">Upgrading ScyllaDB clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Monitoring</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="overview.html">ScyllaDB Monitoring overview</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Setting up ScyllaDB Monitoring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="exposing-grafana.html">Exposing Grafana</a></li>
+<li class="toctree-l3"><a class="reference internal" href="external-prometheus-on-openshift.html">Setting up ScyllaDB Monitoring on OpenShift</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../resources/index.html">Resources</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../resources/overview.html">Overview</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../resources/scyllaclusters/index.html">ScyllaClusters</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label for="toctree-checkbox-8"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../resources/scyllaclusters/basics.html">ScyllaClusters</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../resources/scyllaclusters/clients/index.html">ScyllaDB clients</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label for="toctree-checkbox-9"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/clients/discovery.html">Discovering ScyllaDB Nodes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/clients/cql.html">Using CQL</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/clients/alternator.html">Using Alternator (DynamoDB)</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../resources/scyllaclusters/nodeoperations/index.html">Node operations using Scylla Operator</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label for="toctree-checkbox-10"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/nodeoperations/scylla-upgrade.html">Upgrading version of Scylla</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/nodeoperations/replace-node.html">Replacing a Scylla node</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/nodeoperations/automatic-cleanup.html">Automatic cleanup and replacement in case when k8s node is lost</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/nodeoperations/maintenance-mode.html">Maintenance mode</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/nodeoperations/restore.html">Restore from backup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/nodeoperations/volume-expansion.html">Resizing storage in ScyllaCluster</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../resources/scyllaclusters/multidc/index.html">Deploying multi-datacenter ScyllaDB clusters in Kubernetes</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label for="toctree-checkbox-11"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/common/multidc/eks.html">Build multiple Amazon EKS clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/common/multidc/gke.html">Build multiple GKE clusters with inter-Kubernetes networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../resources/scyllaclusters/multidc/multidc.html">Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../resources/common/exposing.html">Exposing ScyllaDB cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../resources/scylladbclusters/index.html">ScyllaDBClusters</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label for="toctree-checkbox-12"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../resources/scylladbclusters/scylladbclusters.html">ScyllaDBClusters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../resources/common/exposing.html">Exposing ScyllaDB cluster</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../resources/nodeconfigs.html">NodeConfigs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../resources/scyllaoperatorconfigs.html">ScyllaOperatorConfigs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../resources/remotekubernetesclusters.html">RemoteKubernetesCluster</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../quickstarts/index.html">Quickstarts</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label for="toctree-checkbox-13"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstarts/gke.html">Deploying ScyllaDB on GKE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../quickstarts/eks.html">Deploying ScyllaDB on EKS</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../support/index.html">Support</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" type="checkbox"/><label for="toctree-checkbox-14"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../support/overview.html">Support overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../support/known-issues.html">Known issues</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../support/troubleshooting/index.html">Troubleshooting</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" type="checkbox"/><label for="toctree-checkbox-15"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../support/troubleshooting/installation.html">Troubleshooting installation issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../support/must-gather.html">Gathering data with must-gather</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../support/releases.html">Releases</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../reference/index.html">Reference</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" type="checkbox"/><label for="toctree-checkbox-16"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../reference/api/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" type="checkbox"/><label for="toctree-checkbox-17"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com.html">scylla.scylladb.com</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" type="checkbox"/><label for="toctree-checkbox-18"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/nodeconfigs.html">NodeConfig (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.html">RemoteKubernetesCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/remoteowners.html">RemoteOwner (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scyllaclusters.html">ScyllaCluster (scylla.scylladb.com/v1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbclusters.html">ScyllaDBCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.html">ScyllaDBDatacenterNodesStatusReport (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbdatacenters.html">ScyllaDBDatacenter (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.html">ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.html">ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.html">ScyllaDBMonitoring (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.html">ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../reference/feature-gates.html">Feature Gates</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    </div>
+</div>
+                    
+                
+            </div>
+
+        </section>
+
+        <footer class="footer">
+    <div class="footer-group">
+        <div class="footer-top">
+            <a class="footer-logo" href="https://www.scylladb.com"></a>
+            <div class="footer-links">
+                <a class="footer-links__link" href="https://docs.scylladb.com/" target="_blank">Docs</a>
+                <a class="footer-links__link" href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html" target="_blank">Tutorials</a>
+                <a class="footer-links__link" href="https://university.scylladb.com/" target="_blank">University</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/contact-us/"
+                   target="_blank">Contact Us</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/" target="_blank">About Us</a>
+            </div>
+            <div class="footer-actions">
+                <a class="footer-actions__link" href="http://slack.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="User Slack channel" data-position="bottom">
+                        <i class="icon-slack"></i>
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="https://forum.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="Community forum" data-position="bottom">
+                        <i class="icon-docs-community"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        
+            <div class="footer-copyright">
+                
+                    
+                        &#169; 2026, ScyllaDB. All rights reserved.
+                    
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/tos/" target="_blank">Terms of Service</a>
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/privacy/" target="_blank">Privacy Policy</a>
+                    | ScyllaDB, and ScyllaDB Cloud, are registered trademarks of ScyllaDB, Inc.
+                
+            </div>
+        
+
+
+        <div class="footer-bottom">
+            
+                <div class="footer-bottom__last-updated">
+                    
+                        Last updated on 02 March 2026.
+                    
+                </div>
+            
+            <div class="footer-bottom__version">
+                Powered by
+                <a class="footer-bottom__link" href="http://sphinx-doc.org/">Sphinx 8.2.3</a> &amp;
+                <a class="footer-bottom__link" href="https://sphinx-theme.scylladb.com/">ScyllaDB Theme 1.8.10</a>
+            </div>
+        </div>
+    </div>
+    
+        <biel-button class="footer-ask-ai" project="ddfdo8m94k"
+                     header-title="ScyllaDB chatbot (beta)"
+                     button-position="bottom-right"
+                     modal-position="bottom-right"
+                     button-style="dark">
+            Ask AI
+        </biel-button>
+    
+</footer>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8P2JP" height="0" width="0"
+                    style="display: none; visibility: hidden"></iframe>
+        </noscript>
+    </body>
+
+</html>

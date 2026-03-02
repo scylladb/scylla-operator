@@ -1,0 +1,77 @@
+# Overview
+
+There are generally 2 types of resources in Kubernetes: [namespaced](#namespaced-resources) and [cluster-scoped](#cluster-scoped-resources) resources.
+
+::::{tip}
+You can discover the available resources (for the installed version in your cluster) by running
+:::{code} bash
+kubectl api-resources --api-group=scylla.scylladb.com
+:::
+and explore their schema using
+:::{code} bash
+kubectl explain --api-version='scylla.scylladb.com/v1alpha1' NodeConfig.spec
+:::
+::::
+
+## Namespaced resources
+
+::::{grid} 1 1 2 3
+:gutter: 4
+
+:::{grid-item-card} {material-regular}`storage;2em` ScyllaClusters
+
+ScyllaCluster defines a **single datacenter** ScyllaDB cluster and manages the racks within.
++++
+[Learn more »](scyllaclusters/basics)
+:::
+
+:::{grid-item-card} {material-regular}`storage;2em` ScyllaDBClusters
+
+ScyllaDBCluster defines a **multi datacenter** ScyllaDB cluster spanned across multiple Kubernetes clusters and manages the datacenters and racks within.
++++
+[Learn more »](scylladbclusters/scylladbclusters)
+:::
+
+
+:::{grid-item-card} {material-round}`insights;2em` ScyllaDBMonitorings
+
+ScyllaDBMonitoring defines and manages a ScyllaDB monitoring stack.
++++
+[Learn more »](scylladbmonitorings)
+:::
+
+
+::::
+
+## Cluster scoped resources
+
+Cluster scoped resources declare the state for the whole cluster or control something at the cluster level which isn't multitenant.
+Therefore, working with these resources requires elevated privileges.
+
+Generally, there can be multiple instances of these resources but for some of them, like for [ScyllaOperatorConfigs](./scyllaoperatorconfigs.md), it only makes sense to have one instance. We call them *singletons* and the single instance is named `cluster`.
+
+::::{grid} 1 1 2 3
+:gutter: 4
+
+:::{grid-item-card} {material-regular}`bolt;2em` NodeConfigs
+
+NodeConfig manages setup and tuning for a set of Kubernetes nodes.
++++
+[Learn more »](nodeconfigs)
+:::
+
+:::{grid-item-card} {material-regular}`settings;2em` ScyllaOperatorConfigs
+
+ScyllaOperatorConfig configures the {{productName}} deployment and reports the status.
++++
+[Learn more »](scyllaoperatorconfigs)
+:::
+
+:::{grid-item-card} {material-regular}`settings;2em` RemoteKubernetesClusters
+
+RemoteKubernetesCluster configures the access for {{productName}} to remotely deployed Kubernetes clusters.
++++
+[Learn more »](remotekubernetesclusters)
+:::
+
+::::

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This scripts runs renovate in dry-run mode against the local config.
 # It can be used to check if changes to the config result in the expected updates.

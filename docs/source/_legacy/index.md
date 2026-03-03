@@ -8,7 +8,7 @@ hide-pre-content:
 hide-post-content:
 ---
 
-```{title} ScyllaDB Operator Documentation
+```{title} Legacy Documentation
 ```
 
 :::{toctree}

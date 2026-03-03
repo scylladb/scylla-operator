@@ -53,6 +53,10 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
+# Suppress warnings for orphan documents (files with :orphan: that are intentionally
+# not included in any toctree - used as holding files for Stage 2 content migration).
+suppress_warnings = ["toc.not_included"]
+
 # -- Options for myst parser
 myst_enable_extensions = ["colon_fence", "attrs_inline", "substitution", "attrs_block"]
 myst_heading_anchors = 6

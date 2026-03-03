@@ -5,7 +5,9 @@
 
 overview
 kubernetes-prerequisites
-gitops
+node-configuration
 helm
+gitops
 OpenShift <openshift>
+verify-installation
 :::

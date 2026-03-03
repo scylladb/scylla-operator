@@ -10,12 +10,12 @@ More over, ScyllaDB Operator implements additional features like performance tun
 While we do our best to implement these routines as generically as possible, sometimes there isn't any low level API to base them on and they may work only on a subset of platforms.
 
 :::{caution}
-We *strongly* recommend using a [supported Kubernetes environment](../support/releases.md#supported-kubernetes-environments).
+We *strongly* recommend using a [supported Kubernetes environment](../release-notes/releases.md#supported-kubernetes-environments).
 Issues on unsupported environments are unlikely to be addressed.
 :::
 
 :::{note}
-Before reporting an issue, please see our [support page](../support/overview.md) and [troubleshooting installation issues](../support/troubleshooting/installation)
+Before reporting an issue, please see our [support page](../support/overview.md) and [troubleshooting installation issues](../troubleshooting/installation-issues.md)
 :::
 
 ## ScyllaDB Operator components
@@ -30,14 +30,14 @@ This is by no means a complete list of all resources, rather it aims to show the
 ```
 
 :::{note}
-Depending on [which storage provisioner you choose](../architecture/storage/overview.md), the `local-csi-driver` may be replaced or complemented by a different component.
+Depending on [which storage provisioner you choose](../concepts/storage.md), the `local-csi-driver` may be replaced or complemented by a different component.
 :::
 
 ### ScyllaDB Operator
 
 ScyllaDB Operator contains the Kubernetes API extensions and corresponding controllers and admission hooks that run inside `scylla-operator` namespace.
 
-You can learn more about the APIs in [resources section](../resources/overview.md) and the [generated API reference](../reference/api/index.rst). 
+You can learn more about the APIs in [resources section](../concepts/crd-ecosystem.md) and the [generated API reference](../reference/api/index.rst). 
 
 ### ScyllaDB Manager
 
@@ -48,15 +48,15 @@ ScyllaDB Manager uses a small ScyllaCluster instance internally and thus depends
 
 ### NodeConfig
 
-[NodeConfig](../resources/nodeconfigs.md) is a cluster-scoped custom resource provided by ScyllaDB Operator that helps you set local disks on Kubernetes nodes, create and mount a file system, configure performance tuning and more. 
+[NodeConfig](../installation/nodeconfigs-old.md) is a cluster-scoped custom resource provided by ScyllaDB Operator that helps you set local disks on Kubernetes nodes, create and mount a file system, configure performance tuning and more. 
 
 ### ScyllaOperatorConfig
 
-[ScyllaOperatorConfig](../resources/scyllaoperatorconfigs.md) is a cluster-coped custom resource provided by ScyllaDB Operator to help you configure ScyllaDB Operator. It helps you configure auxiliary images, see which ones are in use and more. 
+[ScyllaOperatorConfig](../reference/scyllaoperatorconfig-options.md) is a cluster-coped custom resource provided by ScyllaDB Operator to help you configure ScyllaDB Operator. It helps you configure auxiliary images, see which ones are in use and more. 
 
 ### Local CSI driver
 
-ScyllaDB provides you with a custom [Local CSI driver](../architecture/storage/local-csi-driver.md) that lets you dynamically provision PersistentVolumes, share the disk space but still track the capacity and use quotas.
+ScyllaDB provides you with a custom [Local CSI driver](../concepts/local-csi-driver.md) that lets you dynamically provision PersistentVolumes, share the disk space but still track the capacity and use quotas.
 
 ## Installation
 
@@ -94,7 +94,7 @@ To avoid races, when you create a CRD, you need to wait for it to be propagated 
 
 :::{note}
 When you create [ValidatingWebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#webhook-configuration) or [MutatingWebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#webhook-configuration), you have to wait for the corresponding webhook deployments to be available, or the kubernetes-apiserver will fail all requests for resources affected by these webhook configurations.
-Also note that some platforms have non-conformant networking setups by default that prevents the kube-apiserver from talking to the webhooks - [see our troubleshooting guide for more info](../support/troubleshooting/installation.md#webhooks).
+Also note that some platforms have non-conformant networking setups by default that prevents the kube-apiserver from talking to the webhooks - [see our troubleshooting guide for more info](../troubleshooting/installation-issues.md#webhooks).
 ::: 
 
 #### GitOps
@@ -114,4 +114,4 @@ For details, please see the [dedicated section describing the deployment using H
 
 ## Upgrades
 
-Please see the [dedicated section describing the upgrade process](./../management/upgrading/upgrade.md).
+Please see the [dedicated section describing the upgrade process](../operations/upgrading/upgrade-operator.md).

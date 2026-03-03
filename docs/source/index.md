@@ -15,13 +15,15 @@ hide-post-content:
 :hidden:
 :maxdepth: 1
 
-architecture/index
+get-started/index
+concepts/index
 installation/index
-management/index
-resources/index
-quickstarts/index
-support/index
+tutorials/index
+operations/index
+troubleshooting/index
 reference/index
+release-notes/index
+support/index
 :::
 
 ```{hero-box}
@@ -37,7 +39,7 @@ It extends the Kubernetes APIs using [CustomResourceDefinitions(CRDs)](https://k
 ```
 
 ```{note}
-ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. By default, our examples use ScyllaDB Open Source. To make the switch to ScyllaDB Enterprise, you only have to [change the ScyllaCluster image repository](#scyllacluster-enterprise) and [adjust the ScyllaDB utils image using ScyllaOperatorConfig](resources/scyllaoperatorconfigs.md#tuning-with-scylladb-enterprise).
+ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. By default, our examples use ScyllaDB Open Source. To make the switch to ScyllaDB Enterprise, you only have to [change the ScyllaCluster image repository](#scyllacluster-enterprise) and [adjust the ScyllaDB utils image using ScyllaOperatorConfig](reference/scyllaoperatorconfig-options.md#tuning-with-scylladb-enterprise).
 ```
 
 ```{raw} html
@@ -54,9 +56,19 @@ ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. 
 :type: default
 
 ```{topic-box}
-:title: Architecture
+:title: Get Started
+:icon: icon-rocket
+:link: get-started/index
+:anchor: Learn more »
+:class: large-4
+
+Get it running right now. Quickstarts for local, GKE, and EKS environments.
+```
+
+```{topic-box}
+:title: Concepts
 :icon: icon-apartment
-:link: architecture/overview
+:link: concepts/index
 :anchor: Learn more »
 :class: large-4
 
@@ -74,39 +86,29 @@ Configure your Kubernetes platform, install prerequisites and all components of 
 ```
 
 ```{topic-box}
-:title: Management
+:title: Tutorials
+:icon: icon-docs-commands
+:link: tutorials/index
+:anchor: Learn more »
+:class: large-4
+
+Step-by-step guides for Day 0, Day 1, and Day 2 operations.
+```
+
+```{topic-box}
+:title: Operations
 :icon: icon-operations
-:link: management/overview
+:link: operations/index
 :anchor: Learn more »
 :class: large-4
 
-Manage your ScyllaDB clusters using ScyllaDB Operator. 
-```
-
-```{topic-box}
-:title: Working with Resources
-:icon: icon-database
-:link: resources/overview
-:anchor: Learn more »
-:class: large-4
-
-Learn about the APIs that ScyllaDB Operator provides.
-```
-
-```{topic-box}
-:title: Quickstarts
-:icon: icon-rocket
-:link: quickstarts/index
-:anchor: Learn more »
-:class: large-4
-
-Get it running right now. Simple GKE and EKS setups.
+Task-oriented how-to guides for managing your ScyllaDB clusters.
 ```
 
 ```{topic-box}
 :title: Performance Tuning
 :icon: icon-tune
-:link: architecture/tuning
+:link: concepts/performance-and-tuning
 :anchor: Learn more »
 :class: large-4
 
@@ -114,13 +116,13 @@ Tune your infra and ScyllaDB cluster for the best performance and low latency.
 ```
 
 ```{topic-box}
-:title: Support
+:title: Troubleshooting
 :icon: icon-support
-:link: support/overview
+:link: troubleshooting/index
 :anchor: Learn more »
 :class: large-4
 
-FAQs, support matrix, must-gather and more.
+Diagnose and resolve common issues with ScyllaDB Operator.
 ```
 
 ```{topic-box}
@@ -131,6 +133,16 @@ FAQs, support matrix, must-gather and more.
 :class: large-4
 
 Reference of ScyllaDB Operator APIs and configuration options.
+```
+
+```{topic-box}
+:title: Support
+:icon: icon-support
+:link: support/overview
+:anchor: Learn more »
+:class: large-4
+
+FAQs, support matrix, must-gather and more.
 ```
 ````
 

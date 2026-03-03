@@ -118,7 +118,7 @@ Be careful not to use a rolling tag for any of them to avoid an accidental skew!
 :::{caution}
 The following step heavily depends on the platform that you use, the machine type, or the options chosen when creating a node pool.
 
-Please review the [NodeConfig](../resources/nodeconfigs.md) and adjust it for your platform!
+Please review the [NodeConfig](../installation/nodeconfigs-old.md) and adjust it for your platform!
 :::
 
 :::::{tabs}
@@ -209,8 +209,8 @@ kubectl -n=scylla-manager rollout status --timeout=10m deployment.apps/scylla-ma
 
 ### Monitoring stack
 
-Please refer to the [ScyllaDB Monitoring setup](../management/monitoring/setup.md) guide to learn how to configure the monitoring stack.
+Please refer to the [ScyllaDB Monitoring setup](../operations/monitoring/setup.md) guide to learn how to configure the monitoring stack.
 
 ## Next steps
 
-Now that you've successfully installed ScyllaDB Operator, it's time to look at [how to run ScyllaDB](../resources/scyllaclusters/basics.md).
+Now that you've successfully installed ScyllaDB Operator, it's time to look at [how to run ScyllaDB](../tutorials/day0/create-cluster.md).

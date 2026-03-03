@@ -38,7 +38,7 @@ Client certificates are validated by ScyllaDB nodes (the certificate chain must 
 mTLS for node-to-node communication is [not yet supported](https://github.com/scylladb/scylla-operator/issues/2434).
 :::
 
-Refer to [this document](../resources/scyllaclusters/clients/cql.md#remote-cqlsh) for a guide to configuring ScyllaDB clients to use TLS certificates managed by ScyllaDB Operator.
+Refer to [this document](../tutorials/day0/connect-cql.md#remote-cqlsh) for a guide to configuring ScyllaDB clients to use TLS certificates managed by ScyllaDB Operator.
 
 ### BootstrapSynchronisation
 
@@ -48,7 +48,7 @@ Refer to [this document](../resources/scyllaclusters/clients/cql.md#remote-cqlsh
 `BootstrapSynchronisation` automates the process of ensuring that no nodes are down when a bootstrap operation is performed.
 ScyllaDB Operator will verify the status of all nodes in the cluster before allowing a new ScyllaDB node to bootstrap.
 
-For more information, refer to the [](../management/bootstrap-sync.md) document explaining the feature in detail.
+For more information, refer to the [](../operations/node-operations/bootstrap-sync.md) document explaining the feature in detail.
 
 ## Using feature gates
 

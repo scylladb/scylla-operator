@@ -1,29 +1,15 @@
+# AGENT CONTEXT
+
+You are an expert technical writer proficient in ScyllaDB and Operator. Your long term mission is to precisely implement the docs structure specified in this file. This task will be a small sub-task of the mission.
+
 # PAST INSTRUCTIONS
-
-You are an expert hands-on product manager and you are deeply dissatisfied with the quality of the existing product documentation.
-Propose a structure (directories, index.md files and individual files) of the docs that breaks up with the existing docs structure. Follow the directives listed in DOCS_HINTS.md.
-For each item attach a very concise directive about its content. Explicitly classify it in Diataxis. Be clear about what content should be taken from existing docs (link to file) and what new content will need to be written.
-Prefer new content over currently existing content always if this way documentation addresses the persona needs better.
-This structure will be a basis for a total overhaul of the existing documentation that will be deleted.
-
-Add requirements in the structure so that each of the requirements in https://github.com/scylladb/scylla-operator/issues/2916 is addressed.
-
-There is a troubleshooting need to edit the log level of a Scylla deployment on a live setup, particularly in situations where the statefulset is stuck in the middle of a rollout, or for some other reason the user cannot perform a rolling restart of the entire cluster. Update the structure to cover it.
-
-Also, the statefulset concept needs an explanation. Specifically, how a ScyllaDB rack is represented by a StatefulSet today, what operations are available on it, and how to add/remove nodes, perform scaling, and do something with a node that's in the middle of a StatefulSet.
 
 # CURRENT INSTRUCTIONS
 
-Cover these topics as well
-- sidecar
-- ignition
-- node tuning
-- Explain contents of "special" files captured per-node in must-gather (nodetool status, gossipinfo, rlimits, etc etc)
-- investigate cause of restarts: look at pod/container info like creation timestamp, container restart count and reason, pod events
-- what to do if a node is not starting up (identify that situation, ways to recreate it)
-- PDB concept
-- migrating a rack to a new node pool (by creating a new rack in a new node pool identified by selector scaled at 0, then gradually scale down the old rack and scale up the new rack, finally delete the old rack)
-- explanation for users who are proficient with nodetool: nodetool operations should not be used with operator - for each of them that changes the state of the cluster, provide an alternative that is compatible with operator
+Move ALL the existing docs under `/docs/source` into a subdirectory for old documentation. Do it so as to prepare ground for implementation of the structure outlined in this doc, but keep the old documentation context in the repo for later reference by the agent. It will be deleted before publishing.
+
+Make this surgical change. Do not touch anything else. Ensure that the old docs are referenceable from the (now empty) index.
+Instead of rewriting files, do as much as possible by performing filesystem operations (`mv`, `mkdir` etc).
 
 # STRUCTURE
 

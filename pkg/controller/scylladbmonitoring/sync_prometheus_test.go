@@ -42,6 +42,7 @@ spec:
   endpoints:
   - port: node-exporter
     honorLabels: false
+    interval: '5s'
     relabelings:
     - sourceLabels: [__address__]
       regex: '(.*):\d+'
@@ -152,6 +153,7 @@ spec:
   endpoints:
   - port: node-exporter
     honorLabels: false
+    interval: '5s'
     relabelings:
     - sourceLabels: [__address__]
       regex: '(.*):\d+'

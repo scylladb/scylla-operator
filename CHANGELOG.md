@@ -19,6 +19,11 @@
   a patch update to the Grafana image used (`docker.io/grafana/grafana` from `12.3.2` to `12.3.3`).
   [#3282](https://github.com/scylladb/scylla-operator/pull/3282), [#3284](https://github.com/scylladb/scylla-operator/pull/3284)
 
+### Bug fixes
+
+-  Fixed [#2990](https://github.com/scylladb/scylla-operator/issues/2990): set monitoring scrape intervals to: 5s in 
+  `ServiceMonitor`, and 30s in Grafana. This overrides the global scrape interval set in Prometheus.
+
 ## 1.20.0 and older
 
 For those versions, the changelog information can be found in two places:

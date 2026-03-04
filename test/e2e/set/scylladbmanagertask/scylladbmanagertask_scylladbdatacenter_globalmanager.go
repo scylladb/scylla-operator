@@ -27,7 +27,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", func() {
-	f := framework.NewFramework("scylladbmanagertask")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scylladbmanagertask")
+	})
 
 	g.It("should synchronise a repair task", func(ctx g.SpecContext) {
 		ns, nsClient, ok := f.DefaultNamespaceIfAny()

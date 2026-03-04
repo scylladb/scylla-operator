@@ -3,6 +3,7 @@
 package multidatacenter
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"slices"
@@ -22,7 +23,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBCluster", framework.MultiDatacenter, func() {
-	f := framework.NewFramework("scylladbcluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	type entry struct {
 		initialScyllaDBImage string

@@ -23,12 +23,16 @@ import (
 var _ = g.Describe("ScyllaOperatorConfig ", framework.Serial, func() {
 	defer g.GinkgoRecover()
 
-	f := framework.NewFramework("scyllaoperatorconfig")
-	globalSOC := scyllafixture.DefaultScyllaOperatorConfig.ReadOrFail()
+	var (
+		f         *framework.Framework
+		globalSOC *scyllav1alpha1.ScyllaOperatorConfig
+	)
 
-	g.BeforeEach(func() {
+	g.BeforeEach(func(ctx context.Context) {
 		ctx, cancel := context.WithTimeoutCause(context.Background(), 1*time.Minute, errors.New("exceeded wait timeout"))
 		defer cancel()
+		f = framework.NewFramework(ctx, "scyllaoperatorconfig")
+		globalSOC = scyllafixture.DefaultScyllaOperatorConfig.ReadOrFail()
 		_, err := utils.WaitForScyllaOperatorConfigState(
 			ctx,
 			f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaOperatorConfigs(),

@@ -14,6 +14,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	configassests "github.com/scylladb/scylla-operator/assets/config"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -36,14 +37,19 @@ const (
 // These tests modify global resource affecting global cluster state.
 // They must not be run asynchronously with other tests.
 var _ = g.Describe("NodeConfig Optimizations", framework.Serial, framework.NotSupportedOnKind, func() {
-	f := framework.NewFramework("nodeconfig")
+	var (
+		f             *framework.Framework
+		ncTemplate    *scyllav1alpha1.NodeConfig
+		matchingNodes []*corev1.Node
+	)
 
-	ncTemplate := scyllafixture.NodeConfig.ReadOrFail()
-	var matchingNodes []*corev1.Node
-
-	g.JustBeforeEach(func() {
+	g.BeforeEach(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		f = framework.NewFramework(ctx, "nodesetup")
+
+		ncTemplate = scyllafixture.NodeConfig.ReadOrFail()
 
 		g.By("Verifying there is at least one scylla node")
 		var err error

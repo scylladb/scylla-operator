@@ -42,7 +42,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should connect to cluster via Ingresses", func() {
 		if !utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {

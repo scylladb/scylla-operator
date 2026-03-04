@@ -3,6 +3,7 @@
 package scyllacluster
 
 import (
+	"context"
 	"sync"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -19,7 +20,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should replace a node", func(ctx g.SpecContext) {
 		ns, nsClient, ok := f.DefaultNamespaceIfAny()

@@ -17,7 +17,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func() {
-	f := framework.NewFramework("scylladbcluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should delete remote Namespaces when ScyllaDBCluster is deleted", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

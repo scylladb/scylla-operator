@@ -22,7 +22,11 @@ import (
 )
 
 var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter, func() {
-	f := framework.NewFramework("scylladbcluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should reconcile healthy datacenters when any of DCs are down", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

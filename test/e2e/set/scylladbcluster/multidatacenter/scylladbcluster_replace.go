@@ -3,6 +3,7 @@
 package multidatacenter
 
 import (
+	"context"
 	"maps"
 	"slices"
 	"sync"
@@ -21,7 +22,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBCluster", framework.MultiDatacenter, func() {
-	f := framework.NewFramework("scylladbcluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should reconcile a node replacement performed directly in a datacenter", func(ctx g.SpecContext) {
 		ns, _, ok := f.DefaultNamespaceIfAny()

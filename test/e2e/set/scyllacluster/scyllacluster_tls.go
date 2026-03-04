@@ -37,7 +37,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should setup and maintain up to date TLS certificates", func() {
 		if !utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {

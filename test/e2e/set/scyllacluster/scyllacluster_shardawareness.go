@@ -24,7 +24,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should allow to build connection pool using shard aware ports", func() {
 		const (

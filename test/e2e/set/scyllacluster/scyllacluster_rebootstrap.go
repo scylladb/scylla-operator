@@ -20,8 +20,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
+	var f *framework.Framework
 
-	f := framework.NewFramework("scyllacluster")
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should re-bootstrap from old PVCs", func() {
 		const membersCount = 3

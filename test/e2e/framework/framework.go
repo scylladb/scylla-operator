@@ -46,7 +46,13 @@ type Framework struct {
 var _ FullClientInterface = &Framework{}
 var _ ClusterInterface = &Framework{}
 
-func NewFramework(namePrefix string) *Framework {
+// NewFramework creates a new test framework. It creates a unique namespace for a test to run in and provides a client
+// with permissions limited to that namespace. It also creates clients for worker clusters (for multi-DC) if configured.
+// It should be called in a ginkgo BeforeEach closure.
+//
+// At the end of the test, artifacts are going to be collected, and the namespace and all objects in it will be
+// automatically cleaned up, unless the cleanup policy is set to skip.
+func NewFramework(ctx context.Context, namePrefix string) *Framework {
 	var err error
 
 	e2eArtifactsDir := ""
@@ -105,11 +111,19 @@ func NewFramework(namePrefix string) *Framework {
 		)
 	}
 
-	g.BeforeEach(f.beforeEach)
-	g.JustAfterEach(f.justAfterEach)
-	g.AfterEach(f.afterEach)
+	ns, nsClient := f.CreateUserNamespace(ctx)
+	f.cluster.defaultNamespace = ns
+	f.cluster.defaultClient = nsClient
+	f.FullClient.Client = nsClient
+
+	g.DeferCleanup(f.cleanup)
 
 	return f
+}
+
+func (f *Framework) cleanup(ctx context.Context) {
+	f.collectArtifacts(ctx)
+	f.cleanupObjects(ctx)
 }
 
 func (f *Framework) Cluster() ClusterInterface {
@@ -258,14 +272,7 @@ func (f *Framework) GetObjectStorageSettingsForWorkerCluster(workerName string) 
 	return settings
 }
 
-func (f *Framework) beforeEach(ctx context.Context) {
-	ns, nsClient := f.CreateUserNamespace(ctx)
-	f.cluster.defaultNamespace = ns
-	f.cluster.defaultClient = nsClient
-	f.FullClient.Client = nsClient
-}
-
-func (f *Framework) justAfterEach(ctx context.Context) {
+func (f *Framework) collectArtifacts(ctx context.Context) {
 	ginkgoNamespace := f.cluster.defaultNamespace.Name
 	f.cluster.Collect(ctx, ginkgoNamespace)
 	for _, c := range f.workerClusters {
@@ -273,15 +280,7 @@ func (f *Framework) justAfterEach(ctx context.Context) {
 	}
 }
 
-func (f *Framework) afterEach(ctx context.Context) {
-	nilClient := Client{
-		Config: nil,
-	}
-
-	f.cluster.defaultNamespace = nil
-	f.cluster.defaultClient = nilClient
-	f.FullClient.Client = nilClient
-
+func (f *Framework) cleanupObjects(ctx context.Context) {
 	shouldCleanup := true
 	switch TestContext.CleanupPolicy {
 	case CleanupPolicyNever:

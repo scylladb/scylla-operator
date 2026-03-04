@@ -3,6 +3,7 @@
 package scyllacluster
 
 import (
+	"context"
 	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -23,7 +24,11 @@ import (
 // Despite the sysctl configuration being a part of ScyllaCluster's API, it configures kernel parameters on the host.
 // Therefore, the test is disruptive and needs to run serially.
 var _ = g.Describe("ScyllaCluster sysctl", framework.Serial, framework.NotSupportedOnKind, func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	// Delete any NodeConfigs before each test to ensure we don't race against NodeConfig's sysctl functionality.
 	// NodeConfigs are restored after the test.

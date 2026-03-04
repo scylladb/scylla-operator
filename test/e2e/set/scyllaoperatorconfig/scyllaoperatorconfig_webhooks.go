@@ -18,7 +18,11 @@ import (
 var _ = g.Describe("ScyllaOperatorConfig webhook", func() {
 	defer g.GinkgoRecover()
 
-	f := framework.NewFramework("scyllaoperatorconfig")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllaoperatorconfig")
+	})
 
 	g.It("should forbid invalid requests", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

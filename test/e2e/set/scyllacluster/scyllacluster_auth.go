@@ -24,7 +24,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster authentication", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("agent requires authentication", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

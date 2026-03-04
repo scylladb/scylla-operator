@@ -15,7 +15,11 @@ import (
 var _ = g.Describe("ScyllaDBDatacenter webhook", func() {
 	defer g.GinkgoRecover()
 
-	f := framework.NewFramework("scylladbdatacenter")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scylladbdatacenter")
+	})
 
 	g.It("should forbid invalid requests", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

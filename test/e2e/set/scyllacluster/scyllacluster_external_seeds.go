@@ -18,7 +18,11 @@ import (
 )
 
 var _ = g.Describe("MultiDC cluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should form when external seeds are provided to ScyllaClusters", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

@@ -3,6 +3,7 @@
 package scyllacluster
 
 import (
+	"context"
 	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -18,9 +19,12 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster's admission webhook", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
 
-	f.AdminClient.Config = verification.RestConfigWithWarningCaptureHandler(f.AdminClient.Config)
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+		f.Client.Config = verification.RestConfigWithWarningCaptureHandler(f.Client.Config)
+	})
 
 	type entry struct {
 		modifierFuncs          []func(*scyllav1.ScyllaCluster)

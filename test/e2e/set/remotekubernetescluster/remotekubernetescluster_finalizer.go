@@ -17,7 +17,11 @@ import (
 )
 
 var _ = g.Describe("RemoteKubernetesCluster finalizer", func() {
-	f := framework.NewFramework("remotekubernetescluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "remotekubernetescluster")
+	})
 
 	g.It("should block deletion when there are ScyllaDBClusters referencing the object", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

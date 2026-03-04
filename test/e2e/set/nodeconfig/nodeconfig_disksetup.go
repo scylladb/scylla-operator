@@ -37,14 +37,19 @@ var (
 )
 
 var _ = g.Describe("Node Setup", framework.Serial, framework.NotSupportedOnKind, func() {
-	f := framework.NewFramework("nodesetup")
+	var (
+		f             *framework.Framework
+		ncTemplate    *scyllav1alpha1.NodeConfig
+		nodeUnderTest *corev1.Node
+	)
 
-	ncTemplate := scyllafixture.NodeConfig.ReadOrFail()
-	var nodeUnderTest *corev1.Node
-
-	g.JustBeforeEach(func() {
+	g.BeforeEach(func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		f = framework.NewFramework(ctx, "nodesetup")
+
+		ncTemplate = scyllafixture.NodeConfig.ReadOrFail()
 
 		g.By("Verifying there is at least one scylla node")
 		var err error

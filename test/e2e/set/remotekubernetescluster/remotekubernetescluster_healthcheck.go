@@ -17,17 +17,18 @@ import (
 )
 
 var _ = g.Describe("RemoteKubernetesCluster", func() {
-	f := framework.NewFramework("remotekubernetescluster")
+	var f *framework.Framework
 
 	var (
 		rkcs          []*scyllav1alpha1.RemoteKubernetesCluster
 		rkcClusterMap map[string]framework.ClusterInterface
 	)
 
-	g.JustBeforeEach(func() {
+	g.BeforeEach(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testSetupTimeout)
 		defer cancel()
 
+		f = framework.NewFramework(ctx, "remotekubernetescluster")
 		metaCluster := f.Cluster()
 		// Use the meta cluster to simulate the remote clusters.
 		availableClusters := map[string]framework.ClusterInterface{metaCluster.Name(): metaCluster}

@@ -26,7 +26,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("nodes are cleaned up after horizontal scaling", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

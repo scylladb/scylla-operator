@@ -33,7 +33,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with global ScyllaDB Manager", framework.MultiDatacenter, func() {
-	f := framework.NewFramework("scylladbmanagertask")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scylladbmanagertask")
+	})
 
 	g.It("should synchronise a backup task and support a manual restore procedure", func(ctx g.SpecContext) {
 		ns, nsClient := f.CreateUserNamespace(ctx)

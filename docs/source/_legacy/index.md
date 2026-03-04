@@ -1,18 +1,6 @@
----
-sd_hide_title: true
-full-width:
-landing:
-hide-secondary-sidebar:
-hide-version-warning:
-hide-pre-content:
-hide-post-content:
----
-
-```{title} Legacy Documentation
-```
+# Legacy Documentation
 
 :::{toctree}
-:hidden:
 :maxdepth: 1
 
 architecture/index

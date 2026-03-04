@@ -1,9 +1,5 @@
 # Documentation Quality Checklist
 
-## AGENT INSTRUCTIONS
-
-Edit the content under the point you are asked to edit. Do not touch anything else. Be precise and concise.
-
 ## DOCS STRUCTURE DEFINITION DIRECTIVES
 1. Define clear information hierarchy with logical grouping of related topics
 1. Create consistent navigation patterns that reduce cognitive load

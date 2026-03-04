@@ -24,7 +24,6 @@ operate/index
 upgrade/index
 troubleshoot/index
 reference/index
-contributing/index
 :::
 
 ```{hero-box}

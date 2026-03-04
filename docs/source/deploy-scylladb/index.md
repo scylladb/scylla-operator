@@ -5,10 +5,7 @@ Deploy and configure ScyllaDB clusters on Kubernetes. This section covers creati
 :::{toctree}
 :maxdepth: 1
 
-configure-operator
-set-up-dedicated-node-pools
-configure-cpu-pinning
-configure-nodes
+before-you-deploy/index
 deploy-single-dc-cluster
 set-up-networking/index
 set-up-monitoring

@@ -39,24 +39,24 @@ Landing page with persona-oriented entry points (not just topic boxes). Cards fo
 
 ---
 
-## `getting-started/`
+## `get-started/`
 
-### `getting-started/index.md`
+### `get-started/index.md`
 Section index. **Diataxis**: Navigation.
 
-### `getting-started/what-is-scylladb-operator.md`
+### `get-started/what-is-scylladb-operator.md`
 **Diataxis**: Explanation. What the Operator does, what problems it solves vs. manual deployment, single-DC vs. multi-DC model, tech preview status of `ScyllaDBCluster`. Target: Evaluator/Architect.
 **Source**: NEW. Addresses the missing "Why ScyllaDB Operator" page ([DOCS_HINTS: Evaluator pain point]).
 
-### `getting-started/quickstart-gke.md`
+### `get-started/quickstart-gke.md`
 **Diataxis**: Tutorial. Zero-to-running-cluster on GKE in ≤30 min. Dev-mode, no tuning, minimal cluster (3 nodes). Includes connecting with cqlsh and cleanup.
 **Source**: Rewrite from `quickstarts/gke.md`. Fix multi-zone node pool ([#1465](https://github.com/scylladb/scylla-operator/issues/1465)), add minimal dev example ([#641](https://github.com/scylladb/scylla-operator/issues/641)).
 
-### `getting-started/quickstart-eks.md`
+### `get-started/quickstart-eks.md`
 **Diataxis**: Tutorial. Same structure as GKE quickstart but for EKS. Replace outdated `i3` instance type ([#2994](https://github.com/scylladb/scylla-operator/issues/2994)).
 **Source**: Rewrite from `quickstarts/eks.md`.
 
-### `getting-started/concepts-for-k8s-beginners.md`
+### `get-started/concepts-for-k8s-beginners.md`
 **Diataxis**: Explanation. Bridge document: maps ScyllaDB-native concepts to Kubernetes equivalents (node→pod, config file→CR spec, nodetool→kubectl exec, service config→ScyllaCluster YAML). Target: Junior Support Engineers and App Developers new to K8s.
 **Source**: NEW. Addresses Junior Support Engineer pain points.
 
@@ -92,7 +92,7 @@ Section index. **Diataxis**: Navigation.
 **Diataxis**: Explanation. Network exposure model (Headless/ClusterIP/LoadBalancer), broadcast options, dual-stack/IPv6 architecture, platform-specific annotations. Consolidate all networking concepts.
 **Source**: Merge `resources/common/exposing.md` + `management/networking/ipv6/concepts/ipv6-networking.md`. Current content is scattered.
 
-### `architecture/monitoring.md`
+### `architecture/set-up-monitoring.md`
 **Diataxis**: Explanation. ScyllaDBMonitoring components, managed vs. external Prometheus, ServiceMonitor/PrometheusRule, Prometheus Operator dependency.
 **Source**: Adapt from `management/monitoring/overview.md`.
 
@@ -134,7 +134,7 @@ Target: Database Operator/SRE, Support Engineer, Contributor.
 - **Operator and webhook server PDBs**: `minAvailable: 1` PDBs that protect the operator deployment and webhook server when running with multiple replicas.
 - **PDB interaction with operations**: how PDBs cooperate with scale-down (one member decommissioned at a time), rolling upgrades (partition-based rollout, one pod at a time), node replacement (one node replaced at a time), and Kubernetes node drains.
 - **Common pitfall**: PDBs can block node drains if the cluster is already degraded (e.g., a node is already down); explain how to diagnose and work around this.
-- Cross-reference `architecture/statefulsets-and-racks.md` (rolling updates) and `operating/scaling.md`.
+- Cross-reference `architecture/statefulsets-and-racks.md` (rolling updates) and `operate/scale-cluster.md`.
 Target: Platform/K8s Admin, Database Operator/SRE.
 **Source**: NEW. PDBs are created automatically but never explained; users encounter them during node drains and get confused.
 
@@ -150,49 +150,62 @@ Target: Platform/K8s Admin, Database Operator/SRE.
 - **Rolling updates** — StatefulSet `updateStrategy` controls how config/image changes propagate; pods are updated in reverse ordinal order. A stuck rollout (e.g., new pod won't become Ready) blocks the remaining pods from updating.
 - **Operating on a node in the middle** — how to replace a specific node (by ordinal), what happens to its PVC, why maintenance mode exists, and how the Operator handles a pod that is not the head or tail of the set.
 - **Partition rollouts** — using StatefulSet partition to control how far a rolling update progresses; useful for canary-style rollouts or unsticking a blocked update.
-- Cross-reference to `operating/scaling.md`, `operating/replacing-nodes.md`, and `troubleshooting/changing-log-level.md`.
+- Cross-reference to `operate/scale-cluster.md`, `operate/replace-nodes.md`, and `troubleshoot/change-log-level.md`.
 Target: Database Operator/SRE, Support Engineer.
 **Source**: NEW. No existing page explains this; users must infer StatefulSet behavior from Kubernetes docs.
 
 ---
 
-## `installation/`
+## `install-operator/`
 
-### `installation/index.md` (DONE)
+### `install-operator/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
-### `installation/prerequisites.md` (DONE)
+### `install-operator/prerequisites.md` (DONE)
 **Diataxis**: Reference. Kubernetes version requirements, kubelet static CPU policy, node labels, xfsprogs, platform-specific notes (GKE, EKS, OpenShift), firewall rules, resource requirements.
-**Source**: Rewrite from `installation/kubernetes-prerequisites.md`. Fix outdated K8s version references ([#2820](https://github.com/scylladb/scylla-operator/issues/2820)). Unify dependency syntax ([#3063](https://github.com/scylladb/scylla-operator/issues/3063)).
+**Source**: Rewrite from `install-operator/kubernetes-prerequisites.md`. Fix outdated K8s version references ([#2820](https://github.com/scylladb/scylla-operator/issues/2820)). Unify dependency syntax ([#3063](https://github.com/scylladb/scylla-operator/issues/3063)).
 
-### `installation/gitops.md` (DONE)
-**Diataxis**: How-to. Step-by-step GitOps/manifest installation: cert-manager → Prometheus Operator → ScyllaDB Operator → Local CSI Driver → NodeConfig → ScyllaDB Manager → ScyllaDBMonitoring. Each step has verification and expected output. End with a callout linking to `deploying/production-checklist.md` for production-hardening follow-up. [#2916]
-**Source**: Rewrite from `installation/gitops.md`. Fix template parameter issues ([#2477](https://github.com/scylladb/scylla-operator/issues/2477), [#2626](https://github.com/scylladb/scylla-operator/issues/2626)).
+### `install-operator/install-with-gitops.md` (DONE)
+**Diataxis**: How-to. Step-by-step GitOps/manifest installation: cert-manager → Prometheus Operator → ScyllaDB Operator → Local CSI Driver → NodeConfig → ScyllaDB Manager → ScyllaDBMonitoring. Each step has verification and expected output. End with a callout linking to `deploy-scylladb/production-checklist.md` for production-hardening follow-up. [#2916]
+**Source**: Rewrite from `install-operator/install-with-gitops.md`. Fix template parameter issues ([#2477](https://github.com/scylladb/scylla-operator/issues/2477), [#2626](https://github.com/scylladb/scylla-operator/issues/2626)).
 
-### `installation/helm.md` (DONE)
-**Diataxis**: How-to. Step-by-step Helm installation. Include Local CSI Driver step ([#2567](https://github.com/scylladb/scylla-operator/issues/2567)). CRD update warning. **Must include NodeConfig setup step** (currently only in GitOps instructions; Helm path omits it). Link to `deploying/production-checklist.md` as an optional production-hardening follow-up. [#2916 comment]
-**Source**: Rewrite from `installation/helm.md`.
+### `install-operator/install-with-helm.md` (DONE)
+**Diataxis**: How-to. Step-by-step Helm installation. Include Local CSI Driver step ([#2567](https://github.com/scylladb/scylla-operator/issues/2567)). CRD update warning. **Must include NodeConfig setup step** (currently only in GitOps instructions; Helm path omits it). Link to `deploy-scylladb/production-checklist.md` as an optional production-hardening follow-up. [#2916 comment]
+**Source**: Rewrite from `install-operator/install-with-helm.md`.
 
-### `installation/multi-dc-infrastructure.md` (DONE)
+### `install-operator/install-on-openshift.md` (DONE)
+**Diataxis**: How-to. Step-by-step installation of ScyllaDB Operator on Red Hat OpenShift via the Operator Lifecycle Manager (OLM) software catalog. Must cover:
+- **Two installation paths**: Web Console and CLI procedures, mirroring upstream OLM documentation.
+- **Subscription configuration**: channel (`stable`), namespace (`scylla-operator`), manual approval strategy (with upgrade caution), AWS STS role ARN for token-based auth.
+- **InstallPlan review and approval**: locating, reviewing, and approving the generated InstallPlan.
+- **Verification**: wait for ClusterServiceVersion to reach `Succeeded` phase, verify operator pods are running.
+- **NodeConfig setup**: ROSA NVMe production example and loop-device dev example, with platform-specific guidance.
+- **Local CSI Driver**: installation including the OpenShift-specific ClusterRole definition (`00_clusterrole_def_openshift`).
+- **ScyllaDB Manager**: installation in the reserved `scylla-manager` namespace.
+- **Operator namespace warning**: ScyllaDB Operator must be installed in the `scylla-operator` namespace.
+- End with a callout linking to `deploy-scylladb/production-checklist.md` for production-hardening follow-up.
+**Source**: Rewrite from `install-operator/install-on-openshift.md`. Update cross-references to new doc paths.
+
+### `install-operator/set-up-multi-dc-infrastructure.md` (DONE)
 **Diataxis**: How-to. Setting up multi-cluster networking for multi-DC deployments. Platform examples for GKE and EKS. RemoteKubernetesCluster setup, inter-cluster connectivity.
 **Source**: Merge `resources/common/multidc/gke.md` + `resources/common/multidc/eks.md` + parts of `resources/scylladbclusters/scylladbclusters.md`. Address [#2855](https://github.com/scylladb/scylla-operator/issues/2855).
 
 ---
 
-## `deploying/`
+## `deploy-scylladb/`
 
-### `deploying/index.md` (DONE)
+### `deploy-scylladb/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
-### `deploying/single-dc-cluster.md` (DONE)
+### `deploy-scylladb/deploy-single-dc-cluster.md` (DONE)
 **Diataxis**: How-to. Creating a ScyllaCluster: config files, rack definitions, zone spreading, resource requests, storage, authentication. Include minimal and production-ready examples.
 **Source**: Rewrite from `resources/scyllaclusters/basics.md`. Fix container count, deprecated flags, wrong paths ([#2080](https://github.com/scylladb/scylla-operator/issues/2080)). Add deployment topology guidance ([#1605](https://github.com/scylladb/scylla-operator/issues/1605)).
 
-### `deploying/multi-dc-cluster.md` (DONE)
+### `deploy-scylladb/deploy-multi-dc-cluster.md` (DONE)
 **Diataxis**: How-to. Creating a ScyllaDBCluster across multiple Kubernetes clusters. Prerequisites, RemoteKubernetesCluster, authentication, bootstrap sync.
 **Source**: Rewrite from `resources/scylladbclusters/scylladbclusters.md`. Tech preview callout.
 
-### `deploying/node-configuration.md` (DONE)
+### `deploy-scylladb/configure-nodes.md` (DONE)
 **Diataxis**: How-to. Setting up NodeConfig: RAID, filesystem, mount points, sysctls, performance tuning. Must cover:
 - **Explain the value of NodeConfig** — why it exists, what it configures, why production setups need it. [#2916 req 1]
 - **Configuring taints/tolerations on NodeConfig** so that performance tuning targets the same K8s nodes where ScyllaDB Pods run. Explicit worked example showing matching selectors between NodeConfig and ScyllaCluster. [#2916 req 3]
@@ -200,7 +213,7 @@ Section index. **Diataxis**: Navigation.
 - **XFS online discard (trimming)** — recommend enabling `discard` mount option for SSD space reclamation. Document using `unsupportedOptions` if the default doesn't enable it, or show the NodeConfig field if it does. Explain why online discard is preferred over periodic fstrim. [#3013](https://github.com/scylladb/scylla-operator/issues/3013) [#2916 req 9]
 **Source**: Merge `resources/nodeconfigs.md` + `management/sysctls.md`. New content for XFS trimming and value explanation.
 
-### `deploying/dedicated-node-pools.md` (DONE)
+### `deploy-scylladb/set-up-dedicated-node-pools.md` (DONE)
 **Diataxis**: How-to. Configuring ScyllaDB to run on dedicated Kubernetes node pools. Covers:
 - Creating a dedicated node pool with labels and taints (GKE, EKS, generic examples).
 - Setting `nodeAffinity` and `tolerations` on ScyllaCluster / ScyllaDBCluster so that ScyllaDB Pods schedule only on dedicated nodes.
@@ -209,15 +222,15 @@ Section index. **Diataxis**: Navigation.
 [#2916 req 2, req 3]
 **Source**: NEW. Currently no single page covers this cross-cutting concern; affinity/toleration guidance is scattered.
 
-### `deploying/operator-configuration.md` (DONE)
+### `deploy-scylladb/configure-operator.md` (DONE)
 **Diataxis**: How-to. Configuring ScyllaOperatorConfig: auxiliary images, tuning images, enterprise settings.
 **Source**: Adapt from `resources/scyllaoperatorconfigs.md`.
 
-### `deploying/monitoring.md` (DONE)
-**Diataxis**: How-to. End-to-end monitoring setup: Prometheus, ScyllaDBMonitoring, Grafana. Multi-cluster monitoring. Fix missing namespace, inconsistent command formatting ([#2080](https://github.com/scylladb/scylla-operator/issues/2080)). Remove legacy monitoring references ([#2407](https://github.com/scylladb/scylla-operator/issues/2407)). Referenced from `deploying/production-checklist.md` as a production requirement. [#2916 req 6]
+### `deploy-scylladb/set-up-monitoring.md` (DONE)
+**Diataxis**: How-to. End-to-end monitoring setup: Prometheus, ScyllaDBMonitoring, Grafana. Multi-cluster monitoring. Fix missing namespace, inconsistent command formatting ([#2080](https://github.com/scylladb/scylla-operator/issues/2080)). Remove legacy monitoring references ([#2407](https://github.com/scylladb/scylla-operator/issues/2407)). Referenced from `deploy-scylladb/production-checklist.md` as a production requirement. [#2916 req 6]
 **Source**: Rewrite from `management/monitoring/setup.md`.
 
-### `deploying/cpu-pinning.md` (DONE)
+### `deploy-scylladb/configure-cpu-pinning.md` (DONE)
 **Diataxis**: How-to. Configuring CPU pinning for ScyllaDB on Kubernetes. Covers:
 - Kubelet `static` CPU manager policy prerequisite.
 - Setting `Guaranteed` QoS class (requests == limits) on ScyllaCluster.
@@ -225,178 +238,188 @@ Section index. **Diataxis**: Navigation.
 - Common pitfalls: wrong QoS class, kubelet not configured, sidecar containers breaking pinning.
 - A single, straight recommendation instead of scattered fragments.
 [#2916 req 8]
-**Source**: NEW. Consolidates scattered CPU pinning guidance from `architecture/tuning.md`, `installation/kubernetes-prerequisites.md`, and `resources/scyllaclusters/basics.md` into one actionable how-to.
+**Source**: NEW. Consolidates scattered CPU pinning guidance from `architecture/tuning.md`, `install-operator/kubernetes-prerequisites.md`, and `resources/scyllaclusters/basics.md` into one actionable how-to.
 
-### `deploying/exposing-grafana.md` (DONE)
+### `deploy-scylladb/expose-grafana.md` (DONE)
 **Diataxis**: How-to. Ingress for Grafana with HAProxy example.
-**Source**: Adapt from `management/monitoring/exposing-grafana.md`.
+**Source**: Adapt from `management/monitoring/expose-grafana.md`.
 
-### `deploying/production-checklist.md` (DONE)
+### `deploy-scylladb/production-checklist.md` (DONE)
 **Diataxis**: Reference. Actionable checklist with a row per item, expected state, and link to the how-to that covers it. Items:
-1. **NodeConfig deployed** — explain the value; link to `deploying/node-configuration.md`. [#2916 req 1]
-2. **Dedicated node pool** — ScyllaDB runs on isolated nodes with taints/tolerations; link to `deploying/dedicated-node-pools.md`. [#2916 req 2]
-3. **Performance tuning co-location** — NodeConfig targets the same nodes as ScyllaDB Pods; link to `deploying/dedicated-node-pools.md`. [#2916 req 3]
-4. **`RLIMIT_NOFILE` set** — `fs.nr_open` sysctl configured via NodeConfig; link to `deploying/node-configuration.md`. [#2937](https://github.com/scylladb/scylla-operator/issues/2937) [#2916 req 4]
-5. **Coredumps enabled** — systemd-coredump configured with sufficient backing storage; link to `troubleshooting/coredumps.md`. [#2414](https://github.com/scylladb/scylla-operator/issues/2414) [#2916 req 5]
-6. **Monitoring deployed** — ScyllaDBMonitoring with Prometheus and Grafana; link to `deploying/monitoring.md`. [#2916 req 6]
+1. **NodeConfig deployed** — explain the value; link to `deploy-scylladb/configure-nodes.md`. [#2916 req 1]
+2. **Dedicated node pool** — ScyllaDB runs on isolated nodes with taints/tolerations; link to `deploy-scylladb/set-up-dedicated-node-pools.md`. [#2916 req 2]
+3. **Performance tuning co-location** — NodeConfig targets the same nodes as ScyllaDB Pods; link to `deploy-scylladb/set-up-dedicated-node-pools.md`. [#2916 req 3]
+4. **`RLIMIT_NOFILE` set** — `fs.nr_open` sysctl configured via NodeConfig; link to `deploy-scylladb/configure-nodes.md`. [#2937](https://github.com/scylladb/scylla-operator/issues/2937) [#2916 req 4]
+5. **Coredumps enabled** — systemd-coredump configured with sufficient backing storage; link to `troubleshoot/configure-coredumps.md`. [#2414](https://github.com/scylladb/scylla-operator/issues/2414) [#2916 req 5]
+6. **Monitoring deployed** — ScyllaDBMonitoring with Prometheus and Grafana; link to `deploy-scylladb/set-up-monitoring.md`. [#2916 req 6]
 7. **Resource requests/limits set** — explicit values for both ScyllaDB container and ScyllaDB Manager Agent sidecar; document that ScyllaDB derives its memory allocation from the container limit. Link to `reference/sizing-guide.md`. [#2916 req 7]
-8. **CPU pinning active** — kubelet static CPU policy, Guaranteed QoS, verified pinning; link to `deploying/cpu-pinning.md`. [#2916 req 8]
-9. **XFS online discard enabled** — `discard` mount option on ScyllaDB data volumes for SSD trimming; link to `deploying/node-configuration.md`. [#3013](https://github.com/scylladb/scylla-operator/issues/3013) [#2916 req 9]
-10. **io_properties configured** — precomputed I/O properties for consistent performance; link to `operating/configuring-io-properties.md`. [#2205](https://github.com/scylladb/scylla-operator/issues/2205)
-11. **Backups scheduled** — ScyllaDB Manager backup tasks with object storage IAM; link to `operating/backup-and-restore.md`.
+8. **CPU pinning active** — kubelet static CPU policy, Guaranteed QoS, verified pinning; link to `deploy-scylladb/configure-cpu-pinning.md`. [#2916 req 8]
+9. **XFS online discard enabled** — `discard` mount option on ScyllaDB data volumes for SSD trimming; link to `deploy-scylladb/configure-nodes.md`. [#3013](https://github.com/scylladb/scylla-operator/issues/3013) [#2916 req 9]
+10. **io_properties configured** — precomputed I/O properties for consistent performance; link to `operate/configure-io-properties.md`. [#2205](https://github.com/scylladb/scylla-operator/issues/2205)
+11. **Backups scheduled** — ScyllaDB Manager backup tasks with object storage IAM; link to `operate/back-up-and-restore.md`.
 
  TODO: cross-check this list against [`scylla_setup.py`](https://github.com/scylladb/scylladb/blob/fc37518affc84e62ce2455f3a9dd580485b3de68/dist/common/scripts/scylla_setup) to ensure no Kubernetes-applicable setting is omitted. [#2916 req 10]
 **Source**: NEW. Addresses [#2916](https://github.com/scylladb/scylla-operator/issues/2916).
 
 ---
 
-## `connecting/`
+## `connect-your-app/`
 
-### `connecting/index.md` (DONE)
+### `connect-your-app/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
-### `connecting/cql.md` (DONE)
+### `connect-your-app/connect-via-cql.md` (DONE)
 **Diataxis**: How-to. Connecting via CQL: authentication setup, embedded cqlsh, remote cqlsh with TLS, credentials, podman/docker access. Include driver configuration tips (contact points, local DC, load balancing, retry).
-**Source**: Rewrite from `resources/scyllaclusters/clients/cql.md`. Add driver configuration guidance.
+**Source**: Rewrite from `resources/scyllaclusters/clients/connect-via-cql.md`. Add driver configuration guidance.
 
-### `connecting/alternator.md` (DONE)
+### `connect-your-app/alternator.md` (DONE)
 **Diataxis**: How-to. Enabling and using Alternator DynamoDB-compatible API with AWS CLI/SDK.
 **Source**: Adapt from `resources/scyllaclusters/clients/alternator.md`.
 
-### `connecting/discovery.md` (DONE)
+### `connect-your-app/discovery.md` (DONE)
 **Diataxis**: How-to. Using the discovery endpoint: ClusterIP, DNS, LoadBalancer exposure.
 **Source**: Adapt from `resources/scyllaclusters/clients/discovery.md`.
 
-### `connecting/external-access.md` (DONE)
+### `connect-your-app/configure-external-access.md` (DONE)
 **Diataxis**: How-to. Connecting from outside the Kubernetes cluster. LoadBalancer setup, TLS certificates for external clients, firewall rules.
 **Source**: NEW. Combines scattered external access information. Target: App Developer.
 
 ---
 
-## `operating/`
+## `operate/`
 
-### `operating/index.md` (DONE)
+### `operate/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
-### `operating/scaling.md` (DONE)
+### `operate/scale-cluster.md` (DONE)
 **Diataxis**: How-to. Scaling clusters up/down: adding racks, changing replica count. Include multi-DC scaling ([#2859](https://github.com/scylladb/scylla-operator/issues/2859)). Explain that nodes are added/removed at the end of each rack's StatefulSet; cross-reference `architecture/statefulsets-and-racks.md` for why arbitrary mid-set removal is not possible.
 **Source**: NEW. Addresses [#2426](https://github.com/scylladb/scylla-operator/issues/2426) and [#2450](https://github.com/scylladb/scylla-operator/issues/2450).
 
-### `operating/upgrading-operator.md` (DONE)
-**Diataxis**: How-to. Upgrading ScyllaDB Operator: GitOps and Helm paths, version-specific steps, rollback. Include "Review Release Notes" callout ([#2513](https://github.com/scylladb/scylla-operator/issues/2513)).
-**Source**: Rewrite from `management/upgrading/upgrade.md`.
-
-### `operating/upgrading-scylladb.md` (DONE)
-**Diataxis**: How-to. Upgrading ScyllaDB versions for ScyllaCluster and ScyllaDBCluster. Wait for rollout, verify health.
-**Source**: Rewrite from `management/upgrading/upgrade-scylladb.md` + `resources/scyllaclusters/nodeoperations/scylla-upgrade.md`.
-
-### `operating/upgrading-kubernetes.md` (DONE)
-**Diataxis**: How-to. Upgrading GKE/EKS Kubernetes control plane and node pools while respecting PDBs.
-**Source**: NEW. Addresses [#2446](https://github.com/scylladb/scylla-operator/issues/2446), [#2381](https://github.com/scylladb/scylla-operator/issues/2381).
-
-### `operating/replacing-nodes.md` (DONE)
-**Diataxis**: How-to. Replacing dead nodes: verify status, drain, trigger replacement, repair. Include `ignore_dead_nodes_for_replace` ([#2184](https://github.com/scylladb/scylla-operator/issues/2184)). Multi-DC node replacement ([#2861](https://github.com/scylladb/scylla-operator/issues/2861)). When the replace itself fails, cross-reference `troubleshooting/recovering-from-failed-replace.md`.
+### `operate/replace-nodes.md` (DONE)
+**Diataxis**: How-to. Replacing dead nodes: verify status, drain, trigger replacement, repair. Include `ignore_dead_nodes_for_replace` ([#2184](https://github.com/scylladb/scylla-operator/issues/2184)). Multi-DC node replacement ([#2861](https://github.com/scylladb/scylla-operator/issues/2861)). When the replace itself fails, cross-reference `troubleshoot/recover-from-failed-replace.md`.
 **Source**: Rewrite from `resources/scyllaclusters/nodeoperations/replace-node.md`.
 
-### `operating/volume-expansion.md` (DONE)
+### `operate/expand-storage-volumes.md` (DONE)
 **Diataxis**: How-to. Expanding storage: orphan delete flow, PVC patching, verification.
-**Source**: Adapt from `resources/scyllaclusters/nodeoperations/volume-expansion.md`. Address [#2450](https://github.com/scylladb/scylla-operator/issues/2450).
+**Source**: Adapt from `resources/scyllaclusters/nodeoperations/expand-storage-volumes.md`. Address [#2450](https://github.com/scylladb/scylla-operator/issues/2450).
 
-### `operating/maintenance-mode.md` (DONE)
+### `operate/use-maintenance-mode.md` (DONE)
 **Diataxis**: How-to. Enabling/disabling maintenance mode via service labels.
-**Source**: Adapt from `resources/scyllaclusters/nodeoperations/maintenance-mode.md`.
+**Source**: Adapt from `resources/scyllaclusters/nodeoperations/use-maintenance-mode.md`.
 
-### `operating/backup-and-restore.md` (YOU ARE HERE)
+### `operate/back-up-and-restore.md` (DONE)
 **Diataxis**: How-to. End-to-end: scheduling backups via ScyllaDB Manager tasks, configuring object storage (IAM roles for EKS/GKE — [#1697](https://github.com/scylladb/scylla-operator/issues/1697)), listing snapshots, restoring schema and tables to a new cluster.
 **Source**: Rewrite from `resources/scyllaclusters/nodeoperations/restore.md`. Extend with backup scheduling and IAM configuration.
 
-### `operating/rolling-restart.md`
+### `operate/perform-rolling-restart.md` (DONE)
 **Diataxis**: How-to. Forcing rolling restarts for ScyllaCluster and ScyllaDBCluster.
 **Source**: Extract from `resources/scyllaclusters/basics.md` and `resources/scylladbclusters/scylladbclusters.md`.
 
-### `operating/migrating-rack-to-new-node-pool.md`
+### `operate/migrate-rack-to-new-node-pool.md` (DONE)
 **Diataxis**: How-to. Migrating a ScyllaDB rack from one Kubernetes node pool to another without downtime. Step-by-step procedure:
 1. **Create a new rack** in the ScyllaCluster/ScyllaDBCluster spec that targets the new node pool via `nodeSelector` and `tolerations`. Set the new rack's `members` to `0` initially.
 2. **Gradually scale up the new rack** — increase `members` by 1 at a time. Each new node joins the cluster, takes ownership of a token range, and begins streaming data.
 3. **Gradually scale down the old rack** — decrease `members` by 1 at a time. Each removed node is decommissioned (tokens redistributed, data streamed away) before the pod is deleted.
 4. **Maintain balance** — keep the total node count stable during migration by scaling up the new rack before scaling down the old rack. Verify data distribution with `nodetool status` after each step.
 5. **Delete the old rack** — once the old rack has 0 members and all data has been streamed away, remove the old rack definition from the spec.
-- **Prerequisites**: the new node pool must already exist with appropriate labels, taints, instance types, and NodeConfig. Cross-reference `deploying/dedicated-node-pools.md`.
+- **Prerequisites**: the new node pool must already exist with appropriate labels, taints, instance types, and NodeConfig. Cross-reference `deploy-scylladb/set-up-dedicated-node-pools.md`.
 - **Caveats**: replication factor must accommodate the temporary rack imbalance; run repair after migration completes; ensure the new rack is in the same datacenter.
-- Cross-reference `architecture/statefulsets-and-racks.md` (scaling mechanics), `operating/scaling.md`.
+- Cross-reference `architecture/statefulsets-and-racks.md` (scaling mechanics), `operate/scale-cluster.md`.
 Target: Platform/K8s Admin, Database Operator/SRE.
 **Source**: NEW. This is a common operational procedure with no existing documentation.
 
-### `operating/passing-scylladb-arguments.md`
+### `operate/pass-scylladb-arguments.md` (DONE)
 **Diataxis**: How-to. Passing additional ScyllaDB arguments through the ScyllaCluster / ScyllaDBCluster spec. Cover both v1 and v1alpha1 APIs. Explain the normal path where a spec change triggers a rolling restart.
-For **emergency scenarios** where a rolling restart is not possible (stuck rollout, degraded cluster), cross-reference `troubleshooting/changing-log-level.md`.
+For **emergency scenarios** where a rolling restart is not possible (stuck rollout, degraded cluster), cross-reference `troubleshoot/change-log-level.md`.
 **Source**: NEW. Addresses [#3199](https://github.com/scylladb/scylla-operator/issues/3199).
 
-### `operating/configuring-io-properties.md`
+### `operate/configure-io-properties.md` (DONE)
 **Diataxis**: How-to. Setting up precomputed `io_properties` for ScyllaDB.
 **Source**: NEW. Addresses [#2205](https://github.com/scylladb/scylla-operator/issues/2205).
 
 ---
 
-## `networking/`
+## `upgrade/`
 
-### `networking/index.md`
+### `upgrade/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
-### `networking/exposing-clusters.md`
+### `upgrade/upgrade-operator.md` (DONE)
+**Diataxis**: How-to. Upgrading ScyllaDB Operator: GitOps and Helm paths, version-specific steps, rollback. Include "Review Release Notes" callout ([#2513](https://github.com/scylladb/scylla-operator/issues/2513)).
+**Source**: Rewrite from `management/upgrade/upgrade.md`.
+
+### `upgrade/upgrade-scylladb.md` (DONE)
+**Diataxis**: How-to. Upgrading ScyllaDB versions for ScyllaCluster and ScyllaDBCluster. Wait for rollout, verify health.
+**Source**: Rewrite from `management/upgrade/upgrade-scylladb.md` + `resources/scyllaclusters/nodeoperations/scylla-upgrade.md`.
+
+### `upgrade/upgrade-kubernetes.md` (DONE)
+**Diataxis**: How-to. Upgrading GKE/EKS Kubernetes control plane and node pools while respecting PDBs.
+**Source**: NEW. Addresses [#2446](https://github.com/scylladb/scylla-operator/issues/2446), [#2381](https://github.com/scylladb/scylla-operator/issues/2381).
+
+---
+
+## `networking/`
+
+### `networking/index.md` (DONE)
+Section index. **Diataxis**: Navigation.
+
+### `networking/expose-clusters.md` (DONE)
 **Diataxis**: How-to. Configuring `exposeOptions`: node service types, broadcast options, platform-specific annotations.
 **Source**: Rewrite from `resources/common/exposing.md` (procedural parts only; conceptual parts move to `architecture/networking.md`).
 
-### `networking/ipv6-getting-started.md`
-**Diataxis**: Tutorial. First IPv6-enabled cluster step-by-step.
-**Source**: Adapt from `management/networking/ipv6/tutorials/ipv6-getting-started.md`.
+### `networking/ipv6/index.md` (DONE)
+Section index for IPv6 networking pages. **Diataxis**: Navigation.
 
-### `networking/ipv6-configure-dual-stack.md`
+### `networking/ipv6/get-started.md` (DONE)
+**Diataxis**: Tutorial. First IPv6-enabled cluster step-by-step.
+**Source**: Adapt from `management/networking/ipv6/tutorials/ipv6-get-started.md`.
+
+### `networking/ipv6/configure-dual-stack.md` (DONE)
 **Diataxis**: How-to. Dual-stack setup (IPv4-first and IPv6-first variants).
 **Source**: Merge `management/networking/ipv6/how-to/ipv6-configure.md` + `management/networking/ipv6/how-to/ipv6-configure-ipv6-first.md`.
 
-### `networking/ipv6-configure-single-stack.md`
+### `networking/ipv6/configure-single-stack.md` (DONE)
 **Diataxis**: How-to. IPv6-only single-stack setup.
 **Source**: Adapt from `management/networking/ipv6/how-to/ipv6-configure-ipv6-only.md`.
 
-### `networking/ipv6-migration.md`
+### `networking/ipv6/migration.md` (DONE)
 **Diataxis**: How-to. Migrating from IPv4 to IPv6.
 **Source**: Adapt from `management/networking/ipv6/how-to/ipv6-migrate.md`.
 
-### `networking/ipv6-troubleshooting.md`
+### `networking/ipv6/troubleshooting.md` (DONE)
 **Diataxis**: How-to. Diagnosing IPv6 connectivity issues.
 **Source**: Adapt from `management/networking/ipv6/how-to/ipv6-troubleshoot.md`.
 
 ---
 
-## `troubleshooting/`
+## `troubleshoot/`
 
-### `troubleshooting/index.md`
+### `troubleshoot/index.md` (DONE)
 Section index with symptom-based navigation: "Pods not starting", "Cluster degraded", "Connection failures", "Upgrade failures", "Installation issues". **Diataxis**: Navigation.
 
-### `troubleshooting/diagnostic-flowchart.md`
+### `troubleshoot/diagnostic-flowchart.md` (DONE)
 **Diataxis**: How-to. Top-level decision tree: Is this a Kubernetes issue, Operator issue, or ScyllaDB issue? Branch to specific symptom pages. Copy-paste-ready diagnostic commands.
 **Source**: NEW. Addresses Support Engineer and Junior Support Engineer personas.
 
-### `troubleshooting/installation.md`
+### `troubleshoot/troubleshoot-installation.md` (DONE)
 **Diataxis**: How-to. Debugging installation failures: webhook connectivity, CRD propagation, cert-manager issues.
-**Source**: Rewrite from `support/troubleshooting/installation.md`.
+**Source**: Rewrite from `support/troubleshoot/troubleshoot-installation.md`.
 
-### `troubleshooting/cluster-health.md`
+### `troubleshoot/check-cluster-health.md` (DONE)
 **Diataxis**: How-to. Checking cluster health: pod status, ScyllaCluster conditions, nodetool status, aggregated conditions semantics ([#3022](https://github.com/scylladb/scylla-operator/issues/3022)).
 **Source**: NEW.
 
-### `troubleshooting/investigating-restarts.md`
+### `troubleshoot/investigate-restarts.md` (DONE)
 **Diataxis**: How-to. Investigating the cause of ScyllaDB pod/container restarts. Must cover:
 - **Identifying that a restart occurred**: `kubectl get pods` showing non-zero restart count, `kubectl describe pod` showing `lastState.terminated` with exit code and reason (OOMKilled, Error, etc.), container creation timestamp vs. pod creation timestamp discrepancy.
 - **Restart count and reason**: reading `containerStatuses[].restartCount`, `containerStatuses[].lastState.terminated.reason`, `containerStatuses[].lastState.terminated.exitCode`, and `containerStatuses[].lastState.terminated.finishedAt` to determine when and why the container restarted.
 - **Pod events**: `kubectl describe pod` events section — look for `Killing`, `BackOff`, `OOMKilling`, `FailedScheduling`, `Unhealthy` (liveness probe failure) events.
 - **Distinguishing restart causes**: OOMKilled, liveness probe failure (ScyllaDB unresponsive — check logs for long GC pauses, compaction stalls), CrashLoopBackOff (ScyllaDB fails to start — check previous container logs), node eviction (check node conditions and events).
-- **Collecting evidence**: previous container logs (`kubectl logs --previous`), must-gather archive, pod YAML with full status. Cross-reference `troubleshooting/collecting-debugging-information/must-gather.md`.
+- **Collecting evidence**: previous container logs (`kubectl logs --previous`), must-gather archive, pod YAML with full status. Cross-reference `troubleshoot/collect-debugging-information/must-gather.md`.
 Target: Database Operator/SRE, Support Engineer.
 **Source**: NEW.
 
-### `troubleshooting/node-not-starting.md`
+### `troubleshoot/diagnose-node-not-starting.md` (DONE)
 **Diataxis**: How-to. Diagnosing and resolving a ScyllaDB node that is not starting up. Must cover:
 - **Identifying the situation**: pod stuck in `Pending` (scheduling failure), `Init:*` (init container not completing), `PodInitializing` (ignition not firing), `CrashLoopBackOff` (ScyllaDB crashing on startup), or `Running` but not `Ready` (readiness probe failing).
 - **Pending pods**: check events for `FailedScheduling` — insufficient resources, node affinity/taint mismatch, PVC binding failure. Verify dedicated node pool exists and selectors match.
@@ -404,21 +427,21 @@ Target: Database Operator/SRE, Support Engineer.
 - **Ignition not completing**: pod is `Running` but ScyllaDB hasn't started. Check ignition sidecar logs, verify NodeConfig tuning has completed (check tuning ConfigMap), verify Service has LoadBalancer IP (if using LB broadcast). Cross-reference `architecture/ignition.md`.
 - **CrashLoopBackOff**: check previous container logs for ScyllaDB startup errors. Common causes: corrupt sstables, invalid configuration, wrong seeds, disk permission issues.
 - **Ways to recover**: recreate the pod (`kubectl delete pod`), clear PVC data (data loss — last resort), check and fix NodeConfig, adjust resource requests, fix node pool selectors.
-- Cross-reference `troubleshooting/investigating-restarts.md` and `architecture/sidecar.md`.
+- Cross-reference `troubleshoot/investigate-restarts.md` and `architecture/sidecar.md`.
 Target: Database Operator/SRE, Support Engineer.
 **Source**: NEW.
 
-### `troubleshooting/changing-log-level.md`
+### `troubleshoot/change-log-level.md` (DONE)
 **Diataxis**: How-to. Changing the ScyllaDB log level on a live cluster when a normal rolling restart is not feasible. Must cover:
 - **Scenario 1: StatefulSet stuck mid-rollout** — a rolling update is blocked because the updated pod won't become Ready. How to change log level on the already-running (old) pods via the ScyllaDB REST API (`kubectl exec` + `curl`/`scylla api` endpoint) without triggering another rollout.
 - **Scenario 2: Degraded cluster** — one or more nodes are down and a full rolling restart would violate availability. Same REST API approach to change log level on the healthy pods.
-- **Scenario 3: Normal path** — when a rolling restart is acceptable, change the log level via ScyllaCluster spec (cross-reference `operating/passing-scylladb-arguments.md`).
+- **Scenario 3: Normal path** — when a rolling restart is acceptable, change the log level via ScyllaCluster spec (cross-reference `operate/pass-scylladb-arguments.md`).
 - Explain which ScyllaDB REST API endpoint controls log levels, how to verify the change took effect, and that REST API changes are ephemeral (lost on pod restart).
 - Cross-reference `architecture/statefulsets-and-racks.md` to explain why a stuck rollout blocks further updates and what "partition" means in this context.
 Target: Database Operator/SRE, Support Engineer.
 **Source**: NEW.
 
-### `troubleshooting/recovering-from-failed-replace.md`
+### `troubleshoot/recover-from-failed-replace.md` (DONE)
 **Diataxis**: How-to. Step-by-step fallback procedure when a node replace operation fails and leaves the cluster in an inconsistent state (the Operator is stuck and cannot apply further configuration changes). Must cover:
 - Verifying via `nodetool status` that a node is stuck (DN, ?N) and correlating with Operator/pod logs.
 - Backing up data and capturing a must-gather archive before any destructive action.
@@ -431,25 +454,25 @@ Target: Database Operator/SRE, Support Engineer.
 - Verification: new node joins as UN; run repair.
 - Multi-DC note: perform the same steps in the worker cluster where the failed node is located.
 - Failure modes and recovery: what to do if the user accidentally cascading-deletes the StatefulSet (PVCs survive, Operator recreates pods on scale-up); how to manually recreate the StatefulSet from must-gather if the Operator fails to start.
-Cross-reference `architecture/statefulsets-and-racks.md` (why orphan-deleting a StatefulSet is safe) and `operating/replacing-nodes.md` (normal replace path).
+Cross-reference `architecture/statefulsets-and-racks.md` (why orphan-deleting a StatefulSet is safe) and `operate/replace-nodes.md` (normal replace path).
 **Source**: NEW. Based on `enhancements/proposals/2955-failed-replace-recovery/failed-replace-recovery.md`.
 
-### `troubleshooting/performance.md`
+### `troubleshoot/troubleshoot-performance.md` (DONE)
 **Diataxis**: How-to. Diagnosing performance degradation: CPU pinning verification, tuning misconfiguration, storage bottlenecks.
 **Source**: NEW.
 
-### `troubleshooting/common-errors.md`
+### `troubleshoot/common-errors.md` (DONE)
 **Diataxis**: Reference. Table of common error messages/log patterns, Kubernetes failure states (CrashLoopBackOff, Pending, ImagePullBackOff) mapped to ScyllaDB context, root causes, and resolution links.
 **Source**: NEW. Addresses Junior Support Engineer persona.
 
-### `troubleshooting/collecting-debugging-information/index.md`
+### `troubleshoot/collect-debugging-information/index.md` (DONE)
 Section index for debugging data collection methods. **Diataxis**: Navigation.
 
-### `troubleshooting/collecting-debugging-information/must-gather.md`
+### `troubleshoot/collect-debugging-information/must-gather.md` (DONE)
 **Diataxis**: How-to. Collecting Kubernetes-level diagnostics with the embedded must-gather tool: podman/docker/minikube, namespace scoping, include/exclude resources. Attach to support tickets.
 **Source**: Rewrite from `support/must-gather.md`. Cover minikube ([#1628](https://github.com/scylladb/scylla-operator/issues/1628)) and Podman ([#2384](https://github.com/scylladb/scylla-operator/issues/2384)).
 
-### `troubleshooting/collecting-debugging-information/must-gather-contents.md`
+### `troubleshoot/collect-debugging-information/must-gather-contents.md` (DONE)
 **Diataxis**: Reference. Explains the per-node "special" files captured by must-gather and how to interpret them. Must cover:
 - **`nodetool-status.log`** — cluster topology: which nodes are up/down/joining/leaving, load, host IDs, token ownership, datacenter/rack placement. How to read it for diagnosing membership issues.
 - **`nodetool-gossipinfo.log`** — Gossip protocol state per node: heartbeat generation/version, status, schema version, host ID, tokens, RPC/listen addresses, ScyllaDB version. Useful for diagnosing split-brain, schema disagreements, or nodes stuck in abnormal gossip states.
@@ -463,7 +486,7 @@ Section index for debugging data collection methods. **Diataxis**: Navigation.
 Target: Support Engineer, Database Operator/SRE.
 **Source**: NEW. Users receive must-gather archives but have no guide to interpreting the contents.
 
-### `troubleshooting/collecting-debugging-information/system-tables.md`
+### `troubleshoot/collect-debugging-information/system-tables.md` (DONE)
 **Diataxis**: How-to. Querying ScyllaDB system tables for debugging information. Must cover:
 - Which system tables are most useful for diagnostics (`system.log`, `system_distributed.repair_history`, `system.sstable_activity`, `system.large_partitions`, `system.runtime_info`, etc.).
 - How to query them via `cqlsh` on a running pod (`kubectl exec`).
@@ -472,7 +495,7 @@ Target: Support Engineer, Database Operator/SRE.
 Target: Database Operator/SRE, Support Engineer.
 **Source**: NEW.
 
-### `troubleshooting/coredumps.md`
+### `troubleshoot/configure-coredumps.md` (DONE)
 **Diataxis**: How-to. Configuring systemd-coredump on Kubernetes. Must cover:
 - systemd-coredump setup on nodes (via NodeConfig or host-level configuration).
 - **Backing storage sizing** — ensure enough disk space to accommodate a full ScyllaDB process coredump (proportional to memory allocation). [#2414](https://github.com/scylladb/scylla-operator/issues/2414) [#2916 req 5]
@@ -484,45 +507,45 @@ Target: Database Operator/SRE, Support Engineer.
 
 ## `reference/`
 
-### `reference/index.md`
+### `reference/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
 ### `reference/api/` (directory)
 **Diataxis**: Reference. Auto-generated API reference for all CRDs. Keep existing generation pipeline.
 **Source**: Keep `reference/api/` as-is (auto-generated).
 
-### `reference/feature-gates.md`
+### `reference/feature-gates.md` (DONE)
 **Diataxis**: Reference. Feature gates table with descriptions and configuration (GitOps/Helm).
 **Source**: Adapt from `reference/feature-gates.md`.
 
-### `reference/ipv6-configuration.md`
+### `reference/ipv6-configuration.md` (DONE)
 **Diataxis**: Reference. Complete IPv6 API field reference.
 **Source**: Adapt from `management/networking/ipv6/reference/ipv6-configuration.md`.
 
-### `reference/releases.md`
+### `reference/releases.md` (DONE)
 **Diataxis**: Reference. Release schedule, supported releases, backport policy, support matrix (K8s, OpenShift, ScyllaDB versions, architectures, environments).
 **Source**: Adapt from `support/releases.md`. Update product naming ([#3066](https://github.com/scylladb/scylla-operator/issues/3066)).
 
-### `reference/known-issues.md`
+### `reference/known-issues.md` (DONE)
 **Diataxis**: Reference. Known issues with workarounds, platform-specific caveats, multi-DC limitations ([#2856](https://github.com/scylladb/scylla-operator/issues/2856)).
 **Source**: Rewrite from `support/known-issues.md`. Expand beyond minikube-only issues.
 
-### `reference/sizing-guide.md`
+### `reference/sizing-guide.md` (DONE)
 **Diataxis**: Reference. Instance types per platform, storage sizing, network bandwidth. Must include:
 - **Recommended resource requests/limits for ScyllaDB container** — how memory limit maps to ScyllaDB's memory allocation. [#2916 req 7]
 - **Recommended resource requests/limits for ScyllaDB Manager Agent sidecar** — separate guidance since it shares the pod. [#2916 req 7]
 - Why requests must equal limits for Guaranteed QoS (prerequisite for CPU pinning). [#2916 req 8]
 **Source**: NEW. Addresses [#2349](https://github.com/scylladb/scylla-operator/issues/2349) and [#2916 req 7].
 
-### `reference/benchmarking.md`
+### `reference/benchmarking.md` (DONE)
 **Diataxis**: Reference. How to benchmark ScyllaDB on Kubernetes, cassandra-stress setup, interpreting results.
 **Source**: NEW. Addresses [#2365](https://github.com/scylladb/scylla-operator/issues/2365).
 
-### `reference/glossary.md`
+### `reference/glossary.md` (DONE)
 **Diataxis**: Reference. Terminology: ScyllaCluster, ScyllaDBCluster, ScyllaDBDatacenter, rack, datacenter, ScyllaDB Manager, shard, etc. Map Kubernetes terms to ScyllaDB terms.
 **Source**: NEW. Addresses consistent terminology requirement.
 
-### `reference/nodetool-alternatives.md`
+### `reference/nodetool-alternatives.md` (DONE)
 **Diataxis**: Reference. For users proficient with [ScyllaDB's `nodetool`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool.html): why direct `nodetool` operations that change cluster state must not be used with the Operator, and what to do instead. Note that ScyllaDB's `nodetool` is a distinct implementation from Apache Cassandra's — it communicates with ScyllaDB via the REST API (not JMX), though many command names are the same.
 
 Must cover each state-changing `nodetool` command with its Operator-compatible alternative:
@@ -530,19 +553,19 @@ Must cover each state-changing `nodetool` command with its Operator-compatible a
 | `nodetool` command | Risk with Operator | Operator alternative |
 |---|---|---|
 | [`decommission`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/decommission.html) | **High.** Desyncs StatefulSet replica count and Operator tracking labels. Operator won't know the node was decommissioned. | Scale down the rack's `members` count by 1. The Operator labels the service, the sidecar calls decommission, and the StatefulSet scales down after completion. |
-| [`removenode`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html) | **High.** Removes a node from the ring without Operator knowledge. Operator expects to manage membership via scale-down or replace. | Use the `scylla/replace` label on the member Service to trigger Operator-managed replacement. For dead nodes, see `troubleshooting/recovering-from-failed-replace.md`. |
+| [`removenode`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html) | **High.** Removes a node from the ring without Operator knowledge. Operator expects to manage membership via scale-down or replace. | Use the `scylla/replace` label on the member Service to trigger Operator-managed replacement. For dead nodes, see `troubleshoot/recover-from-failed-replace.md`. |
 | [`repair`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/repair.html) | **Low.** Safe to run manually but redundant. | Configure repair tasks via ScyllaDB Manager (managed through the ScyllaCluster spec). Manager handles scheduling and distributed coordination. |
 | [`cleanup`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cleanup.html) | **Low.** Safe and idempotent, but the Operator runs cleanup automatically when it detects token ring changes. | Automatic — the Operator tracks token ring hash changes per service and spawns cleanup Jobs when they diverge. Manual cleanup is only needed after replication factor changes (which the Operator does not detect). |
 | [`drain`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/drain.html) | **Medium.** Puts node in DRAINED state; sidecar may restart ScyllaDB if a decommission is pending. | Drain runs automatically as a `preStop` lifecycle hook before every pod shutdown. No manual invocation needed. |
 | `move` | **High.** Changes token ownership without Operator awareness. | Not supported. Use scaling (add/remove nodes) to rebalance. |
 | [`rebuild`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/rebuild.html) | **High.** Streams data from another datacenter; Operator does not track rebuild state. Running during an Operator-managed operation can cause conflicts. | No Operator alternative. If rebuild is needed (e.g., adding a new DC), coordinate manually — pause Operator reconciliation or ensure no other operations are in progress. |
-| [`disablebinary`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/disablebinary.html) / [`enablebinary`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/enablebinary.html) | **High.** Disabling native transport makes the node unreachable to clients and may cause readiness probe failures, triggering Operator recovery actions. | Do not use. If you need to stop traffic to a node, use maintenance mode (`operating/maintenance-mode.md`). |
+| [`disablebinary`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/disablebinary.html) / [`enablebinary`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/enablebinary.html) | **High.** Disabling native transport makes the node unreachable to clients and may cause readiness probe failures, triggering Operator recovery actions. | Do not use. If you need to stop traffic to a node, use maintenance mode (`operate/use-maintenance-mode.md`). |
 | [`disablegossip`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/disablegossip.html) / [`enablegossip`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/enablegossip.html) | **High.** Disabling gossip effectively marks the node as down in the cluster, confusing the Operator's health checks and potentially triggering unwanted recovery. | Do not use. |
 | [`snapshot`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/snapshot.html) / [`clearsnapshot`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/clearsnapshot.html) | **Low.** Safe to use. | Snapshots are taken automatically before rolling updates. For backup, use ScyllaDB Manager backup tasks. |
 | [`compact`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/compact.html) | **Low.** Safe to trigger manually. | No Operator alternative; manual compaction is acceptable. |
 | [`flush`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/flush.html) | **Low.** Safe to trigger manually. | No Operator alternative; flushing memtables is acceptable. |
 | [`scrub`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/scrub.html) | **Low.** Safe to trigger manually. | No Operator alternative; manual scrub is acceptable. |
-| [`setlogginglevel`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/setlogginglevel.html) | **Low.** Ephemeral change, lost on pod restart. Safe to use for live debugging. | Preferred method for emergency log-level changes when a rolling restart is not possible. Cross-reference `troubleshooting/changing-log-level.md`. For persistent changes, use ScyllaCluster spec (`operating/passing-scylladb-arguments.md`). |
+| [`setlogginglevel`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/setlogginglevel.html) | **Low.** Ephemeral change, lost on pod restart. Safe to use for live debugging. | Preferred method for emergency log-level changes when a rolling restart is not possible. Cross-reference `troubleshoot/change-log-level.md`. For persistent changes, use ScyllaCluster spec (`operate/pass-scylladb-arguments.md`). |
 | [`disableautocompaction`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/disableautocompaction.html) / [`enableautocompaction`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/enableautocompaction.html) | **Medium.** Ephemeral change, but disabling auto-compaction can cause unbounded growth of SSTables if forgotten. Operator does not track this state. | No Operator alternative; use with caution and re-enable promptly. |
 | [`refresh`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/refresh.html) | **Low.** Loads SSTables placed on disk; does not affect cluster membership. | No Operator alternative; safe to use. |
 | [`upgradesstables`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/upgradesstables.html) | **Low.** Rewrites SSTables to the latest format; safe but resource-intensive. | No Operator alternative; safe to use, typically needed after ScyllaDB version upgrade. |
@@ -550,7 +573,7 @@ Must cover each state-changing `nodetool` command with its Operator-compatible a
 | [`settraceprobability`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/settraceprobability.html) | **Low.** Ephemeral diagnostic setting. | No Operator alternative; safe to use for debugging. |
 | [`stop`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/stop.html) (compaction) | **Medium.** Stops in-progress compaction. Safe but may need to be repeated if compaction restarts. | No Operator alternative; use with caution. |
 - **General rule**: if a `nodetool` command is read-only (e.g., [`status`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/status.html), [`gossipinfo`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/gossipinfo.html), [`info`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/info.html), [`ring`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/ring.html), [`cfstats`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cfstats.html), [`tablestats`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/tablestats.html), [`compactionstats`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/compactionstats.html), [`toppartitions`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/toppartitions.html)), it is always safe to use. If it changes cluster state, consult this table.
-- Cross-reference `architecture/statefulsets-and-racks.md`, `operating/scaling.md`, `operating/replacing-nodes.md`.
+- Cross-reference `architecture/statefulsets-and-racks.md`, `operate/scale-cluster.md`, `operate/replace-nodes.md`.
 Target: Database Operator/SRE who are experienced ScyllaDB administrators transitioning to Kubernetes.
 **Source**: NEW.
 
@@ -558,14 +581,14 @@ Target: Database Operator/SRE who are experienced ScyllaDB administrators transi
 
 ## `contributing/`
 
-### `contributing/index.md`
+### `contributing/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
-### `contributing/development-setup.md`
+### `contributing/development-setup.md` (DONE)
 **Diataxis**: Tutorial. Setting up local dev environment: Go, Docker/Podman, Kind, dependencies. Build and run the Operator locally.
 **Source**: NEW. Link to `CONTRIBUTING.md`. Addresses [#3278](https://github.com/scylladb/scylla-operator/issues/3278).
 
-### `contributing/building-and-testing.md`
+### `contributing/building-and-testing.md` (YOU ARE HERE)
 **Diataxis**: How-to. Makefile targets, running unit/integration/E2E tests, interpreting CI failures.
 **Source**: NEW. Link to `CONTRIBUTING.md`.
 
@@ -579,11 +602,11 @@ Section index. **Diataxis**: Navigation.
 
 The following existing files are fully superseded by the new structure and should be removed:
 
-- `quickstarts/` → replaced by `getting-started/quickstart-*.md`
+- `quickstarts/` → replaced by `get-started/quickstart-*.md`
 - `architecture/storage/` (2 files) → merged into `architecture/storage.md`
-- `installation/overview.md` → content split between `installation/prerequisites.md` and `architecture/overview.md`
-- `installation/kubernetes-prerequisites.md` → replaced by `installation/prerequisites.md`
-- `management/` (entire tree) → content redistributed to `operating/`, `deploying/`, `networking/`, `architecture/`
-- `resources/` (entire tree) → content redistributed to `deploying/`, `connecting/`, `operating/`, `reference/`
-- `support/` → content redistributed to `troubleshooting/`, `reference/`
+- `install-operator/overview.md` → content split between `install-operator/prerequisites.md` and `architecture/overview.md`
+- `install-operator/kubernetes-prerequisites.md` → replaced by `install-operator/prerequisites.md`
+- `management/` (entire tree) → content redistributed to `operate/`, `deploy-scylladb/`, `networking/`, `architecture/`
+- `resources/` (entire tree) → content redistributed to `deploy-scylladb/`, `connect-your-app/`, `operate/`, `reference/`
+- `support/` → content redistributed to `troubleshoot/`, `reference/`
 - All existing `index.md` files → replaced by new section indexes- **Why this matters**: the Operator reconciles cluster state continuously. Any out-of-band change to cluster membership or topology creates a mismatch between the Operator's expected state and reality, leading to stuck rollouts, failed replacements, or data loss.

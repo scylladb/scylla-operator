@@ -15,17 +15,16 @@ hide-post-content:
 :hidden:
 :maxdepth: 1
 
-getting-started/index
-architecture/index
-installation/index
-deploying/index
-connecting/index
-operating/index
-networking/index
-troubleshooting/index
+get-started/index
+install-operator/index
+deploy-scylladb/index
+connect-your-app/index
+understand/index
+operate/index
+upgrade/index
+troubleshoot/index
 reference/index
 contributing/index
-_legacy/index
 :::
 
 ```{hero-box}
@@ -48,7 +47,7 @@ It handles provisioning, scaling, upgrades, repairs, backups, and monitoring —
 ```{topic-box}
 :title: Evaluate
 :icon: icon-apartment
-:link: getting-started/index
+:link: get-started/index
 :anchor: Get started »
 :class: large-4
 
@@ -58,7 +57,7 @@ Understand what ScyllaDB Operator does, what problems it solves, and whether it 
 ```{topic-box}
 :title: Install
 :icon: icon-download
-:link: installation/index
+:link: install-operator/index
 :anchor: Install now »
 :class: large-4
 
@@ -68,7 +67,7 @@ Set up ScyllaDB Operator and its dependencies on your Kubernetes cluster using H
 ```{topic-box}
 :title: Deploy a Cluster
 :icon: icon-database
-:link: deploying/index
+:link: deploy-scylladb/index
 :anchor: Deploy now »
 :class: large-4
 
@@ -78,7 +77,7 @@ Create and configure a ScyllaDB cluster — single-DC or multi-DC — with produ
 ```{topic-box}
 :title: Connect Your App
 :icon: icon-rocket
-:link: connecting/index
+:link: connect-your-app/index
 :anchor: Connect now »
 :class: large-4
 
@@ -88,7 +87,7 @@ Connect to ScyllaDB from your application using CQL, the Alternator DynamoDB-com
 ```{topic-box}
 :title: Operate
 :icon: icon-operations
-:link: operating/index
+:link: operate/index
 :anchor: Learn more »
 :class: large-4
 
@@ -98,7 +97,7 @@ Scale, upgrade, back up, restore, and maintain your ScyllaDB clusters in product
 ```{topic-box}
 :title: Troubleshoot
 :icon: icon-support
-:link: troubleshooting/index
+:link: troubleshoot/index
 :anchor: Diagnose now »
 :class: large-4
 

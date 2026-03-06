@@ -12,6 +12,7 @@ import (
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,6 +49,8 @@ func (scmc *Controller) calculateStatus(
 	scyllaDBManagerTasks map[string]*scyllav1alpha1.ScyllaDBManagerTask,
 ) scyllav1.ScyllaClusterStatus {
 	status := sc.Status.DeepCopy()
+	status.ObservedGeneration = pointer.Ptr(sc.Generation)
+
 	if len(sdcs) == 0 {
 		return *status
 	}
@@ -58,6 +61,11 @@ func (scmc *Controller) calculateStatus(
 	}
 
 	migratedStatus := migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc, configMaps, services)
+
+	// ObservedGeneration is not migrated as there might be a generation skew between ScyllaCluster and ScyllaDBDatacenter.
+	migratedStatus.ObservedGeneration = pointer.Ptr(sc.Generation)
+	// Conditions are handled independently as they also need to take controller conditions into account.
+	migratedStatus.Conditions = status.Conditions
 
 	if isGlobalScyllaDBManagerIntegrationDisabled(sc) {
 		klog.V(4).InfoS("ScyllaDBManager integration is disabled, skipping migration of repair and backup tasks' statuses", "ScyllaCluster", klog.KObj(sc), "ScyllaDBDatacenter", klog.KObj(sdc))

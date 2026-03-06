@@ -29,7 +29,11 @@ import (
 )
 
 var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage, func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	type entry struct {
 		scyllaRepository           string

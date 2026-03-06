@@ -17,7 +17,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster evictions", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should allow one disruption", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

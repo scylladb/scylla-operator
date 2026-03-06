@@ -26,7 +26,11 @@ import (
 )
 
 var _ = g.Describe("Scylla Manager integration", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.DescribeTable("should register and deregister a ScyllaCluster", func(ctx g.SpecContext, deregistrationHook func(context.Context, *scyllav1.ScyllaCluster)) {
 		ns, nsClient, ok := f.DefaultNamespaceIfAny()

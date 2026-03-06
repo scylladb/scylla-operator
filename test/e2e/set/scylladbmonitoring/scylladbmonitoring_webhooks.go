@@ -1,6 +1,7 @@
 package scylladbmonitoring
 
 import (
+	"context"
 	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -15,36 +16,42 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBMonitoring webhook", func() {
-	f := framework.NewFramework("scylladbmonitoring")
+	var (
+		f         *framework.Framework
+		validSDBM *scyllav1alpha1.ScyllaDBMonitoring
+	)
 
-	f.AdminClient.Config = verification.RestConfigWithWarningCaptureHandler(f.AdminClient.Config)
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scylladbmonitoring")
+		f.AdminClient.Config = verification.RestConfigWithWarningCaptureHandler(f.AdminClient.Config)
+
+		validSDBM = &scyllav1alpha1.ScyllaDBMonitoring{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: names.SimpleNameGenerator.GenerateName("valid-"),
+			},
+			Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
+				Components: &scyllav1alpha1.Components{
+					Prometheus: &scyllav1alpha1.PrometheusSpec{
+						Mode: scyllav1alpha1.PrometheusModeExternal,
+					},
+					Grafana: &scyllav1alpha1.GrafanaSpec{
+						Resources: corev1.ResourceRequirements{},
+						Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+							{
+								URL:               "https://prometheus.example:9091",
+								PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{},
+							},
+						},
+					},
+				},
+			},
+		}
+	})
 
 	type entry struct {
 		modifierFuncs          []func(*scyllav1alpha1.ScyllaDBMonitoring)
 		expectedErrMatcherFunc func(sm *scyllav1alpha1.ScyllaDBMonitoring) o.OmegaMatcher
 		expectedWarning        string
-	}
-
-	validSDBM := &scyllav1alpha1.ScyllaDBMonitoring{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: names.SimpleNameGenerator.GenerateName("valid-"),
-		},
-		Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
-			Components: &scyllav1alpha1.Components{
-				Prometheus: &scyllav1alpha1.PrometheusSpec{
-					Mode: scyllav1alpha1.PrometheusModeExternal,
-				},
-				Grafana: &scyllav1alpha1.GrafanaSpec{
-					Resources: corev1.ResourceRequirements{},
-					Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
-						{
-							URL:               "https://prometheus.example:9091",
-							PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{},
-						},
-					},
-				},
-			},
-		},
 	}
 
 	g.DescribeTableSubtree("should respond", func(e *entry) {

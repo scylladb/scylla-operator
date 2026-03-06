@@ -28,7 +28,11 @@ const (
 )
 
 var _ = g.Describe("ScyllaCluster graceful termination", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	// This test verifies correct signal handling in the bash wait routine
 	// which oscillates between a sleep (external program) and a file check.

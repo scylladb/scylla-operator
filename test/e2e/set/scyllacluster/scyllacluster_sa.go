@@ -20,7 +20,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should claim preexisting member ServiceAccount and RoleBinding", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

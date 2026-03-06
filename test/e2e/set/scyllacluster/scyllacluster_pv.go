@@ -36,7 +36,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	const cloneLabelKey = "e2e.operator.scylladb.com/orphaned-pv-test"
 

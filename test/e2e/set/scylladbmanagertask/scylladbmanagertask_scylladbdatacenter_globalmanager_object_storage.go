@@ -31,7 +31,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.RequiresObjectStorage, func() {
-	f := framework.NewFramework("scylladbmanagertask")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scylladbmanagertask")
+	})
 
 	type entry struct {
 		scyllaDBImage              string

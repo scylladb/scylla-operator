@@ -18,7 +18,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBCluster webhook", func() {
-	f := framework.NewFramework("scylladbcluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should forbid create and update of invalid cluster", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

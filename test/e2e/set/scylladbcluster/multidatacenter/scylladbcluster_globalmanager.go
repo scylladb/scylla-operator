@@ -22,7 +22,11 @@ import (
 )
 
 var _ = g.Describe("ScyllaDBCluster integration with global ScyllaDB Manager", framework.MultiDatacenter, func() {
-	f := framework.NewFramework("scylladbcluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	hasDeletionFinalizer := func(smcr *scyllav1alpha1.ScyllaDBManagerClusterRegistration) (bool, error) {
 		return oslices.ContainsItem(smcr.Finalizers, naming.ScyllaDBManagerClusterRegistrationFinalizer), nil

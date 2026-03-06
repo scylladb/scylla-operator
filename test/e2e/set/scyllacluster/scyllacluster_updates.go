@@ -31,7 +31,11 @@ func addQuantity(lhs resource.Quantity, rhs resource.Quantity) *resource.Quantit
 }
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should rolling restart cluster when forceRedeploymentReason is changed", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

@@ -61,7 +61,11 @@ func (movie Movie) GetKey() map[string]types.AttributeValue {
 }
 
 var _ = g.Describe("ScyllaCluster", func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should set up Alternator API when enabled", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

@@ -24,7 +24,11 @@ import (
 )
 
 var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter, func() {
-	f := framework.NewFramework("scylladbcluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.It("should mirror ConfigMaps and Secrets referenced by ScyllaDBCluster into remote datacenters", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

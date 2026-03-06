@@ -29,7 +29,11 @@ type ipv6TestEntry struct {
 }
 
 var _ = g.Describe("ScyllaCluster IPv6", framework.IPv6, func() {
-	f := framework.NewFramework("scyllacluster")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
 
 	g.DescribeTable("should support IPv6 with different expose options", func(e *ipv6TestEntry) {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)

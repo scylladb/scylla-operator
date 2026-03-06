@@ -68,7 +68,11 @@ func describeEntry(e *scyllaDBMonitoringEntry) string {
 }
 
 var _ = g.Describe("ScyllaDBMonitoring", func() {
-	f := framework.NewFramework("scylladbmonitoring")
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scylladbmonitoring")
+	})
 
 	g.DescribeTable("should setup monitoring stack", func(ctx g.SpecContext, e *scyllaDBMonitoringEntry) {
 		framework.By("Creating a ScyllaCluster with a single node")

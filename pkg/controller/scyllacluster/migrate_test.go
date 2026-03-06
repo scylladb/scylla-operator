@@ -27,6 +27,29 @@ import (
 func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testing.T) {
 	t.Parallel()
 
+	newMigratedScyllaClusterStatus := func() scyllav1.ScyllaClusterStatus {
+		return scyllav1.ScyllaClusterStatus{
+			Racks: map[string]scyllav1.RackStatus{
+				"a": {
+					Version:          "scylladb-version",
+					Members:          6,
+					ReadyMembers:     7,
+					AvailableMembers: pointer.Ptr[int32](8),
+					UpdatedMembers:   pointer.Ptr[int32](9),
+					Stale:            pointer.Ptr(true),
+				},
+			},
+			Members:          pointer.Ptr[int32](1),
+			ReadyMembers:     pointer.Ptr[int32](4),
+			AvailableMembers: pointer.Ptr[int32](5),
+			RackCount:        pointer.Ptr[int32](1),
+			ManagerID:        nil,
+			Repairs:          nil,
+			Backups:          nil,
+			Upgrade:          nil,
+		}
+	}
+
 	tt := []struct {
 		name                        string
 		scyllaDBDatacenter          *scyllav1alpha1.ScyllaDBDatacenter
@@ -36,10 +59,10 @@ func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testi
 	}{
 		{
 			name:                        "valid migration with all fields",
-			scyllaDBDatacenter:          newBasicScyllaDBDatacenter(),
+			scyllaDBDatacenter:          newBasicScyllaDBDatacenterWithStatus(),
 			configMaps:                  nil,
 			services:                    nil,
-			expectedScyllaClusterStatus: newBasicScyllaCluster().Status,
+			expectedScyllaClusterStatus: newMigratedScyllaClusterStatus(),
 		},
 		{
 			name:       "decommissioning and leaving rack condition when one of the member services has special label",
@@ -54,9 +77,9 @@ func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testi
 					},
 				},
 			},
-			scyllaDBDatacenter: newBasicScyllaDBDatacenter(),
+			scyllaDBDatacenter: newBasicScyllaDBDatacenterWithStatus(),
 			expectedScyllaClusterStatus: func() scyllav1.ScyllaClusterStatus {
-				status := newBasicScyllaCluster().Status
+				status := newMigratedScyllaClusterStatus()
 				rackStatus := status.Racks["a"]
 				rackStatus.Conditions = []scyllav1.RackCondition{
 					{
@@ -85,9 +108,9 @@ func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testi
 					},
 				},
 			},
-			scyllaDBDatacenter: newBasicScyllaDBDatacenter(),
+			scyllaDBDatacenter: newBasicScyllaDBDatacenterWithStatus(),
 			expectedScyllaClusterStatus: func() scyllav1.ScyllaClusterStatus {
-				status := newBasicScyllaCluster().Status
+				status := newMigratedScyllaClusterStatus()
 				rackStatus := status.Racks["a"]
 				rackStatus.Conditions = []scyllav1.RackCondition{
 					{
@@ -104,12 +127,12 @@ func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testi
 			configMaps: nil,
 			services:   nil,
 			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
-				sdc := newBasicScyllaDBDatacenter()
+				sdc := newBasicScyllaDBDatacenterWithStatus()
 				sdc.Status.Racks[0].UpdatedVersion = "bar"
 				return sdc
 			}(),
 			expectedScyllaClusterStatus: func() scyllav1.ScyllaClusterStatus {
-				status := newBasicScyllaCluster().Status
+				status := newMigratedScyllaClusterStatus()
 				rackStatus := status.Racks["a"]
 				rackStatus.Conditions = []scyllav1.RackCondition{
 					{
@@ -123,11 +146,11 @@ func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testi
 		},
 		{
 			name:               "upgrade status is taken from upgrade context ConfigMap",
-			scyllaDBDatacenter: newBasicScyllaDBDatacenter(),
+			scyllaDBDatacenter: newBasicScyllaDBDatacenterWithStatus(),
 			configMaps: []*corev1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: fmt.Sprintf("%s-upgrade-context", newBasicScyllaDBDatacenter().Name),
+						Name: fmt.Sprintf("%s-upgrade-context", newBasicScyllaDBDatacenterWithStatus().Name),
 					},
 					Data: map[string]string{
 						"upgrade-context.json": func() string {
@@ -152,7 +175,7 @@ func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testi
 			},
 			services: nil,
 			expectedScyllaClusterStatus: func() scyllav1.ScyllaClusterStatus {
-				status := newBasicScyllaCluster().Status
+				status := newMigratedScyllaClusterStatus()
 				status.Upgrade = &scyllav1.UpgradeStatus{
 					State:             "a",
 					FromVersion:       "b",
@@ -181,7 +204,7 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 	t.Parallel()
 
 	newBasicScyllaDBDatacenterWithNoStatus := func() *scyllav1alpha1.ScyllaDBDatacenter {
-		sd := newBasicScyllaDBDatacenter()
+		sd := newBasicScyllaDBDatacenterWithStatus()
 		sd.Status = scyllav1alpha1.ScyllaDBDatacenterStatus{}
 		return sd
 	}
@@ -527,41 +550,10 @@ func newBasicScyllaCluster() *scyllav1.ScyllaCluster {
 				},
 			},
 		},
-		Status: scyllav1.ScyllaClusterStatus{
-			ObservedGeneration: pointer.Ptr[int64](123),
-			Racks: map[string]scyllav1.RackStatus{
-				"a": {
-					Version:          "scylladb-version",
-					Members:          6,
-					ReadyMembers:     7,
-					AvailableMembers: pointer.Ptr[int32](8),
-					UpdatedMembers:   pointer.Ptr[int32](9),
-					Stale:            pointer.Ptr(true),
-				},
-			},
-			Members:          pointer.Ptr[int32](1),
-			ReadyMembers:     pointer.Ptr[int32](4),
-			AvailableMembers: pointer.Ptr[int32](5),
-			RackCount:        pointer.Ptr[int32](1),
-			ManagerID:        nil,
-			Repairs:          nil,
-			Backups:          nil,
-			Upgrade:          nil,
-			Conditions: []metav1.Condition{
-				{
-					Type:               "condition-type",
-					Status:             metav1.ConditionTrue,
-					ObservedGeneration: 123,
-					LastTransitionTime: metav1.Time{},
-					Reason:             "condition-reason",
-					Message:            "condition-message",
-				},
-			},
-		},
 	}
 }
 
-func newBasicScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatacenter {
+func newBasicScyllaDBDatacenterWithStatus() *scyllav1alpha1.ScyllaDBDatacenter {
 	return &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "simple-cluster",

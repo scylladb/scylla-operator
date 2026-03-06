@@ -370,14 +370,15 @@ func MigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(sc *scyllav1.ScyllaClust
 	return sdc, upgradeContext, apimachineryutilerrors.NewAggregate(migrateErrs)
 }
 
+// migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus migrates v1alpha1.ScyllaDBDatacenterStatus into v1.ScyllaClusterStatus.
+// ObservedGeneration is not migrated as there might be a generation skew between ScyllaCluster and ScyllaDBDatacenter.
+// Conditions are handled independently as they also need to take controller conditions into account.
 func migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, configMaps []*corev1.ConfigMap, services []*corev1.Service) scyllav1.ScyllaClusterStatus {
 	return scyllav1.ScyllaClusterStatus{
-		ObservedGeneration: sdc.Status.ObservedGeneration,
-		Conditions:         sdc.Status.Conditions,
-		Members:            sdc.Status.Nodes,
-		ReadyMembers:       sdc.Status.ReadyNodes,
-		AvailableMembers:   sdc.Status.AvailableNodes,
-		RackCount:          pointer.Ptr(int32(len(sdc.Status.Racks))),
+		Members:          sdc.Status.Nodes,
+		ReadyMembers:     sdc.Status.ReadyNodes,
+		AvailableMembers: sdc.Status.AvailableNodes,
+		RackCount:        pointer.Ptr(int32(len(sdc.Status.Racks))),
 		Racks: func() map[string]scyllav1.RackStatus {
 			rackStatuses := make(map[string]scyllav1.RackStatus)
 			for _, rackStatus := range sdc.Status.Racks {

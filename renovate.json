@@ -105,6 +105,33 @@
       ]
     },
     {
+      "description": "ScyllaDB dependency bump in config.yaml requires manual action",
+      "matchDepNames": [
+        "scylladb"
+      ],
+      "matchFileNames": [
+        "assets/config/config.yaml"
+      ],
+      "addLabels": [
+        "do-not-merge/hold"
+      ],
+      "prBodyNotes": [
+        "### ⚠️ Manual Action Required",
+        "Renovate has bumped a ScyllaDB dependency, but cannot automatically propagate all required changes.",
+        "",
+        "**Please complete the following steps before merging:**",
+        "1. Check out this branch locally.",
+        "2. Update `operatorTests.scyllaDBVersions.updateFrom` and `operatorTests.scyllaDBVersions.upgradeFrom` fields in `assets/config/config.yaml`.",
+        "3. Propagate changes by running:",
+        "   ```bash",
+        "   make update",
+        "   git add .",
+        "   git commit --amend && git push --force",
+        "   ```",
+        "4. Remove the `do-not-merge/hold` label."
+      ]
+    },
+    {
       "matchManagers": [
         "regex"
       ],

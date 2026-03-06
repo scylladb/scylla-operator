@@ -26,6 +26,10 @@
 - `ScyllaCluster`'s translation controller now combines `ScyllaDBDatacenter` status conditions with its own controller partial conditions when aggregating `ScyllaCluster`'s status conditions,
   and correctly offsets their observed generations by the generation skew between the two resources.
   [#3311](https://github.com/scylladb/scylla-operator/pull/3311)
+- Fixed [#2778](https://github.com/scylladb/scylla-operator/issues/2778): `ScyllaDBDatacenter` controller now preserves
+  `volumeClaimTemplates` labels and annotations from the existing `StatefulSet` instead of recomputing them, preventing
+  immutable field update errors when `.spec.rackTemplate` is set on an existing `ScyllaDBDatacenter`.
+  [#3309]: https://github.com/scylladb/scylla-operator/pull/3309
 
 ## 1.20.0 and older
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euEo pipefail
 shopt -s inherit_errexit

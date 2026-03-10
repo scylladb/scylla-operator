@@ -23,6 +23,9 @@
 
 -  Fixed [#2990](https://github.com/scylladb/scylla-operator/issues/2990): set monitoring scrape intervals to: 5s in 
   `ServiceMonitor`, and 30s in Grafana. This overrides the global scrape interval set in Prometheus.
+- `ScyllaCluster`'s translation controller now combines `ScyllaDBDatacenter` status conditions with its own controller partial conditions when aggregating `ScyllaCluster`'s status conditions,
+  and correctly offsets their observed generations by the generation skew between the two resources.
+  [#3311](https://github.com/scylladb/scylla-operator/pull/3311)
 
 ## 1.20.0 and older
 

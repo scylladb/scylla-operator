@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=golang packageName=quay.io/scylladb/scylla-operator-images versioning=regex:^golang-(?<major>\d+)\.(?<minor>\d+)$
-FROM quay.io/scylladb/scylla-operator-images:golang-1.25 AS builder
+FROM quay.io/scylladb/scylla-operator-images:golang-1.26 AS builder
 
 RUN groupadd -g 1001 scylla && \
     useradd -u 1001 -g scylla -m scylla

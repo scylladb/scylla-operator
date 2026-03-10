@@ -809,7 +809,7 @@ help:
 .PHONY: help
 
 cert-manager:
-	kubectl apply -f examples/common/cert-manager.yaml
+	kubectl apply -f examples/third-party/cert-manager.yaml
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cert-manager --timeout=60s
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=cainjector --timeout=60s
 	kubectl -n cert-manager wait --for=condition=ready pod -l app=webhook --timeout=60s

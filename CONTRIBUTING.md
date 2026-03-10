@@ -28,7 +28,7 @@ it's up to the developer to ensure they are available in the environment:
 - [golangci-lint](https://github.com/golangci/golangci-lint)
 - [operator-sdk](https://sdk.operatorframework.io/docs/installation/)
   (**Note:** Until [#6978](https://github.com/operator-framework/operator-sdk/pull/6978) is merged and released, you
-  need to use `operator-sdk` from the PR branch; `quay.io/scylladb/scylla-operator-images:golang-1.25` image has it preinstalled)
+  need to use `operator-sdk` from the PR branch; `quay.io/scylladb/scylla-operator-images:golang-1.26` image has it preinstalled)
 - [ginkgo](https://onsi.github.io/ginkgo/#getting-started) - for running envtests.
 - [podman](https://podman.io/get-started) - for building and running container images.
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/) - for running local Kubernetes clusters for E2E tests.

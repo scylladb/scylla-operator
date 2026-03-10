@@ -18,7 +18,13 @@ import (
 	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
-const nRows = 10
+const (
+	nRows = 10
+
+	// cqlSessionCloseTimeout is the maximum time to wait for gocql Session.Close() to complete. If Close() does not finish
+	// within this window we abandon it and log a warning to avoid hanging the entire test suite.
+	cqlSessionCloseTimeout = 30 * time.Second
+)
 
 type DataInserter struct {
 	session           *gocqlx.Session
@@ -85,8 +91,18 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 }
 
 func (di *DataInserter) Close() {
-	if di.session != nil {
-		di.session.Close()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if di.session != nil {
+			di.session.Close()
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(cqlSessionCloseTimeout):
+		framework.Infof("WARNING: gocql Session.Close() did not return within %v; abandoning to avoid suite hang", cqlSessionCloseTimeout)
 	}
 }
 

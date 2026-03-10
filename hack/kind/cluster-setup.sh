@@ -10,6 +10,9 @@ shopt -s inherit_errexit
 
 readonly parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 
+# Ensure all kind calls use podman.
+export KIND_EXPERIMENTAL_PROVIDER=podman
+
 if [ -z "${CLUSTER_NAME}" ]; then
   echo "CLUSTER_NAME must be set" > /dev/stderr
   exit 1
@@ -30,9 +33,6 @@ fi
 # Ensure KinD cluster exists.
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
     KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${parent_dir}/cluster-config.yaml" --retain)
-
-    # Ensure kind uses podman.
-    export KIND_EXPERIMENTAL_PROVIDER=podman
 
     # As we rely on rootless Podman, we need to delegate cgroup management to the user systemd instance (this is implicitly
     # done on systems with systemd >= 252, but needs to be explicit on older systems).

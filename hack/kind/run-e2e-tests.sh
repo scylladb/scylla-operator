@@ -3,6 +3,9 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
+# Ensure all kind calls use podman.
+export KIND_EXPERIMENTAL_PROVIDER=podman
+
 if [ -z "${CLUSTER_NAME}" ]; then
   echo "CLUSTER_NAME must be set" > /dev/stderr
   exit 1

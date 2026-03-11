@@ -46,7 +46,7 @@ You can refer to it for more detailed instructions, or follow the below steps fo
      :::
    * Select the `Manual` update approval strategy to manually approve ScyllaDB Operator upgrades when new versions are available.
      :::{caution}
-     Always review the [Upgrading ScyllaDB Operator](../management/upgrading/upgrade.md) guide and check for [additional steps for specific versions](../management/upgrading/upgrade.md#upgrade-steps-for-specific-versions) before starting the upgrade process.
+     Always review the [Upgrading ScyllaDB Operator](../operations/upgrading/upgrade-operator.md) guide and check for [additional steps for specific versions](../operations/upgrading/upgrade-operator.md#upgrade-steps-for-specific-versions) before starting the upgrade process.
      :::
 5. Click `Install` to install and subscribe to ScyllaDB Operator.
 6. In the `Install Plan` dialog, review the manual install plan and click `Approve` to approve it.
@@ -215,14 +215,14 @@ You can refer to it for more detailed instructions, or follow the below steps fo
 
 ## Set up local storage on dedicated nodes and enable tuning
 
-ScyllaDB Operator enables local storage configuration and performance tuning through the [`NodeConfig`](../resources/nodeconfigs.md) resource.
+ScyllaDB Operator enables local storage configuration and performance tuning through the [`NodeConfig`](../installation/nodeconfigs-old.md) resource.
 The below table contains example `NodeConfig` manifests for a selected set of OpenShift deployment models and platforms:
 - A production-ready configuration for Red Hat OpenShift Service on AWS (ROSA) clusters with local NVMe storage.
 - A development-oriented configuration using loop devices intended for environments with no local disks available.
 
 :::{caution}
 Local storage configuration depends on the OpenShift deployment model and the underlying platform and infrastructure.
-Review the [`NodeConfig`](../resources/nodeconfigs.md) reference and adjust the manifest to your specific environment.
+Review the [`NodeConfig`](../installation/nodeconfigs-old.md) reference and adjust the manifest to your specific environment.
 :::
 
 :::{include} ../.internal/node-tuning.note.md
@@ -306,5 +306,5 @@ kubectl -n=scylla-manager rollout status --timeout=10m deployment.apps/scylla-ma
 :::
 
 ## Next steps
-- Deploy a ScyllaDB cluster by following the [ScyllaCluster deployment guide](../resources/scyllaclusters/basics.md).
-- To set up ScyllaDB Monitoring, refer to [](../management/monitoring/external-prometheus-on-openshift.md). Visit the [ScyllaDB Monitoring overview](../management/monitoring/overview.md) for more information about the monitoring stack.
+- Deploy a ScyllaDB cluster by following the [ScyllaCluster deployment guide](../tutorials/day0/create-cluster.md).
+- To set up ScyllaDB Monitoring, refer to [](../operations/monitoring/external-prometheus-openshift.md). Visit the [ScyllaDB Monitoring overview](../operations/monitoring/overview.md) for more information about the monitoring stack.

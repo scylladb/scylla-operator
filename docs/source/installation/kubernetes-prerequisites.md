@@ -65,5 +65,5 @@ For the purposes of the installation guides, we assume that the nodes meant to r
 
 #### xfsprogs
 
-ScyllaDB Operator's [NodeConfig](../resources/nodeconfigs.md) controller requires `xfsprogs` to be installed on the Kubernetes
+ScyllaDB Operator's [NodeConfig](../installation/nodeconfigs-old.md) controller requires `xfsprogs` to be installed on the Kubernetes
 nodes to format the local disks with XFS file system.

@@ -12,7 +12,7 @@ We will use Minikube K8s cluster, but this could be any K8s cluster supported by
 
 ## Prerequisites
 
-- Kubernetes (see the supported version range in the [support matrix](../support/releases.md#support-matrix))
+- Kubernetes (see the supported version range in the [support matrix](../release-notes/releases.md#support-matrix))
 - Helm 3+
 
 :::{include} ../.internal/namespaces.md
@@ -201,7 +201,7 @@ ScyllaDB Operator will provision this cluster on your K8s environment.
 ScyllaDB Manager Chart allows to customize and deploy ScyllaDB Manager in K8s environment.
 Besides ScyllaDB Manager, it deploys an additional ScyllaDB cluster for the Manager’s needs.
 
-To read more about ScyllaDB Manager see [Manager guide](../architecture/manager.md).
+To read more about ScyllaDB Manager see [Manager guide](../concepts/manager-integration.md).
 
 ### ScyllaDB Manager
 
@@ -314,7 +314,7 @@ Two running nodes, exactly what we were asking for.
 
 ## Monitoring
 
-To spin up a Prometheus monitoring refer to [ScyllaDB Monitoring setup guide](../management/monitoring/setup.md).
+To spin up a Prometheus monitoring refer to [ScyllaDB Monitoring setup guide](../operations/monitoring/setup.md).
 
 Helm charts can create ServiceMonitors needed to observe Scylla Manager and Scylla. 
 Both of these Helm Charts allow specifying whether you want to create a ServiceMonitor:
@@ -332,7 +332,7 @@ Helm should notice the difference, install the ServiceMonitor, and then Promethe
 
 ## Upgrade
 
-Please refer to the [upgrade guide](./../management/upgrading/upgrade.md#upgrade-via-helm) to learn how to upgrade your Helm installations.
+Please refer to the [upgrade guide](../operations/upgrading/upgrade-operator.md#upgrade-via-helm) to learn how to upgrade your Helm installations.
 
 ## Cleanup
 

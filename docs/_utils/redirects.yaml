@@ -24,3 +24,141 @@
 
 # removing redirection html script files
 # test: /
+
+# Docs rework: Structure migration redirects
+
+# Get Started (was Quickstarts)
+/stable/quickstarts/index.html: /stable/get-started/index.html
+/stable/quickstarts/gke.html: /stable/get-started/gke.html
+/stable/quickstarts/eks.html: /stable/get-started/eks.html
+
+# Concepts (was Architecture)
+/stable/architecture/index.html: /stable/concepts/index.html
+/stable/architecture/overview.html: /stable/concepts/architecture-overview.html
+/stable/architecture/storage/index.html: /stable/concepts/storage.html
+/stable/architecture/storage/overview.html: /stable/concepts/storage.html
+/stable/architecture/storage/local-csi-driver.html: /stable/concepts/local-csi-driver.html
+/stable/architecture/manager.html: /stable/concepts/manager-integration.html
+/stable/architecture/tuning.html: /stable/concepts/performance-and-tuning.html
+
+# Resources -> various locations
+/stable/resources/index.html: /stable/concepts/crd-ecosystem.html
+/stable/resources/overview.html: /stable/concepts/crd-ecosystem.html
+/stable/resources/scyllaclusters/index.html: /stable/tutorials/day0/index.html
+/stable/resources/scyllaclusters/basics.html: /stable/tutorials/day0/create-cluster.html
+/stable/resources/scyllaclusters/clients/index.html: /stable/tutorials/day0/connect-cql.html
+/stable/resources/scyllaclusters/clients/cql.html: /stable/tutorials/day0/connect-cql.html
+/stable/resources/scyllaclusters/clients/alternator.html: /stable/tutorials/day0/connect-alternator.html
+/stable/resources/scyllaclusters/clients/discovery.html: /stable/tutorials/day0/connect-cql.html
+/stable/resources/scyllaclusters/nodeoperations/index.html: /stable/operations/node-operations/index.html
+/stable/resources/scyllaclusters/nodeoperations/volume-expansion.html: /stable/operations/scaling/volume-expansion.html
+/stable/resources/scyllaclusters/nodeoperations/replace-node.html: /stable/operations/node-operations/replace-node.html
+/stable/resources/scyllaclusters/nodeoperations/automatic-cleanup.html: /stable/operations/node-operations/automatic-cleanup.html
+/stable/resources/scyllaclusters/nodeoperations/maintenance-mode.html: /stable/operations/node-operations/maintenance-mode.html
+/stable/resources/scyllaclusters/nodeoperations/restore.html: /stable/operations/backup-and-restore/restore-from-backup.html
+/stable/resources/scyllaclusters/nodeoperations/scylla-upgrade.html: /stable/operations/upgrading/upgrade-scylladb.html
+/stable/resources/scyllaclusters/multidc/index.html: /stable/operations/multi-datacenter/index.html
+/stable/resources/scyllaclusters/multidc/multidc.html: /stable/operations/multi-datacenter/deploy-multi-dc-cluster.html
+/stable/resources/common/exposing.html: /stable/operations/networking/expose-clusters.html
+/stable/resources/common/multidc/gke.html: /stable/operations/multi-datacenter/multi-dc-gke.html
+/stable/resources/common/multidc/eks.html: /stable/operations/multi-datacenter/multi-dc-eks.html
+/stable/resources/scylladbclusters/index.html: /stable/tutorials/day0/create-cluster.html
+/stable/resources/scylladbclusters/scylladbclusters.html: /stable/tutorials/day0/create-cluster.html
+/stable/resources/nodeconfigs.html: /stable/installation/node-configuration.html
+/stable/resources/scyllaoperatorconfigs.html: /stable/reference/scyllaoperatorconfig-options.html
+/stable/resources/remotekubernetesclusters.html: /stable/operations/multi-datacenter/remotekubernetesclusters.html
+
+# Management -> Operations
+/stable/management/index.html: /stable/operations/index.html
+/stable/management/sysctls.html: /stable/installation/node-configuration.html
+/stable/management/bootstrap-sync.html: /stable/operations/node-operations/bootstrap-sync.html
+/stable/management/data-cleanup.html: /stable/operations/data-management/automatic-data-cleanup.html
+/stable/management/upgrading/index.html: /stable/operations/upgrading/index.html
+/stable/management/upgrading/upgrade.html: /stable/operations/upgrading/upgrade-operator.html
+/stable/management/upgrading/upgrade-scylladb.html: /stable/operations/upgrading/upgrade-scylladb.html
+/stable/management/monitoring/index.html: /stable/operations/monitoring/index.html
+/stable/management/monitoring/overview.html: /stable/operations/monitoring/overview.html
+/stable/management/monitoring/setup.html: /stable/operations/monitoring/setup.html
+/stable/management/monitoring/exposing-grafana.html: /stable/operations/monitoring/expose-grafana.html
+/stable/management/monitoring/external-prometheus-on-openshift.html: /stable/operations/monitoring/external-prometheus-openshift.html
+/stable/management/networking/index.html: /stable/operations/networking/index.html
+/stable/management/networking/ipv6/index.html: /stable/operations/networking/ipv6-configure.html
+/stable/management/networking/ipv6/tutorials/ipv6-getting-started.html: /stable/tutorials/day1/ipv6-getting-started.html
+/stable/management/networking/ipv6/how-to/ipv6-configure.html: /stable/operations/networking/ipv6-configure.html
+/stable/management/networking/ipv6/how-to/ipv6-configure-ipv6-first.html: /stable/operations/networking/ipv6-configure-ipv6-first.html
+/stable/management/networking/ipv6/how-to/ipv6-configure-ipv6-only.html: /stable/operations/networking/ipv6-configure-ipv6-only.html
+/stable/management/networking/ipv6/how-to/ipv6-migrate.html: /stable/operations/networking/ipv6-migrate.html
+/stable/management/networking/ipv6/how-to/ipv6-troubleshoot.html: /stable/troubleshooting/ipv6-troubleshoot.html
+/stable/management/networking/ipv6/reference/ipv6-configuration.html: /stable/reference/ipv6-configuration.html
+/stable/management/networking/ipv6/concepts/ipv6-networking.html: /stable/concepts/ipv6-networking.html
+
+# Support -> various locations
+/stable/support/known-issues.html: /stable/troubleshooting/known-issues.html
+/stable/support/troubleshooting/index.html: /stable/troubleshooting/index.html
+/stable/support/troubleshooting/installation.html: /stable/troubleshooting/installation-issues.html
+/stable/support/must-gather.html: /stable/troubleshooting/must-gather.html
+/stable/support/releases.html: /stable/release-notes/releases.html
+
+# Master branch mirrors of the above
+/master/quickstarts/index.html: /master/get-started/index.html
+/master/quickstarts/gke.html: /master/get-started/gke.html
+/master/quickstarts/eks.html: /master/get-started/eks.html
+/master/architecture/index.html: /master/concepts/index.html
+/master/architecture/overview.html: /master/concepts/architecture-overview.html
+/master/architecture/storage/index.html: /master/concepts/storage.html
+/master/architecture/storage/overview.html: /master/concepts/storage.html
+/master/architecture/storage/local-csi-driver.html: /master/concepts/local-csi-driver.html
+/master/architecture/manager.html: /master/concepts/manager-integration.html
+/master/architecture/tuning.html: /master/concepts/performance-and-tuning.html
+/master/resources/index.html: /master/concepts/crd-ecosystem.html
+/master/resources/overview.html: /master/concepts/crd-ecosystem.html
+/master/resources/scyllaclusters/index.html: /master/tutorials/day0/index.html
+/master/resources/scyllaclusters/basics.html: /master/tutorials/day0/create-cluster.html
+/master/resources/scyllaclusters/clients/index.html: /master/tutorials/day0/connect-cql.html
+/master/resources/scyllaclusters/clients/cql.html: /master/tutorials/day0/connect-cql.html
+/master/resources/scyllaclusters/clients/alternator.html: /master/tutorials/day0/connect-alternator.html
+/master/resources/scyllaclusters/clients/discovery.html: /master/tutorials/day0/connect-cql.html
+/master/resources/scyllaclusters/nodeoperations/index.html: /master/operations/node-operations/index.html
+/master/resources/scyllaclusters/nodeoperations/volume-expansion.html: /master/operations/scaling/volume-expansion.html
+/master/resources/scyllaclusters/nodeoperations/replace-node.html: /master/operations/node-operations/replace-node.html
+/master/resources/scyllaclusters/nodeoperations/automatic-cleanup.html: /master/operations/node-operations/automatic-cleanup.html
+/master/resources/scyllaclusters/nodeoperations/maintenance-mode.html: /master/operations/node-operations/maintenance-mode.html
+/master/resources/scyllaclusters/nodeoperations/restore.html: /master/operations/backup-and-restore/restore-from-backup.html
+/master/resources/scyllaclusters/nodeoperations/scylla-upgrade.html: /master/operations/upgrading/upgrade-scylladb.html
+/master/resources/scyllaclusters/multidc/index.html: /master/operations/multi-datacenter/index.html
+/master/resources/scyllaclusters/multidc/multidc.html: /master/operations/multi-datacenter/deploy-multi-dc-cluster.html
+/master/resources/common/exposing.html: /master/operations/networking/expose-clusters.html
+/master/resources/common/multidc/gke.html: /master/operations/multi-datacenter/multi-dc-gke.html
+/master/resources/common/multidc/eks.html: /master/operations/multi-datacenter/multi-dc-eks.html
+/master/resources/scylladbclusters/index.html: /master/tutorials/day0/create-cluster.html
+/master/resources/scylladbclusters/scylladbclusters.html: /master/tutorials/day0/create-cluster.html
+/master/resources/nodeconfigs.html: /master/installation/node-configuration.html
+/master/resources/scyllaoperatorconfigs.html: /master/reference/scyllaoperatorconfig-options.html
+/master/resources/remotekubernetesclusters.html: /master/operations/multi-datacenter/remotekubernetesclusters.html
+/master/management/index.html: /master/operations/index.html
+/master/management/sysctls.html: /master/installation/node-configuration.html
+/master/management/bootstrap-sync.html: /master/operations/node-operations/bootstrap-sync.html
+/master/management/data-cleanup.html: /master/operations/data-management/automatic-data-cleanup.html
+/master/management/upgrading/index.html: /master/operations/upgrading/index.html
+/master/management/upgrading/upgrade.html: /master/operations/upgrading/upgrade-operator.html
+/master/management/upgrading/upgrade-scylladb.html: /master/operations/upgrading/upgrade-scylladb.html
+/master/management/monitoring/index.html: /master/operations/monitoring/index.html
+/master/management/monitoring/overview.html: /master/operations/monitoring/overview.html
+/master/management/monitoring/setup.html: /master/operations/monitoring/setup.html
+/master/management/monitoring/exposing-grafana.html: /master/operations/monitoring/expose-grafana.html
+/master/management/monitoring/external-prometheus-on-openshift.html: /master/operations/monitoring/external-prometheus-openshift.html
+/master/management/networking/index.html: /master/operations/networking/index.html
+/master/management/networking/ipv6/index.html: /master/operations/networking/ipv6-configure.html
+/master/management/networking/ipv6/tutorials/ipv6-getting-started.html: /master/tutorials/day1/ipv6-getting-started.html
+/master/management/networking/ipv6/how-to/ipv6-configure.html: /master/operations/networking/ipv6-configure.html
+/master/management/networking/ipv6/how-to/ipv6-configure-ipv6-first.html: /master/operations/networking/ipv6-configure-ipv6-first.html
+/master/management/networking/ipv6/how-to/ipv6-configure-ipv6-only.html: /master/operations/networking/ipv6-configure-ipv6-only.html
+/master/management/networking/ipv6/how-to/ipv6-migrate.html: /master/operations/networking/ipv6-migrate.html
+/master/management/networking/ipv6/how-to/ipv6-troubleshoot.html: /master/troubleshooting/ipv6-troubleshoot.html
+/master/management/networking/ipv6/reference/ipv6-configuration.html: /master/reference/ipv6-configuration.html
+/master/management/networking/ipv6/concepts/ipv6-networking.html: /master/concepts/ipv6-networking.html
+/master/support/known-issues.html: /master/troubleshooting/known-issues.html
+/master/support/troubleshooting/index.html: /master/troubleshooting/index.html
+/master/support/troubleshooting/installation.html: /master/troubleshooting/installation-issues.html
+/master/support/must-gather.html: /master/troubleshooting/must-gather.html
+/master/support/releases.html: /master/release-notes/releases.html

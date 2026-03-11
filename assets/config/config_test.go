@@ -170,6 +170,14 @@ func TestProjectConfig(t *testing.T) {
 			),
 		},
 		{
+			name:        "certManagerVersion",
+			configField: Project.ThirdParty.CertManager.Version,
+			testFn: composeValidators(
+				validateRequired,
+				validateSemanticVersion,
+			),
+		},
+		{
 			name:        "scyllaDBVersions.UpdateFrom",
 			configField: Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
 			testFn: composeValidators(

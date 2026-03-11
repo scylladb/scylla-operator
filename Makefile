@@ -551,6 +551,8 @@ update-examples:
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),./examples/third-party/haproxy-ingress.yaml)
 
+	./hack/third-party/build-cert-manager-manifest.sh "./examples/third-party/cert-manager.yaml"
+
 	./hack/third-party/build-prometheus-operator-manifest.sh "./examples/third-party/prometheus-operator.yaml"
 .PHONY: update-examples
 
@@ -561,6 +563,8 @@ verify-examples:
 	$(call replace-scyllacluster-versions,$(tmp_dir)/scylladb/scylla.scyllacluster.yaml,0)
 
 	$(call concat-manifests,$(sort $(wildcard ./examples/third-party/haproxy-ingress/*.yaml)),$(tmp_dir)/third-party/haproxy-ingress.yaml)
+
+	./hack/third-party/build-cert-manager-manifest.sh "$(tmp_dir)/third-party/cert-manager.yaml"
 
 	./hack/third-party/build-prometheus-operator-manifest.sh "$(tmp_dir)/third-party/prometheus-operator.yaml"
 

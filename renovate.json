@@ -82,6 +82,32 @@
       "enabled": false
     },
     {
+      "description": "cert-manager dependency should be updated every weekday",
+      "matchDepNames": [
+        "cert-manager"
+      ],
+      "schedule": [
+        "before 5am every weekday"
+      ],
+      "addLabels": [
+        "do-not-merge/hold"
+      ],
+      "prBodyNotes": [
+        "### ⚠️ Manual Action Required",
+        "Renovate has bumped the cert-manager dependency, but cannot automatically regenerate the manifests.",
+        "",
+        "**Please complete the following steps before merging:**",
+        "1. Check out this branch locally.",
+        "2. Propagate changes by running:",
+        "   ```bash",
+        "   make update",
+        "   git add examples/third-party/cert-manager.yaml",
+        "   git commit --amend && git push --force",
+        "   ```",
+        "3. Remove the `do-not-merge/hold` label."
+      ]
+    },
+    {
       "description": "Monitoring dependencies should be grouped and updated every weekday",
       "matchDepNames": [
         "scylladb/scylla-monitoring",

@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	o "github.com/onsi/gomega"
+	gomegatypes "github.com/onsi/gomega/types"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	corev1 "k8s.io/api/core/v1"
@@ -142,4 +143,10 @@ func DumpEventsInNamespace(ctx context.Context, c kubernetes.Interface, namespac
 func FieldManager(userAgent, namespace string) string {
 	h := sha512.Sum512([]byte(fmt.Sprintf("%s-%s", userAgent, namespace)))
 	return base64.StdEncoding.EncodeToString(h[:])
+}
+
+// NotHaveOccurredExceptNotFound returns a matcher expecting no error, ignoring Kubernetes API NotFound.
+// Useful for idempotent delete calls.
+func NotHaveOccurredExceptNotFound() gomegatypes.GomegaMatcher {
+	return o.Or(o.Not(o.HaveOccurred()), o.Satisfy(apierrors.IsNotFound))
 }

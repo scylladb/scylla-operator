@@ -17,12 +17,14 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,7 +33,9 @@ import (
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	watchtools "k8s.io/client-go/tools/watch"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/component-helpers/storage/volume"
 )
 
@@ -153,7 +157,22 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 					pvcClone.Spec.StorageClassName = nil
 
 					framework.Infof("Creating clone PVC for %q", pvc.Name)
-					pvcClone, err := f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Create(ctx, pvcClone, metav1.CreateOptions{})
+					pvcClone, _, err := resourceapply.ApplyPersistentVolumeClaimWithControl(
+						ctx,
+						resourceapply.ApplyControlFuncs[*corev1.PersistentVolumeClaim]{
+							GetCachedFunc: func(name string) (*corev1.PersistentVolumeClaim, error) {
+								return f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Get(ctx, name, metav1.GetOptions{})
+							},
+							CreateFunc: f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Create,
+							UpdateFunc: f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Update,
+							DeleteFunc: f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Delete,
+						},
+						&record.FakeRecorder{},
+						pvcClone,
+						resourceapply.ApplyOptions{
+							AllowMissingControllerRef: true,
+						},
+					)
 					o.Expect(err).NotTo(o.HaveOccurred())
 
 					framework.Infof("Creating PVC clone consumer Pod")
@@ -198,7 +217,22 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 						},
 					}
 
-					_, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, consumerPod, metav1.CreateOptions{})
+					_, _, err = resourceapply.ApplyPodWithControl(
+						ctx,
+						resourceapply.ApplyControlFuncs[*corev1.Pod]{
+							GetCachedFunc: func(name string) (*corev1.Pod, error) {
+								return f.KubeClient().CoreV1().Pods(f.Namespace()).Get(ctx, name, metav1.GetOptions{})
+							},
+							CreateFunc: f.KubeClient().CoreV1().Pods(f.Namespace()).Create,
+							UpdateFunc: f.KubeClient().CoreV1().Pods(f.Namespace()).Update,
+							DeleteFunc: f.KubeClient().CoreV1().Pods(f.Namespace()).Delete,
+						},
+						&record.FakeRecorder{},
+						consumerPod,
+						resourceapply.ApplyOptions{
+							AllowMissingControllerRef: true,
+						},
+					)
 					o.Expect(err).NotTo(o.HaveOccurred())
 				case watch.Modified:
 					pvc := e.Object.(*corev1.PersistentVolumeClaim)
@@ -210,13 +244,6 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 					}
 
 					if *pvc.Spec.StorageClassName != testStorageClassName && len(pvc.Spec.VolumeName) != 0 {
-						realPvc, err := f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Get(ctx, strings.TrimPrefix(pvc.Name, "clone-"), metav1.GetOptions{})
-						o.Expect(err).NotTo(o.HaveOccurred())
-
-						if len(realPvc.Spec.VolumeName) != 0 {
-							return false, nil
-						}
-
 						pv, err := f.KubeAdminClient().CoreV1().PersistentVolumes().Get(ctx, pvc.Spec.VolumeName, metav1.GetOptions{})
 						o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -240,14 +267,42 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 						}
 
 						framework.Infof("Creating clone PV for %q", pv.Name)
-						_, err = f.KubeAdminClient().CoreV1().PersistentVolumes().Create(ctx, pvClone, metav1.CreateOptions{})
+						_, _, err = resourceapply.ApplyPersistentVolumeWithControl(
+							ctx,
+							resourceapply.ApplyControlFuncs[*corev1.PersistentVolume]{
+								GetCachedFunc: func(name string) (*corev1.PersistentVolume, error) {
+									return f.KubeAdminClient().CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
+								},
+								CreateFunc: f.KubeAdminClient().CoreV1().PersistentVolumes().Create,
+								UpdateFunc: f.KubeAdminClient().CoreV1().PersistentVolumes().Update,
+								DeleteFunc: f.KubeAdminClient().CoreV1().PersistentVolumes().Delete,
+							},
+							&record.FakeRecorder{},
+							pvClone,
+							resourceapply.ApplyOptions{
+								AllowMissingControllerRef: true,
+							},
+						)
 						o.Expect(err).NotTo(o.HaveOccurred())
 
-						realPvcCopy := realPvc.DeepCopy()
-						realPvcCopy.Spec.VolumeName = pvClone.Name
+						realPVCName := strings.TrimPrefix(pvc.Name, "clone-")
+						err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+							realPvc, err := f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Get(ctx, realPVCName, metav1.GetOptions{})
+							if err != nil {
+								return err
+							}
 
-						framework.Infof("Binding ScyllaCluster PVC %q with clone PV %q", realPvc.Name, pvClone.Name)
-						_, err = f.KubeClient().CoreV1().PersistentVolumeClaims(realPvc.Namespace).Update(ctx, realPvcCopy, metav1.UpdateOptions{})
+							if len(realPvc.Spec.VolumeName) != 0 {
+								return nil
+							}
+
+							realPvcCopy := realPvc.DeepCopy()
+							realPvcCopy.Spec.VolumeName = pvClone.Name
+
+							framework.Infof("Binding ScyllaCluster PVC %q with clone PV %q", realPvc.Name, pvClone.Name)
+							_, err = f.KubeClient().CoreV1().PersistentVolumeClaims(realPvc.Namespace).Update(ctx, realPvcCopy, metav1.UpdateOptions{})
+							return err
+						})
 						o.Expect(err).NotTo(o.HaveOccurred())
 					}
 				case watch.Deleted:
@@ -259,16 +314,20 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", func() {
 
 					clonePVCName := fmt.Sprintf("clone-%s", pvc.Name)
 					clonePVC, err := f.KubeClient().CoreV1().PersistentVolumeClaims(pvc.Namespace).Get(ctx, clonePVCName, metav1.GetOptions{})
+					if apierrors.IsNotFound(err) {
+						return false, nil
+					}
+					o.Expect(err).NotTo(o.HaveOccurred())
 
 					framework.Infof("Deleting clone PVC %q", clonePVCName)
 					err = f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Delete(ctx, clonePVCName, metav1.DeleteOptions{})
-					o.Expect(err).NotTo(o.HaveOccurred())
+					o.Expect(err).To(framework.NotHaveOccurredExceptNotFound())
 
 					consumerPodName := fmt.Sprintf("consumer-%s", clonePVCName)
 					framework.Infof("Deleting Pod consumer of clone PVC %q", consumerPodName)
 
 					err = f.KubeClient().CoreV1().Pods(f.Namespace()).Delete(ctx, consumerPodName, metav1.DeleteOptions{})
-					o.Expect(err).NotTo(o.HaveOccurred())
+					o.Expect(err).To(framework.NotHaveOccurredExceptNotFound())
 
 					err = framework.WaitForObjectDeletion(ctx, f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource("persistentvolumeclaims"), f.Namespace(), clonePVC.Name, &clonePVC.UID)
 				}

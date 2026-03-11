@@ -244,6 +244,16 @@ func ApplyPod(
 	)
 }
 
+func ApplyPersistentVolumeWithControl(
+	ctx context.Context,
+	control ApplyControlInterface[*corev1.PersistentVolume],
+	recorder record.EventRecorder,
+	required *corev1.PersistentVolume,
+	options ApplyOptions,
+) (*corev1.PersistentVolume, bool, error) {
+	return ApplyGeneric[*corev1.PersistentVolume](ctx, control, recorder, required, options)
+}
+
 func ApplyPersistentVolumeClaimWithControl(
 	ctx context.Context,
 	control ApplyControlInterface[*corev1.PersistentVolumeClaim],

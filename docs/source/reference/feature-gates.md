@@ -1,65 +1,71 @@
-# Feature Gates
+# Feature gates
 
-ScyllaDB Operator lets you enable or disable features using feature gates. This document provides an overview of the available feature gates and instructions on how to use them.
+ScyllaDB Operator lets you enable or disable features using feature gates.
+This page lists the available feature gates and explains how to configure them.
 
 ## Available feature gates
 
-The following feature gates are available in ScyllaDB Operator:
-
 :::{list-table}
-:widths: 60 20 20
+:widths: 50 15 15 20
 :header-rows: 1
 
-* - Feature Gate
+* - Feature gate
   - Default
+  - Stage
   - Since
-* - AutomaticTLSCertificates
+* - `AutomaticTLSCertificates`
   - `true`
-  - v1.11
-* - BootstrapSynchronisation
+  - Beta
+  - alpha: v1.8, beta: v1.11
+* - `BootstrapSynchronisation`
   - `false`
+  - Alpha
   - v1.19
 :::
 
-- The "Default" indicates if the feature is enabled when you don't set it explicitly.
-- The "Since" column indicates the ScyllaDB Operator version in which the feature gate was introduced or its default was changed.
+- **Default** — whether the feature is enabled when you don't set it explicitly.
+- **Stage** — `Alpha` features are disabled by default and may change without notice. `Beta` features are enabled by default and are considered stable, but may still change.
+- **Since** — the Operator version in which the feature gate was introduced or its default was changed.
 
 ### AutomaticTLSCertificates
 
-`AutomaticTLSCertificates` enables mTLS client connections to ScyllaDB. 
-When this feature is enabled, ScyllaDB Operator automatically generates and rotates serving and client TLS certificates.
-It also configures ScyllaDB nodes to use these certificates for secure client-to-node communication.
+Enables automated TLS certificate provisioning for ScyllaDB clusters.
+When enabled, the Operator generates and rotates serving and client TLS certificates and configures ScyllaDB nodes to use them for encrypted client-to-node CQL communication (mTLS).
 
-:::{note}
 Client certificates are validated by ScyllaDB nodes (the certificate chain must be trusted), but ScyllaDB does **not** perform client identity or authorization checks based on certificate contents.
-:::
+
+See [Security — ScyllaDB cluster TLS](../understand/security.md) for the full certificate architecture, and [Connect via CQL](../connect-your-app/connect-via-cql.md) for client configuration.
 
 :::{caution}
 mTLS for node-to-node communication is [not yet supported](https://github.com/scylladb/scylla-operator/issues/2434).
 :::
 
-Refer to [this document](../resources/scyllaclusters/clients/cql.md#remote-cqlsh) for a guide to configuring ScyllaDB clients to use TLS certificates managed by ScyllaDB Operator.
-
 ### BootstrapSynchronisation
 
-:::{include} ../.internal/bootstrap-sync-min-scylladb-version-caution.md
+:::{caution}
+This feature requires ScyllaDB ≥ 2025.2.0. The Operator checks the container image version and only adds the bootstrap-barrier init container when the version satisfies this requirement.
 :::
 
-`BootstrapSynchronisation` automates the process of ensuring that no nodes are down when a bootstrap operation is performed.
-ScyllaDB Operator will verify the status of all nodes in the cluster before allowing a new ScyllaDB node to bootstrap.
+Automates ensuring that no nodes are down when a new ScyllaDB node bootstraps.
+The Operator verifies the status of all existing nodes in the cluster and blocks the new node's startup until every node is confirmed healthy.
 
-For more information, refer to the [](../management/bootstrap-sync.md) document explaining the feature in detail.
+See [Bootstrap synchronisation](../understand/bootstrap-sync.md) for details on the mechanism.
 
-## Using feature gates
+## Configuring feature gates
 
-Feature gates can be enabled or disabled by configuring the `--feature-gates` command-line argument of ScyllaDB Operator. 
-It is a comma-separated list of key-value pairs, where the key is the feature gate name and the value is a boolean indicating whether to enable or disable the feature.
-For example, to enable the `AutomaticTLSCertificates` and `BootstrapSynchronisation` feature gates, set the argument to `AutomaticTLSCertificates=true,BootstrapSynchronisation=true`.
+Feature gates are set with the `--feature-gates` command-line argument of ScyllaDB Operator.
+The value is a comma-separated list of `<gate>=<bool>` pairs.
+
+For example, to enable both gates:
+
+```
+--feature-gates=AutomaticTLSCertificates=true,BootstrapSynchronisation=true
+```
 
 :::::{tabs}
 
 ::::{group-tab} GitOps (kubectl)
-To configure feature gates with GitOps (kubectl), modify the ScyllaDB Operator Deployment by configuring the `--feature-gates` command-line argument in the ScyllaDB Operator container.
+Modify the ScyllaDB Operator Deployment and add the `--feature-gates` argument to the container args:
 
 :::{code-block} yaml
 :emphasize-lines: 13
@@ -81,11 +87,11 @@ spec:
 ::::
 
 ::::{group-tab} Helm
-To configure feature gates with Helm, configure the `--feature-gates` command-line argument through ScyllaDB Operator's `values.yaml`:
+Add the `--feature-gates` argument through the `additionalArgs` value:
 
 :::{code-block} yaml
 :emphasize-lines: 2
-additionalArgs: 
+additionalArgs:
 - --feature-gates=AutomaticTLSCertificates=true,BootstrapSynchronisation=true
 :::
 

@@ -15,12 +15,14 @@ hide-post-content:
 :hidden:
 :maxdepth: 1
 
-architecture/index
-installation/index
-management/index
-resources/index
-quickstarts/index
-support/index
+get-started/index
+install-operator/index
+deploy-scylladb/index
+connect-your-app/index
+understand/index
+operate/index
+upgrade/index
+troubleshoot/index
 reference/index
 :::
 
@@ -28,109 +30,87 @@ reference/index
 :title: ScyllaDB Operator
 :image: /_static/mascots/logo.svg
 
-ScyllaDB Operator project helps users to run ScyllaDB on Kubernetes. 
-It extends the Kubernetes APIs using [CustomResourceDefinitions(CRDs)](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/) and runs controllers that reconcile the desired state declared using these APIs.
-```
-
-```{raw} html
-<div class="topics-grid">
-```
-
-```{note}
-ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. By default, our examples use ScyllaDB Open Source. To make the switch to ScyllaDB Enterprise, you only have to [change the ScyllaCluster image repository](#scyllacluster-enterprise) and [adjust the ScyllaDB utils image using ScyllaOperatorConfig](resources/scyllaoperatorconfigs.md#tuning-with-scylladb-enterprise).
-```
-
-```{raw} html
-</div>
+ScyllaDB Operator automates the deployment and management of ScyllaDB clusters on Kubernetes.
+It handles provisioning, scaling, upgrades, repairs, backups, and monitoring — so you can focus on your application instead of database operations.
 ```
 
 ```{raw} html
 <div class="topics-grid topics-grid--products">
-    <h2 class="topics-grid__title">Topics</h2>
-    <p class="topics-grid__text">Here is a subset of items to start with. You can also navigate through the documentation using the menu.</p>
+    <h2 class="topics-grid__title">What would you like to do?</h2>
+    <p class="topics-grid__text">Choose your path based on your role and goals.</p>
 ```
 
 ````{grid}
 :type: default
 
 ```{topic-box}
-:title: Architecture
+:title: Evaluate
 :icon: icon-apartment
-:link: architecture/overview
-:anchor: Learn more »
+:link: get-started/index
+:anchor: Get started »
 :class: large-4
 
-Learn about the components of ScyllaDB Operator and how they fit together.
+Understand what ScyllaDB Operator does, what problems it solves, and whether it is the right fit for your environment.
 ```
 
 ```{topic-box}
-:title: Installation
+:title: Install
 :icon: icon-download
-:link: installation/overview
-:anchor: Learn more »
+:link: install-operator/index
+:anchor: Install now »
 :class: large-4
 
-Configure your Kubernetes platform, install prerequisites and all components of ScyllaDB Operator.
+Set up ScyllaDB Operator and its dependencies on your Kubernetes cluster using Helm or GitOps.
 ```
 
 ```{topic-box}
-:title: Management
-:icon: icon-operations
-:link: management/overview
-:anchor: Learn more »
-:class: large-4
-
-Manage your ScyllaDB clusters using ScyllaDB Operator. 
-```
-
-```{topic-box}
-:title: Working with Resources
+:title: Deploy a Cluster
 :icon: icon-database
-:link: resources/overview
-:anchor: Learn more »
+:link: deploy-scylladb/index
+:anchor: Deploy now »
 :class: large-4
 
-Learn about the APIs that ScyllaDB Operator provides.
+Create and configure a ScyllaDB cluster — single-DC or multi-DC — with production-ready settings.
 ```
 
 ```{topic-box}
-:title: Quickstarts
+:title: Connect Your App
 :icon: icon-rocket
-:link: quickstarts/index
-:anchor: Learn more »
+:link: connect-your-app/index
+:anchor: Connect now »
 :class: large-4
 
-Get it running right now. Simple GKE and EKS setups.
+Connect to ScyllaDB from your application using CQL, the Alternator DynamoDB-compatible API, or service discovery.
 ```
 
 ```{topic-box}
-:title: Performance Tuning
-:icon: icon-tune
-:link: architecture/tuning
+:title: Operate
+:icon: icon-operations
+:link: operate/index
 :anchor: Learn more »
 :class: large-4
 
-Tune your infra and ScyllaDB cluster for the best performance and low latency.
+Scale, upgrade, back up, restore, and maintain your ScyllaDB clusters in production.
 ```
 
 ```{topic-box}
-:title: Support
+:title: Troubleshoot
 :icon: icon-support
-:link: support/overview
-:anchor: Learn more »
+:link: troubleshoot/index
+:anchor: Diagnose now »
 :class: large-4
 
-FAQs, support matrix, must-gather and more.
+Diagnose and resolve issues with installation, cluster health, node failures, and performance.
 ```
 
 ```{topic-box}
-:title: Reference
+:title: Contribute
 :icon: icon-docs-commands
-:link: reference/index
-:anchor: Learn more »
+:link: contributing/index
+:anchor: Contribute »
 :class: large-4
 
-Reference of ScyllaDB Operator APIs and configuration options.
+Set up a development environment, build and test the Operator, and submit pull requests.
 ```
 ````
 

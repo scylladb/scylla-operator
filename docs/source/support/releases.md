@@ -131,39 +131,25 @@ GA images aren't built from scratch but rather promoted from an existing release
 
 ## Support matrix
 
-The support matrix table shows version requirements for a particular **ScyllaDB Operator** version. Be sure to match these requirements, otherwise some functionality will not work.
+The support matrix table shows the version requirements for ScyllaDB Operator. Make sure to match these requirements, otherwise some functionality may not work.
 
 :::{list-table}
-:widths: 25 25 25 25
+:widths: 50 50
 :header-rows: 1
 
 * - Component
-  - master
-  - v1.20
-  - v1.19
+  - Supported versions
 * - Kubernetes
   - {{supportedKubernetesVersionRange}}
-  - 1.32 - 1.35
-  - 1.31 - 1.34
 * - OpenShift
   - {{supportedOpenShiftVersionRange}}
-  - 4.20
-  - Not supported
 * - CRI API
-  - v1
-  - v1
   - v1
 * - ScyllaDB
   - 2024.1, 2025.1, 2025.3 - 2025.4
-  - 2024.1, 2025.1, 2025.3 - 2025.4
-  - 2024.1, 2025.1 - 2025.3
 * - ScyllaDB Manager
   - 3.7 - 3.8
-  - 3.7 - 3.8
-  - 3.5, 3.7
 * - ScyllaDB Monitoring
-  - (CRD)
-  - (CRD)
   - (CRD)
 :::
 

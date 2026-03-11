@@ -400,10 +400,14 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 	}
 
 	dataVolumeClaimLabels := map[string]string{}
-	if rack.ScyllaDB != nil && rack.ScyllaDB.Storage != nil && rack.ScyllaDB.Storage.Metadata != nil && rack.ScyllaDB.Storage.Metadata.Labels != nil {
-		maps.Copy(dataVolumeClaimLabels, rack.ScyllaDB.Storage.Metadata.Labels)
-	} else if existingSts == nil {
-		maps.Copy(dataVolumeClaimLabels, sdcLabels)
+	// Set the labels based on the rack spec only if the StatefulSet doesn't exist yet. Once the StatefulSet is created,
+	// we have to use ones from the existing StatefulSet to avoid labels changes as VolumeClaimTemplates are immutable.
+	if existingSts == nil {
+		if rack.ScyllaDB != nil && rack.ScyllaDB.Storage != nil && rack.ScyllaDB.Storage.Metadata != nil && len(rack.ScyllaDB.Storage.Metadata.Labels) > 0 {
+			maps.Copy(dataVolumeClaimLabels, rack.ScyllaDB.Storage.Metadata.Labels)
+		} else {
+			maps.Copy(dataVolumeClaimLabels, sdcLabels)
+		}
 	} else {
 		if existingDataPVCTemplate == nil {
 			return nil, fmt.Errorf("data PVC template %q in existing %q StatefulSet spec is missing", naming.PVCTemplateName, naming.ObjRef(existingSts))
@@ -413,10 +417,14 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 	maps.Copy(dataVolumeClaimLabels, selectorLabels)
 
 	dataVolumeClaimAnnotations := map[string]string{}
-	if rack.ScyllaDB != nil && rack.ScyllaDB.Storage != nil && rack.ScyllaDB.Storage.Metadata != nil && rack.ScyllaDB.Storage.Metadata.Annotations != nil {
-		maps.Copy(dataVolumeClaimAnnotations, rack.ScyllaDB.Storage.Metadata.Annotations)
-	} else if existingSts == nil {
-		maps.Copy(dataVolumeClaimAnnotations, sdcAnnotations)
+	// Set the annotations based on the rack spec only if the StatefulSet doesn't exist yet. Once the StatefulSet is created,
+	// we have to use ones from the existing StatefulSet to avoid annotations changes as VolumeClaimTemplates are immutable.
+	if existingSts == nil {
+		if rack.ScyllaDB != nil && rack.ScyllaDB.Storage != nil && rack.ScyllaDB.Storage.Metadata != nil && len(rack.ScyllaDB.Storage.Metadata.Annotations) > 0 {
+			maps.Copy(dataVolumeClaimAnnotations, rack.ScyllaDB.Storage.Metadata.Annotations)
+		} else {
+			maps.Copy(dataVolumeClaimAnnotations, sdcAnnotations)
+		}
 	} else {
 		if existingDataPVCTemplate == nil {
 			return nil, fmt.Errorf("data PVC template %q in existing %q StatefulSet spec is missing", naming.PVCTemplateName, naming.ObjRef(existingSts))

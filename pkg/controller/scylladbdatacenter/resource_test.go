@@ -1902,6 +1902,136 @@ exec scylla-manager-agent \
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "new StatefulSet with custom storage metadata labels set on the rack uses them for PVC template",
+			rack: func() scyllav1alpha1.RackSpec {
+				r := newBasicRack()
+				r.ScyllaDB.Storage.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Labels: map[string]string{
+						"custom-pvc-label": "custom-pvc-label-value",
+					},
+				}
+				return r
+			}(),
+			scyllaDBDatacenter:  newBasicScyllaDBDatacenter(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
+					"app":                          "scylla",
+					"app.kubernetes.io/managed-by": "scylla-operator",
+					"app.kubernetes.io/name":       "scylla",
+					"scylla/cluster":               "basic",
+					"scylla/datacenter":            "dc",
+					"scylla/rack":                  "rack",
+					"custom-pvc-label":             "custom-pvc-label-value",
+				}
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with custom storage metadata labels set on the rackTemplate uses them for PVC template",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Metadata: &scyllav1alpha1.ObjectTemplateMetadata{
+								Labels: map[string]string{
+									"custom-pvc-label": "custom-pvc-label-value",
+								},
+							},
+						},
+					},
+				}
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
+					"app":                          "scylla",
+					"app.kubernetes.io/managed-by": "scylla-operator",
+					"app.kubernetes.io/name":       "scylla",
+					"scylla/cluster":               "basic",
+					"scylla/datacenter":            "dc",
+					"scylla/rack":                  "rack",
+					"custom-pvc-label":             "custom-pvc-label-value",
+				}
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "existing StatefulSet PVC template labels are preserved and not overwritten by current rack storage metadata labels",
+			rack: func() scyllav1alpha1.RackSpec {
+				r := newBasicRack()
+				r.ScyllaDB.Storage.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Labels: map[string]string{
+						"custom-pvc-label": "should-not-appear",
+					},
+				}
+				return r
+			}(),
+			scyllaDBDatacenter: newBasicScyllaDBDatacenter(),
+			existingStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
+					"app":                          "scylla",
+					"app.kubernetes.io/managed-by": "scylla-operator",
+					"app.kubernetes.io/name":       "scylla",
+					"scylla/cluster":               "basic",
+					"scylla/datacenter":            "dc",
+					"scylla/rack":                  "rack",
+					"existing-pvc-label":           "existing-value",
+				}
+				return sts
+			}(),
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.VolumeClaimTemplates[0].Labels = map[string]string{
+					"app":                          "scylla",
+					"app.kubernetes.io/managed-by": "scylla-operator",
+					"app.kubernetes.io/name":       "scylla",
+					"scylla/cluster":               "basic",
+					"scylla/datacenter":            "dc",
+					"scylla/rack":                  "rack",
+					"existing-pvc-label":           "existing-value",
+				}
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "existing StatefulSet PVC template annotations are preserved and not overwritten by current rack storage metadata annotations",
+			rack: func() scyllav1alpha1.RackSpec {
+				r := newBasicRack()
+				r.ScyllaDB.Storage.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Annotations: map[string]string{
+						"custom-pvc-annotation": "should-not-appear",
+					},
+				}
+				return r
+			}(),
+			scyllaDBDatacenter: newBasicScyllaDBDatacenter(),
+			existingStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
+					"existing-pvc-annotation": "existing-value",
+				}
+				return sts
+			}(),
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.VolumeClaimTemplates[0].Annotations = map[string]string{
+					"existing-pvc-annotation": "existing-value",
+				}
+				return sts
+			}(),
+			expectedError: nil,
+		},
 	}
 
 	for _, tc := range tt {

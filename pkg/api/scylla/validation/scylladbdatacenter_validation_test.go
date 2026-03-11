@@ -771,6 +771,193 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 			expectedErrorString: "spec.racks[0].scyllaDB.storage: Forbidden: changes in storage are currently not supported",
 		},
 		{
+			name: "rack storage storageClassName changed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage.StorageClassName = pointer.Ptr("old-class")
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage.StorageClassName = pointer.Ptr("new-class")
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0].scyllaDB.storage", BadValue: "", Detail: "changes in storage are currently not supported"},
+			},
+			expectedErrorString: "spec.racks[0].scyllaDB.storage: Forbidden: changes in storage are currently not supported",
+		},
+		{
+			name: "rack storage metadata labels changed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Labels: map[string]string{"key": "old-value"},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Labels: map[string]string{"key": "new-value"},
+				}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0].scyllaDB.storage", BadValue: "", Detail: "changes in storage are currently not supported"},
+			},
+			expectedErrorString: "spec.racks[0].scyllaDB.storage: Forbidden: changes in storage are currently not supported",
+		},
+		{
+			name: "rack storage metadata annotations changed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Annotations: map[string]string{"key": "old-value"},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage.Metadata = &scyllav1alpha1.ObjectTemplateMetadata{
+					Annotations: map[string]string{"key": "new-value"},
+				}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0].scyllaDB.storage", BadValue: "", Detail: "changes in storage are currently not supported"},
+			},
+			expectedErrorString: "spec.racks[0].scyllaDB.storage: Forbidden: changes in storage are currently not supported",
+		},
+		{
+			name: "rackTemplate storage capacity changed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage = nil
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity: "1Gi",
+						},
+					},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage = nil
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity: "123Gi",
+						},
+					},
+				}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0].scyllaDB.storage", BadValue: "", Detail: "changes in storage are currently not supported"},
+			},
+			expectedErrorString: "spec.racks[0].scyllaDB.storage: Forbidden: changes in storage are currently not supported",
+		},
+		{
+			name: "rackTemplate storage storageClassName changed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage = nil
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity:         "1Gi",
+							StorageClassName: pointer.Ptr("old-class"),
+						},
+					},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage = nil
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity:         "1Gi",
+							StorageClassName: pointer.Ptr("new-class"),
+						},
+					},
+				}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0].scyllaDB.storage", BadValue: "", Detail: "changes in storage are currently not supported"},
+			},
+			expectedErrorString: "spec.racks[0].scyllaDB.storage: Forbidden: changes in storage are currently not supported",
+		},
+		{
+			name: "rackTemplate storage metadata changed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage = nil
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity: "1Gi",
+							Metadata: &scyllav1alpha1.ObjectTemplateMetadata{
+								Labels: map[string]string{"key": "old-value"},
+							},
+						},
+					},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].RackTemplate.ScyllaDB.Storage = nil
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity: "1Gi",
+							Metadata: &scyllav1alpha1.ObjectTemplateMetadata{
+								Labels: map[string]string{"key": "new-value"},
+							},
+						},
+					},
+				}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0].scyllaDB.storage", BadValue: "", Detail: "changes in storage are currently not supported"},
+			},
+			expectedErrorString: "spec.racks[0].scyllaDB.storage: Forbidden: changes in storage are currently not supported",
+		},
+		{
+			name: "rackTemplate storage changed but rack overrides storage",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity: "10Gi",
+						},
+					},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{
+						Storage: &scyllav1alpha1.StorageOptions{
+							Capacity: "20Gi",
+						},
+					},
+				}
+				return sdc
+			}(),
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
 			name: "empty rack removed",
 			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := newValidScyllaDBDatacenter()

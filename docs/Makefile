@@ -1,6 +1,6 @@
 # You can set these variables from the command line.
-POETRY ?= poetry
-SPHINXBUILD ?= $(POETRY) run sphinx-build
+UV ?= uv
+SPHINXBUILD ?= $(UV) run sphinx-build
 SPHINXOPTS ?= -j auto
 PAPER ?=
 BUILDDIR ?= _build
@@ -30,7 +30,7 @@ clean:
 .PHONY: clean
 
 preview:
-	$(POETRY) run sphinx-autobuild -b=dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml --port=5500 --host=0.0.0.0
+	$(UV) run sphinx-autobuild -b=dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml --port=5500 --host=0.0.0.0
 .PHONY: preview
 
 dirhtml:
@@ -69,28 +69,32 @@ linkcheck:
 
 multiversion:
 	@mkdir -p $(HOME)/.cache/pypoetry/virtualenvs
-	$(POETRY) run sphinx-multiversion $(SOURCEDIR) $(BUILDDIR)/dirhtml
+	$(UV) run sphinx-multiversion $(SOURCEDIR) $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
 .PHONY: multiversion
 
 multiversionpreview:
-	$(POETRY) run python3 -m http.server 5500 --directory $(BUILDDIR)/dirhtml
+	$(UV) run python3 -m http.server 5500 --directory $(BUILDDIR)/dirhtml
 .PHONY: multiversionpreview
 
 redirects:
-	$(POETRY) run redirects-cli fromfile --yaml-file ./_utils/redirects.yaml --output-dir $(BUILDDIR)/dirhtml
+	$(UV) run redirects-cli fromfile --yaml-file ./_utils/redirects.yaml --output-dir $(BUILDDIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/dirhtml."
 .PHONY: redirects
 
 setup:
-	$(POETRY) install
+	$(UV) sync --locked
 .PHONY: setup
 
-verify-poetry:
-	$(POETRY) check --lock --strict
-.PHONY: verify-poetry
+update:
+	$(UV) sync --upgrade
+.PHONY: update
 
-verify: verify-poetry linkcheck
+verify-uv:
+	$(UV) lock --check
+.PHONY: verify-uv
+
+verify: verify-uv linkcheck
 .PHONY: verify

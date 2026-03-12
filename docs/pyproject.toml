@@ -1,33 +1,24 @@
 [project]
-name = "scylla-operator-docs"
-description = "Scylla Operator Documentation"
-dynamic = ["version"]
-authors = [{name = "ScyllaDB Documentation Contributors"}]
-# Python version should be pinned to the one used in our poetry image (https://github.com/scylladb/scylla-operator-images/tree/051621a5b07ec2fbf273e58f8ed88e4216be89bb/poetry/2.1).
-requires-python = '>=3.12,<3.13'
+name = "sphinx-docs"
+description = "ScyllaDB Documentation"
+version = "0.1.0"
+# Python version should be pinned to the one used in the uv image (https://github.com/scylladb/scylla-operator-images/blob/b26cad0c10d25d37b6002205db3fdb13a1ef941e/uv/0.10).
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    'pygments (>=2.18.0,<3.0.0)',
-    'sphinx-scylladb-theme (>=1.8.1,<2.0.0)',
-    'sphinx-sitemap (>=2.6.0,<3.0.0)',
-    'beartype (>0.0.0)',
-    'sphinx-autobuild (>=2024.4.19,<2025.0.0)',
-    'Sphinx (>=8.1.3,<9.0.0)',
-    'sphinx-multiversion-scylla (>=0.3.4,<0.4.0)',
-    'redirects_cli (>=0.1.3,<0.2.0)',
-    'myst-parser (>=4.0.0,<5.0.0)',
-    'sphinx-design (>=0.7.0,<0.8.0)',
-    'sphinxcontrib-mermaid (>=1.0.0,<2.0.0)'
+    "pygments>=2.18.0",
+    "sphinx-scylladb-theme>=1.9.1",
+    "myst-parser>=5.0.0",
+    "sphinx-autobuild>=2025.4.8",
+    "sphinx>=9.0",
+    "sphinx-multiversion-scylla>=0.3.7",
+    "sphinx-sitemap>=2.9.0",
+    "redirects_cli>=0.1.3",
+    "beartype>=0.0.0",
+    "sphinx-design>=0.7.0",
+    "sphinxcontrib-mermaid>=1.0.0",
 ]
 
-[tool.poetry]
-version = "0.0.1"
-package-mode = false
-# Poetry version should be pinned to the one used in our poetry image (https://github.com/scylladb/scylla-operator-images/tree/051621a5b07ec2fbf273e58f8ed88e4216be89bb/poetry/2.1).
-requires-poetry = '==2.1.3'
-
-[build-system]
-requires = [
-    # Poetry version should be pinned to the one used in our poetry image (https://github.com/scylladb/scylla-operator-images/tree/051621a5b07ec2fbf273e58f8ed88e4216be89bb/poetry/2.1).
-    'poetry-core (==2.1.3)'
-]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+package = false
+# UV version should be aligned with the uv image tag (https://github.com/scylladb/scylla-operator-images/blob/b26cad0c10d25d37b6002205db3fdb13a1ef941e/uv/0.10).
+required-version = '>=0.10.9, <0.11.0'

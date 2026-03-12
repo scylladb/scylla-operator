@@ -1,0 +1,123 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      # Stable releases.
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      # Pre-releases.
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.20.1 or v1.20.1-rc.1)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Parse tag
+        id: parse
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          # Sanity check the tag has a 'v' prefix (it may be missing if the workflow was manually triggered with an input).
+          if [[ "${TAG}" != v* ]]; then
+            echo "Tag '${TAG}' does not start with 'v'. Please provide a tag in the format vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE." >&2
+            exit 1
+          fi
+          
+          # Strip the leading 'v' to get the bare version (e.g. 1.20.1 or 1.20.1-rc.1).
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+          # Strip all dots and dashes to build the CHANGELOG anchor (e.g. 1201 or 1201-rc1).
+          ANCHOR=$(echo "${VERSION}" | tr -d '.')
+          echo "anchor=${ANCHOR}" >> "$GITHUB_OUTPUT"
+
+          # Validate and classify the version.
+          # A valid tag must be either:
+          #   - stable:      MAJOR.MINOR.PATCH             (e.g. 1.20.1)
+          #   - pre-release: MAJOR.MINOR.PATCH-PRERELEASE  (e.g. 1.20.1-rc.1, 1.20.1-alpha.0)
+          # Anything else (e.g. 1.2.3aaaaa) is rejected to avoid accidental releases.
+          if echo "${VERSION}" | grep -qP '^\d+\.\d+\.\d+$'; then
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          elif echo "${VERSION}" | grep -qP '^\d+\.\d+\.\d+-.+'; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag '${TAG}' is not a valid semver release tag. Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE." >&2
+            exit 1
+          fi
+
+      - name: Determine latest flag
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IS_PRERELEASE: ${{ steps.parse.outputs.is_prerelease }}
+          NEW_VERSION: ${{ steps.parse.outputs.version }}
+        run: |
+          # Pre-releases never get the latest flag.
+          if [ "${IS_PRERELEASE}" = "true" ]; then
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Find the version currently marked as latest on GitHub.
+          CURRENT_LATEST=$(gh release view --repo "${{ github.repository }}" --json tagName --jq '.tagName')
+
+          # Strip the leading 'v' from the current latest tag.
+          CURRENT_VERSION="${CURRENT_LATEST#v}"
+
+          # Use sort -V (version sort) to determine which version is greater.
+          # If NEW_VERSION sorts after CURRENT_VERSION, it is the newer release.
+          HIGHER=$(printf '%s\n%s\n' "${CURRENT_VERSION}" "${NEW_VERSION}" | sort -V | tail -n1)
+          if [ "${HIGHER}" = "${NEW_VERSION}" ] && [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
+            echo "make_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          VERSION: ${{ steps.parse.outputs.version }}
+          ANCHOR: ${{ steps.parse.outputs.anchor }}
+          IS_PRERELEASE: ${{ steps.parse.outputs.is_prerelease }}
+          MAKE_LATEST: ${{ steps.latest.outputs.make_latest }}
+        run: |
+          # Build the CHANGELOG URL: stable releases include a version anchor,
+          # pre-releases link to the top of the file (no heading exists yet).
+          CHANGELOG_BASE="https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md"
+          if [ "${IS_PRERELEASE}" = "true" ]; then
+            CHANGELOG_URL="${CHANGELOG_BASE}"
+          else
+            CHANGELOG_URL="${CHANGELOG_BASE}#${ANCHOR}"
+          fi
+
+          # Write the release body to a temp file to avoid shell quoting issues
+          # with the triple-backtick code block inside the markdown.
+          BODY_FILE="$(mktemp)"
+          printf '## Docker Image\n\n```\ndocker.io/scylladb/scylla-operator:%s\n```\n\n## Changelog\n\n%s\n' \
+            "${VERSION}" "${CHANGELOG_URL}" > "${BODY_FILE}"
+
+          # Assemble optional flags.
+          EXTRA_FLAGS=()
+          if [ "${IS_PRERELEASE}" = "true" ]; then
+            EXTRA_FLAGS+=("--prerelease")
+          fi
+
+          gh release create "${TAG}" \
+            --repo "${{ github.repository }}" \
+            --verify-tag \
+            --title "${TAG}" \
+            --notes-file "${BODY_FILE}" \
+            --latest="${MAKE_LATEST}" \
+            "${EXTRA_FLAGS[@]}"

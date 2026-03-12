@@ -1,6 +1,6 @@
 [project]
-name = "sphinx-docs"
-description = "ScyllaDB Documentation"
+name = "scylladb-operator-docs"
+description = "ScyllaDB Operator Documentation"
 version = "0.1.0"
 # Python version should be pinned to the one used in the uv image (https://github.com/scylladb/scylla-operator-images/blob/b26cad0c10d25d37b6002205db3fdb13a1ef941e/uv/0.10).
 requires-python = ">=3.12,<3.13"

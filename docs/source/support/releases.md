@@ -155,6 +155,26 @@ The support matrix table shows the version requirements for ScyllaDB Operator. M
 
 [^scylladb-monitoring-version]: ScyllaDB Operator embeds the specified version of ScyllaDB Monitoring, which includes a set of Grafana dashboards and Prometheus rules.
 
+### Third-party dependencies
+
+The following table lists the versions of third-party dependencies that ScyllaDB Operator is tested against.
+
+:::{list-table}
+:widths: 50 50
+:header-rows: 1
+
+* - Component
+  - Version
+* - cert-manager
+  - {{certManagerVersion}}
+* - Grafana
+  - {{grafanaVersion}}
+* - Prometheus
+  - {{prometheusVersion}}
+* - Prometheus Operator
+  - {{prometheusOperatorVersion}}
+:::
+
 ### Architectures
 
 ScyllaDB Operator image is published as a manifest list to `docker.io/scylladb/scylla-operator:X.Y.Z` containing image build for `amd64` and `aarch64`.

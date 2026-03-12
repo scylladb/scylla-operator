@@ -28,32 +28,29 @@ jobs:
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          # Sanity check the tag has a 'v' prefix (it may be missing if the workflow was manually triggered with an input).
-          if [[ "${TAG}" != v* ]]; then
-            echo "Tag '${TAG}' does not start with 'v'. Please provide a tag in the format vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE." >&2
+          # Validate the tag against semver with a mandatory 'v' prefix.
+          readonly prefixed_semver_pattern='^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?(\+([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$'
+          if [[ ! "${TAG}" =~ ${prefixed_semver_pattern} ]]; then
+            echo "Tag '${TAG}' is not a valid semver release tag. Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE." >&2
             exit 1
           fi
-          
-          # Strip the leading 'v' to get the bare version (e.g. 1.20.1 or 1.20.1-rc.1).
-          VERSION="${TAG#v}"
+
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          prerelease="${BASH_REMATCH[5]:-}"
+
+          VERSION="${major}.${minor}.${patch}${prerelease:+-${prerelease}}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-          # Strip all dots and dashes to build the CHANGELOG anchor (e.g. 1201 or 1201-rc1).
+          # Strip all dots to build the CHANGELOG anchor (e.g. 1201 or 1201-rc1).
           ANCHOR=$(echo "${VERSION}" | tr -d '.')
           echo "anchor=${ANCHOR}" >> "$GITHUB_OUTPUT"
 
-          # Validate and classify the version.
-          # A valid tag must be either:
-          #   - stable:      MAJOR.MINOR.PATCH             (e.g. 1.20.1)
-          #   - pre-release: MAJOR.MINOR.PATCH-PRERELEASE  (e.g. 1.20.1-rc.1, 1.20.1-alpha.0)
-          # Anything else (e.g. 1.2.3aaaaa) is rejected to avoid accidental releases.
-          if echo "${VERSION}" | grep -qP '^\d+\.\d+\.\d+$'; then
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
-          elif echo "${VERSION}" | grep -qP '^\d+\.\d+\.\d+-.+'; then
+          if [[ -n "${prerelease}" ]]; then
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Tag '${TAG}' is not a valid semver release tag. Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-PRERELEASE." >&2
-            exit 1
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Determine latest flag

@@ -4,7 +4,7 @@ This project uses [Sphinx Theme](https://sphinx-theme.scylladb.com/) , but we ha
 
 ## Local preview
 
-To build the documentation locally, run `make setup` first to install its dependencies.
+To build the documentation locally, make sure you have `uv` installed, and run `make setup` to install its dependencies.
 
 Then, you can build and preview the documentation by following the steps outlined in the [Quickstart guide](https://sphinx-theme.scylladb.com/stable/getting-started/quickstart.html).
 

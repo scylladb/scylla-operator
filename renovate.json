@@ -5,8 +5,7 @@
   ],
   "enabledManagers": [
     "custom.regex",
-    "gomod",
-    "poetry"
+    "gomod"
   ],
   "schedule": [
     "before 5am on monday"
@@ -54,30 +53,6 @@
         "github.com/gocql/gocql",
         "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring",
         "github.com/prometheus-operator/prometheus-operator/pkg/client"
-      ],
-      "enabled": false
-    },
-    {
-      "description": "Documentation dependencies should be updated together",
-      "matchManagers": [
-        "poetry"
-      ],
-      "matchFileNames": [
-        "docs/pyproject.toml"
-      ],
-      "lockFileMaintenance": {
-        "enabled": true
-      },
-      "groupName": "docs"
-    },
-    {
-      "description": "Poetry version must be pinned to the one used in the container image",
-      "matchPackageNames": [
-        "poetry",
-        "poetry-core"
-      ],
-      "matchFileNames": [
-        "docs/pyproject.toml"
       ],
       "enabled": false
     },

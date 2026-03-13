@@ -23,7 +23,7 @@ We will use Minikube K8s cluster, but this could be any K8s cluster supported by
 ```
 helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable
 helm repo update
-kubectl apply -f examples/common/cert-manager.yaml 
+kubectl apply -f examples/third-party/cert-manager.yaml 
 helm install scylla-operator scylla/scylla-operator --create-namespace --namespace scylla-operator
 helm install scylla-manager scylla/scylla-manager --create-namespace --namespace scylla-manager
 helm install scylla scylla/scylla --create-namespace --namespace scylla
@@ -37,7 +37,7 @@ If you don't have one, make sure to not disable autogeneration using ScyllaDB Op
 First deploy Cert Manager, you can either follow [upsteam instructions](https://cert-manager.io/docs/installation/) or use following command:
 
 ```console
-kubectl apply -f examples/common/cert-manager.yaml
+kubectl apply -f examples/third-party/cert-manager.yaml
 ```
 
 Once it's deployed, wait until all Cert Manager pods will enter into Running state:

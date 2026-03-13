@@ -3,6 +3,8 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
+readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
+
 # Ensure all kind calls use podman.
 export KIND_EXPERIMENTAL_PROVIDER=podman
 
@@ -30,17 +32,15 @@ IN_CLUSTER_KUBECONFIG="$(mktemp --suffix ".kubeconfig")"
 kind get kubeconfig --name="${CLUSTER_NAME}" --internal > "${IN_CLUSTER_KUBECONFIG}"
 export IN_CLUSTER_KUBECONFIG
 
-readonly parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
-
-source "${parent_dir}/lib.sh"
-source "${parent_dir}/../lib/kube.sh"
-source "${parent_dir}/../.ci/lib/e2e.sh"
-source "${parent_dir}/../.ci/run-e2e-shared.env.sh"
+source "${repo_root}/hack/kind/lib.sh"
+source "${repo_root}/hack/lib/kube.sh"
+source "${repo_root}/hack/.ci/lib/e2e.sh"
+source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
 
 trap 'gather-artifacts-on-exit; rm -f "${KUBECONFIG}" "${IN_CLUSTER_KUBECONFIG}"' EXIT
 trap gracefully-shutdown-e2es INT
 
-build-and-push-operator-image "${parent_dir}/../.."
+build-and-push-operator-image "${repo_root}"
 
 # Use 'standard' storage class that comes with KinD by default.
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="standard"
@@ -68,8 +68,6 @@ export SO_E2E_TIMEOUT
 
 ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
 export ARTIFACTS
-
-"${parent_dir}"/../ci-deploy.sh "${SO_IMAGE}"
 
 apply-e2e-workarounds
 run-e2e

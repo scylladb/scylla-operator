@@ -38,12 +38,26 @@ it's up to the developer to ensure they are available in the environment:
 We use [Kind](https://kind.sigs.k8s.io/) for basic local testing. We rely on a kind with rootless Podman setup, so before
 proceeding, make sure your host system is configured accordingly to [Kind Podman rootless guide](https://kind.sigs.k8s.io/docs/user/rootless/).
 
-There's a Makefile target to create a Kind cluster with a local registry configured so we can use locally built images.
-To set up the Kind cluster, run:
+There's a Makefile target to create a Kind cluster with a local registry, build the operator image from local code, and deploy the full operator stack (cert-manager, prometheus-operator, haproxy-ingress, the operator, and scylla-manager).
+
+To set up the Kind cluster and deploy the operator with its dependencies, run:
 
 ```bash
 make kind-setup
 ```
+
+`make kind-setup` is idempotent (that is, can be re-run safely, e.g. to pick up code changes).
+
+You can skip building the operator image by setting the `SO_IMAGE` environment variable:
+
+```bash
+SO_IMAGE="quay.io/scylladb/scylla-operator:latest" make kind-setup
+```
+
+When you define `SO_IMAGE` explicitly, please note that the image must be accessible from within the Kind cluster:
+ - If you're using a public image, make sure it's pushed to a public registry and that the cluster has access to it (it should work out of the box for `quay.io`).
+ - If you're using a locally built image, you should tag it with `localhost:5001/your-image-name:tag` and push it to the local registry: `podman push --tls-verify=false localhost:5001/your-image-name:tag`.
+If you don't define `SO_IMAGE`, the image built from local code will be automatically loaded into the Kind cluster, so you don't need to worry about pushing it.
 
 You can then run the E2E tests (`kind-fast` suite) with:
 
@@ -52,19 +66,6 @@ make test-e2e-kind
 ```
 
 The tests will run against the Kind cluster created in the previous step. A pod running the tests will be created in the `e2e` namespace.
-A ScyllaDB Operator image based on the local code will be built and loaded into the Kind cluster automatically.
-
-You can skip building if you choose the Scylla Operator image to be used in the tests by setting the `SO_IMAGE` environment variable. For example:
-
-```bash
-SO_IMAGE="quay.io/scylladb/scylla-operator:latest" make test-e2e-kind
-``` 
-
-Please note that the image must be accessible from within the Kind cluster. If you're using a locally built image, you should:
-
-1. Run `make kind-setup` first. 
-2. Tag your image with `localhost:5001/your-image-name:tag`. 
-3. Push it to the local registry: `podman push --tls-verify=false localhost:5001/your-image-name:tag`.
 
 To run specific test cases, use the `SO_FOCUS` environment variable (it accepts [a regexp filtering ginkgo test cases](https://onsi.github.io/ginkgo/#description-based-filtering)). For example: 
 

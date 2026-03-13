@@ -3,12 +3,13 @@
 set -euEo pipefail
 shopt -s inherit_errexit
 
-# This script makes sure that a KinD cluster is set up. If a cluster already exists, it will be reused unless the
-# RECREATE environment variable is set to "true".
-# Additionally, it sets up a local container registry and connects it to the KinD cluster so that images can be pushed to
-# it and be available inside the KinD cluster.
+# This script makes sure that a KinD cluster is set up with the operator and its dependencies deployed.
+# If a cluster already exists, it will be reused unless the RECREATE environment variable is set to "true".
+# It sets up a local container registry and connects it to the KinD cluster, builds and pushes the operator image
+# (unless SO_IMAGE is already set), and deploys the full operator stack (cert-manager, prometheus-operator,
+# haproxy-ingress, the operator, and scylla-manager).
 
-readonly parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
+readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
 
 # Ensure all kind calls use podman.
 export KIND_EXPERIMENTAL_PROVIDER=podman
@@ -32,7 +33,7 @@ fi
 
 # Ensure KinD cluster exists.
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
-    KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${parent_dir}/cluster-config.yaml" --retain)
+    KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${repo_root}/hack/kind/cluster-config.yaml" --retain)
 
     # As we rely on rootless Podman, we need to delegate cgroup management to the user systemd instance (this is implicitly
     # done on systems with systemd >= 252, but needs to be explicit on older systems).
@@ -80,3 +81,30 @@ data:
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
 rm "${temp_kubeconfig}"
+
+REENTRANT="${REENTRANT:-true}"
+export REENTRANT
+
+# Set up KUBECONFIG for kubectl commands during deployment.
+KUBECONFIG="$(mktemp --suffix ".kubeconfig")"
+kind get kubeconfig --name="${CLUSTER_NAME}" > "${KUBECONFIG}"
+export KUBECONFIG
+trap 'rm -f "${KUBECONFIG}"' EXIT
+
+# Use 'standard' storage class that comes with KinD by default.
+# This must be set before sourcing run-e2e-shared.env.sh, which would otherwise default to 'scylladb-local-xfs'.
+SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-standard}"
+export SO_SCYLLACLUSTER_STORAGECLASS_NAME
+
+source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
+source "${repo_root}/hack/kind/lib.sh"
+
+# Build and push operator image to the local registry (skips if SO_IMAGE is already set).
+build-and-push-operator-image "${repo_root}"
+
+# Set up ARTIFACTS directory to store manifests that are used to deploy the operator stack for inspection.
+ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
+export ARTIFACTS
+
+# Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
+"${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"

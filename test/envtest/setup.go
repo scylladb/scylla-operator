@@ -26,6 +26,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type Environment struct {
@@ -41,6 +42,8 @@ type Environment struct {
 // for convenience.
 func Setup(ctx context.Context) *Environment {
 	g.GinkgoHelper()
+
+	log.SetLogger(g.GinkgoLogr)
 
 	testEnv := &envtest.Environment{
 		ControlPlaneStartTimeout:    time.Minute,

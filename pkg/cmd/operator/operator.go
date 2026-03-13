@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"sync"
 	"time"
 
 	monitoringinformers "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	monitoringversionedclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/clusterdomain"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
@@ -29,6 +32,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
@@ -300,6 +304,17 @@ func (o *OperatorOptions) Execute(ctx context.Context, streams genericclioptions
 }
 
 func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOStreams) error {
+	invalidTaskNameRefs, err := listScyllaClustersWithNonRFC1123SubdomainTaskNames(ctx, o.scyllaClient.ScyllaV1())
+	if err != nil {
+		return fmt.Errorf("can't check for ScyllaClusters with invalid task names: %w", err)
+	}
+	if len(invalidTaskNameRefs) > 0 {
+		return fmt.Errorf(
+			"ScyllaCluster(s) %v have repair or backup task names that do not conform to RFC 1123 subdomain requirements. Please update the task names before starting ScyllaDB Operator.",
+			invalidTaskNameRefs,
+		)
+	}
+
 	rsaKeyGenerator, err := crypto.NewRSAKeyGenerator(
 		o.CryptoKeyBufferSizeMin,
 		o.CryptoKeyBufferSizeMax,
@@ -871,4 +886,32 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	<-ctx.Done()
 
 	return nil
+}
+
+func listScyllaClustersWithNonRFC1123SubdomainTaskNames(ctx context.Context, scyllaV1Client scyllav1client.ScyllaV1Interface) ([]string, error) {
+	scyllaClusters, err := scyllaV1Client.ScyllaClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("can't list ScyllaClusters: %w", err)
+	}
+
+	var invalidRefs []string
+	for _, sc := range scyllaClusters.Items {
+		taskNames := slices.Concat(
+			oslices.ConvertSlice(sc.Spec.Repairs, func(r scyllav1.RepairTaskSpec) string {
+				return r.Name
+			}),
+			oslices.ConvertSlice(sc.Spec.Backups, func(b scyllav1.BackupTaskSpec) string {
+				return b.Name
+			}),
+		)
+
+		hasInvalidTaskName := oslices.Contains(taskNames, func(name string) bool {
+			return len(apimachineryutilvalidation.IsDNS1123Subdomain(name)) > 0
+		})
+		if hasInvalidTaskName {
+			invalidRefs = append(invalidRefs, naming.ManualRef(sc.Namespace, sc.Name))
+		}
+	}
+
+	return invalidRefs, nil
 }

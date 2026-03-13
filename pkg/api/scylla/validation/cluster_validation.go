@@ -242,6 +242,10 @@ func ValidateBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *fi
 func ValidateTaskSpec(taskSpec *scyllav1.TaskSpec, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
+	for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(taskSpec.Name, false) {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("name"), taskSpec.Name, msg))
+	}
+
 	allErrs = append(allErrs, ValidateSchedulerTaskSpec(&taskSpec.SchedulerTaskSpec, fldPath)...)
 
 	return allErrs
@@ -520,40 +524,6 @@ func getWarningsForScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *
 
 	if len(spec.Sysctls) > 0 {
 		warnings = append(warnings, fmt.Sprintf("%s: deprecated; use NodeConfig's .spec.sysctls instead", fldPath.Child("sysctls")))
-	}
-
-	for i, b := range spec.Backups {
-		warnings = append(warnings, getWarningsForBackupTaskSpec(&b, fldPath.Child("backups").Index(i))...)
-	}
-
-	for i, r := range spec.Repairs {
-		warnings = append(warnings, getWarningsForRepairTaskSpec(&r, fldPath.Child("repairs").Index(i))...)
-	}
-
-	return warnings
-}
-
-func getWarningsForBackupTaskSpec(backupTaskSpec *scyllav1.BackupTaskSpec, fldPath *field.Path) []string {
-	var warnings []string
-
-	warnings = append(warnings, getWarningsForTaskSpec(&backupTaskSpec.TaskSpec, fldPath)...)
-
-	return warnings
-}
-
-func getWarningsForRepairTaskSpec(repairTaskSpec *scyllav1.RepairTaskSpec, fldPath *field.Path) []string {
-	var warnings []string
-
-	warnings = append(warnings, getWarningsForTaskSpec(&repairTaskSpec.TaskSpec, fldPath)...)
-
-	return warnings
-}
-
-func getWarningsForTaskSpec(taskSpec *scyllav1.TaskSpec, fldPath *field.Path) []string {
-	var warnings []string
-
-	for _, msg := range apimachineryvalidation.NameIsDNSSubdomain(taskSpec.Name, false) {
-		warnings = append(warnings, fmt.Sprintf("%s. An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.", field.Invalid(fldPath.Child("name"), taskSpec.Name, msg)))
 	}
 
 	return warnings

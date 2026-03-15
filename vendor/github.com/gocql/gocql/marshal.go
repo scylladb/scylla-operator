@@ -766,6 +766,20 @@ func unmarshalList(info TypeInfo, data []byte, value interface{}) error {
 	t := rv.Type()
 	k := t.Kind()
 
+	// Handle *interface{} destination
+	if k == reflect.Interface {
+		if t.NumMethod() != 0 {
+			return unmarshalErrorf("can not unmarshal into non-empty interface %T", value)
+		}
+		// Create a properly typed slice based on the element type
+		elemGoType, err := goType(listInfo.Elem)
+		if err != nil {
+			return unmarshalErrorf("unmarshal list: cannot determine element type: %v", err)
+		}
+		t = reflect.SliceOf(elemGoType)
+		k = reflect.Slice
+	}
+
 	switch k {
 	case reflect.Slice, reflect.Array:
 		if data == nil {
@@ -789,6 +803,10 @@ func unmarshalList(info TypeInfo, data []byte, value interface{}) error {
 			}
 		} else {
 			rv.Set(reflect.MakeSlice(t, n, n))
+			// If rv was an interface, get the underlying slice
+			if rv.Kind() == reflect.Interface {
+				rv = rv.Elem()
+			}
 		}
 		for i := 0; i < n; i++ {
 			m, p, err := readCollectionSize(listInfo, data)
@@ -811,7 +829,7 @@ func unmarshalList(info TypeInfo, data []byte, value interface{}) error {
 		}
 		return nil
 	}
-	return unmarshalErrorf("can not unmarshal %s into %T", info, value)
+	return unmarshalErrorf("can not unmarshal %s into %T. Accepted types: *slice, *array, *interface{}.", info, value)
 }
 
 func marshalVector(info VectorType, value interface{}) ([]byte, error) {
@@ -1060,8 +1078,26 @@ func unmarshalMap(info TypeInfo, data []byte, value interface{}) error {
 	}
 	rv = rv.Elem()
 	t := rv.Type()
+
+	// Handle *interface{} destination
+	if t.Kind() == reflect.Interface {
+		if t.NumMethod() != 0 {
+			return unmarshalErrorf("can not unmarshal into non-empty interface %T", value)
+		}
+		// Create a properly typed map based on the key and element types
+		keyGoType, err := goType(mapInfo.Key)
+		if err != nil {
+			return unmarshalErrorf("unmarshal map: cannot determine key type: %v", err)
+		}
+		elemGoType, err := goType(mapInfo.Elem)
+		if err != nil {
+			return unmarshalErrorf("unmarshal map: cannot determine element type: %v", err)
+		}
+		t = reflect.MapOf(keyGoType, elemGoType)
+	}
+
 	if t.Kind() != reflect.Map {
-		return unmarshalErrorf("can not unmarshal %s into %T", info, value)
+		return unmarshalErrorf("can not unmarshal %s into %T. Accepted types: *map, *interface{}.", info, value)
 	}
 	if data == nil {
 		rv.Set(reflect.Zero(t))
@@ -1075,6 +1111,10 @@ func unmarshalMap(info TypeInfo, data []byte, value interface{}) error {
 		return unmarshalErrorf("negative map size %d", n)
 	}
 	rv.Set(reflect.MakeMapWithSize(t, n))
+	// If rv was an interface, get the underlying map
+	if rv.Kind() == reflect.Interface {
+		rv = rv.Elem()
+	}
 	data = data[p:]
 	for i := 0; i < n; i++ {
 		m, p, err := readCollectionSize(mapInfo, data)

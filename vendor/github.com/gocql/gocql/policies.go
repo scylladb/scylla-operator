@@ -550,7 +550,7 @@ func (t *tokenAwareHostPolicy) Init(s *Session) {
 		if keyspace == "" {
 			return nil, ErrNoKeyspace
 		}
-		return s.metadataDescriber.getSchema(keyspace)
+		return s.metadataDescriber.GetKeyspace(keyspace)
 	}
 	t.getKeyspaceName = func() string { return s.cfg.Keyspace }
 	t.logger = s.logger

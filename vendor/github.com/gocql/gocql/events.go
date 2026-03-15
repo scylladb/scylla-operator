@@ -152,17 +152,17 @@ func (s *Session) handleSchemaEvent(frames []frame) {
 	for _, frame := range frames {
 		switch f := frame.(type) {
 		case *frm.SchemaChangeKeyspace:
-			s.metadataDescriber.clearSchema(f.Keyspace)
+			s.metadataDescriber.invalidateKeyspaceSchema(f.Keyspace)
 			s.handleKeyspaceChange(f.Keyspace, f.Change)
 		case *frm.SchemaChangeTable:
-			s.metadataDescriber.clearSchema(f.Keyspace)
+			s.metadataDescriber.invalidateTableSchema(f.Keyspace, f.Object)
 			s.handleTableChange(f.Keyspace, f.Object, f.Change)
 		case *frm.SchemaChangeAggregate:
-			s.metadataDescriber.clearSchema(f.Keyspace)
+			s.metadataDescriber.invalidateKeyspaceSchema(f.Keyspace)
 		case *frm.SchemaChangeFunction:
-			s.metadataDescriber.clearSchema(f.Keyspace)
+			s.metadataDescriber.invalidateKeyspaceSchema(f.Keyspace)
 		case *frm.SchemaChangeType:
-			s.metadataDescriber.clearSchema(f.Keyspace)
+			s.metadataDescriber.invalidateKeyspaceSchema(f.Keyspace)
 		}
 	}
 }

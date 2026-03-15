@@ -30,7 +30,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"sync/atomic"
@@ -656,7 +655,7 @@ func setupTLSConfig(sslOpts *SslOptions) (*tls.Config, error) {
 			tlsConfig.RootCAs = x509.NewCertPool()
 		}
 
-		pem, err := ioutil.ReadFile(sslOpts.CaPath)
+		pem, err := os.ReadFile(sslOpts.CaPath)
 		if err != nil {
 			return nil, fmt.Errorf("unable to open CA certs: %v", err)
 		}

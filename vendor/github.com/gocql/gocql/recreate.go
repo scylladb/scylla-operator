@@ -16,63 +16,63 @@ import (
 // ToCQL returns a CQL query that ca be used to recreate keyspace with all
 // user defined types, tables, indexes, functions, aggregates and views associated
 // with this keyspace.
-func (km *KeyspaceMetadata) ToCQL() (string, error) {
+func (ks *KeyspaceMetadata) ToCQL() (string, error) {
 	// Be aware that `CreateStmts` is not only a cache for ToCQL,
 	// but it also can be populated from response to `DESCRIBE KEYSPACE %s WITH INTERNALS`
-	if len(km.CreateStmts) != 0 {
-		return km.CreateStmts, nil
+	if len(ks.CreateStmts) != 0 {
+		return ks.CreateStmts, nil
 	}
 
 	var sb strings.Builder
 
-	if err := km.keyspaceToCQL(&sb); err != nil {
+	if err := ks.keyspaceToCQL(&sb); err != nil {
 		return "", err
 	}
 
-	sortedTypes := km.typesSortedTopologically()
+	sortedTypes := ks.typesSortedTopologically()
 	for _, tm := range sortedTypes {
-		if err := km.userTypeToCQL(&sb, tm); err != nil {
+		if err := ks.userTypeToCQL(&sb, tm); err != nil {
 			return "", err
 		}
 	}
 
-	for _, tm := range km.Tables {
-		if err := km.tableToCQL(&sb, km.Name, tm); err != nil {
+	for _, tm := range ks.Tables {
+		if err := ks.tableToCQL(&sb, ks.Name, tm); err != nil {
 			return "", err
 		}
 	}
 
-	for _, im := range km.Indexes {
-		if err := km.indexToCQL(&sb, im); err != nil {
+	for _, im := range ks.Indexes {
+		if err := ks.indexToCQL(&sb, im); err != nil {
 			return "", err
 		}
 	}
 
-	for _, fm := range km.Functions {
-		if err := km.functionToCQL(&sb, km.Name, fm); err != nil {
+	for _, fm := range ks.Functions {
+		if err := ks.functionToCQL(&sb, ks.Name, fm); err != nil {
 			return "", err
 		}
 	}
 
-	for _, am := range km.Aggregates {
-		if err := km.aggregateToCQL(&sb, am); err != nil {
+	for _, am := range ks.Aggregates {
+		if err := ks.aggregateToCQL(&sb, am); err != nil {
 			return "", err
 		}
 	}
 
-	for _, vm := range km.Views {
-		if err := km.viewToCQL(&sb, vm); err != nil {
+	for _, vm := range ks.Views {
+		if err := ks.viewToCQL(&sb, vm); err != nil {
 			return "", err
 		}
 	}
 
-	km.CreateStmts = sb.String()
-	return km.CreateStmts, nil
+	ks.CreateStmts = sb.String()
+	return ks.CreateStmts, nil
 }
 
-func (km *KeyspaceMetadata) typesSortedTopologically() []*TypeMetadata {
-	sortedTypes := make([]*TypeMetadata, 0, len(km.Types))
-	for _, tm := range km.Types {
+func (ks *KeyspaceMetadata) typesSortedTopologically() []*TypeMetadata {
+	sortedTypes := make([]*TypeMetadata, 0, len(ks.Types))
+	for _, tm := range ks.Types {
 		sortedTypes = append(sortedTypes, tm)
 	}
 	sort.Slice(sortedTypes, func(i, j int) bool {
@@ -98,7 +98,7 @@ CREATE TABLE {{ .KeyspaceName }}.{{ .Tm.Name }} (
 ) WITH {{ tablePropertiesToCQL .Tm.ClusteringColumns .Tm.Options .Tm.Extensions }};
 `))
 
-func (km *KeyspaceMetadata) tableToCQL(w io.Writer, kn string, tm *TableMetadata) error {
+func (ks *KeyspaceMetadata) tableToCQL(w io.Writer, kn string, tm *TableMetadata) error {
 	if err := tableCQLTemplate.Execute(w, map[string]interface{}{
 		"Tm":           tm,
 		"KeyspaceName": kn,
@@ -127,7 +127,7 @@ CREATE FUNCTION {{ .keyspaceName }}.{{ .fm.Name }} (
     AS $${{ .fm.Body }}$$;
 `))
 
-func (km *KeyspaceMetadata) functionToCQL(w io.Writer, keyspaceName string, fm *FunctionMetadata) error {
+func (ks *KeyspaceMetadata) functionToCQL(w io.Writer, keyspaceName string, fm *FunctionMetadata) error {
 	if err := functionTemplate.Execute(w, map[string]interface{}{
 		"fm":           fm,
 		"keyspaceName": keyspaceName,
@@ -157,7 +157,7 @@ CREATE MATERIALIZED VIEW {{ .vm.KeyspaceName }}.{{ .vm.ViewName }} AS
     WITH {{ tablePropertiesToCQL .vm.ClusteringColumns .vm.Options .vm.Extensions }};
 `))
 
-func (km *KeyspaceMetadata) viewToCQL(w io.Writer, vm *ViewMetadata) error {
+func (ks *KeyspaceMetadata) viewToCQL(w io.Writer, vm *ViewMetadata) error {
 	if err := viewTemplate.Execute(w, map[string]interface{}{
 		"vm": vm,
 	}); err != nil {
@@ -187,7 +187,7 @@ CREATE AGGREGATE {{ .Keyspace }}.{{ .Name }}(
 ;
 `))
 
-func (km *KeyspaceMetadata) aggregateToCQL(w io.Writer, am *AggregateMetadata) error {
+func (ks *KeyspaceMetadata) aggregateToCQL(w io.Writer, am *AggregateMetadata) error {
 	if err := aggregatesTemplate.Execute(w, am); err != nil {
 		return err
 	}
@@ -206,14 +206,14 @@ CREATE TYPE {{ .Keyspace }}.{{ .Name }} (
 );
 `))
 
-func (km *KeyspaceMetadata) userTypeToCQL(w io.Writer, tm *TypeMetadata) error {
+func (ks *KeyspaceMetadata) userTypeToCQL(w io.Writer, tm *TypeMetadata) error {
 	if err := typeCQLTemplate.Execute(w, tm); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (km *KeyspaceMetadata) indexToCQL(w io.Writer, im *IndexMetadata) error {
+func (ks *KeyspaceMetadata) indexToCQL(w io.Writer, im *IndexMetadata) error {
 	// Scylla doesn't support any custom indexes
 	if im.Kind == IndexKindCustom {
 		return nil
@@ -261,8 +261,8 @@ var keyspaceCQLTemplate = template.Must(template.New("keyspace").
 }{{ if not .DurableWrites }} AND durable_writes = 'false'{{ end }};
 `))
 
-func (km *KeyspaceMetadata) keyspaceToCQL(w io.Writer) error {
-	if err := keyspaceCQLTemplate.Execute(w, km); err != nil {
+func (ks *KeyspaceMetadata) keyspaceToCQL(w io.Writer) error {
+	if err := keyspaceCQLTemplate.Execute(w, ks); err != nil {
 		return err
 	}
 	return nil

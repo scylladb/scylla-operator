@@ -5,6 +5,8 @@ package statusreport
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -135,6 +137,10 @@ func (c *Controller) getNodeStatusReport(ctx context.Context) *internalapi.NodeS
 			Status: scyllaClientNodeStatusToScyllaV1Alpha1NodeStatus(ns.Status),
 		})
 	}
+
+	slices.SortFunc(observedNodeStatuses, func(a, b scyllav1alpha1.ObservedNodeStatus) int {
+		return strings.Compare(a.HostID, b.HostID)
+	})
 
 	return &internalapi.NodeStatusReport{
 		ObservedNodes: observedNodeStatuses,

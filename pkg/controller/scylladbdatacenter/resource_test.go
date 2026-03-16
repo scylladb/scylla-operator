@@ -6380,6 +6380,261 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 			},
 			expectedErr: nil,
 		},
+		{
+			name: "input status reports in unsorted order, output sorted by HostID",
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaDBDatacenter()
+
+				sdc.Spec.Racks = []scyllav1alpha1.RackSpec{
+					{
+						Name: "a",
+						RackTemplate: scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](2),
+						},
+					},
+					{
+						Name: "b",
+						RackTemplate: scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](2),
+						},
+					},
+				}
+
+				sdc.Status.Racks = []scyllav1alpha1.RackStatus{
+					{
+						Name:         "a",
+						Nodes:        pointer.Ptr[int32](2),
+						CurrentNodes: pointer.Ptr[int32](2),
+					},
+					{
+						Name:         "b",
+						Nodes:        pointer.Ptr[int32](2),
+						CurrentNodes: pointer.Ptr[int32](2),
+					},
+				}
+
+				return sdc
+			}(),
+			services: map[string]*corev1.Service{
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-a-0"),
+				"basic-dc-a-1": newMemberService("basic-dc-a-1", "host-id-a-1"),
+				"basic-dc-b-0": newMemberService("basic-dc-b-0", "host-id-b-0"),
+				"basic-dc-b-1": newMemberService("basic-dc-b-1", "host-id-b-1"),
+			},
+			pods: []*corev1.Pod{
+				// Each pod's ObservedNodes are intentionally in reverse (unsorted) order to verify sorting.
+				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-a-1", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-b-0", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-b-1", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+			},
+			expected: &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-12wmr",
+					Namespace: "default",
+					Labels: map[string]string{
+						"default-sc-label":             "foo",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector": "basic",
+						"scylla/cluster": "basic",
+					},
+					Annotations: map[string]string{
+						"default-sc-annotation": "bar",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "basic",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				DatacenterName: "dc",
+				// ObservedNodes must be sorted by HostID regardless of annotation order.
+				Racks: []scyllav1alpha1.RackNodesStatusReport{
+					{
+						Name: "a",
+						Nodes: []scyllav1alpha1.NodeStatusReport{
+							{
+								Ordinal: 0,
+								HostID:  pointer.Ptr("host-id-a-0"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-a-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+							{
+								Ordinal: 1,
+								HostID:  pointer.Ptr("host-id-a-1"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-a-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "b",
+						Nodes: []scyllav1alpha1.NodeStatusReport{
+							{
+								Ordinal: 0,
+								HostID:  pointer.Ptr("host-id-b-0"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-a-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+							{
+								Ordinal: 1,
+								HostID:  pointer.Ptr("host-id-b-1"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-a-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
 	}
 
 	for _, tc := range tt {

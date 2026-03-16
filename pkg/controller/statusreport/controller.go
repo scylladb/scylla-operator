@@ -138,6 +138,7 @@ func (c *Controller) getNodeStatusReport(ctx context.Context) *internalapi.NodeS
 		})
 	}
 
+	// Ordering by HostID guarantees stability of the annotation and prevents unnecessary state changes that would result only from reshuffling.
 	slices.SortFunc(observedNodeStatuses, func(a, b scyllav1alpha1.ObservedNodeStatus) int {
 		return strings.Compare(a.HostID, b.HostID)
 	})

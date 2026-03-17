@@ -4,6 +4,7 @@ Copyright (C) 2026 ScyllaDB
 Sphinx extension to extend myst_substitutions with version context in build time.
 """
 
+import configparser
 import os
 import re
 import subprocess
@@ -111,6 +112,30 @@ def get_versions_from_config(repo_root: str) -> dict[str, str]:
     if scylla_db_manager_agent_version is not None:
         result['agentVersion'] = strip_digest(scylla_db_manager_agent_version)
 
+    # Try to extract cert-manager version
+    cert_manager_version = get_nested_value(config_data, 'thirdParty.certManager.version')
+    if cert_manager_version is not None:
+        result['certManagerVersion'] = cert_manager_version
+
+    # Try to extract Grafana version from the full image string (e.g. "docker.io/grafana/grafana:12.3.3" -> "12.3.3")
+    grafana_image = get_nested_value(config_data, 'operator.grafanaImage')
+    if grafana_image is not None:
+        # Strip digest if present, then extract the tag after the last ':'
+        grafana_image_no_digest = strip_digest(grafana_image)
+        colon_idx = grafana_image_no_digest.rfind(':')
+        if colon_idx != -1:
+            result['grafanaVersion'] = grafana_image_no_digest[colon_idx + 1:]
+
+    # Try to extract Prometheus version, stripping the leading 'v' prefix (e.g. "v3.9.1" -> "3.9.1")
+    prometheus_version = get_nested_value(config_data, 'operator.prometheusVersion')
+    if prometheus_version is not None:
+        result['prometheusVersion'] = prometheus_version.lstrip('v')
+
+    # Try to extract Prometheus Operator version
+    prometheus_operator_version = get_nested_value(config_data, 'thirdParty.prometheusOperator.version')
+    if prometheus_operator_version is not None:
+        result['prometheusOperatorVersion'] = prometheus_operator_version
+
     return result
 
 
@@ -191,6 +216,47 @@ def extract_version_range(
         max_version = transform_fn(max_version)
 
     return format_version_range(min_version, max_version)
+
+
+def get_versions_from_submodules(repo_root: str) -> dict[str, str]:
+    """
+    Read submodule versions from .gitmodules.
+
+    This function gracefully handles missing .gitmodules file and specific submodules, but will raise an error
+    if the file exists but is invalid (unparseable git config).
+
+    Args:
+        repo_root: Path to the repository root directory. Should point to the version-specific
+                   directory (sphinx-multiversion temporary directory when building multi-version docs).
+
+    Returns:
+        Dictionary with submodule versions extracted from .gitmodules, or empty dict if not available.
+
+    Raises:
+        ExtensionError: If the .gitmodules file exists but cannot be parsed.
+    """
+    gitmodules_path = os.path.join(repo_root, '.gitmodules')
+
+    if not os.path.exists(gitmodules_path):
+        return {}
+
+    try:
+        parser = configparser.ConfigParser()
+        parser.read(gitmodules_path)
+    except configparser.Error as e:
+        raise ExtensionError(f"Failed to parse .gitmodules file {gitmodules_path}: {e}")
+
+    result = {}
+
+    for section in parser.sections():
+        branch = parser.get(section, 'branch', fallback=None)
+        if branch is None:
+            continue
+
+        if 'scylla-monitoring' in section.lower():
+            result['scyllaDBMonitoringVersion'] = branch
+
+    return result
 
 
 def get_versions_from_metadata(repo_root: str) -> dict[str, str]:
@@ -353,6 +419,10 @@ def setup_version_context_substitutions(app: Sphinx, config: Config) -> None:
     # Add version information from metadata.yaml.
     # Use the version-specific repo root to read the correct metadata file.
     config.myst_substitutions.update(get_versions_from_metadata(current_repo_root))
+
+    # Add version information from .gitmodules.
+    # Use the version-specific repo root to read the correct .gitmodules file.
+    config.myst_substitutions.update(get_versions_from_submodules(current_repo_root))
 
 
 def setup(app: Sphinx) -> dict[str, Any]:

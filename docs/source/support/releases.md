@@ -150,7 +150,29 @@ The support matrix table shows the version requirements for ScyllaDB Operator. M
 * - ScyllaDB Manager
   - 3.7 - 3.9
 * - ScyllaDB Monitoring
-  - (CRD)
+  - {{scyllaDBMonitoringVersion}} [^scylladb-monitoring-version]
+:::
+
+[^scylladb-monitoring-version]: ScyllaDB Operator embeds the specified version of ScyllaDB Monitoring, which includes a set of Grafana dashboards and Prometheus rules.
+
+### Third-party dependencies
+
+The following table lists the versions of third-party dependencies that ScyllaDB Operator is tested against.
+
+:::{list-table}
+:widths: 50 50
+:header-rows: 1
+
+* - Component
+  - Version
+* - cert-manager
+  - {{certManagerVersion}}
+* - Grafana
+  - {{grafanaVersion}}
+* - Prometheus
+  - {{prometheusVersion}}
+* - Prometheus Operator
+  - {{prometheusOperatorVersion}}
 :::
 
 ### Architectures

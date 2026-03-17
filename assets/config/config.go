@@ -18,18 +18,14 @@ var (
 )
 
 type OperatorConfig struct {
-	ScyllaDBVersion string `json:"scyllaDBVersion"`
-	// scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
-	// that requires consistent_cluster_management workaround for restore.
-	// In the future, enterprise versions should be run as a different config instance in its own run.
-	ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride string `json:"scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride"`
-	ScyllaDBUtilsImage                                                  string `json:"scyllaDBUtilsImage"`
-	ScyllaDBManagerVersion                                              string `json:"scyllaDBManagerVersion"`
-	ScyllaDBManagerAgentVersion                                         string `json:"scyllaDBManagerAgentVersion"`
-	BashToolsImage                                                      string `json:"bashToolsImage"`
-	GrafanaImage                                                        string `json:"grafanaImage"`
-	GrafanaDefaultPlatformDashboard                                     string `json:"grafanaDefaultPlatformDashboard"`
-	PrometheusVersion                                                   string `json:"prometheusVersion"`
+	ScyllaDBVersion                 string `json:"scyllaDBVersion"`
+	ScyllaDBUtilsImage              string `json:"scyllaDBUtilsImage"`
+	ScyllaDBManagerVersion          string `json:"scyllaDBManagerVersion"`
+	ScyllaDBManagerAgentVersion     string `json:"scyllaDBManagerAgentVersion"`
+	BashToolsImage                  string `json:"bashToolsImage"`
+	GrafanaImage                    string `json:"grafanaImage"`
+	GrafanaDefaultPlatformDashboard string `json:"grafanaDefaultPlatformDashboard"`
+	PrometheusVersion               string `json:"prometheusVersion"`
 }
 
 type ScyllaDBTestVersions struct {

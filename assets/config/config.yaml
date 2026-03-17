@@ -1,10 +1,6 @@
 operator:
   # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
   scyllaDBVersion: "2026.1.0"
-  # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
-  # that requires consistent_cluster_management workaround for restore.
-  # In the future, enterprise versions should be run as a different config instance in its own run.
-  scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.11"
   scyllaDBUtilsImage: "docker.io/scylladb/scylla:2026.1.0@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver
   scyllaDBManagerVersion: "3.9.0@sha256:8003fc2d6e315ce2b33863a5c6cd67bcf8d8ceca569723f68dba15cc1645c961"

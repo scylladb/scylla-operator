@@ -13,7 +13,6 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
-	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -31,23 +30,9 @@ import (
 var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage, func() {
 	f := framework.NewFramework("scyllacluster")
 
-	type entry struct {
-		scyllaRepository           string
-		scyllaVersion              string
-		preTargetClusterCreateHook func(cluster *scyllav1.ScyllaCluster)
-		postSchemaRestoreHook      func(context.Context, *framework.Framework, *scyllav1.ScyllaCluster)
-	}
-
-	g.DescribeTable("should register cluster, sync backup tasks and support manual restore procedure", func(ctx g.SpecContext, e entry) {
+	g.It("should register cluster, sync backup tasks and support manual restore procedure", func(ctx g.SpecContext) {
 		sourceSC := f.GetDefaultScyllaCluster()
 		sourceSC.Spec.Datacenter.Racks[0].Members = 1
-
-		if len(e.scyllaRepository) != 0 {
-			sourceSC.Spec.Repository = e.scyllaRepository
-		}
-		if len(e.scyllaVersion) != 0 {
-			sourceSC.Spec.Version = e.scyllaVersion
-		}
 
 		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
 		o.Expect(ok).To(o.BeTrue(), "cluster object storage settings must be configured for this test")
@@ -319,10 +304,6 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		targetSC.Spec.Repository = sourceSC.Spec.Repository
 		targetSC.Spec.Version = sourceSC.Spec.Version
 
-		if e.preTargetClusterCreateHook != nil {
-			e.preTargetClusterCreateHook(targetSC)
-		}
-
 		setUpObjectStorageCredentials(ctx, f.Namespace(), f.Client, targetSC, objectStorageSettings)
 
 		framework.By("Creating target ScyllaCluster")
@@ -420,10 +401,6 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
 
-		if e.postSchemaRestoreHook != nil {
-			e.postSchemaRestoreHook(ctx, f, targetSC)
-		}
-
 		framework.By("Creating a tables restore task")
 		stdout, stderr, err = utils.ExecWithOptions(ctx, f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
 			Command: []string{
@@ -469,62 +446,7 @@ var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verification.VerifyCQLData(ctx, di)
-	},
-		g.Entry("using default ScyllaDB version", entry{}),
-		// Restoring schema with ScyllaDB OS 5.4.X or ScyllaDB Enterprise 2024.1.X and consistent_cluster_management isn’t supported.
-		// This test validates a workaround explained in the docs - https://operator.docs.scylladb.com/stable/nodeoperations/restore.html
-		g.Entry("using workaround for consistent_cluster_management for ScyllaDB Enterprise", entry{
-			scyllaRepository: configassets.ScyllaDBEnterpriseImageRepository,
-			scyllaVersion:    configassets.Project.Operator.ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride,
-			preTargetClusterCreateHook: func(targetCluster *scyllav1.ScyllaCluster) {
-				if targetCluster.Spec.ScyllaArgs != "" {
-					targetCluster.Spec.ScyllaArgs += " "
-				}
-				targetCluster.Spec.ScyllaArgs += "--consistent-cluster-management=false"
-			},
-			postSchemaRestoreHook: func(ctx context.Context, f *framework.Framework, targetSC *scyllav1.ScyllaCluster) {
-				var err error
-
-				framework.By("Initiating a rolling restart of the target ScyllaCluster")
-				targetSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-					ctx,
-					targetSC.Name,
-					types.MergePatchType,
-					[]byte(`{"spec": {"forceRedeploymentReason": "schema restored"}}`),
-					metav1.PatchOptions{},
-				)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				framework.By("Waiting for the target ScyllaCluster to roll out")
-				postSchemaRestoreTargetRolloutCtx, postSchemaRestoreTargetRolloutCtxCancel := utils.ContextForRollout(ctx, targetSC)
-				defer postSchemaRestoreTargetRolloutCtxCancel()
-				targetSC, err = controllerhelpers.WaitForScyllaClusterState(postSchemaRestoreTargetRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), targetSC)
-				scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
-
-				framework.By("Enabling raft in target cluster")
-				_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-					ctx,
-					targetSC.Name,
-					types.JSONPatchType,
-					[]byte(`[{"op":"replace","path":"/spec/scyllaArgs","value":"--consistent-cluster-management=true"}]`),
-					metav1.PatchOptions{},
-				)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				framework.By("Waiting for the target ScyllaCluster to roll out")
-				waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, targetSC)
-				defer waitCtxCancel()
-				targetSC, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(targetSC.Namespace), targetSC.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), targetSC)
-				scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), targetSC)
-			},
-		}),
-	)
+	})
 
 	g.It("should discover cluster and sync errors for invalid tasks and invalid updates to existing tasks", func(ctx g.SpecContext) {
 		sc := f.GetDefaultScyllaCluster()

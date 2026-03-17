@@ -9,7 +9,14 @@
 
 ### Upgrade requirements
 
+- Rename `ScyllaCluster` backup and repair tasks to comply with RFC 1123 (e.g., if they contain underscores `_`).
+  For details, refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.com/stable/management/upgrading/upgrade/#to-1-21).
+
 ### Deprecations
+
+- `ScyllaCluster` backup and repair task names not conforming to RFC 1123 subdomain requirements (e.g. containing underscores `_`)
+  are now rejected on object creation or update. The operator will refuse to start if any existing `ScyllaClusters` have non-conforming task names.
+  [#3326](https://github.com/scylladb/scylla-operator/pull/3326)
 
 ### Features & Enhancements
 

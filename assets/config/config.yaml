@@ -1,24 +1,23 @@
 operator:
   # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
-  scyllaDBVersion: "2025.4.3"
+  scyllaDBVersion: "2026.1.0"
   # scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride sets enterprise version
   # that requires consistent_cluster_management workaround for restore.
   # In the future, enterprise versions should be run as a different config instance in its own run.
   scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride: "2024.1.11"
-  # scyllaDBUtilsImage should be pinned to latest 2025.1.z until https://github.com/scylladb/scylla-operator/issues/3080 is fixed.
-  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2025.1.9@sha256:64e1c947b2ed7f50fe13b8e0b96affba91dbe0d487720217c4bf288568eed02b"
+  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2026.1.0@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver
   scyllaDBManagerVersion: "3.8.1@sha256:7ef20e8aefd378d452d50783a9c61159f6f016ab6a6c95b4159474554d05550d"
   # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
   scyllaDBManagerAgentVersion: "3.8.1@sha256:f29c3e0659ccc918d809d74624abf42ac72eed4f3a5e9c982989740538318f78"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
   grafanaImage: "docker.io/grafana/grafana:12.3.3" # Generated from scylla-monitoring/versions.sh GRAFANA_VERSION.
-  grafanaDefaultPlatformDashboard: "scylladb-2025.4/scylla-overview.2025.4.json"
+  grafanaDefaultPlatformDashboard: "scylladb-2026.1/scylla-overview.2026.1.json"
   prometheusVersion: "v3.9.1" # Generated from scylla-monitoring/versions.sh PROMETHEUS_VERSION.
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "2025.4.0-rc7" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
-    upgradeFrom: "2025.3.5" # One minor lower than .operator.scyllaDBVersion
+    updateFrom: "2026.1.0-rc3" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
+    upgradeFrom: "2025.4.5" # One minor lower than .operator.scyllaDBVersion
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.4@sha256:8d77b91db6cffb40337e3db9c9a2f73f190eda9f9e547a752f0beab8aea322ef"
   # renovate: datasource=custom.envtest depName=envtest versioning=semver
   envTestKubernetesVersion: "v1.35.0"

@@ -8,9 +8,7 @@
 set -euo pipefail
 shopt -s inherit_errexit
 
-readonly parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
-
-source "${parent_dir}/lib.sh"
+readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
 
 # Default values.
 NUM_RUNS=10
@@ -123,14 +121,9 @@ export CLUSTER_NAME
 # Set up the KIND cluster once before the loop (unless recreate is requested).
 if [ "${RECREATE_CLUSTER}" = false ]; then
   echo "Setting up KIND cluster..."
-  RECREATE=false "${parent_dir}/../cluster-setup.sh"
+  RECREATE=false "${repo_root}/hack/kind/cluster-setup.sh"
   echo ""
 fi
-
-# Build and push the operator image once (unless SO_IMAGE is already set).
-echo "Preparing operator image..."
-build-and-push-operator-image "${parent_dir}/../../.."
-echo ""
 
 # Initialize counters.
 TOTAL_RUNS=0
@@ -153,9 +146,9 @@ for ((i=1; i<=NUM_RUNS; i++)); do
   if [ "${RECREATE_CLUSTER}" = true ]; then
     echo "Recreating KIND cluster..."
     if [ "${VERBOSE}" = true ]; then
-      RECREATE=true "${parent_dir}/../cluster-setup.sh"
+      RECREATE=true "${repo_root}/hack/kind/cluster-setup.sh"
     else
-      RECREATE=true "${parent_dir}/../cluster-setup.sh" > /dev/null 2>&1
+      RECREATE=true "${repo_root}/hack/kind/cluster-setup.sh" > /dev/null 2>&1
     fi
     echo ""
   fi
@@ -168,7 +161,7 @@ for ((i=1; i<=NUM_RUNS; i++)); do
 
   # Run the test and capture the exit code
   if [ "${VERBOSE}" = true ]; then
-    if "${parent_dir}/../run-e2e-tests.sh"; then
+    if "${repo_root}/hack/kind/run-e2e-tests.sh"; then
       echo "✓ Run ${i}/${NUM_RUNS} PASSED"
       PASSED_RUNS=$((PASSED_RUNS + 1))
     else
@@ -176,7 +169,7 @@ for ((i=1; i<=NUM_RUNS; i++)); do
       FAILED_RUNS=$((FAILED_RUNS + 1))
     fi
   else
-    if "${parent_dir}/../run-e2e-tests.sh" > /dev/null 2>&1; then
+    if "${repo_root}/hack/kind/run-e2e-tests.sh" > /dev/null 2>&1; then
       echo "✓ Run ${i}/${NUM_RUNS} PASSED"
       PASSED_RUNS=$((PASSED_RUNS + 1))
     else

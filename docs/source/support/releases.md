@@ -158,8 +158,8 @@ The support matrix table shows version requirements for a particular **ScyllaDB 
   - 2024.1, 2025.1, 2025.3 - 2025.4
   - 2024.1, 2025.1 - 2025.3
 * - ScyllaDB Manager
-  - 3.7 - 3.8
-  - 3.7 - 3.8
+  - 3.7 - 3.9
+  - 3.7 - 3.9
   - 3.5, 3.7
 * - ScyllaDB Monitoring
   - (CRD)

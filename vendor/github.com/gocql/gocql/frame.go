@@ -30,7 +30,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"runtime"
 	"strconv"
@@ -364,7 +363,7 @@ func (f *framer) readFrame(r io.Reader, head *frm.FrameHeader) error {
 		return fmt.Errorf("frame body length can not be less than 0: %d", head.Length)
 	} else if head.Length > maxFrameSize {
 		// need to free up the connection to be used again
-		_, err := io.CopyN(ioutil.Discard, r, int64(head.Length))
+		_, err := io.CopyN(io.Discard, r, int64(head.Length))
 		if err != nil {
 			return fmt.Errorf("error whilst trying to discard frame with invalid length: %v", err)
 		}
@@ -774,8 +773,9 @@ func (f *framer) readTypeInfo() TypeInfo {
 
 		return collection
 	case TypeCustom:
-		if strings.HasPrefix(simple.custom, "org.apache.cassandra.db.marshal.VectorType") {
-			spec := strings.TrimPrefix(simple.custom, "org.apache.cassandra.db.marshal.VectorType")
+		vectorTypePrefix := apacheCassandraTypePrefix + "VectorType"
+		if strings.HasPrefix(simple.custom, vectorTypePrefix) {
+			spec := strings.TrimPrefix(simple.custom, vectorTypePrefix)
 			spec = spec[1 : len(spec)-1] // remove parenthesis
 			idx := strings.LastIndex(spec, ",")
 			typeStr := spec[:idx]

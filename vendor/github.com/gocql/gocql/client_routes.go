@@ -62,10 +62,28 @@ func (l *ClientRoutesEndpointList) Validate() error {
 type ClientRoutesConfig struct {
 	TableName                    string
 	Endpoints                    ClientRoutesEndpointList
-	MaxResolverConcurrency       int
 	ResolveHealthyEndpointPeriod time.Duration
-	BlockUnknownEndpoints        bool
 	ResolverCacheDuration        time.Duration
+	MaxResolverConcurrency       int
+	BlockUnknownEndpoints        bool
+
+	// EnableShardAwareness controls whether the driver should use shard-aware
+	// connections when using ClientRoutes (PrivateLink).
+	//
+	// By default this is false because NAT typically breaks shard-awareness.
+	// Shard-aware routing relies on the driver knowing the source port of connections,
+	// which NAT devices modify, making it impossible for the server to route
+	// requests to the correct shard.
+	//
+	// However, in some deployments shard-awareness can still work:
+	//   - When using PROXY Protocol v2, the original source port is preserved
+	//     in the protocol header. See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+	//   - When using direct connections without NAT (e.g., VPC peering)
+	//   - When the load balancer/proxy is shard-aware itself
+	//
+	// Set this to true only if your network setup preserves or correctly handles
+	// the source port information needed for shard-aware routing.
+	EnableShardAwareness bool
 }
 
 func (cfg *ClientRoutesConfig) Validate() error {

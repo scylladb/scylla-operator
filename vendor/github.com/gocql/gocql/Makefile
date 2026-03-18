@@ -87,7 +87,7 @@ print-config:
 .prepare-get-version: .prepare-bin
 	@if [[ ! -f "$(MAKEFILE_PATH)/bin/get-version" ]]; then
 		echo "bin/get-version is not found, installing it"
-		curl -sSLo /tmp/get-version.zip https://github.com/scylladb-actions/get-version/releases/download/v0.3.0/get-version_0.3.0_linux_amd64v3.zip
+		curl -sSLo /tmp/get-version.zip https://github.com/scylladb-actions/get-version/releases/download/v0.4.3/get-version_0.4.3_linux_amd64v3.zip
 		unzip /tmp/get-version.zip get-version -d "$(MAKEFILE_PATH)/bin" >/dev/null
 	fi
 
@@ -234,7 +234,7 @@ scylla-start: .prepare-pki .prepare-scylla-ccm .prepare-environment-update-aio-m
 	ccm node1 nodetool status
 	sudo chmod 0777 ${CCM_CONFIG_DIR}/${CCM_SCYLLA_CLUSTER_NAME}/*/cql.m || true
 
-download-cassandra: .prepare-scylla-ccm resolve-cassandra-version
+download-cassandra: .prepare-cassandra-ccm resolve-cassandra-version
 	@if [[ -z "$${CASSANDRA_VERSION_RESOLVED}" ]]; then
 		CASSANDRA_VERSION_RESOLVED=$$(cat '${CASSANDRA_VERSION_FILE}')
 	fi
@@ -347,10 +347,10 @@ install-java:
 	echo "sdkman_auto_answer=true" >> ~/.sdkman/etc/config
 	source ~/.sdkman/bin/sdkman-init.sh;
 	echo "Installing Java versions...";
-	sdk install java 11.0.24-zulu;
-	sdk install java 17.0.12-zulu;
-	sdk default java 11.0.24-zulu;
-	sdk use java 11.0.24-zulu;
+	sdk install java 11.0.30-zulu;
+	sdk install java 17.0.18-zulu;
+	sdk default java 11.0.30-zulu;
+	sdk use java 11.0.30-zulu;
 
 .prepare-cassandra-ccm:
 	@if command -v ccm >/dev/null 2>&1 && grep CASSANDRA ${CCM_CONFIG_DIR}/ccm-type 2>/dev/null 1>&2 && grep ${CCM_CASSANDRA_VERSION} ${CCM_CONFIG_DIR}/ccm-version 2>/dev//null  1>&2; then

@@ -31,7 +31,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"strconv"
 	"sync"
@@ -742,7 +741,7 @@ func (c *Conn) serve(ctx context.Context) {
 }
 
 func (c *Conn) discardFrame(head frm.FrameHeader) error {
-	_, err := io.CopyN(ioutil.Discard, c, int64(head.Length))
+	_, err := io.CopyN(io.Discard, c, int64(head.Length))
 	if err != nil {
 		return err
 	}

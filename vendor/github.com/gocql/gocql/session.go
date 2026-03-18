@@ -700,7 +700,23 @@ func (s *Session) KeyspaceMetadata(keyspace string) (*KeyspaceMetadata, error) {
 		return nil, ErrNoKeyspace
 	}
 
-	return s.metadataDescriber.getSchema(keyspace)
+	return s.metadataDescriber.GetKeyspace(keyspace)
+}
+
+// TableMetadata returns the schema metadata for the specified table. Returns an error if the keyspace or table does not exist.
+func (s *Session) TableMetadata(keyspace, table string) (*TableMetadata, error) {
+	// fail fast
+	if s.Closed() {
+		return nil, ErrSessionClosed
+	} else if err := s.Ready(); err != nil {
+		return nil, err
+	} else if keyspace == "" {
+		return nil, ErrNoKeyspace
+	} else if table == "" {
+		return nil, fmt.Errorf("no table name provided: %w", ErrNotFound)
+	}
+
+	return s.metadataDescriber.GetTable(keyspace, table)
 }
 
 // TabletsMetadata returns the metadata about tablets

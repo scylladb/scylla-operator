@@ -1332,6 +1332,111 @@ func TestGetWarningsOnScyllaClusterCreate(t *testing.T) {
 				"spec.sysctls: deprecated; use NodeConfig's .spec.sysctls instead",
 			},
 		},
+		{
+			name: "valid repair task name",
+			cluster: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "daily-repair",
+						},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: nil,
+		},
+		{
+			name: "valid backup task name",
+			cluster: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "weekly-backup",
+						},
+						Location: []string{"s3:bucket"},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: nil,
+		},
+		{
+			name: "invalid repair task name",
+			cluster: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "invalid_repair",
+						},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"spec.repairs[0].name: Invalid value: \"invalid_repair\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+			},
+		},
+		{
+			name: "invalid backup task name",
+			cluster: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "invalid_backup",
+						},
+						Location: []string{"s3:bucket"},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"spec.backups[0].name: Invalid value: \"invalid_backup\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+			},
+		},
+		{
+			name: "multiple invalid task names",
+			cluster: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "invalid_repair",
+						},
+					},
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "another_invalid_repair",
+						},
+					},
+				}
+				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "invalid_backup",
+						},
+						Location: []string{"s3:bucket"},
+					},
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "another_invalid_backup",
+						},
+						Location: []string{"s3:bucket"},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"spec.backups[0].name: Invalid value: \"invalid_backup\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+				"spec.backups[1].name: Invalid value: \"another_invalid_backup\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+				"spec.repairs[0].name: Invalid value: \"invalid_repair\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+				"spec.repairs[1].name: Invalid value: \"another_invalid_repair\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -1374,6 +1479,97 @@ func TestGetWarningsOnScyllaClusterUpdate(t *testing.T) {
 			expectedWarnings: []string{
 				"spec.sysctls: deprecated; use NodeConfig's .spec.sysctls instead",
 			},
+		},
+		{
+			name:  "invalid repair task name on update",
+			oldSC: unit.NewSingleRackCluster(3),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "invalid_repair",
+						},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"spec.repairs[0].name: Invalid value: \"invalid_repair\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+			},
+		},
+		{
+			name:  "invalid backup task name on update",
+			oldSC: unit.NewSingleRackCluster(3),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "invalid_backup",
+						},
+						Location: []string{"s3:bucket"},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"spec.backups[0].name: Invalid value: \"invalid_backup\": a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character (e.g. 'example.com', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*'). An invalid task name will result in ScyllaDB Operator rejecting the ScyllaCluster objects' creation/update in the next minor release.",
+			},
+		},
+		{
+			name: "valid repair task name update",
+			oldSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "old-repair",
+						},
+					},
+				}
+				return sc
+			}(),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "new-repair",
+						},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: nil,
+		},
+		{
+			name: "valid backup task name update",
+			oldSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "old-backup",
+						},
+						Location: []string{"s3:bucket"},
+					},
+				}
+				return sc
+			}(),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Backups = []scyllav1.BackupTaskSpec{
+					{
+						TaskSpec: scyllav1.TaskSpec{
+							Name: "new-backup",
+						},
+						Location: []string{"s3:bucket"},
+					},
+				}
+				return sc
+			}(),
+			expectedWarnings: nil,
 		},
 	}
 

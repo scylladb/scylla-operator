@@ -806,8 +806,17 @@ func Test_makeCertificate_certStability(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer keygen.Close()
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	ctx, ctxCancel := context.WithCancel(t.Context())
+	defer ctxCancel()
+
+	wg.Add(1)
 	go func() {
-		keygen.Run(t.Context())
+		defer wg.Done()
+		keygen.Run(ctx)
 	}()
 
 	controller := &metav1.ObjectMeta{

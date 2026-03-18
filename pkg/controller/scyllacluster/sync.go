@@ -5,12 +5,14 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -19,6 +21,7 @@ import (
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -271,10 +274,19 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		return scmc.updateStatus(ctx, sc, status)
 	}
 
+	// Some SC spec changes don't bump SDC's generation (e.g. spec fields translated to annotations),
+	// and users can also directly bump SDC's generation without touching SC.
+	// Because of that, we shift SDC conditions' ObservedGeneration into SC's generation space.
+	var sdcConditions []metav1.Condition
+	if sdc, ok := scyllaDBDatacenterMap[sc.Name]; ok {
+		sdcConditions = offsetSDCConditionsToSCGenerationSpace(sc.Generation, sdc.Generation, sdc.Status.Conditions)
+	}
+
 	var errs []error
+	var conditions []metav1.Condition
 
 	err = controllerhelpers.RunSync(
-		&status.Conditions,
+		&conditions,
 		scyllaDBDatacenterControllerProgressingCondition,
 		scyllaDBDatacenterControllerDegradedCondition,
 		sc.Generation,
@@ -287,7 +299,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	err = controllerhelpers.RunSync(
-		&status.Conditions,
+		&conditions,
 		scyllaDBManagerTaskControllerProgressingCondition,
 		scyllaDBManagerTaskControllerDegradedCondition,
 		sc.Generation,
@@ -298,6 +310,62 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync ScyllaDBManagerTasks: %w", err))
 	}
+
+	var aggregationErrs []error
+
+	// Aggregate the conditions from two independent sources:
+	// - Controller partial conditions produced by RunSync above (names end with the condition suffix).
+	// - The matching aggregate condition reported by the ScyllaDBDatacenter, or an Unknown condition
+	//   if the SDC has not yet reported a matching condition for the current generation.
+
+	progressingConditionInputs := append(
+		controllerhelpers.FindStatusConditionsWithSuffix(conditions, scyllav1alpha1.ProgressingCondition),
+		findStatusConditionOrUnknown(sdcConditions, scyllav1alpha1.ProgressingCondition, sc.Generation),
+	)
+	progressingCondition, err := controllerhelpers.AggregateStatusConditions(
+		progressingConditionInputs,
+		metav1.Condition{
+			Type:               scyllav1alpha1.ProgressingCondition,
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: sc.Generation,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+		},
+	)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate progressing conditions: %w", err))
+	}
+
+	degradedConditionInputs := append(
+		controllerhelpers.FindStatusConditionsWithSuffix(conditions, scyllav1alpha1.DegradedCondition),
+		findStatusConditionOrUnknown(sdcConditions, scyllav1alpha1.DegradedCondition, sc.Generation),
+	)
+	degradedCondition, err := controllerhelpers.AggregateStatusConditions(
+		degradedConditionInputs,
+		metav1.Condition{
+			Type:               scyllav1alpha1.DegradedCondition,
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: sc.Generation,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+		},
+	)
+	if err != nil {
+		aggregationErrs = append(aggregationErrs, fmt.Errorf("can't aggregate degraded conditions: %w", err))
+	}
+
+	if len(aggregationErrs) > 0 {
+		errs = append(errs, aggregationErrs...)
+		return apimachineryutilerrors.NewAggregate(errs)
+	}
+
+	// Merge the raw SDC conditions into the final set first, then overwrite Progressing and Degraded with the aggregated values computed above.
+	// Available is intentionally left as reported by the SDC — no controller partial affects it.
+	conditions = append(conditions, sdcConditions...)
+	apimeta.SetStatusCondition(&conditions, progressingCondition)
+	apimeta.SetStatusCondition(&conditions, degradedCondition)
+
+	status.Conditions = conditions
 
 	err = scmc.updateStatus(ctx, sc, status)
 	errs = append(errs, err)
@@ -325,4 +393,37 @@ func filterScyllaDBManagerClusterRegistrations(
 	return oslices.Filter(scyllaDBManagerClusterRegistrations, func(smcr *scyllav1alpha1.ScyllaDBManagerClusterRegistration) bool {
 		return smcr.Name == smcrName
 	}), nil
+}
+
+// offsetSDCConditionsToSCGenerationSpace shifts the ObservedGeneration of each SDC condition
+// into SC's generation space. The offset is computed as scGeneration - sdcGeneration and applied to each
+// condition's ObservedGeneration. The result is clamped to 0 to satisfy the CRD's minimum: 0
+// constraint — a condition whose shifted ObservedGeneration would be negative is from a
+// generation too old to be relevant and won't match scGeneration.
+func offsetSDCConditionsToSCGenerationSpace(scGeneration, sdcGeneration int64, conditions []metav1.Condition) []metav1.Condition {
+	result := slices.Clone(conditions)
+	generationOffset := scGeneration - sdcGeneration
+	for i := range result {
+		result[i].ObservedGeneration = max(0, result[i].ObservedGeneration+generationOffset)
+	}
+	return result
+}
+
+// findStatusConditionOrUnknown returns the condition of the given type whose ObservedGeneration matches generation,
+// or a synthetic Unknown condition when no such condition exists.
+func findStatusConditionOrUnknown(conditions []metav1.Condition, conditionType string, generation int64) metav1.Condition {
+	i := slices.IndexFunc(conditions, func(c metav1.Condition) bool {
+		return c.Type == conditionType && c.ObservedGeneration == generation
+	})
+	if i < 0 {
+		return metav1.Condition{
+			Type:               conditionType,
+			Status:             metav1.ConditionUnknown,
+			ObservedGeneration: generation,
+			Reason:             internalapi.AwaitingConditionReason,
+			Message:            "",
+		}
+	}
+
+	return conditions[i]
 }

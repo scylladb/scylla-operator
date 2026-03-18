@@ -259,6 +259,8 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't sync prometheus: %w", err))
 	}
 
+	smc.setPrometheusStatusConditions(sm, status, controllerhelpers.FilterObjectMapByLabel(prometheuses, prometheusSelector))
+
 	err = controllerhelpers.RunSync(
 		&status.Conditions,
 		grafanaControllerProgressingCondition,
@@ -282,6 +284,8 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync grafana: %w", err))
 	}
+
+	smc.setGrafanaStatusConditions(sm, status, controllerhelpers.FilterObjectMapByLabel(deployments, grafanaSelector))
 
 	// Aggregate conditions.
 	err = controllerhelpers.SetAggregatedWorkloadConditions(&status.Conditions, sm.Generation)

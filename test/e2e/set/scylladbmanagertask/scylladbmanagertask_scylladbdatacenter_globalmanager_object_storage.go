@@ -14,7 +14,6 @@ import (
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
-	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -33,21 +32,11 @@ import (
 var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.RequiresObjectStorage, func() {
 	f := framework.NewFramework("scylladbmanagertask")
 
-	type entry struct {
-		scyllaDBImage              string
-		preTargetClusterCreateHook func(*scyllav1alpha1.ScyllaDBDatacenter)
-		postSchemaRestoreHook      func(context.Context, string, framework.Client, *scyllav1alpha1.ScyllaDBDatacenter)
-	}
-
-	g.DescribeTable("should synchronise a backup task and support a manual restore procedure", func(ctx g.SpecContext, e entry) {
+	g.It("should synchronise a backup task and support a manual restore procedure", func(ctx g.SpecContext) {
 		ns, nsClient, ok := f.DefaultNamespaceIfAny()
 		o.Expect(ok).To(o.BeTrue())
 
 		sourceSDC := f.GetDefaultScyllaDBDatacenter()
-		if len(e.scyllaDBImage) != 0 {
-			sourceSDC.Spec.ScyllaDB.Image = e.scyllaDBImage
-		}
-
 		metav1.SetMetaDataLabel(&sourceSDC.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueTrue)
 
 		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
@@ -294,10 +283,6 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 
 		metav1.SetMetaDataLabel(&targetSDC.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueTrue)
 
-		if e.preTargetClusterCreateHook != nil {
-			e.preTargetClusterCreateHook(targetSDC)
-		}
-
 		setUpObjectStorageCredentials(ctx, ns.Name, nsClient, targetSDC, objectStorageSettings)
 
 		framework.By("Creating the target ScyllaDBDatacenter with the global ScyllaDB Manager registration label")
@@ -394,10 +379,6 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 			WithArguments(managerClient, targetManagerClusterID, schemaRestoreTaskID.String()).
 			Should(o.Succeed())
 
-		if e.postSchemaRestoreHook != nil {
-			e.postSchemaRestoreHook(ctx, ns.Name, nsClient, targetSDC)
-		}
-
 		framework.By("Creating a tables restore task against global ScyllaDB Manager instance")
 		tablesRestoreCreationCtx, tablesRestoreCreationCtxCancel := context.WithTimeoutCause(
 			ctx,
@@ -449,58 +430,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verification.VerifyCQLData(ctx, di)
-	},
-		g.Entry("using the default ScyllaDB image", entry{}),
-		// Restoring schema with ScyllaDB OS 5.4.X or ScyllaDB Enterprise 2024.1.X and consistent_cluster_management isn’t supported.
-		// This test validates a workaround explained in the docs - https://operator.docs.scylladb.com/stable/nodeoperations/restore.html
-		g.Entry("using a workaround for consistent_cluster_management for ScyllaDB Enterprise image", entry{
-			scyllaDBImage: fmt.Sprintf("%s:%s", configassets.ScyllaDBEnterpriseImageRepository, configassets.Project.Operator.ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride),
-			preTargetClusterCreateHook: func(targetSDC *scyllav1alpha1.ScyllaDBDatacenter) {
-				targetSDC.Spec.ScyllaDB.AdditionalScyllaDBArguments = append(targetSDC.Spec.ScyllaDB.AdditionalScyllaDBArguments, "--consistent-cluster-management=false")
-			},
-			postSchemaRestoreHook: func(ctx context.Context, ns string, nsClient framework.Client, targetSDC *scyllav1alpha1.ScyllaDBDatacenter) {
-				var err error
-
-				framework.By("Initiating a rolling restart of the target ScyllaDBDatacenter")
-				targetSDC, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns).Patch(
-					ctx,
-					targetSDC.Name,
-					types.MergePatchType,
-					[]byte(`{"spec": {"forceRedeploymentReason": "schema restored"}}`),
-					metav1.PatchOptions{},
-				)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				framework.By("Waiting for the target ScyllaDBDatacenter to roll out (RV=%s)", targetSDC.ResourceVersion)
-				targetSDCRolloutAfterForcedRedeploymentCtx, targetSDCRolloutAfterForcedRedeploymentCtxCancel := utilsv1alpha1.ContextForRollout(ctx, targetSDC)
-				defer targetSDCRolloutAfterForcedRedeploymentCtxCancel()
-				targetSDC, err = controllerhelpers.WaitForScyllaDBDatacenterState(targetSDCRolloutAfterForcedRedeploymentCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns), targetSDC.Name, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBDatacenterRolledOut)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), targetSDC)
-				scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), targetSDC)
-
-				framework.By("Enabling raft in target cluster")
-				targetSDC, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns).Patch(
-					ctx,
-					targetSDC.Name,
-					types.JSONPatchType,
-					[]byte(`[{"op":"replace","path":"/spec/scyllaDB/additionalScyllaDBArguments/0","value":"--consistent-cluster-management=true"}]`),
-					metav1.PatchOptions{},
-				)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				framework.By("Waiting for the target ScyllaDBDatacenter to roll out (RV=%s)", targetSDC.ResourceVersion)
-				targetSDCRolloutCtx, targetSDCRolloutCtxCancel := utilsv1alpha1.ContextForRollout(ctx, targetSDC)
-				defer targetSDCRolloutCtxCancel()
-				targetSDC, err = controllerhelpers.WaitForScyllaDBDatacenterState(targetSDCRolloutCtx, nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns), targetSDC.Name, controllerhelpers.WaitForStateOptions{}, utilsv1alpha1.IsScyllaDBDatacenterRolledOut)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), targetSDC)
-				scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), targetSDC)
-			},
-		}),
-	)
+	})
 })
 
 func setUpObjectStorageCredentials(ctx context.Context, ns string, nsClient framework.Client, sdc *scyllav1alpha1.ScyllaDBDatacenter, objectStorageSettings framework.ClusterObjectStorageSettings) {

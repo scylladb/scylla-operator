@@ -106,14 +106,6 @@ func TestProjectConfig(t *testing.T) {
 			),
 		},
 		{
-			name:        "scyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride",
-			configField: Project.Operator.ScyllaDBEnterpriseVersionNeedingConsistentClusterManagementOverride,
-			testFn: composeValidators(
-				validateRequired,
-				validateMultiPlatformVersionWithRepo(ctx, ScyllaDBEnterpriseImageRepository),
-			),
-		},
-		{
 			name:        "scyllaDBUtilsImage",
 			configField: Project.Operator.ScyllaDBUtilsImage,
 			testFn: composeValidators(

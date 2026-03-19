@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controller/statusreport"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -60,12 +62,16 @@ func NewStatusReporter(
 		interval: interval,
 	}
 
+	newScyllaClient := func() (*scyllaclient.Client, error) {
+		return controllerhelpers.NewScyllaClientForLocalhost(ipFamily)
+	}
+
 	c, err := statusreport.NewController(
 		namespace,
 		podName,
-		ipFamily,
 		kubeClient,
 		podInformer,
+		newScyllaClient,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("can't create status report controller: %w", err)

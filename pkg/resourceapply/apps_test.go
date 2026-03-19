@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -61,7 +62,7 @@ func TestApplyStatefulSet(t *testing.T) {
 						Containers: []corev1.Container{
 							{
 								Name:  "scylla",
-								Image: "scylladb/scylla:latest",
+								Image: unit.ScyllaDBImage,
 							},
 						},
 					},
@@ -718,7 +719,7 @@ func TestApplyDaemonSet(t *testing.T) {
 						Containers: []corev1.Container{
 							{
 								Name:  "scylla",
-								Image: "scylladb/scylla:latest",
+								Image: unit.ScyllaDBImage,
 							},
 						},
 					},

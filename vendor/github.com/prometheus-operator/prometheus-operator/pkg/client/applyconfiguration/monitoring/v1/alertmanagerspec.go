@@ -49,6 +49,7 @@ type AlertmanagerSpecApplyConfiguration struct {
 	RoutePrefix                          *string                                                 `json:"routePrefix,omitempty"`
 	Paused                               *bool                                                   `json:"paused,omitempty"`
 	NodeSelector                         map[string]string                                       `json:"nodeSelector,omitempty"`
+	SchedulerName                        *string                                                 `json:"schedulerName,omitempty"`
 	Resources                            *corev1.ResourceRequirements                            `json:"resources,omitempty"`
 	Affinity                             *corev1.Affinity                                        `json:"affinity,omitempty"`
 	Tolerations                          []corev1.Toleration                                     `json:"tolerations,omitempty"`
@@ -60,6 +61,8 @@ type AlertmanagerSpecApplyConfiguration struct {
 	ServiceName                          *string                                                 `json:"serviceName,omitempty"`
 	ServiceAccountName                   *string                                                 `json:"serviceAccountName,omitempty"`
 	ListenLocal                          *bool                                                   `json:"listenLocal,omitempty"`
+	PodManagementPolicy                  *monitoringv1.PodManagementPolicyType                   `json:"podManagementPolicy,omitempty"`
+	UpdateStrategy                       *StatefulSetUpdateStrategyApplyConfiguration            `json:"updateStrategy,omitempty"`
 	Containers                           []corev1.Container                                      `json:"containers,omitempty"`
 	InitContainers                       []corev1.Container                                      `json:"initContainers,omitempty"`
 	PriorityClassName                    *string                                                 `json:"priorityClassName,omitempty"`
@@ -76,6 +79,7 @@ type AlertmanagerSpecApplyConfiguration struct {
 	AlertmanagerConfigMatcherStrategy    *AlertmanagerConfigMatcherStrategyApplyConfiguration    `json:"alertmanagerConfigMatcherStrategy,omitempty"`
 	MinReadySeconds                      *int32                                                  `json:"minReadySeconds,omitempty"`
 	HostAliases                          []HostAliasApplyConfiguration                           `json:"hostAliases,omitempty"`
+	HostNetwork                          *bool                                                   `json:"hostNetwork,omitempty"`
 	Web                                  *AlertmanagerWebSpecApplyConfiguration                  `json:"web,omitempty"`
 	Limits                               *AlertmanagerLimitsSpecApplyConfiguration               `json:"limits,omitempty"`
 	ClusterTLS                           *ClusterTLSConfigApplyConfiguration                     `json:"clusterTLS,omitempty"`
@@ -293,6 +297,14 @@ func (b *AlertmanagerSpecApplyConfiguration) WithNodeSelector(entries map[string
 	return b
 }
 
+// WithSchedulerName sets the SchedulerName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the SchedulerName field is set to the value of the last call.
+func (b *AlertmanagerSpecApplyConfiguration) WithSchedulerName(value string) *AlertmanagerSpecApplyConfiguration {
+	b.SchedulerName = &value
+	return b
+}
+
 // WithResources sets the Resources field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Resources field is set to the value of the last call.
@@ -382,6 +394,22 @@ func (b *AlertmanagerSpecApplyConfiguration) WithServiceAccountName(value string
 // If called multiple times, the ListenLocal field is set to the value of the last call.
 func (b *AlertmanagerSpecApplyConfiguration) WithListenLocal(value bool) *AlertmanagerSpecApplyConfiguration {
 	b.ListenLocal = &value
+	return b
+}
+
+// WithPodManagementPolicy sets the PodManagementPolicy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PodManagementPolicy field is set to the value of the last call.
+func (b *AlertmanagerSpecApplyConfiguration) WithPodManagementPolicy(value monitoringv1.PodManagementPolicyType) *AlertmanagerSpecApplyConfiguration {
+	b.PodManagementPolicy = &value
+	return b
+}
+
+// WithUpdateStrategy sets the UpdateStrategy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the UpdateStrategy field is set to the value of the last call.
+func (b *AlertmanagerSpecApplyConfiguration) WithUpdateStrategy(value *StatefulSetUpdateStrategyApplyConfiguration) *AlertmanagerSpecApplyConfiguration {
+	b.UpdateStrategy = value
 	return b
 }
 
@@ -521,6 +549,14 @@ func (b *AlertmanagerSpecApplyConfiguration) WithHostAliases(values ...*HostAlia
 		}
 		b.HostAliases = append(b.HostAliases, *values[i])
 	}
+	return b
+}
+
+// WithHostNetwork sets the HostNetwork field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the HostNetwork field is set to the value of the last call.
+func (b *AlertmanagerSpecApplyConfiguration) WithHostNetwork(value bool) *AlertmanagerSpecApplyConfiguration {
+	b.HostNetwork = &value
 	return b
 }
 

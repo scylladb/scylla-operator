@@ -16,6 +16,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -673,7 +674,7 @@ func runTestStatefulSetForRack(t *testing.T) {
 				ClusterName:    "basic",
 				DatacenterName: pointer.Ptr("dc"),
 				ScyllaDB: scyllav1alpha1.ScyllaDB{
-					Image: "scylladb/scylla:latest",
+					Image: unit.ScyllaDBImage,
 				},
 				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
 					Image: pointer.Ptr("scylladb/scylla-manager-agent:latest"),
@@ -898,7 +899,7 @@ func runTestStatefulSetForRack(t *testing.T) {
 								initContainers = append(initContainers, []corev1.Container{
 									{
 										Name:            "scylladb-bootstrap-barrier",
-										Image:           "scylladb/scylla:latest",
+										Image:           unit.ScyllaDBImage,
 										ImagePullPolicy: "IfNotPresent",
 										Command: []string{
 											"/mnt/shared/scylla-operator",
@@ -950,7 +951,7 @@ func runTestStatefulSetForRack(t *testing.T) {
 						Containers: []corev1.Container{
 							{
 								Name:            "scylla",
-								Image:           "scylladb/scylla:latest",
+								Image:           unit.ScyllaDBImage,
 								ImagePullPolicy: corev1.PullIfNotPresent,
 								Ports: []corev1.ContainerPort{
 									{

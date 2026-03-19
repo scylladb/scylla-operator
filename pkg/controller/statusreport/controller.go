@@ -5,6 +5,8 @@ package statusreport
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -33,8 +35,9 @@ type Controller struct {
 	namespace string
 	podName   string
 
-	kubeClient kubernetes.Interface
-	podLister  corev1listers.PodLister
+	kubeClient      kubernetes.Interface
+	podLister       corev1listers.PodLister
+	newScyllaClient func() (*scyllaclient.Client, error)
 }
 
 func NewController(
@@ -42,13 +45,15 @@ func NewController(
 	podName string,
 	kubeClient kubernetes.Interface,
 	podInformer corev1informers.PodInformer,
+	newScyllaClient func() (*scyllaclient.Client, error),
 ) (*Controller, error) {
 	c := &Controller{
 		namespace: namespace,
 		podName:   podName,
 
-		kubeClient: kubeClient,
-		podLister:  podInformer.Lister(),
+		kubeClient:      kubeClient,
+		podLister:       podInformer.Lister(),
+		newScyllaClient: newScyllaClient,
 	}
 
 	observer := controllertools.NewObserver(
@@ -80,7 +85,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 		return fmt.Errorf("can't get Pod %q: %v", naming.ManualRef(c.namespace, c.podName), err)
 	}
 
-	nodeStatusReport := getNodeStatusReport(ctx)
+	nodeStatusReport := c.getNodeStatusReport(ctx)
 	encodedNodeStatusReport, err := nodeStatusReport.Encode()
 	if err != nil {
 		return fmt.Errorf("can't encode node status report: %w", err)
@@ -109,8 +114,8 @@ func (c *Controller) Sync(ctx context.Context) error {
 	return nil
 }
 
-func getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost()
+func (c *Controller) getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {
+	scyllaClient, err := c.newScyllaClient()
 	if err != nil {
 		return &internalapi.NodeStatusReport{
 			Error: pointer.Ptr(fmt.Errorf("can't create Scylla client for localhost: %w", err).Error()),
@@ -132,6 +137,11 @@ func getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {
 			Status: scyllaClientNodeStatusToScyllaV1Alpha1NodeStatus(ns.Status),
 		})
 	}
+
+	// Ordering by HostID guarantees stability of the annotation and prevents unnecessary state changes that would result only from reshuffling.
+	slices.SortFunc(observedNodeStatuses, func(a, b scyllav1alpha1.ObservedNodeStatus) int {
+		return strings.Compare(a.HostID, b.HostID)
+	})
 
 	return &internalapi.NodeStatusReport{
 		ObservedNodes: observedNodeStatuses,

@@ -10,6 +10,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -34,7 +35,7 @@ func TestValidateScyllaDBDatacenter(t *testing.T) {
 				ClusterName:    "basic",
 				DatacenterName: pointer.Ptr("dc"),
 				ScyllaDB: scyllav1alpha1.ScyllaDB{
-					Image: "scylladb/scylla:latest",
+					Image: unit.ScyllaDBImage,
 				},
 				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
 					Image: pointer.Ptr("scylladb/scylla-manager-agent:latest"),
@@ -705,7 +706,7 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 				ClusterName:    "basic",
 				DatacenterName: pointer.Ptr("dc"),
 				ScyllaDB: scyllav1alpha1.ScyllaDB{
-					Image: "scylladb/scylla:latest",
+					Image: unit.ScyllaDBImage,
 				},
 				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
 					Image: pointer.Ptr("scylladb/scylla-manager-agent:latest"),

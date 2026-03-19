@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -2471,6 +2472,11 @@ func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyl
 		klog.V(4).InfoS("Node reported an error in its status report, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "Pod", klog.KObj(pod), "Error", internalNodeStatusReport.Error)
 		return nodeStatusReport, true, nil
 	}
+
+	// Ordering by HostID guarantees stability of the entries and prevents unnecessary state changes that would result only from reshuffling.
+	slices.SortFunc(internalNodeStatusReport.ObservedNodes, func(a, b scyllav1alpha1.ObservedNodeStatus) int {
+		return strings.Compare(a.HostID, b.HostID)
+	})
 
 	nodeStatusReport.ObservedNodes = internalNodeStatusReport.ObservedNodes
 

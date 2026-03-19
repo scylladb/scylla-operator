@@ -111,7 +111,7 @@ type ThanosRulerSpec struct {
 	// paused defines when a ThanosRuler deployment is paused, no actions except for deletion
 	// will be performed on the underlying objects.
 	// +optional
-	Paused bool `json:"paused,omitempty"`
+	Paused bool `json:"paused,omitempty"` // nolint:kubeapilinter
 
 	// replicas defines the number of thanos ruler instances to deploy.
 	// +optional
@@ -119,7 +119,13 @@ type ThanosRulerSpec struct {
 
 	// nodeSelector defines which Nodes the Pods are scheduled on.
 	// +optional
+	//nolint:kubeapilinter
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// schedulerName defines the scheduler to use for Pod scheduling. If not specified, the default scheduler is used.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	SchedulerName string `json:"schedulerName,omitempty"`
 
 	// resources defines the resource requirements for single Pods.
 	// If not provided, no requests/limits will be set
@@ -154,7 +160,7 @@ type ThanosRulerSpec struct {
 
 	// enableServiceLinks defines whether information about services should be injected into pod's environment variables
 	// +optional
-	EnableServiceLinks *bool `json:"enableServiceLinks,omitempty"`
+	EnableServiceLinks *bool `json:"enableServiceLinks,omitempty"` // nolint:kubeapilinter
 
 	// priorityClassName defines the priority class assigned to the Pods
 	// +optional
@@ -210,7 +216,29 @@ type ThanosRulerSpec struct {
 	// listenLocal defines the Thanos ruler listen on loopback, so that it
 	// does not bind against the Pod IP.
 	// +optional
-	ListenLocal bool `json:"listenLocal,omitempty"`
+	ListenLocal bool `json:"listenLocal,omitempty"` // nolint:kubeapilinter
+
+	// podManagementPolicy defines the policy for creating/deleting pods when
+	// scaling up and down.
+	//
+	// Unlike the default StatefulSet behavior, the default policy is
+	// `Parallel` to avoid manual intervention in case a pod gets stuck during
+	// a rollout.
+	//
+	// Note that updating this value implies the recreation of the StatefulSet
+	// which incurs a service outage.
+	//
+	// +optional
+	PodManagementPolicy *PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
+
+	// updateStrategy indicates the strategy that will be employed to update
+	// Pods in the StatefulSet when a revision is made to statefulset's Pod
+	// Template.
+	//
+	// The default strategy is RollingUpdate.
+	//
+	// +optional
+	UpdateStrategy *StatefulSetUpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// queryEndpoints defines the list of Thanos Query endpoints from which to query metrics.
 	//
@@ -343,22 +371,29 @@ type ThanosRulerSpec struct {
 	// +optional
 	Retention Duration `json:"retention,omitempty"`
 
-	// containers allows injecting additional containers or modifying operator generated
-	// containers. This can be used to allow adding an authentication proxy to a ThanosRuler pod or
-	// to change the behavior of an operator generated container. Containers described here modify
-	// an operator generated container if they share the same name and modifications are done via a
-	// strategic merge patch. The current container names are: `thanos-ruler` and `config-reloader`.
-	// Overriding containers is entirely outside the scope of what the maintainers will support and by doing
-	// so, you accept that this behaviour may break at any time without notice.
+	// containers allows injecting additional containers or modifying operator
+	// generated containers. This can be used to allow adding an authentication
+	// proxy to the Pods or to change the behavior of an operator generated
+	// container. Containers described here modify an operator generated
+	// container if they share the same name and modifications are done via a
+	// strategic merge patch.
+	//
+	// The names of containers managed by the operator are:
+	// * `thanos-ruler`
+	// * `config-reloader`
+	//
+	// Overriding containers which are managed by the operator require careful
+	// testing, especially when upgrading to a new version of the operator.
+	//
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
-	// initContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the ThanosRuler configuration from external sources. Any
-	// errors during the execution of an initContainer will lead to a restart of the Pod.
-	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-	// Using initContainers for any use case other then secret fetching is entirely outside the scope
-	// of what the maintainers will support and by doing so, you accept that this behaviour may break
-	// at any time without notice.
+
+	// initContainers allows injecting initContainers to the Pod definition.
+	// Those can be used to e.g. fetch secrets for injection into the
+	// configuration from external sources. Any errors during the execution of
+	// an initContainer will lead to a restart of the Pod. More info:
+	// https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	//
 	// +optional
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 
@@ -395,6 +430,7 @@ type ThanosRulerSpec struct {
 	// label with the value of the pod's name.
 	//
 	// +optional
+	//nolint:kubeapilinter
 	Labels map[string]string `json:"labels,omitempty"`
 
 	// alertDropLabels defines the label names which should be dropped in Thanos Ruler
@@ -416,8 +452,9 @@ type ThanosRulerSpec struct {
 
 	// grpcServerTlsConfig defines the gRPC server from which Thanos Querier reads
 	// recorded rule data.
-	// Note: Currently only the CAFile, CertFile, and KeyFile fields are supported.
-	// Maps to the '--grpc-server-tls-*' CLI args.
+	//
+	// Note: Currently only the `minVersion`, `caFile`, `certFile`, and `keyFile` fields are supported.
+	//
 	// +optional
 	GRPCServerTLSConfig *TLSConfig `json:"grpcServerTlsConfig,omitempty"`
 
@@ -523,7 +560,7 @@ type ThanosRulerSpec struct {
 	// Starting Kubernetes 1.33, the feature is enabled by default.
 	//
 	// +optional
-	HostUsers *bool `json:"hostUsers,omitempty"`
+	HostUsers *bool `json:"hostUsers,omitempty"` // nolint:kubeapilinter
 }
 
 // ThanosRulerWebSpec defines the configuration of the ThanosRuler web server.
@@ -541,7 +578,7 @@ type ThanosRulerStatus struct {
 	// paused defines whether any actions on the underlying managed objects are
 	// being performed. Only delete actions will be performed.
 	// +optional
-	Paused bool `json:"paused"`
+	Paused bool `json:"paused"` // nolint:kubeapilinter
 	// replicas defines the total number of non-terminated pods targeted by this ThanosRuler deployment
 	// (their labels match the selector).
 	// +optional
@@ -570,6 +607,10 @@ func (tr *ThanosRuler) ExpectedReplicas() int {
 	}
 	return int(*tr.Spec.Replicas)
 }
+
+func (tr *ThanosRuler) GetAvailableReplicas() int  { return int(tr.Status.AvailableReplicas) }
+func (tr *ThanosRuler) GetUpdatedReplicas() int    { return int(tr.Status.UpdatedReplicas) }
+func (tr *ThanosRuler) GetConditions() []Condition { return tr.Status.Conditions }
 
 func (tr *ThanosRuler) SetReplicas(i int)            { tr.Status.Replicas = int32(i) }
 func (tr *ThanosRuler) SetUpdatedReplicas(i int)     { tr.Status.UpdatedReplicas = int32(i) }

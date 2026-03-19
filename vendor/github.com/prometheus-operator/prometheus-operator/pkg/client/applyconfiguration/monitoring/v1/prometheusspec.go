@@ -378,6 +378,14 @@ func (b *PrometheusSpecApplyConfiguration) WithNodeSelector(entries map[string]s
 	return b
 }
 
+// WithSchedulerName sets the SchedulerName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the SchedulerName field is set to the value of the last call.
+func (b *PrometheusSpecApplyConfiguration) WithSchedulerName(value string) *PrometheusSpecApplyConfiguration {
+	b.CommonPrometheusFieldsApplyConfiguration.SchedulerName = &value
+	return b
+}
+
 // WithServiceAccountName sets the ServiceAccountName field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ServiceAccountName field is set to the value of the last call.
@@ -495,6 +503,22 @@ func (b *PrometheusSpecApplyConfiguration) WithDNSConfig(value *PodDNSConfigAppl
 // If called multiple times, the ListenLocal field is set to the value of the last call.
 func (b *PrometheusSpecApplyConfiguration) WithListenLocal(value bool) *PrometheusSpecApplyConfiguration {
 	b.CommonPrometheusFieldsApplyConfiguration.ListenLocal = &value
+	return b
+}
+
+// WithPodManagementPolicy sets the PodManagementPolicy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PodManagementPolicy field is set to the value of the last call.
+func (b *PrometheusSpecApplyConfiguration) WithPodManagementPolicy(value monitoringv1.PodManagementPolicyType) *PrometheusSpecApplyConfiguration {
+	b.CommonPrometheusFieldsApplyConfiguration.PodManagementPolicy = &value
+	return b
+}
+
+// WithUpdateStrategy sets the UpdateStrategy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the UpdateStrategy field is set to the value of the last call.
+func (b *PrometheusSpecApplyConfiguration) WithUpdateStrategy(value *StatefulSetUpdateStrategyApplyConfiguration) *PrometheusSpecApplyConfiguration {
+	b.CommonPrometheusFieldsApplyConfiguration.UpdateStrategy = value
 	return b
 }
 
@@ -678,6 +702,14 @@ func (b *PrometheusSpecApplyConfiguration) WithConvertClassicHistogramsToNHCB(va
 	return b
 }
 
+// WithScrapeNativeHistograms sets the ScrapeNativeHistograms field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ScrapeNativeHistograms field is set to the value of the last call.
+func (b *PrometheusSpecApplyConfiguration) WithScrapeNativeHistograms(value bool) *PrometheusSpecApplyConfiguration {
+	b.CommonPrometheusFieldsApplyConfiguration.ScrapeNativeHistograms = &value
+	return b
+}
+
 // WithScrapeClassicHistograms sets the ScrapeClassicHistograms field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ScrapeClassicHistograms field is set to the value of the last call.
@@ -762,7 +794,7 @@ func (b *PrometheusSpecApplyConfiguration) WithPodTargetLabels(values ...string)
 // WithTracingConfig sets the TracingConfig field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TracingConfig field is set to the value of the last call.
-func (b *PrometheusSpecApplyConfiguration) WithTracingConfig(value *PrometheusTracingConfigApplyConfiguration) *PrometheusSpecApplyConfiguration {
+func (b *PrometheusSpecApplyConfiguration) WithTracingConfig(value *TracingConfigApplyConfiguration) *PrometheusSpecApplyConfiguration {
 	b.CommonPrometheusFieldsApplyConfiguration.TracingConfig = value
 	return b
 }

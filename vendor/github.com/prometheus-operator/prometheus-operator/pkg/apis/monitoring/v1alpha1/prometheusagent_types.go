@@ -38,6 +38,14 @@ func (l *PrometheusAgent) GetStatus() monitoringv1.PrometheusStatus {
 	return l.Status
 }
 
+func (p *PrometheusAgent) ExpectedReplicas() int {
+	return p.Spec.CommonPrometheusFields.ExpectedReplicas()
+}
+
+func (p *PrometheusAgent) GetAvailableReplicas() int               { return int(p.Status.AvailableReplicas) }
+func (p *PrometheusAgent) GetUpdatedReplicas() int                 { return int(p.Status.UpdatedReplicas) }
+func (p *PrometheusAgent) GetConditions() []monitoringv1.Condition { return p.Status.Conditions }
+
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:categories="prometheus-operator",shortName="promagent"
@@ -103,6 +111,11 @@ func (l *PrometheusAgentList) DeepCopyObject() runtime.Object {
 // +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.persistentVolumeClaimRetentionPolicy))",message="persistentVolumeClaimRetentionPolicy cannot be set when mode is DaemonSet"
 // +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.scrapeConfigSelector))",message="scrapeConfigSelector cannot be set when mode is DaemonSet"
 // +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.probeSelector))",message="probeSelector cannot be set when mode is DaemonSet"
+// +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.scrapeConfigNamespaceSelector))",message="scrapeConfigNamespaceSelector cannot be set when mode is DaemonSet"
+// +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.probeNamespaceSelector))",message="probeNamespaceSelector cannot be set when mode is DaemonSet"
+// +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.serviceMonitorSelector))",message="serviceMonitorSelector cannot be set when mode is DaemonSet"
+// +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.serviceMonitorNamespaceSelector))",message="serviceMonitorNamespaceSelector cannot be set when mode is DaemonSet"
+// +kubebuilder:validation:XValidation:rule="!(has(self.mode) && self.mode == 'DaemonSet' && has(self.additionalScrapeConfigs))",message="additionalScrapeConfigs cannot be set when mode is DaemonSet"
 type PrometheusAgentSpec struct {
 	// mode defines how the Prometheus operator deploys the PrometheusAgent pod(s).
 	//

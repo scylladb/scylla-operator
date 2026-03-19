@@ -28,7 +28,7 @@ const (
 )
 
 // Target represents a target for Prometheus to scrape
-// kubebuilder:validation:MinLength:=1
+// +kubebuilder:validation:MinLength=1
 type Target string
 
 // SDFile represents a file used for service discovery
@@ -40,7 +40,7 @@ type SDFile string
 type NamespaceDiscovery struct {
 	// ownNamespace includes the namespace in which the Prometheus pod runs to the list of watched namespaces.
 	// +optional
-	IncludeOwnNamespace *bool `json:"ownNamespace,omitempty"`
+	IncludeOwnNamespace *bool `json:"ownNamespace,omitempty"` // nolint:kubeapilinter
 	// names defines a list of namespaces where to watch for resources.
 	// If empty and `ownNamespace` isn't true, Prometheus watches for resources in all namespaces.
 	// +listType=set
@@ -55,13 +55,13 @@ type AttachMetadata struct {
 	// Only valid for Pod, Endpoint and Endpointslice roles.
 	//
 	// +optional
-	Node *bool `json:"node,omitempty"`
+	Node *bool `json:"node,omitempty"` // nolint:kubeapilinter
 }
 
 // Filter name and value pairs to limit the discovery process to a subset of available resources.
 type Filter struct {
 	// name of the Filter.
-	// +kubebuilder:vaidation:MinLength=1
+	// +kubebuilder:validation:MinLength=1
 	// +required
 	Name string `json:"name"`
 	// values defines values to filter on.
@@ -246,11 +246,11 @@ type ScrapeConfigSpec struct {
 	// Prometheus Operator automatically adds relabelings for a few standard Kubernetes fields.
 	// The original scrape job's name is available via the `__tmp_prometheus_job_name` label.
 	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
-	// +kubebuilder:validation:MinItems:=1
+	// +kubebuilder:validation:MinItems=1
 	// +optional
 	RelabelConfigs []v1.RelabelConfig `json:"relabelings,omitempty"`
 	// metricsPath defines the HTTP path to scrape for metrics. If empty, Prometheus uses the default value (e.g. /metrics).
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	MetricsPath *string `json:"metricsPath,omitempty"`
 	// scrapeInterval defines the interval between consecutive scrapes.
@@ -268,7 +268,7 @@ type ScrapeConfigSpec struct {
 	// It requires Prometheus >= v2.49.0.
 	//
 	// +listType=set
-	// +kubebuilder:validation:MinItems:=1
+	// +kubebuilder:validation:MinItems=1
 	// +optional
 	ScrapeProtocols []v1.ScrapeProtocol `json:"scrapeProtocols,omitempty"`
 	// fallbackScrapeProtocol defines the protocol to use if a scrape returns blank, unparseable, or otherwise invalid Content-Type.
@@ -279,37 +279,36 @@ type ScrapeConfigSpec struct {
 	// honorTimestamps defines whether Prometheus preserves the timestamps
 	// when exposed by the target.
 	// +optional
-	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
+	HonorTimestamps *bool `json:"honorTimestamps,omitempty"` // nolint:kubeapilinter
 	// trackTimestampsStaleness defines whether Prometheus tracks staleness of
 	// the metrics that have an explicit timestamp present in scraped data.
 	// Has no effect if `honorTimestamps` is false.
 	// It requires Prometheus >= v2.48.0.
 	//
 	// +optional
-	TrackTimestampsStaleness *bool `json:"trackTimestampsStaleness,omitempty"`
+	TrackTimestampsStaleness *bool `json:"trackTimestampsStaleness,omitempty"` // nolint:kubeapilinter
 	// honorLabels defines when true the metric's labels when they collide
 	// with the target's labels.
 	// +optional
-	HonorLabels *bool `json:"honorLabels,omitempty"`
+	HonorLabels *bool `json:"honorLabels,omitempty"` // nolint:kubeapilinter
 	// params defines optional HTTP URL parameters
 	// +mapType:=atomic
 	// +optional
+	//nolint:kubeapilinter
 	Params map[string][]string `json:"params,omitempty"`
 	// scheme defines the protocol scheme used for requests.
-	// If empty, Prometheus uses HTTP by default.
-	// +kubebuilder:validation:Enum=HTTP;HTTPS
 	// +optional
-	Scheme *string `json:"scheme,omitempty"`
+	Scheme *v1.Scheme `json:"scheme,omitempty"`
 	// enableCompression when false, Prometheus will request uncompressed response from the scraped target.
 	//
 	// It requires Prometheus >= v2.49.0.
 	//
 	// If unset, Prometheus uses true by default.
 	// +optional
-	EnableCompression *bool `json:"enableCompression,omitempty"`
+	EnableCompression *bool `json:"enableCompression,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 	// basicAuth defines information to use on every scrape request.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
@@ -340,6 +339,14 @@ type ScrapeConfigSpec struct {
 	// Only valid in Prometheus versions 2.27.0 and newer.
 	// +optional
 	LabelValueLengthLimit *uint64 `json:"labelValueLengthLimit,omitempty"`
+	// bodySizeLimit defines a per-scrape limit on the size of the uncompressed
+	// response body that will be accepted by Prometheus. Targets responding with
+	// a body larger than this many bytes will cause the scrape to fail.
+	//
+	// It requires Prometheus >= v2.28.0.
+	//
+	// +optional
+	BodySizeLimit *v1.ByteSize `json:"bodySizeLimit,omitempty"`
 
 	v1.NativeHistogramConfig `json:",inline"`
 	// keepDroppedTargets defines the per-scrape limit on the number of targets dropped by relabeling
@@ -350,7 +357,7 @@ type ScrapeConfigSpec struct {
 	// +optional
 	KeepDroppedTargets *uint64 `json:"keepDroppedTargets,omitempty"`
 	// metricRelabelings defines the metricRelabelings to apply to samples before ingestion.
-	// +kubebuilder:validation:MinItems:=1
+	// +kubebuilder:validation:MinItems=1
 	// +optional
 	MetricRelabelConfigs []v1.RelabelConfig `json:"metricRelabelings,omitempty"`
 	// ProxyConfig allows customizing the proxy behaviour for this scrape config.
@@ -379,13 +386,14 @@ type ScrapeConfigSpec struct {
 // +k8s:openapi-gen=true
 type StaticConfig struct {
 	// targets defines the list of targets for this static configuration.
-	// +kubebuilder:validation:MinItems:=1
+	// +kubebuilder:validation:MinItems=1
 	// +listType=set
 	// +required
 	Targets []Target `json:"targets"`
 	// labels defines labels assigned to all metrics scraped from the targets.
 	// +mapType:=atomic
 	// +optional
+	//nolint:kubeapilinter
 	Labels map[string]string `json:"labels,omitempty"`
 }
 
@@ -397,7 +405,7 @@ type FileSDConfig struct {
 	// prometheus-operator project makes no guarantees about the working directory where the configuration file is
 	// stored.
 	// Files must be mounted using Prometheus.ConfigMaps or Prometheus.Secrets.
-	// +kubebuilder:validation:MinItems:=1
+	// +kubebuilder:validation:MinItems=1
 	// +listType=set
 	// +required
 	Files []SDFile `json:"files"`
@@ -412,10 +420,8 @@ type FileSDConfig struct {
 // +k8s:openapi-gen=true
 type HTTPSDConfig struct {
 	// url defines the URL from which the targets are fetched.
-	// +kubebuilder:validation:MinLength:=1
-	// +kubebuilder:validation:Pattern:="^http(s)?://.+$"
 	// +required
-	URL string `json:"url"`
+	URL URL `json:"url"`
 	// refreshInterval defines the time after which the provided names are refreshed.
 	// If not set, Prometheus uses its default value.
 	// +optional
@@ -439,10 +445,10 @@ type HTTPSDConfig struct {
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // KubernetesSDConfig allows retrieving scrape targets from Kubernetes' REST API.
@@ -490,10 +496,10 @@ type KubernetesSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 	// tlsConfig defines the TLS configuration to connect to the Kubernetes API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
@@ -530,10 +536,9 @@ type ConsulSDConfig struct {
 	// +kubebuilder:validation:MinLength=1
 	// +optional
 	Partition *string `json:"partition,omitempty"`
-	// scheme defines the HTTP Scheme default "http"
-	// +kubebuilder:validation:Enum=HTTP;HTTPS
+	// scheme defines the HTTP Scheme.
 	// +optional
-	Scheme *string `json:"scheme,omitempty"`
+	Scheme *v1.Scheme `json:"scheme,omitempty"`
 	// services defines a list of services for which targets are retrieved. If omitted, all services are scraped.
 	// +listType:=set
 	// +optional
@@ -552,6 +557,7 @@ type ConsulSDConfig struct {
 	// Starting with Consul 1.14, it is recommended to use `filter` with the `NodeMeta` selector instead.
 	// +mapType:=atomic
 	// +optional
+	//nolint:kubeapilinter
 	NodeMeta map[string]string `json:"nodeMeta,omitempty"`
 	// filter defines the filter expression used to filter the catalog results.
 	// See https://www.consul.io/api-docs/catalog#list-services
@@ -562,7 +568,7 @@ type ConsulSDConfig struct {
 	// allowStale Consul results (see https://www.consul.io/api/features/consistency.html). Will reduce load on Consul.
 	// If unset, Prometheus uses its default value.
 	// +optional
-	AllowStale *bool `json:"allowStale,omitempty"`
+	AllowStale *bool `json:"allowStale,omitempty"` // nolint:kubeapilinter
 	// refreshInterval defines the time after which the provided names are refreshed.
 	// If not set, Prometheus uses its default value.
 	// +optional
@@ -583,10 +589,10 @@ type ConsulSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHttp2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHttp2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 	// tlsConfig defines the TLS configuration to connect to the Consul API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
@@ -609,7 +615,7 @@ const (
 // +k8s:openapi-gen=true
 type DNSSDConfig struct {
 	// names defines a list of DNS domain names to be queried.
-	// +kubebuilder:validation:MinItems:=1
+	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:items:MinLength=1
 	// +required
 	Names []string `json:"names"`
@@ -675,18 +681,18 @@ type EC2SDConfig struct {
 	// +optional
 	Filters        Filters `json:"filters,omitempty"`
 	v1.ProxyConfig `json:",inline"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the EC2 API.
 	// It requires Prometheus >= v2.41.0
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// It requires Prometheus >= v2.41.0
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// It requires Prometheus >= v2.41.0
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // +kubebuilder:validation:Enum=OAuth;ManagedIdentity;SDK
@@ -759,10 +765,10 @@ type AzureSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 	// tlsConfig defies the TLS configuration applying to the target HTTP endpoint.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
@@ -784,17 +790,17 @@ type AzureSDConfig struct {
 // +k8s:openapi-gen=true
 type GCESDConfig struct {
 	// project defines the Google Cloud Project ID
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +required
 	Project string `json:"project"`
 	// zone defines the zone of the scrape targets. If you need multiple zones use multiple GCESDConfigs.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +required
 	Zone string `json:"zone"`
 	// filter defines the filter that can be used optionally to filter the instance list by other criteria
 	// Syntax of this filter is described in the filter query parameter section:
 	// https://cloud.google.com/compute/docs/reference/latest/instances/list
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	Filter *string `json:"filter,omitempty"`
 	// refreshInterval defines the time after which the provided names are refreshed.
@@ -808,7 +814,7 @@ type GCESDConfig struct {
 	// +optional
 	Port *int32 `json:"port,omitempty"`
 	// tagSeparator defines the tag separator is used to separate the tags on concatenation
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	TagSeparator *string `json:"tagSeparator,omitempty"`
 }
@@ -833,23 +839,22 @@ type OpenStackSDConfig struct {
 	// +required
 	Role OpenStackRole `json:"role"`
 	// region defines the OpenStack Region.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +required
 	Region string `json:"region"`
 	// identityEndpoint defines the HTTP endpoint that is required to work with
 	// the Identity API of the appropriate version.
-	// +kubebuilder:validation:Pattern:=`^http(s)?:\/\/.+$`
 	// +optional
-	IdentityEndpoint *string `json:"identityEndpoint,omitempty"`
+	IdentityEndpoint *URL `json:"identityEndpoint,omitempty"`
 	// username defines the username required if using Identity V2 API. Consult with your provider's
 	// control panel to discover your account's username.
 	// In Identity V3, either userid or a combination of username
 	// and domainId or domainName are needed
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	Username *string `json:"username,omitempty"`
 	// userid defines the OpenStack userid.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	UserID *string `json:"userid,omitempty"`
 	// password defines the password for the Identity V2 and V3 APIs. Consult with your provider's
@@ -858,29 +863,29 @@ type OpenStackSDConfig struct {
 	Password *corev1.SecretKeySelector `json:"password,omitempty"`
 	// domainName defines at most one of domainId and domainName that must be provided if using username
 	// with Identity V3. Otherwise, either are optional.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	DomainName *string `json:"domainName,omitempty"`
 	// domainID defines The OpenStack domainID.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	DomainID *string `json:"domainID,omitempty"`
 	// projectName defines an optional field for the Identity V2 API.
 	// Some providers allow you to specify a ProjectName instead of the ProjectId.
 	// Some require both. Your provider's authentication policies will determine
 	// how these fields influence authentication.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	ProjectName *string `json:"projectName,omitempty"`
 	// projectID defines the OpenStack projectID.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	ProjectID *string `json:"projectID,omitempty"`
 	// applicationCredentialName defines the ApplicationCredentialID or ApplicationCredentialName fields are
 	// required if using an application credential to authenticate. Some providers
 	// allow you to create an application credential to authenticate rather than a
 	// password.
-	// +kubebuilder:validation:MinLength:=1
+	// +kubebuilder:validation:MinLength=1
 	// +optional
 	ApplicationCredentialName *string `json:"applicationCredentialName,omitempty"`
 	// applicationCredentialId defines the OpenStack applicationCredentialId.
@@ -893,7 +898,7 @@ type OpenStackSDConfig struct {
 	// allTenants defines whether the service discovery should list all instances for all projects.
 	// It is only relevant for the 'instance' role and usually requires admin permissions.
 	// +optional
-	AllTenants *bool `json:"allTenants,omitempty"`
+	AllTenants *bool `json:"allTenants,omitempty"` // nolint:kubeapilinter
 	// refreshInterval defines the time after which the provided names are refreshed.
 	// If not set, Prometheus uses its default value.
 	// +optional
@@ -918,7 +923,7 @@ type OpenStackSDConfig struct {
 // See https://prometheus.io/docs/prometheus/latest/configuration/configuration/#digitalocean_sd_config
 // +k8s:openapi-gen=true
 type DigitalOceanSDConfig struct {
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the DigitalOcean API.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -930,11 +935,11 @@ type DigitalOceanSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
+	// tlsConfig defines the TLS configuration to connect to the DigitalOcean API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// port defines the port to scrape metrics from. If using the public IP address, this must
@@ -970,13 +975,13 @@ type KumaSDConfig struct {
 	// ProxyConfig allows customizing the proxy behaviour for this scrape config.
 	// +optional
 	v1.ProxyConfig `json:",inline"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the Kuma control plane.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// basicAuth defines information to use on every scrape request.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Kuma control plane.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -985,10 +990,10 @@ type KumaSDConfig struct {
 	OAuth2 *v1.OAuth2 `json:"oauth2,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // Eureka SD configurations allow retrieving scrape targets using the Eureka REST API.
@@ -997,21 +1002,19 @@ type KumaSDConfig struct {
 // +k8s:openapi-gen=true
 type EurekaSDConfig struct {
 	// server defines the URL to connect to the Eureka server.
-	// +kubebuilder:validation:Pattern:="^http(s)?://.+$"
-	// +kubebuilder:validation:MinLength=1
 	// +required
-	Server string `json:"server"`
+	Server URL `json:"server"`
 	// basicAuth defines the BasicAuth information to use on every scrape request.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Eureka server.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
 	// oauth2 defines the configuration to use on every scrape request.
 	// +optional
 	OAuth2 *v1.OAuth2 `json:"oauth2,omitempty"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the Eureka server.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// ProxyConfig allows customizing the proxy behaviour for this scrape config.
@@ -1019,10 +1022,10 @@ type EurekaSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 	// refreshInterval defines the time after which the provided names are refreshed.
 	// If not set, Prometheus uses its default value.
 	// +optional
@@ -1035,15 +1038,16 @@ type EurekaSDConfig struct {
 // See https://prometheus.io/docs/prometheus/latest/configuration/configuration/#docker_sd_config
 // +k8s:openapi-gen=true
 type DockerSDConfig struct {
-	// host defines the address of the docker daemon
+	// host defines the address of the docker daemon.
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:Pattern="^[a-zA-Z][a-zA-Z0-9+.-]*://.+$"
 	// +required
 	Host string `json:"host"`
 	// ProxyConfig allows customizing the proxy behaviour for this scrape config.
 	// +optional
 	v1.ProxyConfig `json:",inline"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
-	// +optionals
+	// tlsConfig defines the TLS configuration to connect to the Docker daemon.
+	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// port defines the port to scrape metrics from. If using the public IP address, this must
 	// +kubebuilder:validation:Minimum=0
@@ -1059,7 +1063,7 @@ type DockerSDConfig struct {
 	// It requires Prometheus >= v2.54.1.
 	//
 	// +optional
-	MatchFirstNetwork *bool `json:"matchFirstNetwork,omitempty"`
+	MatchFirstNetwork *bool `json:"matchFirstNetwork,omitempty"` // nolint:kubeapilinter
 	// filters defines filters to limit the discovery process to a subset of the available resources.
 	// +optional
 	Filters Filters `json:"filters,omitempty"`
@@ -1070,7 +1074,7 @@ type DockerSDConfig struct {
 	// basicAuth defines information to use on every scrape request.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Docker daemon.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -1079,10 +1083,10 @@ type DockerSDConfig struct {
 	OAuth2 *v1.OAuth2 `json:"oauth2,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // HetznerSDConfig allow retrieving scrape targets from Hetzner Cloud API and Robot API.
@@ -1097,7 +1101,7 @@ type HetznerSDConfig struct {
 	// basicAuth defines information to use on every scrape request.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Hetzner API.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -1109,11 +1113,11 @@ type HetznerSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
+	// tlsConfig defines the TLS configuration to connect to the Hetzner API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// port defines the port to scrape metrics from. If using the public IP address, this must
@@ -1139,7 +1143,7 @@ type NomadSDConfig struct {
 	// allowStale defines the information to access the Nomad API. It is to be defined
 	// as the Nomad documentation requires.
 	// +optional
-	AllowStale *bool `json:"allowStale,omitempty"`
+	AllowStale *bool `json:"allowStale,omitempty"` // nolint:kubeapilinter
 	// namespace defines the Nomad namespace to query for service discovery.
 	// When specified, only resources within this namespace will be discovered.
 	// +optional
@@ -1154,9 +1158,8 @@ type NomadSDConfig struct {
 	Region *string `json:"region,omitempty"`
 	// server defines the Nomad server address to connect to for service discovery.
 	// This should be the full URL including protocol (e.g., "https://nomad.example.com:4646").
-	// +kubebuilder:validation:MinLength=1
 	// +required
-	Server string `json:"server"`
+	Server URL `json:"server"`
 	// tagSeparator defines the separator used to join multiple tags.
 	// This determines how Nomad service tags are concatenated into Prometheus labels.
 	// +optional
@@ -1164,14 +1167,14 @@ type NomadSDConfig struct {
 	// basicAuth defines information to use on every scrape request.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Nomad API.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
 	// oauth2 defines the configuration to use on every scrape request.
 	// +optional
 	OAuth2 *v1.OAuth2 `json:"oauth2,omitempty"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the Nomad API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// ProxyConfig allows customizing the proxy behaviour for this scrape config.
@@ -1179,10 +1182,10 @@ type NomadSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // Service of the targets to retrieve. Must be `VPS` or `DedicatedServer`.
@@ -1259,7 +1262,7 @@ type DockerSwarmSDConfig struct {
 	// basicAuth defines information to use on every scrape request.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Docker Swarm API.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -1268,15 +1271,15 @@ type DockerSwarmSDConfig struct {
 	// +optional
 	OAuth2         *v1.OAuth2 `json:"oauth2,omitempty"`
 	v1.ProxyConfig `json:",inline"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the Docker Swarm daemon.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // LinodeSDConfig configurations allow retrieving scrape targets from Linode's Linode APIv4.
@@ -1300,7 +1303,7 @@ type LinodeSDConfig struct {
 	// If not set, Prometheus uses its default value.
 	// +optional
 	RefreshInterval *v1.Duration `json:"refreshInterval,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Linode API.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -1311,23 +1314,21 @@ type LinodeSDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
+	// tlsConfig defines the TLS configuration to connect to the Linode API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // PuppetDBSDConfig configurations allow retrieving scrape targets from PuppetDB resources.
 // See https://prometheus.io/docs/prometheus/latest/configuration/configuration/#puppetdb_sd_config
 type PuppetDBSDConfig struct {
 	// url defines the URL of the PuppetDB root query endpoint.
-	// +kubebuilder:validation:MinLength:=1
-	// +kubebuilder:validation:Pattern:="^http(s)?://.+$"
 	// +required
-	URL string `json:"url"`
+	URL URL `json:"url"`
 	// query defines the Puppet Query Language (PQL) query. Only resources are supported.
 	// https://puppet.com/docs/puppetdb/latest/api/query/v4/pql.html
 	// +kubebuilder:validation:MinLength=1
@@ -1337,7 +1338,7 @@ type PuppetDBSDConfig struct {
 	// Note: Enabling this exposes parameters in the Prometheus UI and API. Make sure
 	// that you don't have secrets exposed as parameters if you enable this.
 	// +optional
-	IncludeParameters *bool `json:"includeParameters,omitempty"`
+	IncludeParameters *bool `json:"includeParameters,omitempty"` // nolint:kubeapilinter
 	// refreshInterval defines the time after which the provided names are refreshed.
 	// If not set, Prometheus uses its default value.
 	// +optional
@@ -1351,7 +1352,7 @@ type PuppetDBSDConfig struct {
 	// Cannot be set at the same time as `authorization`, or `oauth2`.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the PuppetDB API.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -1360,15 +1361,15 @@ type PuppetDBSDConfig struct {
 	// +optional
 	OAuth2         *v1.OAuth2 `json:"oauth2,omitempty"`
 	v1.ProxyConfig `json:",inline"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the PuppetDB server.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // LightSailSDConfig configurations allow retrieving scrape targets from AWS Lightsail instances.
@@ -1405,7 +1406,7 @@ type LightSailSDConfig struct {
 	// Cannot be set at the same time as `authorization`, or `oauth2`.
 	// +optional
 	BasicAuth *v1.BasicAuth `json:"basicAuth,omitempty"`
-	// authorization defines the  header configuration to authenticate against the DigitalOcean API.
+	// authorization defines the header configuration to authenticate against the Lightsail API.
 	// Cannot be set at the same time as `oauth2`.
 	// +optional
 	Authorization *v1.SafeAuthorization `json:"authorization,omitempty"`
@@ -1414,15 +1415,15 @@ type LightSailSDConfig struct {
 	// +optional
 	OAuth2         *v1.OAuth2 `json:"oauth2,omitempty"`
 	v1.ProxyConfig `json:",inline"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the Lightsail API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 }
 
 // Role of the targets to retrieve. Must be `Instance` or `Baremetal`.
@@ -1458,9 +1459,8 @@ type ScalewaySDConfig struct {
 	// +optional
 	Port *int32 `json:"port,omitempty"`
 	// apiURL defines the API URL to use when doing the server listing requests.
-	// +kubebuilder:validation:Pattern:="^http(s)?://.+$"
 	// +optional
-	ApiURL *string `json:"apiURL,omitempty"`
+	ApiURL *URL `json:"apiURL,omitempty"`
 	// zone defines the availability zone of your targets (e.g. fr-par-1).
 	// +kubebuilder:validation:MinLength=1
 	// +optional
@@ -1483,11 +1483,11 @@ type ScalewaySDConfig struct {
 	v1.ProxyConfig `json:",inline"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
+	// tlsConfig defines the TLS configuration to connect to the Scaleway API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 }
@@ -1508,20 +1508,20 @@ type IonosSDConfig struct {
 	// If not set, Prometheus uses its default value.
 	// +optional
 	RefreshInterval *v1.Duration `json:"refreshInterval,omitempty"`
-	// authorization defines the  header configuration to authenticate against the IONOS.
+	// authorization defines the header configuration to authenticate against the IONOS API.
 	// Cannot be set at the same time as `oauth2`.
 	// +required
 	Authorization  v1.SafeAuthorization `json:"authorization"`
 	v1.ProxyConfig `json:",inline"`
-	// tlsConfig defines the TLS configuration to connect to the Consul API.
+	// tlsConfig defines the TLS configuration to connect to the IONOS API.
 	// +optional
 	TLSConfig *v1.SafeTLSConfig `json:"tlsConfig,omitempty"`
 	// followRedirects defines whether HTTP requests follow HTTP 3xx redirects.
 	// +optional
-	FollowRedirects *bool `json:"followRedirects,omitempty"`
+	FollowRedirects *bool `json:"followRedirects,omitempty"` // nolint:kubeapilinter
 	// enableHTTP2 defines whether to enable HTTP2.
 	// +optional
-	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"`
+	EnableHTTP2 *bool `json:"enableHTTP2,omitempty"` // nolint:kubeapilinter
 	// oauth2 defines the configuration to use on every scrape request.
 	// +optional
 	OAuth2 *v1.OAuth2 `json:"oauth2,omitempty"`

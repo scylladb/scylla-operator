@@ -1391,7 +1391,7 @@ object
      - Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
    * - operator
      - string
-     - Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+     - Operator represents a key's relationship to the value. Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
    * - tolerationSeconds
      - integer
      - TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
@@ -2700,7 +2700,7 @@ object
      - Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
    * - operator
      - string
-     - Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+     - Operator represents a key's relationship to the value. Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
    * - tolerationSeconds
      - integer
      - TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
@@ -3695,7 +3695,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -3784,7 +3784,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -4794,6 +4794,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDB.volumes[].projected.sources[].secret:
 
@@ -6134,7 +6151,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -6223,7 +6240,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -7233,6 +7250,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].secret:
 
@@ -8994,7 +9028,7 @@ object
      - Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
    * - operator
      - string
-     - Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+     - Operator represents a key's relationship to the value. Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
    * - tolerationSeconds
      - integer
      - TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
@@ -9989,7 +10023,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -10078,7 +10112,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -11088,6 +11122,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenterTemplate.racks[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDB.volumes[].projected.sources[].secret:
 
@@ -12428,7 +12479,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -12517,7 +12568,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -13527,6 +13578,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.volumes[].projected.sources[].secret:
 
@@ -14971,7 +15039,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -15060,7 +15128,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -16070,6 +16138,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenterTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDB.volumes[].projected.sources[].secret:
 
@@ -17410,7 +17495,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -17499,7 +17584,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -18509,6 +18594,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].secret:
 
@@ -20254,7 +20356,7 @@ object
      - Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
    * - operator
      - string
-     - Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+     - Operator represents a key's relationship to the value. Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
    * - tolerationSeconds
      - integer
      - TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
@@ -21563,7 +21665,7 @@ object
      - Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
    * - operator
      - string
-     - Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+     - Operator represents a key's relationship to the value. Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
    * - tolerationSeconds
      - integer
      - TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
@@ -22558,7 +22660,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -22647,7 +22749,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -23657,6 +23759,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenters[].rackTemplate.scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDB.volumes[].projected.sources[].secret:
 
@@ -24997,7 +25116,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -25086,7 +25205,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -26096,6 +26215,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.volumes[].projected.sources[].secret:
 
@@ -27857,7 +27993,7 @@ object
      - Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.
    * - operator
      - string
-     - Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.
+     - Operator represents a key's relationship to the value. Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category. Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
    * - tolerationSeconds
      - integer
      - TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.
@@ -28852,7 +28988,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -28941,7 +29077,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -29951,6 +30087,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenters[].racks[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDB.volumes[].projected.sources[].secret:
 
@@ -31291,7 +31444,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -31380,7 +31533,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -32390,6 +32543,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.volumes[].projected.sources[].secret:
 
@@ -33834,7 +34004,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -33923,7 +34093,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -34933,6 +35103,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenters[].scyllaDB.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDB.volumes[].projected.sources[].secret:
 
@@ -36273,7 +36460,7 @@ object
      - dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn't specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn't set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: * While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. * While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. * While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.resources>`
      - object
-     - resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+     - resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
    * - :ref:`selector<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].ephemeral.volumeClaimTemplate.spec.selector>`
      - object
      - selector is a label query over volumes to consider for binding.
@@ -36362,7 +36549,7 @@ object
 
 Description
 """""""""""
-resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+resources represents the minimum resources the volume should have. Users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
 
 Type
 """"
@@ -37372,6 +37559,23 @@ object
    * - signerName
      - string
      - Kubelet's generated CSRs will be addressed to this signer.
+   * - :ref:`userAnnotations<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations>`
+     - object
+     - userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+.. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations:
+
+.spec.datacenters[].scyllaDBManagerAgent.volumes[].projected.sources[].podCertificate.userAnnotations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+userAnnotations allow pod authors to pass additional information to the signer implementation.  Kubernetes does not restrict or validate this metadata in any way.  These values are copied verbatim into the `spec.unverifiedUserAnnotations` field of the PodCertificateRequest objects that Kubelet creates.  Entries are subject to the same validation as object metadata annotations, with the addition that all keys must be domain-prefixed. No restrictions are placed on values, except an overall size limitation on the entire field.  Signers should document the keys and values they support. Signers should deny requests that contain keys they do not recognize.
+
+Type
+""""
+object
+
 
 .. _api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.volumes[].projected.sources[].secret:
 

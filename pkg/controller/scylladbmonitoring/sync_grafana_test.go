@@ -360,7 +360,7 @@ spec:
         volumeMounts:
         - name: decompressed-configmaps
           mountPath: /var/run/decompressed-configmaps
-        - name: "sm-name-grafana-scylladb-dashboards-scylladb-latest"
+        - name: "scylladb-latest"
           mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-latest"
       containers:
       - name: grafana
@@ -453,7 +453,7 @@ spec:
       - name: grafana-configs
         configMap:
           name: "sm-name-grafana-configs"
-      - name: "sm-name-grafana-scylladb-dashboards-scylladb-latest"
+      - name: "scylladb-latest"
         configMap:
           name: "sm-name-grafana-scylladb-dashboards-scylladb-latest"
       - name: grafana-provisioning
@@ -564,9 +564,9 @@ spec:
         volumeMounts:
         - name: decompressed-configmaps
           mountPath: /var/run/decompressed-configmaps
-        - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+        - name: "scylladb-6-0"
           mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.0"
-        - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+        - name: "scylladb-6-1"
           mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.1"
       containers:
       - name: grafana
@@ -659,10 +659,10 @@ spec:
       - name: grafana-configs
         configMap:
           name: "sm-name-grafana-configs"
-      - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+      - name: "scylladb-6-0"
         configMap:
           name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
-      - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+      - name: "scylladb-6-1"
         configMap:
           name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
       - name: grafana-provisioning
@@ -807,9 +807,9 @@ spec:
         volumeMounts:
         - name: decompressed-configmaps
           mountPath: /var/run/decompressed-configmaps
-        - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+        - name: "scylladb-6-0"
           mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.0"
-        - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+        - name: "scylladb-6-1"
           mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.1"
       containers:
       - name: grafana
@@ -904,10 +904,10 @@ spec:
       - name: grafana-configs
         configMap:
           name: "sm-name-grafana-configs"
-      - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+      - name: "scylladb-6-0"
         configMap:
           name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
-      - name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+      - name: "scylladb-6-1"
         configMap:
           name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
       - name: grafana-provisioning

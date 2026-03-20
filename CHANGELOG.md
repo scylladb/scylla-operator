@@ -37,6 +37,8 @@
 - Fixed [#3007](https://github.com/scylladb/scylla-operator/issues/3007): `ScyllaDBMonitoring` controller now properly 
   sets the aggregated `Available` and `Progressing` status conditions by inspecting state of the underlying Grafana `Deployment` and `Prometheus` CR.
   [#3347](https://github.com/scylladb/scylla-operator/pull/3347)
+- Grafana `Deployment`'s volume name changed to the sanitized dashboard name. This prevents volume name rejections when the `ScyllaDBMonitoring` name is too long (> 19 characters).
+  [#3363](https://github.com/scylladb/scylla-operator/pull/3363)
 
 ### Dependencies
 

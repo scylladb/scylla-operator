@@ -110,22 +110,7 @@ To maintain a clean commit history, aim for a minimal number of logical commits.
 
 ### Commits and PRs
 
-The **subject line** of your commit message **and the PR title** should summarize the change in one clear sentence that would be meaningful to a user of the Operator. The sentence should be **written in the imperative**, i.e. written as if giving a command or instruction, e.g. "Add support for XYZ". A properly formed Git commit subject line should always be able to complete the sentence "If applied, this commit will...", e.g.  "If applied, this commit will **Add support for XYZ**".
-Changelog entries are verbatim PR titles, so make them concise yet informative.
-
-Further details should be added after a blank line. Explain why the change was necessary, not just what was changed. In the general case, extensive descriptions are well-received. Comparing the behavior before and after the change is especially helpful. Write the message with the mindset that you'll need to revisit the code in the future.
-If your PR fixes an issue, include "Resolves #1234" in the description, replacing "1234" with the issue number.
-
-```
-**Description of your changes:**
-Add new XYZ field to ScyllaCluster CRD.
-The new field allows for configuration of ZYX feature of ScyllaDB.
-<more details>
-API change was discussed in the following enhancement: <link>.
-
-**Which issue is resolved by this Pull Request:**
-Resolves #1234 
-```
+We follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) for all commit messages and PR titles.
 
 ### Changelog entries
 

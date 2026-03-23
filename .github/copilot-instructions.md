@@ -1,13 +1,9 @@
 ## Copilot Instructions for ScyllaDB Operator
 
-The commit message should always (no exceptions) be an imperative sentence without a trailing dot. Some examples:
-* "Document automatic data cleanups"
-* "Add IPv6 support for ScyllaClusters"
-* "Reword platforms to environments"
-* "Update maintainers in the Helm charts"
+Follow the project's [CONTRIBUTING.md](../CONTRIBUTING.md) and [API_CONVENTIONS.md](../API_CONVENTIONS.md).
 
-Prefer commit message length under 72 characters.
+### Commits and PRs
 
-The commit message should never include "@mentions" or hashtag ("#") references. The commit message should never include [keywords that close issues](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue).
-
-The PR title should follow the same rules as the commit message.
+- Format commit messages and PR titles as [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>(<scope>): <subject>` or `<type>: <scopeless subject>`, where subject is imperative, lowercase, ≤72 chars, and has no trailing period. 
+- Never include `@mentions`, [keywords that close issues](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue) or hashtag ("#") references in the commit messages. 
+- If the PR fixes an issue, reference it with `Resolves #<number>` only in the PR description.

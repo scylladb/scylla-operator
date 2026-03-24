@@ -79,16 +79,6 @@ func FindItem[T comparable](slice []T, item T) (T, int, bool) {
 	return Find(slice, IdentityFunc(item))
 }
 
-func Flatten[T any](xs [][]T) []T {
-	var res []T
-
-	for _, x := range xs {
-		res = append(res, x...)
-	}
-
-	return res
-}
-
 func ToString[T ~string](v T) string {
 	return string(v)
 }

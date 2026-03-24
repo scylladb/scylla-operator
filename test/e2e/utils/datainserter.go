@@ -5,6 +5,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -12,8 +13,6 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v3"
 	"github.com/scylladb/gocqlx/v3/table"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
-	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 )
@@ -81,7 +80,7 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 	}
 
 	if di.session == nil {
-		err := di.SetClientEndpoints(oslices.Flatten(helpers.GetMapValues(dcHosts)))
+		err := di.SetClientEndpoints(slices.Concat(slices.Collect(maps.Values(dcHosts))...))
 		if err != nil {
 			return nil, fmt.Errorf("can't set client endpoints: %w", err)
 		}

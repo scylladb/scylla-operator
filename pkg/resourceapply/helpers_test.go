@@ -4,7 +4,7 @@ package resourceapply
 
 import (
 	"math/big"
-	"math/rand"
+	"math/rand/v2"
 	"reflect"
 	"testing"
 

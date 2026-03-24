@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/containers/image/v5/docker/reference"
-	"github.com/pkg/errors"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
@@ -144,12 +143,12 @@ func IndexFromName(n string) (int32, error) {
 	// index := svc.Name[strings.LastIndex(svc.Name, "-") + 1 : len(svc.Name)]
 	delimIndex := strings.LastIndex(n, "-")
 	if delimIndex == -1 {
-		return -1, errors.New(fmt.Sprintf("didn't find '-' delimiter in string %s", n))
+		return -1, fmt.Errorf("didn't find '-' delimiter in string %s", n)
 	}
 
 	index, err := strconv.Atoi(n[delimIndex+1:])
 	if err != nil {
-		return -1, errors.New(fmt.Sprintf("couldn't convert '%s' to a number", n[delimIndex+1:]))
+		return -1, fmt.Errorf("couldn't convert '%s' to a number", n[delimIndex+1:])
 	}
 
 	return int32(index), nil
@@ -195,19 +194,19 @@ func FindContainerWithName(containers []corev1.Container, name string) (int, err
 			return idx, nil
 		}
 	}
-	return 0, errors.Errorf(" '%s' container not found", name)
+	return 0, fmt.Errorf("'%s' container not found", name)
 }
 
 // ScyllaVersion returns version of Scylla container.
 func ScyllaVersion(containers []corev1.Container) (string, error) {
 	idx, err := FindScyllaContainer(containers)
 	if err != nil {
-		return "", errors.Wrap(err, "find scylla container")
+		return "", fmt.Errorf("find scylla container: %w", err)
 	}
 
 	version, err := ImageToVersion(containers[idx].Image)
 	if err != nil {
-		return "", errors.Wrap(err, "parse scylla container version")
+		return "", fmt.Errorf("parse scylla container version: %w", err)
 	}
 	return version, nil
 }

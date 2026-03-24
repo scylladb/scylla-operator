@@ -8,7 +8,6 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/util/httpx"
 	"github.com/scylladb/scylla-operator/pkg/util/timeutc"
 	"k8s.io/klog/v2"
@@ -40,7 +39,7 @@ func logReqResp(elapsed time.Duration, req *http.Request, resp *http.Response) {
 		// Dump body of failed requests, ignore 404s
 		if c := resp.StatusCode; c >= 400 && c != http.StatusNotFound {
 			if b, err := httputil.DumpResponse(resp, true); err != nil {
-				details = append(details, "dump", errors.Wrap(err, "dump request"))
+				details = append(details, "dump", fmt.Errorf("dump request: %w", err))
 			} else {
 				details = append(details, "dump", string(b))
 			}

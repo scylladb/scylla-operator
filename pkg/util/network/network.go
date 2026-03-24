@@ -1,17 +1,16 @@
 package network
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 func FindFirstNonLocalIP() (net.IP, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to discover interfaces")
+		return nil, fmt.Errorf("unable to discover interfaces: %w", err)
 	}
 	for _, a := range addrs {
 		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {

@@ -4,9 +4,10 @@ package uuid
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 
 	"github.com/gocql/gocql"
-	"github.com/pkg/errors"
 )
 
 // UUID reference:
@@ -104,14 +105,14 @@ func (u UUID) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 		}
 		return u.uuid[:], nil
 	default:
-		return nil, errors.Errorf("unsupported type %q", info.Type())
+		return nil, fmt.Errorf("unsupported type %q", info.Type())
 	}
 }
 
 // UnmarshalCQL implements gocql.Unmarshaler.
 func (u *UUID) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 	if info.Type() != gocql.TypeUUID && info.Type() != gocql.TypeTimeUUID {
-		return errors.Errorf("unsupported type %q", info.Type())
+		return fmt.Errorf("unsupported type %q", info.Type())
 	}
 
 	if len(data) == 0 {

@@ -31,7 +31,7 @@ func MarshalYAML(v any) (string, error) {
 
 func Indent(spaceCount int, s string) string {
 	spaces := strings.Repeat(" ", spaceCount)
-	return spaces + strings.Replace(s, "\n", "\n"+spaces, -1)
+	return spaces + strings.ReplaceAll(s, "\n", "\n"+spaces)
 }
 
 func NIndent(spaceCount int, s string) string {

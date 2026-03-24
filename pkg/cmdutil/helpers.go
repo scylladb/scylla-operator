@@ -29,7 +29,7 @@ func UsageError(cmd *cobra.Command, format string, args ...interface{}) error {
 
 func NormalizeNameForEnvVar(name string) string {
 	s := strings.ToUpper(name)
-	s = strings.Replace(s, "-", "_", -1)
+	s = strings.ReplaceAll(s, "-", "_")
 	return s
 }
 

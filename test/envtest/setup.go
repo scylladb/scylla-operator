@@ -14,6 +14,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	monitoringclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	"github.com/scylladb/scylla-operator/pkg/admissionreview"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
@@ -30,11 +31,12 @@ import (
 )
 
 type Environment struct {
-	kubeClient   *kubernetes.Clientset
-	scyllaClient *scyllaversionedclient.Clientset
-	namespace    string
-	config       *rest.Config
-	client       client.Client
+	kubeClient       *kubernetes.Clientset
+	scyllaClient     *scyllaversionedclient.Clientset
+	namespace        string
+	config           *rest.Config
+	client           client.Client
+	monitoringClient *monitoringclient.Clientset
 }
 
 // Setup sets up an envtest environment with the ScyllaDB CRDs installed. It will be cleaned up automatically when the test ends.
@@ -70,11 +72,16 @@ func Setup(ctx context.Context) *Environment {
 	cl, err := client.New(testEnv.Config, client.Options{Scheme: scheme.Scheme})
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller-runtime client")
 
-	baseCRDDir := filepath.Join("..", "..", "..", "pkg", "api", "scylla")
+	monitoringClient, err := monitoringclient.NewForConfig(testEnv.Config)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	baseScyllaCRDDir := filepath.Join("..", "..", "..", "pkg", "api", "scylla")
+	prometheusOperatorCRDsPath := filepath.Join("..", "..", "..", "examples", "third-party", "prometheus-operator.yaml")
 	installCRDOptions := envtest.CRDInstallOptions{
 		Paths: []string{
-			filepath.Join(baseCRDDir, "v1alpha1"),
-			filepath.Join(baseCRDDir, "v1"),
+			filepath.Join(baseScyllaCRDDir, "v1alpha1"),
+			filepath.Join(baseScyllaCRDDir, "v1"),
+			prometheusOperatorCRDsPath,
 		},
 		ErrorIfPathMissing: true,
 	}
@@ -92,11 +99,12 @@ func Setup(ctx context.Context) *Environment {
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create test namespace")
 
 	return &Environment{
-		kubeClient:   kubeClient,
-		scyllaClient: scyllaClient,
-		client:       cl,
-		namespace:    ns.Name,
-		config:       testEnv.Config,
+		kubeClient:       kubeClient,
+		scyllaClient:     scyllaClient,
+		monitoringClient: monitoringClient,
+		client:           cl,
+		namespace:        ns.Name,
+		config:           testEnv.Config,
 	}
 }
 
@@ -110,6 +118,10 @@ func (e *Environment) KubeClient() client.Client {
 
 func (e *Environment) ScyllaClient() *scyllaversionedclient.Clientset {
 	return e.scyllaClient
+}
+
+func (e *Environment) MonitoringClient() *monitoringclient.Clientset {
+	return e.monitoringClient
 }
 
 func (e *Environment) Namespace() string {

@@ -3,9 +3,10 @@
 package parallel
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
-	"sort"
+	"slices"
 	"testing"
 
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -98,8 +99,8 @@ func TestForEach(t *testing.T) {
 			// Sort the errors to avoid random ordering from parallelism.
 			if gotErr != nil {
 				errs := gotErr.(apimachineryutilerrors.Aggregate).Errors()
-				sort.Slice(errs, func(i, j int) bool {
-					return errs[i].Error() < errs[j].Error()
+				slices.SortFunc(errs, func(a, b error) int {
+					return cmp.Compare(a.Error(), b.Error())
 				})
 			}
 

@@ -5,7 +5,7 @@ package utils
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -189,8 +189,14 @@ func (di *DataInserter) Read() ([]*TestData, error) {
 		return nil, fmt.Errorf("can't select data: %w", err)
 	}
 
-	sort.Slice(res, func(i, j int) bool {
-		return res[i].Id < res[j].Id
+	slices.SortFunc(res, func(a, b *TestData) int {
+		if a.Id < b.Id {
+			return -1
+		}
+		if a.Id > b.Id {
+			return 1
+		}
+		return 0
 	})
 
 	return res, nil

@@ -1,10 +1,10 @@
 package scylladbcluster
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
-	"sort"
 	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -495,8 +495,8 @@ func calculateEndpointsForRemoteDCPods(sc *scyllav1alpha1.ScyllaDBCluster, broad
 		klog.V(4).InfoS("Found remote Scylla Pods", "Cluster", klog.KObj(sc), "Datacenter", remoteDC.Name, "Pods", len(dcPods))
 
 		// Sort pods to have stable list of endpoints
-		sort.Slice(dcPods, func(i, j int) bool {
-			return dcPods[i].Name < dcPods[j].Name
+		slices.SortFunc(dcPods, func(a, b *corev1.Pod) int {
+			return cmp.Compare(a.Name, b.Name)
 		})
 		for _, dcPod := range dcPods {
 			if len(dcPod.Status.PodIP) == 0 {
@@ -556,8 +556,8 @@ func makeRemoteServiceEndpoints(
 	klog.V(4).InfoS("Found remote ScyllaDB Services", "ScyllaDBCluster", klog.KObj(sc), "Datacenter", remoteDC.Name, "Services", len(dcServices))
 
 	// Sort objects to have stable list of endpoints
-	sort.Slice(dcServices, func(i, j int) bool {
-		return dcServices[i].Name < dcServices[j].Name
+	slices.SortFunc(dcServices, func(a, b *corev1.Service) int {
+		return cmp.Compare(a.Name, b.Name)
 	})
 
 	for _, dcService := range dcServices {

@@ -1,8 +1,9 @@
 package controllerhelpers
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -262,8 +263,8 @@ func SetNodeStatus(nodeStatuses []scyllav1alpha1.NodeConfigNodeStatus, status *s
 
 	nodeStatuses = append(nodeStatuses, *status)
 
-	sort.SliceStable(nodeStatuses, func(i, j int) bool {
-		return nodeStatuses[i].Name < nodeStatuses[j].Name
+	slices.SortStableFunc(nodeStatuses, func(a, b scyllav1alpha1.NodeConfigNodeStatus) int {
+		return cmp.Compare(a.Name, b.Name)
 	})
 
 	return nodeStatuses

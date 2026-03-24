@@ -3,12 +3,13 @@
 package framework
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha512"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 
 	o "github.com/onsi/gomega"
 	gomegatypes "github.com/onsi/gomega/types"
@@ -128,11 +129,14 @@ func DumpEventsInNamespace(ctx context.Context, c kubernetes.Interface, namespac
 	// Sort events by their first timestamp
 	sortedEvents := events.Items
 	if len(sortedEvents) > 1 {
-		sort.Slice(sortedEvents, func(i, j int) bool {
-			if sortedEvents[i].FirstTimestamp.Equal(&sortedEvents[j].FirstTimestamp) {
-				return sortedEvents[i].InvolvedObject.Name < sortedEvents[j].InvolvedObject.Name
+		slices.SortFunc(sortedEvents, func(a, b corev1.Event) int {
+			if a.FirstTimestamp.Equal(&b.FirstTimestamp) {
+				return cmp.Compare(a.InvolvedObject.Name, b.InvolvedObject.Name)
 			}
-			return sortedEvents[i].FirstTimestamp.Before(&sortedEvents[j].FirstTimestamp)
+			if a.FirstTimestamp.Before(&b.FirstTimestamp) {
+				return -1
+			}
+			return 1
 		})
 	}
 	for _, e := range sortedEvents {

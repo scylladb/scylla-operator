@@ -1,12 +1,12 @@
 package scylladbdatacenter
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"maps"
 	"path"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -713,7 +713,7 @@ exec /mnt/shared/scylla-operator sidecar \
 										for name := range features {
 											res = append(res, fmt.Sprintf("%s=%t", name, utilfeature.DefaultMutableFeatureGate.Enabled(name)))
 										}
-										sort.Strings(res)
+										slices.Sort(res)
 										return strings.Join(res, ",")
 									}() + ` \
 --nodes-broadcast-address-type=` + func() string {
@@ -1608,8 +1608,8 @@ func MakeIngresses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*
 		}
 	}
 
-	sort.Slice(ingresses, func(i, j int) bool {
-		return ingresses[i].GetName() < ingresses[j].GetName()
+	slices.SortFunc(ingresses, func(a, b *networkingv1.Ingress) int {
+		return cmp.Compare(a.GetName(), b.GetName())
 	})
 
 	return ingresses

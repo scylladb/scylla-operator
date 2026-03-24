@@ -91,46 +91,13 @@ var _ = g.Describe("StatusReportController", func() {
 		expectedAnnotation string
 	}
 
-	// newSwitchableScyllaClientFunc returns a two-phase Scylla client factory 'scyllaClientFunc', a 'switchToPhaseTwo' callback function,
-	// and a 'phaseTwoCalledCh' channel with the below semantics:
-	// - Can be in Phase 1 or Phase 2, on initialization is in Phase 1
-	// - In Phase 1, serves firstHostIDs and firstLiveEndpoints
-	// - In Phase 2, serves subsequentHostIDs and subsequentLiveEndpoints
-	// - Upon call to switchToPhaseTwo, moves from Phase 1 to 2
-	// - On switch from Phase 1 to 2, closes phaseTwoCalledCh
-	newSwitchableScyllaClientFunc := func(
-		firstHostIDs []scyllaNodeResponse, firstLiveEndpoints []string,
-		subsequentHostIDs []scyllaNodeResponse, subsequentLiveEndpoints []string,
-	) (func() (*scyllaclient.Client, error), func(), <-chan struct{}) {
-		inPhaseTwo := atomic.Bool{}
-		phaseTwoCalledCh := make(chan struct{})
-		phaseTwoCalledOnce := sync.Once{}
-
-		scyllaClientFunc := func() (*scyllaclient.Client, error) {
-			if inPhaseTwo.Load() {
-				phaseTwoCalledOnce.Do(func() {
-					close(phaseTwoCalledCh)
-				})
-
-				return newStaticScyllaClient(subsequentHostIDs, subsequentLiveEndpoints)
-			}
-
-			return newStaticScyllaClient(firstHostIDs, firstLiveEndpoints)
-		}
-
-		switchToPhaseTwo := func() {
-			inPhaseTwo.Store(true)
-		}
-
-		return scyllaClientFunc, switchToPhaseTwo, phaseTwoCalledCh
-	}
-
 	g.DescribeTable("keeps the Pod annotation stable with respect to the ordering of status reports", func(ctx g.SpecContext, tc statusStabilityTestCase) {
 		// Liveness is intentionally kept the same across both phases to focus on reordering changes across subsequent API calls.
-		newSwitchableScyllaClient, switchToPhaseTwo, phaseTwoCalled := newSwitchableScyllaClientFunc(
+		scyllaClientFactory := NewSwitchableScyllaClientFactory(
 			tc.firstCallHostIDs, tc.liveEndpoints,
 			tc.subsequentCallHostIDs, tc.liveEndpoints,
 		)
+		g.DeferCleanup(scyllaClientFactory.Close)
 
 		g.By("Creating the Pod")
 		pod := newBasicPod(env.Namespace())
@@ -138,7 +105,7 @@ var _ = g.Describe("StatusReportController", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Starting status report controller")
-		ctrl := runStatusReportController(ctx, env, pod.Name, newSwitchableScyllaClient)
+		ctrl := runStatusReportController(ctx, env, pod.Name, scyllaClientFactory.NewClient)
 
 		g.By("Waiting for the Pod to get the expected node status report annotation")
 		pod = waitForPodToHaveNodeStatusReportAnnotation(ctx, pod.Namespace, pod.Name, tc.expectedAnnotation)
@@ -147,10 +114,10 @@ var _ = g.Describe("StatusReportController", func() {
 		// Switch to phase two and explicitly enqueue a sync so the controller re-runs with the reordered API response.
 		// phaseTwoCalled is then used to confirm the sync actually executed before asserting stability.
 		g.By("Switching to phase two and triggering a sync")
-		switchToPhaseTwo()
+		scyllaClientFactory.SwitchToPhaseTwo()
 		ctrl.Enqueue()
 
-		o.Eventually(phaseTwoCalled).WithTimeout(30 * time.Second).Should(o.BeClosed())
+		o.Eventually(scyllaClientFactory.PhaseTwoCalledCh()).WithTimeout(30 * time.Second).Should(o.BeClosed())
 
 		// If the controller produces a different JSON encoding on the second call (e.g., due to non-deterministic node ordering),
 		// the annotation value will change and the Pod will be re-patched, bumping ResourceVersion.
@@ -248,10 +215,11 @@ var _ = g.Describe("StatusReportController", func() {
 	}
 
 	g.DescribeTable("updates the Pod annotation", func(ctx g.SpecContext, tc statusChangeTestCase) {
-		newSwitchableScyllaClient, switchToPhaseTwo, _ := newSwitchableScyllaClientFunc(
+		scyllaClientFactory := NewSwitchableScyllaClientFactory(
 			tc.firstCallHostIDs, tc.firstCallLiveEndpoints,
 			tc.subsequentCallHostIDs, tc.subsequentCallLiveEndpoints,
 		)
+		g.DeferCleanup(scyllaClientFactory.Close)
 
 		g.By("Creating the Pod")
 		pod := newBasicPod(env.Namespace())
@@ -260,14 +228,14 @@ var _ = g.Describe("StatusReportController", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Starting status report controller")
-		controller := runStatusReportController(ctx, env, pod.Name, newSwitchableScyllaClient)
+		controller := runStatusReportController(ctx, env, pod.Name, scyllaClientFactory.NewClient)
 
 		g.By("Waiting for the Pod to get the initial node status report annotation")
 		waitForPodToHaveNodeStatusReportAnnotation(ctx, pod.Namespace, pod.Name, tc.expectedAnnotationAfterFirstCall)
 
 		// Switch to phase two and explicitly enqueue a sync so the controller picks up the status change.
 		g.By("Switching to phase two and triggering a sync")
-		switchToPhaseTwo()
+		scyllaClientFactory.SwitchToPhaseTwo()
 		controller.Enqueue()
 
 		g.By("Waiting for the Pod annotation to reflect the status change")
@@ -304,8 +272,88 @@ var _ = g.Describe("StatusReportController", func() {
 	)
 })
 
+// SwitchableScyllaClientFactory is a two-phase Scylla client factory with the below semantics:
+//   - Can be in Phase 1 or Phase 2; on initialization is in Phase 1.
+//   - In Phase 1, NewClient serves firstHostIDs and firstLiveEndpoints.
+//   - In Phase 2, NewClient serves subsequentHostIDs and subsequentLiveEndpoints.
+//   - Upon call to SwitchToPhaseTwo, moves from Phase 1 to 2.
+//   - On the first NewClient call in Phase 2, closes the channel returned by PhaseTwoCalledCh.
+type SwitchableScyllaClientFactory struct {
+	firstHostIDs            []scyllaNodeResponse
+	firstLiveEndpoints      []string
+	subsequentHostIDs       []scyllaNodeResponse
+	subsequentLiveEndpoints []string
+
+	inPhaseTwo       atomic.Bool
+	phaseTwoCalledCh chan struct{}
+	phaseTwoOnce     sync.Once
+
+	mu        sync.Mutex
+	teardowns []func()
+}
+
+func NewSwitchableScyllaClientFactory(
+	firstHostIDs []scyllaNodeResponse, firstLiveEndpoints []string,
+	subsequentHostIDs []scyllaNodeResponse, subsequentLiveEndpoints []string,
+) *SwitchableScyllaClientFactory {
+	return &SwitchableScyllaClientFactory{
+		firstHostIDs:            firstHostIDs,
+		firstLiveEndpoints:      firstLiveEndpoints,
+		subsequentHostIDs:       subsequentHostIDs,
+		subsequentLiveEndpoints: subsequentLiveEndpoints,
+		phaseTwoCalledCh:        make(chan struct{}),
+	}
+}
+
+// NewClient creates a new ScyllaDB client backed by a fake HTTP server.
+// The response data depends on the current phase.
+func (f *SwitchableScyllaClientFactory) NewClient() (*scyllaclient.Client, error) {
+	var client *scyllaclient.Client
+	var teardown func()
+	var err error
+
+	if f.inPhaseTwo.Load() {
+		f.phaseTwoOnce.Do(func() {
+			close(f.phaseTwoCalledCh)
+		})
+
+		client, teardown, err = newStaticScyllaClient(f.subsequentHostIDs, f.subsequentLiveEndpoints)
+	} else {
+		client, teardown, err = newStaticScyllaClient(f.firstHostIDs, f.firstLiveEndpoints)
+	}
+
+	if teardown != nil {
+		f.mu.Lock()
+		f.teardowns = append(f.teardowns, teardown)
+		f.mu.Unlock()
+	}
+
+	return client, err
+}
+
+// SwitchToPhaseTwo transitions the factory from Phase 1 to Phase 2.
+func (f *SwitchableScyllaClientFactory) SwitchToPhaseTwo() {
+	f.inPhaseTwo.Store(true)
+}
+
+// PhaseTwoCalledCh returns a channel that is closed on the first NewClient call in Phase 2.
+func (f *SwitchableScyllaClientFactory) PhaseTwoCalledCh() <-chan struct{} {
+	return f.phaseTwoCalledCh
+}
+
+// Close tears down all HTTP servers created by NewClient calls.
+func (f *SwitchableScyllaClientFactory) Close() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, td := range f.teardowns {
+		td()
+	}
+}
+
 // newStaticScyllaClient creates a ScyllaDB client backed by httptest.Server that serves the given host IDs and live endpoints.
-func newStaticScyllaClient(hostIDNodes []scyllaNodeResponse, liveEndpoints []string) (*scyllaclient.Client, error) {
+// It returns the client, a teardown function that closes the server, and any error.
+// The caller is responsible for invoking the teardown function at an appropriate point.
+func newStaticScyllaClient(hostIDNodes []scyllaNodeResponse, liveEndpoints []string) (*scyllaclient.Client, func(), error) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -325,11 +373,11 @@ func newStaticScyllaClient(hostIDNodes []scyllaNodeResponse, liveEndpoints []str
 	})
 
 	server := httptest.NewServer(handler)
-	g.DeferCleanup(server.Close)
 
 	parsedURL, err := url.Parse(server.URL)
 	if err != nil {
-		return nil, fmt.Errorf("can't parse server URL: %w", err)
+		server.Close()
+		return nil, nil, fmt.Errorf("can't parse server URL: %w", err)
 	}
 
 	cfg := &scyllaclient.Config{
@@ -339,7 +387,13 @@ func newStaticScyllaClient(hostIDNodes []scyllaNodeResponse, liveEndpoints []str
 		Timeout: 5 * time.Second,
 	}
 
-	return scyllaclient.NewClient(cfg)
+	client, err := scyllaclient.NewClient(cfg)
+	if err != nil {
+		server.Close()
+		return nil, nil, err
+	}
+
+	return client, server.Close, nil
 }
 
 func runStatusReportController(ctx context.Context, env *envtest.Environment, podName string, newScyllaClient func() (*scyllaclient.Client, error)) *statusreport.Controller {

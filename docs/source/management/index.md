@@ -4,6 +4,7 @@
 :maxdepth: 1
 
 sysctls
+coredumps
 bootstrap-sync
 data-cleanup
 upgrading/index

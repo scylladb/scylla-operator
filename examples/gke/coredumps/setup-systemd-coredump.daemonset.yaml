@@ -1,0 +1,128 @@
+# This DaemonSet installs and configures systemd-coredump on GKE nodes running
+# ScyllaDB so that core dumps are captured and stored on the host filesystem at
+# /var/lib/systemd/coredump/.
+#
+# GKE nodes use Ubuntu with apt-get as the package manager.
+# systemd-coredump is not installed by default on GKE nodes; a single
+# long-running container installs it and then performs the following setup steps:
+#   1. Install the systemd-coredump package via apt-get.
+#   2. Apply the recommended /etc/systemd/coredump.conf configuration.
+#   3. Set kernel.core_pattern to pipe core dumps through systemd-coredump.
+#   4. Start systemd-coredump.socket so the helper can connect to it when a
+#      crash occurs.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: scylladb-coredump-setup
+  namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylladb-coredump-setup
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: scylladb-coredump-setup
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: scylladb-coredump-setup
+    spec:
+      # Target only the nodes that run ScyllaDB workloads.
+      nodeSelector:
+        scylla.scylladb.com/node-type: scylla
+      tolerations:
+      - key: scylla-operator.scylladb.com/dedicated
+        operator: Equal
+        value: scyllaclusters
+        effect: NoSchedule
+      # hostPID is required so that "nsenter -t 1" targets the host's systemd
+      # (PID 1) rather than the container's init process. This is needed for
+      # systemctl to communicate with the host's D-Bus and start
+      # systemd-coredump.socket.
+      hostPID: true
+      containers:
+      - name: setup-coredump
+        image: docker.io/library/ubuntu:24.04
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            cpu: 1m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        command:
+        - /bin/bash
+        - -euEo
+        - pipefail
+        - -O
+        - inherit_errexit
+        - -c
+        - |
+          # Run a command inside the host's mount + UTS namespaces using nsenter
+          # so that package managers and sysctl operate on the real host.
+          host_exec() {
+            nsenter --mount=/host/proc/1/ns/mnt --uts=/host/proc/1/ns/uts -- "$@"
+          }
+
+          echo "Installing systemd-coredump via apt-get..."
+          host_exec apt-get update -y -qq
+          host_exec apt-get install -y -qq systemd-coredump
+
+          # Apply the coredump configuration from the mounted ConfigMap.
+          if [ -f /config/coredump.conf ]; then
+            echo "Applying custom /etc/systemd/coredump.conf..."
+            cp /config/coredump.conf /host/etc/systemd/coredump.conf
+            nsenter -t 1 --mount --uts --ipc --net -- systemctl daemon-reload || true
+          fi
+
+          # Retrieve the path to the systemd-coredump helper binary.
+          # On GKE Ubuntu nodes this is /usr/lib/systemd/systemd-coredump.
+          SYSTEMD_COREDUMP_BIN="$(host_exec sh -c 'command -v systemd-coredump 2>/dev/null || echo /usr/lib/systemd/systemd-coredump')"
+
+          echo "Setting kernel.core_pattern to pipe through ${SYSTEMD_COREDUMP_BIN}..."
+          # The format string passes 8 positional arguments to the helper
+          # (systemd-coredump >= 252 requires exactly 8):
+          #   %P                   PID of the crashing process (initial PID namespace)
+          #   %u                   UID of the crashing process
+          #   %g                   GID of the crashing process
+          #   %s                   Signal number
+          #   %t                   Unix timestamp of the crash
+          #   9223372036854775808  A large hardcoded value passed in place of %c (the core file size rlimit) to prevent truncation
+          #   %h                   Hostname
+          #   %d                   Directory fd - lets systemd-coredump read /proc/<PID> metadata after the process exits
+          host_exec sysctl -w "kernel.core_pattern=|${SYSTEMD_COREDUMP_BIN} %P %u %g %s %t 9223372036854775808 %h %d"
+
+          echo "kernel.core_pattern is now:"
+          host_exec sysctl -n kernel.core_pattern
+
+          # Start systemd-coredump.socket on the host so the helper can hand off
+          # the core image for processing. Without an active socket the helper
+          # exits silently and no core file is written.
+          # nsenter -t 1 with mount+UTS+IPC+net namespaces makes the host binaries
+          # and the D-Bus socket visible to systemctl.
+          echo "Starting systemd-coredump.socket on the host..."
+          nsenter -t 1 --mount --uts --ipc --net -- systemctl start systemd-coredump.socket
+          echo "systemd-coredump.socket is now active."
+
+          # Keep the pod running so that the DaemonSet re-applies the settings
+          # on eviction or reschedule.
+          echo "Setup complete. Sleeping indefinitely..."
+          exec sleep infinity
+        volumeMounts:
+        - name: host
+          mountPath: /host
+        - name: coredump-config
+          mountPath: /config
+          readOnly: true
+      volumes:
+      - name: host
+        hostPath:
+          path: /
+          type: Directory
+      - name: coredump-config
+        configMap:
+          name: scylladb-coredump-conf
+  updateStrategy:
+    type: RollingUpdate

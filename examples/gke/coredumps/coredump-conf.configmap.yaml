@@ -1,0 +1,45 @@
+# Recommended systemd-coredump configuration for nodes running ScyllaDB.
+#
+# Apply this ConfigMap alongside the setup-systemd-coredump DaemonSet so that
+# the setup container writes these settings to /etc/systemd/coredump.conf on
+# each node before activating kernel.core_pattern.
+#
+# Key tuning choices (adjust to your environment, refer to `man 5 coredump.conf`):
+#   Storage=external  - write core dump files to /var/lib/systemd/coredump/
+#                      (as opposed to the systemd journal or tmpfs).
+#   Compress=yes      - compress dumps with zstd (saves significant disk space).
+#   ProcessSizeMax=0 - do not truncate core dumps; ScyllaDB needs full cores.
+#   ExternalSizeMax=0
+#   MaxUse=20G        - cap the total space used for stored dumps.
+#   KeepFree=10G      - always leave at least this much free on the target filesystem.
+#
+# IMPORTANT: ScyllaDB processes may allocate hundreds of gigabytes of memory.
+# Even compressed core dumps can be very large. Adjust MaxUse and KeepFree to
+# match the size of your host boot disk (or a dedicated volume if you mount one
+# at /var/lib/systemd/coredump/).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scylladb-coredump-conf
+  namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylladb-coredump-setup
+data:
+  coredump.conf: |
+    [Coredump]
+    # Store core dumps as files on the host filesystem.
+    Storage=external
+
+    # Compress stored core dumps using zstd.
+    Compress=yes
+
+    # Do not truncate core dumps. ScyllaDB requires full core images for analysis.
+    ProcessSizeMax=0
+    ExternalSizeMax=0  
+  
+    # Maximum total disk space to use for all stored core dumps.
+    # Increase if your nodes have larger disks or if you expect many simultaneous crashes.
+    MaxUse=20G
+
+    # Always keep at least this much disk space free on the target filesystem.
+    KeepFree=10G

@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.20.2](#1202)
 - [1.20.1](#1201)
 - [1.19.2](#1192)
 - [Before 2026-03-11](#versions-released-before-2026-03-11)
@@ -30,15 +31,37 @@
   `volumeClaimTemplates` labels and annotations from the existing `StatefulSet` instead of recomputing them, preventing
   immutable field update errors when `.spec.rackTemplate` is set on an existing `ScyllaDBDatacenter`.
   [#3309](https://github.com/scylladb/scylla-operator/pull/3309)
-- Fixed [#3337](https://github.com/scylladb/scylla-operator/issues/3337):
-  `Pod` annotation "internal.scylla.scylladb.com/scylladb-node-status-report" and `ScyllaDBDatacenterNodesStatusReport` objects now use stable ordering of entries,
-  preventing random reordering and frequent updates resulting in unstable `ScyllaCluster`/`ScyllaDBDatacenter` status conditions.
-  [#3340](https://github.com/scylladb/scylla-operator/pull/3340)
 - Fixed [#3007](https://github.com/scylladb/scylla-operator/issues/3007): `ScyllaDBMonitoring` controller now properly 
   sets the aggregated `Available` and `Progressing` status conditions by inspecting state of the underlying Grafana `Deployment` and `Prometheus` CR.
   [#3347](https://github.com/scylladb/scylla-operator/pull/3347)
 
 ### Dependencies
+
+## [1.20.2](https://github.com/scylladb/scylla-operator/releases/tag/v1.20.2)
+
+Release date: 2026-03-25
+
+### Highlights
+
+- Updated default ScyllaDB version to `2026.1.0` and ScyllaDB Manager to `3.9.0`.
+- 🐛 `Pod` annotation "internal.scylla.scylladb.com/scylladb-node-status-report" and `ScyllaDBDatacenterNodesStatusReport` objects now use stable ordering of entries,
+  preventing random reordering and frequent updates resulting in unstable `ScyllaCluster`/`ScyllaDBDatacenter` status conditions.
+
+### Bug Fixes
+
+- Fixed [#3337](https://github.com/scylladb/scylla-operator/issues/3337):
+  `Pod` annotation "internal.scylla.scylladb.com/scylladb-node-status-report" and `ScyllaDBDatacenterNodesStatusReport` objects now use stable ordering of entries,
+  preventing random reordering and frequent updates resulting in unstable `ScyllaCluster`/`ScyllaDBDatacenter` status conditions.
+  [#3359](https://github.com/scylladb/scylla-operator/pull/3359)
+
+### Dependencies
+
+- Updated default ScyllaDB version from `2025.4.3` to `2026.1.0` and `scyllaDBUtilsImage` from `docker.io/scylladb/scylla:2025.1.9` to `docker.io/scylladb/scylla:2026.1.0`.
+  [#3344](https://github.com/scylladb/scylla-operator/pull/3344)
+- Updated default ScyllaDB Manager version from `3.8.0` to `3.9.0`.
+  [#3351](https://github.com/scylladb/scylla-operator/pull/3351)
+- Minor go module dependencies updates.
+  [#3357](https://github.com/scylladb/scylla-operator/pull/3357)
 
 ## [1.19.2](https://github.com/scylladb/scylla-operator/releases/tag/v1.19.2)
 
@@ -46,7 +69,7 @@ Release date: 2026-03-19
 
 ### Highlights
 
-- 🐛 `Pod` annotation "internal.scylla.scylladb.com/scylladb-node-status-report" and `ScyllaDBDatacenterNodeStatusReport` objects now use stable ordering of entries,
+- 🐛 `Pod` annotation "internal.scylla.scylladb.com/scylladb-node-status-report" and `ScyllaDBDatacenterNodesStatusReport` objects now use stable ordering of entries,
   preventing random reordering and frequent updates resulting in unstable `ScyllaCluster`/`ScyllaDBDatacenter` status conditions.
 - 🐛 Fixed `ScyllaCluster` status conditions not properly surfacing errors from child resources (e.g., `ScyllaDBManagerTask` apply failures)
   and misreporting observed generation after certain spec changes (e.g., `.spec.sysctls`), which could make the `Progressing`, `Degraded`, and `Available` conditions unreliable.
@@ -68,7 +91,7 @@ Release date: 2026-03-19
 ### Bug Fixes
 
 - Fixed [#3337](https://github.com/scylladb/scylla-operator/issues/3337):
-  `Pod` annotation "internal.scylla.scylladb.com/scylladb-node-status-report" and `ScyllaDBDatacenterNodeStatusReport` objects now use stable ordering of entries,
+  `Pod` annotation "internal.scylla.scylladb.com/scylladb-node-status-report" and `ScyllaDBDatacenterNodesStatusReport` objects now use stable ordering of entries,
   preventing random reordering and frequent updates resulting in unstable `ScyllaCluster`/`ScyllaDBDatacenter` status conditions.
   [#3360](https://github.com/scylladb/scylla-operator/pull/3360)
 - `ScyllaCluster`'s translation controller now combines `ScyllaDBDatacenter` status conditions with its own controller partial conditions when aggregating `ScyllaCluster`'s status conditions,

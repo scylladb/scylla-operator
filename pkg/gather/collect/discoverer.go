@@ -2,9 +2,10 @@ package collect
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
-	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -161,7 +162,7 @@ func replaceIsometricResourceInfosIfPresent(resourceInfos []*ResourceInfo) ([]*R
 		}
 	}
 
-	return helpers.GetMapValues(resourceInfosMap), nil
+	return slices.Collect(maps.Values(resourceInfosMap)), nil
 }
 
 // ignoreResourceByGroupKind returns a ResourcePredicateFunc that ignores resources matching the given GroupKind.

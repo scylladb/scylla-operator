@@ -3,11 +3,11 @@
 package scyllaclient
 
 import (
+	"errors"
 	"net"
 	"net/http"
 
 	"github.com/hailocab/go-hostpool"
-	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/util/httpx"
 )
 

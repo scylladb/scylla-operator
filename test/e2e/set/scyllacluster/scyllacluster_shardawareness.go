@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -146,6 +146,6 @@ func shardPort(shard, nrShards int) int {
 	)
 	maxRange := maxPort - nrShards + 1
 	minRange := minPort + nrShards - 1
-	r := rand.Intn(maxRange-minRange+1) + minRange
+	r := rand.IntN(maxRange-minRange+1) + minRange
 	return r/nrShards*nrShards + shard
 }

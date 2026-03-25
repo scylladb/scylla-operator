@@ -4,9 +4,9 @@ package fsm_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/util/fsm"
 	"go.uber.org/atomic"
 )

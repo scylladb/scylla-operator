@@ -1,12 +1,13 @@
 package testhelpers
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakediscovery "k8s.io/client-go/discovery/fake"
@@ -34,11 +35,9 @@ type GatherDump struct {
 }
 
 func (gd *GatherDump) Sort() {
-	sort.SliceStable(gd.EmptyDirs, func(i, j int) bool {
-		return gd.EmptyDirs[i] < gd.EmptyDirs[j]
-	})
-	sort.SliceStable(gd.Files, func(i, j int) bool {
-		return gd.Files[i].Name < gd.Files[j].Name
+	slices.Sort(gd.EmptyDirs)
+	slices.SortStableFunc(gd.Files, func(a, b File) int {
+		return cmp.Compare(a.Name, b.Name)
 	})
 }
 

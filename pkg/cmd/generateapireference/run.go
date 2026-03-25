@@ -85,7 +85,7 @@ func IndexNestedProps(props map[string]apiextensionsv1.JSONSchemaProps) map[stri
 
 func getLabelForKey(key string) string {
 	key, _ = strings.CutPrefix(key, ".")
-	return strings.Replace(key, ".", "-", -1)
+	return strings.ReplaceAll(key, ".", "-")
 }
 
 func ensurePrefix(prefix string, s string) string {

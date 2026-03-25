@@ -3,7 +3,7 @@ package admissionreview
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	admissionv1 "k8s.io/api/admission/v1"
@@ -44,7 +44,7 @@ func NewHandler(f HandleFunc) *handler {
 func (h *handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var body []byte
 	if req.Body != nil {
-		data, err := ioutil.ReadAll(req.Body)
+		data, err := io.ReadAll(req.Body)
 		if err == nil {
 			body = data
 		}

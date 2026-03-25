@@ -18,13 +18,10 @@ func TestMakeRAID0(t *testing.T) {
 	t.Parallel()
 
 	makeNotExistingDevice := func(sysfsPath, deviceName string) string {
-		tempDir, err := os.MkdirTemp(os.TempDir(), "local-disk-setup-raid-")
-		if err != nil {
-			t.Fatal(err)
-		}
+		tempDir := t.TempDir()
 
 		devPath := path.Join(tempDir, "dev")
-		err = os.MkdirAll(devPath, os.ModePerm)
+		err := os.MkdirAll(devPath, os.ModePerm)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -308,17 +305,9 @@ func TestMakeRAID0(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			sysfsPath, err := os.MkdirTemp(os.TempDir(), "local-disk-setup-raid-sysfs")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(sysfsPath)
+			sysfsPath := t.TempDir()
 
-			devtmpfsPath, err := os.MkdirTemp(os.TempDir(), "local-disk-setup-raid-devtmpfs")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(devtmpfsPath)
+			devtmpfsPath := t.TempDir()
 
 			raidDevice := tc.makeRaidDevice(sysfsPath)
 			devices := tc.makeDevices(sysfsPath)
@@ -504,13 +493,9 @@ func TestGetRAIDDeviceWithName(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			devtmpfsPath, err := os.MkdirTemp(os.TempDir(), "local-disk-setup-raid-devtmpfs")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(devtmpfsPath)
+			devtmpfsPath := t.TempDir()
 
-			err = tc.makeDevtmpfs(devtmpfsPath)
+			err := tc.makeDevtmpfs(devtmpfsPath)
 			if err != nil {
 				t.Fatal(err)
 			}

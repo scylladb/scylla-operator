@@ -4,11 +4,12 @@ package scyllaclient
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/util/httpx"
 )
 
@@ -45,8 +46,8 @@ func timeout(next http.RoundTripper, timeout time.Duration) http.RoundTripper {
 				}
 			}
 
-			if errors.Cause(err) == context.DeadlineExceeded && ctx.Err() == context.DeadlineExceeded {
-				err = errors.Wrapf(ErrTimeout, "after %s", d)
+			if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == context.DeadlineExceeded {
+				err = fmt.Errorf("after %s: %w", d, ErrTimeout)
 			}
 		}()
 		return next.RoundTrip(req.WithContext(ctx))

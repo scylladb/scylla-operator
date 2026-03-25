@@ -54,7 +54,7 @@ func (fp *FrameParser) ReadStringMultiMap() map[string][]string {
 
 func (fp *FrameParser) readBytes(n int) []byte {
 	p := make([]byte, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		p = append(p, fp.readByte())
 	}
 

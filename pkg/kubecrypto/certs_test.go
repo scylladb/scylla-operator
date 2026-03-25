@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"math/rand"
+	"math/rand/v2"
 	"reflect"
 	"sync"
 	"testing"
@@ -314,7 +314,7 @@ func Test_makeCertificate(t *testing.T) {
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
 					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.Intn(60), 00, time.UTC)),
+					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
 				},
 				Data: map[string][]byte{
 					"tls.crt": testfiles.AlphaCACertBytes,
@@ -407,7 +407,7 @@ func Test_makeCertificate(t *testing.T) {
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
 					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.Intn(60), 00, time.UTC)),
+					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
 				},
 				Data: map[string][]byte{
 					"tls.crt": testfiles.AlphaServingCertBytes,
@@ -491,7 +491,7 @@ func Test_makeCertificate(t *testing.T) {
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
 					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.Intn(60), 00, time.UTC)),
+					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
 				},
 				Data: map[string][]byte{
 					"tls.crt": testfiles.AlphaCACertBytes,
@@ -583,7 +583,7 @@ func Test_makeCertificate(t *testing.T) {
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
 					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.Intn(60), 00, time.UTC)),
+					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
 				},
 				Data: map[string][]byte{
 					"tls.crt": testfiles.AlphaCACertBytes,
@@ -676,7 +676,7 @@ func Test_makeCertificate(t *testing.T) {
 					},
 					UID: "uid-that-should-never-make-it-to-the-desired-object",
 					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.Intn(60), 00, time.UTC)),
+					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
 				},
 				Data: map[string][]byte{
 					"tls.crt": testfiles.AlphaCACertBytes,

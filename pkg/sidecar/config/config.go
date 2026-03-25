@@ -2,8 +2,8 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"maps"
 	"os"
 	"os/exec"
@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/magiconair/properties"
-	"github.com/pkg/errors"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -202,10 +201,10 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 
 	cpusAllowed, err := getCPUsAllowedList("/proc/1/status")
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("can't get cpus allowed list: %w", err)
 	}
 	if err := s.validateCpuSet(ctx, cpusAllowed, s.cpuCount); err != nil {
-		return nil, errors.WithStack(err)
+		return nil, fmt.Errorf("can't validate cpu set: %w", err)
 	}
 
 	isBroadcastIPv6 := m.IPFamily == corev1.IPv6Protocol
@@ -341,9 +340,9 @@ func mergeYAMLs(initialYAML []byte, overrideYAMLs ...[]byte) ([]byte, error) {
 }
 
 func getCPUsAllowedList(procFile string) (string, error) {
-	statusFile, err := ioutil.ReadFile(procFile)
+	statusFile, err := os.ReadFile(procFile)
 	if err != nil {
-		return "", errors.Wrapf(err, "error reading proc status file '%s'", procFile)
+		return "", fmt.Errorf("error reading proc status file '%s': %w", procFile, err)
 	}
 	procStatus := string(statusFile[:])
 	startIndex := strings.Index(procStatus, "Cpus_allowed_list:")

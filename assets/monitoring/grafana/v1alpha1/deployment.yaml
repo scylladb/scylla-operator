@@ -47,7 +47,7 @@ spec:
         - name: decompressed-configmaps
           mountPath: /var/run/decompressed-configmaps
         {{- range $_, $cm := .dashboardsCMs }}
-        - name: "{{ $cm.Name }}"
+        - name: "{{ index $cm.Annotations "internal.scylla-operator.scylladb.com/dashboard-name" | sanitizeDNSSubdomain }}"
           mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/{{ index $cm.Annotations "internal.scylla-operator.scylladb.com/dashboard-name" }}"
         {{- else }}
         !!! No dashboards names found !!!
@@ -152,7 +152,7 @@ spec:
         configMap:
           name: "{{ .scyllaDBMonitoringName }}-grafana-configs"
       {{- range $_, $cm := .dashboardsCMs }}
-      - name: "{{ $cm.Name }}"
+      - name: "{{ index $cm.Annotations "internal.scylla-operator.scylladb.com/dashboard-name" | sanitizeDNSSubdomain }}"
         configMap:
           name: "{{ $cm.Name }}"
       {{- else }}

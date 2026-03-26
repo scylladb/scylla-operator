@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -52,6 +53,7 @@ func Setup(ctx context.Context) *Environment {
 		ControlPlaneStopTimeout:     time.Minute,
 		DownloadBinaryAssets:        true,
 		DownloadBinaryAssetsVersion: configassets.Project.OperatorTests.EnvTestKubernetesVersion,
+		BinaryAssetsDirectory:       os.TempDir(),
 	}
 
 	_, err := testEnv.Start()

@@ -18,7 +18,7 @@ else
 paperopt :=
 endif
 
-ALLSPHINXOPTS ?= -d $(BUILDDIR)/doctrees $(paperopt) $(SPHINXOPTS) $(SOURCEDIR) -W
+ALLSPHINXOPTS ?= -d $(BUILDDIR)/doctrees $(paperopt) $(SPHINXOPTS) $(SOURCEDIR)
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS ?= $(paperopt) $(SPHINXOPTS) $(SOURCEDIR)
 

@@ -188,4 +188,5 @@ linkcheck_ignore = [
 
 linkcheck_anchors_ignore_for_url = [
    'https://github.com/prometheus-operator/prometheus-operator/blob/e4c727291acc543dab531bc4aaf16637067c1b86/pkg/apis/monitoring/v1/.*',
+   'https://kubernetes.io/docs/concepts/storage/volumes',
 ]

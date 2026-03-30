@@ -544,29 +544,9 @@ func TestDeleteLoopDevice(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			tmpDir, err := os.MkdirTemp(os.TempDir(), "delete-loop-device-tmp-")
-			if err != nil {
-				t.Fatal(err)
-			}
+			tmpDir := t.TempDir()
 
-			defer func() {
-				err := os.RemoveAll(tmpDir)
-				if err != nil {
-					t.Fatal(err)
-				}
-			}()
-
-			devfsDir, err := os.MkdirTemp(os.TempDir(), "delete-loop-device-devfs-")
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			defer func() {
-				err := os.RemoveAll(devfsDir)
-				if err != nil {
-					t.Fatal(err)
-				}
-			}()
+			devfsDir := t.TempDir()
 
 			if tc.populateFilesystem != nil {
 				tc.populateFilesystem(tmpDir, devfsDir)
@@ -584,7 +564,7 @@ func TestDeleteLoopDevice(t *testing.T) {
 				expectedErr = tc.expectedErr(tmpDir, devfsDir)
 			}
 
-			err = DeleteLoopDevice(ctx, executor, deviceSymlinkPath, devicePath, imagePath)
+			err := DeleteLoopDevice(ctx, executor, deviceSymlinkPath, devicePath, imagePath)
 			if !reflect.DeepEqual(err, expectedErr) {
 				t.Fatalf("expected %v error, got %v", expectedErr, err)
 			}

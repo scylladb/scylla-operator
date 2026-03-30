@@ -4,9 +4,9 @@ package yaml
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	apimachineryutilyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/yaml"
@@ -25,7 +25,7 @@ func ToUnstructured(rawyaml io.Reader) ([]unstructured.Unstructured, error) {
 			if err == io.EOF {
 				break
 			}
-			return nil, errors.Wrapf(err, "failed to read yaml")
+			return nil, fmt.Errorf("failed to read yaml: %w", err)
 		}
 		if len(b) == 0 {
 			break
@@ -33,7 +33,7 @@ func ToUnstructured(rawyaml io.Reader) ([]unstructured.Unstructured, error) {
 
 		var m map[string]interface{}
 		if err := yaml.Unmarshal(b, &m); err != nil {
-			return nil, errors.Wrapf(err, "failed to unmarshal the %d yaml document: %q", count, string(b))
+			return nil, fmt.Errorf("failed to unmarshal the %d yaml document: %q: %w", count, string(b), err)
 		}
 
 		var u unstructured.Unstructured

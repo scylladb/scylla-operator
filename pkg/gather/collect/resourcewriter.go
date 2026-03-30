@@ -81,7 +81,7 @@ func (c *ResourceWriter) WriteResource(ctx context.Context, obj kubeinterfaces.O
 }
 
 func writeObject(printer ResourcePrinterInterface, filePath string, resourceInfo *ResourceInfo, obj kubeinterfaces.ObjectInterface) error {
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	err := printer.PrintObj(resourceInfo, obj, buf)
 	if err != nil {
 		return fmt.Errorf("can't print object %q (%s): %w", naming.ObjRef(obj), resourceInfo.Resource, err)

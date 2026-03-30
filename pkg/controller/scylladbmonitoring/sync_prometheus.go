@@ -13,6 +13,7 @@ import (
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -22,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -650,4 +652,129 @@ func prometheusMode(sm *scyllav1alpha1.ScyllaDBMonitoring) scyllav1alpha1.Promet
 
 	// By default, Prometheus is managed by the ScyllaDB Operator.
 	return scyllav1alpha1.PrometheusModeManaged
+}
+
+func (smc *Controller) setPrometheusStatusConditions(
+	sm *scyllav1alpha1.ScyllaDBMonitoring,
+	status *scyllav1alpha1.ScyllaDBMonitoringStatus,
+	prometheuses map[string]*monitoringv1.Prometheus,
+) {
+	// In external mode we don't manage Prometheus, so we consider it always available and not progressing.
+	if prometheusMode(sm) == scyllav1alpha1.PrometheusModeExternal {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               prometheusControllerAvailableCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sm.Generation,
+		})
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               prometheusControllerProgressingCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sm.Generation,
+		})
+		return
+	}
+
+	prometheusName := sm.Name
+	p, found := prometheuses[prometheusName]
+	if !found {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               prometheusControllerAvailableCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             "PrometheusNotFound",
+			Message:            fmt.Sprintf("Prometheus %q has not been created yet.", naming.ManualRef(sm.Namespace, prometheusName)),
+			ObservedGeneration: sm.Generation,
+		})
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               prometheusControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "PrometheusNotFound",
+			Message:            fmt.Sprintf("Waiting for Prometheus %q to be created.", naming.ManualRef(sm.Namespace, prometheusName)),
+			ObservedGeneration: sm.Generation,
+		})
+		return
+	}
+
+	prometheusRef := naming.ManualRef(sm.Namespace, prometheusName)
+
+	// Map Prometheus Available condition to PrometheusControllerAvailable.
+	availableFound := false
+	for _, cond := range p.Status.Conditions {
+		if cond.Type != monitoringv1.Available {
+			continue
+		}
+		availableFound = true
+
+		if cond.Status == monitoringv1.ConditionTrue {
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               prometheusControllerAvailableCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             internalapi.AsExpectedReason,
+				Message:            "",
+				ObservedGeneration: sm.Generation,
+			})
+		} else {
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               prometheusControllerAvailableCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             "PrometheusNotAvailable",
+				Message:            fmt.Sprintf("Prometheus %q is not yet available: %s", prometheusRef, cond.Message),
+				ObservedGeneration: sm.Generation,
+			})
+		}
+		break
+	}
+
+	if !availableFound {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               prometheusControllerAvailableCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AwaitingConditionReason,
+			Message:            fmt.Sprintf("Prometheus %q does not yet report an availability condition.", prometheusRef),
+			ObservedGeneration: sm.Generation,
+		})
+	}
+
+	// Map Prometheus Reconciled condition to PrometheusControllerProgressin).
+	// Reconciled=True means reconciliation is done -> not progressing.
+	// Reconciled=False means reconciliation is pending -> progressing.
+	reconciledFound := false
+	for _, cond := range p.Status.Conditions {
+		if cond.Type != monitoringv1.Reconciled {
+			continue
+		}
+		reconciledFound = true
+
+		if cond.Status == monitoringv1.ConditionTrue {
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               prometheusControllerProgressingCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             internalapi.AsExpectedReason,
+				Message:            "",
+				ObservedGeneration: sm.Generation,
+			})
+		} else {
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               prometheusControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "PrometheusNotReconciled",
+				Message:            fmt.Sprintf("Prometheus %q has not yet been reconciled: %s", prometheusRef, cond.Message),
+				ObservedGeneration: sm.Generation,
+			})
+		}
+		break
+	}
+
+	if !reconciledFound {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               prometheusControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             internalapi.AwaitingConditionReason,
+			Message:            fmt.Sprintf("Prometheus %q does not yet report a reconciliation condition.", prometheusRef),
+			ObservedGeneration: sm.Generation,
+		})
+	}
 }

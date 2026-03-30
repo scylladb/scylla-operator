@@ -1,13 +1,14 @@
 package scyllaclient
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
 	"runtime"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -152,8 +153,8 @@ func (c *Client) NodesStatusAndStateInfo(ctx context.Context, host string) (Node
 	setNodeState(all, NodeStateMoving, moving.Payload)
 
 	// Sort by Host ID
-	sort.Slice(all, func(i, j int) bool {
-		return all[i].HostID < all[j].HostID
+	slices.SortFunc(all, func(a, b NodeStatusAndStateInfo) int {
+		return cmp.Compare(a.HostID, b.HostID)
 	})
 
 	return all, nil

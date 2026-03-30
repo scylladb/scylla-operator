@@ -3,7 +3,7 @@ package identity
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strconv"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -118,12 +118,17 @@ func (m *Member) GetSeeds(ctx context.Context, coreClient v1.CoreV1Interface, ex
 		return []string{m.BroadcastAddress}, nil
 	}
 
-	sort.Slice(otherPods, func(i, j int) bool {
-		if controllerhelpers.IsPodReady(otherPods[i]) && !controllerhelpers.IsPodReady(otherPods[j]) {
-			return true
+	slices.SortFunc(otherPods, func(a, b *corev1.Pod) int {
+		aReady := controllerhelpers.IsPodReady(a)
+		bReady := controllerhelpers.IsPodReady(b)
+		if aReady && !bReady {
+			return -1
+		}
+		if !aReady && bReady {
+			return 1
 		}
 
-		return podList.Items[i].ObjectMeta.CreationTimestamp.Before(&podList.Items[j].ObjectMeta.CreationTimestamp)
+		return a.ObjectMeta.CreationTimestamp.Time.Compare(b.ObjectMeta.CreationTimestamp.Time)
 	})
 
 	pod := otherPods[0]

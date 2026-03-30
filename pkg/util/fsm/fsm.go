@@ -4,8 +4,8 @@ package fsm
 
 import (
 	"context"
-
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 )
 
 // ErrEventRejected is the error returned when the state machine cannot process
@@ -91,13 +91,13 @@ func (s *StateMachine) Transition(ctx context.Context) error {
 		// Determine the next state for the event given the machine's current state.
 		nextState, err := s.getNextState(event)
 		if err != nil {
-			return errors.Wrapf(ErrEventRejected, "rejected %s", err.Error())
+			return fmt.Errorf("rejected %s: %w", err.Error(), ErrEventRejected)
 		}
 
 		// Identify the state definition for the next state.
 		nextTransition, ok := s.stateTransitions[nextState]
 		if !ok || nextTransition.Action == nil {
-			return errors.Wrapf(ErrEventRejected, "unknown transition %q for event %q", nextState, event)
+			return fmt.Errorf("unknown transition %q for event %q: %w", nextState, event, ErrEventRejected)
 		}
 
 		if s.transitionHook != nil {

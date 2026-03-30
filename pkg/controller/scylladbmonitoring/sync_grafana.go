@@ -16,6 +16,7 @@ import (
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	okubecrypto "github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -28,6 +29,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -687,4 +689,100 @@ func (smc *Controller) resolveGrafanaReferencedObjects(sm *scyllav1alpha1.Scylla
 	}
 
 	return referencedObjects, progressingConditions, nil
+}
+
+func (smc *Controller) setGrafanaStatusConditions(
+	sm *scyllav1alpha1.ScyllaDBMonitoring,
+	status *scyllav1alpha1.ScyllaDBMonitoringStatus,
+	deployments map[string]*appsv1.Deployment,
+) {
+	deploymentName := fmt.Sprintf("%s-grafana", sm.Name)
+	deployment, found := deployments[deploymentName]
+	if !found {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               grafanaControllerAvailableCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             "DeploymentNotFound",
+			Message:            fmt.Sprintf("Deployment %q has not been created yet.", naming.ManualRef(sm.Namespace, deploymentName)),
+			ObservedGeneration: sm.Generation,
+		})
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               grafanaControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "DeploymentNotFound",
+			Message:            fmt.Sprintf("Waiting for Deployment %q to be created.", naming.ManualRef(sm.Namespace, deploymentName)),
+			ObservedGeneration: sm.Generation,
+		})
+		return
+	}
+
+	deploymentRef := naming.ManualRef(sm.Namespace, deploymentName)
+
+	// Map Deployment Available condition to GrafanaControllerAvailable.
+	var deploymentAvailableCond *appsv1.DeploymentCondition
+	for i := range deployment.Status.Conditions {
+		if deployment.Status.Conditions[i].Type == appsv1.DeploymentAvailable {
+			deploymentAvailableCond = &deployment.Status.Conditions[i]
+			break
+		}
+	}
+
+	if deploymentAvailableCond != nil {
+		if deploymentAvailableCond.Status == corev1.ConditionTrue {
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               grafanaControllerAvailableCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             internalapi.AsExpectedReason,
+				Message:            "",
+				ObservedGeneration: sm.Generation,
+			})
+		} else {
+			apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+				Type:               grafanaControllerAvailableCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             "DeploymentNotAvailable",
+				Message:            fmt.Sprintf("Deployment %q is not yet available: %s", deploymentRef, deploymentAvailableCond.Message),
+				ObservedGeneration: sm.Generation,
+			})
+		}
+	} else {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               grafanaControllerAvailableCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AwaitingConditionReason,
+			Message:            fmt.Sprintf("Deployment %q does not yet report an availability condition.", deploymentRef),
+			ObservedGeneration: sm.Generation,
+		})
+	}
+
+	// Map Deployment Progressing condition to GrafanaControllerProgressing.
+	var deploymentProgressingCond *appsv1.DeploymentCondition
+	for i := range deployment.Status.Conditions {
+		if deployment.Status.Conditions[i].Type == appsv1.DeploymentProgressing {
+			deploymentProgressingCond = &deployment.Status.Conditions[i]
+			break
+		}
+	}
+
+	// Deployment's Progressing semantics are different from ours. It remains True when the Deployment is rolled out.
+	// See https://github.com/kubernetes/kubernetes/blob/0d28578de14fce641a39d6415d2068e1f39283a4/pkg/controller/deployment/progress.go#L53
+	if deploymentProgressingCond != nil &&
+		deploymentProgressingCond.Status == corev1.ConditionTrue &&
+		deploymentProgressingCond.Reason != "NewReplicaSetAvailable" {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               grafanaControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "DeploymentProgressing",
+			Message:            fmt.Sprintf("Deployment %q is progressing: %s", deploymentRef, deploymentProgressingCond.Message),
+			ObservedGeneration: sm.Generation,
+		})
+	} else {
+		apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+			Type:               grafanaControllerProgressingCondition,
+			Status:             metav1.ConditionFalse,
+			Reason:             internalapi.AsExpectedReason,
+			Message:            "",
+			ObservedGeneration: sm.Generation,
+		})
+	}
 }

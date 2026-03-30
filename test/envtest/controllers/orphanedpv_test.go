@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -84,7 +85,7 @@ var _ = g.Describe("OrphanedPVController", func() {
 				ClusterName:    "test-cluster",
 				DatacenterName: pointer.Ptr(dcName),
 				ScyllaDB: scyllav1alpha1.ScyllaDB{
-					Image: "scylladb/scylla:latest",
+					Image: unit.ScyllaDBImage,
 				},
 				Racks: []scyllav1alpha1.RackSpec{
 					{

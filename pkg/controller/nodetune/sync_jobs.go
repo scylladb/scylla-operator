@@ -3,12 +3,13 @@
 package nodetune
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 
 	"github.com/c9s/goprocinfo/linux"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
@@ -83,7 +84,7 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 	}
 
 	// Sort paths to have stable representation for the same set host paths.
-	sort.Strings(dataHostPaths)
+	slices.Sort(dataHostPaths)
 
 	cr, err := ncdc.newOwningDSControllerRef()
 	if err != nil {
@@ -106,7 +107,7 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 	}
 
 	// Sort interface names to have stable representation for the same set of interfaces.
-	sort.Strings(ifaceNames)
+	slices.Sort(ifaceNames)
 
 	klog.V(4).Info("Tuning network interfaces", "ifaces", ifaceNames)
 
@@ -174,8 +175,8 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context, nc *scyllav1a
 
 	// Container Jobs are created based on Pods' fields.
 	// Pods are sorted to make sure the generated Job specs are consistent across reconciliations for an equal set of Pods.
-	sort.Slice(localScyllaPods, func(i, j int) bool {
-		return localScyllaPods[i].Name < localScyllaPods[j].Name
+	slices.SortFunc(localScyllaPods, func(a, b *corev1.Pod) int {
+		return cmp.Compare(a.Name, b.Name)
 	})
 
 	var optimizablePods []*corev1.Pod
@@ -364,7 +365,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 			nodeStatus.TunedContainers = append(nodeStatus.TunedContainers, containerID)
 		}
 	}
-	sort.Strings(nodeStatus.TunedContainers)
+	slices.Sort(nodeStatus.TunedContainers)
 
 	return progressingConditions, nil
 }

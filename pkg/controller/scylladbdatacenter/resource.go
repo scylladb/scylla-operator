@@ -1,11 +1,12 @@
 package scylladbdatacenter
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"maps"
 	"path"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -712,7 +713,7 @@ exec /mnt/shared/scylla-operator sidecar \
 										for name := range features {
 											res = append(res, fmt.Sprintf("%s=%t", name, utilfeature.DefaultMutableFeatureGate.Enabled(name)))
 										}
-										sort.Strings(res)
+										slices.Sort(res)
 										return strings.Join(res, ",")
 									}() + ` \
 --nodes-broadcast-address-type=` + func() string {
@@ -1607,8 +1608,8 @@ func MakeIngresses(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*
 		}
 	}
 
-	sort.Slice(ingresses, func(i, j int) bool {
-		return ingresses[i].GetName() < ingresses[j].GetName()
+	slices.SortFunc(ingresses, func(a, b *networkingv1.Ingress) int {
+		return cmp.Compare(a.GetName(), b.GetName())
 	})
 
 	return ingresses
@@ -2471,6 +2472,11 @@ func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyl
 		klog.V(4).InfoS("Node reported an error in its status report, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "Pod", klog.KObj(pod), "Error", internalNodeStatusReport.Error)
 		return nodeStatusReport, true, nil
 	}
+
+	// Ordering by HostID guarantees stability of the entries and prevents unnecessary state changes that would result only from reshuffling.
+	slices.SortFunc(internalNodeStatusReport.ObservedNodes, func(a, b scyllav1alpha1.ObservedNodeStatus) int {
+		return strings.Compare(a.HostID, b.HostID)
+	})
 
 	nodeStatusReport.ObservedNodes = internalNodeStatusReport.ObservedNodes
 

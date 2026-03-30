@@ -82,10 +82,7 @@ func TestGetBlockSize(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			tempDir, err := os.MkdirTemp(os.TempDir(), "local-disk-setup-get-block-size-")
-			if err != nil {
-				t.Fatal(err)
-			}
+			tempDir := t.TempDir()
 
 			sysfs := tc.makeSysfs(tempDir)
 			device := tc.makeDevice(tempDir)

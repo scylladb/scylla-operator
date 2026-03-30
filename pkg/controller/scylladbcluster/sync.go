@@ -3,13 +3,14 @@ package scylladbcluster
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -585,7 +586,7 @@ func (scc *Controller) chooseRemoteControllers(sc *scyllav1alpha1.ScyllaDBCluste
 			continue
 		}
 
-		remoteOwners := helpers.GetMapValues(remoteOwnersMap)
+		remoteOwners := slices.Collect(maps.Values(remoteOwnersMap))
 		if len(remoteOwners) > 1 {
 			klog.InfoS("Found more than one RemoteOwner pointing to ScyllaDBCluster of the same UID, ignoring both to prune the extra one", "Cluster", dc.RemoteKubernetesClusterName, "ScyllaDBCluster", naming.ObjRef(sc), "UID", sc.UID)
 			continue
@@ -642,7 +643,7 @@ func (scc *Controller) chooseRemoteNamespaces(sc *scyllav1alpha1.ScyllaDBCluster
 			continue
 		}
 
-		remoteNss := helpers.GetMapValues(rnss)
+		remoteNss := slices.Collect(maps.Values(rnss))
 		if len(remoteNss) > 1 {
 			klog.InfoS("Found more than one Namespace pointing to ScyllaDBCluster of the same UID, ignoring both to prune the extra one", "Cluster", dc.RemoteKubernetesClusterName, "ScyllaDBCluster", naming.ObjRef(sc), "UID", sc.UID)
 			continue

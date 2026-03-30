@@ -1,11 +1,12 @@
 package scylladbdatacenter
 
 import (
+	"cmp"
 	"context"
 	"crypto/x509/pkix"
 	"fmt"
 	"net"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -289,8 +290,8 @@ func (sdcc *Controller) syncCerts(
 		}
 
 		// Make sure ipAddresses are always sorted and can be reconciled in a declarative way.
-		sort.SliceStable(ipAddresses, func(i, j int) bool {
-			return ipAddresses[i].String() < ipAddresses[j].String()
+		slices.SortStableFunc(ipAddresses, func(a, b net.IP) int {
+			return cmp.Compare(a.String(), b.String())
 		})
 
 		var hostIDs []string
@@ -334,7 +335,7 @@ func (sdcc *Controller) syncCerts(
 		}
 
 		// Make sure servingDNSNames are always sorted and can be reconciled in a declarative way.
-		sort.Strings(servingDNSNames)
+		slices.Sort(servingDNSNames)
 
 		if len(progressingMessages) != 0 {
 			progressingConditions = append(progressingConditions, metav1.Condition{

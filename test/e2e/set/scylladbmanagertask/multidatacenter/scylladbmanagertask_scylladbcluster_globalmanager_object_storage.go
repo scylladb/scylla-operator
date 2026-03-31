@@ -5,14 +5,12 @@ package multidatacenter
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/gocql/gocql"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
@@ -279,7 +277,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		framework.By("Waiting for the source ScyllaDBCluster to be deleted")
 		sourceSCDeletionCtx, sourceSCDeletionCtxCancel := context.WithTimeoutCause(
 			ctx,
-			utils.ScyllaDBTerminationTimeout,
+			utils.ScyllaDBMultiDatacenterClusterTerminationTimeout,
 			fmt.Errorf("source ScyllaDBCluster %q has not been deleted in time", naming.ObjRef(sourceSC)),
 		)
 		defer sourceSCDeletionCtxCancel()
@@ -322,16 +320,27 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		o.Expect(err).NotTo(o.HaveOccurred())
 		allTargetHosts := slices.Concat(slices.Collect(maps.Values(targetHostsByDC))...)
 		o.Expect(allTargetHosts).To(o.HaveLen(int(controllerhelpers.GetScyllaDBClusterNodeCount(targetSC))))
-		err = di.SetClientEndpoints(allTargetHosts)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = di.AwaitSchemaAgreement(ctx)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		_, err = di.Read()
-		o.Expect(err).To(o.HaveOccurred())
-		var gocqlErr gocql.RequestError
-		o.Expect(errors.As(err, &gocqlErr)).To(o.BeTrue())
-		o.Expect(gocqlErr.Code()).To(o.Equal(gocql.ErrCodeInvalid))
-		o.Expect(gocqlErr.Error()).To(o.And(o.HavePrefix("Keyspace"), o.HaveSuffix("does not exist")))
+
+		// After a fresh cluster is provisioned, nodes may still be finishing gossip stabilisation.
+		// During this window, CQL queries can receive transport-level errors instead of the expected
+		// protocol-level error. Retry with a fresh session on each attempt until the cluster
+		// is reachable and confirms the keyspace does not yet exist.
+		// Note: gocql may wrap protocol-level errors inside a QueryError, losing the typed
+		// RequestError interface. We assert on the error message instead of the error type.
+		cqlStabilisationCtx, cqlStabilisationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBClusterCQLStabilizationTimeout,
+			fmt.Errorf("target ScyllaDBCluster %q did not reach CQL stability in time", naming.ObjRef(targetSC)),
+		)
+		defer cqlStabilisationCtxCancel()
+
+		o.Eventually(func(eo o.Gomega) {
+			eo.Expect(di.SetClientEndpoints(allTargetHosts)).NotTo(o.HaveOccurred())
+			eo.Expect(di.AwaitSchemaAgreement(cqlStabilisationCtx)).NotTo(o.HaveOccurred())
+			_, readErr := di.Read()
+			eo.Expect(readErr).To(o.HaveOccurred())
+			eo.Expect(readErr.Error()).To(o.ContainSubstring("does not exist"))
+		}).WithContext(cqlStabilisationCtx).WithPolling(5 * time.Second).Should(o.Succeed())
 
 		// Close the existing session to avoid polluting the logs.
 		di.Close()

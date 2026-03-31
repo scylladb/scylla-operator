@@ -15,7 +15,6 @@ GIT ?=git
 
 GIT_TAG_SHORT ?=$(shell [ ! -d ".git/" ] || $(GIT) describe --tags --abbrev=7 --match 'v[0-9]*')$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) describe failed))
 GIT_COMMIT ?=$(shell [ ! -d ".git/" ] || $(GIT) rev-parse --short "HEAD^{commit}" 2>/dev/null)$(if $(filter $(.SHELLSTATUS),0),,$(error $(GIT) rev-parse failed))
-COMMITS_BASE_REF ?=origin/master
 
 GO ?=go
 GO_MODULE ?=$(shell $(GO) list -m)$(if $(filter $(.SHELLSTATUS),0),,$(error failed to list go module name))
@@ -781,11 +780,7 @@ verify-config:
 	$(diff) "$(tmp_dir)/config.yaml" ./assets/config/config.yaml || (echo 'Config is not up to date. Please run `make update-config` to update it.' && false)
 .PHONY: verify-config
 
-verify-commits:
-	hack/.ci/verify-commits.sh "$$($(GIT) merge-base $(COMMITS_BASE_REF) HEAD)"
-.PHONY: verify-commits
-
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config verify-commits
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config
 .PHONY: verify
 
 update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports update-config

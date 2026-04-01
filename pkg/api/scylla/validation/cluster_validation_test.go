@@ -38,6 +38,18 @@ func TestValidateScyllaCluster(t *testing.T) {
 			expectedErrorString: "",
 		},
 		{
+			name: "empty version",
+			cluster: func() *scyllav1.ScyllaCluster {
+				cluster := validCluster.DeepCopy()
+				cluster.Spec.Version = ""
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeRequired, Field: "spec.version", BadValue: ""},
+			},
+			expectedErrorString: `spec.version: Required value`,
+		},
+		{
 			name: "two racks with same name",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
@@ -1101,6 +1113,19 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			new:                 unit.NewSingleRackCluster(3),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
+		},
+		{
+			name: "empty version",
+			old:  unit.NewSingleRackCluster(3),
+			new: func() *scyllav1.ScyllaCluster {
+				cluster := unit.NewSingleRackCluster(3)
+				cluster.Spec.Version = ""
+				return cluster
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeRequired, Field: "spec.version", BadValue: ""},
+			},
+			expectedErrorString: `spec.version: Required value`,
 		},
 		{
 			name:                "major version changed",

@@ -12,7 +12,9 @@
 ### Upgrade requirements
 
 - Rename `ScyllaCluster` backup and repair tasks to comply with RFC 1123 (e.g., if they contain underscores `_`).
-  For details, refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.com/stable/management/upgrading/upgrade/#to-1-21).
+- Ensure all `ScyllaCluster`'s `spec.version` is not empty.
+  
+For details, refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.com/stable/management/upgrading/upgrade/#to-1-21).
 
 ### Deprecations
 
@@ -38,6 +40,7 @@
   [#3363](https://github.com/scylladb/scylla-operator/pull/3363)
 - `must-gather` resource collection now tolerates partial API discovery failures (e.g., when aggregated API servers like `metrics.k8s.io` are transiently unavailable) instead of failing entirely.
   [#3396](https://github.com/scylladb/scylla-operator/pull/3396)
+- Fixed [#3302](https://github.com/scylladb/scylla-operator/issues/3302): `ScyllaCluster` `spec.version` is now a required field. Previously, an empty value was accepted but caused a silent failure in the migration controller.
 
 ### Dependencies
 

@@ -355,6 +355,47 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 	}
 }
 
+func TestMigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name           string
+		scyllaCluster  *scyllav1.ScyllaCluster
+		expectedErrMsg string
+	}{
+		{
+			name: "empty version returns an error",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.Version = ""
+				return sc
+			}(),
+			expectedErrMsg: "v1alpha1.ScyllaCluster ScyllaDB version cannot be empty",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(tc.scyllaCluster.Name, tc.scyllaCluster.Spec)
+			if len(tc.expectedErrMsg) == 0 {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tc.expectedErrMsg)
+			}
+			if !strings.Contains(err.Error(), tc.expectedErrMsg) {
+				t.Errorf("expected error to contain %q, got %q", tc.expectedErrMsg, err.Error())
+			}
+		})
+	}
+}
+
 func newBasicScyllaCluster() *scyllav1.ScyllaCluster {
 	return &scyllav1.ScyllaCluster{
 		ObjectMeta: metav1.ObjectMeta{

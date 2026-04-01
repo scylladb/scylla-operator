@@ -62,6 +62,8 @@ Make sure to familiarize yourself with both the standard upgrade procedure and t
 
 ### 1.20 to 1.21
 
+#### Ensure ScyllaCluster repair and backup task names are RFC 1123 compliant
+
 Before upgrading, ensure that all `ScyllaCluster` repair (`.spec.repairs[].name`) and backup (`.spec.backups[].name`) task names conform to [RFC 1123 subdomain](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) requirements:
 - contain no more than 253 characters,
 - contain only lowercase alphanumeric characters, '-' or '.',
@@ -103,6 +105,25 @@ All ScyllaCluster repair and backup task names are RFC 1123 compliant.
 **Why is this necessary?**
 Starting with v1.20.1, ScyllaDB Operator emitted warnings for `ScyllaCluster` repair and backup task names not conforming to RFC 1123 subdomain requirements.
 In v1.21, these warnings have been replaced with hard validation errors, and the operator will refuse to start if any existing `ScyllaClusters` have non-conforming task names.
+:::
+
+#### Ensure ScyllaCluster spec.version is not empty
+
+`ScyllaCluster` `spec.version` is now a required field. Any create or update request with an empty value will be rejected by the admission webhook.
+You can run the following snippet to check whether any of your existing `ScyllaClusters` have an empty `spec.version`:
+
+```bash
+kubectl get scyllaclusters --all-namespaces -o json | jq -r '
+  .items[] | select((.spec.version // "") == "") |
+  "\(.metadata.namespace)/\(.metadata.name)"
+'
+```
+
+If the command returns no output, all your `ScyllaClusters` are unaffected. If any are listed, set their `spec.version` to a valid ScyllaDB image tag before upgrading.
+
+:::{note}
+**Why is this not a breaking change?**
+A `ScyllaCluster` with an empty `spec.version` was never functional. The migration controller would fail to reconcile it, leaving the cluster in a permanently degraded state. Making the field required only prevents new broken clusters from being created.
 :::
 
 ### 1.17 to 1.18

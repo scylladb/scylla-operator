@@ -10,11 +10,8 @@
 ### Highlights
 
 ### Upgrade requirements
-
-- Rename `ScyllaCluster` backup and repair tasks to comply with RFC 1123 (e.g., if they contain underscores `_`).
-- Ensure all `ScyllaCluster`'s `spec.version` is not empty.
   
-For details, refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.com/stable/management/upgrading/upgrade/#to-1-21).
+Please refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.com/stable/management/upgrading/upgrade/#to-1-21).
 
 ### Deprecations
 

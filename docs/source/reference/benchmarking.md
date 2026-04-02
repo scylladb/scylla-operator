@@ -119,6 +119,24 @@ Key metrics:
 - Run both write and read benchmarks. Mixed workloads (`-mode=mixed` in scylla-bench) simulate real application patterns.
 - If throughput does not scale linearly with CPU cores, check for bottlenecks: disk I/O (`iostat`), network (`iftop`), or client-side saturation (add more benchmark pods).
 
+### Reference baselines
+
+The following are rough reference baselines for a single-node ScyllaDB instance with properly tuned CPU pinning, NVMe local storage, and XFS filesystem. These are starting points, not guarantees — actual performance depends on workload, hardware, and data distribution.
+
+| Configuration | Op/s (read) | Op/s (write) | p99 read latency |
+|---|---|---|---|
+| 4 vCPU, 16 GiB, 1 NVMe disk | ~50,000 | ~40,000 | < 2 ms |
+| 16 vCPU, 64 GiB, 2 NVMe disks | ~200,000 | ~150,000 | < 2 ms |
+| 32 vCPU, 128 GiB, 4 NVMe disks | ~400,000 | ~300,000 | < 2 ms |
+
+Conditions: 1 KB row size, replication factor 3, consistency level LOCAL_QUORUM, cassandra-stress mixed read/write workload.
+
+If your results are significantly below these baselines, check:
+1. CPU pinning is active (see [Configure CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md))
+2. `--overprovisioned` is `0` in ScyllaDB logs
+3. `io_properties` are correctly configured (see [Configure IO properties](../operate/configure-io-properties.md))
+4. No CPU throttling (`kubectl top pod` shows CPU near limits)
+
 ## Related pages
 
 - [Production checklist](../deploy-scylladb/production-checklist.md) — verify cluster readiness before benchmarking.

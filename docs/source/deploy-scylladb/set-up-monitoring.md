@@ -165,6 +165,35 @@ Verify that the Grafana pod is running:
 kubectl -n scylla rollout status deployment/example-grafana
 ```
 
+### Verify metrics are being scraped
+
+Confirm that Prometheus is successfully scraping ScyllaDB metrics.
+
+**Check ServiceMonitor status:**
+```bash
+kubectl -n scylla-monitoring get servicemonitor
+```
+Expected output shows ServiceMonitors for your cluster:
+```
+NAME      AGE
+scylla    2m
+```
+
+**Query active Prometheus targets:**
+
+Forward the Prometheus port and query its API:
+```bash
+kubectl -n scylla-monitoring port-forward svc/prometheus-operated 9090:9090 &
+curl -s 'http://localhost:9090/api/v1/targets' | python3 -m json.tool | grep -A3 '"job":"scylla"'
+```
+Look for targets with `"health":"up"`. If targets show `"health":"down"`, check the `lastError` field for the scrape failure reason.
+
+**Check a ScyllaDB metric:**
+```bash
+curl -s 'http://localhost:9090/api/v1/query?query=scylla_transport_requests_served' | python3 -m json.tool
+```
+A non-empty `result` array confirms metrics are flowing.
+
 ## Key fields explained
 
 ### ScyllaDBMonitoring spec

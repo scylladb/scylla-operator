@@ -109,6 +109,40 @@ All nodes should show status `UN` (Up / Normal) with IPv6 addresses (colon-separ
 - Monitoring and management tools must also support IPv6.
 - If you need to support IPv4 clients, use [dual-stack](configure-dual-stack.md) instead.
 
+## Troubleshoot
+
+### Pods fail to schedule with `Unschedulable` status
+
+If pods remain in `Pending` state with reason `Unschedulable`:
+
+```bash
+kubectl describe pod -n scylla <pod-name> | grep -A5 "Events:"
+```
+
+Check that:
+- Nodes are labelled with the correct zone topology labels.
+- The `ipFamilies: [IPv6]` field is set at the ScyllaCluster level, not just on the service.
+
+### CQL connections refused after enabling single-stack
+
+If clients report connection refused errors after switching to IPv6:
+
+1. Verify the headless service has an IPv6 `ClusterIP`:
+   ```bash
+   kubectl get svc -n scylla -o wide
+   ```
+2. Confirm the pod has an IPv6 address assigned:
+   ```bash
+   kubectl get pod -n scylla <pod-name> -o jsonpath='{.status.podIPs}'
+   ```
+3. Ensure your CQL driver is configured to use IPv6 addresses. Many drivers default to IPv4 contact points.
+
+### Clients cannot resolve the IPv6 address via DNS
+
+If DNS returns an A record (IPv4) instead of AAAA (IPv6):
+- Check that `spec.ipFamilyPolicy` is set to `SingleStack`, not `PreferDualStack`.
+- Verify the Kubernetes cluster itself uses IPv6 for pod networking by checking `kubectl get nodes -o wide`.
+
 ## Related pages
 
 - [Get started with IPv6](get-started.md)

@@ -100,9 +100,21 @@ The instance type determines the available CPU, memory, storage, and network ban
 
 ### GKE
 
-<!-- TODO: Add recommended GKE instance types with NVMe local SSDs (e.g., n2-highmem with local SSD, c3d with local SSD). Cross-reference with GKE node pool setup in deploy-scylladb/set-up-dedicated-node-pools.md. -->
+Use `n2-highmem` or `c3d-highmem` instances with local NVMe SSDs attached. GKE local SSDs are 375 GiB each, NVMe, and attached directly to the host. For example:
 
-Use instance types with local NVMe SSDs. The GKE quickstart and examples use nodes with local SSDs attached.
+| Instance type | vCPUs | Memory | Local SSDs | Use case |
+|---|---|---|---|---|
+| `n2-highmem-8` | 8 | 64 GiB | 1–2 × 375 GiB | Development / testing |
+| `n2-highmem-16` | 16 | 128 GiB | 2–4 × 375 GiB | Production |
+| `n2-highmem-32` | 32 | 256 GiB | 4–8 × 375 GiB | Large production |
+| `c3d-highmem-16` | 16 | 128 GiB | local SSD | New deployments (latest generation) |
+| `c3d-highmem-30` | 30 | 240 GiB | local SSD | High performance |
+
+:::{note}
+The `c3d` family is the latest generation and is recommended for new GKE deployments. The number of local SSDs is configured at node pool creation time.
+:::
+
+For GKE node pool configuration, see [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md).
 
 ### EKS
 

@@ -130,7 +130,25 @@ Use `i`-family instances with NVMe instance storage. For example:
 The `i3` family is outdated. Use `i4i` or newer instances.
 :::
 
-<!-- TODO: Add more instance families (im4gn for ARM, is4gen for storage-dense workloads). Verify pricing and availability. -->
+The `im4gn` family uses ARM Graviton3 processors with NVMe local SSDs and is a cost-optimized option for storage-intensive deployments:
+
+| Instance type | vCPUs | Memory | NVMe storage |
+|---|---|---|---|
+| `im4gn.2xlarge` | 8 | 32 GiB | 1 × 1,875 GiB |
+| `im4gn.4xlarge` | 16 | 64 GiB | 1 × 3,750 GiB |
+| `im4gn.8xlarge` | 32 | 128 GiB | 2 × 3,750 GiB |
+
+The `is4gen` family uses ARM Graviton2 processors and provides a high memory-to-vCPU ratio, making it well-suited for memory-intensive workloads:
+
+| Instance type | vCPUs | Memory | NVMe storage |
+|---|---|---|---|
+| `is4gen.2xlarge` | 8 | 48 GiB | 1 × 3,750 GiB |
+| `is4gen.4xlarge` | 16 | 96 GiB | 2 × 3,750 GiB |
+| `is4gen.8xlarge` | 32 | 192 GiB | 4 × 3,750 GiB |
+
+:::{note}
+The `im4gn` and `is4gen` families are ARM-based (`arm64` architecture). They require ScyllaDB images built for `arm64`. Check the [ScyllaDB Operator release page](https://github.com/scylladb/scylla-operator/releases) for available architectures before using these instance types.
+:::
 
 ## Storage sizing
 

@@ -22,12 +22,6 @@ Use the pod state to jump to the relevant section:
 
 The pod cannot be placed on any node.
 
-```bash
-kubectl -n scylla describe pod <pod-name>
-```
-
-Look for `FailedScheduling` events.
-
 ### Common causes
 
 | Cause | How to verify | Resolution |
@@ -38,14 +32,15 @@ Look for `FailedScheduling` events.
 | PVC binding failure | Event mentions `unbound immediate PersistentVolumeClaims` | Verify the StorageClass exists and has available volumes; see [Local CSI driver](../install-operator/install-with-gitops.md) |
 | No nodes with required label | No schedulable nodes match | Verify node pool has label `scylla.scylladb.com/node-type=scylla` |
 
-## Init container stuck
-
-Check which init container is running:
+### Diagnose
 
 ```bash
-kubectl -n scylla get pod <pod-name> -o jsonpath='{.status.initContainerStatuses[*].name}'
-kubectl -n scylla logs <pod-name> -c <init-container-name>
+kubectl -n scylla describe pod <pod-name>
 ```
+
+Look for `FailedScheduling` events.
+
+## Init container stuck
 
 ### scylladb-bootstrap-barrier
 
@@ -66,14 +61,19 @@ This init container applies sysctl settings configured via NodeConfig.
 - Verify NodeConfig is applied to the node: `kubectl get nodeconfig -o wide`
 - See [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md).
 
+### Diagnose
+
+Check which init container is running:
+
+```bash
+kubectl -n scylla get pod <pod-name> -o jsonpath='{.status.initContainerStatuses[*].name}'
+kubectl -n scylla logs <pod-name> -c <init-container-name>
+```
+
 ## Ignition not completing
 
 The pod is `Running` but ScyllaDB has not started.
 The ignition sidecar waits for prerequisites before starting ScyllaDB.
-
-```bash
-kubectl -n scylla logs <pod-name> -c scylladb-ignition
-```
 
 ### Common causes
 
@@ -85,13 +85,15 @@ kubectl -n scylla logs <pod-name> -c scylladb-ignition
 
 See [Ignition architecture](../understand/ignition.md) for details on the ignition sequence.
 
+### Diagnose
+
+```bash
+kubectl -n scylla logs <pod-name> -c scylladb-ignition
+```
+
 ## CrashLoopBackOff
 
 ScyllaDB starts but crashes immediately.
-
-```bash
-kubectl -n scylla logs <pod-name> -c scylla --previous
-```
 
 ### Common causes
 
@@ -102,6 +104,12 @@ kubectl -n scylla logs <pod-name> -c scylla --previous
 | Wrong seeds | `Could not reach any seeds` | Verify the cluster Service exists and has endpoints |
 | Disk permission issues | `Permission denied` | Verify PVC ownership and StorageClass settings |
 | Incompatible ScyllaDB version | Version mismatch errors | Verify the upgrade path is supported; see [Upgrading ScyllaDB](../upgrade/upgrade-scylladb.md) |
+
+### Diagnose
+
+```bash
+kubectl -n scylla logs <pod-name> -c scylla --previous
+```
 
 ## Recovery actions
 

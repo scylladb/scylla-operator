@@ -155,12 +155,10 @@ The support matrix table shows the version requirements for ScyllaDB Operator. M
 * - ScyllaDB Manager
   - 3.7 - 3.8
 * - ScyllaDB Monitoring
-  - any (CRD-based)
+  - {{scyllaDBMonitoringVersion}} [^scylladb-monitoring-version]
 :::
 
-**ScyllaDB Monitoring compatibility** is determined by the `ScyllaDBMonitoring` CRD version bundled with ScyllaDB Operator, not a fixed Monitoring release.
-Any ScyllaDB Monitoring version that supports the installed CRD schema is compatible.
-Check the [ScyllaDB Monitoring documentation](https://monitoring.docs.scylladb.com/) for release compatibility details.
+[^scylladb-monitoring-version]: ScyllaDB Operator embeds the specified version of ScyllaDB Monitoring, which includes a set of Grafana dashboards and Prometheus rules.
 
 ### Architectures
 

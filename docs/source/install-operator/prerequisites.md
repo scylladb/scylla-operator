@@ -2,6 +2,61 @@
 
 This page lists the requirements that your Kubernetes cluster must meet before you install ScyllaDB Operator.
 
+## Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| Kubernetes | 1.31–1.34 (current release); see the full version table below |
+| cert-manager | Any version providing the `cert-manager.io/v1` API |
+| Container runtime | CRI API v1 |
+| CLI tools | `kubectl`, `helm` |
+
+## Verify prerequisites
+
+### Kubernetes version
+
+Check that your cluster is running a supported Kubernetes version:
+
+```bash
+kubectl version
+```
+
+Expected output: server version within 1.31–1.34.
+
+### Cluster-admin permissions
+
+Verify you have cluster-admin permissions (required to install CRDs and cluster-scoped RBAC resources):
+
+```bash
+kubectl auth can-i '*' '*' --all-namespaces
+```
+
+Expected output: `yes`
+
+### cert-manager
+
+Verify cert-manager is installed and provides the `cert-manager.io/v1` API:
+
+```bash
+kubectl get crd certificates.cert-manager.io
+```
+
+Expected output: the resource is listed without errors.
+
+### CLI tools
+
+Verify `kubectl` is installed:
+
+```bash
+kubectl version --client
+```
+
+Verify `helm` is installed:
+
+```bash
+helm version
+```
+
 ## Kubernetes version
 
 ScyllaDB Operator requires a conformant Kubernetes cluster. The table below shows the supported Kubernetes versions for each Operator release.

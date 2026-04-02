@@ -2,7 +2,6 @@
 
 This reference documents the IPv6-specific API fields, automatic ScyllaDB settings, validation rules, and version requirements for IPv6 networking.
 
-<!-- TODO: Link to auto-generated API reference once reference/api/ is created. -->
 For complete field definitions and schemas, see the ScyllaCluster API reference.
 For setup instructions, see [IPv6 networking](../deploy-scylladb/set-up-networking/ipv6/index.md).
 

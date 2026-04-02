@@ -91,6 +91,12 @@ spec:
 
 The `developerMode: true` flag lowers resource requirements and relaxes some checks, making it suitable for quick testing. Do not use developer mode in production.
 
+:::{important}
+For production deployments, use a **minimum of 3 racks** (one per availability zone) with a **minimum of 1 node per rack** (3 nodes total).
+This matches the standard replication factor of 3 and guarantees that any single availability zone failure does not cause data loss.
+A single-rack or single-node deployment is only appropriate for development and testing.
+:::
+
 ### Production example
 
 A production-grade cluster with 3 racks across availability zones, authentication enabled, and properly sized resources:
@@ -232,6 +238,15 @@ Adjust CPU, memory, and storage values to match your workload requirements and i
 
 :::{caution}
 For CPU pinning and performance tuning, all containers in the pod must have **Guaranteed QoS class** (resource requests equal limits for both CPU and memory). This includes both the ScyllaDB container (`resources`) and the ScyllaDB Manager Agent sidecar (`agentResources`). See [CPU pinning](before-you-deploy/configure-cpu-pinning.md).
+:::
+
+:::{tip}
+**Manager Agent resource sizing:** The Agent sidecar performs backup uploads and repair coordination. For production clusters:
+- **CPU**: `200m` request, `200m` limit is a reasonable baseline for most clusters.
+- **Memory**: `200Mi` request, `200Mi` limit is a reasonable baseline.
+  For large clusters (>50M SSTables or heavy repair schedules) consider `500Mi` limit.
+
+Set `resources.requests` equal to `resources.limits` (Guaranteed QoS class) to prevent scheduler preemption during backup operations.
 :::
 
 ## Key fields explained

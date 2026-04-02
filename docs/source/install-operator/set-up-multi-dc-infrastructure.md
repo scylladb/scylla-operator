@@ -197,11 +197,81 @@ aws ec2 authorize-security-group-ingress --region us-east-2 \
 
 ## Verifying connectivity
 
-After setting up the infrastructure, verify end-to-end Pod connectivity:
+After setting up the infrastructure, verify end-to-end Pod connectivity between clusters before deploying ScyllaDB.
 
-1. Deploy a test pod in each cluster.
-2. From each test pod, ping or `curl` a pod IP in every other cluster.
-3. Verify that ScyllaDB ports (7000, 7001, 9042) are reachable across clusters.
+### Step 1: Deploy a test pod in each cluster
+
+In cluster 1:
+```bash
+kubectl --context=<cluster1-context> run net-test --image=busybox --restart=Never -- sleep 3600
+```
+
+In cluster 2:
+```bash
+kubectl --context=<cluster2-context> run net-test --image=busybox --restart=Never -- sleep 3600
+```
+
+Wait for the pods to be running before continuing (up to 60 seconds):
+```bash
+kubectl --context=<cluster1-context> wait pod net-test --for=condition=Ready --timeout=60s
+kubectl --context=<cluster2-context> wait pod net-test --for=condition=Ready --timeout=60s
+```
+
+Expected output:
+```
+pod/net-test condition met
+pod/net-test condition met
+```
+
+### Step 2: Get Pod IPs
+
+```bash
+CLUSTER1_POD_IP=$(kubectl --context=<cluster1-context> get pod net-test -o jsonpath='{.status.podIP}')
+CLUSTER2_POD_IP=$(kubectl --context=<cluster2-context> get pod net-test -o jsonpath='{.status.podIP}')
+echo "Cluster 1 pod IP: $CLUSTER1_POD_IP"
+echo "Cluster 2 pod IP: $CLUSTER2_POD_IP"
+```
+
+Expected output:
+```
+Cluster 1 pod IP: 10.1.x.x
+Cluster 2 pod IP: 172.17.x.x
+```
+
+Each IP should belong to the Pod CIDR of its respective cluster and must not overlap.
+
+### Step 3: Test cross-cluster connectivity
+
+From cluster 1 to cluster 2:
+```bash
+kubectl --context=<cluster1-context> exec net-test -- wget -qO- http://$CLUSTER2_POD_IP
+```
+
+From cluster 2 to cluster 1:
+```bash
+kubectl --context=<cluster2-context> exec net-test -- wget -qO- http://$CLUSTER1_POD_IP
+```
+
+A connection timeout indicates the routing or peering is not configured correctly. A refused connection (not a timeout) means routing works but no server is running — which is expected and confirms connectivity.
+
+### Step 4: Verify ScyllaDB ports
+
+Confirm that ScyllaDB inter-node (7000, 7001) and CQL (9042) ports are reachable across clusters:
+
+```bash
+kubectl --context=<cluster1-context> exec net-test -- nc -zv $CLUSTER2_POD_IP 7000
+kubectl --context=<cluster1-context> exec net-test -- nc -zv $CLUSTER2_POD_IP 7001
+kubectl --context=<cluster1-context> exec net-test -- nc -zv $CLUSTER2_POD_IP 9042
+```
+
+These commands will only show successful results once a ScyllaDB pod is listening on the target. Before deploying ScyllaDB, a refused connection (not a timeout) is the expected outcome and confirms that routing is working.
+
+### Step 5: Clean up test pods
+
+```bash
+kubectl --context=<cluster1-context> delete pod net-test
+kubectl --context=<cluster2-context> delete pod net-test
+```
 
 If connectivity fails, check:
 - VPC peering connection status (EKS) or firewall rules (GKE).

@@ -251,11 +251,11 @@ spec:
 
 Setting `serviceMonitorNamespaceSelector: {}` and `ruleNamespaceSelector: {}` allows Prometheus to discover resources across all namespaces. The `matchExpressions` filter ensures only the listed `ScyllaDBMonitoring` instances are scraped.
 
-## Multi-datacenter monitoring
+## Multi-datacenter clusters
 
-For multi-DC clusters using multiple `ScyllaCluster` resources across separate Kubernetes clusters, deploy a `ScyllaDBMonitoring` resource independently in each datacenter's Kubernetes cluster. Each `ScyllaDBMonitoring` instance monitors the local `ScyllaCluster` through a local Prometheus and Grafana stack.
-
-See [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md) for the overall multi-DC deployment procedure.
+For multi-datacenter deployments using multiple `ScyllaCluster` resources, deploy a separate `ScyllaDBMonitoring` resource in each datacenter's Kubernetes cluster, following the same steps above.
+Each datacenter is monitored independently by its local Prometheus instance.
+See [Deploy a multi-datacenter cluster](deploy-multi-dc-cluster.md) for the complete multi-DC deployment guide.
 
 ## OpenShift User Workload Monitoring
 

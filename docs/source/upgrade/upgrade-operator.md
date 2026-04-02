@@ -139,6 +139,58 @@ If you set `webhookServerReplicas` to `1`, no PDB is created and webhook availab
 ScyllaDB resource mutations will fail while the single pod is restarting.
 :::
 
+## Upgrade steps for specific versions
+
+:::{caution}
+The below instructions are **supplementary** to the standard upgrade procedure and don't fully replace it.
+Make sure to familiarize yourself with both the standard upgrade procedure and the additional steps for the specific version you are upgrading to, if applicable, and follow them accordingly.
+:::
+
+### 1.20 to 1.21
+
+Before upgrading, ensure that all `ScyllaCluster` repair (`.spec.repairs[].name`) and backup (`.spec.backups[].name`) task names conform to [RFC 1123 subdomain](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) requirements:
+- contain no more than 253 characters,
+- contain only lowercase alphanumeric characters, '-' or '.',
+- start with an alphanumeric character,
+- end with an alphanumeric character.
+
+You can run the following snippet to check for such `ScyllaClusters`:
+```bash
+output=$(kubectl get scyllaclusters --all-namespaces -o json | jq -r '
+  def is_rfc1123_subdomain_invalid:
+    (length <= 253) and test("^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$") | not;
+  .items[] |
+  {
+    namespace: .metadata.namespace,
+    name: .metadata.name,
+    invalid_repairs: [(.spec.repairs // [] | .[].name | select(is_rfc1123_subdomain_invalid))],
+    invalid_backups: [(.spec.backups // [] | .[].name | select(is_rfc1123_subdomain_invalid))]
+  } |
+  select((.invalid_repairs | length > 0) or (.invalid_backups | length > 0)) |
+  "\(.namespace)/\(.name)\n  Invalid repairs: \(if (.invalid_repairs | length) > 0 then (.invalid_repairs | join(", ")) else "(none)" end)\n  Invalid backups: \(if (.invalid_backups | length) > 0 then (.invalid_backups | join(", ")) else "(none)" end)\n"
+') && if [ -z "$output" ]; then echo "All ScyllaCluster repair and backup task names are RFC 1123 compliant."; else echo "$output"; fi
+```
+
+You should get an output similar to the following if there are any `ScyllaClusters` with invalid repair or backup task names:
+
+```console
+scylla/example
+  Invalid repairs: invalid_repair
+  Invalid backups: invalid_backup
+```
+
+or the following if all `ScyllaCluster` repair and backup task names are compliant:
+
+```console
+All ScyllaCluster repair and backup task names are RFC 1123 compliant.
+```
+
+:::{note}
+**Why is this necessary?**
+Starting with v1.20.1, ScyllaDB Operator emitted warnings for `ScyllaCluster` repair and backup task names not conforming to RFC 1123 subdomain requirements.
+In v1.21, these warnings have been replaced with hard validation errors, and the Operator will refuse to start if any existing `ScyllaClusters` have non-conforming task names.
+:::
+
 ## Related pages
 
 - [Prerequisites](../install-operator/prerequisites.md) — version compatibility matrix

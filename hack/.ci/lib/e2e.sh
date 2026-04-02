@@ -257,6 +257,7 @@ function run-e2e {
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
   SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
   SO_WAIT_FOR_E2E_POD_DELETE="${SO_WAIT_FOR_E2E_POD_DELETE:-false}"
+  SCYLLADB_IMAGE_REF="${SCYLLADB_IMAGE_REF:-}"
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
   SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
@@ -395,6 +396,10 @@ function run-e2e {
 
   if [[ -n "${SO_FOCUS+x}" ]]; then
     e2e_command_args+=( "--focus=${SO_FOCUS}" )
+  fi
+
+  if [[ -n "${SCYLLADB_IMAGE_REF}" ]]; then
+    e2e_command_args+=( "--scylladb-image-ref=${SCYLLADB_IMAGE_REF}" )
   fi
 
   kubectl_create -n=e2e -f=- <<EOF

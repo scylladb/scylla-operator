@@ -10,7 +10,7 @@ spec:
   clusterName: basic
   datacenterName: us-east-1
   scyllaDB:
-    image: "{{ .scyllaDBRepository }}:{{ .scyllaDBVersion }}"
+    image: "{{ .scyllaDBImageRef }}"
     enableDeveloperMode: true
     {{- if .scyllaArgs }}
     additionalScyllaDBArguments: [

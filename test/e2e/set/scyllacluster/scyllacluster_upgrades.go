@@ -26,14 +26,14 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 	})
 
 	type entry struct {
-		rackSize       int32
-		rackCount      int32
-		initialVersion string
-		updatedVersion string
+		rackSize        int32
+		rackCount       int32
+		initialImageRef string
+		targetImageRef  string
 	}
 
 	describeEntry := func(e *entry) string {
-		return fmt.Sprintf("with %d member(s) and %d rack(s) from %s to %s", e.rackSize, e.rackCount, e.initialVersion, e.updatedVersion)
+		return fmt.Sprintf("with %d member(s) and %d rack(s) from %s to %s", e.rackSize, e.rackCount, e.initialImageRef, e.targetImageRef)
 	}
 
 	g.DescribeTable("should deploy and update",
@@ -41,8 +41,15 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 			defer cancel()
 
+			initialRepo, initialVersion, err := framework.ScyllaDBImageRefToRepositoryVersion(e.initialImageRef)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			targetRepo, targetVersion, err := framework.ScyllaDBImageRefToRepositoryVersion(e.targetImageRef)
+			o.Expect(err).NotTo(o.HaveOccurred())
+
 			sc := f.GetDefaultScyllaCluster()
-			sc.Spec.Version = e.initialVersion
+			sc.Spec.Repository = initialRepo
+			sc.Spec.Version = initialVersion
 
 			o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 			rack := &sc.Spec.Datacenter.Racks[0]
@@ -55,9 +62,9 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			}
 
 			framework.By("Creating a ScyllaCluster")
-			sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+			sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(sc.Spec.Version).To(o.Equal(e.initialVersion))
+			o.Expect(sc.Spec.Version).To(o.Equal(initialVersion))
 
 			framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 			waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
@@ -84,14 +91,16 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 				sc.Name,
 				types.MergePatchType,
 				[]byte(fmt.Sprintf(
-					`{"metadata":{"uid":"%s"},"spec":{"version":"%s"}}`,
+					`{"metadata":{"uid":"%s"},"spec":{"repository":"%s","version":"%s"}}`,
 					sc.UID,
-					e.updatedVersion,
+					targetRepo,
+					targetVersion,
 				)),
 				metav1.PatchOptions{},
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(sc.Spec.Version).To(o.Equal(e.updatedVersion))
+			o.Expect(sc.Spec.Repository).To(o.Equal(targetRepo))
+			o.Expect(sc.Spec.Version).To(o.Equal(targetVersion))
 
 			framework.By("Waiting for the ScyllaCluster to re-deploy")
 			waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
@@ -128,34 +137,34 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 		},
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
 		g.Entry(describeEntry, &entry{
-			rackCount:      1,
-			rackSize:       1,
-			initialVersion: framework.TestContext.ScyllaDBUpdateFrom,
-			updatedVersion: framework.TestContext.ScyllaDBVersion,
+			rackCount:       1,
+			rackSize:        1,
+			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
+			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
 		}),
 		g.Entry(describeEntry, &entry{
-			rackCount:      1,
-			rackSize:       3,
-			initialVersion: framework.TestContext.ScyllaDBUpdateFrom,
-			updatedVersion: framework.TestContext.ScyllaDBVersion,
+			rackCount:       1,
+			rackSize:        3,
+			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
+			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
 		}, framework.LongRunning),
 		g.Entry(describeEntry, &entry{
-			rackCount:      1,
-			rackSize:       1,
-			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
-			updatedVersion: framework.TestContext.ScyllaDBVersion,
+			rackCount:       1,
+			rackSize:        1,
+			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
+			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
 		}),
 		g.Entry(describeEntry, &entry{
-			rackCount:      1,
-			rackSize:       3,
-			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
-			updatedVersion: framework.TestContext.ScyllaDBVersion,
+			rackCount:       1,
+			rackSize:        3,
+			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
+			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
 		}, framework.LongRunning),
 		g.Entry(describeEntry, &entry{
-			rackCount:      2,
-			rackSize:       3,
-			initialVersion: framework.TestContext.ScyllaDBUpgradeFrom,
-			updatedVersion: framework.TestContext.ScyllaDBVersion,
+			rackCount:       2,
+			rackSize:        3,
+			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
+			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
 		}, framework.LongRunning),
 	)
 })

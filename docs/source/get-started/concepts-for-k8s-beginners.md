@@ -102,10 +102,10 @@ When troubleshooting, you may encounter these Kubernetes-specific states:
 
 | State | What it means | What to check |
 |---|---|---|
-| **Pending** | The pod cannot be scheduled onto a node. | Node resources, node selectors, taints/tolerations, PVC binding. |
-| **CrashLoopBackOff** | The container keeps crashing and Kubernetes is backing off before restarting. | Container logs (`kubectl logs --previous`), ScyllaDB startup errors. |
-| **ImagePullBackOff** | Kubernetes cannot pull the container image. | Image name/tag, registry credentials, network connectivity. |
-| **Init:0/N** | Init containers have not completed yet. | Init container logs, NodeConfig status, bootstrap barrier. |
+| **Pending** | The pod cannot be scheduled onto a node. Common causes: no nodes match the affinity/toleration rules, or insufficient CPU/memory resources on available nodes. | Node resources, node selectors, taints/tolerations, PVC binding. |
+| **CrashLoopBackOff** | The container keeps crashing and Kubernetes is backing off before restarting. ScyllaDB is starting then crashes repeatedly. Common causes: misconfigured `scylla.yaml`, insufficient memory, corrupt data on the PVC, or init containers not completing. | Container logs (`kubectl logs --previous`), ScyllaDB startup errors. |
+| **ImagePullBackOff** | Kubernetes cannot pull the container image. Check the image tag, registry access from the node, and any pull secrets. | Image name/tag, registry credentials, network connectivity. |
+| **Init:0/N** | Init containers have not completed yet. An init container has not yet completed. Possible causes: the bootstrap barrier is waiting for a prerequisite, or a sidecar init is failing. | Init container logs, NodeConfig status, bootstrap barrier. |
 | **Running but not Ready** | The container is running but the readiness probe is failing. | ScyllaDB may still be starting up, or it may be unhealthy. Check logs. |
 
 For detailed troubleshooting procedures, see the [troubleshooting guide](../troubleshoot/index.md).

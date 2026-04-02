@@ -236,47 +236,7 @@ For CPU pinning and performance tuning, all containers in the pod must have **Gu
 
 ## Key fields explained
 
-### Cluster identity
-
-| Field | Description |
-|-------|-------------|
-| `metadata.name` | Cluster name. Used in StatefulSet, Service, and PVC names. |
-| `spec.datacenter.name` | Datacenter name. **Immutable** after creation. |
-| `spec.datacenter.racks[].name` | Rack name. Each rack produces one StatefulSet. |
-
-### ScyllaDB version
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| `spec.version` | ScyllaDB version tag (e.g., `2025.4.2`). **Required.** | — |
-| `spec.repository` | Container image repository. | `docker.io/scylladb/scylla` |
-| `spec.agentVersion` | ScyllaDB Manager Agent version tag. | `latest` |
-| `spec.agentRepository` | Agent container image repository. | `docker.io/scylladb/scylla-manager-agent` |
-
-:::{note}
-ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. To use Enterprise, change the `repository` to `docker.io/scylladb/scylla-enterprise` and adjust the `version` accordingly. If you also want Enterprise-specific tuning images, configure `scyllaUtilsImage` in the [ScyllaOperatorConfig](before-you-deploy/configure-operator.md).
-:::
-
-### Rack specification
-
-| Field | Description | Required |
-|-------|-------------|----------|
-| `members` | Number of ScyllaDB nodes in this rack. | Yes |
-| `storage.capacity` | PersistentVolume size per node. **Immutable** after creation. | Yes |
-| `storage.storageClassName` | StorageClass to use (e.g., `scylladb-local-xfs`). | Yes |
-| `resources` | CPU and memory for the ScyllaDB container. | Yes (limits required) |
-| `agentResources` | CPU and memory for the Manager Agent sidecar. | No (defaults: 50m CPU, 10Mi memory) |
-| `scyllaConfig` | Name of a ConfigMap containing `scylla.yaml`. | No |
-| `scyllaAgentConfig` | Name of a ConfigMap containing Agent configuration. | No |
-| `placement` | `nodeAffinity` and `tolerations` for scheduling. | No (but strongly recommended) |
-
-### Operational settings
-
-| Field | Description | Default |
-|-------|-------------|---------|
-| `developerMode` | Relaxes resource checks. **Not for production.** | `false` |
-| `automaticOrphanedNodeCleanup` | Automatically replace nodes whose Kubernetes node no longer exists. | `false` |
-| `forceRedeploymentReason` | Set to any string to trigger a rolling restart. | `""` |
+For the full API reference, see the [API reference](../reference/api/).
 
 ## Wait for the cluster to become ready
 
@@ -358,20 +318,10 @@ kubectl patch scyllacluster scylladb --type=merge -p '{"spec":{"forceRedeploymen
 
 The Operator performs the restart one pod at a time in reverse ordinal order, respecting the PodDisruptionBudget. See [StatefulSets and racks](../understand/statefulsets-and-racks.md) for details on rolling update mechanics.
 
-## IPv6 and dual-stack networking
+## IPv6 networking
 
-By default, ScyllaDB clusters use IPv4. To use IPv6 or dual-stack, configure the `network` field:
-
-| Mode | `ipFamilies` | `ipFamilyPolicy` |
-|------|-------------|-------------------|
-| IPv4 only (default) | `["IPv4"]` | `SingleStack` |
-| IPv6 only | `["IPv6"]` | `SingleStack` |
-| Dual-stack (IPv4 primary) | `["IPv4", "IPv6"]` | `PreferDualStack` |
-| Dual-stack (IPv6 primary) | `["IPv6", "IPv4"]` | `PreferDualStack` |
-
-When using IPv6, set `dnsPolicy: ClusterFirst` to ensure proper DNS resolution within the cluster.
-
-For detailed IPv6 setup instructions, see the [IPv6 networking guides](set-up-networking/index.md).
+To deploy a ScyllaDB cluster with IPv6 or dual-stack networking, see [IPv6 networking](set-up-networking/ipv6/index.md).
+The single-DC deployment steps above apply to both IPv4 and IPv6 clusters; only the `spec.network` field differs.
 
 ## Related pages
 

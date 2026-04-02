@@ -59,44 +59,35 @@ In future releases, the unencrypted CQL port `9042` will be disabled by default 
 The example below simplifies credential file creation for brevity. In production, create the credentials file with a text editor to avoid passwords leaking into shell history or environment variables.
 :::
 
-```shell
-SCYLLADB_CONFIG="$(mktemp -d)"
-CLUSTER_NAME=scylladb
+**Step 1: Identify the CA certificate Secret**
 
-# Create credentials file
-cat <<EOF > "${SCYLLADB_CONFIG}/credentials"
-[PlainTextAuthProvider]
-username = <your_username>
-password = <your_password>
-EOF
-chmod 600 "${SCYLLADB_CONFIG}/credentials"
+The CA certificate secret is named `<cluster-name>-local-client-ca`:
+```bash
+kubectl -n scylla get secrets | grep client-ca
+```
 
-# Get the discovery endpoint
-SCYLLADB_DISCOVERY_EP="$(kubectl get service/${CLUSTER_NAME}-client -o='jsonpath={.spec.clusterIP}')"
+**Step 2: Extract the CA certificate**
 
-# Extract TLS certificates
-kubectl get configmap/${CLUSTER_NAME}-local-serving-ca \
-  -o='jsonpath={.data.ca-bundle\.crt}' > "${SCYLLADB_CONFIG}/serving-ca-bundle.crt"
-kubectl get secret/${CLUSTER_NAME}-local-user-admin \
-  -o='jsonpath={.data.tls\.crt}' | base64 -d > "${SCYLLADB_CONFIG}/admin.crt"
-kubectl get secret/${CLUSTER_NAME}-local-user-admin \
-  -o='jsonpath={.data.tls\.key}' | base64 -d > "${SCYLLADB_CONFIG}/admin.key"
+```bash
+kubectl -n scylla get secret scylla-local-client-ca \
+  -o jsonpath='{.data.tls\.crt}' | base64 -d > ca.crt
+```
+Replace `scylla-local-client-ca` with the actual secret name from Step 1.
 
-# Create cqlshrc
-cat <<EOF > "${SCYLLADB_CONFIG}/cqlshrc"
-[authentication]
-credentials = ${SCYLLADB_CONFIG}/credentials
-[connection]
-hostname = ${SCYLLADB_DISCOVERY_EP}
-port = 9142
-ssl = true
-factory = cqlshlib.ssl.ssl_transport_factory
-[ssl]
-validate = true
-certfile = ${SCYLLADB_CONFIG}/serving-ca-bundle.crt
-usercert = ${SCYLLADB_CONFIG}/admin.crt
-userkey = ${SCYLLADB_CONFIG}/admin.key
-EOF
+**Step 3: Extract client credentials**
+
+```bash
+kubectl -n scylla get secret scylla-user-admin \
+  -o jsonpath='{.data.tls\.crt}' | base64 -d > client.crt
+kubectl -n scylla get secret scylla-user-admin \
+  -o jsonpath='{.data.tls\.key}' | base64 -d > client.key
+```
+
+**Step 4: Verify the extracted files**
+
+```bash
+openssl x509 -in ca.crt -noout -subject -dates
+openssl x509 -in client.crt -noout -subject -dates
 ```
 
 ### Connect
@@ -138,6 +129,63 @@ When using a ScyllaDB or Cassandra driver in your application:
 | Load balancing | Token-aware + DC-aware round robin | Sends queries directly to the replica owning the partition. |
 | TLS | Enabled, with CA verification | Use the serving CA from `configmap/<cluster-name>-local-serving-ca`. |
 | Reconnection | Exponential backoff | Handles node restarts during rolling updates. |
+
+### Code examples
+
+The following snippets show minimal working examples. Replace `<discovery-service-clusterip>` with the ClusterIP address from [Discovery endpoint](discovery.md) and `<password>` with the credentials from the ScyllaDB Secret.
+
+**Python (cassandra-driver):**
+```python
+from cassandra.cluster import Cluster
+from cassandra.auth import PlainTextAuthProvider
+from ssl import SSLContext, PROTOCOL_TLS_CLIENT, CERT_REQUIRED
+
+# TLS connection (recommended for production)
+ssl_context = SSLContext(PROTOCOL_TLS_CLIENT)
+ssl_context.load_verify_locations('/path/to/ca.crt')
+ssl_context.check_hostname = False
+ssl_context.verify_mode = CERT_REQUIRED
+
+auth_provider = PlainTextAuthProvider(username='cassandra', password='<password>')
+cluster = Cluster(
+    contact_points=['<discovery-service-clusterip>'],
+    port=9142,  # TLS port
+    ssl_context=ssl_context,
+    auth_provider=auth_provider,
+    load_balancing_policy=...,  # configure local_dc
+)
+session = cluster.connect()
+```
+
+**Java (DataStax Java Driver 4.x):**
+```java
+// application.conf (in resources/)
+// datastax-java-driver {
+//   basic.contact-points = ["<discovery-service-clusterip>:9042"]
+//   basic.load-balancing-policy.local-datacenter = "us-east-1"
+//   advanced.auth-provider.class = PlainTextAuthProvider
+//   advanced.auth-provider.username = cassandra
+//   advanced.auth-provider.password = "<password>"
+// }
+
+CqlSession session = CqlSession.builder().build();
+```
+
+**Go (gocql):**
+```go
+cluster := gocql.NewCluster("<discovery-service-clusterip>")
+cluster.Keyspace = "system"
+cluster.Authenticator = gocql.PasswordAuthenticator{
+    Username: "cassandra",
+    Password: "<password>",
+}
+// cluster.SslOpts = &gocql.SslOptions{...} // for TLS
+session, err := cluster.CreateSession()
+if err != nil {
+    log.Fatal(err)
+}
+defer session.Close()
+```
 
 ## TLS certificate resources
 

@@ -317,6 +317,67 @@ Keyspaces:
 
 Note the snapshot tag (e.g. `sm_20240105115931UTC`) — you will need it when restoring.
 
+## Run and manage tasks manually
+
+ScyllaDB Manager exposes an `sctool` CLI inside the `scylla-manager` pod for imperative operations that are not (yet) available through the Operator's declarative API.
+
+### Access sctool
+
+```bash
+kubectl -n scylla-manager exec -it deployment/scylla-manager -- sctool
+```
+
+### Trigger an immediate backup run
+
+To start a backup immediately (one-off, outside the schedule):
+
+```bash
+kubectl -n scylla-manager exec -it deployment/scylla-manager -- \
+  sctool backup \
+  -c <CLUSTER_ID> \
+  -L <BACKUP_LOCATION>
+```
+
+Where `<BACKUP_LOCATION>` is the same `s3:<bucket>` or `gcs:<bucket>` URI configured in your backup task.
+Use `sctool cluster list` to find `<CLUSTER_ID>`.
+
+### Suspend and resume a task
+
+To suspend (pause) a scheduled task:
+
+```bash
+kubectl -n scylla-manager exec -it deployment/scylla-manager -- \
+  sctool task stop -c <CLUSTER_ID> <TASK_TYPE>/<TASK_ID>
+```
+
+To resume it:
+
+```bash
+kubectl -n scylla-manager exec -it deployment/scylla-manager -- \
+  sctool task start -c <CLUSTER_ID> <TASK_TYPE>/<TASK_ID>
+```
+
+Where `<TASK_TYPE>` is `backup` or `repair`, and `<TASK_ID>` is visible in `sctool task list`.
+
+### List all tasks and their status
+
+```bash
+kubectl -n scylla-manager exec -it deployment/scylla-manager -- \
+  sctool task list -c <CLUSTER_ID>
+```
+
+### Trigger an immediate repair
+
+```bash
+kubectl -n scylla-manager exec -it deployment/scylla-manager -- \
+  sctool repair -c <CLUSTER_ID>
+```
+
+:::{note}
+Manual `sctool` operations act on the same Manager instance that manages your declarative tasks.
+One-off runs do not delete or override your scheduled tasks.
+:::
+
 ## Related pages
 
 - [Restore from backup](restore-from-backup.md) — restore a ScyllaDB cluster from a Manager backup snapshot.

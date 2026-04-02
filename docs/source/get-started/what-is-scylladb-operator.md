@@ -38,7 +38,14 @@ The Operator automates all single-datacenter operations: provisioning, scaling, 
 
 To deploy a ScyllaDB cluster that spans multiple Kubernetes clusters or geographic regions, create one `ScyllaCluster` resource in each Kubernetes cluster and connect them using the `externalSeeds` field. Each `ScyllaCluster` must use the same `.metadata.name` (which becomes the ScyllaDB cluster name) and specify seed node addresses from the other datacenters in `externalSeeds`.
 
-The Operator manages each datacenter independently. Multi-datacenter coordination — such as ensuring that nodes in all datacenters have finished bootstrapping before adding more nodes, or synchronizing ScyllaDB Manager auth tokens — must be handled manually. For step-by-step instructions, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
+The Operator manages each datacenter independently. The following must be managed manually when using multiple `ScyllaCluster` resources for multi-datacenter deployments:
+
+- **Seed configuration** — the `externalSeeds` field of each `ScyllaCluster` must be populated with the node addresses of the other datacenters. These addresses must be kept up to date if nodes are replaced or IPs change.
+- **ScyllaDB Manager auth token synchronization** — when ScyllaDB Manager is deployed in one datacenter, its auth token Secret must be manually copied to each other datacenter and the Manager Agent pods restarted. See [ScyllaDB Manager](../understand/manager.md).
+- **Replication factor configuration** — keyspace replication factors must be updated via CQL after adding a new datacenter, using `ALTER KEYSPACE`.
+- **Network peering and firewall rules** — inter-cluster Pod-to-Pod connectivity must be configured at the infrastructure level. See [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md).
+
+For step-by-step instructions, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
 
 ## Key resources
 

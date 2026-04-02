@@ -131,7 +131,20 @@ When filing a support ticket or investigating further, collect:
    ```
 
 4. **must-gather archive:**
-   See [must-gather](collect-debugging-information/must-gather.md) for a complete diagnostic snapshot.
+
+   Collect a must-gather archive for escalation or offline analysis:
+
+   ```bash
+   podman run -it --pull=always --rm \
+     -v="${KUBECONFIG}:/kubeconfig:ro,Z" \
+     -v="$(pwd):/workspace:Z" \
+     --workdir=/workspace \
+     docker.io/scylladb/scylla-operator:latest \
+     must-gather --kubeconfig=/kubeconfig
+   ```
+
+   The archive contains the previous pod logs (`logs.previous`) needed to diagnose restarts.
+   See [must-gather](collect-debugging-information/must-gather.md) for full options (including Docker and `--all-resources`) and [must-gather contents](collect-debugging-information/must-gather-contents.md) for a guide to interpreting the files.
 
 ## Related pages
 

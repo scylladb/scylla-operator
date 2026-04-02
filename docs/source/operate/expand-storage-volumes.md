@@ -32,7 +32,29 @@ Ensure the target nodes have enough disk capacity before proceeding.
 
 The following example assumes a ScyllaCluster named `scylla` in the `scylla` namespace.
 
+## Procedure overview
+
+Kubernetes does not allow changing the `storageClassName` or reducing `storage.capacity` in a StatefulSet's volume claim template. To expand storage, you must temporarily orphan the parent objects while keeping the Pods and PVCs running. The steps are:
+
+1. Save the current ScyllaCluster definition
+2. Orphan-delete the ScyllaCluster (preserves PVCs and Pods)
+3. Orphan-delete the ScyllaDBDatacenter (internal resource — preserves StatefulSets)
+4. Orphan-delete each StatefulSet (preserves Pods and PVCs)
+5. Patch each PVC with the new storage size
+6. Recreate the ScyllaCluster with the new storage size
+7. Verify the expansion
+
 ### Step 1: Save the current ScyllaCluster definition
+
+:::{note}
+The following commands use `yq`, a YAML command-line tool. Install it with:
+```bash
+# macOS
+brew install yq
+# Linux
+wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 && chmod +x /usr/local/bin/yq
+```
+:::
 
 ```bash
 kubectl -n scylla get scyllacluster scylla -o yaml | yq 'del(

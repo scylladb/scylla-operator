@@ -67,6 +67,13 @@ kubectl get crd scyllaclusters.scylla.scylladb.com
 
 Install the CRDs:
 
+:::{note}
+The commands below use `{{repository}}` and `{{revision}}` placeholders.
+When reading this page on the versioned documentation site, these are automatically substituted with `scylladb/scylla-operator` and the current release tag.
+
+If you are running these commands outside the documentation site (e.g., copied from a terminal), replace `{{repository}}` with `scylladb/scylla-operator` and `{{revision}}` with your operator version tag (e.g., `v1.20.0`).
+:::
+
 ::::{tabs}
 :::{group-tab} GitOps
 ```bash

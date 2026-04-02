@@ -70,6 +70,82 @@ docker run -it --pull=always --rm --network=host \
   must-gather --kubeconfig=/kubeconfig
 ```
 :::
+:::{group-tab} crictl
+
+On nodes where neither `docker` nor `podman` is available (common on production bare-metal nodes using containerd), use `crictl`:
+
+```bash
+crictl pull docker.io/scylladb/scylla-operator:latest
+crictl run \
+  --pull=always \
+  --rm \
+  -v "${HOME}/.kube/config:/root/.kube/config:ro" \
+  -v "$(pwd)/must-gather.tar.gz:/must-gather.tar.gz" \
+  docker.io/scylladb/scylla-operator:latest \
+  must-gather \
+  --all-resources \
+  --dest=/must-gather.tar.gz
+```
+
+`crictl` communicates directly with the container runtime socket. Ensure the socket path is reachable (typically `/run/containerd/containerd.sock` or `/run/crio/crio.sock`) and that you have permission to access it.
+:::
+:::{group-tab} kubectl (no container runtime)
+
+If no container runtime is available locally, run must-gather as a Kubernetes Job inside the cluster.
+This requires RBAC permissions to create Jobs and access cluster resources.
+
+First, apply the necessary ClusterRole:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scylla-must-gather
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scylla-must-gather
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scylla-must-gather
+subjects:
+- kind: ServiceAccount
+  name: scylla-must-gather
+  namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scylla-must-gather
+  namespace: default
+```
+
+Then run the must-gather pod:
+
+```bash
+kubectl run must-gather \
+  --image=docker.io/scylladb/scylla-operator:latest \
+  --restart=Never \
+  --serviceaccount=scylla-must-gather \
+  -- must-gather --all-resources --dest=/tmp/must-gather.tar.gz
+```
+
+After the pod completes, copy the archive:
+
+```bash
+kubectl cp default/must-gather:/tmp/must-gather.tar.gz ./must-gather.tar.gz
+kubectl delete pod must-gather
+kubectl delete clusterrolebinding scylla-must-gather
+kubectl delete clusterrole scylla-must-gather
+kubectl delete serviceaccount -n default scylla-must-gather
+```
+:::
 ::::
 
 :::{tip}

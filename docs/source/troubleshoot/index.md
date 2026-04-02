@@ -19,7 +19,7 @@ Start with the [diagnostic flowchart](diagnostic-flowchart.md) to narrow down th
 | Need to change log level without a rolling restart | [Change log level](change-log-level.md) |
 | Unfamiliar error message | [Common errors](common-errors.md) |
 | Need to collect data for a support ticket | [Collect debugging information](collect-debugging-information/index.md) |
-| Need to configure coredumps | [Coredumps](configure-coredumps.md) |
+| Need to configure or collect core dumps | [Collect core dumps](configure-coredumps.md) |
 
 :::{toctree}
 :maxdepth: 1

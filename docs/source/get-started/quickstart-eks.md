@@ -145,26 +145,26 @@ spec:
   repository: {{imageRepository}}
   version: {{scyllaDBImageTag}}
   agentVersion: {{agentVersion}}
-  developerMode: true
+  developerMode: true  # Disables performance tuning; do not use in production
   automaticOrphanedNodeCleanup: true
   datacenter:
-    name: eu-central-1
+    name: eu-central-1  # Must match the AWS region/naming convention you use for topology
     racks:
-    - name: eu-central-1a
-      members: 1
-      scyllaConfig: scylladb-config
+    - name: eu-central-1a  # One rack per availability zone; name matches the zone
+      members: 1  # Number of ScyllaDB nodes in this rack
+      scyllaConfig: scylladb-config  # References a ConfigMap with custom scylla.yaml settings
       storage:
-        capacity: 100Gi
+        capacity: 100Gi  # Disk space per node; use at least 10Gi for dev, 500Gi+ for production
         storageClassName: scylladb-local-xfs
       resources:
-        requests:
+        requests:  # requests must equal limits for CPU pinning (Guaranteed QoS)
           cpu: 10m
           memory: 100Mi
         limits:
           cpu: 1
           memory: 1Gi
       placement:
-        nodeAffinity:
+        nodeAffinity:  # Schedules ScyllaDB pods only on dedicated ScyllaDB nodes
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
@@ -176,26 +176,26 @@ spec:
                 operator: In
                 values:
                 - scylla
-        tolerations:
+        tolerations:  # Allows ScyllaDB pods to run on tainted dedicated nodes
         - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
           value: scyllaclusters
           effect: NoSchedule
-    - name: eu-central-1b
-      members: 1
-      scyllaConfig: scylladb-config
+    - name: eu-central-1b  # One rack per availability zone; name matches the zone
+      members: 1  # Number of ScyllaDB nodes in this rack
+      scyllaConfig: scylladb-config  # References a ConfigMap with custom scylla.yaml settings
       storage:
-        capacity: 100Gi
+        capacity: 100Gi  # Disk space per node; use at least 10Gi for dev, 500Gi+ for production
         storageClassName: scylladb-local-xfs
       resources:
-        requests:
+        requests:  # requests must equal limits for CPU pinning (Guaranteed QoS)
           cpu: 10m
           memory: 100Mi
         limits:
           cpu: 1
           memory: 1Gi
       placement:
-        nodeAffinity:
+        nodeAffinity:  # Schedules ScyllaDB pods only on dedicated ScyllaDB nodes
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
@@ -207,26 +207,26 @@ spec:
                 operator: In
                 values:
                 - scylla
-        tolerations:
+        tolerations:  # Allows ScyllaDB pods to run on tainted dedicated nodes
         - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
           value: scyllaclusters
           effect: NoSchedule
-    - name: eu-central-1c
-      members: 1
-      scyllaConfig: scylladb-config
+    - name: eu-central-1c  # One rack per availability zone; name matches the zone
+      members: 1  # Number of ScyllaDB nodes in this rack
+      scyllaConfig: scylladb-config  # References a ConfigMap with custom scylla.yaml settings
       storage:
-        capacity: 100Gi
+        capacity: 100Gi  # Disk space per node; use at least 10Gi for dev, 500Gi+ for production
         storageClassName: scylladb-local-xfs
       resources:
-        requests:
+        requests:  # requests must equal limits for CPU pinning (Guaranteed QoS)
           cpu: 10m
           memory: 100Mi
         limits:
           cpu: 1
           memory: 1Gi
       placement:
-        nodeAffinity:
+        nodeAffinity:  # Schedules ScyllaDB pods only on dedicated ScyllaDB nodes
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
@@ -238,7 +238,7 @@ spec:
                 operator: In
                 values:
                 - scylla
-        tolerations:
+        tolerations:  # Allows ScyllaDB pods to run on tainted dedicated nodes
         - key: scylla-operator.scylladb.com/dedicated
           operator: Equal
           value: scyllaclusters

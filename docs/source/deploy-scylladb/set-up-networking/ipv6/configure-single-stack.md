@@ -15,7 +15,7 @@ Track progress: [#3211](https://github.com/scylladb/scylla-operator/issues/3211)
 | Requirement | Details |
 |---|---|
 | Kubernetes cluster | IPv6 networking enabled; nodes must have IPv6 `InternalIP` addresses |
-| ScyllaDB Operator | Already installed ([Installation](../../install-operator/index.md)) |
+| ScyllaDB Operator | Already installed ([Installation](../../../install-operator/index.md)) |
 | ScyllaDB version | 2024.1 or newer recommended |
 | Applications | All clients must support IPv6 — there is no IPv4 fallback in this configuration |
 
@@ -114,4 +114,4 @@ All nodes should show status `UN` (Up / Normal) with IPv6 addresses (colon-separ
 - [Get started with IPv6](get-started.md)
 - [Configure dual-stack networking](configure-dual-stack.md)
 - [Troubleshoot IPv6 issues](troubleshooting.md)
-- [Networking architecture](../../understand/networking.md)
+- [Networking architecture](../../../understand/networking.md)

@@ -11,7 +11,7 @@ Start with the [diagnostic flowchart](diagnostic-flowchart.md) to narrow down th
 | Pods stuck in `Pending`, `Init`, `CrashLoopBackOff`, or not becoming `Ready` | [Diagnose a node that is not starting](diagnose-node-not-starting.md) |
 | Pods restarting unexpectedly | [Investigate pod restarts](investigate-restarts.md) |
 | Cluster degraded, nodes showing `DN` | [Check cluster health](check-cluster-health.md) |
-| Application cannot connect to ScyllaDB | [Diagnostic flowchart](diagnostic-flowchart.md) — see also [Connect Your App](../connect-your-app/index.md) and [Set up networking](../set-up-networking/index.md) |
+| Application cannot connect to ScyllaDB | [Diagnostic flowchart](diagnostic-flowchart.md) — see also [Connect Your App](../connect-your-app/index.md) and [Set up networking](../deploy-scylladb/set-up-networking/index.md) |
 | Operator or webhook installation failures | [Troubleshoot installation issues](troubleshoot-installation.md) |
 | Upgrade failed or stuck | [Diagnostic flowchart](diagnostic-flowchart.md) — see also [Upgrade](../upgrade/index.md) |
 | Node replace stuck or failed | [Recover from a failed node replace](recover-from-failed-replace.md) |

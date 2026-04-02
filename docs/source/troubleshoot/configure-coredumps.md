@@ -95,6 +95,6 @@ It watches for coredumps on nodes and uploads them to object storage.
 
 ## Related pages
 
-- [Configure nodes](../deploy-scylladb/configure-nodes.md)
+- [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md)
 - [Production checklist](../deploy-scylladb/production-checklist.md)
 - [Collect debugging information](collect-debugging-information/index.md)

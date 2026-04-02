@@ -26,13 +26,11 @@ The Agent:
 - Listens on port 10001.
 - Waits for [ignition](ignition.md) before starting — it does not run until ScyllaDB itself is ready.
 - Is configured through layered YAML config files and an auth token that the Operator manages automatically.
-- Uses the image specified by `agentVersion` and `agentRepository` (for `ScyllaCluster`) or the `scyllaDBManagerAgent.image` field (for `ScyllaDBDatacenter`).
+- Uses the image specified by the `agentVersion` and `agentRepository` fields on the `ScyllaCluster` spec.
 
 ## Task synchronisation
 
-The Operator bridges your cluster spec to Manager tasks through a chain of internal resources:
-
-### For `ScyllaCluster` (v1 API)
+The Operator bridges your cluster spec to Manager tasks through a chain of internal resources.
 
 `ScyllaCluster` defines backup and repair tasks inline:
 
@@ -51,33 +49,12 @@ spec:
 
 The ScyllaCluster controller translates each entry into a `ScyllaDBManagerTask` resource in the same namespace.
 
-### For `ScyllaDBCluster` / `ScyllaDBDatacenter` (v1alpha1 API)
-
-Tasks are defined as separate `ScyllaDBManagerTask` resources that reference the cluster:
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBManagerTask
-metadata:
-  name: daily-backup
-spec:
-  scyllaDBClusterRef:
-    name: my-cluster
-  type: Backup
-  backup:
-    location:
-      - s3:my-bucket
-    retention: 7
-    schedule:
-      cron: "0 2 * * *"
-```
-
 ### Reconciliation flow
 
-1. The **ScyllaDBDatacenter controller** creates a `ScyllaDBManagerClusterRegistration` resource to register the cluster with Manager.
+1. The Operator creates an internal **`ScyllaDBManagerClusterRegistration`** resource to register the cluster with Manager.
 2. The **ScyllaDBManagerClusterRegistration controller** calls the Manager REST API to register the cluster and stores the resulting cluster ID in its status.
 3. The **ScyllaDBManagerTask controller** reads the registration, then creates, updates, or deletes tasks in Manager via its REST API.
-4. Task statuses (run history, next run time, errors) are propagated back to the `ScyllaDBManagerTask` status and, for `ScyllaCluster`, to the `.status.backups` and `.status.repairs` fields.
+4. Task statuses (run history, next run time, errors) are propagated back to the `ScyllaDBManagerTask` status and to the `.status.backups` and `.status.repairs` fields on the `ScyllaCluster`.
 
 ## Disabling Manager integration
 
@@ -104,6 +81,39 @@ The Manager Agent authenticates with Manager using an auth token.
 The Operator generates and distributes these tokens automatically — one per cluster — via Secrets in the cluster's namespace.
 
 A `NetworkPolicy` in the `scylla-manager` namespace allows Manager to reach ScyllaDB pods across namespaces for agent communication.
+
+## Multi-datacenter Manager integration
+
+In a multi-datacenter cluster built from multiple `ScyllaCluster` resources (one per Kubernetes cluster), ScyllaDB Manager must be deployed in **only one** datacenter. Manager communicates with all nodes across datacenters through the Manager Agent running in each pod.
+
+Every `ScyllaCluster` is provisioned with a unique, randomly generated auth token stored in a Secret named `<cluster>-auth-token`. For Manager to manage nodes in all datacenters, every datacenter must use the **same** auth token. You must manually synchronize the token:
+
+1. **Extract the token** from the datacenter where Manager is deployed:
+
+   ```shell
+   kubectl --context="${CONTEXT_DC1}" -n=<namespace> get secrets/<cluster>-auth-token \
+     --template='{{ index .data "auth-token.yaml" }}' | base64 -d
+   ```
+
+2. **Patch the token** into each remote datacenter's Secret:
+
+   ```shell
+   kubectl --context="${CONTEXT_DC2}" -n=<namespace> patch secret/<cluster>-auth-token \
+     --type='json' \
+     -p='[{"op": "add", "path": "/stringData", "value": {"auth-token.yaml": "<output-from-step-1>"}}]'
+   ```
+
+3. **Rolling restart** the remote datacenter so the Agents pick up the new token:
+
+   ```shell
+   kubectl --context="${CONTEXT_DC2}" -n=<namespace> patch scyllacluster/<cluster> \
+     --type='merge' \
+     -p='{"spec": {"forceRedeploymentReason": "sync manager-agent auth token"}}'
+   ```
+
+4. **Define Manager tasks** on the `ScyllaCluster` in the Kubernetes cluster where Manager is running.
+
+For the full procedure, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
 
 ## Limitations
 

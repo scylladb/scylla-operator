@@ -17,7 +17,7 @@ CPU pinning requires three things to work together:
 | Requirement | Who configures it |
 |-------------|-------------------|
 | Kubelet static CPU manager policy | Platform administrator (node pool configuration) |
-| Guaranteed QoS class on the ScyllaDB pod | ScyllaCluster / ScyllaDBCluster author |
+| Guaranteed QoS class on the ScyllaDB pod | ScyllaCluster author |
 | Performance tuning enabled in NodeConfig | NodeConfig author (enabled by default) |
 
 If any of these is missing, CPU pinning silently does not apply.
@@ -128,28 +128,6 @@ spec:
       # ... storage, placement
 ```
 
-### ScyllaDBCluster example
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: dev-cluster
-spec:
-  datacenterTemplate:
-    scyllaDB:
-      resources:
-        limits:
-          cpu: 4
-          memory: 32Gi
-    scyllaDBManagerAgent:
-      resources:
-        limits:
-          cpu: 100m
-          memory: 100Mi
-  # ... datacenters
-```
-
 :::{note}
 Use **integer CPU values** (e.g., `4`, not `4000m`) for the ScyllaDB container. The kubelet only assigns exclusive cores for integer CPU requests. Millicpu values result in a shared CPU pool.
 :::
@@ -198,7 +176,7 @@ When a ScyllaDB pod has Guaranteed QoS:
 2. The NodeConfig DaemonSet's `ContainerPerftune` Job queries the kubelet's [PodResources API](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/#monitoring-device-plugin-resources) to discover which CPUs are assigned to the ScyllaDB container.
 3. It computes the IRQ CPU mask as the **complement**: all host CPUs minus ScyllaDB CPUs.
 4. It runs `perftune.py --irq-cpu-mask=<mask> --tune=net --tune=disks` to configure IRQ affinity on the host.
-5. The sidecar ignition mechanism blocks ScyllaDB startup until tuning completes (see [Ignition](../understand/ignition.md)).
+5. The sidecar ignition mechanism blocks ScyllaDB startup until tuning completes (see [Ignition](../../understand/ignition.md)).
 6. ScyllaDB starts with `--overprovisioned=0 --smp=<count> --cpuset=<cpus>`.
 
 ## Common pitfalls
@@ -213,8 +191,8 @@ When a ScyllaDB pod has Guaranteed QoS:
 
 ## Related pages
 
-- [Tuning architecture](../understand/tuning.md) — how node-level and container-level tuning work.
+- [Tuning architecture](../../understand/tuning.md) — how node-level and container-level tuning work.
 - [Set up dedicated node pools](set-up-dedicated-node-pools.md) — setting up nodes with the correct kubelet configuration.
 - [Configure nodes](configure-nodes.md) — NodeConfig resource for disk and kernel tuning.
-- [Deploy a single-DC cluster](deploy-single-dc-cluster.md) — setting resource requests and limits.
-- [Production checklist](production-checklist.md) — CPU pinning as a production requirement.
+- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — setting resource requests and limits.
+- [Production checklist](../production-checklist.md) — CPU pinning as a production requirement.

@@ -7,6 +7,7 @@ Deploy and configure ScyllaDB clusters on Kubernetes. This section covers creati
 
 before-you-deploy/index
 deploy-single-dc-cluster
+deploy-multi-dc-cluster
 set-up-networking/index
 set-up-monitoring
 expose-grafana

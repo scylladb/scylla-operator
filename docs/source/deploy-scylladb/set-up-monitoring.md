@@ -10,7 +10,7 @@ ScyllaDB exposes Prometheus metrics natively. The `ScyllaDBMonitoring` resource 
 
 - ScyllaDB Operator installed ([GitOps](../install-operator/install-with-gitops.md) or [Helm](../install-operator/install-with-helm.md))
 - [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator) installed (provides `Prometheus`, `ServiceMonitor`, and `PrometheusRule` CRDs)
-- A running ScyllaCluster or ScyllaDBCluster
+- A running ScyllaCluster
 
 ## Step 1: Deploy Prometheus
 
@@ -222,6 +222,12 @@ spec:
 
 Setting `serviceMonitorNamespaceSelector: {}` and `ruleNamespaceSelector: {}` allows Prometheus to discover resources across all namespaces. The `matchExpressions` filter ensures only the listed `ScyllaDBMonitoring` instances are scraped.
 
+## Multi-datacenter monitoring
+
+For multi-DC clusters using multiple `ScyllaCluster` resources across separate Kubernetes clusters, deploy a `ScyllaDBMonitoring` resource independently in each datacenter's Kubernetes cluster. Each `ScyllaDBMonitoring` instance monitors the local `ScyllaCluster` through a local Prometheus and Grafana stack.
+
+See [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md) for the overall multi-DC deployment procedure.
+
 ## OpenShift User Workload Monitoring
 
 On OpenShift, you can use the built-in User Workload Monitoring instead of deploying your own Prometheus instance. This requires:
@@ -267,6 +273,6 @@ For production access via Ingress, see [Exposing Grafana](expose-grafana.md).
 ## Related pages
 
 - [Exposing Grafana](expose-grafana.md) — configuring Ingress for Grafana.
-- [Operator configuration](configure-operator.md) — Grafana and Prometheus image settings.
+- [Operator configuration](before-you-deploy/configure-operator.md) — Grafana and Prometheus image settings.
 - [Production checklist](production-checklist.md) — monitoring as a production requirement.
 - [Prerequisites](../install-operator/prerequisites.md) — Prometheus Operator dependency.

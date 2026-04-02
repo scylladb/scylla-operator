@@ -15,8 +15,6 @@ The `exposeOptions` field controls two things:
 
 ### Defaults
 
-::::{tabs}
-:::{group-tab} ScyllaCluster
 ```yaml
 spec:
   exposeOptions:
@@ -28,22 +26,6 @@ spec:
       nodes:
         type: ServiceClusterIP
 ```
-:::
-
-:::{group-tab} ScyllaDBCluster
-```yaml
-spec:
-  exposeOptions:
-    nodeService:
-      type: Headless
-    broadcastOptions:
-      clients:
-        type: PodIP
-      nodes:
-        type: PodIP
-```
-:::
-::::
 
 ### Node Service types
 
@@ -97,7 +79,7 @@ spec:
 
 ### Multi-VPC (cross-datacenter)
 
-Both clients and nodes use Pod IPs. Requires VPC peering or a shared network between Kubernetes clusters. This is the default for `ScyllaDBCluster`.
+Both clients and nodes use Pod IPs. Requires VPC peering or a shared network between Kubernetes clusters. Use this configuration for multi-DC clusters with multiple `ScyllaCluster` resources connected via `externalSeeds`.
 
 ```yaml
 spec:

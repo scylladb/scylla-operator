@@ -7,9 +7,9 @@ Terminology used in ScyllaDB Operator documentation. This glossary maps ScyllaDB
 | ScyllaDB concept | Kubernetes equivalent | Notes |
 |---|---|---|
 | Node | Pod | A single ScyllaDB process runs inside one pod. |
-| Rack | StatefulSet | One StatefulSet per rack. Pod names follow `<cluster>-<dc>-<rack>-<ordinal>`. See [StatefulSets and racks](../architecture/statefulsets-and-racks.md). |
-| Datacenter | ScyllaCluster or ScyllaDBDatacenter | One custom resource per datacenter. |
-| Cluster | ScyllaCluster (single-DC) or ScyllaDBCluster (multi-DC) | The top-level resource representing the entire ScyllaDB deployment. |
+| Rack | StatefulSet | One StatefulSet per rack. Pod names follow `<cluster>-<dc>-<rack>-<ordinal>`. See [StatefulSets and racks](../understand/statefulsets-and-racks.md). |
+| Datacenter | ScyllaCluster | One `ScyllaCluster` resource per datacenter. For multi-DC, one per DC connected via `externalSeeds`. |
+| Cluster | One or more ScyllaCluster resources | The top-level resource representing the entire ScyllaDB deployment. For multi-DC, multiple `ScyllaCluster` resources with the same `.metadata.name` are connected via `externalSeeds`. |
 | Configuration file (`scylla.yaml`) | Custom resource spec | Configuration is declared in the CR and applied by the Operator. |
 | `nodetool` | `kubectl exec` + `nodetool` | Run inside the ScyllaDB pod. See [nodetool alternatives](nodetool-alternatives.md). |
 | Repair / backup scheduling | ScyllaDB Manager tasks | Defined in the cluster spec or as ScyllaDBManagerTask resources. |
@@ -17,22 +17,13 @@ Terminology used in ScyllaDB Operator documentation. This glossary maps ScyllaDB
 ## Custom resources
 
 **ScyllaCluster** (`v1`, stable)
-: The primary resource for single-datacenter deployments. Defines one ScyllaDB datacenter within a Kubernetes cluster.
-
-**ScyllaDBCluster** (`v1alpha1`, tech preview)
-: Orchestrates a multi-datacenter ScyllaDB cluster spanning multiple Kubernetes clusters. Creates ScyllaDBDatacenter resources across remote clusters.
-
-**ScyllaDBDatacenter** (`v1alpha1`)
-: Defines one ScyllaDB datacenter. Used internally by ScyllaDBCluster and can be used directly.
+: The primary resource for single-datacenter deployments. Defines one ScyllaDB datacenter within a Kubernetes cluster. For multi-DC, deploy one `ScyllaCluster` per datacenter and connect them via `externalSeeds`. See [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
 
 **NodeConfig** (`v1alpha1`, cluster-scoped)
 : Configures Kubernetes nodes for ScyllaDB: RAID setup, filesystem creation, mount points, sysctls, and performance tuning.
 
 **ScyllaOperatorConfig** (`v1alpha1`, cluster-scoped)
 : Global Operator configuration. A singleton resource named `cluster`.
-
-**RemoteKubernetesCluster** (`v1alpha1`, cluster-scoped)
-: Connection credentials to a remote Kubernetes cluster for multi-datacenter deployments.
 
 **ScyllaDBMonitoring** (`v1alpha1`)
 : Defines a monitoring stack (Prometheus + Grafana) for ScyllaDB.
@@ -86,10 +77,10 @@ Terminology used in ScyllaDB Operator documentation. This glossary maps ScyllaDB
 ## Internal mechanisms
 
 **Ignition**
-: The startup gating mechanism that prevents ScyllaDB from starting before prerequisites are met (tuning complete, network identity assigned). See [Ignition](../architecture/ignition.md).
+: The startup gating mechanism that prevents ScyllaDB from starting before prerequisites are met (tuning complete, network identity assigned). See [Ignition](../understand/ignition.md).
 
 **Bootstrap synchronisation**
-: Blocks a new node's startup until every existing node is confirmed healthy. Feature-gated via `BootstrapSynchronisation`. See [Bootstrap sync](../architecture/bootstrap-sync.md).
+: Blocks a new node's startup until every existing node is confirmed healthy. Feature-gated via `BootstrapSynchronisation`. See [Bootstrap sync](../understand/bootstrap-sync.md).
 
 **Reconciliation**
 : The Kubernetes controller pattern where each controller continuously compares desired state (spec) with actual state and takes corrective action.
@@ -101,13 +92,13 @@ Terminology used in ScyllaDB Operator documentation. This glossary maps ScyllaDB
 : A Kubernetes Service that allows clients to discover all ScyllaDB nodes. Used as the CQL contact point.
 
 **PodDisruptionBudget (PDB)**
-: Kubernetes mechanism limiting voluntary pod evictions. The Operator creates a PDB with `maxUnavailable: 1` per datacenter. See [Pod disruption budgets](../architecture/pod-disruption-budgets.md).
+: Kubernetes mechanism limiting voluntary pod evictions. The Operator creates a PDB with `maxUnavailable: 1` per datacenter. See [Pod disruption budgets](../understand/pod-disruption-budgets.md).
 
 **SidecarRuntimeConfig**
 : A per-pod tuning ConfigMap created by the NodeConfigPod controller. Must exist before ignition allows ScyllaDB to start.
 
 **must-gather**
-: An embedded diagnostic collection tool that captures logs, nodetool output, and system state into an archive. See [must-gather](../troubleshooting/collecting-debugging-information/must-gather.md).
+: An embedded diagnostic collection tool that captures logs, nodetool output, and system state into an archive. See [must-gather](../troubleshoot/collect-debugging-information/must-gather.md).
 
 ## Feature gates
 

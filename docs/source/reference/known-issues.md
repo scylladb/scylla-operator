@@ -1,17 +1,17 @@
 # Known issues
 
 This page lists known issues, platform-specific caveats, and feature limitations in ScyllaDB Operator. For issues specific to broken Kubernetes environments, see [Supported Kubernetes environments](releases.md#supported-kubernetes-environments).
+## Multi-datacenter limitations
 
-## ScyllaDBCluster (multi-DC) limitations
+When using multiple `ScyllaCluster` resources connected via `externalSeeds` for multi-DC deployments, the following limitations apply:
 
-ScyllaDBCluster (`v1alpha1`) is a **technical preview**. The following features are not yet available or documented for multi-datacenter deployments:
-
-| Feature | Status | Tracking issue |
-|---|---|---|
-| Helm-based installation | Not documented | [#2856](https://github.com/scylladb/scylla-operator/issues/2856) |
-| Alternator (DynamoDB-compatible API) | Not documented | [#2856](https://github.com/scylladb/scylla-operator/issues/2856) |
-| Monitoring | Not documented | [#2856](https://github.com/scylladb/scylla-operator/issues/2856) |
-| mTLS | Not documented | [#2856](https://github.com/scylladb/scylla-operator/issues/2856) |
+| Limitation | Detail |
+|---|---|
+| Manual Manager auth-token sync | ScyllaDB Manager auth tokens must be manually synchronized across DCs. See [Deploy a multi-DC cluster](../deploy-scylladb/deploy-multi-dc-cluster.md). |
+| Manual `nodetool rebuild` | When adding a new DC, `nodetool rebuild` must be run manually on each node in the new DC. |
+| Independent monitoring | `ScyllaDBMonitoring` must be deployed independently in each DC's Kubernetes cluster. |
+| Independent operations | Scaling, upgrading, and node replacement are performed independently on each DC's `ScyllaCluster` resource. |
+| Destroying a DC leaves DN nodes | Destroying one of the Kubernetes clusters or ScyllaDB datacenters leaves DN nodes in other datacenters. Their removal must be carried out manually using `nodetool removenode`. |
 
 ## TLS
 

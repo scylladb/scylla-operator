@@ -96,7 +96,7 @@ Common causes:
 - TLS required but client not using TLS.
 - LoadBalancer service has no external IP — check with `kubectl -n scylla get svc`.
 - DNS resolution failing — verify pod DNS with `kubectl run -it --rm dns-test --image=busybox --restart=Never -- nslookup <cluster-name>-client.<namespace>.svc.cluster.local`.
-- For IPv6 issues, see [Troubleshoot IPv6](../set-up-networking/ipv6/troubleshooting.md).
+- For IPv6 issues, see [Troubleshoot IPv6](../deploy-scylladb/set-up-networking/ipv6/troubleshooting.md).
 - For external access issues, see [Configure external access](../connect-your-app/configure-external-access.md).
 
 ### Upgrade failures
@@ -107,8 +107,8 @@ Check the rollout status:
 # ScyllaCluster conditions
 kubectl -n scylla get scyllacluster <cluster-name> -o jsonpath='{range .status.conditions[*]}{.type}{"\t"}{.status}{"\t"}{.reason}{"\t"}{.message}{"\n"}{end}'
 
-# ScyllaDBDatacenter conditions (v1alpha1 API)
-kubectl -n scylla get scylladbdatacenter <dc-name> -o jsonpath='{range .status.conditions[*]}{.type}{"\t"}{.status}{"\t"}{.reason}{"\t"}{.message}{"\n"}{end}'
+# ScyllaDBDatacenter conditions (internal resource — same name as the ScyllaCluster, useful for advanced debugging)
+kubectl -n scylla get scylladbdatacenter <cluster-name> -o jsonpath='{range .status.conditions[*]}{.type}{"\t"}{.status}{"\t"}{.reason}{"\t"}{.message}{"\n"}{end}'
 
 # StatefulSet rollout status
 kubectl -n scylla get statefulset -l scylla/cluster=<cluster-name>

@@ -36,9 +36,6 @@ aws_access_key_id = AKIAIOSFODNN7EXAMPLE
 aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 ```
 
-:::::{tabs}
-::::{group-tab} ScyllaCluster
-
 Mount the Secret into the Agent container using `volumes` and `agentVolumeMounts` on the rack spec:
 
 ```yaml
@@ -68,41 +65,6 @@ spec:
             mountPath: /var/lib/scylla-manager/.aws
             readOnly: true
 ```
-::::
-::::{group-tab} ScyllaDBDatacenter
-
-Mount the Secret into the Agent container using `scyllaDBManagerAgent.volumes` and `scyllaDBManagerAgent.volumeMounts` on the rack template:
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBDatacenter
-metadata:
-  name: scylla
-  namespace: scylla
-spec:
-  rackTemplate:
-    scyllaDBManagerAgent:
-      volumes:
-        - name: backup-credentials
-          secret:
-            secretName: scylla-agent-backup-secret
-      volumeMounts:
-        - name: backup-credentials
-          mountPath: /var/lib/scylla-manager/.aws
-          readOnly: true
-    nodes: 3
-    scyllaDB:
-      storage:
-        capacity: 500Gi
-    resources:
-      limits:
-        cpu: 4
-        memory: 8Gi
-  racks:
-    - name: us-east-1a
-```
-::::
-:::::
 
 ### Google Cloud Storage
 
@@ -112,9 +74,6 @@ Create a Kubernetes Secret containing a GCS service account key:
 kubectl -n scylla create secret generic scylla-agent-backup-secret \
   --from-file=gcs-service-account.json=/path/to/service-account-key.json
 ```
-
-:::::{tabs}
-::::{group-tab} ScyllaCluster
 
 ```yaml
 apiVersion: scylla.scylladb.com/v1
@@ -164,47 +123,6 @@ Then reference it on the rack:
 ```yaml
 scyllaAgentConfig: scylla-agent-config
 ```
-::::
-::::{group-tab} ScyllaDBDatacenter
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBDatacenter
-metadata:
-  name: scylla
-  namespace: scylla
-spec:
-  rackTemplate:
-    scyllaDBManagerAgent:
-      volumes:
-        - name: backup-credentials
-          secret:
-            secretName: scylla-agent-backup-secret
-      volumeMounts:
-        - name: backup-credentials
-          mountPath: /etc/scylla-manager-agent/gcs
-          readOnly: true
-      customConfigSecretRef: scylla-agent-gcs-config
-    nodes: 3
-    scyllaDB:
-      storage:
-        capacity: 500Gi
-    resources:
-      limits:
-        cpu: 4
-        memory: 8Gi
-  racks:
-    - name: us-east-1a
-```
-
-The `scylla-agent-gcs-config` Secret must contain a `scylla-manager-agent.yaml` key with:
-
-```yaml
-gcs:
-  service_account_file: /etc/scylla-manager-agent/gcs/gcs-service-account.json
-```
-::::
-:::::
 
 :::{note}
 <!-- TODO: Document workload identity (IAM roles for service accounts) for EKS and GKE. Tracked in https://github.com/scylladb/scylla-operator/issues/1697. -->
@@ -215,8 +133,7 @@ This is not yet documented — see [#1697](https://github.com/scylladb/scylla-op
 
 ## Schedule a backup
 
-:::::{tabs}
-::::{group-tab} ScyllaCluster
+## Schedule a backup
 
 Add a backup task to the `spec.backups` array:
 
@@ -250,34 +167,10 @@ spec:
 ```
 
 The Operator translates each backup entry into a `ScyllaDBManagerTask` resource and synchronises it with Manager.
-::::
-::::{group-tab} ScyllaDBDatacenter / ScyllaDBCluster
 
-Create a `ScyllaDBManagerTask` resource referencing your cluster:
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBManagerTask
-metadata:
-  name: daily-backup
-  namespace: scylla
-spec:
-  scyllaDBClusterRef:
-    kind: ScyllaDBDatacenter
-    name: scylla
-  type: Backup
-  backup:
-    location:
-      - s3:my-backup-bucket
-    keyspace:
-      - '*'
-    retention: 7
-    cron: "0 2 * * *"
-```
-
-The `scyllaDBClusterRef` supports both `ScyllaDBDatacenter` and `ScyllaDBCluster` kinds.
-::::
-:::::
+:::{note}
+In multi-DC clusters using multiple `ScyllaCluster` resources, configure backup tasks independently on each datacenter's `ScyllaCluster` resource.
+:::
 
 ### Backup task fields
 

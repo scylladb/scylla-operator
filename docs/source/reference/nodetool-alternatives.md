@@ -37,10 +37,10 @@ These commands change cluster membership or topology. Using them directly will d
   - Operator alternative
 * - [`decommission`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/decommission.html)
   - Desyncs StatefulSet replica count and Operator tracking labels. Operator will not know the node was decommissioned.
-  - Scale down the rack's `members` count by 1. The Operator labels the service, the sidecar calls decommission, and the StatefulSet scales down after completion. See [Scaling](../operating/scaling.md).
+  - Scale down the rack's `members` count by 1. The Operator labels the service, the sidecar calls decommission, and the StatefulSet scales down after completion. See [Scale cluster](../operate/scale-cluster.md).
 * - [`removenode`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/removenode.html)
   - Removes a node from the ring without Operator knowledge. Operator expects to manage membership via scale-down or replace.
-  - Use the `scylla/replace` label on the member Service to trigger Operator-managed replacement. For dead nodes, see [Recovering from failed replace](../troubleshooting/recovering-from-failed-replace.md).
+  - Use the `scylla/replace` label on the member Service to trigger Operator-managed replacement. For dead nodes, see [Recover from failed replace](../troubleshoot/recover-from-failed-replace.md).
 * - `move`
   - Changes token ownership without Operator awareness.
   - Not supported. Use scaling (add/remove nodes) to rebalance.
@@ -49,7 +49,7 @@ These commands change cluster membership or topology. Using them directly will d
   - No Operator alternative. If rebuild is needed (for example, adding a new DC), coordinate manually — ensure no other operations are in progress.
 * - [`disablebinary`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/disablebinary.html) / [`enablebinary`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/enablebinary.html)
   - Disabling native transport makes the node unreachable to clients and may cause readiness probe failures, triggering Operator recovery actions.
-  - Do not use. If you need to stop traffic to a node, use [maintenance mode](../operating/maintenance-mode.md).
+  - Do not use. If you need to stop traffic to a node, use [maintenance mode](../operate/use-maintenance-mode.md).
 * - [`disablegossip`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/disablegossip.html) / [`enablegossip`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/enablegossip.html)
   - Disabling gossip effectively marks the node as down in the cluster, confusing the Operator's health checks and potentially triggering unwanted recovery.
   - Do not use.
@@ -106,7 +106,7 @@ These commands are safe to use directly. The Operator either handles them automa
   - No Operator alternative; manual scrub is acceptable.
 * - [`setlogginglevel`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/setlogginglevel.html)
   - Ephemeral change, lost on pod restart. Safe for live debugging.
-  - Preferred method for emergency log-level changes when a rolling restart is not possible. See [Changing log level](../troubleshooting/changing-log-level.md). For persistent changes, use the ScyllaCluster spec — see [Passing ScyllaDB arguments](../operating/passing-scylladb-arguments.md).
+  - Preferred method for emergency log-level changes when a rolling restart is not possible. See [Change log level](../troubleshoot/change-log-level.md). For persistent changes, use the ScyllaCluster spec — see [Pass ScyllaDB arguments](../operate/pass-scylladb-arguments.md).
 * - [`refresh`](https://docs.scylladb.com/stable/operating-scylla/nodetool-commands/refresh.html)
   - Loads SSTables placed on disk; does not affect cluster membership.
   - No Operator alternative; safe to use.
@@ -123,7 +123,7 @@ These commands are safe to use directly. The Operator either handles them automa
 
 ## Related pages
 
-- [StatefulSets and racks](../architecture/statefulsets-and-racks.md) — how the Operator maps ScyllaDB topology onto Kubernetes primitives.
-- [Scaling](../operating/scaling.md) — adding and removing nodes via the Operator.
-- [Replacing nodes](../operating/replacing-nodes.md) — Operator-managed node replacement.
-- [Automatic data cleanup](../architecture/automatic-data-cleanup.md) — how the Operator handles post-scaling cleanup.
+- [StatefulSets and racks](../understand/statefulsets-and-racks.md) — how the Operator maps ScyllaDB topology onto Kubernetes primitives.
+- [Scale cluster](../operate/scale-cluster.md) — adding and removing nodes via the Operator.
+- [Replace nodes](../operate/replace-nodes.md) — Operator-managed node replacement.
+- [Automatic data cleanup](../understand/automatic-data-cleanup.md) — how the Operator handles post-scaling cleanup.

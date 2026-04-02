@@ -8,7 +8,7 @@ Running ScyllaDB on Kubernetes without an operator requires manually handling ma
 
 | Concern | Without the Operator | With ScyllaDB Operator |
 |---|---|---|
-| **Provisioning** | Manually create StatefulSets, Services, ConfigMaps, PVCs, and configure ScyllaDB seed lists, snitch settings, and rack/DC placement. | Declare a `ScyllaCluster` or `ScyllaDBCluster` resource. The Operator creates and configures all Kubernetes objects. |
+| **Provisioning** | Manually create StatefulSets, Services, ConfigMaps, PVCs, and configure ScyllaDB seed lists, snitch settings, and rack/DC placement. | Declare a `ScyllaCluster` resource. The Operator creates and configures all Kubernetes objects. |
 | **Scaling** | Manually adjust StatefulSet replicas, update seed lists, and run `nodetool cleanup` on existing nodes after the new node finishes streaming. | Change the `members` count in the spec. The Operator handles the StatefulSet update and runs cleanup automatically when token ownership changes. |
 | **Upgrades** | Manually update the container image, coordinate a rolling restart, and verify each node rejoins before proceeding to the next. | Update the image field in the spec. The Operator performs a rolling upgrade one node at a time, verifying health at each step. |
 | **Node replacement** | Manually drain the node, remove it from the cluster, recreate the pod, and pass the `replace_address_first_boot` flag. | Label the node's Service for replacement. The Operator handles draining, decommissioning, and bootstrapping the replacement. |
@@ -30,23 +30,15 @@ The Operator ships as a single binary that includes:
 
 ## Single-DC and multi-DC deployment models
 
-ScyllaDB Operator supports two deployment models:
+`ScyllaCluster` is the stable (`scylla.scylladb.com/v1`) API for deploying ScyllaDB on Kubernetes. Each `ScyllaCluster` resource represents a single datacenter. You define racks within the datacenter, and the Operator creates a StatefulSet per rack.
 
-### Single-datacenter: `ScyllaCluster` (stable)
+The Operator automates all single-datacenter operations: provisioning, scaling, upgrades, node replacement, tuning, repairs, backups, and monitoring.
 
-`ScyllaCluster` is a stable (`scylla.scylladb.com/v1`) API that manages a ScyllaDB cluster within a single Kubernetes cluster. Each `ScyllaCluster` represents one datacenter. You define racks, and the Operator creates a StatefulSet per rack.
+### Multi-datacenter clusters
 
-Use `ScyllaCluster` when your ScyllaDB cluster runs entirely within one Kubernetes cluster.
+To deploy a ScyllaDB cluster that spans multiple Kubernetes clusters or geographic regions, create one `ScyllaCluster` resource in each Kubernetes cluster and connect them using the `externalSeeds` field. Each `ScyllaCluster` must use the same `.metadata.name` (which becomes the ScyllaDB cluster name) and specify seed node addresses from the other datacenters in `externalSeeds`.
 
-### Multi-datacenter: `ScyllaDBCluster` (v1alpha1)
-
-`ScyllaDBCluster` is a `scylla.scylladb.com/v1alpha1` API that orchestrates a ScyllaDB cluster spanning multiple Kubernetes clusters. It coordinates with `RemoteKubernetesCluster` resources to manage datacenters in remote clusters.
-
-:::{caution}
-`ScyllaDBCluster` uses the `v1alpha1` API version. The API may change in incompatible ways in future releases. Evaluate carefully before using it in production.
-:::
-
-Use `ScyllaDBCluster` when your ScyllaDB cluster needs to span multiple Kubernetes clusters or multiple geographic regions.
+The Operator manages each datacenter independently. Multi-datacenter coordination — such as ensuring that nodes in all datacenters have finished bootstrapping before adding more nodes, or synchronizing ScyllaDB Manager auth tokens — must be handled manually. For step-by-step instructions, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
 
 ## Key resources
 
@@ -54,13 +46,10 @@ The Operator provides the following custom resources:
 
 | Resource | API version | Scope | Purpose |
 |---|---|---|---|
-| `ScyllaCluster` | `v1` | Namespaced | Single-datacenter ScyllaDB cluster |
-| `ScyllaDBCluster` | `v1alpha1` | Namespaced | Multi-datacenter ScyllaDB cluster |
-| `ScyllaDBDatacenter` | `v1alpha1` | Namespaced | A ScyllaDB datacenter within a single Kubernetes cluster |
+| `ScyllaCluster` | `v1` | Namespaced | A ScyllaDB datacenter (one resource per DC; for multi-DC, create one per Kubernetes cluster and connect via `externalSeeds`) |
 | `NodeConfig` | `v1alpha1` | Cluster | Node-level disk setup, RAID, filesystem, and performance tuning |
 | `ScyllaOperatorConfig` | `v1alpha1` | Cluster | Global Operator configuration (images, cluster domain) |
 | `ScyllaDBMonitoring` | `v1alpha1` | Namespaced | Monitoring stack (Prometheus + Grafana) for ScyllaDB |
-| `RemoteKubernetesCluster` | `v1alpha1` | Cluster | Connection to a remote Kubernetes cluster for multi-DC |
 | `ScyllaDBManagerTask` | `v1alpha1` | Namespaced | Backup or repair task managed by ScyllaDB Manager |
 
 ## Supported platforms

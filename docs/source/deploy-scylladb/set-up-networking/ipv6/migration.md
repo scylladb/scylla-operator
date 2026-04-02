@@ -8,7 +8,7 @@ Migrate an existing IPv4-only ScyllaDB cluster to dual-stack or IPv6-only networ
 |---|---|
 | Existing cluster | Running on IPv4 |
 | Kubernetes cluster | Dual-stack networking enabled |
-| Backups | A recent backup of the cluster ([Back up and restore](../../operate/back-up-and-restore.md)) |
+| Backups | A recent backup of the cluster ([Back up and restore](../../../operate/back-up-and-restore.md)) |
 
 :::{warning}
 Migration triggers a rolling restart of all ScyllaDB pods.
@@ -36,7 +36,7 @@ Verify that a recent backup exists before making any changes:
 kubectl -n scylla get scylladbmanagertask
 ```
 
-If you do not have backups configured, see [Back up and restore](../../operate/back-up-and-restore.md).
+If you do not have backups configured, see [Back up and restore](../../../operate/back-up-and-restore.md).
 
 ### Step 2: Update the ScyllaCluster
 
@@ -234,4 +234,4 @@ The Operator performs another rolling restart to return the cluster to IPv4.
 - [Configure dual-stack networking](configure-dual-stack.md)
 - [Configure IPv6-only single-stack](configure-single-stack.md)
 - [Troubleshoot IPv6 issues](troubleshooting.md)
-- [Back up and restore](../../operate/back-up-and-restore.md)
+- [Back up and restore](../../../operate/back-up-and-restore.md)

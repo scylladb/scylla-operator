@@ -8,9 +8,9 @@ If you are familiar with ScyllaDB but new to Kubernetes, this page maps the Scyl
 |---|---|---|
 | **ScyllaDB node** | **Pod** | Each ScyllaDB node runs inside a Kubernetes pod. A pod is the smallest deployable unit in Kubernetes and contains one or more containers. |
 | **ScyllaDB process** | **Container** (inside the pod) | The ScyllaDB process runs inside a container within the pod. The pod also contains sidecar containers for monitoring, tuning, and management. |
-| **Datacenter** | **ScyllaCluster** or **ScyllaDBDatacenter** | A `ScyllaCluster` resource represents one ScyllaDB datacenter within a single Kubernetes cluster. For multi-DC setups, `ScyllaDBCluster` coordinates multiple datacenters. |
+| **Datacenter** | **`ScyllaCluster`** | A `ScyllaCluster` resource represents one ScyllaDB datacenter. For multi-DC setups, create one `ScyllaCluster` per datacenter in each Kubernetes cluster and connect them using `externalSeeds`. |
 | **Rack** | **StatefulSet** | Each rack in the ScyllaCluster spec maps to a Kubernetes StatefulSet. The StatefulSet guarantees stable pod names, persistent storage, and ordered startup/shutdown. |
-| **Cluster** | **ScyllaCluster** or **ScyllaDBCluster** resource | You declare the desired cluster state as a YAML resource. The Operator continuously reconciles the actual state to match. |
+| **Cluster** | **`ScyllaCluster`** resource (one per datacenter) | You declare the desired cluster state as a YAML resource. The Operator continuously reconciles the actual state to match. For multi-DC clusters, create one `ScyllaCluster` per datacenter and connect them via `externalSeeds`. |
 | **`scylla.yaml` config file** | **ConfigMap** referenced by `scyllaConfig` | ScyllaDB configuration is stored in a Kubernetes ConfigMap and referenced from the ScyllaCluster spec. The Operator also generates configuration automatically. |
 | **Data directory** | **PersistentVolumeClaim (PVC)** | Each ScyllaDB node's data is stored on a PersistentVolume, provisioned via a PVC. Data survives pod restarts. |
 | **Node IP / listen address** | **Service** (per member) | Each ScyllaDB node gets a dedicated Kubernetes Service that provides a stable network identity, independent of pod restarts. |

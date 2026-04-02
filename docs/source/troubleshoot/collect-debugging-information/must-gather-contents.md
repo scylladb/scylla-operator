@@ -102,7 +102,7 @@ Shows the kubelet CPU Manager state — which CPUs are exclusively assigned to w
 **Look for:**
 - ScyllaDB containers should appear with dedicated CPU sets.
 - If the file is empty or shows `"policyName":"none"`, the kubelet is not configured with static CPU policy.
-- See [Configure CPU pinning](../../deploy-scylladb/configure-cpu-pinning.md).
+- See [Configure CPU pinning](../../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md).
 
 ## Pod logs
 

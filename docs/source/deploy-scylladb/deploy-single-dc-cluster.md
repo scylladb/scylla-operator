@@ -231,7 +231,7 @@ Adjust CPU, memory, and storage values to match your workload requirements and i
 :::
 
 :::{caution}
-For CPU pinning and performance tuning, all containers in the pod must have **Guaranteed QoS class** (resource requests equal limits for both CPU and memory). This includes both the ScyllaDB container (`resources`) and the ScyllaDB Manager Agent sidecar (`agentResources`). See [CPU pinning](configure-cpu-pinning.md).
+For CPU pinning and performance tuning, all containers in the pod must have **Guaranteed QoS class** (resource requests equal limits for both CPU and memory). This includes both the ScyllaDB container (`resources`) and the ScyllaDB Manager Agent sidecar (`agentResources`). See [CPU pinning](before-you-deploy/configure-cpu-pinning.md).
 :::
 
 ## Key fields explained
@@ -254,7 +254,7 @@ For CPU pinning and performance tuning, all containers in the pod must have **Gu
 | `spec.agentRepository` | Agent container image repository. | `docker.io/scylladb/scylla-manager-agent` |
 
 :::{note}
-ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. To use Enterprise, change the `repository` to `docker.io/scylladb/scylla-enterprise` and adjust the `version` accordingly. If you also want Enterprise-specific tuning images, configure `scyllaUtilsImage` in the [ScyllaOperatorConfig](configure-operator.md).
+ScyllaDB Operator works with both ScyllaDB Open Source and ScyllaDB Enterprise. To use Enterprise, change the `repository` to `docker.io/scylladb/scylla-enterprise` and adjust the `version` accordingly. If you also want Enterprise-specific tuning images, configure `scyllaUtilsImage` in the [ScyllaOperatorConfig](before-you-deploy/configure-operator.md).
 :::
 
 ### Rack specification
@@ -371,14 +371,14 @@ By default, ScyllaDB clusters use IPv4. To use IPv6 or dual-stack, configure the
 
 When using IPv6, set `dnsPolicy: ClusterFirst` to ensure proper DNS resolution within the cluster.
 
-For detailed IPv6 setup instructions, see the [IPv6 networking guides](../set-up-networking/index.md).
+For detailed IPv6 setup instructions, see the [IPv6 networking guides](set-up-networking/index.md).
 
 ## Related pages
 
 - [Production checklist](production-checklist.md) — verify all production settings.
-- [Dedicated node pools](set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated nodes.
-- [CPU pinning](configure-cpu-pinning.md) — configuring CPU exclusivity.
-- [Node configuration](configure-nodes.md) — disk and performance tuning.
+- [Dedicated node pools](before-you-deploy/set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated nodes.
+- [CPU pinning](before-you-deploy/configure-cpu-pinning.md) — configuring CPU exclusivity.
+- [Node configuration](before-you-deploy/configure-nodes.md) — disk and performance tuning.
 - [Connecting via CQL](../connect-your-app/connect-via-cql.md) — accessing your cluster.
 - [Scaling](../operate/scale-cluster.md) — adding or removing nodes.
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md) — how racks map to StatefulSets.

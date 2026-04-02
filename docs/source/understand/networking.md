@@ -21,9 +21,9 @@ The member Service uses a selector that matches exactly one pod, giving every Sc
 | CQL over TLS | `cql-ssl` | 9142 |
 | CQL shard-aware | `cql-shard-aware` | 19042 |
 | CQL shard-aware over TLS | `cql-ssl-shard-aware` | 19142 |
-| Inter-node (storage port) | `inter-node` | 7000 |
-| Inter-node over TLS | `inter-node-ssl` | 7001 |
-| JMX | `jmx` | 7199 |
+| Inter-node (storage port) | `inter-node-communication` | 7000 |
+| Inter-node over TLS | `ssl-inter-node-communication` | 7001 |
+| JMX | `jmx-monitoring` | 7199 |
 | Prometheus (ScyllaDB) | `prometheus` | 9180 |
 | Manager Agent API | `agent-api` | 10001 |
 | Agent Prometheus | `agent-prometheus` | 5090 |
@@ -48,7 +48,7 @@ Use Headless when pods broadcast their own IP and no cluster-internal virtual IP
 
 Creates a standard ClusterIP Service backed by a single pod. The Service receives a virtual IP that is routable only inside the Kubernetes cluster.
 
-This is the **default for `ScyllaCluster`** and `ScyllaDBDatacenter`.
+This is the **default** for `ScyllaCluster`.
 
 ### LoadBalancer
 
@@ -112,17 +112,17 @@ The Operator lets you configure these independently via `exposeOptions.broadcast
 
 The ScyllaDB process itself listens on all interfaces (`0.0.0.0` for IPv4, `::` for IPv6). The broadcast addresses only control what address is advertised to other nodes and clients.
 
-## Defaults by API version
+## Defaults
 
-The default networking posture differs between the single-datacenter and multi-datacenter APIs:
+A `ScyllaCluster` created without explicit `exposeOptions` uses the following defaults:
 
-| Field | `ScyllaCluster` (v1) | `ScyllaDBDatacenter` (v1alpha1) | `ScyllaDBCluster` (v1alpha1) |
-|-------|----------------------|--------------------------------|------------------------------|
-| `nodeService.type` | `ClusterIP` | `ClusterIP` | `Headless` |
-| `broadcastOptions.nodes.type` | `ServiceClusterIP` | `ServiceClusterIP` | `PodIP` |
-| `broadcastOptions.clients.type` | `ServiceClusterIP` | `ServiceClusterIP` | `PodIP` |
+| Field | Default |
+|-------|---------|
+| `nodeService.type` | `ClusterIP` |
+| `broadcastOptions.nodes.type` | `ServiceClusterIP` |
+| `broadcastOptions.clients.type` | `ServiceClusterIP` |
 
-`ScyllaDBCluster` defaults to `Headless` / `PodIP` because multi-datacenter clusters span multiple Kubernetes clusters where pod IPs (routed across VPCs) are the natural addressing scheme.
+For multi-datacenter deployments using multiple `ScyllaCluster` resources connected via `externalSeeds`, you typically need to override these defaults to use `Headless` / `PodIP` so that pod IPs are broadcast directly. See the [Multi-VPC / multi-datacenter](#multi-vpc-multi-datacenter) scenario below.
 
 :::{note}
 `exposeOptions` on `ScyllaCluster` are **immutable** — they cannot be changed after the cluster is created.
@@ -173,7 +173,9 @@ exposeOptions:
       type: PodIP
 ```
 
-Two Kubernetes clusters in separate VPCs with VPC peering. Pod IPs are routable across VPCs, so both nodes and clients use them directly. No virtual IP is needed, hence Headless.
+Two or more Kubernetes clusters in separate VPCs with VPC peering or a shared VPC. Each datacenter is a separate `ScyllaCluster` resource connected to the others via `externalSeeds`. Pod IPs are routable across VPCs, so both nodes and clients use them directly. No virtual IP is needed, hence Headless.
+
+See [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md) for the step-by-step procedure and [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md) for the platform networking setup.
 
 ### External access via load balancers
 
@@ -192,6 +194,10 @@ Each node gets a load balancer with an externally reachable address. Clients out
 
 ## CQL Ingress
 
+:::{warning}
+This feature is **experimental**. Do not rely on any particular behaviour controlled by the CQL Ingress configuration.
+:::
+
 `ScyllaCluster` supports an optional CQL Ingress that routes CQL-over-TLS traffic (port 9142) through a Kubernetes Ingress resource. When `exposeOptions.cql.ingress` is configured, the Operator creates:
 
 - One Ingress routing to the identity Service (any-node discovery).
@@ -205,11 +211,11 @@ The Operator supports IPv4, IPv6, and dual-stack networking. IP family settings 
 
 ### Configuration fields
 
-| Field | Location | Effect |
-|-------|----------|--------|
-| `ipFamilies` | `spec.network.ipFamilies` (v1) or `spec.ipFamilies` (v1alpha1) | Ordered list of IP families. The **first** entry determines which protocol ScyllaDB uses internally. |
-| `ipFamilyPolicy` | Same locations | `SingleStack`, `PreferDualStack`, or `RequireDualStack`. Defaults to `SingleStack`. |
-| `dnsPolicy` | `spec.network.dnsPolicy` (v1) or `spec.dnsPolicy` (v1alpha1) | Pod DNS policy. Should be `ClusterFirst` for IPv6. |
+| Field | Effect |
+|-------|--------|
+| `spec.network.ipFamilies` | Ordered list of IP families. The **first** entry determines which protocol ScyllaDB uses internally. |
+| `spec.network.ipFamilyPolicy` | `SingleStack`, `PreferDualStack`, or `RequireDualStack`. Defaults to `SingleStack`. |
+| `spec.network.dnsPolicy` | Pod DNS policy. Should be `ClusterFirst` for IPv6. |
 
 ### Why the first IP family matters
 
@@ -239,17 +245,17 @@ If the Kubernetes cluster does not support dual-stack but `ipFamilyPolicy` is `P
 
 ### Multi-datacenter IP family consistency
 
-All datacenters in a multi-datacenter cluster **must** use the same primary IP family. Cross-datacenter replication, gossip, and the global token ring require uniform addressing.
+When multiple `ScyllaCluster` resources form a multi-datacenter cluster (connected via `externalSeeds`), all datacenters **must** use the same primary IP family. Cross-datacenter replication, gossip, and the global token ring require uniform addressing.
 
 ```yaml
-# Both datacenters must agree on IPv6 as the primary family
+# Every ScyllaCluster in the multi-DC cluster must agree on the primary family
 network:
   ipFamilies:
     - IPv6
     - IPv4
 ```
 
-The secondary family can differ at the Service level, but the first entry must match across all datacenters.
+The secondary family can differ at the Service level, but the first entry in `ipFamilies` must match across all `ScyllaCluster` resources in the cluster.
 
 ### DNS policy for IPv6
 

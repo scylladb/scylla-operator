@@ -2,12 +2,13 @@
 
 This reference documents the IPv6-specific API fields, automatic ScyllaDB settings, validation rules, and version requirements for IPv6 networking.
 
-For complete field definitions and schemas, see the [ScyllaCluster API reference](api/index.md).
-For setup instructions, see [IPv6 networking](../set-up-networking/ipv6/index.md).
+<!-- TODO: Link to auto-generated API reference once reference/api/ is created. -->
+For complete field definitions and schemas, see the ScyllaCluster API reference.
+For setup instructions, see [IPv6 networking](../deploy-scylladb/set-up-networking/ipv6/index.md).
 
 ## Network configuration fields
 
-IPv6 networking is configured through the `spec.network` section of a ScyllaCluster or the corresponding fields in a ScyllaDBDatacenter.
+IPv6 networking is configured through the `spec.network` section of a ScyllaCluster.
 
 ### `spec.network.ipFamilyPolicy`
 
@@ -70,7 +71,7 @@ When `spec.network.ipFamilies` includes IPv6 as the first entry, the Operator au
 
 Broadcast addresses (`--broadcast-address` and `--broadcast-rpc-address`) are configured through `spec.exposeOptions.broadcastOptions`, not by setting ScyllaDB arguments directly. The Operator ensures broadcast addresses match the selected IP family.
 
-See [Exposing clusters](../set-up-networking/expose-clusters.md) for details on broadcast options.
+See [Exposing clusters](../deploy-scylladb/set-up-networking/expose-clusters.md) for details on broadcast options.
 
 ## Validation rules
 

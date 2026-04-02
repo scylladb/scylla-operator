@@ -33,7 +33,7 @@ When a Kubernetes node is permanently removed (for example, a node pool scale-do
 
 The Operator's orphaned PV controller detects this condition and automatically applies the `scylla/replace=""` label on the affected Service, triggering replacement without manual intervention.
 
-To disable this behaviour, set `automaticOrphanedNodeCleanup: false` in the ScyllaCluster spec, or `disableAutomaticOrphanedNodeReplacement: true` in the ScyllaDBCluster / ScyllaDBDatacenter spec.
+To disable this behaviour, set `automaticOrphanedNodeCleanup: false` in the ScyllaCluster spec.
 
 ## Replace a dead node in a ScyllaCluster
 
@@ -130,25 +130,9 @@ kubectl -n scylla exec scylladb-us-east-1a-0 -c scylla -- nodetool repair
 
 Or use ScyllaDB Manager scheduled repair tasks for automated repair.
 
-## Replace a dead node in a ScyllaDBCluster
-
-The procedure is the same — apply the `scylla/replace=""` label to the member Service in the **worker cluster** where the failed node is located.
-
-1. Connect to the worker cluster context:
-   ```bash
-   kubectl --context="${WORKER_CONTEXT}" -n scylla get svc -l scylla/cluster=dev-cluster -o wide
-   ```
-
-2. Apply the replace label:
-   ```bash
-   kubectl --context="${WORKER_CONTEXT}" -n scylla label svc dev-cluster-us-east-1a-2 scylla/replace=""
-   ```
-
-3. Wait for the rollout on the control plane cluster:
-   ```bash
-   kubectl --context="${CONTROL_PLANE_CONTEXT}" -n scylla wait --timeout=30m --for='condition=Progressing=False' scylladbcluster.scylla.scylladb.com/dev-cluster
-   kubectl --context="${CONTROL_PLANE_CONTEXT}" -n scylla wait --timeout=30m --for='condition=Available=True' scylladbcluster.scylla.scylladb.com/dev-cluster
-   ```
+:::{note}
+In multi-DC clusters using multiple `ScyllaCluster` resources, node replacement is performed on the individual `ScyllaCluster` resource in the Kubernetes cluster hosting the failed node.
+:::
 
 ## When replacement fails
 

@@ -111,7 +111,7 @@ spec:
 ::::
 
 :::{note}
-Configuring the CPU manager policy is required only on nodes where ScyllaDB pods will run. It does not need to be set cluster-wide. See [CPU pinning](../deploy-scylladb/configure-cpu-pinning.md) for a full walkthrough.
+Configuring the CPU manager policy is required only on nodes where ScyllaDB pods will run. It does not need to be set cluster-wide. See [CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md) for a full walkthrough.
 :::
 
 ## Node labels and taints
@@ -123,7 +123,7 @@ The installation guides and examples assume that the Kubernetes nodes dedicated 
 | Label | `scylla.scylladb.com/node-type` | `scylla` |
 | Taint | `scylla-operator.scylladb.com/dedicated` | `scyllaclusters:NoSchedule` |
 
-The **label** lets NodeConfig, DaemonSets, and monitoring target only ScyllaDB nodes. The **taint** prevents non-ScyllaDB workloads from being scheduled onto those nodes. Your ScyllaCluster (or ScyllaDBDatacenter) spec must include a matching `toleration` for the taint and a `nodeSelector` or `nodeAffinity` for the label.
+The **label** lets NodeConfig, DaemonSets, and monitoring target only ScyllaDB nodes. The **taint** prevents non-ScyllaDB workloads from being scheduled onto those nodes. Your ScyllaCluster spec must include a matching `toleration` for the taint and a `nodeSelector` or `nodeAffinity` for the label.
 
 These values are conventions used throughout the documentation and examples. You may use different labels and taints as long as you adjust all selectors, tolerations, and NodeConfig placements accordingly.
 
@@ -164,6 +164,7 @@ Most Kubernetes node images include `xfsprogs` by default. A notable exception i
 
 Apply a DaemonSet that installs the package on affected nodes:
 
+<!-- TODO: Create the examples/gke/install-xfsprogs.daemonset.yaml file. -->
 ```bash
 kubectl apply -f examples/gke/install-xfsprogs.daemonset.yaml
 ```
@@ -205,5 +206,5 @@ These are the requests set in the default manifests. The Operator does not set h
 - [Releases](../reference/releases.md) — full support matrix with ScyllaDB and platform versions.
 - [GitOps installation](install-with-gitops.md) — step-by-step installation using manifests.
 - [Install with Helm](install-with-helm.md) — step-by-step installation using Helm charts.
-- [Dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md) — configuring ScyllaDB to run on dedicated nodes.
-- [Node configuration](../deploy-scylladb/configure-nodes.md) — setting up NodeConfig for disk and performance tuning.
+- [Dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) — configuring ScyllaDB to run on dedicated nodes.
+- [Node configuration](../deploy-scylladb/before-you-deploy/configure-nodes.md) — setting up NodeConfig for disk and performance tuning.

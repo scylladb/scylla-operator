@@ -35,7 +35,7 @@ It can:
 - Mount it at a specified path (typically `/var/lib/persistent-volumes`).
 - Apply **mount options** such as `prjquota` (required by the Local CSI Driver for quota enforcement).
 
-For configuration details, see [Node Configuration](../deploy-scylladb/configure-nodes.md).
+For configuration details, see [Node Configuration](../deploy-scylladb/before-you-deploy/configure-nodes.md).
 
 ## ScyllaDB Local CSI Driver
 

@@ -1,6 +1,6 @@
 # Upgrade ScyllaDB
 
-Upgrade the ScyllaDB version running in your cluster by changing the image reference in the ScyllaCluster or ScyllaDBCluster spec.
+Upgrade the ScyllaDB version running in your cluster by changing the image reference in the `ScyllaCluster` spec.
 
 :::{warning}
 ScyllaDB version upgrades must be performed **consecutively** — do not skip any major or minor version on the upgrade path.
@@ -67,12 +67,7 @@ The Operator upgrades one rack at a time and one node at a time within each rack
 
 ## Upgrade via GitOps / kubectl
 
-Change the ScyllaDB image reference in your manifest and apply it.
-
-::::{tabs}
-:::{group-tab} ScyllaCluster
-
-Set `spec.version` to the target ScyllaDB image tag:
+Change the ScyllaDB image reference in your manifest and apply it.\n\nSet `spec.version` to the target ScyllaDB image tag:
 
 ```yaml
 apiVersion: scylla.scylladb.com/v1
@@ -98,44 +93,8 @@ kubectl -n scylla wait --timeout=30m --for='condition=Progressing=False' scyllac
 kubectl -n scylla wait --timeout=30m --for='condition=Degraded=False' scyllacluster.scylla.scylladb.com/scylladb
 kubectl -n scylla wait --timeout=30m --for='condition=Available=True' scyllacluster.scylla.scylladb.com/scylladb
 ```
-:::
-
-:::{group-tab} ScyllaDBCluster
-
-Set `spec.scyllaDB.image` to the full image reference:
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: dev-cluster
-  namespace: scylla
-spec:
-  scyllaDB:
-    image: docker.io/scylladb/scylla:6.0.0   # target ScyllaDB image
-  # ...
-```
-
-Apply the manifest:
-
-```bash
-kubectl apply -f scylladbcluster.yaml
-```
-
-Wait for the rollout to complete:
-
-```bash
-kubectl --context="${CONTROL_PLANE_CONTEXT}" -n scylla wait --timeout=30m --for='condition=Progressing=False' scylladbcluster.scylla.scylladb.com/dev-cluster
-kubectl --context="${CONTROL_PLANE_CONTEXT}" -n scylla wait --timeout=30m --for='condition=Degraded=False' scylladbcluster.scylla.scylladb.com/dev-cluster
-kubectl --context="${CONTROL_PLANE_CONTEXT}" -n scylla wait --timeout=30m --for='condition=Available=True' scylladbcluster.scylla.scylladb.com/dev-cluster
-```
-:::
-::::
 
 ## Upgrade via Helm
-
-::::{tabs}
-:::{group-tab} ScyllaCluster
 
 Upgrade the Helm release with the target image tag:
 
@@ -150,15 +109,10 @@ kubectl -n scylla wait --timeout=30m --for='condition=Progressing=False' scyllac
 kubectl -n scylla wait --timeout=30m --for='condition=Degraded=False' scyllacluster.scylla.scylladb.com/scylladb
 kubectl -n scylla wait --timeout=30m --for='condition=Available=True' scyllacluster.scylla.scylladb.com/scylladb
 ```
-:::
-
-:::{group-tab} ScyllaDBCluster
 
 :::{note}
-ScyllaDB Operator does not yet support Helm installation for managed multi-datacenter ScyllaDB clusters.
+In multi-DC clusters using multiple `ScyllaCluster` resources, upgrade each datacenter's `ScyllaCluster` independently, following ScyllaDB's rolling upgrade order (one DC at a time).
 :::
-:::
-::::
 
 ## Verify the upgrade
 

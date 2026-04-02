@@ -21,7 +21,7 @@ The pattern used throughout all ScyllaDB Operator documentation and examples con
 
 The **label** lets NodeConfig, the Local CSI Driver DaemonSet, and monitoring target only ScyllaDB nodes. The **taint** prevents non-ScyllaDB workloads from being scheduled onto those nodes.
 
-All ScyllaDB Operator components (ScyllaCluster, ScyllaDBCluster, NodeConfig) must include:
+All ScyllaDB Operator components (ScyllaCluster, NodeConfig) must include:
 - A **node selector** or **node affinity** that requires the label.
 - A **toleration** that matches the taint.
 
@@ -54,7 +54,7 @@ gcloud container \
 ```
 
 Key flags:
-- `--image-type='UBUNTU_CONTAINERD'` — GKE Container OS is not supported (see [Prerequisites](../install-operator/prerequisites.md)).
+- `--image-type='UBUNTU_CONTAINERD'` — GKE Container OS is not supported (see [Prerequisites](../../install-operator/prerequisites.md)).
 - `--local-nvme-ssd-block` — attaches local NVMe SSDs for ScyllaDB data.
 - `--system-config-from-file` — enables the kubelet static CPU manager policy (see [CPU pinning](configure-cpu-pinning.md)).
 - `--no-enable-autoupgrade --no-enable-autorepair` — prevents GKE from disrupting ScyllaDB nodes.
@@ -87,7 +87,7 @@ nodeGroups:
 
 Key settings:
 - `instanceType: i4i.2xlarge` — instance types with local NVMe SSDs are recommended.
-- `amiFamily: AmazonLinux2023` — Bottlerocket is not supported (see [Prerequisites](../install-operator/prerequisites.md)).
+- `amiFamily: AmazonLinux2023` — Bottlerocket is not supported (see [Prerequisites](../../install-operator/prerequisites.md)).
 - `cpuManagerPolicy: static` — enables CPU pinning (see [CPU pinning](configure-cpu-pinning.md)).
 
 Create the cluster with:
@@ -158,31 +158,7 @@ nodeAffinity:
         - scylla
 ```
 
-For ScyllaDBCluster (multi-DC), set placement at the `datacenterTemplate` level so it applies to all datacenters:
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: dev-cluster
-spec:
-  datacenterTemplate:
-    placement:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: scylla.scylladb.com/node-type
-              operator: In
-              values:
-              - scylla
-      tolerations:
-      - key: scylla-operator.scylladb.com/dedicated
-        operator: Equal
-        value: scyllaclusters
-        effect: NoSchedule
-  # ... datacenters
-```
+For multi-DC clusters using multiple `ScyllaCluster` resources, configure placement on each `ScyllaCluster` independently. Each datacenter's `ScyllaCluster` sets its own rack-level placement to target the dedicated node pool in its Kubernetes cluster.
 
 ## Step 3: Configure NodeConfig placement
 
@@ -235,7 +211,7 @@ The `NODE` column should show only nodes from your dedicated pool.
 
 - [Configure nodes](configure-nodes.md) — configuring disk setup, sysctls, and performance tuning.
 - [Configure CPU pinning](configure-cpu-pinning.md) — configuring CPU exclusivity for ScyllaDB containers.
-- [Deploy a single-DC cluster](deploy-single-dc-cluster.md) — creating a ScyllaCluster with placement.
-- [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md) — creating a ScyllaDBCluster with placement.
-- [Prerequisites](../install-operator/prerequisites.md) — supported platforms and node requirements.
-- [Production checklist](production-checklist.md) — verify all production settings.
+- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — creating a ScyllaCluster with placement.
+- [Deploy a multi-DC cluster](../deploy-multi-dc-cluster.md) — multi-DC cluster deployment with placement considerations.
+- [Prerequisites](../../install-operator/prerequisites.md) — supported platforms and node requirements.
+- [Production checklist](../production-checklist.md) — verify all production settings.

@@ -109,7 +109,7 @@ Look for these events in the `Events` section:
 **Resolution:**
 - Check node conditions: `kubectl describe node <node-name>`
 - Ensure dedicated node pools with appropriate taints prevent co-scheduling with other workloads.
-- See [Set up dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md).
+- See [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md).
 
 ## Collect evidence
 

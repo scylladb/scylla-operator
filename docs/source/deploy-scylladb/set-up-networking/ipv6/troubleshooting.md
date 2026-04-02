@@ -155,4 +155,4 @@ network:
 - [Configure dual-stack networking](configure-dual-stack.md)
 - [Configure IPv6-only single-stack](configure-single-stack.md)
 - [Migrate clusters to IPv6](migration.md)
-- [Networking architecture](../../understand/networking.md)
+- [Networking architecture](../../../understand/networking.md)

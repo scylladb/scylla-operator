@@ -240,7 +240,7 @@ deployment "webhook-server" successfully rolled out
 NodeConfig configures local storage (RAID, filesystem, mount points) and performance tuning on the Kubernetes nodes where ScyllaDB will run.
 
 :::{caution}
-Local storage configuration depends on the OpenShift deployment model and the underlying platform and infrastructure. Review the examples below and adjust the manifest to your specific environment. See [Configure nodes](../deploy-scylladb/configure-nodes.md) for details.
+Local storage configuration depends on the OpenShift deployment model and the underlying platform and infrastructure. Review the examples below and adjust the manifest to your specific environment. See [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) for details.
 :::
 
 :::{note}
@@ -340,5 +340,5 @@ For production environments, review the [Production checklist](../deploy-scyllad
 - [Prerequisites](prerequisites.md) — Kubernetes and OpenShift version requirements, platform-specific setup.
 - [Install with GitOps](install-with-gitops.md) — alternative installation path using manifests (generic Kubernetes).
 - [Install with Helm](install-with-helm.md) — alternative installation path using Helm charts.
-- [Configure nodes](../deploy-scylladb/configure-nodes.md) — customizing NodeConfig for your environment.
+- [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) — customizing NodeConfig for your environment.
 - [Upgrade ScyllaDB Operator](../upgrade/upgrade-operator.md) — version-specific upgrade steps.

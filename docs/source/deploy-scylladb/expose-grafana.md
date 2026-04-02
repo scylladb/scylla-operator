@@ -125,5 +125,5 @@ Then open `https://localhost:3000` in your browser.
 ## Related pages
 
 - [Monitoring](set-up-monitoring.md) — deploying ScyllaDBMonitoring, Prometheus, and Grafana.
-- [Operator configuration](configure-operator.md) — Grafana image configuration.
+- [Operator configuration](before-you-deploy/configure-operator.md) — Grafana image configuration.
 - [Production checklist](production-checklist.md) — monitoring as a production requirement.

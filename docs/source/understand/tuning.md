@@ -3,7 +3,7 @@
 ScyllaDB performs best when it has dedicated CPUs and is not interrupted by network or disk IRQs.
 ScyllaDB Operator implements a two-level performance tuning system — **node-level** and **pod/container-level** — that automatically optimizes both the Kubernetes host and each ScyllaDB container.
 
-Performance tuning is enabled when you create a [NodeConfig](../deploy-scylladb/configure-nodes.md) resource that targets your ScyllaDB nodes.
+Performance tuning is enabled when you create a [NodeConfig](../deploy-scylladb/before-you-deploy/configure-nodes.md) resource that targets your ScyllaDB nodes.
 
 :::{warning}
 We recommend testing performance tuning on a pre-production cluster first.
@@ -87,7 +87,7 @@ This includes both the ScyllaDB container (`resources`) and the ScyllaDB Manager
 If any container lacks matching requests and limits, the pod will not receive Guaranteed QoS class and CPUs will not be pinned.
 :::
 
-For a step-by-step guide on configuring CPU pinning, see [CPU Pinning](../deploy-scylladb/configure-cpu-pinning.md).
+For a step-by-step guide on configuring CPU pinning, see [CPU Pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md).
 
 ## Tuning namespace and security
 

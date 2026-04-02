@@ -180,7 +180,10 @@
     - Installation documentation is outdated: README vs website prerequisites out of sync, Kubernetes version 1.16+ is stale. ([#2820](https://github.com/scylladb/scylla-operator/issues/2820))
     - Local CSI Driver installation step is missing from the Helm installation guide. ([#2567](https://github.com/scylladb/scylla-operator/issues/2567))
     - Unresolved template parameters in installation docs cause dead links. ([#2477](https://github.com/scylladb/scylla-operator/issues/2477))
-    - Variable substitution not working in parts of the docs, producing raw template syntax. ([#2626](https://github.com/scylladb/scylla-operator/issues/2626))
+    - Variable substitution not. Define clear information hierarchy with logical grouping of related topics
+1. Create consistent navigation patterns that reduce cognitive load
+1. Design clear entry points for different user personas and skill levels
+1. Each document should have a well-defined Diataxis category. working in parts of the docs, producing raw template syntax. ([#2626](https://github.com/scylladb/scylla-operator/issues/2626))
     - Unify dependency requirement syntax across all docs pages. ([#3063](https://github.com/scylladb/scylla-operator/issues/3063))
 
 1. Maintain consistent and accurate terminology

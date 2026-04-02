@@ -109,7 +109,7 @@ kubectl -n=scylla-operator rollout status --timeout=10m deployment.apps/webhook-
 NodeConfig configures local storage (RAID, filesystem, mount points) and performance tuning on the Kubernetes nodes where ScyllaDB will run.
 
 :::{caution}
-The NodeConfig manifest depends on your platform, machine type, and node pool configuration. Review the example for your platform and adjust it if your disk layout differs. See [Node configuration](../deploy-scylladb/configure-nodes.md) for details.
+The NodeConfig manifest depends on your platform, machine type, and node pool configuration. Review the example for your platform and adjust it if your disk layout differs. See [Node configuration](../deploy-scylladb/before-you-deploy/configure-nodes.md) for details.
 :::
 
 ::::{tabs}
@@ -225,5 +225,5 @@ For production environments, review the [Production checklist](../deploy-scyllad
 - [Prerequisites](prerequisites.md) — Kubernetes version requirements and platform-specific setup.
 - [Install with Helm](install-with-helm.md) — alternative installation path using Helm charts.
 - [Install on OpenShift](install-on-openshift.md) — installation path for Red Hat OpenShift via OLM.
-- [Configure nodes](../deploy-scylladb/configure-nodes.md) — customizing NodeConfig for your environment.
+- [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) — customizing NodeConfig for your environment.
 - [Architecture overview](../understand/overview.md) — how the Operator components fit together.

@@ -6,8 +6,8 @@ This page explains how to run benchmarks against ScyllaDB on Kubernetes and how 
 
 Before benchmarking, verify that your cluster meets production requirements. Benchmarking a misconfigured cluster produces misleading results.
 
-- Complete every item in the [production checklist](../deploying/production-checklist.md).
-- In particular, ensure [CPU pinning](../deploying/cpu-pinning.md) is active and [I/O properties](../operating/configuring-io-properties.md) are configured.
+- Complete every item in the [production checklist](../deploy-scylladb/production-checklist.md).
+- In particular, ensure [CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md) is active and [I/O properties](../operate/configure-io-properties.md) are configured.
 - Do **not** benchmark clusters running in developer mode (`developerMode: true`). Developer mode disables performance tuning and is not representative of production performance.
 
 ## Benchmarking tools
@@ -121,7 +121,7 @@ Key metrics:
 
 ## Related pages
 
-- [Production checklist](../deploying/production-checklist.md) — verify cluster readiness before benchmarking.
-- [CPU pinning](../deploying/cpu-pinning.md) — ensure ScyllaDB has dedicated CPU cores.
-- [Configuring I/O properties](../operating/configuring-io-properties.md) — precompute disk performance parameters.
+- [Production checklist](../deploy-scylladb/production-checklist.md) — verify cluster readiness before benchmarking.
+- [CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md) — ensure ScyllaDB has dedicated CPU cores.
+- [Configure I/O properties](../operate/configure-io-properties.md) — precompute disk performance parameters.
 - [Sizing guide](sizing-guide.md) — instance types and resource sizing.

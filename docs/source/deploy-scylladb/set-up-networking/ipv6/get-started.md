@@ -199,4 +199,4 @@ kubectl delete namespace scylla
 ## Related pages
 
 - [Expose ScyllaDB clusters](../expose-clusters.md)
-- [Networking architecture](../../understand/networking.md)
+- [Networking architecture](../../../understand/networking.md)

@@ -33,7 +33,7 @@ This ensures that cleanup runs only after the scaling operation has fully comple
 
 The Operator creates one Kubernetes `Job` per affected node. Each Job runs the `scylla-operator cleanup-job` subcommand, which connects to the ScyllaDB Manager Agent on the target node and requests a cleanup operation through the Manager API. The Job pod authenticates using a Manager auth token mounted from a Secret.
 
-When a cleanup Job completes successfully, the Operator deletes it. If a Job is still running, the `ScyllaCluster` (or `ScyllaDBDatacenter`) status shows the `JobControllerProgressing` condition set to `True` with a message listing the active Job names.
+When a cleanup Job completes successfully, the Operator deletes it. If a Job is still running, the `ScyllaCluster` status shows the `JobControllerProgressing` condition set to `True` with a message listing the active Job names.
 
 ## Inspecting cleanup status
 

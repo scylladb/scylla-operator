@@ -113,63 +113,8 @@ Do not remove a rack from the spec while it still has members.
 The Operator rejects this change through validation.
 :::
 
-## Scale a ScyllaDBCluster
-
-For multi-datacenter clusters, scaling works at the datacenter level.
-Each datacenter has its own racks with a `nodes` field (equivalent to `members` in ScyllaCluster).
-
-The `datacenterTemplate.rackTemplate.nodes` field sets the default node count for all racks.
-Individual racks can override this value.
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: scylla
-  namespace: scylla
-spec:
-  datacenterTemplate:
-    rackTemplate:
-      nodes: 3              # default for all racks
-    racks:
-      - name: a
-      - name: b
-      - name: c
-  datacenters:
-    - name: us-east-1
-      remoteKubernetesClusterName: us-east-1
-    - name: us-west-2
-      remoteKubernetesClusterName: us-west-2
-      racks:                 # override for this DC only
-        - name: a
-          nodes: 5           # scale up rack a in us-west-2
-        - name: b
-        - name: c
-```
-
-To scale a single datacenter without affecting others, add a `racks` override under that datacenter entry.
-
-### Add a datacenter
-
-Append a new entry to `spec.datacenters`.
-The Operator creates datacenters in the order they appear and waits for each to finish bootstrapping before starting the next.
-
-:::{caution}
-Before adding a datacenter, ensure the target Kubernetes cluster has a `RemoteKubernetesCluster` resource and the required infrastructure (dedicated node pools, NodeConfig, cert-manager).
-See [Multi-datacenter infrastructure](../install-operator/set-up-multi-dc-infrastructure.md) for setup steps.
-:::
-
-### Remove a datacenter
-
-To remove a datacenter:
-
-1. Scale all racks in that datacenter to `0` nodes and apply.
-   Wait for all nodes to decommission.
-2. Remove the datacenter entry from the spec and apply.
-
-:::{warning}
-Do not remove a datacenter from the spec while it still has running nodes.
-The nodes would be deleted without proper decommission, potentially leaving the token ring in an inconsistent state.
+:::{note}
+In multi-DC clusters using multiple `ScyllaCluster` resources, each datacenter is scaled independently by editing its own `ScyllaCluster` resource.
 :::
 
 ## Key considerations

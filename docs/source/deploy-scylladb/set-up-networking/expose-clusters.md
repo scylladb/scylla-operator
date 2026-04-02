@@ -2,14 +2,11 @@
 
 Configure how ScyllaDB nodes are exposed on the network using `exposeOptions` — choosing the Service type, broadcast address sources, and platform-specific settings.
 
-For the conceptual background on Services, broadcast addresses, and IP families, see [Networking architecture](../understand/networking.md).
+For the conceptual background on Services, broadcast addresses, and IP families, see [Networking architecture](../../understand/networking.md).
 
 ## Configure node Services
 
 The `exposeOptions.nodeService.type` field controls the Kubernetes Service type created for each ScyllaDB node.
-
-:::::{tabs}
-::::{group-tab} ScyllaCluster
 
 ```yaml
 apiVersion: scylla.scylladb.com/v1
@@ -43,78 +40,6 @@ spec:
 `exposeOptions` on ScyllaCluster are **immutable** — they cannot be changed after the cluster is created.
 Plan your networking topology before deploying the cluster.
 :::
-::::
-::::{group-tab} ScyllaDBDatacenter
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBDatacenter
-metadata:
-  name: scylla
-  namespace: scylla
-spec:
-  exposeOptions:
-    nodeService:
-      type: ClusterIP
-    broadcastOptions:
-      nodes:
-        type: ServiceClusterIP
-      clients:
-        type: ServiceClusterIP
-  rackTemplate:
-    nodes: 3
-    scyllaDB:
-      storage:
-        capacity: 500Gi
-    resources:
-      limits:
-        cpu: 4
-        memory: 8Gi
-  racks:
-    - name: us-east-1a
-```
-::::
-::::{group-tab} ScyllaDBCluster
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: scylla
-  namespace: scylla
-spec:
-  exposeOptions:
-    nodeService:
-      type: Headless     # Headless is the default for ScyllaDBCluster
-    broadcastOptions:
-      nodes:
-        type: PodIP      # PodIP is the default for ScyllaDBCluster
-      clients:
-        type: PodIP
-  datacenterTemplate:
-    rackTemplate:
-      nodes: 3
-      scyllaDB:
-        storage:
-          capacity: 500Gi
-      resources:
-        limits:
-          cpu: 4
-          memory: 8Gi
-    racks:
-      - name: a
-  datacenters:
-    - name: us-east-1
-      remoteKubernetesClusterName: us-east-1
-```
-
-:::{caution}
-ScyllaDBCluster is designed for use across multiple Kubernetes clusters.
-ClusterIP Services are typically only routable within a single Kubernetes cluster.
-If you change the default from Headless to ClusterIP, ensure your CNI allows external ClusterIP connectivity, or use LoadBalancer instead.
-:::
-::::
-:::::
 
 ## Deployment scenarios
 
@@ -234,9 +159,6 @@ Additional LoadBalancer fields that propagate to member Services:
 Each rack can add labels and annotations to its member Services without changing the Service type.
 This is useful for rack-specific load balancer settings, such as targeting a particular availability zone.
 
-:::::{tabs}
-::::{group-tab} ScyllaCluster
-
 ```yaml
 spec:
   datacenter:
@@ -249,22 +171,6 @@ spec:
             annotations:
               service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-abc123
 ```
-::::
-::::{group-tab} ScyllaDBDatacenter
-
-```yaml
-spec:
-  racks:
-    - name: us-east-1a
-      exposeOptions:
-        nodeService:
-          labels:
-            topology.kubernetes.io/zone: us-east-1a
-          annotations:
-            service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-abc123
-```
-::::
-:::::
 
 ## Configure CQL Ingress
 
@@ -319,16 +225,18 @@ kubectl -n scylla exec -it scylla-us-east-1-us-east-1a-0 -c scylla -- \
   cat /etc/scylla/scylla.yaml | grep broadcast
 ```
 
-## Defaults by API version
+## Defaults
 
-| Field | `ScyllaCluster` (v1) | `ScyllaDBDatacenter` (v1alpha1) | `ScyllaDBCluster` (v1alpha1) |
-|-------|----------------------|--------------------------------|------------------------------|
-| `nodeService.type` | `ClusterIP` | `ClusterIP` | `Headless` |
-| `broadcastOptions.nodes.type` | `ServiceClusterIP` | `ServiceClusterIP` | `PodIP` |
-| `broadcastOptions.clients.type` | `ServiceClusterIP` | `ServiceClusterIP` | `PodIP` |
+| Field | Default |
+|-------|------|
+| `nodeService.type` | `ClusterIP` |
+| `broadcastOptions.nodes.type` | `ServiceClusterIP` |
+| `broadcastOptions.clients.type` | `ServiceClusterIP` |
+
+For multi-DC clusters using multiple `ScyllaCluster` resources connected via `externalSeeds`, configure Headless node Services with PodIP broadcast so that Pod IPs are used for inter-cluster communication.
 
 ## Related pages
 
-- [Networking architecture](../understand/networking.md) — conceptual overview of Services, broadcast addresses, IP families, and dual-stack
-- [Connecting to ScyllaDB from inside a Kubernetes cluster](../connect-your-app/inside-kubernetes.md) — using member Service DNS or ClusterIP to connect
-- [Connecting to ScyllaDB from outside a Kubernetes cluster](../connect-your-app/outside-kubernetes.md) — using LoadBalancer addresses or CQL Ingress
+- [Networking architecture](../../understand/networking.md) — conceptual overview of Services, broadcast addresses, IP families, and dual-stack
+- [Connect via CQL](../../connect-your-app/connect-via-cql.md) — connecting to ScyllaDB from inside the cluster
+- [Configure external access](../../connect-your-app/configure-external-access.md) — connecting to ScyllaDB from outside the Kubernetes cluster

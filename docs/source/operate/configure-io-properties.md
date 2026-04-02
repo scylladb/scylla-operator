@@ -85,41 +85,6 @@ spec:
             subPath: io_properties.yaml
             readOnly: true
 ```
-::::
-::::{group-tab} ScyllaDBDatacenter
-
-Use `scyllaDB.volumes` and `scyllaDB.volumeMounts` on the rack template:
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBDatacenter
-metadata:
-  name: scylla
-  namespace: scylla
-spec:
-  rackTemplate:
-    nodes: 3
-    scyllaDB:
-      storage:
-        capacity: 500Gi
-      volumes:
-        - name: io-properties
-          configMap:
-            name: scylla-io-properties
-      volumeMounts:
-        - name: io-properties
-          mountPath: /etc/scylla.d/io_properties.yaml
-          subPath: io_properties.yaml
-          readOnly: true
-    resources:
-      limits:
-        cpu: 4
-        memory: 8Gi
-  racks:
-    - name: us-east-1a
-```
-::::
-:::::
 
 ### Step 3: Apply and verify
 

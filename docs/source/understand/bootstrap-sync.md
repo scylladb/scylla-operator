@@ -17,15 +17,15 @@ When the `BootstrapSynchronisation` feature gate is enabled, the Operator adds a
 
 1. **Already bootstrapped?** — The init container inspects the data directory for existing SSTables. If the node has already completed bootstrap (the `bootstrapped` column in `system.local` reads `COMPLETED`), the barrier exits immediately. Restarting nodes are never blocked.
 
-2. **Force annotation set?** — If the node's member Service or the `ScyllaDBDatacenter` carries the annotation `scylla-operator.scylladb.com/force-proceed-to-bootstrap: "true"`, the barrier exits immediately, bypassing the precondition.
+2. **Force annotation set?** — If the node's member Service carries the annotation `scylla-operator.scylladb.com/force-proceed-to-bootstrap: "true"`, the barrier exits immediately, bypassing the precondition. The annotation can also be set on the `ScyllaCluster` resource, which propagates it to all member Services in the datacenter.
 
 3. **Replacing a dead node?** — If the node is being added as a replacement (the replacement annotation is present on the Service), the barrier exits immediately. Replacement has its own prerequisites that are outside the scope of this mechanism.
 
-4. **Precondition check** — The init container watches `ScyllaDBDatacenterNodesStatusReport` resources and evaluates whether every reporting node in the cluster sees every other node as `UP`. The barrier blocks until this condition is satisfied.
+4. **Precondition check** — The init container watches internal node-status report resources (`ScyllaDBDatacenterNodesStatusReport`) and evaluates whether every reporting node in the cluster sees every other node as `UP`. The barrier blocks until this condition is satisfied.
 
 ## Node status propagation
 
-Node statuses flow through a three-stage pipeline:
+Node statuses flow through a two-stage pipeline:
 
 ### Stage 1 — Sidecar reports per-node status
 
@@ -33,7 +33,7 @@ A `StatusReporter` controller runs inside the sidecar container on every ScyllaD
 
 ### Stage 2 — Datacenter controller assembles the report
 
-On each reconciliation, the `ScyllaDBDatacenter` controller reads the status annotation from every pod in the datacenter and assembles them into a single `ScyllaDBDatacenterNodesStatusReport` custom resource. This resource is cluster-scoped and contains a nested structure:
+On each reconciliation, the internal datacenter controller reads the status annotation from every pod in the datacenter and assembles them into an internal `ScyllaDBDatacenterNodesStatusReport` custom resource. This resource is namespaced and contains a nested structure:
 
 ```
 ScyllaDBDatacenterNodesStatusReport
@@ -49,9 +49,9 @@ ScyllaDBDatacenterNodesStatusReport
 
 Each node entry records how that node sees every other node in the cluster.
 
-### Stage 3 — Cross-datacenter propagation (multi-DC)
-
-For `ScyllaDBCluster` deployments spanning multiple Kubernetes clusters, the `ScyllaDBCluster` controller propagates `ScyllaDBDatacenterNodesStatusReport` resources to remote clusters so that each datacenter's bootstrap barrier can evaluate the global precondition.
+:::{note}
+`ScyllaDBDatacenterNodesStatusReport` is an internal resource used by the Operator for coordinating operations. It is not intended for direct user interaction.
+:::
 
 ## Precondition evaluation
 
@@ -93,9 +93,10 @@ kubectl annotate service <member-service-name> \
 :::
 :::{group-tab} Entire datacenter
 ```bash
-kubectl annotate scylladbdatacenter <name> \
+kubectl -n=<namespace> annotate scyllacluster <name> \
   scylla-operator.scylladb.com/force-proceed-to-bootstrap=true
 ```
+The annotation is propagated from the `ScyllaCluster` through the internal `ScyllaDBDatacenter` resource (which shares the same name) to all member Services in the datacenter.
 :::
 ::::
 

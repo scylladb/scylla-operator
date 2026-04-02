@@ -1,43 +1,35 @@
-# Deploy a multi-DC cluster
+# Deploy a multi-datacenter cluster
 
-This page walks you through creating a ScyllaDB cluster that spans multiple Kubernetes clusters using the `ScyllaDBCluster` resource. For single-datacenter deployments, see [Deploy a single-DC cluster](deploy-single-dc-cluster.md).
+This page walks you through creating a ScyllaDB cluster that spans multiple Kubernetes clusters using multiple `ScyllaCluster` resources connected via `externalSeeds`. Each `ScyllaCluster` manages one datacenter. For single-datacenter deployments, see [Deploy a single-DC cluster](deploy-single-dc-cluster.md).
 
-:::{caution}
-ScyllaDBCluster is a **technical preview**. Exercise caution when using it outside development environments.
+:::{warning}
+ScyllaDB Operator only automates operations for a single datacenter. Operations related to multiple datacenters may require manual intervention. Most notably, destroying one of the Kubernetes clusters or ScyllaDB datacenters leaves DN (Down/Normal) nodes in other datacenters, and their removal must be carried out manually using `nodetool removenode`.
 :::
 
 :::{tip}
 You can inspect all available API fields for your installed Operator version with:
 
 ```shell
-kubectl explain --api-version='scylla.scylladb.com/v1alpha1' ScyllaDBCluster.spec
+kubectl explain --api-version='scylla.scylladb.com/v1' ScyllaCluster.spec
 ```
 :::
 
+## How external seeds work
+
+The `externalSeeds` field in the `ScyllaCluster` spec propagates external seed addresses to the ScyllaDB seed provider configuration on startup. Seeds are initial contact points that let joining nodes discover the cluster ring topology.
+
+For more information about seed nodes, see [ScyllaDB Seed Nodes](https://opensource.docs.scylladb.com/stable/kb/seed-nodes.html) in the ScyllaDB documentation.
+
 ## Prerequisites
 
-This guide assumes you have:
-
-- **Four interconnected Kubernetes clusters** that can communicate using Pod IPs:
-  - One **Control Plane cluster** that manages the entire ScyllaDB cluster.
-  - Three **Worker clusters** that host the ScyllaDB datacenters.
-
-:::{note}
-The Control Plane cluster does not have to be a separate Kubernetes cluster. One of the Worker clusters can also serve as the Control Plane cluster.
-:::
-
-**Each Worker cluster** must have:
+This guide assumes you have **two interconnected Kubernetes clusters** capable of communicating using Pod IPs. Each cluster must have:
 
 - A dedicated node pool for ScyllaDB with at least three nodes across different availability zones (each with a unique `topology.kubernetes.io/zone` label), labeled with `scylla.scylladb.com/node-type: scylla`.
 - ScyllaDB Operator and its prerequisites installed ([GitOps](../install-operator/install-with-gitops.md) or [Helm](../install-operator/install-with-helm.md)).
 - A storage provisioner capable of provisioning XFS volumes with the StorageClass `scylladb-local-xfs` on each ScyllaDB-dedicated node.
-- NodeConfig applied for [performance tuning](configure-nodes.md).
+- NodeConfig applied for [performance tuning](before-you-deploy/configure-nodes.md).
 
-**The Control Plane cluster** must have:
-
-- ScyllaDB Operator and its prerequisites installed.
-
-For infrastructure setup instructions, see [Setting up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md).
+For infrastructure networking setup, see [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md).
 
 :::{caution}
 You are strongly advised to enable bootstrap synchronisation in your ScyllaDB Operator installations to avoid potential stability issues when adding new nodes. See [Bootstrap synchronisation](../understand/bootstrap-sync.md) for details.
@@ -45,103 +37,223 @@ You are strongly advised to enable bootstrap synchronisation in your ScyllaDB Op
 This feature requires ScyllaDB 2025.2 or later.
 :::
 
-## Step 1: Set up Control Plane access
+## Configure networking
 
-The Control Plane cluster must have access to each Worker cluster. Create a `RemoteKubernetesCluster` resource for each Worker cluster.
-
-### Create credential Secrets
-
-For each Worker cluster, create a Secret containing a kubeconfig with credentials that have the `scylladb:controller:operator-remote` ClusterRole in that Worker cluster.
+Since this guide assumes inter-cluster connectivity over Pod IPs, configure each `ScyllaCluster` to broadcast Pod IPs for both inter-node and client communication:
 
 ```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: dev-us-east-1
-  namespace: remotekubernetescluster-credentials
-type: Opaque
-stringData:
-  kubeconfig: |
-    apiVersion: v1
-    kind: Config
-    clusters:
-    - cluster:
-        certificate-authority-data: <kube-apiserver-ca-bundle>
-        server: <kube-apiserver-address>
-      name: dev-us-east-1
-    contexts:
-    - context:
-        cluster: dev-us-east-1
-        user: dev-us-east-1
-      name: dev-us-east-1
-    current-context: dev-us-east-1
-    users:
-    - name: dev-us-east-1
-      user:
-        token: <token-having-remote-operator-cluster-role>
-```
-
-Repeat for each Worker cluster (`dev-us-central-1`, `dev-us-west-1`).
-
-### Create RemoteKubernetesCluster resources
-
-Create one `RemoteKubernetesCluster` for each Worker cluster:
-
-::::{tabs}
-:::{group-tab} dev-us-east-1
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: RemoteKubernetesCluster
-metadata:
-  name: dev-us-east-1
 spec:
-  kubeconfigSecretRef:
-    name: dev-us-east-1
-    namespace: remotekubernetescluster-credentials
+  exposeOptions:
+    nodeService:
+      type: Headless
+    broadcastOptions:
+      clients:
+        type: PodIP
+      nodes:
+        type: PodIP
 ```
-:::
 
-:::{group-tab} dev-us-central-1
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: RemoteKubernetesCluster
-metadata:
-  name: dev-us-central-1
-spec:
-  kubeconfigSecretRef:
-    name: dev-us-central-1
-    namespace: remotekubernetescluster-credentials
-```
-:::
+This requires that Pod CIDRs are routable between all Kubernetes clusters and do not overlap. For alternative exposure configurations, see [Expose ScyllaDB clusters](set-up-networking/expose-clusters.md).
 
-:::{group-tab} dev-us-west-1
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: RemoteKubernetesCluster
-metadata:
-  name: dev-us-west-1
-spec:
-  kubeconfigSecretRef:
-    name: dev-us-west-1
-    namespace: remotekubernetescluster-credentials
-```
-:::
-::::
+## Step 1: Set kubectl contexts
 
-Wait for each RemoteKubernetesCluster to become available:
+Retrieve the kubectl contexts for both clusters:
 
 ```shell
-kubectl --context="${CONTROL_PLANE_CONTEXT}" wait --for='condition=Available=True' remotekubernetescluster.scylla.scylladb.com/dev-us-east-1
-kubectl --context="${CONTROL_PLANE_CONTEXT}" wait --for='condition=Available=True' remotekubernetescluster.scylla.scylladb.com/dev-us-central-1
-kubectl --context="${CONTROL_PLANE_CONTEXT}" wait --for='condition=Available=True' remotekubernetescluster.scylla.scylladb.com/dev-us-west-1
+kubectl config current-context
 ```
 
-## Step 2: Enable authentication
-
-Create a ConfigMap in the Control Plane cluster with the ScyllaDB configuration. This configuration is automatically propagated to all datacenters that reference it.
+Save them as environment variables:
 
 ```shell
-kubectl --context="${CONTROL_PLANE_CONTEXT}" apply --server-side -f=- <<EOF
+export CONTEXT_DC1=<context-for-first-cluster>
+export CONTEXT_DC2=<context-for-second-cluster>
+```
+
+## Step 2: Deploy the first datacenter
+
+Create the `scylla` namespace:
+
+```shell
+kubectl --context="${CONTEXT_DC1}" create ns scylla
+```
+
+:::{warning}
+To ensure high availability and fault tolerance, **spread your nodes across multiple racks or availability zones**. As a general rule, use as many racks as your desired replication factor. For example, with replication factor 3, deploy across 3 different racks or availability zones.
+:::
+
+:::{important}
+The `.metadata.name` of all `ScyllaCluster` resources that form a multi-datacenter cluster **must be identical** — this is the ScyllaDB cluster name. The `.spec.datacenter.name` must be **unique** across all datacenters in the cluster.
+
+For more information, see [Create a ScyllaDB Cluster - Multi Data Centers (DC)](https://opensource.docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/create-cluster-multidc.html) in the ScyllaDB documentation.
+:::
+
+Save the following manifest as `dc1.yaml`. Adjust the zone names, resources, and storage to match your environment:
+
+:::{code-block} yaml
+:substitutions:
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-cluster
+  namespace: scylla
+spec:
+  agentVersion: {{agentVersion}}
+  version: {{scyllaDBImageTag}}
+  cpuset: true
+  automaticOrphanedNodeCleanup: true
+  exposeOptions:
+    nodeService:
+      type: Headless
+    broadcastOptions:
+      clients:
+        type: PodIP
+      nodes:
+        type: PodIP
+  datacenter:
+    name: us-east-1
+    racks:
+    - name: a
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        storageClassName: scylladb-local-xfs
+        capacity: 1800G
+      resources:
+        requests:
+          cpu: 7
+          memory: 56G
+        limits:
+          cpu: 7
+          memory: 56G
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 250M
+        limits:
+          cpu: 100m
+          memory: 250M
+      placement:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: scylla
+                scylla/cluster: scylla-cluster
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1a
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+    - name: b
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        storageClassName: scylladb-local-xfs
+        capacity: 1800G
+      resources:
+        requests:
+          cpu: 7
+          memory: 56G
+        limits:
+          cpu: 7
+          memory: 56G
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 250M
+        limits:
+          cpu: 100m
+          memory: 250M
+      placement:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: scylla
+                scylla/cluster: scylla-cluster
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1b
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+    - name: c
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        storageClassName: scylladb-local-xfs
+        capacity: 1800G
+      resources:
+        requests:
+          cpu: 7
+          memory: 56G
+        limits:
+          cpu: 7
+          memory: 56G
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 250M
+        limits:
+          cpu: 100m
+          memory: 250M
+      placement:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: scylla
+                scylla/cluster: scylla-cluster
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-1c
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+:::
+
+Before deploying, create the ScyllaDB configuration ConfigMap to enable authentication:
+
+```shell
+kubectl --context="${CONTEXT_DC1}" -n scylla apply --server-side -f- <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -153,200 +265,380 @@ data:
 EOF
 ```
 
-## Step 3: Create the ScyllaDBCluster
-
-The ScyllaDBCluster resource is created in the Control Plane cluster. Each datacenter references a `RemoteKubernetesCluster` that determines which Worker cluster hosts it.
-
-The `datacenterTemplate` provides defaults inherited by all datacenters. Individual datacenters can override these defaults.
-
-:::{code-block} yaml
-:substitutions:
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: dev-cluster
-spec:
-  scyllaDB:
-    image: {{imageRepository}}:{{scyllaDBImageTag}}
-  scyllaDBManagerAgent:
-    image: docker.io/scylladb/scylla-manager-agent:{{agentVersion}}
-  datacenterTemplate:
-    placement:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-          - matchExpressions:
-            - key: scylla.scylladb.com/node-type
-              operator: In
-              values:
-              - scylla
-      tolerations:
-      - effect: NoSchedule
-        key: scylla-operator.scylladb.com/dedicated
-        operator: Equal
-        value: scyllaclusters
-    scyllaDBManagerAgent:
-      resources:
-        limits:
-          cpu: 100m
-          memory: 100Mi
-    scyllaDB:
-      customConfigMapRef: scylladb-config
-      resources:
-        limits:
-          cpu: 2
-          memory: 8Gi
-      storage:
-        capacity: 100Gi
-    rackTemplate:
-      nodes: 1
-    racks:
-    - name: a
-    - name: b
-    - name: c
-  datacenters:
-  - name: us-east-1
-    remoteKubernetesClusterName: dev-us-east-1
-  - name: us-central-1
-    remoteKubernetesClusterName: dev-us-central-1
-  - name: us-west-1
-    remoteKubernetesClusterName: dev-us-west-1
-:::
-
-:::{note}
-Adjust the resources and storage capacity to match your workload requirements and instance types. The values above are illustrative. The tolerations and placement settings should match your dedicated node pool configuration. See [Dedicated node pools](set-up-dedicated-node-pools.md).
-:::
-
-:::{warning}
-ScyllaDBCluster uses ClusterIP Services by default. Ensure that your CNI allows external ClusterIP connectivity between Kubernetes clusters. Otherwise, configure a different exposure type using `spec.exposeOptions`.
-:::
-
-## Step 4: Wait for the cluster to become ready
+Apply the ScyllaCluster manifest:
 
 ```shell
-kubectl --context="${CONTROL_PLANE_CONTEXT}" wait --for='condition=Progressing=False' scylladbcluster.scylla.scylladb.com/dev-cluster
-kubectl --context="${CONTROL_PLANE_CONTEXT}" wait --for='condition=Degraded=False' scylladbcluster.scylla.scylladb.com/dev-cluster
-kubectl --context="${CONTROL_PLANE_CONTEXT}" wait --for='condition=Available=True' scylladbcluster.scylla.scylladb.com/dev-cluster
+kubectl --context="${CONTEXT_DC1}" -n scylla apply --server-side -f dc1.yaml
 ```
 
-## Step 5: Verify the cluster
-
-Datacenters in Worker clusters are reconciled in unique namespaces. Their names are visible in `ScyllaDBCluster.status.datacenters[].remoteNamespaceName`.
-
-Run `nodetool status` against one of the ScyllaDB nodes to verify multi-datacenter connectivity:
+Wait for the cluster to be fully rolled out:
 
 ```shell
-export US_EAST_1_NS=$(kubectl --context="${CONTROL_PLANE_CONTEXT}" get scylladbcluster dev-cluster -o jsonpath='{.status.datacenters[?(@.name=="us-east-1")].remoteNamespaceName}')
-kubectl --context="${DEV_US_EAST_1_CONTEXT}" --namespace="${US_EAST_1_NS}" exec dev-cluster-us-east-1-a-0 -c scylla -- nodetool status
+kubectl --context="${CONTEXT_DC1}" -n scylla wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-cluster
+```
+```console
+scyllacluster.scylla.scylladb.com/scylla-cluster condition met
 ```
 
-**Expected output** — all nodes across all datacenters show `UN` (Up and Normal):
+```shell
+kubectl --context="${CONTEXT_DC1}" -n scylla wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-cluster
+```
+```console
+scyllacluster.scylla.scylladb.com/scylla-cluster condition met
+```
+
+```shell
+kubectl --context="${CONTEXT_DC1}" -n scylla wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-cluster
+```
+```console
+scyllacluster.scylla.scylladb.com/scylla-cluster condition met
+```
+
+Verify that all nodes are in UN (Up/Normal) state:
+
+```shell
+kubectl --context="${CONTEXT_DC1}" -n scylla exec -it pod/scylla-cluster-us-east-1-a-0 -c scylla -- nodetool status
+```
+
+**Expected output:**
 
 ```
 Datacenter: us-east-1
-===========================
+=====================
 Status=Up/Down
 |/ State=Normal/Leaving/Joining/Moving
--- Address        Load    Tokens Owns Host ID                              Rack      
-UN 10.221.135.48  3.30 KB 256    ?    5dd7f301-62d7-4ab7-986a-e7ea9d21be4d a
-UN 10.221.140.203 3.48 KB 256    ?    2f725f88-33fa-4ca7-b366-fa35e63e7c72 b
-UN 10.221.150.121 3.67 KB 256    ?    7063a262-fa3f-4f69-8a60-720f464b1483 c
-Datacenter: us-central-1
-===========================
-Status=Up/Down
-|/ State=Normal/Leaving/Joining/Moving
--- Address       Load    Tokens Owns Host ID                              Rack      
-UN 10.222.66.154 3.56 KB 256    ?    b17f0b94-150b-477a-8b43-c7f54b3ba357 b
-UN 10.222.70.252 3.50 KB 256    ?    d99aa9b7-6fb6-46b7-bb7d-9af165dc4379 a
-UN 10.222.73.52  3.35 KB 256    ?    b71980a3-cb54-4650-a4ac-ed75d31500c8 c
-Datacenter: us-west-1
-===========================
-Status=Up/Down
-|/ State=Normal/Leaving/Joining/Moving
--- Address       Load    Tokens Owns Host ID                              Rack      
-UN 10.223.66.154 3.56 KB 256    ?    870cdce1-54cb-49bc-b107-a6fab16268dd b
-UN 10.223.70.252 3.50 KB 256    ?    07d01c9f-6ef7-476c-99b0-0482bdbfa823 a
-UN 10.223.73.52  3.35 KB 256    ?    ba2ea9e0-8924-40df-8fa2-a61d1fd263f9 c
+--  Address      Load       Tokens       Owns    Host ID                               Rack
+UN  10.0.70.195  290 KB     256          ?       494277b9-121c-4af9-bd63-3d0a7b9305f7  c
+UN  10.0.59.24   559 KB     256          ?       a3a98e08-0dfd-4a25-a96a-c5ab2f47eb37  b
+UN  10.0.19.237  107 KB     256          ?       64b6292a-327f-4128-852a-6004039f402e  a
 ```
 
-## Key fields explained
+## Step 3: Retrieve Pod IPs for external seeds
 
-### ScyllaDB configuration
+Retrieve the Pod IPs of the DC1 nodes. These are used as external seeds for the second datacenter.
 
-| Field | Description |
-|-------|-------------|
-| `spec.scyllaDB.image` | ScyllaDB container image (e.g., `docker.io/scylladb/scylla:2025.4.2`). **Required.** |
-| `spec.scyllaDBManagerAgent.image` | Manager Agent container image. |
-| `spec.forceRedeploymentReason` | Change to trigger a rolling restart across all datacenters. |
-| `spec.disableAutomaticOrphanedNodeReplacement` | When `true`, disables automatic replacement of nodes whose Kubernetes node no longer exists. |
-
-### Datacenter template
-
-The `datacenterTemplate` provides defaults inherited by every datacenter. Each datacenter can override any of these fields.
-
-| Field | Description |
-|-------|-------------|
-| `placement` | `nodeAffinity` and `tolerations` for scheduling. |
-| `scyllaDB.customConfigMapRef` | Name of a ConfigMap containing `scylla.yaml`. |
-| `scyllaDB.resources` | CPU and memory for the ScyllaDB container. |
-| `scyllaDB.storage.capacity` | PersistentVolume size per node. **Immutable.** |
-| `scyllaDBManagerAgent.resources` | CPU and memory for the Manager Agent sidecar. |
-| `rackTemplate.nodes` | Default number of nodes per rack. |
-| `racks` | List of rack definitions (name and optional overrides). |
-
-### Datacenter specification
-
-| Field | Description |
-|-------|-------------|
-| `name` | Datacenter name used by the GossipingPropertyFileSnitch. |
-| `remoteKubernetesClusterName` | References the `RemoteKubernetesCluster` that hosts this datacenter. |
-| `forceRedeploymentReason` | Change to trigger a rolling restart for this datacenter only. |
-
-### Immutable fields
-
-The following fields cannot be changed after creation:
-
-- `spec.clusterName`
-- `spec.exposeOptions.nodeService.type`
-- `spec.exposeOptions.broadcastOptions.clients.type`
-- `spec.exposeOptions.broadcastOptions.nodes.type`
-- Storage capacity at all levels
-
-Datacenters and racks can only be removed when their node count is 0 and the status is up-to-date.
-
-### Expose options
-
-By default, ScyllaDBCluster uses `Headless` node services with `PodIP` broadcast addresses. This requires cross-cluster Pod IP routing.
-
-| Field | Default |
-|-------|---------|
-| `exposeOptions.nodeService.type` | `Headless` |
-| `exposeOptions.broadcastOptions.clients.type` | `PodIP` |
-| `exposeOptions.broadcastOptions.nodes.type` | `PodIP` |
-
-## Forcing a rolling restart
-
-To trigger a rolling restart without changing configuration, update `forceRedeploymentReason`:
+:::{warning}
+Pod IPs are ephemeral. In production environments, use domain names or non-ephemeral IP addresses as external seeds, because Pod IPs change during the cluster lifecycle and stale seeds cannot serve as fallback contact points. Pod IPs are used in this example for simplicity.
+:::
 
 ```shell
-kubectl --context="${CONTROL_PLANE_CONTEXT}" patch scylladbcluster dev-cluster --type=merge \
-  -p '{"spec":{"forceRedeploymentReason":"restart-2025-01-15"}}'
+kubectl --context="${CONTEXT_DC1}" -n scylla get pod/scylla-cluster-us-east-1-a-0 --template='{{ .status.podIP }}'
 ```
-
-This triggers a rolling restart of all ScyllaDB nodes across all datacenters, respecting the PodDisruptionBudget of each datacenter.
-
-To restart only a specific datacenter, set `forceRedeploymentReason` on the datacenter entry instead:
+```console
+10.0.19.237
+```
 
 ```shell
-kubectl --context="${CONTROL_PLANE_CONTEXT}" patch scylladbcluster dev-cluster --type=json \
-  -p '[{"op":"replace","path":"/spec/datacenters/0/forceRedeploymentReason","value":"restart-dc-2025-01-15"}]'
+kubectl --context="${CONTEXT_DC1}" -n scylla get pod/scylla-cluster-us-east-1-b-0 --template='{{ .status.podIP }}'
 ```
+```console
+10.0.59.24
+```
+
+```shell
+kubectl --context="${CONTEXT_DC1}" -n scylla get pod/scylla-cluster-us-east-1-c-0 --template='{{ .status.podIP }}'
+```
+```console
+10.0.70.195
+```
+
+## Step 4: Deploy the second datacenter
+
+Create the `scylla` namespace:
+
+```shell
+kubectl --context="${CONTEXT_DC2}" create ns scylla
+```
+
+Create the same ScyllaDB configuration ConfigMap in DC2:
+
+```shell
+kubectl --context="${CONTEXT_DC2}" -n scylla apply --server-side -f- <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scylladb-config
+data:
+  scylla.yaml: |
+    authenticator: PasswordAuthenticator
+    authorizer: CassandraAuthorizer
+EOF
+```
+
+Save the following manifest as `dc2.yaml`. Replace the `externalSeeds` values with the Pod IPs retrieved in the previous step. Adjust zone names to match your second cluster's region:
+
+:::{code-block} yaml
+:substitutions:
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-cluster
+  namespace: scylla
+spec:
+  agentVersion: {{agentVersion}}
+  version: {{scyllaDBImageTag}}
+  cpuset: true
+  automaticOrphanedNodeCleanup: true
+  exposeOptions:
+    nodeService:
+      type: Headless
+    broadcastOptions:
+      clients:
+        type: PodIP
+      nodes:
+        type: PodIP
+  externalSeeds:
+  - 10.0.19.237
+  - 10.0.59.24
+  - 10.0.70.195
+  datacenter:
+    name: us-east-2
+    racks:
+    - name: a
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        storageClassName: scylladb-local-xfs
+        capacity: 1800G
+      resources:
+        requests:
+          cpu: 7
+          memory: 56G
+        limits:
+          cpu: 7
+          memory: 56G
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 250M
+        limits:
+          cpu: 100m
+          memory: 250M
+      placement:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: scylla
+                scylla/cluster: scylla-cluster
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-2a
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+    - name: b
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        storageClassName: scylladb-local-xfs
+        capacity: 1800G
+      resources:
+        requests:
+          cpu: 7
+          memory: 56G
+        limits:
+          cpu: 7
+          memory: 56G
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 250M
+        limits:
+          cpu: 100m
+          memory: 250M
+      placement:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: scylla
+                scylla/cluster: scylla-cluster
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-2b
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+    - name: c
+      members: 1
+      scyllaConfig: scylladb-config
+      storage:
+        storageClassName: scylladb-local-xfs
+        capacity: 1800G
+      resources:
+        requests:
+          cpu: 7
+          memory: 56G
+        limits:
+          cpu: 7
+          memory: 56G
+      agentResources:
+        requests:
+          cpu: 100m
+          memory: 250M
+        limits:
+          cpu: 100m
+          memory: 250M
+      placement:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: scylla
+                scylla/cluster: scylla-cluster
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - us-east-2c
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters
+:::
+
+Apply the manifest:
+
+```shell
+kubectl --context="${CONTEXT_DC2}" -n scylla apply --server-side -f dc2.yaml
+```
+
+Wait for the second datacenter to roll out:
+
+```shell
+kubectl --context="${CONTEXT_DC2}" -n scylla wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-cluster
+```
+```console
+scyllacluster.scylla.scylladb.com/scylla-cluster condition met
+```
+
+```shell
+kubectl --context="${CONTEXT_DC2}" -n scylla wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/scylla-cluster
+```
+```console
+scyllacluster.scylla.scylladb.com/scylla-cluster condition met
+```
+
+```shell
+kubectl --context="${CONTEXT_DC2}" -n scylla wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-cluster
+```
+```console
+scyllacluster.scylla.scylladb.com/scylla-cluster condition met
+```
+
+## Step 5: Verify the multi-datacenter cluster
+
+Run `nodetool status` against a node in DC2 to verify that both datacenters are visible:
+
+```shell
+kubectl --context="${CONTEXT_DC2}" -n scylla exec -it pod/scylla-cluster-us-east-2-a-0 -c scylla -- nodetool status
+```
+
+**Expected output** — all nodes across both datacenters show `UN` (Up/Normal):
+
+```
+Datacenter: us-east-1
+=====================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens       Owns    Host ID                               Rack
+UN  10.0.70.195    705 KB     256          ?       494277b9-121c-4af9-bd63-3d0a7b9305f7  c
+UN  10.0.59.24     764 KB     256          ?       a3a98e08-0dfd-4a25-a96a-c5ab2f47eb37  b
+UN  10.0.19.237    634 KB     256          ?       64b6292a-327f-4128-852a-6004039f402e  a
+Datacenter: us-east-2
+=====================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens       Owns    Host ID                               Rack
+UN  172.16.39.209  336 KB     256          ?       7c30ea55-7a4f-4d93-86f7-c881772ebe62  b
+UN  172.16.25.18   759 KB     256          ?       665dde7e-e420-4db3-8c54-ca71efd39b2e  a
+UN  172.16.87.27   503 KB     256          ?       c19c89cb-e24c-4062-9df4-2aa90ab29a99  c
+```
+
+## ScyllaDB Manager integration
+
+To integrate a multi-datacenter cluster with ScyllaDB Manager, deploy Manager in **only one** datacenter. Manager communicates with all nodes across datacenters through the Manager Agent running in each pod.
+
+Every `ScyllaCluster` is provisioned with a unique, randomly generated auth token stored in a Secret named `<cluster-name>-auth-token`. For Manager to manage nodes in all datacenters, every datacenter must use the **same** auth token.
+
+### Synchronize the auth token
+
+1. Extract the token from DC1:
+
+   ```shell
+   kubectl --context="${CONTEXT_DC1}" -n scylla get secrets/scylla-cluster-auth-token \
+     --template='{{ index .data "auth-token.yaml" }}' | base64 -d
+   ```
+   ```console
+   auth_token: 84qtsfvm98qzmps8s65zr2vtpb8rg4sdzcbg4pbmg2pfhxwpg952654gj86tzdljfqnsghndljm58mmhpmwfgpsvjx2kkmnns8bnblmgkbl9n8l9f64rs6tcvttm7kmf
+   ```
+
+2. Patch the token into DC2's Secret (replace the token value with the output from step 1):
+
+   ```shell
+   kubectl --context="${CONTEXT_DC2}" -n scylla patch secret/scylla-cluster-auth-token \
+     --type='json' \
+     -p='[{"op": "add", "path": "/stringData", "value": {"auth-token.yaml": "auth_token: <token-from-step-1>"}}]'
+   ```
+
+3. Rolling restart DC2 to pick up the new token:
+
+   ```shell
+   kubectl --context="${CONTEXT_DC2}" -n scylla patch scyllacluster/scylla-cluster \
+     --type='merge' \
+     -p='{"spec": {"forceRedeploymentReason": "sync manager-agent auth token"}}'
+   ```
+
+4. Define Manager backup and repair tasks on the `ScyllaCluster` in the Kubernetes cluster where Manager is running.
+
+For details on how Manager integrates with the Operator, see [ScyllaDB Manager](../understand/manager.md).
+
+## Monitoring
+
+For multi-DC clusters, deploy a `ScyllaDBMonitoring` resource independently in each datacenter's Kubernetes cluster. Each instance monitors the local `ScyllaCluster` through a local Prometheus and Grafana stack.
+
+See [Set up monitoring](set-up-monitoring.md) for the deployment procedure.
 
 ## Related pages
 
 - [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md) — networking between Kubernetes clusters.
 - [Bootstrap synchronisation](../understand/bootstrap-sync.md) — how nodes coordinate joining.
-- [Deploy a single-DC cluster](deploy-single-dc-cluster.md) — single-datacenter deployment using ScyllaCluster.
-- [Set up dedicated node pools](set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated nodes.
-- [Configure nodes](configure-nodes.md) — disk and performance tuning.
+- [Deploy a single-DC cluster](deploy-single-dc-cluster.md) — single-datacenter deployment.
+- [Set up dedicated node pools](before-you-deploy/set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated nodes.
+- [Configure nodes](before-you-deploy/configure-nodes.md) — disk and performance tuning.
+- [Expose ScyllaDB clusters](set-up-networking/expose-clusters.md) — configuring Service types and broadcast options.
 - [Connect via CQL](../connect-your-app/connect-via-cql.md) — accessing your cluster.

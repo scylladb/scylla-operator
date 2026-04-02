@@ -48,7 +48,7 @@ kubectl exec -it <nodeconfig-pod> -c node-config -- \
 
 - Ensure CPU requests equal CPU limits in the ScyllaCluster spec.
 - Verify the kubelet is configured with `--cpu-manager-policy=static`.
-- See [Configure CPU pinning](../deploy-scylladb/configure-cpu-pinning.md).
+- See [Configure CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md).
 
 ## Missing or incorrect io_properties
 
@@ -90,7 +90,7 @@ kubectl logs <nodeconfig-pod> -c node-config
 
 ### Resolution
 
-See [Configure nodes](../deploy-scylladb/configure-nodes.md) and [Production checklist](../deploy-scylladb/production-checklist.md).
+See [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) and [Production checklist](../deploy-scylladb/production-checklist.md).
 
 ## Co-located workloads causing contention
 
@@ -110,7 +110,7 @@ kubectl get pods --all-namespaces --field-selector spec.nodeName="${NODE}" -o wi
 ### Resolution
 
 - Use dedicated node pools with taints and tolerations.
-- See [Dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md).
+- See [Dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md).
 
 ## High compaction backlog
 
@@ -173,8 +173,8 @@ When filing a support ticket about performance:
 
 ## Related pages
 
-- [CPU pinning](../deploy-scylladb/configure-cpu-pinning.md)
+- [CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md)
 - [Configuring io_properties](../operate/configure-io-properties.md)
-- [Node configuration](../deploy-scylladb/configure-nodes.md)
+- [Node configuration](../deploy-scylladb/before-you-deploy/configure-nodes.md)
 - [Production checklist](../deploy-scylladb/production-checklist.md)
 - [Diagnostic flowchart](diagnostic-flowchart.md)

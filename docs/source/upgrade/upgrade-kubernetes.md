@@ -255,7 +255,7 @@ For a full explanation of how PDBs interact with ScyllaDB pods, see [Pod disrupt
 
 - [Pod disruption budgets](../understand/pod-disruption-budgets.md) — how PDBs protect ScyllaDB availability
 - [Migrate a rack to a new node pool](../operate/migrate-rack-to-new-node-pool.md) — step-by-step rack migration procedure
-- [Set up dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md) — creating node pools with labels and taints
+- [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) — creating node pools with labels and taints
 - [Upgrade ScyllaDB Operator](upgrade-operator.md) — upgrading the Operator itself
 - [Upgrade ScyllaDB](upgrade-scylladb.md) — upgrading the ScyllaDB version itself
 - [Prerequisites](../install-operator/prerequisites.md) — supported Kubernetes versions

@@ -8,7 +8,7 @@ Kubernetes StatefulSet `volumeClaimTemplates` are immutable — they cannot be u
 Because the ScyllaDB Operator manages each rack as a StatefulSet, expanding storage requires an orphan-delete workflow:
 you delete the controlling objects without deleting the underlying Pods or PVCs, patch the PVCs directly, then recreate the objects with the updated capacity.
 
-The Operator does **not** automate volume expansion today — updating the storage capacity in the ScyllaCluster or ScyllaDBCluster spec is rejected by webhook validation.
+The Operator does **not** automate volume expansion today — updating the storage capacity in the ScyllaCluster spec is rejected by webhook validation.
 You must perform the manual procedure described below.
 
 :::{caution}
@@ -130,21 +130,6 @@ kubectl -n scylla get pvc --selector scylla/cluster=scylla
 ```
 
 The `CAPACITY` column should reflect the new size.
-
-## Expand storage in a ScyllaDBCluster
-
-ScyllaDBCluster (v1alpha1) also marks storage as immutable.
-The storage is configured at `spec.datacenterTemplate.scyllaDB.storage.capacity`, `spec.datacenterTemplate.rackTemplate.scyllaDB.storage.capacity`, `spec.datacenters[*].scyllaDB.storage.capacity`, or `spec.datacenters[*].racks[*].scyllaDB.storage.capacity` — depending on where you set it.
-Webhook validation rejects changes to any of these fields.
-
-The same orphan-delete procedure applies, but with additional objects:
-
-1. Save the ScyllaDBCluster definition.
-2. Orphan-delete the ScyllaDBCluster: `kubectl delete scylladbcluster/<name> --cascade='orphan'`
-3. For each datacenter, orphan-delete its ScyllaDBDatacenter: `kubectl delete scylladbdatacenter/<name> --cascade='orphan'`
-4. Orphan-delete the StatefulSets in each datacenter.
-5. Patch the PVCs.
-6. Update the saved definition with the new capacity and apply.
 
 ## Why the orphan-delete flow is necessary
 

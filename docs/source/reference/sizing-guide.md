@@ -16,7 +16,7 @@ Both CPU and memory **requests and limits are required** for the ScyllaDB contai
 - **Memory** — ScyllaDB reads its cgroup memory limit and allocates memory accordingly. The Operator does not pass a `--memory` flag. ScyllaDB reserves a portion for internal bookkeeping and uses the rest for the row cache and other structures.
 
 :::{important}
-For CPU pinning to work, the pod must have **Guaranteed** QoS class, which requires requests to equal limits for **every** container in the pod — including sidecar containers. See [Configure CPU pinning](../deploy-scylladb/configure-cpu-pinning.md).
+For CPU pinning to work, the pod must have **Guaranteed** QoS class, which requires requests to equal limits for **every** container in the pod — including sidecar containers. See [Configure CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md).
 :::
 
 **Example (production)**:
@@ -76,7 +76,10 @@ agentResources:
     memory: 10Mi
 ```
 
-In the ScyllaDBCluster (`v1alpha1`) API, agent resources have no defaults and must be set explicitly via `scyllaDBManagerAgent.resources`.
+:::{note}
+For Guaranteed QoS class (required for CPU pinning), requests must equal limits for all containers in the pod.
+See [Configure CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md).
+:::
 
 ### Other sidecar containers
 
@@ -156,6 +159,6 @@ ScyllaDB generates significant inter-node traffic during streaming (scaling, rep
 ## Related pages
 
 - [Production checklist](../deploy-scylladb/production-checklist.md) — complete checklist for production deployments.
-- [Configure CPU pinning](../deploy-scylladb/configure-cpu-pinning.md) — configuring dedicated CPUs for ScyllaDB.
-- [Configure nodes](../deploy-scylladb/configure-nodes.md) — RAID, filesystem, and tuning setup.
-- [Set up dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated Kubernetes nodes.
+- [Configure CPU pinning](../deploy-scylladb/before-you-deploy/configure-cpu-pinning.md) — configuring dedicated CPUs for ScyllaDB.
+- [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) — RAID, filesystem, and tuning setup.
+- [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated Kubernetes nodes.

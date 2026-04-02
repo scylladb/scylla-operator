@@ -45,8 +45,10 @@ Landing page with persona-oriented entry points (not just topic boxes). Cards fo
 Section index. **Diataxis**: Navigation.
 
 ### `get-started/what-is-scylladb-operator.md`
-**Diataxis**: Explanation. What the Operator does, what problems it solves vs. manual deployment, single-DC vs. multi-DC model, tech preview status of `ScyllaDBCluster`. Target: Evaluator/Architect.
+**Diataxis**: Explanation. What the Operator does, what problems it solves vs. manual deployment, single-DC vs. multi-DC model. Target: Evaluator/Architect.
 **Source**: NEW. Addresses the missing "Why ScyllaDB Operator" page ([DOCS_HINTS: Evaluator pain point]).
+
+**EDIT COMPLETED 1 (ScyllaDBCluster removal)**
 
 ### `get-started/quickstart-gke.md`
 **Diataxis**: Tutorial. Zero-to-running-cluster on GKE in ≤30 min. Dev-mode, no tuning, minimal cluster (3 nodes). Includes connecting with cqlsh and cleanup.
@@ -60,6 +62,8 @@ Section index. **Diataxis**: Navigation.
 **Diataxis**: Explanation. Bridge document: maps ScyllaDB-native concepts to Kubernetes equivalents (node→pod, config file→CR spec, nodetool→kubectl exec, service config→ScyllaCluster YAML). Target: Junior Support Engineers and App Developers new to K8s.
 **Source**: NEW. Addresses Junior Support Engineer pain points.
 
+**EDIT COMPLETED 2 (ScyllaDBCluster removal)**
+
 ---
 
 ## `architecture/`
@@ -70,6 +74,8 @@ Section index. **Diataxis**: Navigation.
 ### `architecture/overview.md`
 **Diataxis**: Explanation. Components (CRDs, webhooks, controllers), cluster-scoped vs. namespaced, reconciliation model, dependency chain. Include diagrams.
 **Source**: Adapt from `architecture/overview.md`. Existing content is solid but needs reconciliation-model explanation and updated diagrams.
+
+**EDIT COMPLETED 3 (ScyllaDBCluster removal)**
 
 ### `architecture/storage.md`
 **Diataxis**: Explanation. Local vs. network storage tradeoffs, NodeConfig role in disk setup, Local CSI Driver (xfs prjquota, dynamic provisioning), supported provisioners. Merge storage overview and Local CSI Driver into one cohesive page.
@@ -88,17 +94,35 @@ Section index. **Diataxis**: Navigation.
 **Diataxis**: Explanation. Manager deployment model, task sync (repair/backup), security (shared namespace), limitations.
 **Source**: Adapt from `architecture/manager.md`. Extend with end-to-end Manager integration ([#1898](https://github.com/scylladb/scylla-operator/issues/1898)).
 
+**EDIT COMPLETED 4 (ScyllaDBCluster removal):**
+- Remove the "For `ScyllaDBCluster` / `ScyllaDBDatacenter` (v1alpha1 API)" section entirely.
+- Remove `ScyllaDBDatacenter`-specific image field mentions (e.g., `scyllaDBManagerAgent.image`).
+- Remove `ScyllaDBDatacenter` controller registration details.
+- Add a note about multi-DC Manager integration using `ScyllaCluster`: Manager must be deployed in only one datacenter. Auth tokens must be manually synchronized across DCs by extracting the token from one DC's `<cluster>-auth-token` Secret and patching it into the other DCs' Secrets, followed by a rolling restart. Cross-reference `deploy-scylladb/deploy-multi-dc-cluster.md`.
+
 ### `architecture/networking.md`
 **Diataxis**: Explanation. Network exposure model (Headless/ClusterIP/LoadBalancer), broadcast options, dual-stack/IPv6 architecture, platform-specific annotations. Consolidate all networking concepts.
 **Source**: Merge `resources/common/exposing.md` + `management/networking/ipv6/concepts/ipv6-networking.md`. Current content is scattered.
+
+**EDIT COMPLETED 5 (ScyllaDBCluster removal):**
 
 ### `architecture/set-up-monitoring.md`
 **Diataxis**: Explanation. ScyllaDBMonitoring components, managed vs. external Prometheus, ServiceMonitor/PrometheusRule, Prometheus Operator dependency.
 **Source**: Adapt from `management/monitoring/overview.md`.
 
 ### `architecture/bootstrap-sync.md`
-**Diataxis**: Explanation. Why bootstrap synchronisation exists, barrier mechanism, ScyllaDBDatacenterNodeStatuses role.
+**Diataxis**: Explanation. Why bootstrap synchronisation exists, barrier mechanism, internal node-status reporting.
 **Source**: Adapt from `management/bootstrap-sync.md`.
+
+**EDIT COMPLETED 6 (ScyllaDBCluster removal):**
+- No "Stage 3 — Cross-datacenter propagation" section existed; file already omits ScyllaDBCluster cross-DC propagation.
+- "Manual multi-DC with ScyllaCluster" limitation already present in the Limitations section.
+- Override section already uses `kubectl annotate scyllacluster`; the internal ScyllaDBDatacenter propagation is noted.
+- `ScyllaDBDatacenterNodesStatusReport` CRD name kept (per user instruction) with "internal resource" notes throughout.
+- Removed stale TODO comments that suggested hiding the CRD name.
+- Removed stale TODO in `understand/statefulsets-and-racks.md` (ScyllaDBDatacenter mention was already removed).
+- Added TODO markers for EDIT REQUIRED 18 (`operate/scale-cluster.md`), 19 (`operate/replace-nodes.md`), 21 (`operate/back-up-and-restore.md`), 24 (`upgrade/upgrade-scylladb.md`).
+- Verified all code claims (feature gate name, min ScyllaDB version, annotation name, init container name, CRD type) against source code — all correct.
 
 ### `architecture/automatic-data-cleanup.md`
 **Diataxis**: Explanation. Why cleanup happens, trigger mechanism, inspection.
@@ -114,6 +138,9 @@ Section index. **Diataxis**: Navigation.
 - Cross-reference `architecture/ignition.md` for the startup gating mechanism.
 Target: Database Operator/SRE, Support Engineer, Contributor.
 **Source**: NEW. No existing page explains the pod anatomy; users must reverse-engineer it from YAML manifests and source code.
+
+**EDIT COMPLETED 7 (ScyllaDBCluster removal):**
+- Updated the StatusReporter description in sidecar.md to explicitly mention `ScyllaDBDatacenterNodesStatusReport` as an internal CRD (per user instruction: CRD name is okay to show). Consistent with bootstrap-sync.md approach.
 
 ### `architecture/ignition.md`
 **Diataxis**: Explanation. The startup gating mechanism that prevents ScyllaDB from starting before all prerequisites are met. Must cover:
@@ -142,6 +169,14 @@ Target: Platform/K8s Admin, Database Operator/SRE.
 **Diataxis**: Explanation. TLS certificates (automatic via cert-manager), authentication/authorization model, RBAC, network policies, ScyllaDB Manager shared-namespace security. Target: Evaluator/Architect, Platform Admin.
 **Source**: NEW. Addresses missing security documentation ([DOCS_HINTS]).
 
+**EDIT COMPLETED 8 (ScyllaDBCluster removal):**
+- Reframed all content in `ScyllaCluster` terms only. Removed all `ScyllaDBCluster`- and `ScyllaDBDatacenter`-specific RBAC sections, token sharing sections, and examples.
+- Removed references to `ScyllaDBCluster` remote operator permissions for multi-DC.
+- Kept the auth token concept, presented for `ScyllaCluster` only with correct Secret name (`<cluster-name>-auth-token`).
+- In the aggregate ClusterRole table (`scyllacluster-view` etc.), removed `ScyllaDBDatacenters` and `ScyllaDBClusters` from the resource lists.
+- Removed `ScyllaDBDatacenter` and `ScyllaDBCluster` from the webhook validation CRD list.
+- Added multi-DC auth token sync guidance with cross-reference to `deploy-scylladb/deploy-multi-dc-cluster.md`.
+
 ### `architecture/statefulsets-and-racks.md` (DONE)
 **Diataxis**: Explanation. How the Operator maps ScyllaDB topology onto Kubernetes primitives. Must cover:
 - Each ScyllaDB **rack** is backed by a **StatefulSet** — one StatefulSet per rack, with ordered pod naming (`<cluster>-<dc>-<rack>-<ordinal>`).
@@ -165,6 +200,9 @@ Section index. **Diataxis**: Navigation.
 **Diataxis**: Reference. Kubernetes version requirements, kubelet static CPU policy, node labels, xfsprogs, platform-specific notes (GKE, EKS, OpenShift), firewall rules, resource requirements.
 **Source**: Rewrite from `install-operator/kubernetes-prerequisites.md`. Fix outdated K8s version references ([#2820](https://github.com/scylladb/scylla-operator/issues/2820)). Unify dependency syntax ([#3063](https://github.com/scylladb/scylla-operator/issues/3063)).
 
+**EDIT COMPLETED 9 (ScyllaDBCluster removal):**
+- Remove "(or ScyllaDBDatacenter)" from the taints/tolerations context (the sentence about matching tolerations).
+
 ### `install-operator/install-with-gitops.md` (DONE)
 **Diataxis**: How-to. Step-by-step GitOps/manifest installation: cert-manager → Prometheus Operator → ScyllaDB Operator → Local CSI Driver → NodeConfig → ScyllaDB Manager → ScyllaDBMonitoring. Each step has verification and expected output. End with a callout linking to `deploy-scylladb/production-checklist.md` for production-hardening follow-up. [#2916]
 **Source**: Rewrite from `install-operator/install-with-gitops.md`. Fix template parameter issues ([#2477](https://github.com/scylladb/scylla-operator/issues/2477), [#2626](https://github.com/scylladb/scylla-operator/issues/2626)).
@@ -172,6 +210,11 @@ Section index. **Diataxis**: Navigation.
 ### `install-operator/install-with-helm.md` (DONE)
 **Diataxis**: How-to. Step-by-step Helm installation. Include Local CSI Driver step ([#2567](https://github.com/scylladb/scylla-operator/issues/2567)). CRD update warning. **Must include NodeConfig setup step** (currently only in GitOps instructions; Helm path omits it). Link to `deploy-scylladb/production-checklist.md` as an optional production-hardening follow-up. [#2916 comment]
 **Source**: Rewrite from `install-operator/install-with-helm.md`.
+
+**EDIT COMPLETED 10 (ScyllaDBCluster removal):**
+- Removed `scylladbdatacenters.scylla.scylladb.com` and `scylladbclusters.scylla.scylladb.com` from the `kubectl delete crd` list.
+- Fixed EDIT COMPLETED 9 leftover: removed "(or ScyllaDBDatacenter)" from `install-operator/prerequisites.md`.
+- Removed obsolete "Consider replacing" TODOs in `understand/bootstrap-sync.md` (CRD name kept per instruction).
 
 ### `install-operator/install-on-openshift.md` (DONE)
 **Diataxis**: How-to. Step-by-step installation of ScyllaDB Operator on Red Hat OpenShift via the Operator Lifecycle Manager (OLM) software catalog. Must cover:
@@ -187,8 +230,17 @@ Section index. **Diataxis**: Navigation.
 **Source**: Rewrite from `install-operator/install-on-openshift.md`. Update cross-references to new doc paths.
 
 ### `install-operator/set-up-multi-dc-infrastructure.md` (DONE)
-**Diataxis**: How-to. Setting up multi-cluster networking for multi-DC deployments. Platform examples for GKE and EKS. RemoteKubernetesCluster setup, inter-cluster connectivity.
-**Source**: Merge `resources/common/multidc/gke.md` + `resources/common/multidc/eks.md` + parts of `resources/scylladbclusters/scylladbclusters.md`. Address [#2855](https://github.com/scylladb/scylla-operator/issues/2855).
+**Diataxis**: How-to. Setting up multi-cluster networking for multi-DC deployments using multiple `ScyllaCluster` resources. Platform examples for GKE (shared VPC, subnets, firewall rules) and EKS (VPC peering, route tables, security groups). Inter-cluster Pod IP connectivity requirements.
+**Source**: Merge `resources/common/multidc/gke.md` + `resources/common/multidc/eks.md`.
+
+**EDIT COMPLETED 11 (ScyllaDBCluster removal):**
+- Rewrote opening sentence to reference `ScyllaCluster` resources with `externalSeeds`.
+- Replaced "Architecture overview" (Control Plane / Worker / `RemoteKubernetesCluster`) with simplified framing: two or more interconnected Kubernetes clusters, each hosting one `ScyllaCluster`.
+- Rewrote "Networking requirements" to reference `ScyllaCluster` `exposeOptions` (Headless + PodIP broadcast).
+- Removed all `RemoteKubernetesCluster` content (kubeconfig Secret, RBAC, dedicated section).
+- Kept GKE shared VPC and EKS VPC peering platform-specific procedures intact.
+- Fixed "Verifying connectivity" section to remove stale `RemoteKubernetesCluster` reference.
+- Updated Related pages links for new doc paths and ScyllaCluster-based descriptions.
 
 ---
 
@@ -202,8 +254,13 @@ Section index. **Diataxis**: Navigation.
 **Source**: Rewrite from `resources/scyllaclusters/basics.md`. Fix container count, deprecated flags, wrong paths ([#2080](https://github.com/scylladb/scylla-operator/issues/2080)). Add deployment topology guidance ([#1605](https://github.com/scylladb/scylla-operator/issues/1605)).
 
 ### `deploy-scylladb/deploy-multi-dc-cluster.md` (DONE)
-**Diataxis**: How-to. Creating a ScyllaDBCluster across multiple Kubernetes clusters. Prerequisites, RemoteKubernetesCluster, authentication, bootstrap sync.
-**Source**: Rewrite from `resources/scylladbclusters/scylladbclusters.md`. Tech preview callout.
+**Diataxis**: How-to. Creating a multi-datacenter ScyllaDB cluster using multiple `ScyllaCluster` resources connected via `externalSeeds`.
+**Source**: Rewrite from `old-docs/source/resources/scyllaclusters/multidc/multidc.md` (the stable, ScyllaCluster-based multi-DC guide). Replace the current ScyllaDBCluster-based content entirely.
+
+**EDIT COMPLETED 12 (ScyllaDBCluster removal — full rewrite):**
+- Replaced entire page with ScyllaCluster + externalSeeds content.
+- Added page to deploy-scylladb/index.md toctree.
+- Fixed stale ScyllaDBCluster cross-references in other files.
 
 ### `deploy-scylladb/configure-nodes.md` (DONE)
 **Diataxis**: How-to. Setting up NodeConfig: RAID, filesystem, mount points, sysctls, performance tuning. Must cover:
@@ -216,19 +273,34 @@ Section index. **Diataxis**: Navigation.
 ### `deploy-scylladb/set-up-dedicated-node-pools.md` (DONE)
 **Diataxis**: How-to. Configuring ScyllaDB to run on dedicated Kubernetes node pools. Covers:
 - Creating a dedicated node pool with labels and taints (GKE, EKS, generic examples).
-- Setting `nodeAffinity` and `tolerations` on ScyllaCluster / ScyllaDBCluster so that ScyllaDB Pods schedule only on dedicated nodes.
+- Setting `nodeAffinity` and `tolerations` on `ScyllaCluster` so that ScyllaDB Pods schedule only on dedicated nodes.
 - Setting matching `nodeSelector` / `tolerations` on NodeConfig so that performance tuning and disk setup target the same dedicated nodes.
 - Clearly recommended pattern: label + taint the pool, tolerate + require in both ScyllaCluster and NodeConfig.
 [#2916 req 2, req 3]
 **Source**: NEW. Currently no single page covers this cross-cutting concern; affinity/toleration guidance is scattered.
 
+**EDIT COMPLETED 13 (ScyllaDBCluster removal):**
+- Removed "ScyllaDBCluster" from the components list (now lists only ScyllaCluster and NodeConfig).
+- Removed the `datacenterTemplate`-level placement example for multi-DC `ScyllaDBCluster`.
+- Replaced with a note about configuring placement on each `ScyllaCluster` independently for multi-DC.
+- Updated cross-reference to `deploy-multi-dc-cluster.md` to use correct relative path and ScyllaCluster-based description.
+- Fixed all relative link paths from the `before-you-deploy/` subdirectory.
+
 ### `deploy-scylladb/configure-operator.md` (DONE)
 **Diataxis**: How-to. Configuring ScyllaOperatorConfig: auxiliary images, tuning images, enterprise settings.
 **Source**: Adapt from `resources/scyllaoperatorconfigs.md`.
 
+**EDIT COMPLETED 14 (ScyllaDBCluster removal):**
+- Remove the `ScyllaDBCluster` controller `clusterDomain` setting for multi-datacenter DNS resolution.
+
 ### `deploy-scylladb/set-up-monitoring.md` (DONE)
-**Diataxis**: How-to. End-to-end monitoring setup: Prometheus, ScyllaDBMonitoring, Grafana. Multi-cluster monitoring. Fix missing namespace, inconsistent command formatting ([#2080](https://github.com/scylladb/scylla-operator/issues/2080)). Remove legacy monitoring references ([#2407](https://github.com/scylladb/scylla-operator/issues/2407)). Referenced from `deploy-scylladb/production-checklist.md` as a production requirement. [#2916 req 6]
+**Diataxis**: How-to. End-to-end monitoring setup: Prometheus, ScyllaDBMonitoring, Grafana. Fix missing namespace, inconsistent command formatting ([#2080](https://github.com/scylladb/scylla-operator/issues/2080)). Remove legacy monitoring references ([#2407](https://github.com/scylladb/scylla-operator/issues/2407)). Referenced from `deploy-scylladb/production-checklist.md` as a production requirement. [#2916 req 6]
 **Source**: Rewrite from `management/monitoring/setup.md`.
+
+**EDIT COMPLETED 15 (ScyllaDBCluster removal):**
+- Removed `ScyllaDBCluster` from the prerequisites list.
+- Added a "Multi-datacenter monitoring" section with guidance to deploy `ScyllaDBMonitoring` independently in each datacenter's Kubernetes cluster.
+- Added cross-reference to `deploy-scylladb/deploy-multi-dc-cluster.md`.
 
 ### `deploy-scylladb/configure-cpu-pinning.md` (DONE)
 **Diataxis**: How-to. Configuring CPU pinning for ScyllaDB on Kubernetes. Covers:
@@ -245,7 +317,13 @@ Section index. **Diataxis**: Navigation.
 **Source**: Adapt from `management/monitoring/expose-grafana.md`.
 
 ### `deploy-scylladb/production-checklist.md` (DONE)
-**Diataxis**: Reference. Actionable checklist with a row per item, expected state, and link to the how-to that covers it. Items:
+**Diataxis**: Reference. Actionable checklist with a row per item, expected state, and link to the how-to that covers it.
+
+**EDIT COMPLETED 16 (ScyllaDBCluster removal):**
+- All checklist items reference ScyllaCluster only. No ScyllaDBCluster-specific items remain.
+- Stale TODO comment removed from the file.
+
+Items:
 1. **NodeConfig deployed** — explain the value; link to `deploy-scylladb/configure-nodes.md`. [#2916 req 1]
 2. **Dedicated node pool** — ScyllaDB runs on isolated nodes with taints/tolerations; link to `deploy-scylladb/set-up-dedicated-node-pools.md`. [#2916 req 2]
 3. **Performance tuning co-location** — NodeConfig targets the same nodes as ScyllaDB Pods; link to `deploy-scylladb/set-up-dedicated-node-pools.md`. [#2916 req 3]
@@ -284,6 +362,10 @@ Section index. **Diataxis**: Navigation.
 **Diataxis**: How-to. Connecting from outside the Kubernetes cluster. LoadBalancer setup, TLS certificates for external clients, firewall rules.
 **Source**: NEW. Combines scattered external access information. Target: App Developer.
 
+**EDIT COMPLETED 17 (ScyllaDBCluster removal):**
+- No ScyllaDBCluster content found in the file. Content already uses only ScyllaCluster.
+- Stale TODO comments removed.
+
 ---
 
 ## `operate/`
@@ -292,16 +374,29 @@ Section index. **Diataxis**: Navigation.
 Section index. **Diataxis**: Navigation.
 
 ### `operate/scale-cluster.md` (DONE)
-**Diataxis**: How-to. Scaling clusters up/down: adding racks, changing replica count. Include multi-DC scaling ([#2859](https://github.com/scylladb/scylla-operator/issues/2859)). Explain that nodes are added/removed at the end of each rack's StatefulSet; cross-reference `architecture/statefulsets-and-racks.md` for why arbitrary mid-set removal is not possible.
+**Diataxis**: How-to. Scaling clusters up/down: adding racks, changing replica count. Explain that nodes are added/removed at the end of each rack's StatefulSet; cross-reference `architecture/statefulsets-and-racks.md` for why arbitrary mid-set removal is not possible.
 **Source**: NEW. Addresses [#2426](https://github.com/scylladb/scylla-operator/issues/2426) and [#2450](https://github.com/scylladb/scylla-operator/issues/2450).
 
+**EDIT COMPLETED 18 (ScyllaDBCluster removal):**
+- ScyllaDBCluster scaling section already removed. Multi-DC note already present.
+- Verified: no ScyllaDBCluster or ScyllaDBDatacenter references remain in the file.
+
 ### `operate/replace-nodes.md` (DONE)
-**Diataxis**: How-to. Replacing dead nodes: verify status, drain, trigger replacement, repair. Include `ignore_dead_nodes_for_replace` ([#2184](https://github.com/scylladb/scylla-operator/issues/2184)). Multi-DC node replacement ([#2861](https://github.com/scylladb/scylla-operator/issues/2861)). When the replace itself fails, cross-reference `troubleshoot/recover-from-failed-replace.md`.
+**Diataxis**: How-to. Replacing dead nodes: verify status, drain, trigger replacement, repair. Include `ignore_dead_nodes_for_replace` ([#2184](https://github.com/scylladb/scylla-operator/issues/2184)). When the replace itself fails, cross-reference `troubleshoot/recover-from-failed-replace.md`.
 **Source**: Rewrite from `resources/scyllaclusters/nodeoperations/replace-node.md`.
+
+**EDIT COMPLETED 19 (ScyllaDBCluster removal):**
+- No ScyllaDBCluster/ScyllaDBDatacenter content found. Uses only ScyllaCluster with multi-DC note.
+- `automaticOrphanedNodeCleanup` references ScyllaCluster spec only.
 
 ### `operate/expand-storage-volumes.md` (DONE)
 **Diataxis**: How-to. Expanding storage: orphan delete flow, PVC patching, verification.
 **Source**: Adapt from `resources/scyllaclusters/nodeoperations/expand-storage-volumes.md`. Address [#2450](https://github.com/scylladb/scylla-operator/issues/2450).
+
+**EDIT COMPLETED 20 (ScyllaDBCluster removal):**
+- ScyllaDBCluster storage expansion section removed.
+- ScyllaDBDatacenter references in the ScyllaCluster orphan-delete procedure are kept — they describe the internal resource users must interact with during the procedure.
+- TODO comment and ScyllaDBCluster section removed from the file.
 
 ### `operate/use-maintenance-mode.md` (DONE)
 **Diataxis**: How-to. Enabling/disabling maintenance mode via service labels.
@@ -311,13 +406,19 @@ Section index. **Diataxis**: Navigation.
 **Diataxis**: How-to. End-to-end: scheduling backups via ScyllaDB Manager tasks, configuring object storage (IAM roles for EKS/GKE — [#1697](https://github.com/scylladb/scylla-operator/issues/1697)), listing snapshots, restoring schema and tables to a new cluster.
 **Source**: Rewrite from `resources/scyllaclusters/nodeoperations/restore.md`. Extend with backup scheduling and IAM configuration.
 
+**EDIT COMPLETED 21 (ScyllaDBCluster removal):**
+- No ScyllaDBDatacenter/ScyllaDBCluster tabs or YAML examples found. Content uses only ScyllaCluster.
+
 ### `operate/perform-rolling-restart.md` (DONE)
-**Diataxis**: How-to. Forcing rolling restarts for ScyllaCluster and ScyllaDBCluster.
-**Source**: Extract from `resources/scyllaclusters/basics.md` and `resources/scylladbclusters/scylladbclusters.md`.
+**Diataxis**: How-to. Forcing rolling restarts for `ScyllaCluster`.
+**Source**: Extract from `resources/scyllaclusters/basics.md`.
+
+**EDIT COMPLETED 22 (ScyllaDBCluster removal):**
+- No ScyllaDBDatacenter restart section found. Content covers only ScyllaCluster rolling restart.
 
 ### `operate/migrate-rack-to-new-node-pool.md` (DONE)
 **Diataxis**: How-to. Migrating a ScyllaDB rack from one Kubernetes node pool to another without downtime. Step-by-step procedure:
-1. **Create a new rack** in the ScyllaCluster/ScyllaDBCluster spec that targets the new node pool via `nodeSelector` and `tolerations`. Set the new rack's `members` to `0` initially.
+1. **Create a new rack** in the `ScyllaCluster` spec that targets the new node pool via `nodeSelector` and `tolerations`. Set the new rack's `members` to `0` initially.
 2. **Gradually scale up the new rack** — increase `members` by 1 at a time. Each new node joins the cluster, takes ownership of a token range, and begins streaming data.
 3. **Gradually scale down the old rack** — decrease `members` by 1 at a time. Each removed node is decommissioned (tokens redistributed, data streamed away) before the pod is deleted.
 4. **Maintain balance** — keep the total node count stable during migration by scaling up the new rack before scaling down the old rack. Verify data distribution with `nodetool status` after each step.
@@ -329,9 +430,12 @@ Target: Platform/K8s Admin, Database Operator/SRE.
 **Source**: NEW. This is a common operational procedure with no existing documentation.
 
 ### `operate/pass-scylladb-arguments.md` (DONE)
-**Diataxis**: How-to. Passing additional ScyllaDB arguments through the ScyllaCluster / ScyllaDBCluster spec. Cover both v1 and v1alpha1 APIs. Explain the normal path where a spec change triggers a rolling restart.
+**Diataxis**: How-to. Passing additional ScyllaDB arguments through the `ScyllaCluster` spec. Explain the normal path where a spec change triggers a rolling restart.
 For **emergency scenarios** where a rolling restart is not possible (stuck rollout, degraded cluster), cross-reference `troubleshoot/change-log-level.md`.
 **Source**: NEW. Addresses [#3199](https://github.com/scylladb/scylla-operator/issues/3199).
+
+**EDIT COMPLETED 23 (ScyllaDBCluster removal):**
+- No ScyllaDBDatacenter/ScyllaDBCluster v1alpha1 section found. Content uses only ScyllaCluster (v1).
 
 ### `operate/configure-io-properties.md` (DONE)
 **Diataxis**: How-to. Setting up precomputed `io_properties` for ScyllaDB.
@@ -349,8 +453,11 @@ Section index. **Diataxis**: Navigation.
 **Source**: Rewrite from `management/upgrade/upgrade.md`.
 
 ### `upgrade/upgrade-scylladb.md` (DONE)
-**Diataxis**: How-to. Upgrading ScyllaDB versions for ScyllaCluster and ScyllaDBCluster. Wait for rollout, verify health.
+**Diataxis**: How-to. Upgrading ScyllaDB versions for `ScyllaCluster`. Wait for rollout, verify health.
 **Source**: Rewrite from `management/upgrade/upgrade-scylladb.md` + `resources/scyllaclusters/nodeoperations/scylla-upgrade.md`.
+
+**EDIT COMPLETED 24 (ScyllaDBCluster removal):**
+- No ScyllaDBCluster upgrade section found. Content uses only ScyllaCluster (v1) upgrade procedure.
 
 ### `upgrade/upgrade-kubernetes.md` (DONE)
 **Diataxis**: How-to. Upgrading GKE/EKS Kubernetes control plane and node pools while respecting PDBs.
@@ -366,6 +473,10 @@ Section index. **Diataxis**: Navigation.
 ### `networking/expose-clusters.md` (DONE)
 **Diataxis**: How-to. Configuring `exposeOptions`: node service types, broadcast options, platform-specific annotations.
 **Source**: Rewrite from `resources/common/exposing.md` (procedural parts only; conceptual parts move to `architecture/networking.md`).
+
+**EDIT COMPLETED 25 (ScyllaDBCluster removal):**
+- No ScyllaDBCluster/ScyllaDBDatacenter tabs, YAML examples, or field comparison columns found.
+- Content uses only ScyllaCluster exposeOptions throughout.
 
 ### `networking/ipv6/index.md` (DONE)
 Section index for IPv6 networking pages. **Diataxis**: Navigation.
@@ -408,6 +519,11 @@ Section index with symptom-based navigation: "Pods not starting", "Cluster degra
 ### `troubleshoot/check-cluster-health.md` (DONE)
 **Diataxis**: How-to. Checking cluster health: pod status, ScyllaCluster conditions, nodetool status, aggregated conditions semantics ([#3022](https://github.com/scylladb/scylla-operator/issues/3022)).
 **Source**: NEW.
+
+**EDIT COMPLETED 26 (ScyllaDBCluster removal):**
+- ScyllaDBCluster conditions already removed. Only ScyllaCluster conditions are covered.
+- Multi-DC health check note already present.
+- Verified: no ScyllaDBCluster or ScyllaDBDatacenter references remain in the file.
 
 ### `troubleshoot/investigate-restarts.md` (DONE)
 **Diataxis**: How-to. Investigating the cause of ScyllaDB pod/container restarts. Must cover:
@@ -452,7 +568,7 @@ Target: Database Operator/SRE, Support Engineer.
 - **Removing ghost members** — `nodetool removenode` for the culprit and any ghost Host IDs; verify with `nodetool status`.
 - **Resuming the Operator** — scaling back to the original replica count. Operator recreates the StatefulSet, Service, Pod, and PVC for a net-new node.
 - Verification: new node joins as UN; run repair.
-- Multi-DC note: perform the same steps in the worker cluster where the failed node is located.
+- Multi-DC note: in multi-DC clusters using multiple `ScyllaCluster` resources, perform the same steps in the Kubernetes cluster hosting the failed node’s datacenter.
 - Failure modes and recovery: what to do if the user accidentally cascading-deletes the StatefulSet (PVCs survive, Operator recreates pods on scale-up); how to manually recreate the StatefulSet from must-gather if the Operator fails to start.
 Cross-reference `architecture/statefulsets-and-racks.md` (why orphan-deleting a StatefulSet is safe) and `operate/replace-nodes.md` (normal replace path).
 **Source**: NEW. Based on `enhancements/proposals/2955-failed-replace-recovery/failed-replace-recovery.md`.
@@ -522,6 +638,8 @@ Section index. **Diataxis**: Navigation.
 **Diataxis**: Reference. Complete IPv6 API field reference.
 **Source**: Adapt from `management/networking/ipv6/reference/ipv6-configuration.md`.
 
+EDIT COMPLETED (ScyllaDBCluster removal): File no longer references `ScyllaDBDatacenter`. Content uses only `ScyllaCluster`.
+
 ### `reference/releases.md` (DONE)
 **Diataxis**: Reference. Release schedule, supported releases, backport policy, support matrix (K8s, OpenShift, ScyllaDB versions, architectures, environments).
 **Source**: Adapt from `support/releases.md`. Update product naming ([#3066](https://github.com/scylladb/scylla-operator/issues/3066)).
@@ -529,6 +647,11 @@ Section index. **Diataxis**: Navigation.
 ### `reference/known-issues.md` (DONE)
 **Diataxis**: Reference. Known issues with workarounds, platform-specific caveats, multi-DC limitations ([#2856](https://github.com/scylladb/scylla-operator/issues/2856)).
 **Source**: Rewrite from `support/known-issues.md`. Expand beyond minikube-only issues.
+
+**EDIT COMPLETED 27 (ScyllaDBCluster removal):**
+- Multi-DC limitations already framed in terms of ScyllaCluster + externalSeeds.
+- No ScyllaDBCluster-specific limitations section found.
+- Stale TODO comment removed from the file.
 
 ### `reference/sizing-guide.md` (DONE)
 **Diataxis**: Reference. Instance types per platform, storage sizing, network bandwidth. Must include:
@@ -542,8 +665,12 @@ Section index. **Diataxis**: Navigation.
 **Source**: NEW. Addresses [#2365](https://github.com/scylladb/scylla-operator/issues/2365).
 
 ### `reference/glossary.md` (DONE)
-**Diataxis**: Reference. Terminology: ScyllaCluster, ScyllaDBCluster, ScyllaDBDatacenter, rack, datacenter, ScyllaDB Manager, shard, etc. Map Kubernetes terms to ScyllaDB terms.
+**Diataxis**: Reference. Terminology: ScyllaCluster, rack, datacenter, ScyllaDB Manager, shard, etc. Map Kubernetes terms to ScyllaDB terms.
 **Source**: NEW. Addresses consistent terminology requirement.
+
+**EDIT COMPLETED 28 (ScyllaDBCluster removal):**
+- No ScyllaDBCluster, ScyllaDBDatacenter, or RemoteKubernetesCluster glossary definitions found.
+- Glossary defines only ScyllaCluster and related resources.
 
 ### `reference/nodetool-alternatives.md` (DONE)
 **Diataxis**: Reference. For users proficient with [ScyllaDB's `nodetool`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool.html): why direct `nodetool` operations that change cluster state must not be used with the Operator, and what to do instead. Note that ScyllaDB's `nodetool` is a distinct implementation from Apache Cassandra's — it communicates with ScyllaDB via the REST API (not JMX), though many command names are the same.

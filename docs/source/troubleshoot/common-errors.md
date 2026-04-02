@@ -11,7 +11,7 @@ Reference table of frequently encountered error messages, Kubernetes failure sta
 | `CrashLoopBackOff` | Container starts and crashes repeatedly | Invalid ScyllaDB configuration, corrupt data, version incompatibility | [Investigating restarts](investigate-restarts.md) |
 | `ImagePullBackOff` | Cannot pull container image | Wrong image tag, registry unreachable, authentication failure | Verify the image exists: `kubectl -n scylla describe pod <pod-name>` |
 | `OOMKilled` | Container exceeded its memory limit | Memory limit too low for the workload | Increase memory limits in ScyllaCluster spec |
-| `Evicted` | Kubelet evicted the pod due to node pressure | Node under memory or disk pressure | Use dedicated node pools; see [Set up dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md) |
+| `Evicted` | Kubelet evicted the pod due to node pressure | Node under memory or disk pressure | Use dedicated node pools; see [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) |
 | `Terminating` (stuck) | Pod stuck in terminating state | Finalizer not removed, PVC in use, node unreachable | Check finalizers: `kubectl -n scylla get pod <pod-name> -o jsonpath='{.metadata.finalizers}'` |
 
 ## Webhook errors
@@ -54,7 +54,7 @@ Reference table of frequently encountered error messages, Kubernetes failure sta
 |---|---|---|
 | `Connection refused` to port 9042 | CQL server not running or not ready | Check pod readiness; verify ScyllaDB started successfully |
 | `No host available` (driver error) | Client cannot reach any ScyllaDB node | Verify Service endpoints; check network policies; see [Connecting](../connect-your-app/index.md) |
-| DNS resolution failure | CoreDNS not running or misconfigured | `kubectl -n kube-system get pods -l k8s-app=kube-dns`; for IPv6 issues see [IPv6 troubleshooting](../set-up-networking/ipv6/troubleshooting.md) |
+| DNS resolution failure | CoreDNS not running or misconfigured | `kubectl -n kube-system get pods -l k8s-app=kube-dns`; for IPv6 issues see [IPv6 troubleshooting](../deploy-scylladb/set-up-networking/ipv6/troubleshooting.md) |
 
 ## Storage errors
 

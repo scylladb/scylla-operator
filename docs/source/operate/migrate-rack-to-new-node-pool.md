@@ -14,7 +14,7 @@ Common reasons to migrate a rack to a new node pool:
 ## Prerequisites
 
 - The new node pool must already exist with appropriate labels, taints, and instance types.
-  See [Set up dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md) for setup.
+  See [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) for setup.
 - A `NodeConfig` resource targeting the new node pool must be applied (if your cluster uses tuning, RAID, or filesystem configuration).
 - The replication factor of your keyspaces must be large enough to tolerate the temporary imbalance during migration.
   For example, with RF=3 you can safely have one rack temporarily empty.
@@ -24,9 +24,6 @@ Common reasons to migrate a rack to a new node pool:
 
 The migration follows a gradual scale-up / scale-down pattern:
 add nodes to the new rack one at a time, then remove nodes from the old rack one at a time.
-
-:::::{tabs}
-::::{group-tab} ScyllaCluster
 
 Suppose you have a ScyllaCluster with a rack `us-east-1a` on the old node pool and you want to migrate it to a new node pool labelled `pool: scylladb-new`.
 
@@ -192,80 +189,6 @@ kubectl -n scylla exec -it scylla-us-east-1-us-east-1b-0 -c scylla -- nodetool r
 
 Or use a ScyllaDB Manager repair task if Manager is configured.
 
-::::
-::::{group-tab} ScyllaDBCluster
-
-For ScyllaDBCluster, the same principle applies.
-The `nodes` field on each rack controls the number of members (equivalent to `members` in ScyllaCluster).
-
-### Step 1: Add the new rack with zero nodes
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: scylla
-  namespace: scylla
-spec:
-  datacenters:
-    - name: us-east-1
-      remoteKubernetesClusterName: us-east-1
-      racks:
-        - name: a                    # old rack
-          nodes: 3
-          placement:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                  - matchExpressions:
-                      - key: pool
-                        operator: In
-                        values:
-                          - scylladb-old
-            tolerations:
-              - key: role
-                operator: Equal
-                value: scylladb
-                effect: NoSchedule
-        - name: b                    # new rack — starts at 0
-          nodes: 0
-          placement:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                  - matchExpressions:
-                      - key: pool
-                        operator: In
-                        values:
-                          - scylladb-new
-            tolerations:
-              - key: role
-                operator: Equal
-                value: scylladb
-                effect: NoSchedule
-```
-
-### Step 2: Gradually scale up the new rack
-
-Increase `nodes` by 1 at a time on the new rack.
-Wait for each new node to become ready and verify with `nodetool status`.
-
-### Step 3: Gradually scale down the old rack
-
-Decrease `nodes` by 1 at a time on the old rack.
-Wait for each decommission to complete.
-
-### Step 4: Remove the old rack
-
-Once the old rack has 0 nodes, remove it from the spec.
-
-### Step 5: Run a repair
-
-Run a repair to ensure data consistency.
-
-::::
-:::::
-
 ## Key considerations
 
 | Consideration | Detail |
@@ -282,4 +205,4 @@ Run a repair to ensure data consistency.
 
 - [Scale a ScyllaDB cluster](scale-cluster.md) — adding and removing racks, scaling up and down
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md) — how racks map to StatefulSets, scaling mechanics, and decommission workflow
-- [Set up dedicated node pools](../deploy-scylladb/set-up-dedicated-node-pools.md) — setting up node pools with labels, taints, and NodeConfig
+- [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) — setting up node pools with labels, taints, and NodeConfig

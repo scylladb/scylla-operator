@@ -20,7 +20,7 @@ cert-manager is a **hard dependency** of the operator. Without it, the webhook s
 
 When the `AutomaticTLSCertificates` feature gate is enabled (default since v1.11, beta), the operator provisions a full PKI for each ScyllaDB cluster **without** requiring cert-manager. The operator manages certificates directly using its own internal certificate manager.
 
-For each ScyllaDBDatacenter the operator creates:
+For each ScyllaDB datacenter (that is, each `ScyllaCluster` resource) the operator creates:
 
 | Resource | Type | Purpose |
 |----------|------|---------|
@@ -51,14 +51,14 @@ Inter-node encryption is configured through the same serving certificate infrast
 
 #### User-managed certificates
 
-Both `ScyllaCluster` (v1) and `ScyllaDBDatacenter` (v1alpha1) support a `TLSCertificate` configuration with two modes:
+`ScyllaCluster` supports a `TLSCertificate` configuration with two modes:
 
 - **`OperatorManaged`** (default): the operator provisions and rotates certificates automatically as described above. You can specify `additionalDNSNames` and `additionalIPAddresses` to include custom SANs in the serving certificate.
 - **`UserManaged`**: you provide your own TLS certificate in a `kubernetes.io/tls` Secret referenced by `secretName`. The operator mounts this Secret but does not manage its lifecycle — you are responsible for rotation.
 
 ### Alternator TLS
 
-When Alternator is enabled (`spec.alternator` in ScyllaCluster, `spec.scyllaDB.alternatorOptions` in ScyllaDBDatacenter), the operator creates a separate serving CA and certificate:
+When Alternator is enabled (`spec.alternator` in `ScyllaCluster`), the operator creates a separate serving CA and certificate:
 
 | Resource | Purpose |
 |----------|---------|
@@ -80,7 +80,7 @@ authenticator: PasswordAuthenticator
 authorizer: CassandraAuthorizer
 ```
 
-This ConfigMap is referenced in the ScyllaCluster or ScyllaDBCluster spec and is merged with the operator-managed configuration.
+This ConfigMap is referenced in the `ScyllaCluster` spec and is merged with the operator-managed configuration.
 
 When `AutomaticTLSCertificates` is enabled, CQL connections also require mutual TLS (client certificate authentication). This provides two layers of authentication: TLS client certificates at the transport level and username/password at the CQL protocol level.
 
@@ -111,13 +111,13 @@ On OpenShift, additional permissions are added through a separate component Clus
 
 ### Member ClusterRole
 
-Each ScyllaDB pod runs with a dedicated ServiceAccount created per ScyllaDBDatacenter (named `<datacenter-name>-member`). This ServiceAccount is bound to the `scyllacluster-member` aggregate ClusterRole via a namespaced RoleBinding.
+Each ScyllaDB pod runs with a dedicated ServiceAccount created for each ScyllaDB cluster (named `<cluster-name>-member`). This ServiceAccount is bound to the `scyllacluster-member` aggregate ClusterRole via a namespaced RoleBinding.
 
 The member ClusterRole grants the sidecar running inside each ScyllaDB pod the minimum permissions it needs:
 
 - **Read** pods, Secrets, ConfigMaps, Services, and StatefulSets — the sidecar reads its own identity, certificates, and cluster topology.
 - **Write** pods and Services — the sidecar updates annotations on its own Service (host ID, token ring hash) and pod labels.
-- **Read** `ScyllaDBDatacenterNodeStatusReports` — used for bootstrap synchronisation state.
+- **Read** internal node-status report resources — used for [bootstrap synchronisation](bootstrap-sync.md) state.
 
 The member role does **not** grant permissions to modify StatefulSets, create or delete pods, or access resources outside the namespace.
 
@@ -127,18 +127,17 @@ The operator installs two ClusterRoles for Kubernetes users who manage ScyllaDB 
 
 | ClusterRole | Aggregated to | Permissions |
 |-------------|---------------|-------------|
-| `scyllacluster-view` | `admin`, `edit`, `view` | Read-only access to all ScyllaDB CRDs (ScyllaClusters, ScyllaDBDatacenters, ScyllaDBClusters, ScyllaDBMonitorings, ScyllaDBManagerClusterRegistrations, ScyllaDBManagerTasks). |
+| `scyllacluster-view` | `admin`, `edit`, `view` | Read-only access to ScyllaDB CRDs (`ScyllaClusters`, `ScyllaDBMonitorings`, `ScyllaDBManagerClusterRegistrations`, `ScyllaDBManagerTasks`). |
 | `scyllacluster-edit` | `admin`, `edit` | Create, update, patch, and delete ScyllaDB CRDs. |
 
 These ClusterRoles are aggregated into the default Kubernetes `admin`, `edit`, and `view` ClusterRoles. This means any user who has the Kubernetes `edit` role in a namespace can automatically create and manage ScyllaDB clusters in that namespace.
 
-### Monitoring and remote ClusterRoles
+### Monitoring ClusterRoles
 
-Additional aggregate ClusterRoles exist for specific components:
+Additional aggregate ClusterRoles exist for monitoring components:
 
 - **Prometheus** (`scylladb:controller:prometheus`): permissions to read endpoints, pods, Services, and nodes. Required for Prometheus service discovery.
 - **Grafana** (`scylladb:controller:grafana`): permissions to manage Grafana-related ConfigMaps and Secrets.
-- **Remote operator** (`scylladb:controller:remote-operator`): permissions for the operator to manage resources in remote Kubernetes clusters for multi-DC deployments.
 
 ## ScyllaDB Manager Agent security
 
@@ -146,13 +145,13 @@ ScyllaDB Manager communicates with ScyllaDB nodes through the [Manager Agent](ma
 
 ### Authentication token
 
-The operator generates a unique authentication token for each ScyllaDBDatacenter and stores it in a Secret (`<name>-agent-auth-token`). This token is:
+The operator generates a unique authentication token for each `ScyllaCluster` and stores it in a Secret named `<cluster-name>-auth-token`. This token is:
 
 - Mounted into the Agent sidecar container as a configuration file.
 - Used by ScyllaDB Manager to authenticate API calls to the Agent.
 - Used by the operator itself when it communicates with the Agent (for example, to coordinate cleanup jobs).
 
-For multi-DC `ScyllaDBCluster` deployments, the operator can override per-datacenter tokens with a shared token (via an internal annotation) so that ScyllaDB Manager can use a single credential across all datacenters.
+In multi-DC deployments using multiple `ScyllaCluster` resources, ScyllaDB Manager needs a single token to communicate with all datacenters. You must manually extract the token from one datacenter's `<cluster-name>-auth-token` Secret, patch it into the other datacenters' Secrets, and then rolling-restart those datacenters so the Agent picks up the new token. See [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md) for the step-by-step procedure.
 
 ### Shared namespace
 
@@ -167,7 +166,7 @@ The Agent authentication token is a bearer token. Anyone with read access to the
 The operator runs a dedicated webhook server (separate Deployment from the operator controller) that validates all CREATE and UPDATE operations on ScyllaDB CRDs:
 
 - `ScyllaCluster` (v1)
-- `NodeConfig`, `ScyllaOperatorConfig`, `ScyllaDBDatacenter`, `ScyllaDBCluster`, `ScyllaDBManagerClusterRegistration`, `ScyllaDBManagerTask`, `ScyllaDBMonitoring` (v1alpha1)
+- `NodeConfig`, `ScyllaOperatorConfig`, `ScyllaDBManagerClusterRegistration`, `ScyllaDBManagerTask`, `ScyllaDBMonitoring` (v1alpha1)
 
 The webhook is configured with `failurePolicy: Fail`, meaning that if the webhook server is unreachable, the Kubernetes API server rejects the request. This prevents invalid configurations from being applied when the webhook is down, but it also means the webhook server must be available for any ScyllaDB resource mutation.
 

@@ -82,7 +82,7 @@ spec:
   configuredClusterDomain: my-cluster.local
 ```
 
-The cluster domain is used to construct DNS names for ScyllaDB services and inter-node communication.
+The cluster domain is used internally for Kubernetes DNS resolution. Most users do not need to override it.
 
 ## How settings propagate
 
@@ -92,13 +92,12 @@ ScyllaOperatorConfig settings are consumed by several Operator controllers:
 |----------|-------------|
 | NodeConfig controller | `scyllaDBUtilsImage` — configures the tuning DaemonSet with the correct ScyllaDB image for `perftune.py` and resource limits. |
 | ScyllaDBMonitoring controller | `grafanaImage`, `prometheusVersion` — configures the monitoring stack. |
-| ScyllaDBCluster controller | `clusterDomain` — constructs DNS names for multi-datacenter communication. |
 
 Changes to `ScyllaOperatorConfig` trigger reconciliation in all dependent controllers. You do not need to restart the Operator.
 
 ## Related pages
 
 - [Configure nodes](configure-nodes.md) — performance tuning that uses the `scyllaUtilsImage`.
-- [Set up monitoring](set-up-monitoring.md) — monitoring stack that uses the Grafana and Prometheus settings.
-- [Tuning architecture](../understand/tuning.md) — how tuning scripts are executed.
-- [Deploy a single-DC cluster](deploy-single-dc-cluster.md) — creating a ScyllaCluster.
+- [Set up monitoring](../set-up-monitoring.md) — monitoring stack that uses the Grafana and Prometheus settings.
+- [Tuning architecture](../../understand/tuning.md) — how tuning scripts are executed.
+- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — creating a ScyllaCluster.

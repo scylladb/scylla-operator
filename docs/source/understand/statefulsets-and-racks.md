@@ -4,7 +4,7 @@ This page explains how ScyllaDB Operator maps ScyllaDB topology onto Kubernetes 
 
 ## One StatefulSet per rack
 
-Each **rack** defined in a ScyllaCluster or ScyllaDBDatacenter is backed by exactly one Kubernetes **StatefulSet**. The StatefulSet is named using the pattern:
+Each **rack** defined in a `ScyllaCluster` is backed by exactly one Kubernetes **StatefulSet**. The StatefulSet is named using the pattern:
 
 ```
 <cluster-name>-<datacenter-name>-<rack-name>
@@ -106,7 +106,7 @@ Setting the `scylla/node-maintenance` label on a member Service puts that node i
 If a pod fails to become Ready after a rolling update, the rollout stalls. No other pods in the rack are updated. Symptoms:
 
 - `kubectl get statefulset` shows `READY` count lower than `REPLICAS`.
-- The ScyllaDBDatacenter or ScyllaCluster status condition reports `WaitingForStatefulSetRollout`.
+- The `ScyllaCluster` status condition reports `WaitingForStatefulSetRollout`.
 
 To diagnose, check the logs of the failing pod and its events. If the problem is with the new configuration, fix the spec and the rollout resumes automatically. If the pod is stuck for other reasons (crash loop, resource issues), see [Node not starting](../troubleshoot/diagnose-node-not-starting.md).
 

@@ -1,31 +1,20 @@
 # Set up multi-DC infrastructure
 
-This page explains how to set up the networking infrastructure required to run a ScyllaDB cluster across multiple Kubernetes clusters (multi-datacenter). Before following this guide, complete the [GitOps](install-with-gitops.md) or [Helm](install-with-helm.md) installation in **every** Kubernetes cluster that will host a ScyllaDB datacenter.
+This page explains how to set up the networking infrastructure required to run a ScyllaDB cluster across multiple Kubernetes clusters using `ScyllaCluster` resources with `externalSeeds`. Before following this guide, complete the [GitOps](install-with-gitops.md) or [Helm](install-with-helm.md) installation in **every** Kubernetes cluster that will host a ScyllaDB datacenter.
 
-:::{note}
-Multi-datacenter support through `ScyllaDBCluster` is a **tech preview** feature and may change in future releases.
-:::
+## Architecture
 
-## Architecture overview
-
-A multi-DC ScyllaDB deployment on Kubernetes uses the following model:
-
-- **Control Plane cluster** — one Kubernetes cluster where the `ScyllaDBCluster` resource is created. The Operator in this cluster orchestrates the entire multi-DC deployment.
-- **Worker clusters** — the Kubernetes clusters that actually host ScyllaDB pods. Each Worker cluster runs one datacenter of the ScyllaDB cluster.
-
-The Control Plane cluster can also be one of the Worker clusters.
-
-Each Worker cluster is represented in the Control Plane by a `RemoteKubernetesCluster` resource, which references a kubeconfig Secret that grants the Control Plane Operator access to the Worker cluster's API server.
+A multi-DC ScyllaDB deployment on Kubernetes consists of two or more interconnected Kubernetes clusters. Each cluster hosts one `ScyllaCluster` resource representing one ScyllaDB datacenter. The datacenters discover each other through external seeds — Pod IPs or domain names of nodes in other datacenters.
 
 ## Networking requirements
 
-All ScyllaDB pods across all participating clusters must be able to communicate directly using **Pod IPs**. The `ScyllaDBCluster` defaults reflect this:
+All ScyllaDB pods across all participating clusters must be able to communicate directly using **Pod IPs**. Each `ScyllaCluster` should be configured with:
 
 - `nodeService.type: Headless` — no virtual IPs, Services resolve directly to Pod IPs.
 - `broadcastOptions.nodes.type: PodIP` — inter-node traffic uses Pod IPs.
 - `broadcastOptions.clients.type: PodIP` — client traffic uses Pod IPs.
 
-This means the VPC/network configuration must ensure that Pod CIDRs are routable between all Kubernetes clusters. The specific mechanism depends on your platform.
+This means the VPC/network configuration must ensure that Pod CIDRs are routable between all Kubernetes clusters. The specific mechanism depends on your platform. For alternative exposure configurations, see [Expose ScyllaDB clusters](../deploy-scylladb/set-up-networking/expose-clusters.md).
 
 :::{caution}
 Pod CIDRs across clusters **must not overlap**. Plan your subnet and Pod CIDR allocations before creating the clusters.
@@ -206,95 +195,9 @@ aws ec2 authorize-security-group-ingress --region us-east-2 \
   --protocol all --cidr 10.0.0.0/16
 ```
 
-## Setting up RemoteKubernetesCluster
-
-After the network infrastructure is in place, configure access from the Control Plane cluster to each Worker cluster.
-
-### 1. Create kubeconfig Secrets
-
-In the Control Plane cluster, create a namespace for the credentials and a Secret for each Worker cluster containing a kubeconfig that grants the `scylladb:controller:operator-remote` ClusterRole:
-
-```shell
-kubectl create namespace remotekubernetescluster-credentials
-```
-
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: worker-us-east-1
-  namespace: remotekubernetescluster-credentials
-type: Opaque
-stringData:
-  kubeconfig: |
-    apiVersion: v1
-    kind: Config
-    clusters:
-    - cluster:
-        certificate-authority-data: <worker-cluster-ca-bundle>
-        server: <worker-cluster-api-server-url>
-      name: worker-us-east-1
-    contexts:
-    - context:
-        cluster: worker-us-east-1
-        user: worker-us-east-1
-      name: worker-us-east-1
-    current-context: worker-us-east-1
-    users:
-    - name: worker-us-east-1
-      user:
-        token: <service-account-token>
-```
-
-The service account token must be bound to the `scylladb:controller:operator-remote` ClusterRole in the Worker cluster. This ClusterRole is created automatically when ScyllaDB Operator is installed and grants the permissions the Control Plane Operator needs to manage ScyllaDB resources in the Worker cluster.
-
-### 2. Create RemoteKubernetesCluster resources
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: RemoteKubernetesCluster
-metadata:
-  name: worker-us-east-1
-spec:
-  kubeconfigSecretRef:
-    name: worker-us-east-1
-    namespace: remotekubernetescluster-credentials
-```
-
-Verify the connection:
-
-```shell
-kubectl wait --for='condition=Available=True' --timeout=5m \
-  remotekubernetesclusters.scylla.scylladb.com/worker-us-east-1
-```
-
-**Expected output:** The condition is satisfied, confirming that the Control Plane Operator can communicate with the Worker cluster.
-
-Repeat for each Worker cluster.
-
-### 3. Reference Worker clusters in ScyllaDBCluster
-
-Each datacenter in your `ScyllaDBCluster` spec references a `RemoteKubernetesCluster` by name:
-
-```yaml
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: my-cluster
-  namespace: scylla
-spec:
-  datacenters:
-  - name: us-east-1
-    remoteKubernetesClusterName: worker-us-east-1
-  - name: us-west-1
-    remoteKubernetesClusterName: worker-us-west-1
-```
-
-For a complete example, see the [multi-DC example](https://github.com/scylladb/scylla-operator/tree/master/examples/multi-dc) in the repository.
-
 ## Verifying connectivity
 
-After setting up the infrastructure and RemoteKubernetesCluster resources, verify end-to-end Pod connectivity:
+After setting up the infrastructure, verify end-to-end Pod connectivity:
 
 1. Deploy a test pod in each cluster.
 2. From each test pod, ping or `curl` a pod IP in every other cluster.
@@ -310,6 +213,6 @@ If connectivity fails, check:
 
 - [Prerequisites](prerequisites.md) — Kubernetes version requirements per platform.
 - [Install with GitOps](install-with-gitops.md) — installing ScyllaDB Operator in each cluster.
-- [Deploy a multi-DC cluster](../deploy-scylladb/deploy-multi-dc-cluster.md) — creating a ScyllaDBCluster across multiple clusters.
+- [Deploy a multi-DC cluster](../deploy-scylladb/deploy-multi-dc-cluster.md) — creating a multi-datacenter cluster using multiple `ScyllaCluster` resources.
 - [Architecture overview](../understand/overview.md) — multi-DC component model.
 - [Networking](../understand/networking.md) — broadcast options and Service types.

@@ -102,7 +102,7 @@ Watches the node's own member Service and keeps it in sync with ScyllaDB's runti
 
 #### StatusReporter
 
-Periodically polls the ScyllaDB storage service API and writes the node's gossip view (which other nodes are `UP` or `DOWN`) as an annotation on the pod. This annotation is consumed by the datacenter controller to build `ScyllaDBDatacenterNodesStatusReport` resources used by the [bootstrap barrier](bootstrap-sync.md).
+Periodically polls the ScyllaDB storage service API and writes the node's gossip view (which other nodes are `UP` or `DOWN`) as an annotation on the pod. This annotation is consumed by the internal datacenter controller to build `ScyllaDBDatacenterNodesStatusReport` resources (an internal CRD used for coordinating operations) that feed into [bootstrap synchronisation](bootstrap-sync.md).
 
 ## The probe sidecar
 

@@ -51,7 +51,7 @@ Common sub-conditions to look for:
 | `ServiceControllerDegraded=True` | An error occurred managing per-node Services |
 | `ConfigControllerDegraded=True` | An error occurred managing ScyllaDB configuration |
 
-For ScyllaDBCluster (multi-DC), conditions are further split per datacenter (for example, `DatacenterUs-east-1Available`).
+In multi-DC clusters using multiple `ScyllaCluster` resources, check conditions on each `ScyllaCluster` independently and cross-check with `nodetool status` for the combined ring view.
 
 ## Pod status
 

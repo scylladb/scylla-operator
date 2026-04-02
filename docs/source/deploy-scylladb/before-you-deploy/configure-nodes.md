@@ -19,9 +19,9 @@ We recommend trying performance tuning on a pre-production instance first. The u
 
 ## Prerequisites
 
-- ScyllaDB Operator installed ([GitOps](../install-operator/install-with-gitops.md) or [Helm](../install-operator/install-with-helm.md))
+- ScyllaDB Operator installed ([GitOps](../../install-operator/install-with-gitops.md) or [Helm](../../install-operator/install-with-helm.md))
 - Dedicated node pool for ScyllaDB (see [Dedicated node pools](set-up-dedicated-node-pools.md))
-- `xfsprogs` available on the host OS (see [Prerequisites](../install-operator/prerequisites.md))
+- `xfsprogs` available on the host OS (see [Prerequisites](../../install-operator/prerequisites.md))
 
 ## Matching NodeConfig to ScyllaDB nodes
 
@@ -69,7 +69,7 @@ spec:
 Both target the same nodes. If NodeConfig and ScyllaCluster target different node sets, performance tuning will not apply to ScyllaDB pods.
 
 :::{tip}
-For multi-datacenter clusters using `ScyllaDBCluster`, create a separate NodeConfig in each Worker Kubernetes cluster.
+For multi-datacenter clusters using multiple `ScyllaCluster` resources, create a separate NodeConfig in each Kubernetes cluster.
 :::
 
 ## Configuring disk setup
@@ -281,7 +281,7 @@ By default, NodeConfig enables performance tuning on all matching nodes. The tun
 | **Node-level** | Runs `perftune.py --tune=system --tune-clock` to configure clocksource, IRQ balancing, and kernel I/O scheduler. Applies sysctls from the NodeConfig spec. |
 | **Container-level** | Adjusts IRQ CPU affinity masks for each ScyllaDB container based on its cgroup CPU allocation. Raises `RLIMIT_NOFILE` on the ScyllaDB process. |
 
-Container-level tuning runs every time a ScyllaDB container starts and **blocks ScyllaDB startup** until it completes (via the [ignition mechanism](../understand/ignition.md)). This ensures ScyllaDB always starts with the correct tuning.
+Container-level tuning runs every time a ScyllaDB container starts and **blocks ScyllaDB startup** until it completes (via the [ignition mechanism](../../understand/ignition.md)). This ensures ScyllaDB always starts with the correct tuning.
 
 To disable performance tuning (not recommended for production):
 
@@ -290,7 +290,7 @@ spec:
   disableOptimizations: true
 ```
 
-For details on how tuning interacts with CPU pinning, see [CPU pinning](configure-cpu-pinning.md) and [Tuning architecture](../understand/tuning.md).
+For details on how tuning interacts with CPU pinning, see [CPU pinning](configure-cpu-pinning.md) and [Tuning architecture](../../understand/tuning.md).
 
 ## Combining disk setup and sysctls
 
@@ -423,7 +423,7 @@ NodeConfig is not available as a Helm chart. Even if you installed the Operator 
 
 - [Dedicated node pools](set-up-dedicated-node-pools.md) — setting up isolated nodes for ScyllaDB.
 - [CPU pinning](configure-cpu-pinning.md) — configuring CPU exclusivity for ScyllaDB containers.
-- [Tuning architecture](../understand/tuning.md) — how node-level and container-level tuning work.
-- [Storage architecture](../understand/storage.md) — how NodeConfig, Local CSI Driver, and PVs work together.
-- [Production checklist](production-checklist.md) — verify all production settings.
-- [Deploy a single-DC cluster](deploy-single-dc-cluster.md) — creating a ScyllaCluster.
+- [Tuning architecture](../../understand/tuning.md) — how node-level and container-level tuning work.
+- [Storage architecture](../../understand/storage.md) — how NodeConfig, Local CSI Driver, and PVs work together.
+- [Production checklist](../production-checklist.md) — verify all production settings.
+- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — creating a ScyllaCluster.

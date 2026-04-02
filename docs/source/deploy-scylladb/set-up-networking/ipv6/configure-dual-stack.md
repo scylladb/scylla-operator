@@ -17,7 +17,7 @@ The second entry adds Service-level accessibility in the other protocol.
 | Requirement | Details |
 |---|---|
 | Kubernetes cluster | Dual-stack networking enabled |
-| ScyllaDB Operator | Already installed ([Installation](../../install-operator/index.md)) |
+| ScyllaDB Operator | Already installed ([Installation](../../../install-operator/index.md)) |
 | ScyllaDB version | 2024.1 or newer recommended |
 
 ## IPv4-first dual-stack
@@ -230,4 +230,4 @@ network:
 - [Configure IPv6-only single-stack](configure-single-stack.md)
 - [Migrate existing clusters to IPv6](migration.md)
 - [Expose ScyllaDB clusters](../expose-clusters.md)
-- [Networking architecture](../../understand/networking.md)
+- [Networking architecture](../../../understand/networking.md)

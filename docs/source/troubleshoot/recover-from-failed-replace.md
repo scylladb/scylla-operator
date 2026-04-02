@@ -172,8 +172,7 @@ kubectl -n scylla get scylladbmanagertask
 
 ## Multi-datacenter note
 
-In a multi-datacenter deployment, perform this procedure in the **worker cluster** where the failed node is located.
-The ScyllaDBCluster controller in the control plane cluster delegates per-datacenter operations to worker clusters.
+In a multi-datacenter deployment using multiple `ScyllaCluster` resources, perform this procedure in the Kubernetes cluster hosting the failed node's datacenter.
 
 ## What if something goes wrong
 

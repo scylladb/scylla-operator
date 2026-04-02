@@ -38,6 +38,11 @@ kubectl patch service/<cluster-name>-client -p '{"metadata": {"annotations": {"n
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<cluster-name>-client
 kubectl get service/<cluster-name>-client -o='jsonpath={.status.loadBalancer.ingress[0].ip}'
 ```
+
+Expected output:
+```
+10.128.0.5
+```
 :::
 
 :::{group-tab} EKS
@@ -46,12 +51,25 @@ kubectl patch service/<cluster-name>-client -p '{"metadata": {"annotations": {"s
 kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<cluster-name>-client
 kubectl get service/<cluster-name>-client -o='jsonpath={.status.loadBalancer.ingress[0].hostname}'
 ```
+
+Expected output:
+```
+internal-a1b2c3d4e5f6g7h8-123456789.us-east-1.elb.amazonaws.com
+```
 :::
 ::::
 
 :::{tip}
 Having a stable discovery contact point is especially important when using ephemeral Pod IPs, because individual node IPs can change when pods are rescheduled.
 :::
+
+## Troubleshoot discovery failures
+
+**Discovery Service has no EXTERNAL-IP**: The LoadBalancer has not yet been provisioned. Wait 1–2 minutes and retry, or check cloud provider events with `kubectl describe service <name> -n scylla`.
+
+**Clients cannot reach discovery endpoint**: Verify that firewall rules allow traffic on port 9042. See [Prerequisites](../install-operator/prerequisites.md).
+
+**Driver loses all contact points after a restart**: The ClusterIP (`<cluster>-client`) is stable across pod restarts. Prefer it over Pod IPs as the initial contact point. See [Connect via CQL](connect-via-cql.md).
 
 ## Related pages
 

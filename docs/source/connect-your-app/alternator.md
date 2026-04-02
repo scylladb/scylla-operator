@@ -113,6 +113,18 @@ The Operator creates these resources for Alternator:
 - **`Could not connect to the endpoint`**: Alternator may not be enabled on the cluster. Verify `spec.alternator` is set in the ScyllaCluster and pods are running. Check that the Service port (8000 by default) is reachable.
 - **`salted_hash not set`**: The credentials were created without the required `options={'timeout': 300}` parameter or were created before Alternator was enabled. Recreate the credentials via CQL.
 
+## Multi-datacenter limitations
+
+When using Alternator with a multi-datacenter ScyllaDB deployment (multiple `ScyllaCluster` resources connected via `externalSeeds`), the following constraints apply:
+
+| Limitation | Detail |
+|---|---|
+| No built-in cross-DC routing | Alternator endpoints are per-datacenter. There is no built-in load balancer that routes DynamoDB API requests across datacenters. Connect your application to the Alternator endpoint in the datacenter closest to it. |
+| No Helm-based multi-DC install | Helm charts do not support multi-DC deployments. Use manifests directly for multi-DC setups. |
+| Authentication tokens are DC-local | Each `ScyllaCluster` has its own Alternator authentication credentials. If you require the same credentials across DCs, you must configure the same `alternatorWriteIsolation` and authentication settings on each cluster independently. |
+
+See [Known issues](../reference/known-issues.md#multi-datacenter-limitations) for the complete list of multi-datacenter limitations in ScyllaDB Operator.
+
 ## Related pages
 
 - [Connect via CQL](connect-via-cql.md) — CQL connection and authentication setup.

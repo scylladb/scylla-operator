@@ -153,7 +153,7 @@ The support matrix table shows the version requirements for ScyllaDB Operator. M
 * - ScyllaDB
   - 2024.1, 2025.1, 2025.3 - 2025.4
 * - ScyllaDB Manager
-  - 3.7 - 3.8
+  - 3.7 - 3.9
 * - ScyllaDB Monitoring
   - {{scyllaDBMonitoringVersion}} [^scylladb-monitoring-version]
 :::

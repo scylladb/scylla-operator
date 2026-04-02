@@ -4,6 +4,26 @@ Use this decision tree to narrow down whether you are dealing with a **Kubernete
 
 ## Step 1: Identify the failure layer
 
+```{mermaid}
+flowchart TD
+    A([Start: ScyllaDB cluster issue]) --> B{Is the Operator running?}
+    B -->|No| B1["Operator not running"]
+    B -->|Yes| C{Are pods being created?}
+    B -->|Yes| NR{Is a node replace stuck?}
+    NR -->|Yes| NR1["Failed replace"]
+    C -->|No| C1["Pods not starting"]
+    C -->|Yes| D{Are pods restarting?}
+    C -->|Yes| UPG{Upgrade or rollout stuck?}
+    UPG -->|Yes| UPG1["Upgrade failures"]
+    D -->|Yes| D1["Investigate restarts"]
+    D -->|No| E{"Cluster healthy? (all nodes UN)"}
+    E -->|No| E1["Cluster degraded"]
+    E -->|Yes| F{Can clients connect?}
+    F -->|No| F1["Connection failures"]
+    F -->|Yes| F2["Performance issues"]
+```
+
+<!-- ASCII fallback for non-mermaid environments -->
 ```
 Is the ScyllaDB Operator running?
 ├── No  → Kubernetes or Operator issue → "Operator not running"

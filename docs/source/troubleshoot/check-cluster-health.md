@@ -53,6 +53,8 @@ Common sub-conditions to look for:
 
 In multi-DC clusters using multiple `ScyllaCluster` resources, check conditions on each `ScyllaCluster` independently and cross-check with `nodetool status` for the combined ring view.
 
+For the complete reference of all condition types and their semantics, see [ScyllaCluster conditions reference](../reference/conditions.md).
+
 ## Pod status
 
 List all ScyllaDB pods:

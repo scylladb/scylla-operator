@@ -43,6 +43,32 @@ In the v1 API, `scyllaArgs` is a single string.
 Multiple arguments are separated by spaces.
 :::
 
+## Verify
+
+After the rolling restart completes, confirm that the arguments were applied to the ScyllaDB container.
+
+**Check the pod spec:**
+
+```bash
+kubectl -n scylla get pod <pod-name> -o jsonpath='{.spec.containers[?(@.name=="scylla")].args}'
+```
+
+The arguments appear in the ScyllaDB container's args list alongside other default arguments added by the Operator.
+
+**Expected output:**
+
+```
+["--blocked-reactor-notify-ms","10","--abort-on-seastar-signal-handling-failure","1", ...]
+```
+
+**Check the ScyllaDB startup logs:**
+
+```bash
+kubectl -n scylla logs <pod-name> -c scylla | head -20
+```
+
+The ScyllaDB startup line will include the configured arguments alongside the other flags passed to the binary.
+
 ## Emergency scenarios
 
 In emergency scenarios — such as a stuck rollout or a degraded cluster where a rolling restart is not possible — you may need to change the ScyllaDB log level or other runtime settings without triggering a restart.

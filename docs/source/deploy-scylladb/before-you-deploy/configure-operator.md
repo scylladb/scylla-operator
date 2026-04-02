@@ -37,7 +37,7 @@ status:
 
 | Spec field | Description | Default |
 |------------|-------------|---------|
-| `scyllaUtilsImage` | ScyllaDB image used for running utility scripts (perftune, sysctl). Determines which tuning scripts are used for performance optimization. | Latest ScyllaDB Open Source image. |
+| `scyllaUtilsImage` | ScyllaDB image used for running utility scripts (perftune, sysctl). Determines which tuning scripts are used for performance optimization. | Latest ScyllaDB image. |
 | `configuredClusterDomain` | Kubernetes cluster domain. Must be a fully qualified domain name. | Auto-discovered via DNS lookup of `kubernetes.default.svc`. |
 | `unsupportedBashToolsImageOverride` | Override the Bash tools image. **Unsupported** — for advanced use only. | UBI 9 image. |
 | `unsupportedGrafanaImageOverride` | Override the Grafana image. **Unsupported** — for advanced use only. | Official Grafana image. |
@@ -49,7 +49,7 @@ Fields prefixed with `unsupported` are not covered by the regular support policy
 
 ## Tuning with ScyllaDB Enterprise
 
-By default, the Operator uses performance tuning scripts from the ScyllaDB Open Source image. If you run ScyllaDB Enterprise, set `scyllaUtilsImage` to an Enterprise image to use its tuning scripts:
+By default, the Operator uses performance tuning scripts from the ScyllaDB image. If you run ScyllaDB Enterprise, set `scyllaUtilsImage` to an Enterprise image to use its tuning scripts:
 
 :::{code-block} yaml
 :substitutions:

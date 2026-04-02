@@ -311,7 +311,7 @@ kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-cs
 ScyllaDB Manager provides automated repair and backup scheduling. It deploys a small internal ScyllaDB cluster for its own database.
 
 :::{note}
-ScyllaDB Manager is available for ScyllaDB Enterprise customers and ScyllaDB Open Source users. With ScyllaDB Open Source, ScyllaDB Manager is limited to 5 nodes. See the ScyllaDB Manager [Proprietary Software License Agreement](https://www.scylladb.com/scylla-manager-software-license-agreement/) for details.
+ScyllaDB Manager is available for ScyllaDB Enterprise customers and ScyllaDB users. With ScyllaDB, ScyllaDB Manager is limited to 5 nodes. See the ScyllaDB Manager [Proprietary Software License Agreement](https://www.scylladb.com/scylla-manager-software-license-agreement/) for details.
 :::
 
 :::{code-block} shell

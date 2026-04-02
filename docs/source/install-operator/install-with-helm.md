@@ -2,6 +2,11 @@
 
 This page walks you through installing ScyllaDB Operator and all its dependencies using Helm charts. If you prefer applying raw manifests, see [Install with GitOps](install-with-gitops.md). For Red Hat OpenShift, see [Install on OpenShift](install-on-openshift.md).
 
+:::{note}
+The Helm installation path supports single-datacenter deployments only.
+For multi-datacenter ScyllaDB clusters, use the [GitOps installation path](install-with-gitops.md) and follow [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
+:::
+
 :::{warning}
 Helm does not support managing CustomResourceDefinition resources ([helm#5871](https://github.com/helm/helm/issues/5871), [helm#7735](https://github.com/helm/helm/issues/7735)). Helm only creates CRDs on the first install and **never updates them**. You must update CRDs manually with every Operator upgrade. For this reason, the [Install with GitOps](install-with-gitops.md) path provides a more consistent experience.
 :::

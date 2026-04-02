@@ -68,13 +68,40 @@ Identify the Service with the matching ClusterIP (in this example, `10.43.43.51`
 
 ### Step 3: Drain the Kubernetes node (if still accessible)
 
-If the failed Kubernetes node is still present in the cluster, drain it to release any remaining resources:
+If the failed Kubernetes node is still present in the cluster, drain it to release any remaining resources.
+
+`kubectl drain` performs two actions: it **cordons** the node (marks it `SchedulingDisabled` so no new pods can be scheduled on it) and **evicts** all evictable pods gracefully, giving them time to shut down cleanly.
 
 ```bash
 kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 ```
 
-The ScyllaDB pod should enter `Pending` state after the drain.
+**Flag reference:**
+
+- `--ignore-daemonsets` — required because ScyllaDB's node-tuning DaemonSet pods run on every node. Without this flag, `kubectl drain` refuses to proceed. DaemonSet pods are ignored and remain on the node; they are rescheduled automatically when a replacement node comes up.
+- `--delete-emptydir-data` — required only if any pod on the node uses `emptyDir` volumes. Include it to acknowledge that the emptyDir data will be lost when the pod is evicted.
+
+**What to expect:** non-DaemonSet pods are evicted one by one. The node transitions to `SchedulingDisabled` status. The ScyllaDB pod should enter `Pending` state after the drain.
+
+:::{caution}
+If the cluster is already degraded (for example, another replica is down), the ScyllaDB PodDisruptionBudget may block eviction and cause the drain to hang indefinitely.
+
+To check whether a PDB is blocking eviction:
+
+```bash
+kubectl get poddisruptionbudgets -n scylla
+```
+
+Look for a PDB with `ALLOWED DISRUPTIONS` equal to `0`. If so, fix the underlying degraded node first to restore the disruption budget before draining.
+
+As a last resort — only when you are certain the pod is already permanently unavailable and data loss is acceptable — you can bypass eviction:
+
+```bash
+kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data --disable-eviction=true
+```
+
+Use `--disable-eviction=true` with caution: it deletes pods directly instead of honouring the PDB, which can leave the cluster in an inconsistent state if done prematurely.
+:::
 
 :::{note}
 If the Kubernetes node has already been removed (for example, a terminated cloud instance), skip this step.

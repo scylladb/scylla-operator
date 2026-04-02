@@ -66,31 +66,31 @@ Section index. **Diataxis**: Navigation.
 
 ---
 
-## `architecture/`
+## `understand/`
 
-### `architecture/index.md`
+### `understand/index.md`
 Section index. **Diataxis**: Navigation.
 
-### `architecture/overview.md`
+### `understand/overview.md`
 **Diataxis**: Explanation. Components (CRDs, webhooks, controllers), cluster-scoped vs. namespaced, reconciliation model, dependency chain. Include diagrams.
 **Source**: Adapt from `architecture/overview.md`. Existing content is solid but needs reconciliation-model explanation and updated diagrams.
 
 **EDIT COMPLETED 3 (ScyllaDBCluster removal)**
 
-### `architecture/storage.md`
+### `understand/storage.md`
 **Diataxis**: Explanation. Local vs. network storage tradeoffs, NodeConfig role in disk setup, Local CSI Driver (xfs prjquota, dynamic provisioning), supported provisioners. Merge storage overview and Local CSI Driver into one cohesive page.
 **Source**: Merge `architecture/storage/overview.md` + `architecture/storage/local-csi-driver.md`.
 
-### `architecture/tuning.md`
+### `understand/tuning.md`
 **Diataxis**: Explanation. The two-level performance tuning system and how it optimizes ScyllaDB on Kubernetes. Must cover:
 - **Node-level tuning** (`NodePerftune` + `NodeSysctls`): runs once per node when a NodeConfig is created. Executes `perftune` on the host to tune kernel parameters, network device settings, disk devices, and spread IRQs. Applies sysctls. Uses privileged DaemonSets and Jobs in the `scylla-operator-node-tuning` namespace. Does **not** block ScyllaDB startup.
 - **Pod/container-level tuning** (`ContainerPerftune` + `ContainerResourceLimits`): runs per ScyllaDB Pod creation/restart. Spreads IRQs across CPUs not used by the specific ScyllaDB container. Adjusts container resource limits. Creates a per-pod tuning ConfigMap (`SidecarRuntimeConfig`) tied to the container instance. **Blocks ScyllaDB startup via ignition** until complete.
 - **CPU pinning**: kubelet static CPU manager policy, Guaranteed QoS class requirement (requests == limits), how `perftune` pins IRQs to non-ScyllaDB CPUs.
-- **How tuning flows into ignition**: the ignition controller checks that the tuning ConfigMap exists with matching container ID and no blocking NodeConfigs remain before allowing ScyllaDB to start. Cross-reference `architecture/ignition.md`.
+- **How tuning flows into ignition**: the ignition controller checks that the tuning ConfigMap exists with matching container ID and no blocking NodeConfigs remain before allowing ScyllaDB to start. Cross-reference `understand/ignition.md`.
 - **Key controllers**: NodeConfig controller (orchestrates node-level tuning), NodeConfigPod controller (watches ScyllaDB pods, creates per-pod tuning ConfigMaps).
 **Source**: Adapt from `architecture/tuning.md`. Expand with node vs. pod tuning distinction and ignition integration. Add QoS class implications.
 
-### `architecture/manager.md`
+### `understand/manager.md`
 **Diataxis**: Explanation. Manager deployment model, task sync (repair/backup), security (shared namespace), limitations.
 **Source**: Adapt from `architecture/manager.md`. Extend with end-to-end Manager integration ([#1898](https://github.com/scylladb/scylla-operator/issues/1898)).
 
@@ -100,17 +100,17 @@ Section index. **Diataxis**: Navigation.
 - Remove `ScyllaDBDatacenter` controller registration details.
 - Add a note about multi-DC Manager integration using `ScyllaCluster`: Manager must be deployed in only one datacenter. Auth tokens must be manually synchronized across DCs by extracting the token from one DC's `<cluster>-auth-token` Secret and patching it into the other DCs' Secrets, followed by a rolling restart. Cross-reference `deploy-scylladb/deploy-multi-dc-cluster.md`.
 
-### `architecture/networking.md`
+### `understand/networking.md`
 **Diataxis**: Explanation. Network exposure model (Headless/ClusterIP/LoadBalancer), broadcast options, dual-stack/IPv6 architecture, platform-specific annotations. Consolidate all networking concepts.
 **Source**: Merge `resources/common/exposing.md` + `management/networking/ipv6/concepts/ipv6-networking.md`. Current content is scattered.
 
 **EDIT COMPLETED 5 (ScyllaDBCluster removal):**
 
-### `architecture/set-up-monitoring.md`
+### `understand/set-up-monitoring.md`
 **Diataxis**: Explanation. ScyllaDBMonitoring components, managed vs. external Prometheus, ServiceMonitor/PrometheusRule, Prometheus Operator dependency.
 **Source**: Adapt from `management/monitoring/overview.md`.
 
-### `architecture/bootstrap-sync.md`
+### `understand/bootstrap-sync.md`
 **Diataxis**: Explanation. Why bootstrap synchronisation exists, barrier mechanism, internal node-status reporting.
 **Source**: Adapt from `management/bootstrap-sync.md`.
 
@@ -124,25 +124,25 @@ Section index. **Diataxis**: Navigation.
 - Added TODO markers for EDIT REQUIRED 18 (`operate/scale-cluster.md`), 19 (`operate/replace-nodes.md`), 21 (`operate/back-up-and-restore.md`), 24 (`upgrade/upgrade-scylladb.md`).
 - Verified all code claims (feature gate name, min ScyllaDB version, annotation name, init container name, CRD type) against source code — all correct.
 
-### `architecture/automatic-data-cleanup.md`
+### `understand/automatic-data-cleanup.md`
 **Diataxis**: Explanation. Why cleanup happens, trigger mechanism, inspection.
 **Source**: Adapt from `management/data-cleanup.md` + `resources/scyllaclusters/nodeoperations/automatic-cleanup.md`.
 
-### `architecture/sidecar.md`
+### `understand/sidecar.md`
 **Diataxis**: Explanation. The containers that make up a ScyllaDB Pod and how they interact. Must cover:
 - **Init containers**: the operator binary injector (copies `/usr/bin/scylla-operator` into shared volume), `sysctl-buddy` (applies sysctl settings from annotation), `scylladb-bootstrap-barrier` (blocks startup until bootstrap preconditions are met, feature-gated).
 - **Main container**: runs ScyllaDB, but first waits for ignition (`/mnt/shared/ignition.done` file), then execs the sidecar binary which configures and starts ScyllaDB as a subprocess.
 - **Sidecar containers**: `scylladb-api-status-probe` (readiness/liveness probe endpoint), `scylladb-ignition` (evaluates prerequisites — tuning done, IPs assigned — and creates the ignition signal file), ScyllaDB Manager Agent (optional, also waits for ignition before starting).
 - **The `sidecar` subcommand**: runs inside the main container; configures `scylla.yaml`, snitch properties, IO properties, seeds, CPU pinning; resolves broadcast addresses and rack/DC placement; starts ScyllaDB as a subprocess and manages its lifecycle; runs the SidecarController (syncs member service annotations with HostID, token ring hash, handles decommission) and a StatusReporter.
 - How containers coordinate through the shared `/mnt/shared` volume and the ignition signal file.
-- Cross-reference `architecture/ignition.md` for the startup gating mechanism.
+- Cross-reference `understand/ignition.md` for the startup gating mechanism.
 Target: Database Operator/SRE, Support Engineer, Contributor.
 **Source**: NEW. No existing page explains the pod anatomy; users must reverse-engineer it from YAML manifests and source code.
 
 **EDIT COMPLETED 7 (ScyllaDBCluster removal):**
 - Updated the StatusReporter description in sidecar.md to explicitly mention `ScyllaDBDatacenterNodesStatusReport` as an internal CRD (per user instruction: CRD name is okay to show). Consistent with bootstrap-sync.md approach.
 
-### `architecture/ignition.md`
+### `understand/ignition.md`
 **Diataxis**: Explanation. The startup gating mechanism that prevents ScyllaDB from starting before all prerequisites are met. Must cover:
 - **Why ignition exists**: ScyllaDB must not start until node tuning is complete, network identity is assigned, and the container is ready. Starting prematurely causes performance issues or incorrect configuration.
 - **Signal-file mechanism**: the ignition controller creates `/mnt/shared/ignition.done`; the ScyllaDB container polls for this file in a shell loop before exec-ing into the sidecar process. The Manager Agent also waits on the same file.
@@ -150,22 +150,22 @@ Target: Database Operator/SRE, Support Engineer, Contributor.
 - **Cleanup on shutdown**: the `preStop` hook removes the signal file so a restarting container must be re-ignited.
 - **Force override**: the `internal.scylla-operator.scylladb.com/ignition-override` annotation can force ignition to `"true"` or `"false"` for debugging.
 - **Readiness probe**: ignition container exposes `/readyz` on port 42081, returning 200 only when ignited.
-- Cross-reference `architecture/sidecar.md` (pod containers) and `architecture/tuning.md` (why tuning must complete before ignition).
+- Cross-reference `understand/sidecar.md` (pod containers) and `understand/tuning.md` (why tuning must complete before ignition).
 Target: Database Operator/SRE, Support Engineer, Contributor.
 **Source**: NEW. Ignition is a critical internal mechanism that is completely undocumented.
 
-### `architecture/pod-disruption-budgets.md`
+### `understand/pod-disruption-budgets.md`
 **Diataxis**: Explanation. How the Operator uses Kubernetes PodDisruptionBudgets (PDBs) to protect ScyllaDB availability during voluntary disruptions. Must cover:
 - **What a PDB is**: Kubernetes mechanism that limits how many pods can be voluntarily evicted simultaneously (node drain, cluster autoscaler, maintenance).
 - **ScyllaDB cluster PDB** (per-datacenter): created with `maxUnavailable: 1`, ensuring at most one ScyllaDB node is disrupted at a time. Selector excludes cleanup job pods so they don't count toward PDB calculations.
 - **Operator and webhook server PDBs**: `minAvailable: 1` PDBs that protect the operator deployment and webhook server when running with multiple replicas.
 - **PDB interaction with operations**: how PDBs cooperate with scale-down (one member decommissioned at a time), rolling upgrades (partition-based rollout, one pod at a time), node replacement (one node replaced at a time), and Kubernetes node drains.
 - **Common pitfall**: PDBs can block node drains if the cluster is already degraded (e.g., a node is already down); explain how to diagnose and work around this.
-- Cross-reference `architecture/statefulsets-and-racks.md` (rolling updates) and `operate/scale-cluster.md`.
+- Cross-reference `understand/statefulsets-and-racks.md` (rolling updates) and `operate/scale-cluster.md`.
 Target: Platform/K8s Admin, Database Operator/SRE.
 **Source**: NEW. PDBs are created automatically but never explained; users encounter them during node drains and get confused.
 
-### `architecture/security.md`
+### `understand/security.md`
 **Diataxis**: Explanation. TLS certificates (automatic via cert-manager), authentication/authorization model, RBAC, network policies, ScyllaDB Manager shared-namespace security. Target: Evaluator/Architect, Platform Admin.
 **Source**: NEW. Addresses missing security documentation ([DOCS_HINTS]).
 
@@ -177,7 +177,7 @@ Target: Platform/K8s Admin, Database Operator/SRE.
 - Removed `ScyllaDBDatacenter` and `ScyllaDBCluster` from the webhook validation CRD list.
 - Added multi-DC auth token sync guidance with cross-reference to `deploy-scylladb/deploy-multi-dc-cluster.md`.
 
-### `architecture/statefulsets-and-racks.md` (DONE)
+### `understand/statefulsets-and-racks.md` (DONE)
 **Diataxis**: Explanation. How the Operator maps ScyllaDB topology onto Kubernetes primitives. Must cover:
 - Each ScyllaDB **rack** is backed by a **StatefulSet** — one StatefulSet per rack, with ordered pod naming (`<cluster>-<dc>-<rack>-<ordinal>`).
 - **Pod identity and ordering** — StatefulSet guarantees stable network identity and persistent storage per pod; ordinal determines startup/shutdown order.
@@ -374,7 +374,7 @@ Section index. **Diataxis**: Navigation.
 Section index. **Diataxis**: Navigation.
 
 ### `operate/scale-cluster.md` (DONE)
-**Diataxis**: How-to. Scaling clusters up/down: adding racks, changing replica count. Explain that nodes are added/removed at the end of each rack's StatefulSet; cross-reference `architecture/statefulsets-and-racks.md` for why arbitrary mid-set removal is not possible.
+**Diataxis**: How-to. Scaling clusters up/down: adding racks, changing replica count. Explain that nodes are added/removed at the end of each rack's StatefulSet; cross-reference `understand/statefulsets-and-racks.md` for why arbitrary mid-set removal is not possible.
 **Source**: NEW. Addresses [#2426](https://github.com/scylladb/scylla-operator/issues/2426) and [#2450](https://github.com/scylladb/scylla-operator/issues/2450).
 
 **EDIT COMPLETED 18 (ScyllaDBCluster removal):**
@@ -425,7 +425,7 @@ Section index. **Diataxis**: Navigation.
 5. **Delete the old rack** — once the old rack has 0 members and all data has been streamed away, remove the old rack definition from the spec.
 - **Prerequisites**: the new node pool must already exist with appropriate labels, taints, instance types, and NodeConfig. Cross-reference `deploy-scylladb/set-up-dedicated-node-pools.md`.
 - **Caveats**: replication factor must accommodate the temporary rack imbalance; run repair after migration completes; ensure the new rack is in the same datacenter.
-- Cross-reference `architecture/statefulsets-and-racks.md` (scaling mechanics), `operate/scale-cluster.md`.
+- Cross-reference `understand/statefulsets-and-racks.md` (scaling mechanics), `operate/scale-cluster.md`.
 Target: Platform/K8s Admin, Database Operator/SRE.
 **Source**: NEW. This is a common operational procedure with no existing documentation.
 
@@ -465,39 +465,39 @@ Section index. **Diataxis**: Navigation.
 
 ---
 
-## `networking/`
+## `deploy-scylladb/set-up-networking/`
 
-### `networking/index.md` (DONE)
+### `deploy-scylladb/set-up-networking/index.md` (DONE)
 Section index. **Diataxis**: Navigation.
 
-### `networking/expose-clusters.md` (DONE)
+### `deploy-scylladb/set-up-networking/expose-clusters.md` (DONE)
 **Diataxis**: How-to. Configuring `exposeOptions`: node service types, broadcast options, platform-specific annotations.
-**Source**: Rewrite from `resources/common/exposing.md` (procedural parts only; conceptual parts move to `architecture/networking.md`).
+**Source**: Rewrite from `resources/common/exposing.md` (procedural parts only; conceptual parts move to `understand/networking.md`).
 
 **EDIT COMPLETED 25 (ScyllaDBCluster removal):**
 - No ScyllaDBCluster/ScyllaDBDatacenter tabs, YAML examples, or field comparison columns found.
 - Content uses only ScyllaCluster exposeOptions throughout.
 
-### `networking/ipv6/index.md` (DONE)
+### `deploy-scylladb/set-up-networking/ipv6/index.md` (DONE)
 Section index for IPv6 networking pages. **Diataxis**: Navigation.
 
-### `networking/ipv6/get-started.md` (DONE)
+### `deploy-scylladb/set-up-networking/ipv6/get-started.md` (DONE)
 **Diataxis**: Tutorial. First IPv6-enabled cluster step-by-step.
 **Source**: Adapt from `management/networking/ipv6/tutorials/ipv6-get-started.md`.
 
-### `networking/ipv6/configure-dual-stack.md` (DONE)
+### `deploy-scylladb/set-up-networking/ipv6/configure-dual-stack.md` (DONE)
 **Diataxis**: How-to. Dual-stack setup (IPv4-first and IPv6-first variants).
 **Source**: Merge `management/networking/ipv6/how-to/ipv6-configure.md` + `management/networking/ipv6/how-to/ipv6-configure-ipv6-first.md`.
 
-### `networking/ipv6/configure-single-stack.md` (DONE)
+### `deploy-scylladb/set-up-networking/ipv6/configure-single-stack.md` (DONE)
 **Diataxis**: How-to. IPv6-only single-stack setup.
 **Source**: Adapt from `management/networking/ipv6/how-to/ipv6-configure-ipv6-only.md`.
 
-### `networking/ipv6/migration.md` (DONE)
+### `deploy-scylladb/set-up-networking/ipv6/migration.md` (DONE)
 **Diataxis**: How-to. Migrating from IPv4 to IPv6.
 **Source**: Adapt from `management/networking/ipv6/how-to/ipv6-migrate.md`.
 
-### `networking/ipv6/troubleshooting.md` (DONE)
+### `deploy-scylladb/set-up-networking/ipv6/troubleshooting.md` (DONE)
 **Diataxis**: How-to. Diagnosing IPv6 connectivity issues.
 **Source**: Adapt from `management/networking/ipv6/how-to/ipv6-troubleshoot.md`.
 
@@ -540,10 +540,10 @@ Target: Database Operator/SRE, Support Engineer.
 - **Identifying the situation**: pod stuck in `Pending` (scheduling failure), `Init:*` (init container not completing), `PodInitializing` (ignition not firing), `CrashLoopBackOff` (ScyllaDB crashing on startup), or `Running` but not `Ready` (readiness probe failing).
 - **Pending pods**: check events for `FailedScheduling` — insufficient resources, node affinity/taint mismatch, PVC binding failure. Verify dedicated node pool exists and selectors match.
 - **Init container stuck**: check which init container is running (`kubectl describe pod`). If `scylladb-bootstrap-barrier` — bootstrap sync hasn't completed. If `sysctl-buddy` — sysctl application failing.
-- **Ignition not completing**: pod is `Running` but ScyllaDB hasn't started. Check ignition sidecar logs, verify NodeConfig tuning has completed (check tuning ConfigMap), verify Service has LoadBalancer IP (if using LB broadcast). Cross-reference `architecture/ignition.md`.
+- **Ignition not completing**: pod is `Running` but ScyllaDB hasn't started. Check ignition sidecar logs, verify NodeConfig tuning has completed (check tuning ConfigMap), verify Service has LoadBalancer IP (if using LB broadcast). Cross-reference `understand/ignition.md`.
 - **CrashLoopBackOff**: check previous container logs for ScyllaDB startup errors. Common causes: corrupt sstables, invalid configuration, wrong seeds, disk permission issues.
 - **Ways to recover**: recreate the pod (`kubectl delete pod`), clear PVC data (data loss — last resort), check and fix NodeConfig, adjust resource requests, fix node pool selectors.
-- Cross-reference `troubleshoot/investigate-restarts.md` and `architecture/sidecar.md`.
+- Cross-reference `troubleshoot/investigate-restarts.md` and `understand/sidecar.md`.
 Target: Database Operator/SRE, Support Engineer.
 **Source**: NEW.
 
@@ -553,7 +553,7 @@ Target: Database Operator/SRE, Support Engineer.
 - **Scenario 2: Degraded cluster** — one or more nodes are down and a full rolling restart would violate availability. Same REST API approach to change log level on the healthy pods.
 - **Scenario 3: Normal path** — when a rolling restart is acceptable, change the log level via ScyllaCluster spec (cross-reference `operate/pass-scylladb-arguments.md`).
 - Explain which ScyllaDB REST API endpoint controls log levels, how to verify the change took effect, and that REST API changes are ephemeral (lost on pod restart).
-- Cross-reference `architecture/statefulsets-and-racks.md` to explain why a stuck rollout blocks further updates and what "partition" means in this context.
+- Cross-reference `understand/statefulsets-and-racks.md` to explain why a stuck rollout blocks further updates and what "partition" means in this context.
 Target: Database Operator/SRE, Support Engineer.
 **Source**: NEW.
 
@@ -570,7 +570,7 @@ Target: Database Operator/SRE, Support Engineer.
 - Verification: new node joins as UN; run repair.
 - Multi-DC note: in multi-DC clusters using multiple `ScyllaCluster` resources, perform the same steps in the Kubernetes cluster hosting the failed node’s datacenter.
 - Failure modes and recovery: what to do if the user accidentally cascading-deletes the StatefulSet (PVCs survive, Operator recreates pods on scale-up); how to manually recreate the StatefulSet from must-gather if the Operator fails to start.
-Cross-reference `architecture/statefulsets-and-racks.md` (why orphan-deleting a StatefulSet is safe) and `operate/replace-nodes.md` (normal replace path).
+Cross-reference `understand/statefulsets-and-racks.md` (why orphan-deleting a StatefulSet is safe) and `operate/replace-nodes.md` (normal replace path).
 **Source**: NEW. Based on `enhancements/proposals/2955-failed-replace-recovery/failed-replace-recovery.md`.
 
 ### `troubleshoot/troubleshoot-performance.md` (DONE)
@@ -700,7 +700,7 @@ Must cover each state-changing `nodetool` command with its Operator-compatible a
 | [`settraceprobability`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/settraceprobability.html) | **Low.** Ephemeral diagnostic setting. | No Operator alternative; safe to use for debugging. |
 | [`stop`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/stop.html) (compaction) | **Medium.** Stops in-progress compaction. Safe but may need to be repeated if compaction restarts. | No Operator alternative; use with caution. |
 - **General rule**: if a `nodetool` command is read-only (e.g., [`status`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/status.html), [`gossipinfo`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/gossipinfo.html), [`info`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/info.html), [`ring`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/ring.html), [`cfstats`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/cfstats.html), [`tablestats`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/tablestats.html), [`compactionstats`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/compactionstats.html), [`toppartitions`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/toppartitions.html)), it is always safe to use. If it changes cluster state, consult this table.
-- Cross-reference `architecture/statefulsets-and-racks.md`, `operate/scale-cluster.md`, `operate/replace-nodes.md`.
+- Cross-reference `understand/statefulsets-and-racks.md`, `operate/scale-cluster.md`, `operate/replace-nodes.md`.
 Target: Database Operator/SRE who are experienced ScyllaDB administrators transitioning to Kubernetes.
 **Source**: NEW.
 
@@ -730,10 +730,10 @@ Section index. **Diataxis**: Navigation.
 The following existing files are fully superseded by the new structure and should be removed:
 
 - `quickstarts/` → replaced by `get-started/quickstart-*.md`
-- `architecture/storage/` (2 files) → merged into `architecture/storage.md`
-- `install-operator/overview.md` → content split between `install-operator/prerequisites.md` and `architecture/overview.md`
+- `architecture/storage/` (2 files) → merged into `understand/storage.md`
+- `install-operator/overview.md` → content split between `install-operator/prerequisites.md` and `understand/overview.md`
 - `install-operator/kubernetes-prerequisites.md` → replaced by `install-operator/prerequisites.md`
-- `management/` (entire tree) → content redistributed to `operate/`, `deploy-scylladb/`, `networking/`, `architecture/`
+- `management/` (entire tree) → content redistributed to `operate/`, `deploy-scylladb/`, `deploy-scylladb/set-up-networking/`, `understand/`
 - `resources/` (entire tree) → content redistributed to `deploy-scylladb/`, `connect-your-app/`, `operate/`, `reference/`
 - `support/` → content redistributed to `troubleshoot/`, `reference/`
 - All existing `index.md` files → replaced by new section indexes- **Why this matters**: the Operator reconciles cluster state continuously. Any out-of-band change to cluster membership or topology creates a mismatch between the Operator's expected state and reality, leading to stuck rollouts, failed replacements, or data loss.

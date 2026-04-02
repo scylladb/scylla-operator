@@ -61,12 +61,12 @@ List all ScyllaDB pods:
 kubectl -n scylla get pods -l scylla-operator.scylladb.com/pod-type=scylladb-node -o wide
 ```
 
-| Status | Meaning |
-|---|---|
-| `Running` with all containers ready | Node is healthy |
-| `Running` but not all containers ready | Readiness probe failing — node may be starting up or overloaded |
-| `Pending` | Cannot be scheduled — see [Node not starting](diagnose-node-not-starting.md) |
-| `CrashLoopBackOff` | ScyllaDB crashing — see [Investigating restarts](investigate-restarts.md) |
+| Status | Meaning | Remediation |
+|---|---|---|
+| `Running` with all containers ready | Node is healthy | Healthy — no action needed |
+| `Running` but not all containers ready | Readiness probe failing — node may be starting up or overloaded | Ignition not complete. Check NodeConfig tuning status and LoadBalancer IP. See [diagnose-node-not-starting.md](diagnose-node-not-starting.md) |
+| `Pending` | Cannot be scheduled — see [Node not starting](diagnose-node-not-starting.md) | Check scheduling: `kubectl describe pod`. Fix node affinity, tolerations, or resource requests. See [diagnose-node-not-starting.md](diagnose-node-not-starting.md) |
+| `CrashLoopBackOff` | ScyllaDB crashing — see [Investigating restarts](investigate-restarts.md) | ScyllaDB crashing on startup. Check logs: `kubectl logs <pod> -c scylla --previous`. See [investigate-restarts.md](investigate-restarts.md) |
 
 Check individual pod details:
 

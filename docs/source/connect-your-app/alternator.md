@@ -51,19 +51,30 @@ kubectl exec -it service/${CLUSTER_NAME}-client -c scylla -- cqlsh --user ${CQL_
 
 Set up the environment variables and TLS CA bundle:
 
+**Step 1: Look up the Alternator endpoint**
 ```shell
 CLUSTER_NAME=scylladb
 CQL_USER=cassandra
 
 SCYLLADB_EP="$(kubectl get service/${CLUSTER_NAME}-client -o='jsonpath={.spec.clusterIP}')"
 export AWS_ENDPOINT_URL_DYNAMODB="https://${SCYLLADB_EP}:8043"
-export AWS_ACCESS_KEY_ID="${CQL_USER}"
+```
 
+**Step 2: Set the access key ID**
+```shell
+export AWS_ACCESS_KEY_ID="${CQL_USER}"
+```
+
+**Step 3: Get the secret access key**
+```shell
 AWS_SECRET_ACCESS_KEY="$(kubectl exec -i service/${CLUSTER_NAME}-client -c scylla -- cqlsh --user ${CQL_USER} --no-color \
   -e "SELECT salted_hash from system_auth.roles WHERE role = '${AWS_ACCESS_KEY_ID}';" \
   | sed -e 's/\r//g' | sed -e '4q;d' | sed -E -e 's/^\s+//')"
 export AWS_SECRET_ACCESS_KEY
+```
 
+**Step 4: Download the TLS CA bundle**
+```shell
 AWS_CA_BUNDLE="$(mktemp)"
 export AWS_CA_BUNDLE
 kubectl get configmap/${CLUSTER_NAME}-alternator-local-serving-ca \
@@ -95,6 +106,12 @@ The Operator creates these resources for Alternator:
 | Resource | Name | Contents |
 |----------|------|----------|
 | Serving CA | `configmap/<cluster-name>-alternator-local-serving-ca` | `ca-bundle.crt` — CA to validate Alternator HTTPS. |
+
+### Troubleshoot
+
+- **`AccessDeniedException`**: Confirms Alternator is reachable but credentials are wrong. Re-extract credentials per the steps above and verify they match.
+- **`Could not connect to the endpoint`**: Alternator may not be enabled on the cluster. Verify `spec.alternator` is set in the ScyllaCluster and pods are running. Check that the Service port (8000 by default) is reachable.
+- **`salted_hash not set`**: The credentials were created without the required `options={'timeout': 300}` parameter or were created before Alternator was enabled. Recreate the credentials via CQL.
 
 ## Related pages
 

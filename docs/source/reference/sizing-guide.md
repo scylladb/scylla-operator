@@ -178,13 +178,15 @@ ScyllaDB generates significant inter-node traffic during streaming (scaling, rep
 
 | Resource | Development | Production |
 |---|---|---|
-| CPU cores per node | 1 | ≥ 4 (integer, for CPU pinning) |
-| Memory per node | 1 GiB | ≥ 16 GiB |
-| Storage | Any | NVMe SSD, XFS filesystem |
+| CPU cores per node | 2 | ≥ 4 (integer, for CPU pinning) |
+| Memory per node | ≥ 4 GiB | ≥ 16 GiB |
+| Storage | ≥ 20 GiB | ≥ 500 GiB, NVMe SSD, XFS filesystem |
 | Nodes per datacenter | 1 | ≥ 3 (for fault tolerance) |
 | Network | Any | ≥ 10 Gbps |
 
-<!-- TODO: Cross-check minimum requirements against ScyllaDB upstream system requirements at https://docs.scylladb.com/stable/getting-started/system-requirements.html and validate the memory-per-shard rule (~256 MiB per core for internal bookkeeping). -->
+:::{note}
+ScyllaDB reserves approximately 256 MiB per shard (vCPU) for internal bookkeeping. When sizing memory, account for this overhead: `memory_limit = desired_usable_memory + 256 MiB × shard_count`. For example, a node with 4 vCPUs wanting 8 GiB of usable memory requires a container memory limit of approximately 9 GiB.
+:::
 
 ## Related pages
 

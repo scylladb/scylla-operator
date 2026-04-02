@@ -1,0 +1,38 @@
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  namespace: kube-system
+  name: install-xfsprogs
+  labels:
+    app.kubernetes.io/name: install-xfsprogs
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: install-xfsprogs
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: install-xfsprogs
+    spec:
+      nodeSelector:
+        scylla.scylladb.com/node-type: scylla
+      tolerations:
+      - operator: Exists
+      hostPID: true
+      initContainers:
+      - name: install-xfsprogs
+        image: docker.io/library/ubuntu:24.04
+        securityContext:
+          privileged: true
+        command:
+        - nsenter
+        - --target
+        - "1"
+        - --mount
+        - --
+        - bash
+        - -c
+        - apt-get update && apt-get install -y xfsprogs
+      containers:
+      - name: pause
+        image: registry.k8s.io/pause:3.11

@@ -164,9 +164,8 @@ Most Kubernetes node images include `xfsprogs` by default. A notable exception i
 
 Apply a DaemonSet that installs the package on affected nodes:
 
-<!-- TODO: Create the examples/gke/install-xfsprogs.daemonset.yaml file. -->
 ```bash
-kubectl apply -f examples/gke/install-xfsprogs.daemonset.yaml
+kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/install-xfsprogs.daemonset.yaml
 ```
 
 The DaemonSet uses a `nodeSelector` for `scylla.scylladb.com/node-type: scylla`, so it only runs on ScyllaDB nodes.

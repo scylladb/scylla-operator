@@ -10,6 +10,8 @@ replace-nodes
 expand-storage-volumes
 use-maintenance-mode
 back-up-and-restore
+schedule-backups
+restore-from-backup
 perform-rolling-restart
 migrate-rack-to-new-node-pool
 pass-scylladb-arguments

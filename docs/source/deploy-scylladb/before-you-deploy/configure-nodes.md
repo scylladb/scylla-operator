@@ -415,6 +415,53 @@ Check the status of each node:
 kubectl get nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1
 ```
 
+### Verify node configuration
+
+After the NodeConfig is ready, confirm that the disk setup, filesystem, and sysctls were applied correctly.
+
+**Verify RAID array (if configured):**
+```bash
+kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- lsblk
+```
+Expected output shows the RAID device (`md0` or similar) and member disks:
+```
+NAME      MAJ:MIN RM   SIZE RO TYPE  MOUNTPOINT
+nvme0n1   259:0    0 1.7T  0 disk
+└─md0       9:0    0 3.5T  0 raid0
+nvme1n1   259:1    0 1.7T  0 disk
+└─md0       9:0    0 3.5T  0 raid0
+```
+
+**Verify XFS filesystem:**
+```bash
+kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- blkid /dev/md0
+```
+Expected output:
+```
+/dev/md0: UUID="..." TYPE="xfs"
+```
+
+**Verify mount point:**
+```bash
+kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- df -h /mnt/hostfs/mnt/raid-disks/
+```
+Expected output:
+```
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/md0        3.5T   34M  3.5T   1% /mnt/raid-disks
+```
+
+**Verify sysctls (if configured):**
+```bash
+kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- sysctl fs.nr_open
+```
+Expected output:
+```
+fs.nr_open = 20000500
+```
+
+Replace `<node-tuning-pod>` with the name of a pod in the `scylla-operator-node-tuning` namespace: `kubectl get pods -n scylla-operator-node-tuning`.
+
 :::{note}
 NodeConfig is not available as a Helm chart. Even if you installed the Operator using Helm, apply NodeConfig using `kubectl`.
 :::

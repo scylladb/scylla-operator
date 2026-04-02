@@ -26,6 +26,11 @@ If a command changes cluster state, consult the table below.
 
 ### High risk — use Operator alternatives
 
+:::{warning}
+These operations are irreversible and may cause data loss or cluster instability if performed on an unhealthy cluster.
+Back up your data before proceeding.
+:::
+
 These commands change cluster membership or topology. Using them directly will desync the Operator's state.
 
 :::{list-table}
@@ -56,6 +61,10 @@ These commands change cluster membership or topology. Using them directly will d
 :::
 
 ### Medium risk — automatic or use with caution
+
+:::{caution}
+Run these operations only on a healthy cluster. Monitor cluster health during execution.
+:::
 
 :::{list-table}
 :widths: 18 35 47

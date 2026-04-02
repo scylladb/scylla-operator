@@ -165,6 +165,44 @@ In multi-DC clusters using multiple `ScyllaCluster` resources, node replacement 
 
 If the replacement gets stuck — for example, the new pod enters `CrashLoopBackOff` or streaming cannot complete — see [Recovering from a failed replace](../troubleshoot/recover-from-failed-replace.md) for a step-by-step fallback procedure.
 
+### Ghost node error after an aborted replacement
+
+If a previous replacement attempt was started but did not complete — for example, because the operator was restarted, the pod was manually deleted, or the new node was killed mid-stream — the new node may have registered in the Scylla gossip ring with the token range that was being replaced. When you trigger a second replacement, ScyllaDB refuses to start the new node with an error similar to:
+
+```
+WARN  [...] aborting startup because of ghost node - there is a node with the same token range already in the ring and in NORMAL status
+```
+
+**Cause:** The ghost node is an artifact from the aborted replacement. The token range shows as owned by both the old Host ID and the new replacement node from the first attempt.
+
+**Resolution:** Pass `ignore_dead_nodes_for_replace` as a ScyllaDB startup argument to tell ScyllaDB to ignore the ghost node and proceed with the replacement:
+
+```yaml
+spec:
+  scyllaArgs: "--ignore-dead-nodes-for-replace"
+```
+
+Apply this temporarily while the replacement completes:
+
+```bash
+kubectl -n scylla patch scyllacluster <cluster-name> \
+  --type=merge \
+  -p '{"spec":{"scyllaArgs":"--ignore-dead-nodes-for-replace"}}'
+```
+
+Wait for the replacement pod to reach `Running` and `Ready` state, then run a repair, and remove the argument:
+
+```bash
+kubectl -n scylla patch scyllacluster <cluster-name> \
+  --type=merge \
+  -p '{"spec":{"scyllaArgs":""}}'
+```
+
+:::{caution}
+Remove `--ignore-dead-nodes-for-replace` after the replacement completes.
+Leaving it in permanently allows ScyllaDB to start on a node with unresolved token conflicts, which can cause data inconsistency.
+:::
+
 ## Key considerations
 
 | Consideration | Detail |

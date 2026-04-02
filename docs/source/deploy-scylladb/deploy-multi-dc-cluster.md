@@ -593,39 +593,7 @@ UN  172.16.87.27   503 KB     256          ?       c19c89cb-e24c-4062-9df4-2aa90
 
 To integrate a multi-datacenter cluster with ScyllaDB Manager, deploy Manager in **only one** datacenter. Manager communicates with all nodes across datacenters through the Manager Agent running in each pod.
 
-Every `ScyllaCluster` is provisioned with a unique, randomly generated auth token stored in a Secret named `<cluster-name>-auth-token`. For Manager to manage nodes in all datacenters, every datacenter must use the **same** auth token.
-
-### Synchronize the auth token
-
-1. Extract the token from DC1:
-
-   ```shell
-   kubectl --context="${CONTEXT_DC1}" -n scylla get secrets/scylla-cluster-auth-token \
-     --template='{{ index .data "auth-token.yaml" }}' | base64 -d
-   ```
-   ```console
-   auth_token: 84qtsfvm98qzmps8s65zr2vtpb8rg4sdzcbg4pbmg2pfhxwpg952654gj86tzdljfqnsghndljm58mmhpmwfgpsvjx2kkmnns8bnblmgkbl9n8l9f64rs6tcvttm7kmf
-   ```
-
-2. Patch the token into DC2's Secret (replace the token value with the output from step 1):
-
-   ```shell
-   kubectl --context="${CONTEXT_DC2}" -n scylla patch secret/scylla-cluster-auth-token \
-     --type='json' \
-     -p='[{"op": "add", "path": "/stringData", "value": {"auth-token.yaml": "auth_token: <token-from-step-1>"}}]'
-   ```
-
-3. Rolling restart DC2 to pick up the new token:
-
-   ```shell
-   kubectl --context="${CONTEXT_DC2}" -n scylla patch scyllacluster/scylla-cluster \
-     --type='merge' \
-     -p='{"spec": {"forceRedeploymentReason": "sync manager-agent auth token"}}'
-   ```
-
-4. Define Manager backup and repair tasks on the `ScyllaCluster` in the Kubernetes cluster where Manager is running.
-
-For details on how Manager integrates with the Operator, see [ScyllaDB Manager](../understand/manager.md).
+Every `ScyllaCluster` is provisioned with a unique, randomly generated auth token stored in a Secret named `<cluster-name>-auth-token`. For Manager to manage nodes in all datacenters, every datacenter must use the **same** auth token. Synchronize the token from one datacenter to the others, apply a rolling restart to pick it up, and define backup and repair tasks on the `ScyllaCluster` in the cluster where Manager is deployed. For the full procedure, see [ScyllaDB Manager](../understand/manager.md) and [Back up and restore](../operate/back-up-and-restore.md).
 
 ## Monitoring
 

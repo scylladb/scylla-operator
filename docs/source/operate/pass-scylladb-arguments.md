@@ -43,6 +43,32 @@ In the v1 API, `scyllaArgs` is a single string.
 Multiple arguments are separated by spaces.
 :::
 
+### Common examples
+
+**Reduce blocked reactor notification threshold (reduces log noise):**
+```yaml
+spec:
+  scyllaArgs: "--blocked-reactor-notify-ms 500"
+```
+
+**Increase compaction throughput (useful during data ingestion):**
+```yaml
+spec:
+  scyllaArgs: "--compaction-throughput-mb-per-sec 200"
+```
+
+**Adjust batch size warning threshold:**
+```yaml
+spec:
+  scyllaArgs: "--batch-size-warn-threshold-in-kb 128 --batch-size-fail-threshold-in-kb 1024"
+```
+
+:::{caution}
+These examples are for illustrative purposes only.
+Always consult [ScyllaDB documentation](https://opensource.docs.scylladb.com/) before changing startup arguments.
+Incorrect arguments may prevent ScyllaDB from starting.
+:::
+
 ## Verify
 
 After the rolling restart completes, confirm that the arguments were applied to the ScyllaDB container.
@@ -69,10 +95,9 @@ kubectl -n scylla logs <pod-name> -c scylla | head -20
 
 The ScyllaDB startup line will include the configured arguments alongside the other flags passed to the binary.
 
-## Emergency scenarios
+## Emergency log level changes
 
-In emergency scenarios — such as a stuck rollout or a degraded cluster where a rolling restart is not possible — you may need to change the ScyllaDB log level or other runtime settings without triggering a restart.
-For such cases, see [Changing the log level](../troubleshoot/change-log-level.md).
+When a rolling restart is not possible — for example, during a stuck rollout or with a degraded cluster — use the ScyllaDB REST API to change settings on running pods without a restart. See [Change the log level](../troubleshoot/change-log-level.md).
 
 ## Related pages
 

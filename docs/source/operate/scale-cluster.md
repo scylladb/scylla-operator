@@ -101,17 +101,55 @@ Rack names are immutable — once created, a rack name cannot be changed.
 
 ### Remove a rack
 
-Before removing a rack definition from the spec, you must first scale it to zero members:
+Removing a rack is a two-step process.
+You must scale the rack to zero members first, wait for decommissioning to finish, and only then remove the rack definition from the spec.
 
-1. Set `members: 0` for the rack and apply.
-   The Operator decommissions each node one at a time.
-2. Wait for the status to confirm zero members.
-3. Remove the rack entry from the spec and apply again.
+#### Step 1: Scale the rack down to 0 members
+
+Update the ScyllaCluster spec to set `members: 0` for the rack being removed:
+
+```bash
+kubectl -n scylla patch scyllacluster scylla --type=json \
+  -p='[{"op":"replace","path":"/spec/datacenter/racks/<index>/members","value":0}]'
+```
+
+Replace `<index>` with the zero-based index of the rack in the `racks` array.
+
+Wait for the Operator to decommission all nodes in the rack:
+
+```bash
+kubectl -n scylla wait --timeout=30m \
+  --for='condition=Available=True' scyllacluster/scylla
+```
+
+Verify all pods in the rack are gone:
+
+```bash
+kubectl -n scylla get pods -l scylla/rack=<rack-name>
+```
+
+Expected output: no pods listed.
+
+#### Step 2: Remove the rack definition from the spec
+
+Remove the rack entry from `spec.datacenter.racks`:
+
+```bash
+kubectl -n scylla edit scyllacluster scylla
+```
+
+Delete the entire rack entry. Save and apply.
 
 :::{warning}
-Do not remove a rack from the spec while it still has members.
-The Operator rejects this change through validation.
+Rack names are immutable. After a rack is deleted, you cannot add a rack with the same name.
 :::
+
+After both steps, verify the cluster is healthy:
+
+```bash
+kubectl -n scylla wait --timeout=5m \
+  --for='condition=Available=True' scyllacluster/scylla
+```
 
 :::{note}
 In multi-DC clusters using multiple `ScyllaCluster` resources, each datacenter is scaled independently by editing its own `ScyllaCluster` resource.

@@ -167,10 +167,14 @@ The support matrix shows version requirements for each ScyllaDB Operator version
   - 3.7 - 3.8
   - 3.5, 3.7
 * - ScyllaDB Monitoring
-  - (CRD)
-  - (CRD)
-  - (CRD)
+  - any (CRD-based)
+  - any (CRD-based)
+  - any (CRD-based)
 :::
+
+**ScyllaDB Monitoring compatibility** is determined by the `ScyllaDBMonitoring` CRD version bundled with ScyllaDB Operator, not a fixed Monitoring release.
+Any ScyllaDB Monitoring version that supports the installed CRD schema is compatible.
+Check the [ScyllaDB Monitoring documentation](https://monitoring.docs.scylladb.com/) for release compatibility details.
 
 ### Architectures
 

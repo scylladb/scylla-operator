@@ -124,11 +124,95 @@ Then reference it on the rack:
 scyllaAgentConfig: scylla-agent-config
 ```
 
+### Workload identity
+
+On managed Kubernetes platforms, you can configure the Manager Agent to authenticate using workload identity, eliminating the need to manage static credential files.
+
+#### GKE (Workload Identity Federation)
+
+1. Create a Google Service Account (GSA) with the `storage.objectAdmin` role on the backup bucket:
+
+   ```bash
+   gcloud iam service-accounts create <gsa-name> --project=<project-id>
+   gsutil iam ch serviceAccount:<gsa-name>@<project-id>.iam.gserviceaccount.com:objectAdmin gs://<bucket-name>
+   ```
+
+2. Annotate the ScyllaDB Manager Agent Kubernetes Service Account with the GSA email:
+
+   ```bash
+   kubectl annotate serviceaccount scylla-manager-controller \
+     -n scylla-manager \
+     iam.gke.io/gcp-service-account=<gsa-name>@<project-id>.iam.gserviceaccount.com
+   ```
+
+3. Bind the Kubernetes Service Account to the GSA:
+
+   ```bash
+   gcloud iam service-accounts add-iam-policy-binding <gsa-name>@<project-id>.iam.gserviceaccount.com \
+     --role roles/iam.workloadIdentityUser \
+     --member "serviceAccount:<project-id>.svc.id.goog[scylla-manager/scylla-manager-controller]"
+   ```
+
+4. Set `backupLocation` in the `ScyllaDBManagerTask` backup spec to `gcs:<bucket-name>` without embedding credentials.
+
+#### EKS (IAM Roles for Service Accounts)
+
+1. Create an IAM policy granting the required S3 permissions on the backup bucket:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
+         "Resource": [
+           "arn:aws:s3:::<bucket-name>",
+           "arn:aws:s3:::<bucket-name>/*"
+         ]
+       }
+     ]
+   }
+   ```
+
+2. Create an IAM role with a trust policy for the EKS OIDC provider, scoped to `system:serviceaccount:scylla-manager:scylla-manager-controller`:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": {
+           "Federated": "arn:aws:iam::<account-id>:oidc-provider/<oidc-provider-url>"
+         },
+         "Action": "sts:AssumeRoleWithWebIdentity",
+         "Condition": {
+           "StringEquals": {
+             "<oidc-provider-url>:sub": "system:serviceaccount:scylla-manager:scylla-manager-controller"
+           }
+         }
+       }
+     ]
+   }
+   ```
+
+3. Annotate the Kubernetes Service Account with the IAM role ARN:
+
+   ```bash
+   kubectl annotate serviceaccount scylla-manager-controller \
+     -n scylla-manager \
+     eks.amazonaws.com/role-arn=arn:aws:iam::<account-id>:role/<role-name>
+   ```
+
+4. Set `backupLocation` to `s3:<bucket-name>` in the backup task spec.
+
 :::{note}
-<!-- TODO: Document workload identity (IAM roles for service accounts) for EKS and GKE. Tracked in https://github.com/scylladb/scylla-operator/issues/1697. -->
-The examples above use static credentials.
-On EKS (IAM Roles for Service Accounts) and GKE (Workload Identity), you can instead configure the Agent to use workload identity, eliminating the need to manage static credential files.
-This is not yet documented — see [#1697](https://github.com/scylladb/scylla-operator/issues/1697).
+After annotating the Service Account, the Manager pod must be restarted for the annotation to take effect:
+
+```bash
+kubectl rollout restart deployment/scylla-manager -n scylla-manager
+```
 :::
 
 ## Schedule a backup

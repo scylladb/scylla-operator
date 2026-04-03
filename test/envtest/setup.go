@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var repoRoot = filepath.Join("..", "..", "..")
+
 type Environment struct {
 	kubeClient       *kubernetes.Clientset
 	scyllaClient     *scyllaversionedclient.Clientset
@@ -40,11 +42,38 @@ type Environment struct {
 	monitoringClient *monitoringclient.Clientset
 }
 
+// SetupOptions configures the envtest environment.
+type SetupOptions struct {
+	InstallMonitoringCRDs bool
+}
+
+func defaultSetupOptions() SetupOptions {
+	return SetupOptions{
+		InstallMonitoringCRDs: true,
+	}
+}
+
+// SetupOption is a functional option for configuring the envtest environment.
+type SetupOption func(*SetupOptions)
+
+// WithoutMonitoringCRDs configures the envtest environment to not install
+// Prometheus Operator CRDs (monitoring.coreos.com).
+func WithoutMonitoringCRDs() SetupOption {
+	return func(o *SetupOptions) {
+		o.InstallMonitoringCRDs = false
+	}
+}
+
 // Setup sets up an envtest environment with the ScyllaDB CRDs installed. It will be cleaned up automatically when the test ends.
 // It returns an Environment struct that provides access to the Kubernetes and ScyllaDB clients, as well as the test namespace
 // for convenience.
-func Setup(ctx context.Context) *Environment {
+func Setup(ctx context.Context, opts ...SetupOption) *Environment {
 	g.GinkgoHelper()
+
+	options := defaultSetupOptions()
+	for _, opt := range opts {
+		opt(&options)
+	}
 
 	log.SetLogger(g.GinkgoLogr)
 
@@ -74,17 +103,23 @@ func Setup(ctx context.Context) *Environment {
 	cl, err := client.New(testEnv.Config, client.Options{Scheme: scheme.Scheme})
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller-runtime client")
 
-	monitoringClient, err := monitoringclient.NewForConfig(testEnv.Config)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	var monitoringClient *monitoringclient.Clientset
+	if options.InstallMonitoringCRDs {
+		monitoringClient, err = monitoringclient.NewForConfig(testEnv.Config)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
 
-	baseScyllaCRDDir := filepath.Join("..", "..", "..", "pkg", "api", "scylla")
-	prometheusOperatorCRDsPath := filepath.Join("..", "..", "..", "examples", "third-party", "prometheus-operator.yaml")
+	baseScyllaCRDDir := filepath.Join(repoRoot, "pkg", "api", "scylla")
+	crdPaths := []string{
+		filepath.Join(baseScyllaCRDDir, "v1alpha1"),
+		filepath.Join(baseScyllaCRDDir, "v1"),
+	}
+	if options.InstallMonitoringCRDs {
+		prometheusOperatorCRDsPath := filepath.Join(repoRoot, "examples", "third-party", "prometheus-operator.yaml")
+		crdPaths = append(crdPaths, prometheusOperatorCRDsPath)
+	}
 	installCRDOptions := envtest.CRDInstallOptions{
-		Paths: []string{
-			filepath.Join(baseScyllaCRDDir, "v1alpha1"),
-			filepath.Join(baseScyllaCRDDir, "v1"),
-			prometheusOperatorCRDsPath,
-		},
+		Paths:              crdPaths,
 		ErrorIfPathMissing: true,
 	}
 	crds, err := envtest.InstallCRDs(testEnv.Config, installCRDOptions)

@@ -32,6 +32,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllaoperatorconfig"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -53,6 +54,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -326,6 +328,16 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	}
 	defer rsaKeyGenerator.Close()
 
+	monitoringCRDsInstalled, err := helpers.IsAPIGroupVersionAvailable(o.kubeClient.Discovery(), "monitoring.coreos.com/v1")
+	if err != nil {
+		return fmt.Errorf("can't check if monitoring API group version is available: %w", err)
+	}
+	if !monitoringCRDsInstalled {
+		klog.InfoS("Prometheus Operator CRDs (monitoring.coreos.com) are not installed in the cluster. " +
+			"ScyllaDBMonitoring controller will not be started. " +
+			"To enable monitoring, install Prometheus Operator and restart the ScyllaDB Operator.")
+	}
+
 	kubeInformers := informers.NewSharedInformerFactory(o.kubeClient, resyncPeriod)
 	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
 
@@ -459,27 +471,30 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		return fmt.Errorf("can't create scyllaoperatorconfig controller: %w", err)
 	}
 
-	mc, err := scylladbmonitoring.NewController(
-		o.kubeClient,
-		o.scyllaClient.ScyllaV1alpha1(),
-		o.monitoringClient.MonitoringV1(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
-		kubeInformers.Core().V1().ConfigMaps(),
-		kubeInformers.Core().V1().Secrets(),
-		kubeInformers.Core().V1().Services(),
-		kubeInformers.Core().V1().ServiceAccounts(),
-		kubeInformers.Rbac().V1().RoleBindings(),
-		kubeInformers.Policy().V1().PodDisruptionBudgets(),
-		kubeInformers.Apps().V1().Deployments(),
-		kubeInformers.Networking().V1().Ingresses(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBMonitorings(),
-		monitoringInformers.Monitoring().V1().Prometheuses(),
-		monitoringInformers.Monitoring().V1().PrometheusRules(),
-		monitoringInformers.Monitoring().V1().ServiceMonitors(),
-		rsaKeyGenerator,
-	)
-	if err != nil {
-		return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)
+	var mc *scylladbmonitoring.Controller
+	if monitoringCRDsInstalled {
+		mc, err = scylladbmonitoring.NewController(
+			o.kubeClient,
+			o.scyllaClient.ScyllaV1alpha1(),
+			o.monitoringClient.MonitoringV1(),
+			scyllaInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
+			kubeInformers.Core().V1().ConfigMaps(),
+			kubeInformers.Core().V1().Secrets(),
+			kubeInformers.Core().V1().Services(),
+			kubeInformers.Core().V1().ServiceAccounts(),
+			kubeInformers.Rbac().V1().RoleBindings(),
+			kubeInformers.Policy().V1().PodDisruptionBudgets(),
+			kubeInformers.Apps().V1().Deployments(),
+			kubeInformers.Networking().V1().Ingresses(),
+			scyllaInformers.Scylla().V1alpha1().ScyllaDBMonitorings(),
+			monitoringInformers.Monitoring().V1().Prometheuses(),
+			monitoringInformers.Monitoring().V1().PrometheusRules(),
+			monitoringInformers.Monitoring().V1().ServiceMonitors(),
+			rsaKeyGenerator,
+		)
+		if err != nil {
+			return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)
+		}
 	}
 
 	rkcc, err := remotekubernetescluster.NewController(
@@ -781,11 +796,13 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaOperatorConfigInformers.Start(ctx.Done())
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		monitoringInformers.Start(ctx.Done())
-	}()
+	if monitoringCRDsInstalled {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			monitoringInformers.Start(ctx.Done())
+		}()
+	}
 
 	wg.Add(1)
 	go func() {
@@ -847,11 +864,13 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		socc.Run(ctx, o.ConcurrentSyncs)
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		mc.Run(ctx, o.ConcurrentSyncs)
-	}()
+	if monitoringCRDsInstalled {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			mc.Run(ctx, o.ConcurrentSyncs)
+		}()
+	}
 
 	wg.Add(1)
 	go func() {

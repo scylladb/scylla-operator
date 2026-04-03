@@ -43,30 +43,11 @@ for i in {1..30}; do
 done
 :::
 
-#### Prometheus Operator
+#### Prometheus Operator (optional)
 
 :::{note}
-ScyllaDB Operator currently relies on the Prometheus Operator CRDs being present in the cluster even if you do not use the
-monitoring stack (`ScyllaDBMonitoring` CRD).
-
-If the CRDs are not installed, ScyllaDB Operator may report errors about missing Prometheus types. These errors do
-not affect the core functionality of ScyllaDB Operator.
-
-Support for making Prometheus Operator installation fully optional is being tracked in issue [#3075](https://github.com/scylladb/scylla-operator/issues/3075).
+Prometheus Operator is only required if you plan to use ScyllaDB monitoring (`ScyllaDBMonitoring` CRD). See the [monitoring setup guide](../management/monitoring/setup.md) for detailed instructions.
 :::
-
-:::{code-block} shell
-:substitutions:
-kubectl apply -n prometheus-operator --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/third-party/prometheus-operator.yaml
-:::
-
-```shell
-# Wait for CRDs to propagate to all apiservers.
-kubectl wait --for='condition=established' crd/prometheuses.monitoring.coreos.com crd/prometheusrules.monitoring.coreos.com crd/servicemonitors.monitoring.coreos.com
-
-# Wait for prometheus operator deployment.
-kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prometheus-operator
-```
 
 ### ScyllaDB Operator
 

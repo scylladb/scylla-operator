@@ -22,6 +22,12 @@
 
 ### Features & Enhancements
 
+- Prometheus Operator is now an optional dependency. Setups without Prometheus Operator CRDs (`monitoring.coreos.com/v1`) are
+  fully supported. The Operator detects these CRDs at startup and enables the `ScyllaDBMonitoring` controller only when they are present.
+  If the CRDs are not found, an informational log message is printed.
+  Refer to the [monitoring setup guide](https://operator.docs.scylladb.com/stable/management/monitoring/setup.html#requirements) for detailed instructions.
+  [#3386](https://github.com/scylladb/scylla-operator/pull/3386)
+
 ### Bug fixes
 
 - Fixed [#2990](https://github.com/scylladb/scylla-operator/issues/2990): set monitoring scrape intervals to: 5s in

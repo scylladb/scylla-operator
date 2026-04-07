@@ -64,6 +64,7 @@ type TestContextType struct {
 	IngressController                  *IngressController
 	ScyllaClusterOptions               *ScyllaClusterOptions
 	ScyllaDBVersion                    string
+	ScyllaDBImageRef                   string
 	ScyllaDBManagerVersion             string
 	ScyllaDBManagerAgentVersion        string
 	ScyllaDBUpdateFrom                 string

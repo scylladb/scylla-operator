@@ -12,7 +12,7 @@ spec:
       clients:
         type: {{ .clientsBroadcastAddressType }}
   scyllaDB:
-    image: "{{ .scyllaDBRepository }}:{{ .scyllaDBVersion }}"
+    image: "{{ .scyllaDBImageRef }}"
     enableDeveloperMode: true
     {{- if .scyllaArgs }}
     additionalScyllaDBArguments: [

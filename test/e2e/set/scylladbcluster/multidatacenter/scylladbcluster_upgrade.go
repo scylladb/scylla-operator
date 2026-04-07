@@ -11,7 +11,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	configassets "github.com/scylladb/scylla-operator/assets/config"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -179,15 +178,15 @@ var _ = g.Describe("ScyllaDBCluster", framework.MultiDatacenter, func() {
 		g.Entry(
 			"is updated",
 			&entry{
-				initialScyllaDBImage: fmt.Sprintf("%s:%s", configassets.ScyllaDBImageRepository, framework.TestContext.ScyllaDBUpdateFrom),
-				targetScyllaDBImage:  fmt.Sprintf("%s:%s", configassets.ScyllaDBImageRepository, framework.TestContext.ScyllaDBVersion),
+				initialScyllaDBImage: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
+				targetScyllaDBImage:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
 			},
 		),
 		g.Entry(
 			"is upgraded",
 			&entry{
-				initialScyllaDBImage: fmt.Sprintf("%s:%s", configassets.ScyllaDBImageRepository, framework.TestContext.ScyllaDBUpgradeFrom),
-				targetScyllaDBImage:  fmt.Sprintf("%s:%s", configassets.ScyllaDBImageRepository, framework.TestContext.ScyllaDBVersion),
+				initialScyllaDBImage: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
+				targetScyllaDBImage:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
 			},
 		),
 	)

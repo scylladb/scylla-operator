@@ -67,6 +67,7 @@ type TestFrameworkOptions struct {
 	ScyllaClusterOptionsUntyped *ScyllaClusterOptions
 	scyllaClusterOptions        *framework.ScyllaClusterOptions
 	ScyllaDBVersion             string
+	ScyllaDBImageRef            string
 	ScyllaDBManagerVersion      string
 	ScyllaDBManagerAgentVersion string
 	ScyllaDBUpdateFrom          string
@@ -135,6 +136,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.ReactorBackend, "scyllacluster-reactor-backend", "", o.ScyllaClusterOptionsUntyped.ReactorBackend, fmt.Sprintf("Name of the reactor backend to use for ScyllaCluster."))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBVersion, "scylladb-version", "", o.ScyllaDBVersion, "Version of ScyllaDB to use.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBImageRef, "scylladb-image-ref", "", o.ScyllaDBImageRef, "Optional full image reference of ScyllaDB to use instead of --scylladb-version, e.g. docker.io/scylladb/scylla:2026.1.0.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerVersion, "scylladb-manager-version", "", o.ScyllaDBManagerVersion, "Version of Scylla Manager to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFrom, "scylladb-update-from-version", "", o.ScyllaDBUpdateFrom, "Version of ScyllaDB to update from.")
@@ -178,6 +180,12 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 			"invalid scylladb-version format: %q. Expected format: <tag>[@<digest>]",
 			o.ScyllaDBVersion,
 		))
+	}
+
+	if len(o.ScyllaDBImageRef) > 0 {
+		if _, _, err := framework.ScyllaDBImageRefToRepositoryVersion(o.ScyllaDBImageRef); err != nil {
+			errors = append(errors, fmt.Errorf("invalid scylladb-image-ref format: %q: %w", o.ScyllaDBImageRef, err))
+		}
 	}
 
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
@@ -234,6 +242,7 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 
 	// Trim spaces so we can reason later if the dir is set or not
 	o.ArtifactsDir = strings.TrimSpace(o.ArtifactsDir)
+	o.ScyllaDBImageRef = strings.TrimSpace(o.ScyllaDBImageRef)
 
 	o.scyllaClusterOptions = &framework.ScyllaClusterOptions{
 		ExposeOptions: framework.ExposeOptions{
@@ -250,13 +259,20 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		workerRestConfigs[worker] = config.RestConfig
 	}
 
+	targetImageRef := framework.ScyllaDBTargetImageRef(o.ScyllaDBImageRef, o.ScyllaDBVersion)
+	_, scyllaDBVersion, err := framework.ScyllaDBImageRefToRepositoryVersion(targetImageRef)
+	if err != nil {
+		return fmt.Errorf("can't resolve target ScyllaDB image ref %q: %w", targetImageRef, err)
+	}
+
 	framework.TestContext = &framework.TestContextType{
 		RestConfig:                         o.ClientConfig.RestConfig,
 		WorkerRestConfigs:                  workerRestConfigs,
 		ArtifactsDir:                       o.ArtifactsDir,
 		CleanupPolicy:                      o.CleanupPolicy,
 		ScyllaClusterOptions:               o.scyllaClusterOptions,
-		ScyllaDBVersion:                    o.ScyllaDBVersion,
+		ScyllaDBVersion:                    scyllaDBVersion,
+		ScyllaDBImageRef:                   o.ScyllaDBImageRef,
 		ScyllaDBManagerVersion:             o.ScyllaDBManagerVersion,
 		ScyllaDBManagerAgentVersion:        o.ScyllaDBManagerAgentVersion,
 		ScyllaDBUpdateFrom:                 o.ScyllaDBUpdateFrom,

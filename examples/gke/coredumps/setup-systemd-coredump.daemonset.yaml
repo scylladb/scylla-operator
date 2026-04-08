@@ -45,6 +45,13 @@ spec:
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
+        readinessProbe:
+          exec:
+            command:
+            - cat
+            - /tmp/setup-complete
+          initialDelaySeconds: 5
+          periodSeconds: 5
         resources:
           requests:
             cpu: 1m
@@ -109,6 +116,7 @@ spec:
           # Keep the pod running so that the DaemonSet re-applies the settings
           # on eviction or reschedule.
           echo "Setup complete. Sleeping indefinitely..."
+          touch /tmp/setup-complete
           exec sleep infinity
         volumeMounts:
         - name: host

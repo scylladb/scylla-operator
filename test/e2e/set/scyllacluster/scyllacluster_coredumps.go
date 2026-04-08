@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	daemonSetRolloutTimeout   = 5 * time.Minute
+	daemonSetRolloutTimeout   = 10 * time.Minute
 	sysctlPropagationTimeout  = 3 * time.Minute
 	coredumpVerifyPodTimeout  = 3 * time.Minute
 	coredumpCollectionTimeout = 2 * time.Minute

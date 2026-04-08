@@ -78,7 +78,7 @@
         "   ```bash",
         "   make update",
         "   git add examples/third-party/cert-manager.yaml",
-        "   git commit --amend && git push --force",
+        "   git commit -m \"chore(deps): update generated files\" && git push --force",
         "   ```",
         "3. Remove the `do-not-merge/hold` label."
       ]
@@ -92,6 +92,19 @@
       "groupName": "monitoring",
       "schedule": [
         "before 5am every weekday"
+      ],
+      "prBodyNotes": [
+        "### ⚠️ Manual Action Required",
+        "Renovate has bumped a monitoring dependency, but cannot automatically regenerate the manifests.",
+        "",
+        "**Please complete the following steps before merging:**",
+        "1. Check out this branch locally.",
+        "2. Propagate changes by running:",
+        "   ```bash",
+        "   make update",
+        "   git add .",
+        "   git commit -m \"chore(deps): update generated files\" && git push --force",
+        "   ```"
       ]
     },
     {
@@ -128,7 +141,7 @@
         "   ```bash",
         "   make update",
         "   git add .",
-        "   git commit --amend && git push --force",
+        "   git commit -m \"chore(deps): update generated files\" && git push --force",
         "   ```",
         "4. Remove the `do-not-merge/hold` label."
       ]
@@ -156,9 +169,10 @@
         "   git checkout tags/{{{newValue}}}",
         "   cd ../../../..",
         "   git add submodules/github.com/scylladb/scylla-monitoring",
+        "   git commit --amend",
         "   make update",
         "   git add .",
-        "   git commit --amend && git push --force",
+        "   git commit -m \"chore(deps): update generated files\" && git push --force",
         "   ```",
         "3. Remove the `do-not-merge/hold` label."
       ]

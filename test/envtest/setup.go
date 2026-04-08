@@ -86,12 +86,12 @@ func Setup(ctx context.Context) *Environment {
 			prometheusOperatorCRDsPath,
 		},
 		ErrorIfPathMissing: true,
+		// The default MaxTime of 10 seconds is not enough for the API server to process
+		// all CRDs and register them in discovery under CI load.
+		MaxTime: time.Minute,
 	}
-	crds, err := envtest.InstallCRDs(testEnv.Config, installCRDOptions)
+	_, err = envtest.InstallCRDs(testEnv.Config, installCRDOptions)
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to install CRDs")
-
-	err = envtest.WaitForCRDs(testEnv.Config, crds, installCRDOptions)
-	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to wait for CRDs")
 
 	ns, err := kubeClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{

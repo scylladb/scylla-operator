@@ -22,16 +22,16 @@ type PublicDashboardDTO struct {
 	AccessToken string `json:"accessToken,omitempty"`
 
 	// annotations enabled
-	AnnotationsEnabled bool `json:"annotationsEnabled,omitempty"`
+	AnnotationsEnabled *bool `json:"annotationsEnabled,omitempty"`
 
 	// is enabled
-	IsEnabled bool `json:"isEnabled,omitempty"`
+	IsEnabled *bool `json:"isEnabled,omitempty"`
 
 	// share
 	Share ShareType `json:"share,omitempty"`
 
 	// time selection enabled
-	TimeSelectionEnabled bool `json:"timeSelectionEnabled,omitempty"`
+	TimeSelectionEnabled *bool `json:"timeSelectionEnabled,omitempty"`
 
 	// uid
 	UID string `json:"uid,omitempty"`

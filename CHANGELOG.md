@@ -36,6 +36,8 @@
   [#3347](https://github.com/scylladb/scylla-operator/pull/3347)
 - Grafana `Deployment`'s volume name changed to the sanitized dashboard name. This prevents volume name rejections when the `ScyllaDBMonitoring` name is too long (> 19 characters).
   [#3363](https://github.com/scylladb/scylla-operator/pull/3363)
+- `must-gather` resource collection now tolerates partial API discovery failures (e.g., when aggregated API servers like `metrics.k8s.io` are transiently unavailable) instead of failing entirely.
+  [#3396](https://github.com/scylladb/scylla-operator/pull/3396)
 
 ### Dependencies
 

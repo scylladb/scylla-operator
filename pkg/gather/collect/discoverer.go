@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -57,7 +58,21 @@ func NewResourceDiscoverer(includeSensitiveResources bool, serverPreferredResour
 func (d *ResourceDiscoverer) DiscoverResources(userProvidedResourcesToExclude ...schema.GroupKind) ([]*ResourceInfo, error) {
 	rls, err := d.serverPreferredResourcesGetter.ServerPreferredResources()
 	if err != nil {
-		return nil, fmt.Errorf("can't discover resources: %w", err)
+		// ServerPreferredResources returns partial results alongside ErrGroupDiscoveryFailed
+		// when some API groups are temporarily unavailable (e.g. metrics.k8s.io served by
+		// an aggregated API server). Tolerate these partial failures and proceed with the
+		// resources that were discovered successfully.
+		var discoveryErr *discovery.ErrGroupDiscoveryFailed
+		if !errors.As(err, &discoveryErr) {
+			return nil, fmt.Errorf("can't discover resources: %w", err)
+		}
+
+		// If no resources were discovered, return an error instead of proceeding with an empty resource list.
+		if len(rls) == 0 {
+			return nil, fmt.Errorf("can't discover any resources: %w", err)
+		}
+
+		klog.Warningf("Partial resource discovery failure, proceeding with available resources: %v", err)
 	}
 
 	// Apply all filters.

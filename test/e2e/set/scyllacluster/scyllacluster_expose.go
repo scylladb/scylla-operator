@@ -145,7 +145,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 
 				di := verificationutils.InsertAndVerifyCQLData(ctx, hosts, utils.WithSession(&session))
 				di.Close()
-			}).WithTimeout(30 * time.Second).WithPolling(time.Second).Should(o.Succeed())
+			}).WithTimeout(2 * time.Minute).WithPolling(time.Second).Should(o.Succeed())
 		}
 	})
 

@@ -20,6 +20,49 @@ The `externalSeeds` field in the `ScyllaCluster` spec propagates external seed a
 
 For more information about seed nodes, see [ScyllaDB Seed Nodes](https://opensource.docs.scylladb.com/stable/kb/seed-nodes.html) in the ScyllaDB documentation.
 
+## Plan your datacenter topology
+
+### Raft quorum risk in symmetrical two-datacenter clusters
+
+ScyllaDB uses the Raft consensus algorithm for cluster management operations such as schema changes and topology updates. Raft requires a **strict majority** (more than 50%) of nodes to be available. In a symmetrical two-datacenter cluster — for example, 3 nodes in DC1 and 3 nodes in DC2 (6 total) — losing one entire datacenter leaves exactly 3 out of 6 nodes. This is not a majority, so the Raft quorum is lost.
+
+When quorum is lost:
+
+- **Reads and writes** that use CQL consistency levels (such as `LOCAL_QUORUM`) **continue to work** against the surviving datacenter.
+- **Cluster management operations** — schema changes, topology changes (adding/removing nodes), and other Raft-coordinated operations — are **blocked** until enough nodes recover to restore the majority.
+
+:::{warning}
+The two-datacenter example in this guide creates a symmetrical topology (3 + 3 = 6 nodes). If one datacenter becomes completely unavailable, cluster management operations will be blocked. Plan your topology accordingly for production deployments.
+:::
+
+### Mitigation: Arbiter datacenter
+
+The recommended mitigation for symmetrical two-datacenter clusters is an **arbiter datacenter** — a third datacenter containing a single zero-token node. A zero-token node does not own any token ranges and does not replicate user data (RF = 0 for all keyspaces). It participates only in Raft voting.
+
+With an arbiter node, a 3 + 3 + 1 = 7 node cluster survives the loss of one full datacenter: 4 out of 7 nodes remain, which is a majority, and Raft quorum is maintained.
+
+For details on the arbiter datacenter pattern, see [Preventing Quorum Loss in Symmetrical Multi-DC Clusters](https://docs.scylladb.com/manual/stable/operating-scylla/procedures/cluster-management/arbiter-dc.html) in the ScyllaDB documentation.
+
+<!-- TODO(scylla-operator#arbiter): Validate zero-token / arbiter node support in the
+     Operator with E2E tests. The ScyllaCluster CRD does not currently expose a
+     `joinRing`, `zeroToken`, or `arbiter` field. If tests confirm that setting
+     `join_ring: false` via a scyllaConfig ConfigMap works correctly with
+     Operator reconciliation (status reporting, scaling, upgrades), document
+     the procedure here and claim support. Otherwise, keep the unsupported
+     notice below and track native support in a dedicated issue. -->
+
+:::{important}
+ScyllaDB Operator does not currently support zero-token or arbiter nodes. The `ScyllaCluster` CRD has no field to configure a node as zero-token, and this configuration has not been validated with the Operator's reconciliation logic. Do not attempt to set up an arbiter datacenter through the Operator without prior validation.
+
+If your deployment requires arbiter DC functionality, contact ScyllaDB support for guidance.
+:::
+
+### Alternative: Three or more datacenters
+
+Deploying three or more datacenters with a comparable number of nodes avoids the symmetry problem entirely. For example, with 3 + 3 + 3 = 9 nodes, losing one datacenter leaves 6 out of 9 — a clear majority.
+
+The `externalSeeds` mechanism supports any number of datacenters. Each additional datacenter follows the same procedure as the second datacenter in this guide: include seed addresses from existing datacenters in the `externalSeeds` field so that joining nodes can discover the cluster.
+
 ## Prerequisites
 
 This guide assumes you have **two interconnected Kubernetes clusters** capable of communicating using Pod IPs. Each cluster must have:
@@ -86,6 +129,10 @@ To ensure high availability and fault tolerance, **spread your nodes across mult
 The `.metadata.name` of all `ScyllaCluster` resources that form a multi-datacenter cluster **must be identical** — this is the ScyllaDB cluster name. The `.spec.datacenter.name` must be **unique** across all datacenters in the cluster.
 
 For more information, see [Create a ScyllaDB Cluster - Multi Data Centers (DC)](https://opensource.docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/create-cluster-multidc.html) in the ScyllaDB documentation.
+:::
+
+:::{note}
+The following example creates a symmetrical two-datacenter cluster. Before using this topology in production, review [Plan your datacenter topology](#plan-your-datacenter-topology) for Raft quorum implications and mitigation options.
 :::
 
 Save the following manifest as `dc1.yaml`. Adjust the zone names, resources, and storage to match your environment:

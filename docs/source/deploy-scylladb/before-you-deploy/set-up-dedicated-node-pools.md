@@ -211,7 +211,7 @@ The `NODE` column should show only nodes from your dedicated pool.
 
 - [Configure nodes](configure-nodes.md) — configuring disk setup, sysctls, and performance tuning.
 - [Configure CPU pinning](configure-cpu-pinning.md) — configuring CPU exclusivity for ScyllaDB containers.
-- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — creating a ScyllaCluster with placement.
+- [Deploy your first cluster](../deploy-your-first-cluster.md) — creating a ScyllaCluster with placement.
 - [Deploy a multi-DC cluster](../deploy-multi-dc-cluster.md) — multi-DC cluster deployment with placement considerations.
 - [Prerequisites](../../install-operator/prerequisites.md) — supported platforms and node requirements.
 - [Production checklist](../production-checklist.md) — verify all production settings.

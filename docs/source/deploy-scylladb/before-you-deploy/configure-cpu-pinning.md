@@ -194,5 +194,5 @@ When a ScyllaDB pod has Guaranteed QoS:
 - [Tuning architecture](../../understand/tuning.md) — how node-level and container-level tuning work.
 - [Set up dedicated node pools](set-up-dedicated-node-pools.md) — setting up nodes with the correct kubelet configuration.
 - [Configure nodes](configure-nodes.md) — NodeConfig resource for disk and kernel tuning.
-- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — setting resource requests and limits.
+- [Deploy your first cluster](../deploy-your-first-cluster.md) — setting resource requests and limits.
 - [Production checklist](../production-checklist.md) — CPU pinning as a production requirement.

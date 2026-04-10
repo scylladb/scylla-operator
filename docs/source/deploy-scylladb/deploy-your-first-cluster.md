@@ -1,6 +1,6 @@
-# Deploy a single-DC cluster
+# Deploy your first cluster
 
-This page walks you through creating a ScyllaDB cluster in a single datacenter using the `ScyllaCluster` resource. For multi-datacenter deployments, see [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md).
+This page walks you through creating a ScyllaDB cluster using the `ScyllaCluster` resource. It starts with a minimal development cluster you can deploy in minutes, then covers production-grade configuration. For multi-datacenter deployments, see [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md).
 
 :::{tip}
 You can inspect all available API fields for your installed Operator version with:
@@ -12,15 +12,20 @@ kubectl explain --api-version='scylla.scylladb.com/v1' ScyllaCluster.spec
 
 ## Prerequisites
 
-- ScyllaDB Operator installed ([GitOps](../install-operator/install-with-gitops.md) or [Helm](../install-operator/install-with-helm.md))
+- ScyllaDB Operator installed ([GitOps](../install-operator/install-with-gitops.md), [Helm](../install-operator/install-with-helm.md), or [OpenShift](../install-operator/install-on-openshift.md))
 - NodeConfig applied and healthy
 - Local CSI Driver deployed (or another storage provisioner with XFS support)
 
-## Create a ScyllaDB configuration
+## Quick path: create a development cluster
+
+If you have ScyllaDB Operator installed and just want to get a ScyllaDB cluster running, follow these steps.
+
+### Create a ScyllaDB configuration
 
 Create a ConfigMap containing the `scylla.yaml` configuration. The Operator generates most ScyllaDB settings automatically (networking, listen addresses, seeds), but you can use this ConfigMap to fine-tune settings that the Operator does not manage:
 
-```yaml
+```shell
+kubectl apply --server-side -f=- <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,28 +34,18 @@ data:
   scylla.yaml: |
     authenticator: PasswordAuthenticator
     authorizer: CassandraAuthorizer
+EOF
 ```
 
 :::{note}
 Do not configure networking, listen addresses, broadcast addresses, or seed nodes in this ConfigMap — the Operator manages these automatically. Conflicting options are overridden by the Operator. You can safely tune application-level settings like authenticator, authorizer, buffer sizes, compaction throughput, etc.
 :::
 
-```shell
-kubectl apply --server-side -f scylladb-config.yaml
-```
+### Create a ScyllaCluster
 
-## Create a ScyllaCluster
-
-:::{warning}
-To ensure high availability and fault tolerance, **spread your nodes across multiple racks or availability zones**. As a general rule, use as many racks as your desired replication factor. For example, with replication factor 3, deploy across 3 different racks or availability zones.
-:::
-
-### Minimal example (development)
-
-A minimal cluster for development and testing:
-
-:::{code-block} yaml
+:::{code-block} bash
 :substitutions:
+kubectl apply --server-side -f=- <<EOF
 apiVersion: scylla.scylladb.com/v1
 kind: ScyllaCluster
 metadata:
@@ -63,6 +58,7 @@ spec:
     racks:
     - name: us-east-1a
       members: 1
+      scyllaConfig: scylladb-config
       storage:
         capacity: 1Gi
         storageClassName: scylladb-local-xfs
@@ -87,9 +83,68 @@ spec:
           operator: Equal
           value: scyllaclusters
           effect: NoSchedule
+EOF
 :::
 
 The `developerMode: true` flag lowers resource requirements and relaxes some checks, making it suitable for quick testing. Do not use developer mode in production.
+
+### Wait for the cluster to become ready
+
+```shell
+kubectl wait --for='condition=Progressing=False' --timeout=10m scyllaclusters.scylla.scylladb.com/scylladb
+kubectl wait --for='condition=Degraded=False' --timeout=10m scyllaclusters.scylla.scylladb.com/scylladb
+kubectl wait --for='condition=Available=True' --timeout=10m scyllaclusters.scylla.scylladb.com/scylladb
+```
+
+Verify the cluster status:
+
+```shell
+kubectl get scyllaclusters.scylla.scylladb.com/scylladb
+```
+
+Expected output:
+```
+NAME       READY   MEMBERS   RACKS   AVAILABLE   PROGRESSING   DEGRADED   AGE
+scylladb   1       1         1       True        False         False      5m
+```
+
+You can also watch the pod status:
+
+```shell
+kubectl get pods -l scylla/cluster=scylladb -w
+```
+
+**Expected output:** All pods show `READY 2/2` (ScyllaDB container + Manager Agent sidecar) and `STATUS Running`.
+
+### Connect with cqlsh
+
+Connect to the cluster using `cqlsh` from within the ScyllaDB pod:
+
+```shell
+kubectl exec -it pod/scylladb-us-east-1-us-east-1a-0 -c scylla -- cqlsh localhost -u cassandra -p cassandra
+```
+
+Try a few CQL commands:
+
+:::{code-block} cql
+CREATE KEYSPACE IF NOT EXISTS example WITH replication = {'class': 'NetworkTopologyStrategy', 'us-east-1': 1};
+USE example;
+CREATE TABLE users (id UUID PRIMARY KEY, name TEXT, email TEXT);
+INSERT INTO users (id, name, email) VALUES (uuid(), 'Alice', 'alice@example.com');
+SELECT * FROM users;
+:::
+
+Type `exit` to leave the `cqlsh` session.
+
+Your ScyllaDB cluster is running. Continue reading to learn how to configure a production-grade deployment, or explore the [next steps](#next-steps).
+
+---
+
+## Production deployment
+
+:::{warning}
+To ensure high availability and fault tolerance, **spread your nodes across multiple racks or availability zones**. As a general rule, use as many racks as your desired replication factor. For example, with replication factor 3, deploy across 3 different racks or availability zones.
+:::
 
 :::{important}
 For production deployments, use a **minimum of 3 racks** (one per availability zone) with a **minimum of 1 node per rack** (3 nodes total).
@@ -253,22 +308,6 @@ Set `resources.requests` equal to `resources.limits` (Guaranteed QoS class) to p
 
 For the full API reference, see the [API reference](../reference/api/).
 
-## Wait for the cluster to become ready
-
-```shell
-kubectl wait --for='condition=Progressing=False' scyllacluster.scylla.scylladb.com/scylladb
-kubectl wait --for='condition=Degraded=False' scyllacluster.scylla.scylladb.com/scylladb
-kubectl wait --for='condition=Available=True' scyllacluster.scylla.scylladb.com/scylladb
-```
-
-You can also watch the pod status:
-
-```shell
-kubectl get pods -l scylla/cluster=scylladb -w
-```
-
-**Expected output:** All pods show `READY 2/2` (ScyllaDB container + Manager Agent sidecar) and `STATUS Running`.
-
 ## Spreading racks across availability zones
 
 Each rack should map to a Kubernetes availability zone. Use `placement.nodeAffinity` to pin each rack to a specific zone:
@@ -336,7 +375,22 @@ The Operator performs the restart one pod at a time in reverse ordinal order, re
 ## IPv6 networking
 
 To deploy a ScyllaDB cluster with IPv6 or dual-stack networking, see [IPv6 networking](set-up-networking/ipv6/index.md).
-The single-DC deployment steps above apply to both IPv4 and IPv6 clusters; only the `spec.network` field differs.
+The deployment steps above apply to both IPv4 and IPv6 clusters; only the `spec.network` field differs.
+
+## Next steps
+
+- Review the [production checklist](production-checklist.md) before going to production.
+- [Connect your application](../connect-your-app/index.md) to ScyllaDB.
+- See the [reference deployments](#reference-deployments) for complete end-to-end examples on specific platforms.
+
+(reference-deployments)=
+## Reference deployments
+
+For complete end-to-end walkthroughs that cover Kubernetes cluster creation, Operator installation, and ScyllaDB deployment on a specific platform, see:
+
+- [Reference deployment: GKE](reference-deployment-gke.md)
+- [Reference deployment: EKS](reference-deployment-eks.md)
+- [Reference deployment: OpenShift](reference-deployment-openshift.md)
 
 ## Related pages
 

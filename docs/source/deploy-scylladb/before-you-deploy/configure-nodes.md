@@ -473,4 +473,4 @@ NodeConfig is not available as a Helm chart. Even if you installed the Operator 
 - [Tuning architecture](../../understand/tuning.md) — how node-level and container-level tuning work.
 - [Storage architecture](../../understand/storage.md) — how NodeConfig, Local CSI Driver, and PVs work together.
 - [Production checklist](../production-checklist.md) — verify all production settings.
-- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — creating a ScyllaCluster.
+- [Deploy your first cluster](../deploy-your-first-cluster.md) — creating a ScyllaCluster.

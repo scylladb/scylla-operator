@@ -331,7 +331,7 @@ On OpenShift, you can use the built-in User Workload Monitoring with Prometheus 
 
 ## Next steps
 
-You now have ScyllaDB Operator, storage, and Manager installed. To deploy your first ScyllaDB cluster, see [Deploy a single-DC cluster](../deploy-scylladb/deploy-single-dc-cluster.md).
+You now have ScyllaDB Operator, storage, and Manager installed. To deploy your first ScyllaDB cluster, see [Deploy your first cluster](../deploy-scylladb/deploy-your-first-cluster.md).
 
 For production environments, review the [Production checklist](../deploy-scylladb/production-checklist.md) to verify that all recommended settings are in place.
 

@@ -41,15 +41,13 @@ Rules applied:
 
 ## `get-started/`
 
-- `get-started/index.md` — **Navigation** — Clear entry page; audience-specific routing can be stronger.
+- `get-started/index.md` — **Navigation** — Explanation-focused entry page routing users to conceptual content; links to install and deploy sections for action.
 - `get-started/what-is-scylladb-operator.md` — **Explanation** — Good conceptual framing with useful context links.
-- `get-started/quickstart-gke.md` — **Tutorial** — Well-guided onboarding flow with solid sequence control.
-- `get-started/quickstart-eks.md` — **Tutorial** — Strong step-by-step structure; completion checks could appear more often.
 - `get-started/concepts-for-k8s-beginners.md` — **Explanation** — Effective bridge material; action handoff can be sharper.
 
 ## `install-operator/`
 
-- `install-operator/index.md` — **Navigation** — Effective gateway; install-path decision guidance can be more explicit.
+- `install-operator/index.md` — **Navigation** — Explicit three-path routing (GitOps, Helm, OpenShift) with prerequisite link.
 - `install-operator/prerequisites.md` — **Reference** — Broad prerequisite coverage with good completeness cues.
 - `install-operator/install-with-gitops.md` — **How-to** — Clear task-first procedure with useful verification points.
 - `install-operator/install-with-helm.md` — **How-to** — Practical and well-linked; validation depth varies by step.
@@ -58,13 +56,16 @@ Rules applied:
 
 ## `deploy-scylladb/`
 
-- `deploy-scylladb/index.md` — **Navigation** — Good section entry; route-to-task signaling can be clearer.
+- `deploy-scylladb/index.md` — **Navigation** — Routes users to quick deploy path or platform-specific reference deployments.
+- `deploy-scylladb/deploy-your-first-cluster.md` — **How-to** — Quick path (minimal dev cluster) with progressive disclosure into production configuration. Merged from former deploy-single-dc-cluster.md.
+- `deploy-scylladb/reference-deployment-gke.md` — **Tutorial** — End-to-end GKE deployment from cluster creation through cqlsh verification and cleanup. Moved from former get-started/quickstart-gke.md.
+- `deploy-scylladb/reference-deployment-eks.md` — **Tutorial** — End-to-end EKS deployment from cluster creation through cqlsh verification and cleanup. Moved from former get-started/quickstart-eks.md.
+- `deploy-scylladb/reference-deployment-openshift.md` — **How-to** — Thin orchestration page directing users to OpenShift install guide then deploy-your-first-cluster.
 - `deploy-scylladb/before-you-deploy/index.md` — **Navigation** — Useful subsection hub; decision cues can be stronger.
 - `deploy-scylladb/before-you-deploy/configure-operator.md` — **How-to** — Focused and clear; success criteria are brief.
 - `deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md` — **How-to** — Practical and complete; completion criteria can be sharper.
 - `deploy-scylladb/before-you-deploy/configure-cpu-pinning.md` — **How-to** — Detailed procedural flow with strong checks; scanability is moderate.
 - `deploy-scylladb/before-you-deploy/configure-nodes.md` — **How-to** — Runbook-quality guidance with strong completeness cues.
-- `deploy-scylladb/deploy-single-dc-cluster.md` — **Tutorial** — Cohesive end-to-end walkthrough with good flow control.
 - `deploy-scylladb/deploy-multi-dc-cluster.md` — **Tutorial** — Comprehensive walkthrough; cognitive load is higher due to depth.
 - `deploy-scylladb/set-up-networking/index.md` — **Navigation** — Adequate networking hub; recommended next steps can be clearer.
 - `deploy-scylladb/set-up-networking/expose-clusters.md` — **How-to** — Practical and command-driven with solid usability.

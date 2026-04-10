@@ -1,11 +1,12 @@
-# Quickstart: ScyllaDB on GKE
+# Reference deployment: GKE
 
-This tutorial walks you through deploying a ScyllaDB cluster on Google Kubernetes Engine (GKE) in about 30 minutes.
-By the end, you will have a running ScyllaDB cluster, connect to it with `cqlsh`, and learn how to clean up.
+This guide walks you through a complete end-to-end ScyllaDB deployment on Google Kubernetes Engine (GKE), from creating the Kubernetes cluster to running CQL queries. It takes about 30 minutes.
+
+If you already have ScyllaDB Operator installed, see [Deploy your first cluster](deploy-your-first-cluster.md) for the shortest path to a running ScyllaDB cluster.
 
 :::{note}
-This quickstart uses developer mode with minimal resources for evaluation purposes.
-For production deployments, see the [production checklist](../deploy-scylladb/production-checklist.md).
+This reference deployment uses developer mode with minimal resources for evaluation purposes.
+For production deployments, see the [production checklist](production-checklist.md).
 :::
 
 ## Prerequisites
@@ -33,7 +34,7 @@ Create a GKE cluster with a default node pool for system components:
 
 :::{code-block} bash
 gcloud container \
-clusters create 'scylladb-quickstart' \
+clusters create 'scylladb-demo' \
 --region='us-central1' \
 --cluster-version="latest" \
 --machine-type='n2-standard-8' \
@@ -53,7 +54,7 @@ gcloud container \
 node-pools create 'scylladb-pool' \
 --region='us-central1' \
 --node-locations='us-central1-a,us-central1-b,us-central1-c' \
---cluster='scylladb-quickstart' \
+--cluster='scylladb-demo' \
 --node-version="latest" \
 --machine-type='n2-standard-8' \
 --num-nodes='1' \
@@ -76,7 +77,7 @@ With `--num-nodes=1` and three zones, you get one node per zone (three nodes tot
 ### Get cluster credentials
 
 :::{code-block} bash
-gcloud container clusters get-credentials 'scylladb-quickstart' --region='us-central1'
+gcloud container clusters get-credentials 'scylladb-demo' --region='us-central1'
 :::
 
 ## Install xfsprogs
@@ -105,7 +106,7 @@ kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/
 :::
 
 :::{code-block} shell
-kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
+kubectl wait --for='condition=established' --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
 for deploy in cert-manager{,-cainjector,-webhook}; do
     kubectl -n=cert-manager rollout status --timeout=10m deployment.apps/"${deploy}"
 done
@@ -119,7 +120,7 @@ kubectl apply -n prometheus-operator --server-side -f=https://raw.githubusercont
 :::
 
 :::{code-block} shell
-kubectl wait --for='condition=established' crd/prometheuses.monitoring.coreos.com crd/prometheusrules.monitoring.coreos.com crd/servicemonitors.monitoring.coreos.com
+kubectl wait --for='condition=established' --timeout=60s crd/prometheuses.monitoring.coreos.com crd/prometheusrules.monitoring.coreos.com crd/servicemonitors.monitoring.coreos.com
 kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prometheus-operator
 :::
 
@@ -131,7 +132,7 @@ kubectl -n=scylla-operator apply --server-side -f=https://raw.githubusercontent.
 :::
 
 :::{code-block} shell
-kubectl wait --for='condition=established' crd/scyllaclusters.scylla.scylladb.com crd/nodeconfigs.scylla.scylladb.com crd/scyllaoperatorconfigs.scylla.scylladb.com crd/scylladbmonitorings.scylla.scylladb.com
+kubectl wait --for='condition=established' --timeout=60s crd/scyllaclusters.scylla.scylladb.com crd/nodeconfigs.scylla.scylladb.com crd/scyllaoperatorconfigs.scylla.scylladb.com crd/scylladbmonitorings.scylla.scylladb.com
 kubectl -n=scylla-operator rollout status --timeout=10m deployment.apps/{scylla-operator,webhook-server}
 :::
 
@@ -309,9 +310,11 @@ Developer mode disables several production optimizations, including I/O scheduli
 Do not use developer mode for production workloads or performance benchmarking.
 :::
 
-Wait for the cluster to become available:
+Wait for the cluster to become ready:
 
 :::{code-block} shell
+kubectl wait --for='condition=Progressing=False' --timeout=10m scyllaclusters.scylla.scylladb.com/scylladb
+kubectl wait --for='condition=Degraded=False' --timeout=10m scyllaclusters.scylla.scylladb.com/scylladb
 kubectl wait --for='condition=Available=True' --timeout=10m scyllaclusters.scylla.scylladb.com/scylladb
 :::
 
@@ -358,12 +361,11 @@ kubectl delete scyllaclusters.scylla.scylladb.com/scylladb
 Delete the GKE cluster:
 
 :::{code-block} shell
-gcloud container clusters delete --region='us-central1' 'scylladb-quickstart'
+gcloud container clusters delete --region='us-central1' 'scylladb-demo'
 :::
 
 ## Next steps
 
-- Follow the [EKS Quickstart](quickstart-eks.md) to try the same on AWS.
-- [Install](../install-operator/index.md) ScyllaDB Operator in your production environment.
-- Review the [production checklist](../deploy-scylladb/production-checklist.md) before going to production.
+- Follow the [EKS reference deployment](reference-deployment-eks.md) to try the same on AWS.
+- Review the [production checklist](production-checklist.md) before going to production.
 - Learn how to [connect your application](../connect-your-app/index.md) to ScyllaDB.

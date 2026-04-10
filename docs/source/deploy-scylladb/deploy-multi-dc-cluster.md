@@ -1,6 +1,6 @@
 # Deploy a multi-datacenter cluster
 
-This page walks you through creating a ScyllaDB cluster that spans multiple Kubernetes clusters using multiple `ScyllaCluster` resources connected via `externalSeeds`. Each `ScyllaCluster` manages one datacenter. For single-datacenter deployments, see [Deploy a single-DC cluster](deploy-single-dc-cluster.md).
+This page walks you through creating a ScyllaDB cluster that spans multiple Kubernetes clusters using multiple `ScyllaCluster` resources connected via `externalSeeds`. Each `ScyllaCluster` manages one datacenter. For single-datacenter deployments, see [Deploy your first cluster](deploy-your-first-cluster.md).
 
 :::{warning}
 ScyllaDB Operator only automates operations for a single datacenter. Operations related to multiple datacenters may require manual intervention. Most notably, destroying one of the Kubernetes clusters or ScyllaDB datacenters leaves DN (Down/Normal) nodes in other datacenters, and their removal must be carried out manually using `nodetool removenode`.
@@ -605,7 +605,7 @@ See [Set up monitoring](set-up-monitoring.md) for the deployment procedure.
 
 - [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md) — networking between Kubernetes clusters.
 - [Bootstrap synchronisation](../understand/bootstrap-sync.md) — how nodes coordinate joining.
-- [Deploy a single-DC cluster](deploy-single-dc-cluster.md) — single-datacenter deployment.
+- [Deploy your first cluster](deploy-your-first-cluster.md) — single-datacenter deployment.
 - [Set up dedicated node pools](before-you-deploy/set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated nodes.
 - [Configure nodes](before-you-deploy/configure-nodes.md) — disk and performance tuning.
 - [Expose ScyllaDB clusters](set-up-networking/expose-clusters.md) — configuring Service types and broadcast options.

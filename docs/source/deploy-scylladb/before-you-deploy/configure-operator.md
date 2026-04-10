@@ -100,4 +100,4 @@ Changes to `ScyllaOperatorConfig` trigger reconciliation in all dependent contro
 - [Configure nodes](configure-nodes.md) — performance tuning that uses the `scyllaUtilsImage`.
 - [Set up monitoring](../set-up-monitoring.md) — monitoring stack that uses the Grafana and Prometheus settings.
 - [Tuning architecture](../../understand/tuning.md) — how tuning scripts are executed.
-- [Deploy a single-DC cluster](../deploy-single-dc-cluster.md) — creating a ScyllaCluster.
+- [Deploy your first cluster](../deploy-your-first-cluster.md) — creating a ScyllaCluster.

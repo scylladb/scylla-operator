@@ -51,7 +51,7 @@ It handles provisioning, scaling, upgrades, repairs, backups, and monitoring —
 :anchor: Get started »
 :class: large-4
 
-Understand what ScyllaDB Operator does, what problems it solves, and whether it is the right fit for your environment.
+Understand what ScyllaDB Operator does, what problems it solves, and how Kubernetes concepts map to ScyllaDB.
 ```
 
 ```{topic-box}
@@ -61,7 +61,7 @@ Understand what ScyllaDB Operator does, what problems it solves, and whether it 
 :anchor: Install now »
 :class: large-4
 
-Set up ScyllaDB Operator and its dependencies on your Kubernetes cluster using Helm or GitOps.
+Set up ScyllaDB Operator and its dependencies on your Kubernetes cluster using Helm, GitOps, or the OpenShift software catalog.
 ```
 
 ```{topic-box}

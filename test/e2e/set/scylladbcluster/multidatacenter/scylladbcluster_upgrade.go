@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -123,23 +122,15 @@ var _ = g.Describe("ScyllaDBCluster", framework.MultiDatacenter, func() {
 			o.Expect(initialHostIDsByDC).To(o.HaveKeyWithValue(dc, o.ConsistOf(dcHostIDs)), "Host IDs in datacenter %q should not change after ScyllaDB image update", dc)
 		}
 
-		// After a multi-DC rolling image update, the gocql session may have had connections closed by restarted
-		// ScyllaDB nodes. Unlike in a single-DC rollout where only one node restarts at a time and the gocql
-		// session has time to reconnect between restarts, multi-DC rollouts proceed concurrently across
-		// independent datacenter controllers. This means multiple nodes across different DCs can restart in
-		// rapid succession, and the gocql client may still have stale connection state (pools marked DOWN)
-		// even after WaitForFullQuorum confirms all ScyllaDB nodes are UP.
-		// The Eventually retry loop accommodates this legitimate client-side reconnection delay.
-		// Note: this is a weaker assertion than the single-DC upgrade test, which verifies data without retries.
-		framework.By("Verifying the data after rolling image update")
-		o.Eventually(func(eo o.Gomega) {
-			schemaAgreementCtx, schemaAgreementCtxCancel := context.WithTimeout(ctx, 30*time.Second)
-			defer schemaAgreementCtxCancel()
-			eo.Expect(di.AwaitSchemaAgreement(schemaAgreementCtx)).NotTo(o.HaveOccurred())
-			data, err := di.Read()
-			eo.Expect(err).NotTo(o.HaveOccurred())
-			eo.Expect(data).To(o.Equal(di.GetExpected()))
-		}).WithContext(ctx).WithTimeout(utils.ScyllaDBClusterCQLStabilizationTimeout).WithPolling(5 * time.Second).Should(o.Succeed())
+		currentHostsByDC, err := utilsv1alpha1.GetBroadcastRPCAddressesForScyllaDBCluster(ctx, rkcClusterMap, sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		allCurrentHosts := slices.Concat(slices.Collect(maps.Values(currentHostsByDC))...)
+		o.Expect(allCurrentHosts).To(o.HaveLen(int(controllerhelpers.GetScyllaDBClusterNodeCount(sc))))
+
+		// Reset hosts as the client won't be able to discover a single node after rollout.
+		err = di.SetClientEndpoints(allCurrentHosts)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		verification.VerifyCQLData(ctx, di)
 
 		var targetScyllaClientReportedVersions []string
 		for _, dc := range sc.Spec.Datacenters {

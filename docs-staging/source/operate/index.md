@@ -1,4 +1,4 @@
-# Operate (Day 2)
+# Operate
 
 Day-two operations — scaling, backup, and maintenance tasks for running clusters.
 

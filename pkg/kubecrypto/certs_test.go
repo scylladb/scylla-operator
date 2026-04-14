@@ -1,12 +1,11 @@
 package kubecrypto
 
 import (
-	"context"
+	"crypto/elliptic"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"math/rand/v2"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/crypto/testfiles"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	testcrypto "github.com/scylladb/scylla-operator/pkg/test/crypto"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -194,7 +194,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA certificate",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
@@ -251,7 +252,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "false",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
@@ -298,7 +300,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
 						"custom": "foo",
 					},
@@ -343,7 +346,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
 						"custom": "foo",
 					},
@@ -391,7 +395,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
 						"custom": "foo",
 					},
@@ -436,7 +441,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "false",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
 						"custom": "foo",
 					},
@@ -520,7 +526,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":     "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":         "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":        "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits": "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm": "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":      "4096",
 						"custom": "foo",
 					},
 					UID:               "",
@@ -567,7 +574,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
 						"custom": "foo",
 					},
@@ -612,7 +620,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2063-01-22T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "already expired",
 						"custom": "foo",
 					},
@@ -660,7 +669,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "broken",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "won't make it through",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=CA na that gets properly filled",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
 						"custom": "foo",
 					},
@@ -705,7 +715,8 @@ func Test_makeCertificate(t *testing.T) {
 						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2063-01-22T01:00:00Z",
 						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
 						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size-bits":  "4096",
+						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
+						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
 						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "already expired",
 						"custom": "foo",
 					},
@@ -729,22 +740,10 @@ func Test_makeCertificate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer keygen.Close()
-
-			var wg sync.WaitGroup
-			defer wg.Wait()
-
-			ctx, ctxCancel := context.WithCancel(context.Background())
-			defer ctxCancel()
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				keygen.Run(ctx)
-			}()
+			testcrypto.StartKeyGenerator(t, keygen)
 
 			got, err := makeCertificate(
-				ctx,
+				t.Context(),
 				tc.caName,
 				tc.certCreator,
 				keygen,
@@ -805,19 +804,7 @@ func Test_makeCertificate_certStability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer keygen.Close()
-
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
-	ctx, ctxCancel := context.WithCancel(t.Context())
-	defer ctxCancel()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		keygen.Run(ctx)
-	}()
+	testcrypto.StartKeyGenerator(t, keygen)
 
 	controller := &metav1.ObjectMeta{
 		Name:      "scylla-cluster",
@@ -925,5 +912,133 @@ func Test_makeCertificate_certStability(t *testing.T) {
 	secret2 := servingResult2.GetSecret()
 	if !reflect.DeepEqual(secret1.Data, secret2.Data) {
 		t.Errorf("serving certificate was regenerated when it should have been reused")
+	}
+}
+
+// Test_makeCertificate_certStability_ECDSA verifies that an ECDSA serving certificate signed by an ECDSA CA is
+// idempotent — calling makeCertificate again with the same inputs reuses the existing certificate.
+func Test_makeCertificate_certStability_ECDSA(t *testing.T) {
+	t.Parallel()
+
+	const (
+		servingSecretName = "serving-secret"
+		testCertValidity  = 30 * 24 * time.Hour
+		testCertRefresh   = 15 * 24 * time.Hour
+	)
+
+	currentTime := time.Now()
+	nowFunc := func() time.Time { return currentTime }
+
+	keygen, err := ocrypto.NewECDSAKeyGenerator(1, 1, elliptic.P256(), 42*time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testcrypto.StartKeyGenerator(t, keygen)
+
+	controller := &metav1.ObjectMeta{
+		Name:      "scylla-cluster",
+		Namespace: "default",
+	}
+	controllerGVK := schema.GroupVersionKind{
+		Group:   "scylla.scylladb.com",
+		Version: "v1",
+		Kind:    "ScyllaCluster",
+	}
+
+	// Create a CA certificate with ECDSA.
+	caCertCreator := (&ocrypto.CACertCreatorConfig{
+		Subject: pkix.Name{
+			CommonName: "test-ecdsa-ca",
+		},
+	}).ToCreator()
+
+	caSigner := ocrypto.NewSelfSignedSigner(nowFunc)
+
+	caResult, err := makeCertificate(
+		t.Context(),
+		"ca-secret",
+		caCertCreator,
+		keygen,
+		caSigner,
+		testCertValidity,
+		testCertRefresh,
+		controller,
+		controllerGVK,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("failed to create CA certificate: %v", err)
+	}
+
+	caCert, err := caResult.GetCert()
+	if err != nil {
+		t.Fatalf("failed to get CA cert: %v", err)
+	}
+	caKey, err := caResult.GetKey()
+	if err != nil {
+		t.Fatalf("failed to get CA key: %v", err)
+	}
+
+	// Create a serving certificate signed by the ECDSA CA.
+	servingCertCreator := (&ocrypto.ServingCertCreatorConfig{
+		Subject: pkix.Name{
+			CommonName: "test-ecdsa-serving",
+		},
+		DNSNames: []string{"test.example.com"},
+	}).ToCreator()
+
+	servingSigner, err := ocrypto.NewCertificateAuthority(caCert, caKey, nowFunc)
+	if err != nil {
+		t.Fatalf("failed to create certificate authority: %v", err)
+	}
+
+	servingResult1, err := makeCertificate(
+		t.Context(),
+		servingSecretName,
+		servingCertCreator,
+		keygen,
+		servingSigner,
+		testCertValidity,
+		testCertRefresh,
+		controller,
+		controllerGVK,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("failed to create serving certificate: %v", err)
+	}
+
+	servingCert1, err := servingResult1.GetCert()
+	if err != nil {
+		t.Fatalf("failed to get serving cert: %v", err)
+	}
+
+	// Verify the serving cert's AuthorityKeyId matches the CA's SubjectKeyId.
+	if !reflect.DeepEqual(servingCert1.AuthorityKeyId, caCert.SubjectKeyId) {
+		t.Errorf("serving cert AuthorityKeyId doesn't match CA SubjectKeyId: got %x, want %x",
+			servingCert1.AuthorityKeyId, caCert.SubjectKeyId)
+	}
+
+	// Call makeCertificate again with the existing secret.
+	servingResult2, err := makeCertificate(
+		t.Context(),
+		servingSecretName,
+		servingCertCreator,
+		keygen,
+		servingSigner, // Same signer.
+		testCertValidity,
+		testCertRefresh,
+		controller,
+		controllerGVK,
+		servingResult1.GetSecret(), // Pass the previously created secret as existing.
+	)
+	if err != nil {
+		t.Fatalf("failed to reconcile serving certificate: %v", err)
+	}
+
+	secret1 := servingResult1.GetSecret()
+	secret2 := servingResult2.GetSecret()
+	if !reflect.DeepEqual(secret1.Data, secret2.Data) {
+		t.Errorf("ECDSA serving certificate was regenerated when it should have been reused")
 	}
 }

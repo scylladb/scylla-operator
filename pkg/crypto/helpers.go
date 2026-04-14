@@ -4,6 +4,8 @@ package crypto
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,7 +18,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func SignCertificate(template *x509.Certificate, requestKey *rsa.PublicKey, issuer *x509.Certificate, issuerKey *rsa.PrivateKey) (*x509.Certificate, error) {
+func SignCertificate(template *x509.Certificate, requestKey crypto.PublicKey, issuer *x509.Certificate, issuerKey crypto.Signer) (*x509.Certificate, error) {
 	if len(template.Subject.CommonName) == 0 && len(template.IPAddresses) == 0 && len(strings.Join(template.DNSNames, "")) == 0 {
 		return nil, fmt.Errorf("certificate requires either CommonName, IPAddresses or DNSNames to be set")
 	}
@@ -51,14 +53,34 @@ func EncodeCertificates(certificates ...*x509.Certificate) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func EncodePrivateKey(key *rsa.PrivateKey) ([]byte, error) {
+func EncodePrivateKey(key crypto.Signer) ([]byte, error) {
 	buffer := bytes.Buffer{}
-	err := pem.Encode(&buffer, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(key),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("can't pem encode rsa private key: %w", err)
+
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		err := pem.Encode(&buffer, &pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(k),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("can't pem encode rsa private key: %w", err)
+		}
+
+	case *ecdsa.PrivateKey:
+		derBytes, err := x509.MarshalECPrivateKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("can't marshal ecdsa private key: %w", err)
+		}
+		err = pem.Encode(&buffer, &pem.Block{
+			Type:  "EC PRIVATE KEY",
+			Bytes: derBytes,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("can't pem encode ecdsa private key: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported private key type %T", key)
 	}
 
 	return buffer.Bytes(), nil
@@ -85,20 +107,33 @@ func DecodeCertificates(certBytes []byte) ([]*x509.Certificate, error) {
 	return certificates, nil
 }
 
-func DecodePrivateKey(keyBytes []byte) (*rsa.PrivateKey, error) {
+func DecodePrivateKey(keyBytes []byte) (crypto.Signer, error) {
 	block, remainingBytes := pem.Decode(keyBytes)
 	if block == nil {
 		return nil, fmt.Errorf("no private key block found")
 	}
 
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("can't parse private key from block type %q: %w", block.Type, err)
+	var key crypto.Signer
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		var err error
+		key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse RSA private key from block type %q: %w", block.Type, err)
+		}
+	case "EC PRIVATE KEY":
+		var err error
+		key, err = x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse EC private key from block type %q: %w", block.Type, err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported PEM block type %q, expected %q or %q", block.Type, "RSA PRIVATE KEY", "EC PRIVATE KEY")
 	}
 
 	var unexpectedBlockTypes []string
 	for len(remainingBytes) != 0 {
-		block, remainingBytes = pem.Decode(keyBytes)
+		block, remainingBytes = pem.Decode(remainingBytes)
 		if block == nil {
 			break
 		}
@@ -114,10 +149,10 @@ func DecodePrivateKey(keyBytes []byte) (*rsa.PrivateKey, error) {
 		)
 	}
 
-	return privateKey, nil
+	return key, nil
 }
 
-func GetTLSCertificatesFromBytes(certBytes, keyBytes []byte) ([]*x509.Certificate, *rsa.PrivateKey, error) {
+func GetTLSCertificatesFromBytes(certBytes, keyBytes []byte) ([]*x509.Certificate, crypto.Signer, error) {
 	certificates, err := DecodeCertificates(certBytes)
 	if err != nil {
 		return nil, nil, err

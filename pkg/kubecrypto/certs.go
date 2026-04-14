@@ -118,7 +118,7 @@ func extractExistingSecret(
 	return certBytes, privateKeyBytes, cert, ""
 }
 
-func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
+func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGenerator, signer ocrypto.Signer, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*TLSSecret, error) {
 	if certCreator == nil {
 		return nil, fmt.Errorf("missing cert creator")
 	}
@@ -174,7 +174,7 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 			existingSecret,
 			now,
 			refresh,
-			certCreator.MakeCertificateTemplate(now, validity),
+			certCreator.MakeCertificateTemplate(now, validity, keyGetter.GetKeyType()),
 			signer.GetSubjectKeyID(),
 		)
 		if refreshReason == "" {
@@ -225,7 +225,7 @@ func makeCertificate(ctx context.Context, name string, certCreator ocrypto.CertC
 	return tlsSecret, nil
 }
 
-func MakeSelfSignedCA(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.RSAKeyGetter, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
+func MakeSelfSignedCA(ctx context.Context, name string, certCreator ocrypto.CertCreator, keyGetter ocrypto.KeyGenerator, nowFunc func() time.Time, validity, refresh time.Duration, controller metav1.Object, controllerGVK schema.GroupVersionKind, existingSecret *corev1.Secret) (*SigningTLSSecret, error) {
 	signer := ocrypto.NewSelfSignedSigner(nowFunc)
 	tlsSecret, err := makeCertificate(ctx, name, certCreator, keyGetter, signer, validity, refresh, controller, controllerGVK, existingSecret)
 	if err != nil {

@@ -1,6 +1,8 @@
 package kubecrypto
 
 import (
+	"crypto"
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
@@ -24,7 +26,8 @@ const (
 	certsIsCAKey          = "certificates.internal.scylla-operator.scylladb.com/is-ca"
 	certsIssuerKey        = "certificates.internal.scylla-operator.scylladb.com/issuer"
 	certsRefreshReasonKey = "certificates.internal.scylla-operator.scylladb.com/refresh-reason"
-	certsKeySizeBitsKey   = "certificates.internal.scylla-operator.scylladb.com/key-size-bits"
+	certsKeyAlgorithmKey  = "certificates.internal.scylla-operator.scylladb.com/key-algorithm"
+	certsKeySizeKey       = "certificates.internal.scylla-operator.scylladb.com/key-size"
 )
 
 var (
@@ -47,9 +50,12 @@ var (
 	}
 	CertKeyProjectedAnnotations = helpers.MergeMaps(
 		wrapCertProjectionsForCertKey(CertProjectedAnnotations),
-		map[string]func([]*x509.Certificate, *rsa.PrivateKey) (string, error){
-			certsKeySizeBitsKey: func(certs []*x509.Certificate, key *rsa.PrivateKey) (string, error) {
-				return strconv.Itoa(key.Size() * 8), nil
+		map[string]func([]*x509.Certificate, crypto.Signer) (string, error){
+			certsKeyAlgorithmKey: func(certs []*x509.Certificate, key crypto.Signer) (string, error) {
+				return keyAlgorithmNameForAnnotation(key), nil
+			},
+			certsKeySizeKey: func(certs []*x509.Certificate, key crypto.Signer) (string, error) {
+				return keyBitSizeStringForAnnotation(key), nil
 			},
 		},
 	)
@@ -57,12 +63,12 @@ var (
 
 func wrapCertProjectionsForCertKey(
 	certProjections map[string]func([]*x509.Certificate) (string, error),
-) map[string]func([]*x509.Certificate, *rsa.PrivateKey) (string, error) {
-	res := make(map[string]func([]*x509.Certificate, *rsa.PrivateKey) (string, error), len(certProjections))
+) map[string]func([]*x509.Certificate, crypto.Signer) (string, error) {
+	res := make(map[string]func([]*x509.Certificate, crypto.Signer) (string, error), len(certProjections))
 
 	for k, fi := range CertProjectedAnnotations {
 		f := fi
-		res[k] = func(certificates []*x509.Certificate, key *rsa.PrivateKey) (string, error) {
+		res[k] = func(certificates []*x509.Certificate, key crypto.Signer) (string, error) {
 			return f(certificates)
 		}
 	}
@@ -163,7 +169,7 @@ func GetCertKeyDataFromSecret(secret *corev1.Secret) ([]byte, []byte, error) {
 	return certBytes, keyBytes, nil
 }
 
-func GetKeyFromSecret(secret *corev1.Secret) (*rsa.PrivateKey, error) {
+func GetKeyFromSecret(secret *corev1.Secret) (crypto.Signer, error) {
 	keyBytes, err := GetKeyDataFromSecret(secret)
 	if err != nil {
 		return nil, fmt.Errorf("can't get key bytes from secret %q: %w", naming.ObjRef(secret), err)
@@ -177,7 +183,7 @@ func GetKeyFromSecret(secret *corev1.Secret) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func GetCertsKeyFromSecret(secret *corev1.Secret) ([]*x509.Certificate, *rsa.PrivateKey, error) {
+func GetCertsKeyFromSecret(secret *corev1.Secret) ([]*x509.Certificate, crypto.Signer, error) {
 	certs, err := GetCertsFromSecret(secret)
 	if err != nil {
 		return nil, nil, err
@@ -191,7 +197,7 @@ func GetCertsKeyFromSecret(secret *corev1.Secret) ([]*x509.Certificate, *rsa.Pri
 	return certs, key, nil
 }
 
-func GetCertKeyFromSecret(secret *corev1.Secret) (*x509.Certificate, *rsa.PrivateKey, error) {
+func GetCertKeyFromSecret(secret *corev1.Secret) (*x509.Certificate, crypto.Signer, error) {
 	certs, key, err := GetCertsKeyFromSecret(secret)
 	if err != nil {
 		return nil, nil, err
@@ -207,7 +213,7 @@ func GetCertKeyFromSecret(secret *corev1.Secret) (*x509.Certificate, *rsa.Privat
 type TLSSecret struct {
 	secret *corev1.Secret
 	certs  []*x509.Certificate
-	key    *rsa.PrivateKey
+	key    crypto.Signer
 }
 
 func NewTLSSecret(secret *corev1.Secret) *TLSSecret {
@@ -247,7 +253,7 @@ func (s *TLSSecret) GetCert() (*x509.Certificate, error) {
 	return s.certs[0], nil
 }
 
-func (s *TLSSecret) GetKey() (*rsa.PrivateKey, error) {
+func (s *TLSSecret) GetKey() (crypto.Signer, error) {
 	if s.key != nil {
 		return s.key, nil
 	}
@@ -261,7 +267,7 @@ func (s *TLSSecret) GetKey() (*rsa.PrivateKey, error) {
 	return s.key, nil
 }
 
-func (s *TLSSecret) GetCertsKey() ([]*x509.Certificate, *rsa.PrivateKey, error) {
+func (s *TLSSecret) GetCertsKey() ([]*x509.Certificate, crypto.Signer, error) {
 	certs, err := s.GetCerts()
 	if err != nil {
 		return nil, nil, err
@@ -275,7 +281,7 @@ func (s *TLSSecret) GetCertsKey() ([]*x509.Certificate, *rsa.PrivateKey, error) 
 	return certs, key, err
 }
 
-func (s *TLSSecret) GetCertKey() (*x509.Certificate, *rsa.PrivateKey, error) {
+func (s *TLSSecret) GetCertKey() (*x509.Certificate, crypto.Signer, error) {
 	cert, err := s.GetCert()
 	if err != nil {
 		return nil, nil, err
@@ -293,11 +299,11 @@ func (s *TLSSecret) SetCertsCache(certs []*x509.Certificate) {
 	s.certs = certs
 }
 
-func (s *TLSSecret) SetKeyCache(key *rsa.PrivateKey) {
+func (s *TLSSecret) SetKeyCache(key crypto.Signer) {
 	s.key = key
 }
 
-func (s *TLSSecret) SetCache(certs []*x509.Certificate, key *rsa.PrivateKey) {
+func (s *TLSSecret) SetCache(certs []*x509.Certificate, key crypto.Signer) {
 	s.SetCertsCache(certs)
 	s.SetKeyCache(key)
 }
@@ -351,4 +357,28 @@ func (s *TLSSecret) MakeCABundle(name string, controller metav1.Object, controll
 	}
 
 	return res, nil
+}
+
+func keyAlgorithmNameForAnnotation(key crypto.Signer) string {
+	switch key.(type) {
+	case *rsa.PrivateKey:
+		return "RSA"
+	case *ecdsa.PrivateKey:
+		return "ECDSA"
+	default:
+		return "Unknown"
+	}
+}
+
+// keyBitSizeStringForAnnotation returns the key size in bits as a string.
+// For RSA keys this is the modulus bit length; for ECDSA keys it is the curve bit size.
+func keyBitSizeStringForAnnotation(key crypto.Signer) string {
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		return strconv.Itoa(k.Size() * 8)
+	case *ecdsa.PrivateKey:
+		return strconv.Itoa(k.Curve.Params().BitSize)
+	default:
+		return "0"
+	}
 }

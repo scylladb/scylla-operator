@@ -2,6 +2,8 @@ package verification
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 
 	o "github.com/onsi/gomega"
@@ -14,7 +16,7 @@ type TLSCertOptions struct {
 	KeyUsage *x509.KeyUsage
 }
 
-func VerifyAndParseTLSCert(secret *corev1.Secret, options TLSCertOptions) ([]*x509.Certificate, []byte, crypto.PrivateKey, []byte) {
+func VerifyAndParseTLSCert(secret *corev1.Secret, options TLSCertOptions) ([]*x509.Certificate, []byte, crypto.Signer, []byte) {
 	o.Expect(secret.Type).To(o.Equal(corev1.SecretType("kubernetes.io/tls")))
 	o.Expect(secret.Data).To(o.HaveKey("tls.crt"))
 	o.Expect(secret.Data).To(o.HaveKey("tls.key"))
@@ -31,7 +33,14 @@ func VerifyAndParseTLSCert(secret *corev1.Secret, options TLSCertOptions) ([]*x5
 	o.Expect(certs[0].IsCA).To(o.Equal(*options.IsCA))
 	o.Expect(certs[0].KeyUsage).To(o.Equal(*options.KeyUsage))
 
-	o.Expect(key.Validate()).To(o.Succeed())
+	o.Expect(key).NotTo(o.BeNil())
+	o.Expect(key.Public()).NotTo(o.BeNil())
+	if rsaKey, ok := key.(*rsa.PrivateKey); ok {
+		o.Expect(rsaKey.Validate()).To(o.Succeed())
+	} else if ecdsaKey, ok := key.(*ecdsa.PrivateKey); ok {
+		_, err := ecdsaKey.ECDH()
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}
 
 	return certs, certsBytes, key, keyBytes
 }

@@ -4,10 +4,10 @@ package scyllacluster
 
 import (
 	"context"
-	"crypto/rsa"
-	"crypto/tls"
+	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,9 +17,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/features"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
@@ -27,13 +26,31 @@ import (
 	verificationutils "github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+)
+
+var (
+	deploymentResourceInfo = collect.ResourceInfo{
+		Resource: schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "deployments",
+		},
+		Scope: meta.RESTScopeNamespace,
+	}
+)
+
+const (
+	operatorNamespace      = "scylla-operator"
+	operatorDeploymentName = "scylla-operator"
 )
 
 var _ = g.Describe("ScyllaCluster", func() {
@@ -137,40 +154,14 @@ var _ = g.Describe("ScyllaCluster", func() {
 				o.Expect(hostIDs).To(o.HaveLen(tc.replicas))
 				o.Expect(hostIDs).To(o.ContainElements(initialHostIDs))
 
-				framework.By("Verifying TLS API objects")
+				framework.By("Verifying TLS certificates and live TLS connections")
 
-				clientCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-client-ca", sc.Name), metav1.GetOptions{})
-				o.Expect(err).NotTo(o.HaveOccurred())
-				clientCACerts, _, _, _ := verification.VerifyAndParseTLSCert(clientCASecret, verification.TLSCertOptions{
-					IsCA:     pointer.Ptr(true),
-					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
-				})
-				o.Expect(clientCACerts).To(o.HaveLen(1))
+				rsaCAKeyUsage := x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
+				rsaLeafKeyUsage := x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
 
-				servingCASecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
-				o.Expect(err).NotTo(o.HaveOccurred())
-				_, _, _, _ = verification.VerifyAndParseTLSCert(servingCASecret, verification.TLSCertOptions{
-					IsCA:     pointer.Ptr(true),
-					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign),
-				})
-
-				servingCABundleConfigMap, err := f.KubeClient().CoreV1().ConfigMaps(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
-				o.Expect(err).NotTo(o.HaveOccurred())
-				servingCACerts, servingCACertBytes := verification.VerifyAndParseCABundle(servingCABundleConfigMap)
-				o.Expect(servingCACerts).To(o.HaveLen(1))
-
-				servingCertSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
-				o.Expect(err).NotTo(o.HaveOccurred())
-				servingCerts, _, _, _ := verification.VerifyAndParseTLSCert(servingCertSecret, verification.TLSCertOptions{
-					IsCA:     pointer.Ptr(false),
-					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
-				})
-
-				adminClientSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
-				o.Expect(err).NotTo(o.HaveOccurred())
-				_, adminClientCertBytes, _, adminClientKeyBytes := verification.VerifyAndParseTLSCert(adminClientSecret, verification.TLSCertOptions{
-					IsCA:     pointer.Ptr(false),
-					KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+				tlsResult := verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, hostIDs, verification.VerifyScyllaClusterTLSOptions{
+					CAKeyUsage:   rsaCAKeyUsage,
+					LeafKeyUsage: rsaLeafKeyUsage,
 				})
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})
@@ -178,88 +169,10 @@ var _ = g.Describe("ScyllaCluster", func() {
 				_ = scyllaclusterverification.VerifyAndParseCQLConnectionConfigs(adminClientConnectionConfigsSecret, scyllaclusterverification.VerifyCQLConnectionConfigsOptions{
 					Domains:               sc.Spec.DNSDomains,
 					Datacenters:           []string{sc.Spec.Datacenter.Name},
-					ServingCAData:         servingCACertBytes,
-					ClientCertificateData: adminClientCertBytes,
-					ClientKeyData:         adminClientKeyBytes,
+					ServingCAData:         tlsResult.ServingCACertBytes,
+					ClientCertificateData: tlsResult.AdminClientCertBytes,
+					ClientKeyData:         tlsResult.AdminClientKeyBytes,
 				})
-
-				framework.By("Verifying certificates")
-
-				var sniHosts []string
-				for _, domain := range sc.Spec.DNSDomains {
-					sniHosts = append(sniHosts, fmt.Sprintf("cql.%s", domain))
-
-					for _, hostID := range hostIDs {
-						sniHosts = append(sniHosts, fmt.Sprintf("%s.cql.%s", hostID, domain))
-					}
-				}
-				o.Expect(sniHosts).To(o.HaveLen(len(sc.Spec.DNSDomains) + len(sc.Spec.DNSDomains)*tc.replicas))
-
-				var serviceServingDNSNames []string
-				services, err := f.KubeClient().CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
-					LabelSelector: labels.SelectorFromSet(naming.ClusterLabelsForScyllaCluster(sc)).String(),
-				})
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				for _, svc := range services.Items {
-					serviceServingDNSNames = append(serviceServingDNSNames, fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace))
-				}
-
-				serviceAndPodIPs, err := utils.GetNodesServiceAndPodIPs(ctx, f.KubeClient().CoreV1(), sc)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				expectedServiceAndPodIPsNum := 2 * int(utils.GetMemberCount(sc))
-				if sc.Spec.ExposeOptions != nil && sc.Spec.ExposeOptions.NodeService != nil && sc.Spec.ExposeOptions.NodeService.Type == scyllav1.NodeServiceTypeHeadless {
-					expectedServiceAndPodIPsNum = int(utils.GetMemberCount(sc))
-				}
-				o.Expect(serviceAndPodIPs).To(o.HaveLen(expectedServiceAndPodIPsNum))
-
-				indentityServiceIP, err := utils.GetIdentityServiceIP(ctx, f.KubeClient().CoreV1(), sc)
-				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(indentityServiceIP).NotTo(o.BeEmpty())
-
-				allIPs := make([]string, 0, len(serviceAndPodIPs)+1)
-				allIPs = append(allIPs, serviceAndPodIPs...)
-				allIPs = append(allIPs, indentityServiceIP)
-
-				hostsIPs, err := helpers.ParseIPs(allIPs)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				servingDNSNames := make([]string, 0, len(sniHosts)+len(serviceServingDNSNames))
-				servingDNSNames = append(servingDNSNames, sniHosts...)
-				servingDNSNames = append(servingDNSNames, serviceServingDNSNames...)
-
-				// Check the serving cert content first to distinguish whether the cert was correctly reloaded by ScyllaDB or not.
-				o.Expect(servingCerts[0].Subject.CommonName).To(o.BeEmpty())
-				o.Expect(helpers.NormalizeIPs(servingCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
-				o.Expect(servingCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
-
-				// Now check the cert used by ScyllaDB.
-				servingCAPool := x509.NewCertPool()
-				servingCAPool.AddCert(servingCACerts[0])
-				adminTLSCert, err := tls.X509KeyPair(adminClientCertBytes, adminClientKeyBytes)
-				o.Expect(err).NotTo(o.HaveOccurred())
-
-				for _, nodeAddress := range hosts {
-					framework.Infof("Starting to probe node %q for correct certs", nodeAddress)
-
-					o.Eventually(func(eo o.Gomega) {
-						serverCerts, err := utils.GetServerTLSCertificates(fmt.Sprintf("%s:9142", nodeAddress), &tls.Config{
-							ServerName:         nodeAddress,
-							InsecureSkipVerify: false,
-							Certificates:       []tls.Certificate{adminTLSCert},
-							RootCAs:            servingCAPool,
-						})
-						eo.Expect(err).NotTo(o.HaveOccurred())
-						eo.Expect(serverCerts).NotTo(o.BeEmpty())
-
-						eo.Expect(serverCerts[0].Subject.CommonName).To(o.BeEmpty())
-						eo.Expect(helpers.NormalizeIPs(serverCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
-						eo.Expect(serverCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
-					}).WithTimeout(5 * 60 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
-
-					framework.Infof("Node %q has correct certs", nodeAddress)
-				}
 			}()
 		}
 	})
@@ -370,7 +283,7 @@ var _ = g.Describe("ScyllaCluster", func() {
 				o.Expect(cert.NotAfter.Sub(cert.NotBefore)).To(o.Equal(validity))
 
 				// For self-signed certs we can reuse the key.
-				cert, err = crypto.SignCertificate(cert, key.Public().(*rsa.PublicKey), issuerCert, issuerKey)
+				cert, err = crypto.SignCertificate(cert, key.Public(), issuerCert, issuerKey)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
 				o.Expect(cert.AuthorityKeyId).To(o.Equal(initialCert.AuthorityKeyId))
@@ -426,4 +339,165 @@ var _ = g.Describe("ScyllaCluster", func() {
 			}()
 		}
 	})
+})
+
+var _ = g.Describe("ScyllaCluster ECDSA", framework.Serial, func() {
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
+
+	g.It("should create TLS certificates using ECDSA keys when the operator is configured with --crypto-key-type=ECDSA", func(ctx g.SpecContext) {
+		if !utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
+			g.Skip(fmt.Sprintf("Skipping because %q feature is disabled", features.AutomaticTLSCertificates))
+		}
+
+		framework.By("Snapshotting the operator Deployment for restoration")
+		rc := framework.NewRestoringCleaner(
+			ctx,
+			f.AdminClientConfig(),
+			f.KubeAdminClient(),
+			f.DynamicAdminClient(),
+			deploymentResourceInfo,
+			operatorNamespace,
+			operatorDeploymentName,
+			framework.RestoreStrategyUpdate,
+		)
+		f.AddCleaners(rc)
+
+		framework.By("Patching the operator Deployment to use ECDSA keys")
+		operatorDeploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// Find the operator container and add ECDSA args.
+		o.Expect(operatorDeploy.Spec.Template.Spec.Containers).NotTo(o.BeEmpty())
+		containerIdx := -1
+		for i, c := range operatorDeploy.Spec.Template.Spec.Containers {
+			if c.Name == "scylla-operator" {
+				containerIdx = i
+				break
+			}
+		}
+		o.Expect(containerIdx).NotTo(o.Equal(-1), "operator container not found in Deployment")
+
+		// Add --crypto-key-type=ECDSA to the container args using a JSON patch.
+		newArgs := append(
+			operatorDeploy.Spec.Template.Spec.Containers[containerIdx].Args,
+			"--crypto-key-type=ECDSA",
+			"--crypto-key-size=256",
+		)
+
+		type patchOp struct {
+			Op    string      `json:"op"`
+			Path  string      `json:"path"`
+			Value interface{} `json:"value"`
+		}
+		patch := []patchOp{
+			{
+				Op:    "replace",
+				Path:  fmt.Sprintf("/spec/template/spec/containers/%d/args", containerIdx),
+				Value: newArgs,
+			},
+		}
+		patchBytes, err := json.Marshal(patch)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		_, err = f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Patch(
+			ctx,
+			operatorDeploymentName,
+			types.JSONPatchType,
+			patchBytes,
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the operator Deployment to roll out with ECDSA configuration")
+		o.Eventually(func(eg o.Gomega) {
+			deploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
+			eg.Expect(err).NotTo(o.HaveOccurred())
+
+			// Check that the deployment has finished rolling out.
+			eg.Expect(deploy.Status.ObservedGeneration).To(o.BeNumerically(">=", deploy.Generation))
+			eg.Expect(deploy.Status.UpdatedReplicas).To(o.Equal(*deploy.Spec.Replicas))
+			eg.Expect(deploy.Status.ReadyReplicas).To(o.Equal(*deploy.Spec.Replicas))
+			eg.Expect(deploy.Status.AvailableReplicas).To(o.Equal(*deploy.Spec.Replicas))
+
+			for _, cond := range deploy.Status.Conditions {
+				if cond.Type == appsv1.DeploymentAvailable {
+					eg.Expect(cond.Status).To(o.Equal(corev1.ConditionTrue))
+				}
+			}
+		}).WithContext(ctx).WithTimeout(5 * time.Minute).WithPolling(5 * time.Second).Should(o.Succeed())
+
+		framework.By("Creating a multi-node ScyllaCluster to verify TLS with ECDSA")
+		sc := f.GetDefaultScyllaCluster()
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
+		sc.Spec.Datacenter.Racks[0].Members = 2
+
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(
+			ctx,
+			sc,
+			metav1.CreateOptions{
+				FieldManager: f.FieldManager(),
+			},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(hosts).To(o.HaveLen(2))
+
+		framework.By("Verifying TLS certificates and live TLS connections with ECDSA KeyUsage")
+
+		ecdsaCAKeyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
+		ecdsaLeafKeyUsage := x509.KeyUsageDigitalSignature
+
+		verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, nil, verification.VerifyScyllaClusterTLSOptions{
+			CAKeyUsage:   ecdsaCAKeyUsage,
+			LeafKeyUsage: ecdsaLeafKeyUsage,
+		})
+
+		framework.By("Verifying ECDSA-specific properties on each TLS secret")
+
+		verifySecretUsesECDSA := func(secretName string, expectCA bool) {
+			secret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, secretName, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+
+			certs, key, err := crypto.GetTLSCertificatesFromBytes(secret.Data["tls.crt"], secret.Data["tls.key"])
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(certs).NotTo(o.BeEmpty())
+
+			// Verify the key is ECDSA.
+			_, isECDSA := key.(*ecdsa.PrivateKey)
+			o.Expect(isECDSA).To(o.BeTrue(), "expected ECDSA private key for secret %s, got %T", secretName, key)
+
+			// Verify the certificate's public key algorithm is ECDSA.
+			o.Expect(certs[0].PublicKeyAlgorithm).To(o.Equal(x509.ECDSA))
+
+			// Verify the certificate is CA or not as expected.
+			o.Expect(certs[0].IsCA).To(o.Equal(expectCA))
+
+			// Verify KeyUsage does NOT include KeyEncipherment for ECDSA.
+			o.Expect(certs[0].KeyUsage&x509.KeyUsageKeyEncipherment).To(o.BeZero(),
+				"ECDSA certificate %s should not have KeyUsageKeyEncipherment", secretName)
+		}
+
+		// Verify CA secrets.
+		verifySecretUsesECDSA(fmt.Sprintf("%s-local-client-ca", sc.Name), true)
+		verifySecretUsesECDSA(fmt.Sprintf("%s-local-serving-ca", sc.Name), true)
+
+		// Verify leaf secrets.
+		verifySecretUsesECDSA(fmt.Sprintf("%s-local-serving-certs", sc.Name), false)
+		verifySecretUsesECDSA(fmt.Sprintf("%s-local-user-admin", sc.Name), false)
+	}, g.NodeTimeout(testTimeout))
 })

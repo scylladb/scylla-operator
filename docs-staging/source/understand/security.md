@@ -4,7 +4,7 @@ This page explains the security model of ScyllaDB Operator: how TLS certificates
 
 ## TLS certificates
 
-ScyllaDB Operator manages TLS certificates at two levels: for the **operator infrastructure** (webhook server) and for **ScyllaDB clusters** (client-to-node and inter-node encryption, Alternator).
+ScyllaDB Operator manages TLS certificates at two levels: for the **operator infrastructure** (webhook server) and for **ScyllaDB clusters** (client-to-node encryption, Alternator).
 
 ### Operator webhook TLS
 
@@ -14,7 +14,7 @@ The operator's validating webhook server requires a TLS certificate so that the 
 2. A **Certificate** (`scylla-operator-serving-cert`) is issued for the DNS name `scylla-operator-webhook.scylla-operator.svc`, stored in a Secret of the same name.
 3. The `ValidatingWebhookConfiguration` has the annotation `cert-manager.io/inject-ca-from: scylla-operator/scylla-operator-serving-cert`, which tells cert-manager to inject the CA bundle into the webhook configuration so the Kubernetes API server trusts the webhook's certificate.
 
-cert-manager is a **hard dependency** of the operator. Without it, the webhook server cannot obtain a serving certificate and the operator cannot start.
+cert-manager is a hard dependency of the operator unless it is deployed via OLM on OpenShift, which handles webhook certificate provisioning natively.
 
 ### ScyllaDB cluster TLS
 
@@ -30,12 +30,6 @@ For each ScyllaDB datacenter (that is, each `ScyllaCluster` resource) the operat
 | `<name>-local-serving-certs` | Secret | Server certificate for ScyllaDB — contains a multi-SAN certificate covering all pod IPs, Service ClusterIPs, LoadBalancer addresses, internal DNS names, and `cql.<domain>` / `<hostID>.cql.<domain>` DNS names for each configured DNS domain. |
 | `<name>-local-cql-connection-configs-admin` | Secret | Pre-built CQL connection configuration file containing the admin client certificate, key, and serving CA bundle for each DNS domain. |
 
-**Certificate lifetimes:**
-
-- CA certificates: 10-year validity, refreshed after 8 years.
-- Serving certificates: 30-day validity, refreshed after 20 days.
-- Client certificates: 10-year validity, refreshed after 8 years.
-
 The operator watches all member Services and pod IPs and regenerates the serving certificate whenever the set of addresses changes (new pods, LoadBalancer address assignment, etc.).
 
 #### How TLS is configured in ScyllaDB
@@ -46,7 +40,7 @@ When `AutomaticTLSCertificates` is enabled, the operator renders a managed `scyl
 - **Encrypted CQL ports**: port `9142` (CQL over TLS) and port `19142` (shard-aware CQL over TLS) are configured alongside the unencrypted ports.
 
 :::{note}
-Inter-node encryption is configured through the same serving certificate infrastructure, but inter-node transport security settings depend on the ScyllaDB version and configuration.
+The operator does not configure inter-node encryption (`server_encryption_options`). Only client-to-node encryption is managed automatically.
 :::
 
 #### User-managed certificates

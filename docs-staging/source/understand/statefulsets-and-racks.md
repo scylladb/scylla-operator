@@ -55,13 +55,9 @@ The Operator scales down **one member at a time**, regardless of how large the r
 You cannot remove an arbitrary node from the middle of a rack's ordinal range by changing the `members` count. Scaling always operates on the tail of the StatefulSet. To remove a specific node (for example, ordinal 1 out of 0, 1, 2), use node replacement instead — see [Replacing nodes](../operate/replace-nodes.md).
 :::
 
-### PVC retention
+### PVC lifecycle
 
-PVCs are **not** deleted when a StatefulSet is scaled down. The PVCs for decommissioned pods remain in the namespace until manually deleted. If you scale the rack back up to the same size, the new pods reuse the existing PVCs and their data.
-
-:::{caution}
-After a scale-down followed by a scale-up, the reattached PVC contains stale data from the decommissioned node. ScyllaDB handles this correctly — the new node joins as a replacement and the stale data is cleaned up — but be aware that the PVC is not wiped automatically.
-:::
+After a successful decommission, the operator deletes both the member Service and its PVC. If you scale the rack back up to the same size, the StatefulSet creates new PVCs and the new nodes bootstrap with a clean data directory.
 
 ## Rolling updates
 

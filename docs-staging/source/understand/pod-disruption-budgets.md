@@ -63,32 +63,6 @@ Node replacement follows a similar pattern — one node is replaced at a time. T
 
 When a Kubernetes node is drained (for example, during a Kubernetes upgrade), the drain process evicts pods through the Eviction API, which respects PDBs. If the ScyllaDB cluster already has one node unavailable (due to a concurrent operation or failure), the PDB blocks further evictions until the first node recovers.
 
-## Common pitfall: PDB blocking node drains
-
-If a ScyllaDB node is already down (crash, stuck, or undergoing replacement), the `maxUnavailable: 1` budget is already consumed. A subsequent `kubectl drain` on another Kubernetes node will be blocked indefinitely because evicting an additional ScyllaDB pod would exceed the budget.
-
-**Symptoms:**
-
-- `kubectl drain` hangs with a message like `Cannot evict pod as it would violate the pod's disruption budget`.
-- The PDB shows `disruptionsAllowed: 0`.
-
-**Diagnosis:**
-
-```bash
-kubectl get pdb -n <namespace>
-kubectl get pods -n <namespace> -o wide
-```
-
-Check which ScyllaDB pod is already unavailable and why.
-
-**Workaround:**
-
-Resolve the existing disruption first (fix the failed node, complete the replacement). If the drain is urgent and you accept the risk, you can temporarily delete the PDB, drain the node, and let the Operator recreate the PDB on the next reconciliation.
-
-:::{caution}
-Deleting a PDB removes the safety net. Draining a node while another ScyllaDB node is already down can cause quorum loss and data unavailability if the replication factor is not sufficient.
-:::
-
 ## Related pages
 
 - [Statefulsets and racks](statefulsets-and-racks.md) — rolling update strategy and partition-based rollout.

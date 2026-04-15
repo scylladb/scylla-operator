@@ -45,10 +45,7 @@ The operator does not configure inter-node encryption (`server_encryption_option
 
 #### User-managed certificates
 
-`ScyllaCluster` supports a `TLSCertificate` configuration with two modes:
-
-- **`OperatorManaged`** (default): the operator provisions and rotates certificates automatically as described above. You can specify `additionalDNSNames` and `additionalIPAddresses` to include custom SANs in the serving certificate.
-- **`UserManaged`**: you provide your own TLS certificate in a `kubernetes.io/tls` Secret referenced by `secretName`. The operator mounts this Secret but does not manage its lifecycle — you are responsible for rotation.
+The `OperatorManaged` / `UserManaged` certificate toggle described below under [Alternator TLS](#alternator-tls) applies only to Alternator's serving certificate (`spec.alternator.servingCertificate`). CQL certificates are always operator-managed when `AutomaticTLSCertificates` is enabled.
 
 ### Alternator TLS
 
@@ -59,9 +56,10 @@ When Alternator is enabled (`spec.alternator` in `ScyllaCluster`), the operator 
 | `<name>-alternator-local-serving-ca` | CA for Alternator serving certificates. |
 | `<name>-alternator-local-serving-certs` | Server certificate for the Alternator HTTPS endpoint (port 8043). |
 
-The Alternator certificate includes the same SANs as the CQL serving certificate, plus any `additionalDNSNames` and `additionalIPAddresses` specified in `servingCertificate.operatorManagedOptions`.
+The Alternator serving certificate is configured through `spec.alternator.servingCertificate`, which supports two modes:
 
-Like CQL certificates, Alternator certificates can be set to `UserManaged` if you want to provide your own.
+- **`OperatorManaged`** (default): the operator provisions and rotates the Alternator serving certificate automatically. You can specify `additionalDNSNames` and `additionalIPAddresses` in `operatorManagedOptions` to include custom SANs.
+- **`UserManaged`**: you provide your own TLS certificate in a `kubernetes.io/tls` Secret referenced by `userManagedOptions.secretName`. The operator mounts this Secret but does not manage its lifecycle — you are responsible for rotation.
 
 ## Authentication and authorization
 

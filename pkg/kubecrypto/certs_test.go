@@ -6,6 +6,7 @@ import (
 	"crypto/x509/pkix"
 	"math/rand/v2"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -110,9 +111,19 @@ func verifyCA(t *testing.T, d *testSecretData) {
 	verifyCert(t, d, true, x509.KeyUsageKeyEncipherment|x509.KeyUsageDigitalSignature|x509.KeyUsageCertSign)
 }
 
+func verifyECDSACA(t *testing.T, d *testSecretData) {
+	t.Helper()
+	verifyCert(t, d, true, x509.KeyUsageDigitalSignature|x509.KeyUsageCertSign)
+}
+
 func verifyClientCert(t *testing.T, d *testSecretData) {
 	t.Helper()
 	verifyCert(t, d, false, x509.KeyUsageKeyEncipherment|x509.KeyUsageDigitalSignature)
+}
+
+func verifyECDSAServingCert(t *testing.T, d *testSecretData) {
+	t.Helper()
+	verifyCert(t, d, false, x509.KeyUsageDigitalSignature)
 }
 
 func isCertDataChanged(d *testSecretData) bool {
@@ -138,643 +149,691 @@ func verifyCertDataUnchanged(t *testing.T, d *testSecretData) {
 }
 
 func Test_makeCertificate(t *testing.T) {
-	tt := []struct {
-		name                    string
-		caNamespace             string
-		caName                  string
-		certCreator             ocrypto.CertCreator
-		signer                  ocrypto.Signer
-		validity                time.Duration
-		refresh                 time.Duration
-		controller              metav1.Object
-		controllerGVK           schema.GroupVersionKind
-		existingSecret          *corev1.Secret
-		expectedError           error
-		expectedSecret          *corev1.Secret
-		expectedSecretDataFuncs []verifySecretDataFuncType
-	}{
+	type keyConfig struct {
+		generatorConfig  ocrypto.KeyGeneratorConfig
+		caCertBytes      []byte
+		caKeyBytes       []byte
+		servingCertBytes []byte
+		servingKeyBytes  []byte
+		verifyCA         verifySecretDataFuncType
+		verifyClientCert verifySecretDataFuncType
+	}
+
+	// We'll run all cases for both RSA and ECDSA.
+	keyConfigs := []keyConfig{
 		{
-			name:   "generates new self-signed CA when none exists",
-			caName: "ca",
-			certCreator: (&ocrypto.CACertCreatorConfig{
-				Subject: pkix.Name{
-					CommonName: "My CA certificate",
-				},
-			}).ToCreator(),
-			signer:   ocrypto.NewSelfSignedSigner(now),
-			validity: 1 * time.Hour,
-			refresh:  50 * time.Minute,
-			controller: &metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "sc",
-				UID:       "42",
+			generatorConfig: ocrypto.KeyGeneratorConfig{
+				Type:          ocrypto.RSAKeyType,
+				KeySize:       4096,
+				BufferSizeMin: 1,
+				BufferSizeMax: 1,
+				BufferDelay:   42 * time.Hour,
 			},
-			controllerGVK: schema.GroupVersionKind{
-				Group:   "scylla.scylladb.com",
-				Version: "v1",
-				Kind:    "ScyllaCluster",
-			},
-			existingSecret: nil,
-			expectedError:  nil,
-			expectedSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA certificate",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-					},
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedSecretDataFuncs: []verifySecretDataFuncType{
-				verifyCertDataChanged,
-				verifyCA,
-				verifySelfSignedCert,
-			},
+			caCertBytes:      testfiles.AlphaCACertBytes,
+			caKeyBytes:       testfiles.AlphaCAKeyBytes,
+			servingCertBytes: testfiles.AlphaServingCertBytes,
+			servingKeyBytes:  testfiles.AlphaServingKeyBytes,
+			verifyCA:         verifyCA,
+			verifyClientCert: verifyClientCert,
 		},
 		{
-			name:   "generates new client cert signed by this CA",
-			caName: "ca",
-			certCreator: (&ocrypto.ClientCertCreatorConfig{
-				DNSNames: []string{"my.client.certificate.org"},
-			}).ToCreator(),
-			signer: helpers.Must(ocrypto.NewCertificateAuthority(
-				helpers.Must(ocrypto.DecodeCertificates(testfiles.AlphaCACertBytes))[0],
-				helpers.Must(ocrypto.DecodePrivateKey(testfiles.AlphaCAKeyBytes)),
-				now,
-			)),
-			validity: 1 * time.Hour,
-			refresh:  50 * time.Minute,
-			controller: &metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "sc",
-				UID:       "42",
+			generatorConfig: ocrypto.KeyGeneratorConfig{
+				Type:          ocrypto.ECDSAKeyType,
+				KeySize:       256,
+				BufferSizeMin: 1,
+				BufferSizeMax: 1,
+				BufferDelay:   42 * time.Hour,
 			},
-			controllerGVK: schema.GroupVersionKind{
-				Group:   "scylla.scylladb.com",
-				Version: "v1",
-				Kind:    "ScyllaCluster",
-			},
-			existingSecret: nil,
-			expectedError:  nil,
-			expectedSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "false",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-					},
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedSecretDataFuncs: []verifySecretDataFuncType{
-				verifyCertDataChanged,
-				verifyClientCert,
-				verifyChildCert,
-			},
-		},
-		{
-			name:   "reuses existing self-signed CA when valid",
-			caName: "ca",
-			certCreator: (&ocrypto.CACertCreatorConfig{
-				Subject: pkix.Name{
-					CommonName: "test.ca-name",
-				},
-			}).ToCreator(),
-			signer: ocrypto.NewSelfSignedSigner(func() time.Time {
-				return now().Add(1 * time.Second)
-			}),
-			validity: 1 * time.Hour,
-			refresh:  50 * time.Minute,
-			controller: &metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "sc",
-				UID:       "42",
-			},
-			controllerGVK: schema.GroupVersionKind{
-				Group:   "scylla.scylladb.com",
-				Version: "v1",
-				Kind:    "ScyllaCluster",
-			},
-			existingSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-						"custom": "foo",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					UID: "uid-that-should-never-make-it-to-the-desired-object",
-					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
-				},
-				Data: map[string][]byte{
-					"tls.crt": testfiles.AlphaCACertBytes,
-					"tls.key": testfiles.AlphaCAKeyBytes,
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedError: nil,
-			expectedSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-						"custom": "foo",
-					},
-					UID:               "",
-					CreationTimestamp: metav1.Time{},
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedSecretDataFuncs: []verifySecretDataFuncType{
-				verifyCertDataUnchanged,
-				verifyCA,
-				verifySelfSignedCert,
-			},
-		},
-		{
-			name:   "reuses existing serving cert when valid",
-			caName: "ca",
-			certCreator: (&ocrypto.ClientCertCreatorConfig{
-				DNSNames: []string{"my.client.certificate.org"},
-			}).ToCreator(),
-			signer: helpers.Must(ocrypto.NewCertificateAuthority(
-				helpers.Must(ocrypto.DecodeCertificates(testfiles.AlphaCACertBytes))[0],
-				helpers.Must(ocrypto.DecodePrivateKey(testfiles.AlphaCAKeyBytes)),
-				now,
-			)),
-			validity: 1 * time.Hour,
-			refresh:  50 * time.Minute,
-			controller: &metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "sc",
-				UID:       "42",
-			},
-			controllerGVK: schema.GroupVersionKind{
-				Group:   "scylla.scylladb.com",
-				Version: "v1",
-				Kind:    "ScyllaCluster",
-			},
-			existingSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-						"custom": "foo",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					UID: "uid-that-should-never-make-it-to-the-desired-object",
-					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
-				},
-				Data: map[string][]byte{
-					"tls.crt": testfiles.AlphaServingCertBytes,
-					"tls.key": testfiles.AlphaServingKeyBytes,
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedError: nil,
-			expectedSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "false",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-						"custom": "foo",
-					},
-					UID:               "",
-					CreationTimestamp: metav1.Time{},
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedSecretDataFuncs: []verifySecretDataFuncType{
-				verifyCertDataUnchanged,
-				verifyClientCert,
-				verifyChildCert,
-			},
-		},
-		{
-			name:   "reuses existing CA and fixes annotations",
-			caName: "ca",
-			certCreator: (&ocrypto.CACertCreatorConfig{
-				Subject: pkix.Name{
-					CommonName: "test.ca-name",
-				},
-			}).ToCreator(),
-			signer:   ocrypto.NewSelfSignedSigner(now),
-			validity: 1 * time.Hour,
-			refresh:  50 * time.Minute,
-			controller: &metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "sc",
-				UID:       "42",
-			},
-			controllerGVK: schema.GroupVersionKind{
-				Group:   "scylla.scylladb.com",
-				Version: "v1",
-				Kind:    "ScyllaCluster",
-			},
-			existingSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					Annotations: map[string]string{
-						"custom": "foo",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					UID: "uid-that-should-never-make-it-to-the-desired-object",
-					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
-				},
-				Data: map[string][]byte{
-					"tls.crt": testfiles.AlphaCACertBytes,
-					"tls.key": testfiles.AlphaCAKeyBytes,
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedError: nil,
-			expectedSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":         "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":    "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":     "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":         "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":        "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm": "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":      "4096",
-						"custom": "foo",
-					},
-					UID:               "",
-					CreationTimestamp: metav1.Time{},
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedSecretDataFuncs: []verifySecretDataFuncType{
-				verifyCertDataUnchanged,
-				verifyCA,
-				verifySelfSignedCert,
-			},
-		},
-		{
-			name:   "rotates existing self-signed CA when expired",
-			caName: "ca",
-			certCreator: (&ocrypto.CACertCreatorConfig{
-				Subject: pkix.Name{
-					CommonName: "My CA",
-				},
-			}).ToCreator(),
-			signer: ocrypto.NewSelfSignedSigner(func() time.Time {
-				return now().Add(42 * 365 * 24 * time.Hour)
-			}),
-			validity: 1 * time.Hour,
-			refresh:  50 * time.Minute,
-			controller: &metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "sc",
-				UID:       "42",
-			},
-			controllerGVK: schema.GroupVersionKind{
-				Group:   "scylla.scylladb.com",
-				Version: "v1",
-				Kind:    "ScyllaCluster",
-			},
-			existingSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-						"custom": "foo",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					UID: "uid-that-should-never-make-it-to-the-desired-object",
-					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
-				},
-				Data: map[string][]byte{
-					"tls.crt": testfiles.AlphaCACertBytes,
-					"tls.key": testfiles.AlphaCAKeyBytes,
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedError: nil,
-			expectedSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2063-01-21T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2063-01-22T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "already expired",
-						"custom": "foo",
-					},
-					UID:               "",
-					CreationTimestamp: metav1.Time{},
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedSecretDataFuncs: []verifySecretDataFuncType{
-				verifyCertDataChanged,
-				verifyCA,
-				verifySelfSignedCert,
-			},
-		},
-		{
-			name:   "refreshes existing self-signed CA with broken annotations when actually expired",
-			caName: "ca",
-			certCreator: (&ocrypto.CACertCreatorConfig{
-				Subject: pkix.Name{
-					CommonName: "My CA",
-				},
-			}).ToCreator(),
-			signer: ocrypto.NewSelfSignedSigner(func() time.Time {
-				return now().Add(42 * 365 * 24 * time.Hour)
-			}),
-			validity: 1 * time.Hour,
-			refresh:  50 * time.Minute,
-			controller: &metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "sc",
-				UID:       "42",
-			},
-			controllerGVK: schema.GroupVersionKind{
-				Group:   "scylla.scylladb.com",
-				Version: "v1",
-				Kind:    "ScyllaCluster",
-			},
-			existingSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "42",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "broken",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "broken",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "won't make it through",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=CA na that gets properly filled",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
-						"custom": "foo",
-					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					UID: "uid-that-should-never-make-it-to-the-desired-object",
-					// Random creation timestamp will make sure it won't make it over to the desired secret.
-					CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
-				},
-				Data: map[string][]byte{
-					"tls.crt": testfiles.AlphaCACertBytes,
-					"tls.key": testfiles.AlphaCAKeyBytes,
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedError: nil,
-			expectedSecret: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "foo",
-					Name:      "ca",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "scylla.scylladb.com/v1",
-							Kind:               "ScyllaCluster",
-							Name:               "sc",
-							UID:                "42",
-							Controller:         pointer.Ptr(true),
-							BlockOwnerDeletion: pointer.Ptr(true),
-						},
-					},
-					Annotations: map[string]string{
-						"certificates.internal.scylla-operator.scylladb.com/count":          "1",
-						"certificates.internal.scylla-operator.scylladb.com/not-before":     "2063-01-21T23:59:59Z",
-						"certificates.internal.scylla-operator.scylladb.com/not-after":      "2063-01-22T01:00:00Z",
-						"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
-						"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA",
-						"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  "RSA",
-						"certificates.internal.scylla-operator.scylladb.com/key-size":       "4096",
-						"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "already expired",
-						"custom": "foo",
-					},
-					UID:               "",
-					CreationTimestamp: metav1.Time{},
-				},
-				Type: "kubernetes.io/tls",
-			},
-			expectedSecretDataFuncs: []verifySecretDataFuncType{
-				verifyCertDataChanged,
-				verifyCA,
-				verifySelfSignedCert,
-			},
+			caCertBytes:      testfiles.AlphaECDSACACertBytes,
+			caKeyBytes:       testfiles.AlphaECDSACAKeyBytes,
+			servingCertBytes: testfiles.AlphaECDSAServingCertBytes,
+			servingKeyBytes:  testfiles.AlphaECDSAServingKeyBytes,
+			verifyCA:         verifyECDSACA,
+			verifyClientCert: verifyECDSAServingCert,
 		},
 	}
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 
-			keygen, err := ocrypto.NewRSAKeyGenerator(1, 1, 4096, 42*time.Hour)
-			if err != nil {
-				t.Fatal(err)
-			}
-			testcrypto.StartKeyGenerator(t, keygen)
+	for _, kc := range keyConfigs {
+		t.Run(string(kc.generatorConfig.Type), func(t *testing.T) {
+			keyAlgorithm := string(kc.generatorConfig.Type)
+			keySize := strconv.Itoa(kc.generatorConfig.KeySize)
 
-			got, err := makeCertificate(
-				t.Context(),
-				tc.caName,
-				tc.certCreator,
-				keygen,
-				tc.signer,
-				tc.validity,
-				tc.refresh,
-				tc.controller,
-				tc.controllerGVK,
-				tc.existingSecret,
-			)
-			if !reflect.DeepEqual(err, tc.expectedError) {
-				t.Fatalf("expected error %v, got %v", tc.expectedError, err)
-			}
+			caSigner := helpers.Must(ocrypto.NewCertificateAuthority(
+				helpers.Must(ocrypto.DecodeCertificates(kc.caCertBytes))[0],
+				helpers.Must(ocrypto.DecodePrivateKey(kc.caKeyBytes)),
+				now,
+			))
 
-			if tc.expectedError != nil {
-				if tc.signer.VerifyCertificate(helpers.Must(got.GetCert())) != nil {
-					t.Errorf("certificate isn't signed by this signer: %v", err)
-				}
-			}
-
-			secret := got.GetSecret()
-			for _, f := range tc.expectedSecretDataFuncs {
-				f(t, &testSecretData{
-					old:     tc.existingSecret,
-					current: secret,
+			tt := []struct {
+				name                    string
+				caName                  string
+				certCreator             ocrypto.CertCreator
+				signer                  ocrypto.Signer
+				validity                time.Duration
+				refresh                 time.Duration
+				controller              metav1.Object
+				controllerGVK           schema.GroupVersionKind
+				existingSecret          *corev1.Secret
+				expectedError           error
+				expectedSecret          *corev1.Secret
+				expectedSecretDataFuncs []verifySecretDataFuncType
+			}{
+				{
+					name:   "generates new self-signed CA when none exists",
+					caName: "ca",
+					certCreator: (&ocrypto.CACertCreatorConfig{
+						Subject: pkix.Name{
+							CommonName: "My CA certificate",
+						},
+					}).ToCreator(),
+					signer:   ocrypto.NewSelfSignedSigner(now),
+					validity: 1 * time.Hour,
+					refresh:  50 * time.Minute,
+					controller: &metav1.ObjectMeta{
+						Namespace: "foo",
+						Name:      "sc",
+						UID:       "42",
+					},
+					controllerGVK: schema.GroupVersionKind{
+						Group:   "scylla.scylladb.com",
+						Version: "v1",
+						Kind:    "ScyllaCluster",
+					},
+					existingSecret: nil,
+					expectedError:  nil,
+					expectedSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA certificate",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+							},
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedSecretDataFuncs: []verifySecretDataFuncType{
+						verifyCertDataChanged,
+						kc.verifyCA,
+						verifySelfSignedCert,
+					},
 				},
-				)
+				{
+					name:   "generates new client cert signed by this CA",
+					caName: "ca",
+					certCreator: (&ocrypto.ClientCertCreatorConfig{
+						DNSNames: []string{"my.client.certificate.org"},
+					}).ToCreator(),
+					signer:   caSigner,
+					validity: 1 * time.Hour,
+					refresh:  50 * time.Minute,
+					controller: &metav1.ObjectMeta{
+						Namespace: "foo",
+						Name:      "sc",
+						UID:       "42",
+					},
+					controllerGVK: schema.GroupVersionKind{
+						Group:   "scylla.scylladb.com",
+						Version: "v1",
+						Kind:    "ScyllaCluster",
+					},
+					existingSecret: nil,
+					expectedError:  nil,
+					expectedSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "false",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+							},
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedSecretDataFuncs: []verifySecretDataFuncType{
+						verifyCertDataChanged,
+						kc.verifyClientCert,
+						verifyChildCert,
+					},
+				},
+				{
+					name:   "reuses existing self-signed CA when valid",
+					caName: "ca",
+					certCreator: (&ocrypto.CACertCreatorConfig{
+						Subject: pkix.Name{
+							CommonName: "test.ca-name",
+						},
+					}).ToCreator(),
+					signer: ocrypto.NewSelfSignedSigner(func() time.Time {
+						return now().Add(1 * time.Second)
+					}),
+					validity: 1 * time.Hour,
+					refresh:  50 * time.Minute,
+					controller: &metav1.ObjectMeta{
+						Namespace: "foo",
+						Name:      "sc",
+						UID:       "42",
+					},
+					controllerGVK: schema.GroupVersionKind{
+						Group:   "scylla.scylladb.com",
+						Version: "v1",
+						Kind:    "ScyllaCluster",
+					},
+					existingSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+								"custom": "foo",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							UID: "uid-that-should-never-make-it-to-the-desired-object",
+							// Random creation timestamp will make sure it won't make it over to the desired secret.
+							CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
+						},
+						Data: map[string][]byte{
+							"tls.crt": kc.caCertBytes,
+							"tls.key": kc.caKeyBytes,
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedError: nil,
+					expectedSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+								"custom": "foo",
+							},
+							UID:               "",
+							CreationTimestamp: metav1.Time{},
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedSecretDataFuncs: []verifySecretDataFuncType{
+						verifyCertDataUnchanged,
+						kc.verifyCA,
+						verifySelfSignedCert,
+					},
+				},
+				{
+					name:   "reuses existing serving cert when valid",
+					caName: "ca",
+					certCreator: (&ocrypto.ClientCertCreatorConfig{
+						DNSNames: []string{"my.client.certificate.org"},
+					}).ToCreator(),
+					signer:   caSigner,
+					validity: 1 * time.Hour,
+					refresh:  50 * time.Minute,
+					controller: &metav1.ObjectMeta{
+						Namespace: "foo",
+						Name:      "sc",
+						UID:       "42",
+					},
+					controllerGVK: schema.GroupVersionKind{
+						Group:   "scylla.scylladb.com",
+						Version: "v1",
+						Kind:    "ScyllaCluster",
+					},
+					existingSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+								"custom": "foo",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							UID: "uid-that-should-never-make-it-to-the-desired-object",
+							// Random creation timestamp will make sure it won't make it over to the desired secret.
+							CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
+						},
+						Data: map[string][]byte{
+							"tls.crt": kc.servingCertBytes,
+							"tls.key": kc.servingKeyBytes,
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedError: nil,
+					expectedSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "false",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+								"custom": "foo",
+							},
+							UID:               "",
+							CreationTimestamp: metav1.Time{},
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedSecretDataFuncs: []verifySecretDataFuncType{
+						verifyCertDataUnchanged,
+						kc.verifyClientCert,
+						verifyChildCert,
+					},
+				},
+				{
+					name:   "reuses existing CA and fixes annotations",
+					caName: "ca",
+					certCreator: (&ocrypto.CACertCreatorConfig{
+						Subject: pkix.Name{
+							CommonName: "test.ca-name",
+						},
+					}).ToCreator(),
+					signer:   ocrypto.NewSelfSignedSigner(now),
+					validity: 1 * time.Hour,
+					refresh:  50 * time.Minute,
+					controller: &metav1.ObjectMeta{
+						Namespace: "foo",
+						Name:      "sc",
+						UID:       "42",
+					},
+					controllerGVK: schema.GroupVersionKind{
+						Group:   "scylla.scylladb.com",
+						Version: "v1",
+						Kind:    "ScyllaCluster",
+					},
+					existingSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							Annotations: map[string]string{
+								"custom": "foo",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							UID: "uid-that-should-never-make-it-to-the-desired-object",
+							// Random creation timestamp will make sure it won't make it over to the desired secret.
+							CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
+						},
+						Data: map[string][]byte{
+							"tls.crt": kc.caCertBytes,
+							"tls.key": kc.caKeyBytes,
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedError: nil,
+					expectedSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":         "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":    "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":     "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":         "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":        "CN=test.ca-name",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm": keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":      keySize,
+								"custom": "foo",
+							},
+							UID:               "",
+							CreationTimestamp: metav1.Time{},
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedSecretDataFuncs: []verifySecretDataFuncType{
+						verifyCertDataUnchanged,
+						kc.verifyCA,
+						verifySelfSignedCert,
+					},
+				},
+				{
+					name:   "rotates existing self-signed CA when expired",
+					caName: "ca",
+					certCreator: (&ocrypto.CACertCreatorConfig{
+						Subject: pkix.Name{
+							CommonName: "My CA",
+						},
+					}).ToCreator(),
+					signer: ocrypto.NewSelfSignedSigner(func() time.Time {
+						return now().Add(42 * 365 * 24 * time.Hour)
+					}),
+					validity: 1 * time.Hour,
+					refresh:  50 * time.Minute,
+					controller: &metav1.ObjectMeta{
+						Namespace: "foo",
+						Name:      "sc",
+						UID:       "42",
+					},
+					controllerGVK: schema.GroupVersionKind{
+						Group:   "scylla.scylladb.com",
+						Version: "v1",
+						Kind:    "ScyllaCluster",
+					},
+					existingSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2021-01-31T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2021-02-01T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=test.ca-name",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+								"custom": "foo",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							UID: "uid-that-should-never-make-it-to-the-desired-object",
+							// Random creation timestamp will make sure it won't make it over to the desired secret.
+							CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
+						},
+						Data: map[string][]byte{
+							"tls.crt": kc.caCertBytes,
+							"tls.key": kc.caKeyBytes,
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedError: nil,
+					expectedSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2063-01-21T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2063-01-22T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "already expired",
+								"custom": "foo",
+							},
+							UID:               "",
+							CreationTimestamp: metav1.Time{},
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedSecretDataFuncs: []verifySecretDataFuncType{
+						verifyCertDataChanged,
+						kc.verifyCA,
+						verifySelfSignedCert,
+					},
+				},
+				{
+					name:   "refreshes existing self-signed CA with broken annotations when actually expired",
+					caName: "ca",
+					certCreator: (&ocrypto.CACertCreatorConfig{
+						Subject: pkix.Name{
+							CommonName: "My CA",
+						},
+					}).ToCreator(),
+					signer: ocrypto.NewSelfSignedSigner(func() time.Time {
+						return now().Add(42 * 365 * 24 * time.Hour)
+					}),
+					validity: 1 * time.Hour,
+					refresh:  50 * time.Minute,
+					controller: &metav1.ObjectMeta{
+						Namespace: "foo",
+						Name:      "sc",
+						UID:       "42",
+					},
+					controllerGVK: schema.GroupVersionKind{
+						Group:   "scylla.scylladb.com",
+						Version: "v1",
+						Kind:    "ScyllaCluster",
+					},
+					existingSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "42",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "broken",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "broken",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "won't make it through",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=CA na that gets properly filled",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "needs new cert",
+								"custom": "foo",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							UID: "uid-that-should-never-make-it-to-the-desired-object",
+							// Random creation timestamp will make sure it won't make it over to the desired secret.
+							CreationTimestamp: metav1.NewTime(time.Date(2022, 01, 01, 00, 00, rand.IntN(60), 00, time.UTC)),
+						},
+						Data: map[string][]byte{
+							"tls.crt": kc.caCertBytes,
+							"tls.key": kc.caKeyBytes,
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedError: nil,
+					expectedSecret: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "foo",
+							Name:      "ca",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion:         "scylla.scylladb.com/v1",
+									Kind:               "ScyllaCluster",
+									Name:               "sc",
+									UID:                "42",
+									Controller:         pointer.Ptr(true),
+									BlockOwnerDeletion: pointer.Ptr(true),
+								},
+							},
+							Annotations: map[string]string{
+								"certificates.internal.scylla-operator.scylladb.com/count":          "1",
+								"certificates.internal.scylla-operator.scylladb.com/not-before":     "2063-01-21T23:59:59Z",
+								"certificates.internal.scylla-operator.scylladb.com/not-after":      "2063-01-22T01:00:00Z",
+								"certificates.internal.scylla-operator.scylladb.com/is-ca":          "true",
+								"certificates.internal.scylla-operator.scylladb.com/issuer":         "CN=My CA",
+								"certificates.internal.scylla-operator.scylladb.com/key-algorithm":  keyAlgorithm,
+								"certificates.internal.scylla-operator.scylladb.com/key-size":       keySize,
+								"certificates.internal.scylla-operator.scylladb.com/refresh-reason": "already expired",
+								"custom": "foo",
+							},
+							UID:               "",
+							CreationTimestamp: metav1.Time{},
+						},
+						Type: "kubernetes.io/tls",
+					},
+					expectedSecretDataFuncs: []verifySecretDataFuncType{
+						verifyCertDataChanged,
+						kc.verifyCA,
+						verifySelfSignedCert,
+					},
+				},
 			}
-			secret.Data = nil
-			if !apiequality.Semantic.DeepEqual(secret, tc.expectedSecret) {
-				t.Errorf("expected and got differ: %s", cmp.Diff(tc.expectedSecret, secret))
+			for _, tc := range tt {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+
+					keygen, err := ocrypto.NewKeyGenerator(kc.generatorConfig)
+					if err != nil {
+						t.Fatal(err)
+					}
+					testcrypto.StartKeyGenerator(t, keygen)
+
+					got, err := makeCertificate(
+						t.Context(),
+						tc.caName,
+						tc.certCreator,
+						keygen,
+						tc.signer,
+						tc.validity,
+						tc.refresh,
+						tc.controller,
+						tc.controllerGVK,
+						tc.existingSecret,
+					)
+					if !reflect.DeepEqual(err, tc.expectedError) {
+						t.Fatalf("expected error %v, got %v", tc.expectedError, err)
+					}
+
+					if tc.expectedError != nil {
+						if tc.signer.VerifyCertificate(helpers.Must(got.GetCert())) != nil {
+							t.Errorf("certificate isn't signed by this signer: %v", err)
+						}
+					}
+
+					secret := got.GetSecret()
+					for _, f := range tc.expectedSecretDataFuncs {
+						f(t, &testSecretData{
+							old:     tc.existingSecret,
+							current: secret,
+						},
+						)
+					}
+					secret.Data = nil
+					if !apiequality.Semantic.DeepEqual(secret, tc.expectedSecret) {
+						t.Errorf("expected and got differ: %s", cmp.Diff(tc.expectedSecret, secret))
+					}
+				})
 			}
 		})
 	}

@@ -37,8 +37,10 @@ import (
 )
 
 const (
-	cqlDefaultUser     = "cassandra"
-	cqlDefaultPassword = "cassandra"
+	cqlAlternatorUser     = "nondefaultcassandra"
+	cqlAlternatorPassword = "nondefaultcassandra"
+	// the SHA-512 crypt hash of cqlAlternatorPassword, for ScyllaDB's auth_superuser_salted_password config
+	cqlAlternatorPasswordSaltedHash = "$6$VbAwLOEIu18EYeOF$zb0/MC1/KmI3OZg8im1XjC4RmpqkZ/Xh0LDYBun/mKRjUFIh16t3.K.OO7y17XMR4ZiYTsYX3FcPxeoL9oiiD."
 )
 
 type Movie struct {
@@ -72,10 +74,12 @@ var _ = g.Describe("ScyllaCluster", func() {
 		defer cancel()
 
 		cm, _, err := scyllafixture.ScyllaDBConfigTemplate.RenderObject(map[string]any{
-			"config": strings.TrimPrefix(`
+			"config": strings.TrimPrefix(fmt.Sprintf(`
 authenticator: PasswordAuthenticator
 authorizer: CassandraAuthorizer
-`, "\n"),
+auth_superuser_name: %s
+auth_superuser_salted_password: '%s'
+`, cqlAlternatorUser, cqlAlternatorPasswordSaltedHash), "\n"),
 		})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -117,8 +121,8 @@ authorizer: CassandraAuthorizer
 
 		cqlConfig := gocql.NewCluster(svcIP)
 		cqlConfig.Authenticator = gocql.PasswordAuthenticator{
-			Username: cqlDefaultUser,
-			Password: cqlDefaultPassword,
+			Username: cqlAlternatorUser,
+			Password: cqlAlternatorPassword,
 		}
 		cqlConfig.Consistency = gocql.All
 		cqlSession, err := cqlConfig.CreateSession()
@@ -126,7 +130,7 @@ authorizer: CassandraAuthorizer
 		defer cqlSession.Close()
 
 		awsCredentials := aws.Credentials{
-			AccessKeyID:     cqlDefaultUser,
+			AccessKeyID:     cqlAlternatorUser,
 			SecretAccessKey: "",
 		}
 

@@ -110,6 +110,11 @@ var _ = g.Describe("ScyllaCluster", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+
+		framework.By("Waiting for ghost nodes from the old cluster to be cleaned up")
+		err = utils.WaitForScyllaClusterGhostNodeCleanup(ctx, f.KubeClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		oldHostUUIDs := hostUUIDs

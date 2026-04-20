@@ -672,6 +672,82 @@ func GetMemberServiceSelector(sc *scyllav1.ScyllaCluster) labels.Selector {
 	}.AsSelector()
 }
 
+// WaitForScyllaClusterGhostNodeCleanup waits until all nodes in the ScyllaCluster report
+// only the expected set of host IDs (i.e., no ghost entries from a previous cluster incarnation).
+// Ghost host IDs appear after re-bootstrapping a cluster on existing PVCs because the old
+// system.topology entries persist. ScyllaDB's topology coordinator cleans up orphan nodes
+// in the background, and it was proven that the cleanup may take 1-5 minutes.
+func WaitForScyllaClusterGhostNodeCleanup(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) error {
+	scyllaClient, hosts, err := GetScyllaClient(ctx, client, sc)
+	if err != nil {
+		return fmt.Errorf("can't get scylla client: %w", err)
+	}
+	defer scyllaClient.Close()
+
+	// Collect the expected host IDs by asking each node for its local host ID.
+	expectedHostIDs := make(map[string]struct{}, len(hosts))
+	for _, host := range hosts {
+		hostID, err := scyllaClient.GetLocalHostId(ctx, host, false)
+		if err != nil {
+			return fmt.Errorf("can't get local host ID from host %q: %w", host, err)
+		}
+		expectedHostIDs[hostID] = struct{}{}
+	}
+
+	if len(expectedHostIDs) != len(hosts) {
+		return fmt.Errorf("expected %d unique host IDs but got %d", len(hosts), len(expectedHostIDs))
+	}
+
+	sortedExpectedHostIDs := make([]string, 0, len(expectedHostIDs))
+	for id := range expectedHostIDs {
+		sortedExpectedHostIDs = append(sortedExpectedHostIDs, id)
+	}
+	sort.Strings(sortedExpectedHostIDs)
+
+	framework.Infof("Waiting for ghost node cleanup on ScyllaCluster %q. Expected host IDs: %v", naming.ObjRef(sc), sortedExpectedHostIDs)
+
+	// Ghost node cleanup typically takes 1-5 minutes. Use a 10-minute timeout for margin.
+	return apimachineryutilwait.PollImmediateWithContext(ctx, 5*time.Second, 10*time.Minute, func(ctx context.Context) (done bool, err error) {
+		allClean := true
+		var infoMessages []string
+
+		for _, host := range hosts {
+			ipToHostID, err := scyllaClient.GetIPToHostIDMap(ctx, host)
+			if err != nil {
+				return true, fmt.Errorf("can't get host ID map from host %q: %w", host, err)
+			}
+
+			// Collect host IDs reported by this node.
+			reportedHostIDs := make([]string, 0, len(ipToHostID))
+			for _, hostID := range ipToHostID {
+				reportedHostIDs = append(reportedHostIDs, hostID)
+			}
+			sort.Strings(reportedHostIDs)
+
+			// Find ghost host IDs (reported but not expected).
+			var ghostHostIDs []string
+			for _, hostID := range reportedHostIDs {
+				if _, ok := expectedHostIDs[hostID]; !ok {
+					ghostHostIDs = append(ghostHostIDs, hostID)
+				}
+			}
+
+			if len(ghostHostIDs) > 0 {
+				allClean = false
+				infoMessages = append(infoMessages, fmt.Sprintf("host %q still sees %d ghost node(s): %v", host, len(ghostHostIDs), ghostHostIDs))
+			}
+		}
+
+		if !allClean {
+			framework.Infof("Ghost node cleanup in progress for ScyllaCluster %q: %s", naming.ObjRef(sc), strings.Join(infoMessages, "; "))
+		} else {
+			framework.Infof("Ghost node cleanup complete for ScyllaCluster %q. All nodes report only expected host IDs.", naming.ObjRef(sc))
+		}
+
+		return allClean, nil
+	})
+}
+
 func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) error {
 	allHostIDs := map[string][]string{}
 	var sortedAllHostIDs []string

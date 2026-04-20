@@ -152,6 +152,10 @@ func ValidateAlternatorSpec(alternator *scyllav1.AlternatorSpec, fldPath *field.
 func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
+	if len(spec.Version) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("version"), ""))
+	}
+
 	rackNames := apimachineryutilsets.NewString()
 
 	if spec.Alternator != nil {

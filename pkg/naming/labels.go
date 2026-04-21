@@ -29,9 +29,20 @@ func ClusterLabelsForScyllaCluster(sc *scyllav1.ScyllaCluster) map[string]string
 // ScyllaDBNodesPodsLabelsForScyllaCluster returns a map of label keys and values for ScyllaDB nodes pods limited
 // to the given ScyllaCluster.
 func ScyllaDBNodesPodsLabelsForScyllaCluster(sc *scyllav1.ScyllaCluster) map[string]string {
-	labels := ClusterLabelsForScyllaCluster(sc)
-	labels[PodTypeLabel] = string(PodTypeScyllaDBNode)
-	return labels
+	return mergeLabels(
+		ClusterLabelsForScyllaCluster(sc),
+		ScyllaDBNodePodLabels(),
+	)
+}
+
+// ScyllaDBNodePodsSelectorLabels returns a map of label keys and values selecting ScyllaDB node pods
+// of the given ScyllaDBDatacenter. It restricts the selector to only match ScyllaDB node pods, excluding other
+// (e.g., cleanup job pods).
+func ScyllaDBNodePodsSelectorLabels(sdc *scyllav1alpha1.ScyllaDBDatacenter) map[string]string {
+	return mergeLabels(
+		ClusterLabels(sdc),
+		ScyllaDBNodePodLabels(),
+	)
 }
 
 // DatacenterLabels returns a map of label keys and values

@@ -44,6 +44,9 @@ Please refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.
 - `must-gather` resource collection now tolerates partial API discovery failures (e.g., when aggregated API servers like `metrics.k8s.io` are transiently unavailable) instead of failing entirely.
   [#3396](https://github.com/scylladb/scylla-operator/pull/3396)
 - Fixed [#3302](https://github.com/scylladb/scylla-operator/issues/3302): `ScyllaCluster` `spec.version` is now a required field. Previously, an empty value was accepted but caused a silent failure in the migration controller.
+  [#3385](https://github.com/scylladb/scylla-operator/pull/3385)
+- Fixed [#3407](https://github.com/scylladb/scylla-operator/issues/3407): `ScyllaDBDatacenter` identity service selector now includes the `scylla-operator.scylladb.com/pod-type: scylladb-node` label, preventing cleanup job pods from being matched by the service and causing client connection failures.
+  [#3409](https://github.com/scylladb/scylla-operator/pull/3409)
 
 ### Dependencies
 

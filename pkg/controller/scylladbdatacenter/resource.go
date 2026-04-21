@@ -111,7 +111,7 @@ func IdentityService(sdc *scyllav1alpha1.ScyllaDBDatacenter) (*corev1.Service, e
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
-			Selector: naming.ClusterLabels(sdc),
+			Selector: naming.ScyllaDBNodePodsSelectorLabels(sdc),
 			Ports:    servicePorts,
 		},
 	}

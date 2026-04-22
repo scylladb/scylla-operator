@@ -530,6 +530,13 @@ func getWarningsForScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *
 		warnings = append(warnings, fmt.Sprintf("%s: deprecated; use NodeConfig's .spec.sysctls instead", fldPath.Child("sysctls")))
 	}
 
+	if spec.ExposeOptions != nil && spec.ExposeOptions.CQL != nil {
+		warnings = append(warnings, fmt.Sprintf(
+			"`%s` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
+			fldPath.Child("exposeOptions", "cql"),
+		))
+	}
+
 	return warnings
 }
 

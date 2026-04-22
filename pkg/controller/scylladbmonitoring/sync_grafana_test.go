@@ -192,13 +192,13 @@ func Test_makeGrafanaDashboards(t *testing.T) {
 	}
 	tt := []testEntry{
 		{
-			name: "renders data for default SaaS type",
+			name: "renders data for SaaS type",
 			sm: &scyllav1alpha1.ScyllaDBMonitoring{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sm-name",
 				},
 				Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
-					Type: nil,
+					Type: pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypeSAAS),
 				},
 			},
 			expectedConfigMaps: []*corev1.ConfigMap{
@@ -228,6 +228,19 @@ func Test_makeGrafanaDashboards(t *testing.T) {
 				},
 				Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
 					Type: pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypePlatform),
+				},
+			},
+			expectedConfigMaps: getExpectedPlatformConfigMaps("sm-name"),
+			expectedErr:        nil,
+		},
+		{
+			name: "renders data for default (nil) type",
+			sm: &scyllav1alpha1.ScyllaDBMonitoring{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name",
+				},
+				Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
+					Type: nil,
 				},
 			},
 			expectedConfigMaps: getExpectedPlatformConfigMaps("sm-name"),
@@ -278,6 +291,202 @@ func Test_makeGrafanaDeployment(t *testing.T) {
 		},
 	}
 
+	platformDashboardsCMs := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0",
+				Annotations: map[string]string{
+					"internal.scylla-operator.scylladb.com/dashboard-name": "scylladb-6.0",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1",
+				Annotations: map[string]string{
+					"internal.scylla-operator.scylladb.com/dashboard-name": "scylladb-6.1",
+				},
+			},
+		},
+	}
+
+	platformExpectedDeploymentYAML := strings.TrimLeft(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "sm-name-grafana"
+spec:
+  selector:
+    matchLabels:
+      scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scylla-operator.scylladb.com/inputs-hash: "restart-trigger-hash"
+      labels:
+        scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
+    spec:
+      serviceAccountName: "sm-name-grafana"
+      affinity:
+        {}
+      tolerations:
+        null
+      initContainers:
+      - name: gzip
+        image: "bash-tools-image"
+        command:
+        - /usr/bin/bash
+        - -euExo
+        - pipefail
+        - -O
+        - inherit_errexit
+        - -c
+        args:
+        - |
+          mkdir /var/run/decompressed-configmaps/grafana-scylladb-dashboards
+          find /var/run/configmaps -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+            tp="/var/run/decompressed-configmaps/${d#"/var/run/configmaps/"}"
+            mkdir "${tp}"
+            find "${d}" -mindepth 1 -maxdepth 1 -name '*.gz.base64' -exec cp -L -t "${tp}" {} +
+          done
+          find /var/run/decompressed-configmaps -name '*.gz.base64' | while read -r f; do
+            base64 -d "${f}" > "${f%.base64}"
+            rm "${f}"
+          done
+          find /var/run/decompressed-configmaps -name '*.gz' -exec gzip -d {} +
+        volumeMounts:
+        - name: decompressed-configmaps
+          mountPath: /var/run/decompressed-configmaps
+        - name: "scylladb-6-0"
+          mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.0"
+        - name: "scylladb-6-1"
+          mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.1"
+      containers:
+      - name: grafana
+        image: "grafana-image"
+        command:
+        - grafana-server
+        - --packaging=docker
+        - --homepath=/usr/share/grafana
+        - --config=/var/run/configmaps/grafana-configs/grafana.ini
+        env:
+        - name: GF_PATHS_PROVISIONING
+        - name: GF_PATHS_HOME
+        - name: GF_PATHS_DATA
+        - name: GF_PATHS_LOGS
+        - name: GF_PATHS_PLUGINS
+        - name: GF_PATHS_CONFIG
+        ports:
+        - containerPort: 3000
+          name: grafana
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 1
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTPS
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+          httpGet:
+            path: /api/health
+            port: 3000
+            scheme: HTTPS
+        resources:
+          {}
+        volumeMounts:
+        - name: grafana-configs
+          mountPath: /var/run/configmaps/grafana-configs
+        - name: decompressed-configmaps
+          mountPath: /var/run/dashboards/scylladb
+          subPath: grafana-scylladb-dashboards
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/access-control/access-control.yaml
+          subPath: access-control.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/alerting/alerting.yaml
+          subPath: alerting.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/dashboards/dashboards.yaml
+          subPath: dashboards.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/datasources/datasources.yaml
+          subPath: datasources.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/notifiers/notifiers.yaml
+          subPath: notifiers.yaml
+        - name: grafana-provisioning
+          mountPath: /var/run/configmaps/grafana-provisioning/plugins/plugins.yaml
+          subPath: plugins.yaml
+        - name: grafana-admin-credentials
+          mountPath: /var/run/secrets/grafana-admin-credentials
+        - name: grafana-serving-certs
+          mountPath: /var/run/secrets/grafana-serving-certs
+        - name: prometheus-client-certs
+          mountPath: /var/run/secrets/prometheus-client-certs
+        - name: prometheus-serving-ca
+          mountPath: /var/run/configmaps/prometheus-serving-ca
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: 472
+          runAsGroup: 472
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: decompressed-configmaps
+        emptyDir:
+          sizeLimit: 50Mi
+      - name: grafana-configs
+        configMap:
+          name: "sm-name-grafana-configs"
+      - name: "scylladb-6-0"
+        configMap:
+          name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
+      - name: "scylladb-6-1"
+        configMap:
+          name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
+      - name: grafana-provisioning
+        configMap:
+          name: "sm-name-grafana-provisioning"
+      - name: grafana-admin-credentials
+        secret:
+          secretName: "sm-name-grafana-admin-credentials"
+      - name: grafana-serving-certs
+        secret:
+          secretName: "serving-secret"
+      - name: prometheus-client-certs
+        secret:
+          secretName: "sm-name-prometheus-client-grafana-2w56m"
+      - name: prometheus-serving-ca
+        configMap:
+          name: "sm-name-prometheus-serving-ca-3ah2z"
+      - name: grafana-storage
+        emptyDir:
+          sizeLimit: 100Mi
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
+`, "\n")
+
 	tt := []struct {
 		name                         string
 		sm                           *scyllav1alpha1.ScyllaDBMonitoring
@@ -289,13 +498,13 @@ func Test_makeGrafanaDeployment(t *testing.T) {
 		expectedErr                  error
 	}{
 		{
-			name: "renders data for default SaaS type",
+			name: "renders data for SaaS type",
 			sm: &scyllav1alpha1.ScyllaDBMonitoring{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sm-name",
 				},
 				Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
-					Type: nil,
+					Type: pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypeSAAS),
 				},
 			},
 			soc:                          defaultSOC,
@@ -496,202 +705,27 @@ spec:
 			},
 			soc:                          defaultSOC,
 			grafanaServingCertSecretName: "serving-secret",
-			dashboardsCMs: []*corev1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0",
-						Annotations: map[string]string{
-							"internal.scylla-operator.scylladb.com/dashboard-name": "scylladb-6.0",
-						},
-					},
+			dashboardsCMs:                platformDashboardsCMs,
+			restartTriggerHash:           "restart-trigger-hash",
+			expectedString:               platformExpectedDeploymentYAML,
+			expectedErr:                  nil,
+		},
+		{
+			name: "renders data for default (nil) type",
+			sm: &scyllav1alpha1.ScyllaDBMonitoring{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sm-name",
 				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1",
-						Annotations: map[string]string{
-							"internal.scylla-operator.scylladb.com/dashboard-name": "scylladb-6.1",
-						},
-					},
+				Spec: scyllav1alpha1.ScyllaDBMonitoringSpec{
+					Type: nil,
 				},
 			},
-			restartTriggerHash: "restart-trigger-hash",
-			expectedString: strings.TrimLeft(`
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: "sm-name-grafana"
-spec:
-  selector:
-    matchLabels:
-      scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
-  strategy:
-    type: RollingUpdate
-  template:
-    metadata:
-      annotations:
-        scylla-operator.scylladb.com/inputs-hash: "restart-trigger-hash"
-      labels:
-        scylla-operator.scylladb.com/deployment-name: "sm-name-grafana"
-    spec:
-      serviceAccountName: "sm-name-grafana"
-      affinity:
-        {}
-      tolerations:
-        null
-      initContainers:
-      - name: gzip
-        image: "bash-tools-image"
-        command:
-        - /usr/bin/bash
-        - -euExo
-        - pipefail
-        - -O
-        - inherit_errexit
-        - -c
-        args:
-        - |
-          mkdir /var/run/decompressed-configmaps/grafana-scylladb-dashboards
-          find /var/run/configmaps -mindepth 2 -maxdepth 2 -type d | while read -r d; do
-            tp="/var/run/decompressed-configmaps/${d#"/var/run/configmaps/"}"
-            mkdir "${tp}"
-            find "${d}" -mindepth 1 -maxdepth 1 -name '*.gz.base64' -exec cp -L -t "${tp}" {} +
-          done
-          find /var/run/decompressed-configmaps -name '*.gz.base64' | while read -r f; do
-            base64 -d "${f}" > "${f%.base64}"
-            rm "${f}"
-          done
-          find /var/run/decompressed-configmaps -name '*.gz' -exec gzip -d {} +
-        volumeMounts:
-        - name: decompressed-configmaps
-          mountPath: /var/run/decompressed-configmaps
-        - name: "scylladb-6-0"
-          mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.0"
-        - name: "scylladb-6-1"
-          mountPath: "/var/run/configmaps/grafana-scylladb-dashboards/scylladb-6.1"
-      containers:
-      - name: grafana
-        image: "grafana-image"
-        command:
-        - grafana-server
-        - --packaging=docker
-        - --homepath=/usr/share/grafana
-        - --config=/var/run/configmaps/grafana-configs/grafana.ini
-        env:
-        - name: GF_PATHS_PROVISIONING
-        - name: GF_PATHS_HOME
-        - name: GF_PATHS_DATA
-        - name: GF_PATHS_LOGS
-        - name: GF_PATHS_PLUGINS
-        - name: GF_PATHS_CONFIG
-        ports:
-        - containerPort: 3000
-          name: grafana
-          protocol: TCP
-        readinessProbe:
-          initialDelaySeconds: 10
-          periodSeconds: 30
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 1
-          httpGet:
-            path: /api/health
-            port: 3000
-            scheme: HTTPS
-        livenessProbe:
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 10
-          httpGet:
-            path: /api/health
-            port: 3000
-            scheme: HTTPS
-        resources:
-          {}
-        volumeMounts:
-        - name: grafana-configs
-          mountPath: /var/run/configmaps/grafana-configs
-        - name: decompressed-configmaps
-          mountPath: /var/run/dashboards/scylladb
-          subPath: grafana-scylladb-dashboards
-        - name: grafana-provisioning
-          mountPath: /var/run/configmaps/grafana-provisioning/access-control/access-control.yaml
-          subPath: access-control.yaml
-        - name: grafana-provisioning
-          mountPath: /var/run/configmaps/grafana-provisioning/alerting/alerting.yaml
-          subPath: alerting.yaml
-        - name: grafana-provisioning
-          mountPath: /var/run/configmaps/grafana-provisioning/dashboards/dashboards.yaml
-          subPath: dashboards.yaml
-        - name: grafana-provisioning
-          mountPath: /var/run/configmaps/grafana-provisioning/datasources/datasources.yaml
-          subPath: datasources.yaml
-        - name: grafana-provisioning
-          mountPath: /var/run/configmaps/grafana-provisioning/notifiers/notifiers.yaml
-          subPath: notifiers.yaml
-        - name: grafana-provisioning
-          mountPath: /var/run/configmaps/grafana-provisioning/plugins/plugins.yaml
-          subPath: plugins.yaml
-        - name: grafana-admin-credentials
-          mountPath: /var/run/secrets/grafana-admin-credentials
-        - name: grafana-serving-certs
-          mountPath: /var/run/secrets/grafana-serving-certs
-        - name: prometheus-client-certs
-          mountPath: /var/run/secrets/prometheus-client-certs
-        - name: prometheus-serving-ca
-          mountPath: /var/run/configmaps/prometheus-serving-ca
-        - name: grafana-storage
-          mountPath: /var/lib/grafana
-        securityContext:
-          allowPrivilegeEscalation: false
-          privileged: false
-          runAsNonRoot: true
-          runAsUser: 472
-          runAsGroup: 472
-          capabilities:
-            drop:
-            - ALL
-      volumes:
-      - name: decompressed-configmaps
-        emptyDir:
-          sizeLimit: 50Mi
-      - name: grafana-configs
-        configMap:
-          name: "sm-name-grafana-configs"
-      - name: "scylladb-6-0"
-        configMap:
-          name: "sm-name-grafana-scylladb-dashboards-scylladb-6.0"
-      - name: "scylladb-6-1"
-        configMap:
-          name: "sm-name-grafana-scylladb-dashboards-scylladb-6.1"
-      - name: grafana-provisioning
-        configMap:
-          name: "sm-name-grafana-provisioning"
-      - name: grafana-admin-credentials
-        secret:
-          secretName: "sm-name-grafana-admin-credentials"
-      - name: grafana-serving-certs
-        secret:
-          secretName: "serving-secret"
-      - name: prometheus-client-certs
-        secret:
-          secretName: "sm-name-prometheus-client-grafana-2w56m"
-      - name: prometheus-serving-ca
-        configMap:
-          name: "sm-name-prometheus-serving-ca-3ah2z"
-      - name: grafana-storage
-        emptyDir:
-          sizeLimit: 100Mi
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 472
-        runAsGroup: 472
-        fsGroup: 472
-        seccompProfile:
-          type: RuntimeDefault
-`, "\n"),
-			expectedErr: nil,
+			soc:                          defaultSOC,
+			grafanaServingCertSecretName: "serving-secret",
+			dashboardsCMs:                platformDashboardsCMs,
+			restartTriggerHash:           "restart-trigger-hash",
+			expectedString:               platformExpectedDeploymentYAML,
+			expectedErr:                  nil,
 		},
 		{
 			name: "external prometheus datasource",

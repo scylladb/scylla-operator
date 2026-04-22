@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -481,6 +482,35 @@ func TestGetWarningsOnScyllaDBMonitoringCreate(t *testing.T) {
 				"`spec.components.prometheus.exposeOptions` field is deprecated and will be removed in future releases, please expose managed Prometheus Service on your own (e.g., via Ingress or HTTPRoute).",
 			},
 		},
+		{
+			name: "warning on spec.type = SaaS",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Type = pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypeSAAS)
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.type` = `SaaS` is deprecated and will be removed in future releases, please use `Platform` instead.",
+			},
+		},
+		{
+			name: "no warning on spec.type = Platform",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Type = pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypePlatform)
+				return sm
+			}(),
+			expectedWarning: nil,
+		},
+		{
+			name: "no warning on nil spec.type",
+			sm: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Type = nil
+				return sm
+			}(),
+			expectedWarning: nil,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -598,6 +628,28 @@ func TestGetWarningsOnScyllaDBMonitoringUpdate(t *testing.T) {
 			}(),
 			expectedWarning: []string{
 				"`spec.components.prometheus.exposeOptions` field is deprecated and will be removed in future releases, please expose managed Prometheus Service on your own (e.g., via Ingress or HTTPRoute).",
+			},
+		},
+		{
+			name: "no warning on spec.type = SaaS in old monitoring",
+			old: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Type = pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypeSAAS)
+				return sm
+			}(),
+			new:             validScyllaDBMonitoringWithExternalPrometheus(),
+			expectedWarning: nil,
+		},
+		{
+			name: "warning on spec.type = SaaS in new monitoring",
+			old:  validScyllaDBMonitoringWithExternalPrometheus(),
+			new: func() *scyllav1alpha1.ScyllaDBMonitoring {
+				sm := validScyllaDBMonitoringWithExternalPrometheus()
+				sm.Spec.Type = pointer.Ptr(scyllav1alpha1.ScyllaDBMonitoringTypeSAAS)
+				return sm
+			}(),
+			expectedWarning: []string{
+				"`spec.type` = `SaaS` is deprecated and will be removed in future releases, please use `Platform` instead.",
 			},
 		},
 	}

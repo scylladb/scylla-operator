@@ -44,6 +44,13 @@ func GetWarningsOnScyllaDBMonitoringUpdate(new, _ *scyllav1alpha1.ScyllaDBMonito
 func getWarningsForScyllaDBMonitoringSpec(spec scyllav1alpha1.ScyllaDBMonitoringSpec, fldPath *field.Path) []string {
 	var warnings []string
 
+	if spec.Type != nil && *spec.Type == scyllav1alpha1.ScyllaDBMonitoringTypeSAAS {
+		warnings = append(warnings, fmt.Sprintf(
+			"`%s` = `SaaS` is deprecated and will be removed in future releases, please use `Platform` instead.",
+			fldPath.Child("type"),
+		))
+	}
+
 	if spec.Components != nil {
 		warnings = append(warnings, getWarningsForScyllaDBMonitoringComponents(*spec.Components, fldPath.Child("components"))...)
 	}

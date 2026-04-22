@@ -299,6 +299,7 @@ const (
 	ScyllaDBMonitoringTypePlatform ScyllaDBMonitoringType = "Platform"
 
 	// ScyllaDBMonitoringTypeSAAS defines ScyllaDB monitoring setup focused only on the ScyllaDB service.
+	// Deprecated: `SaaS` is deprecated and will be removed in future releases. Use `Platform` instead.
 	ScyllaDBMonitoringTypeSAAS ScyllaDBMonitoringType = "SaaS"
 )
 
@@ -314,14 +315,14 @@ type ScyllaDBMonitoringSpec struct {
 	Components *Components `json:"components"`
 
 	// type determines the platform type of the monitoring setup.
-	// +kubebuilder:default:="SaaS"
+	// +kubebuilder:default:="Platform"
 	// +optional
 	Type *ScyllaDBMonitoringType `json:"type,omitempty"`
 }
 
 func (smc *ScyllaDBMonitoringSpec) GetType() ScyllaDBMonitoringType {
 	if smc.Type == nil {
-		return ScyllaDBMonitoringTypeSAAS
+		return ScyllaDBMonitoringTypePlatform
 	}
 
 	return *smc.Type

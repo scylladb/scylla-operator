@@ -4049,7 +4049,7 @@
                 {
                     "class": "seconds_panel",
                     "datasource": "prometheus",
-                    "description": "S3 reads latency\n\nscylla_s3_total_read_latency_sec",
+                    "description": "S3 average reads latency\n\nscylla_s3_total_read_latency_sec",
                     "editable": true,
                     "error": false,
                     "fieldConfig": {
@@ -4124,7 +4124,7 @@
                             "step": 1
                         }
                     ],
-                    "title": "S3 reads latency",
+                    "title": "S3 Average reads latency",
                     "type": "timeseries"
                 }
             ],
@@ -8558,7 +8558,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "$topbottom([[filter_limit]], sum(casrlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\"}) by([[by]]) or on([[by]]) $func(rate(scylla_storage_proxy_coordinator_cas_read_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_cas_read_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]]) + 1))",
+                            "expr": "$topbottom([[filter_limit]], sum(casrlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\", scheduling_group_name=~\"$sg\"}) by([[by]]) or on([[by]]) $func(rate(scylla_storage_proxy_coordinator_cas_read_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_cas_read_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval])) by ([[by]]) + 1))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "refId": "A",
@@ -8642,9 +8642,9 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "$topbottom([[filter_limit]], casrlatencyp95{by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"})",
+                            "expr": "$topbottom([[filter_limit]], casrlatencyp95{by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", scheduling_group_name=~\"$sg\"})",
                             "intervalFactor": 1,
-                            "legendFormat": "",
+                            "legendFormat": "{{scheduling_group_name}} - {{dc}} {{instance}} {{shard}}",
                             "refId": "A",
                             "step": 10
                         }
@@ -8888,7 +8888,7 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "$topbottom([[filter_limit]], sum(caswlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\"}) by ([[by]]) or on([[by]]) ($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])/($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) + 1)))",
+                            "expr": "$topbottom([[filter_limit]], sum(caswlatencya{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", by=\"[[by]]\", scheduling_group_name=~\"$sg\"}) by ([[by]], scheduling_group_name) or on([[by]], scheduling_group_name) ($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_sum{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]], scheduling_group_name)/($func(rate(scylla_storage_proxy_coordinator_cas_write_latency_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]], scheduling_group_name) + 1)))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "refId": "A",
@@ -8972,9 +8972,9 @@
                     "span": 3,
                     "targets": [
                         {
-                            "expr": "$topbottom([[filter_limit]], caswlatencyp95{by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"})",
+                            "expr": "$topbottom([[filter_limit]], caswlatencyp95{by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\", scheduling_group_name=~\"$sg\"})",
                             "intervalFactor": 1,
-                            "legendFormat": "",
+                            "legendFormat": "{{scheduling_group_name}} - {{dc}} {{instance}} {{shard}}",
                             "refId": "A",
                             "step": 10
                         }
@@ -12634,7 +12634,7 @@
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.14.2</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.14.3</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -13059,8 +13059,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.14.2",
-                    "value": "4.14.2"
+                    "text": "4.14.3",
+                    "value": "4.14.3"
                 },
                 "error": null,
                 "hide": 2,
@@ -13071,11 +13071,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.14.2",
-                        "value": "4.14.2"
+                        "text": "4.14.3",
+                        "value": "4.14.3"
                     }
                 ],
-                "query": "4.14.2",
+                "query": "4.14.3",
                 "skipUrlSync": false,
                 "type": "custom"
             }

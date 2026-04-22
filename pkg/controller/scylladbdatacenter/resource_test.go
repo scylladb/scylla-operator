@@ -2751,6 +2751,93 @@ func TestMakeIngresses(t *testing.T) {
 	}
 }
 
+func TestIdentityService(t *testing.T) {
+	basicSDC := &scyllav1alpha1.ScyllaDBDatacenter{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "basic",
+			UID:  "the-uid",
+			Labels: map[string]string{
+				"default-sc-label": "foo",
+			},
+			Annotations: map[string]string{
+				"default-sc-annotation": "bar",
+			},
+		},
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			ClusterName:    "basic",
+			DatacenterName: pointer.Ptr("dc"),
+			ScyllaDB: scyllav1alpha1.ScyllaDB{
+				Image: "scylladb/scylla:latest",
+			},
+			RackTemplate: &scyllav1alpha1.RackTemplate{},
+			Racks: []scyllav1alpha1.RackSpec{
+				{
+					Name: "rack",
+				},
+			},
+		},
+	}
+
+	got, err := IdentityService(basicSDC)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "basic-client",
+			Labels: map[string]string{
+				"app":                          "scylla",
+				"app.kubernetes.io/name":       "scylla",
+				"app.kubernetes.io/managed-by": "scylla-operator",
+				"scylla/cluster":               "basic",
+				"default-sc-label":             "foo",
+				"scylla-operator.scylladb.com/scylla-service-type": "identity",
+			},
+			Annotations: map[string]string{
+				"default-sc-annotation": "bar",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "scylla.scylladb.com/v1alpha1",
+					Kind:               "ScyllaDBDatacenter",
+					Name:               "basic",
+					UID:                "the-uid",
+					Controller:         pointer.Ptr(true),
+					BlockOwnerDeletion: pointer.Ptr(true),
+				},
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceTypeClusterIP,
+			Selector: map[string]string{
+				"app":                                   "scylla",
+				"app.kubernetes.io/name":                "scylla",
+				"app.kubernetes.io/managed-by":          "scylla-operator",
+				"scylla/cluster":                        "basic",
+				"scylla-operator.scylladb.com/pod-type": string(naming.PodTypeScyllaDBNode),
+			},
+			Ports: []corev1.ServicePort{
+				{Name: "inter-node-communication", Port: 7000},
+				{Name: "ssl-inter-node-communication", Port: 7001},
+				{Name: "cql", Port: 9042},
+				{Name: "cql-ssl", Port: 9142},
+				{Name: "cql-shard-aware", Port: 19042},
+				{Name: "cql-ssl-shard-aware", Port: 19142},
+				{Name: "jmx-monitoring", Port: 7199},
+				{Name: "agent-api", Port: 10001},
+				{Name: "prometheus", Port: 9180},
+				{Name: "agent-prometheus", Port: 5090},
+				{Name: "node-exporter", Port: 9100},
+				{Name: "thrift", Port: 9160},
+			},
+		},
+	}
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("identity service differs from expected:\n%s", cmp.Diff(expected, got))
+	}
+}
+
 func TestMakeJobs(t *testing.T) {
 	basicScyllaDBDatacenter := func() *scyllav1alpha1.ScyllaDBDatacenter {
 		return &scyllav1alpha1.ScyllaDBDatacenter{

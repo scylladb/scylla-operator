@@ -350,7 +350,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.Serial, framework.NotSu
 		o.Expect(utils.IsScyllaClusterRolledOut(sc)).To(o.BeFalse())
 
 		framework.By("Verifying the containers are blocked and not ready")
-		podSelector := labels.Set(naming.ScyllaDBNodesPodsLabelsForScyllaCluster(sc)).AsSelector()
+		podSelector := labels.Set(naming.ScyllaDBNodePodsSelectorLabelsForScyllaCluster(sc)).AsSelector()
 		scPods, err := f.KubeClient().CoreV1().Pods(sc.Namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: podSelector.String(),
 		})

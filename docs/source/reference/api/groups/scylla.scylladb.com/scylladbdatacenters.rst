@@ -156,7 +156,7 @@ object
      - BroadcastOptions defines how ScyllaDB node publishes its IP address to other nodes and clients.
    * - :ref:`cql<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.exposeOptions.cql>`
      - object
-     - cql specifies expose options for CQL SSL backend.
+     - cql specifies expose options for CQL SSL backend. Deprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
    * - :ref:`nodeService<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.exposeOptions.nodeService>`
      - object
      - nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node.
@@ -302,7 +302,7 @@ object
 
 Description
 """""""""""
-cql specifies expose options for CQL SSL backend.
+cql specifies expose options for CQL SSL backend. Deprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 
 Type
 """"
@@ -318,7 +318,7 @@ object
      - Description
    * - :ref:`ingress<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.exposeOptions.cql.ingress>`
      - object
-     - ingress specifies an Ingress configuration options. If provided and enabled, Ingress objects routing to CQL SSL port are generated for each ScyllaDB node with the following options.
+     - ingress specifies an Ingress configuration options. If provided and enabled, Ingress objects routing to CQL SSL port are generated for each ScyllaDB node with the following options. Deprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 
 .. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.exposeOptions.cql.ingress:
 
@@ -327,7 +327,7 @@ object
 
 Description
 """""""""""
-ingress specifies an Ingress configuration options. If provided and enabled, Ingress objects routing to CQL SSL port are generated for each ScyllaDB node with the following options.
+ingress specifies an Ingress configuration options. If provided and enabled, Ingress objects routing to CQL SSL port are generated for each ScyllaDB node with the following options. Deprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 
 Type
 """"

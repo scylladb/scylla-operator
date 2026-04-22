@@ -3543,11 +3543,13 @@ spec:
                     description: |-
                       cql specifies expose options for CQL SSL backend.
                       EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                      Deprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
                     properties:
                       ingress:
                         description: |-
                           ingress is an Ingress configuration options.
                           EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+                          Deprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
                         properties:
                           annotations:
                             additionalProperties:

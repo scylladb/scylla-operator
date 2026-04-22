@@ -174,7 +174,7 @@ var _ = g.Describe("ScyllaCluster IPv6", framework.IPv6, func() {
 
 func validateIPv6SingleStack(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster, expectClusterIP bool) {
 	pods, err := f.KubeClient().CoreV1().Pods(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(naming.ScyllaDBNodesPodsLabelsForScyllaCluster(sc)).String(),
+		LabelSelector: labels.SelectorFromSet(naming.ScyllaDBNodePodsSelectorLabelsForScyllaCluster(sc)).String(),
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(pods.Items).ToNot(o.BeEmpty())
@@ -249,7 +249,7 @@ func validateDualStack(ctx context.Context, f *framework.Framework, sc *scyllav1
 	}
 
 	pods, err := f.KubeClient().CoreV1().Pods(sc.Namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(naming.ScyllaDBNodesPodsLabelsForScyllaCluster(sc)).String(),
+		LabelSelector: labels.SelectorFromSet(naming.ScyllaDBNodePodsSelectorLabelsForScyllaCluster(sc)).String(),
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 

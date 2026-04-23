@@ -10,8 +10,6 @@ import (
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
-
-	"github.com/grafana/grafana-openapi-client-go/models"
 )
 
 // New creates a new enterprise API client.
@@ -35,23 +33,16 @@ type ClientService interface {
 	CleanDataSourceCache(dataSourceUID string, opts ...ClientOption) (*CleanDataSourceCacheOK, error)
 	CleanDataSourceCacheWithParams(params *CleanDataSourceCacheParams, opts ...ClientOption) (*CleanDataSourceCacheOK, error)
 
-	DisableDataSourceCache(dataSourceUID string, opts ...ClientOption) (*DisableDataSourceCacheOK, error)
-	DisableDataSourceCacheWithParams(params *DisableDataSourceCacheParams, opts ...ClientOption) (*DisableDataSourceCacheOK, error)
+	DisableDataSourceCache(params *DisableDataSourceCacheParams, opts ...ClientOption) (*DisableDataSourceCacheOK, error)
 
-	EnableDataSourceCache(dataSourceUID string, opts ...ClientOption) (*EnableDataSourceCacheOK, error)
-	EnableDataSourceCacheWithParams(params *EnableDataSourceCacheParams, opts ...ClientOption) (*EnableDataSourceCacheOK, error)
+	EnableDataSourceCache(params *EnableDataSourceCacheParams, opts ...ClientOption) (*EnableDataSourceCacheOK, error)
 
-	GetDataSourceCacheConfig(dataSourceUID string, opts ...ClientOption) (*GetDataSourceCacheConfigOK, error)
-	GetDataSourceCacheConfigWithParams(params *GetDataSourceCacheConfigParams, opts ...ClientOption) (*GetDataSourceCacheConfigOK, error)
+	GetDataSourceCacheConfig(params *GetDataSourceCacheConfigParams, opts ...ClientOption) (*GetDataSourceCacheConfigOK, error)
 
 	GetTeamLBACRulesAPI(uid string, opts ...ClientOption) (*GetTeamLBACRulesAPIOK, error)
 	GetTeamLBACRulesAPIWithParams(params *GetTeamLBACRulesAPIParams, opts ...ClientOption) (*GetTeamLBACRulesAPIOK, error)
 
-	SearchResult(opts ...ClientOption) (*SearchResultOK, error)
-	SearchResultWithParams(params *SearchResultParams, opts ...ClientOption) (*SearchResultOK, error)
-
-	SetDataSourceCacheConfig(dataSourceUID string, body *models.CacheConfigSetter, opts ...ClientOption) (*SetDataSourceCacheConfigOK, error)
-	SetDataSourceCacheConfigWithParams(params *SetDataSourceCacheConfigParams, opts ...ClientOption) (*SetDataSourceCacheConfigOK, error)
+	SetDataSourceCacheConfig(params *SetDataSourceCacheConfigParams, opts ...ClientOption) (*SetDataSourceCacheConfigOK, error)
 
 	UpdateTeamLBACRulesAPI(params *UpdateTeamLBACRulesAPIParams, opts ...ClientOption) (*UpdateTeamLBACRulesAPIOK, error)
 
@@ -105,12 +96,8 @@ func (a *Client) CleanDataSourceCacheWithParams(params *CleanDataSourceCachePara
 /*
 DisableDataSourceCache disable cache for a single data source
 */
-func (a *Client) DisableDataSourceCache(dataSourceUID string, opts ...ClientOption) (*DisableDataSourceCacheOK, error) {
-	params := NewDisableDataSourceCacheParams().WithDataSourceUID(dataSourceUID)
-	return a.DisableDataSourceCacheWithParams(params, opts...)
-}
 
-func (a *Client) DisableDataSourceCacheWithParams(params *DisableDataSourceCacheParams, opts ...ClientOption) (*DisableDataSourceCacheOK, error) {
+func (a *Client) DisableDataSourceCache(params *DisableDataSourceCacheParams, opts ...ClientOption) (*DisableDataSourceCacheOK, error) {
 	if params == nil {
 		params = NewDisableDataSourceCacheParams()
 	}
@@ -149,12 +136,8 @@ func (a *Client) DisableDataSourceCacheWithParams(params *DisableDataSourceCache
 /*
 EnableDataSourceCache enable cache for a single data source
 */
-func (a *Client) EnableDataSourceCache(dataSourceUID string, opts ...ClientOption) (*EnableDataSourceCacheOK, error) {
-	params := NewEnableDataSourceCacheParams().WithDataSourceUID(dataSourceUID)
-	return a.EnableDataSourceCacheWithParams(params, opts...)
-}
 
-func (a *Client) EnableDataSourceCacheWithParams(params *EnableDataSourceCacheParams, opts ...ClientOption) (*EnableDataSourceCacheOK, error) {
+func (a *Client) EnableDataSourceCache(params *EnableDataSourceCacheParams, opts ...ClientOption) (*EnableDataSourceCacheOK, error) {
 	if params == nil {
 		params = NewEnableDataSourceCacheParams()
 	}
@@ -193,12 +176,8 @@ func (a *Client) EnableDataSourceCacheWithParams(params *EnableDataSourceCachePa
 /*
 GetDataSourceCacheConfig get cache config for a single data source
 */
-func (a *Client) GetDataSourceCacheConfig(dataSourceUID string, opts ...ClientOption) (*GetDataSourceCacheConfigOK, error) {
-	params := NewGetDataSourceCacheConfigParams().WithDataSourceUID(dataSourceUID)
-	return a.GetDataSourceCacheConfigWithParams(params, opts...)
-}
 
-func (a *Client) GetDataSourceCacheConfigWithParams(params *GetDataSourceCacheConfigParams, opts ...ClientOption) (*GetDataSourceCacheConfigOK, error) {
+func (a *Client) GetDataSourceCacheConfig(params *GetDataSourceCacheConfigParams, opts ...ClientOption) (*GetDataSourceCacheConfigOK, error) {
 	if params == nil {
 		params = NewGetDataSourceCacheConfigParams()
 	}
@@ -279,63 +258,10 @@ func (a *Client) GetTeamLBACRulesAPIWithParams(params *GetTeamLBACRulesAPIParams
 }
 
 /*
-SearchResult debugs permissions
-
-Returns the result of the search through access-control role assignments.
-
-You need to have a permission with action `teams.roles:read` on scope `teams:*`
-and a permission with action `users.roles:read` on scope `users:*`.
-*/
-func (a *Client) SearchResult(opts ...ClientOption) (*SearchResultOK, error) {
-	params := NewSearchResultParams()
-	return a.SearchResultWithParams(params, opts...)
-}
-
-func (a *Client) SearchResultWithParams(params *SearchResultParams, opts ...ClientOption) (*SearchResultOK, error) {
-	if params == nil {
-		params = NewSearchResultParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "searchResult",
-		Method:             "POST",
-		PathPattern:        "/access-control/assignments/search",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &SearchResultReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*SearchResultOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for searchResult: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
 SetDataSourceCacheConfig set cache config for a single data source
 */
-func (a *Client) SetDataSourceCacheConfig(dataSourceUID string, body *models.CacheConfigSetter, opts ...ClientOption) (*SetDataSourceCacheConfigOK, error) {
-	params := NewSetDataSourceCacheConfigParams().WithBody(body).WithDataSourceUID(dataSourceUID)
-	return a.SetDataSourceCacheConfigWithParams(params, opts...)
-}
 
-func (a *Client) SetDataSourceCacheConfigWithParams(params *SetDataSourceCacheConfigParams, opts ...ClientOption) (*SetDataSourceCacheConfigOK, error) {
+func (a *Client) SetDataSourceCacheConfig(params *SetDataSourceCacheConfigParams, opts ...ClientOption) (*SetDataSourceCacheConfigOK, error) {
 	if params == nil {
 		params = NewSetDataSourceCacheConfigParams()
 	}

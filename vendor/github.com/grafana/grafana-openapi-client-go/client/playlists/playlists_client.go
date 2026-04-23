@@ -54,6 +54,8 @@ type ClientService interface {
 
 /*
 CreatePlaylist creates playlist
+
+Please refer to [new API](?api=playlist.grafana.app-v1).
 */
 func (a *Client) CreatePlaylist(body *models.CreatePlaylistCommand, opts ...ClientOption) (*CreatePlaylistOK, error) {
 	params := NewCreatePlaylistParams().WithBody(body)
@@ -98,6 +100,8 @@ func (a *Client) CreatePlaylistWithParams(params *CreatePlaylistParams, opts ...
 
 /*
 DeletePlaylist deletes playlist
+
+Please refer to [new API](?api=playlist.grafana.app-v1).
 */
 func (a *Client) DeletePlaylist(uid string, opts ...ClientOption) (*DeletePlaylistOK, error) {
 	params := NewDeletePlaylistParams().WithUID(uid)
@@ -142,6 +146,8 @@ func (a *Client) DeletePlaylistWithParams(params *DeletePlaylistParams, opts ...
 
 /*
 GetPlaylist gets playlist
+
+Please refer to [new API](?api=playlist.grafana.app-v1).
 */
 func (a *Client) GetPlaylist(uid string, opts ...ClientOption) (*GetPlaylistOK, error) {
 	params := NewGetPlaylistParams().WithUID(uid)
@@ -186,6 +192,8 @@ func (a *Client) GetPlaylistWithParams(params *GetPlaylistParams, opts ...Client
 
 /*
 GetPlaylistItems gets playlist items
+
+Please refer to [new API](?api=playlist.grafana.app-v1) instead (items are included in the playlist spec).
 */
 func (a *Client) GetPlaylistItems(uid string, opts ...ClientOption) (*GetPlaylistItemsOK, error) {
 	params := NewGetPlaylistItemsParams().WithUID(uid)
@@ -230,6 +238,8 @@ func (a *Client) GetPlaylistItemsWithParams(params *GetPlaylistItemsParams, opts
 
 /*
 SearchPlaylists gets playlists
+
+Please refer to [new API](?api=playlist.grafana.app-v1).
 */
 
 func (a *Client) SearchPlaylists(params *SearchPlaylistsParams, opts ...ClientOption) (*SearchPlaylistsOK, error) {
@@ -270,6 +280,8 @@ func (a *Client) SearchPlaylists(params *SearchPlaylistsParams, opts ...ClientOp
 
 /*
 UpdatePlaylist updates playlist
+
+Please refer to [new API](?api=playlist.grafana.app-v1).
 */
 func (a *Client) UpdatePlaylist(uid string, body *models.UpdatePlaylistCommand, opts ...ClientOption) (*UpdatePlaylistOK, error) {
 	params := NewUpdatePlaylistParams().WithBody(body).WithUID(uid)

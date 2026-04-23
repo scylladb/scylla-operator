@@ -6,10 +6,14 @@ package provisioning
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/grafana/grafana-openapi-client-go/models"
 )
 
 // DeleteContactpointsReader is a Reader for the DeleteContactpoints structure.
@@ -26,6 +30,12 @@ func (o *DeleteContactpointsReader) ReadResponse(response runtime.ClientResponse
 			return nil, err
 		}
 		return result, nil
+	case 403:
+		result := NewDeleteContactpointsForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[DELETE /v1/provisioning/contact-points/{UID}] DeleteContactpoints", response, response.Code())
 	}
@@ -83,6 +93,76 @@ func (o *DeleteContactpointsAccepted) String() string {
 }
 
 func (o *DeleteContactpointsAccepted) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewDeleteContactpointsForbidden creates a DeleteContactpointsForbidden with default headers values
+func NewDeleteContactpointsForbidden() *DeleteContactpointsForbidden {
+	return &DeleteContactpointsForbidden{}
+}
+
+/*
+DeleteContactpointsForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type DeleteContactpointsForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this delete contactpoints forbidden response has a 2xx status code
+func (o *DeleteContactpointsForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this delete contactpoints forbidden response has a 3xx status code
+func (o *DeleteContactpointsForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete contactpoints forbidden response has a 4xx status code
+func (o *DeleteContactpointsForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete contactpoints forbidden response has a 5xx status code
+func (o *DeleteContactpointsForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete contactpoints forbidden response a status code equal to that given
+func (o *DeleteContactpointsForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the delete contactpoints forbidden response
+func (o *DeleteContactpointsForbidden) Code() int {
+	return 403
+}
+
+func (o *DeleteContactpointsForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/contact-points/{UID}][%d] deleteContactpointsForbidden %s", 403, payload)
+}
+
+func (o *DeleteContactpointsForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/contact-points/{UID}][%d] deleteContactpointsForbidden %s", 403, payload)
+}
+
+func (o *DeleteContactpointsForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *DeleteContactpointsForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }

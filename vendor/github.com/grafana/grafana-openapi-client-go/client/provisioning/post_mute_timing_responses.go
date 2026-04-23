@@ -36,6 +36,12 @@ func (o *PostMuteTimingReader) ReadResponse(response runtime.ClientResponse, con
 			return nil, err
 		}
 		return nil, result
+	case 403:
+		result := NewPostMuteTimingForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[POST /v1/provisioning/mute-timings] PostMuteTiming", response, response.Code())
 	}
@@ -172,6 +178,76 @@ func (o *PostMuteTimingBadRequest) GetPayload() *models.ValidationError {
 func (o *PostMuteTimingBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ValidationError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPostMuteTimingForbidden creates a PostMuteTimingForbidden with default headers values
+func NewPostMuteTimingForbidden() *PostMuteTimingForbidden {
+	return &PostMuteTimingForbidden{}
+}
+
+/*
+PostMuteTimingForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type PostMuteTimingForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this post mute timing forbidden response has a 2xx status code
+func (o *PostMuteTimingForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this post mute timing forbidden response has a 3xx status code
+func (o *PostMuteTimingForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this post mute timing forbidden response has a 4xx status code
+func (o *PostMuteTimingForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this post mute timing forbidden response has a 5xx status code
+func (o *PostMuteTimingForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this post mute timing forbidden response a status code equal to that given
+func (o *PostMuteTimingForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the post mute timing forbidden response
+func (o *PostMuteTimingForbidden) Code() int {
+	return 403
+}
+
+func (o *PostMuteTimingForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/mute-timings][%d] postMuteTimingForbidden %s", 403, payload)
+}
+
+func (o *PostMuteTimingForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/mute-timings][%d] postMuteTimingForbidden %s", 403, payload)
+}
+
+func (o *PostMuteTimingForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *PostMuteTimingForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

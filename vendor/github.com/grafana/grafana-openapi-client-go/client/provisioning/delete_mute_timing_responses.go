@@ -30,6 +30,12 @@ func (o *DeleteMuteTimingReader) ReadResponse(response runtime.ClientResponse, c
 			return nil, err
 		}
 		return result, nil
+	case 403:
+		result := NewDeleteMuteTimingForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 409:
 		result := NewDeleteMuteTimingConflict()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -93,6 +99,76 @@ func (o *DeleteMuteTimingNoContent) String() string {
 }
 
 func (o *DeleteMuteTimingNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewDeleteMuteTimingForbidden creates a DeleteMuteTimingForbidden with default headers values
+func NewDeleteMuteTimingForbidden() *DeleteMuteTimingForbidden {
+	return &DeleteMuteTimingForbidden{}
+}
+
+/*
+DeleteMuteTimingForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type DeleteMuteTimingForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this delete mute timing forbidden response has a 2xx status code
+func (o *DeleteMuteTimingForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this delete mute timing forbidden response has a 3xx status code
+func (o *DeleteMuteTimingForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete mute timing forbidden response has a 4xx status code
+func (o *DeleteMuteTimingForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete mute timing forbidden response has a 5xx status code
+func (o *DeleteMuteTimingForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete mute timing forbidden response a status code equal to that given
+func (o *DeleteMuteTimingForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the delete mute timing forbidden response
+func (o *DeleteMuteTimingForbidden) Code() int {
+	return 403
+}
+
+func (o *DeleteMuteTimingForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/mute-timings/{name}][%d] deleteMuteTimingForbidden %s", 403, payload)
+}
+
+func (o *DeleteMuteTimingForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/mute-timings/{name}][%d] deleteMuteTimingForbidden %s", 403, payload)
+}
+
+func (o *DeleteMuteTimingForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *DeleteMuteTimingForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }

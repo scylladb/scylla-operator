@@ -35,14 +35,8 @@ type ClientService interface {
 	AddDataSource(body *models.AddDataSourceCommand, opts ...ClientOption) (*AddDataSourceOK, error)
 	AddDataSourceWithParams(params *AddDataSourceParams, opts ...ClientOption) (*AddDataSourceOK, error)
 
-	CallDatasourceResourceByID(id string, datasourceProxyRoute string, opts ...ClientOption) (*CallDatasourceResourceByIDOK, error)
-	CallDatasourceResourceByIDWithParams(params *CallDatasourceResourceByIDParams, opts ...ClientOption) (*CallDatasourceResourceByIDOK, error)
-
 	CallDatasourceResourceWithUID(uid string, datasourceProxyRoute string, opts ...ClientOption) (*CallDatasourceResourceWithUIDOK, error)
 	CallDatasourceResourceWithUIDWithParams(params *CallDatasourceResourceWithUIDParams, opts ...ClientOption) (*CallDatasourceResourceWithUIDOK, error)
-
-	CheckDatasourceHealthByID(id string, opts ...ClientOption) (*CheckDatasourceHealthByIDOK, error)
-	CheckDatasourceHealthByIDWithParams(params *CheckDatasourceHealthByIDParams, opts ...ClientOption) (*CheckDatasourceHealthByIDOK, error)
 
 	CheckDatasourceHealthWithUID(uid string, opts ...ClientOption) (*CheckDatasourceHealthWithUIDOK, error)
 	CheckDatasourceHealthWithUIDWithParams(params *CheckDatasourceHealthWithUIDParams, opts ...ClientOption) (*CheckDatasourceHealthWithUIDOK, error)
@@ -53,24 +47,13 @@ type ClientService interface {
 	DatasourceProxyDELETEByUIDcalls(uid string, datasourceProxyRoute string, opts ...ClientOption) (*DatasourceProxyDELETEByUIDcallsAccepted, error)
 	DatasourceProxyDELETEByUIDcallsWithParams(params *DatasourceProxyDELETEByUIDcallsParams, opts ...ClientOption) (*DatasourceProxyDELETEByUIDcallsAccepted, error)
 
-	DatasourceProxyDELETEcalls(id string, datasourceProxyRoute string, opts ...ClientOption) (*DatasourceProxyDELETEcallsAccepted, error)
-	DatasourceProxyDELETEcallsWithParams(params *DatasourceProxyDELETEcallsParams, opts ...ClientOption) (*DatasourceProxyDELETEcallsAccepted, error)
-
 	DatasourceProxyGETByUIDcalls(uid string, datasourceProxyRoute string, opts ...ClientOption) (*DatasourceProxyGETByUIDcallsOK, error)
 	DatasourceProxyGETByUIDcallsWithParams(params *DatasourceProxyGETByUIDcallsParams, opts ...ClientOption) (*DatasourceProxyGETByUIDcallsOK, error)
 
-	DatasourceProxyGETcalls(id string, datasourceProxyRoute string, opts ...ClientOption) (*DatasourceProxyGETcallsOK, error)
-	DatasourceProxyGETcallsWithParams(params *DatasourceProxyGETcallsParams, opts ...ClientOption) (*DatasourceProxyGETcallsOK, error)
-
 	DatasourceProxyPOSTByUIDcalls(params *DatasourceProxyPOSTByUIDcallsParams, opts ...ClientOption) (*DatasourceProxyPOSTByUIDcallsCreated, *DatasourceProxyPOSTByUIDcallsAccepted, error)
-
-	DatasourceProxyPOSTcalls(params *DatasourceProxyPOSTcallsParams, opts ...ClientOption) (*DatasourceProxyPOSTcallsCreated, *DatasourceProxyPOSTcallsAccepted, error)
 
 	DeleteCorrelation(uid string, correlationUID string, opts ...ClientOption) (*DeleteCorrelationOK, error)
 	DeleteCorrelationWithParams(params *DeleteCorrelationParams, opts ...ClientOption) (*DeleteCorrelationOK, error)
-
-	DeleteDataSourceByID(id string, opts ...ClientOption) (*DeleteDataSourceByIDOK, error)
-	DeleteDataSourceByIDWithParams(params *DeleteDataSourceByIDParams, opts ...ClientOption) (*DeleteDataSourceByIDOK, error)
 
 	DeleteDataSourceByName(name string, opts ...ClientOption) (*DeleteDataSourceByNameOK, error)
 	DeleteDataSourceByNameWithParams(params *DeleteDataSourceByNameParams, opts ...ClientOption) (*DeleteDataSourceByNameOK, error)
@@ -85,9 +68,6 @@ type ClientService interface {
 
 	GetCorrelationsBySourceUID(sourceUID string, opts ...ClientOption) (*GetCorrelationsBySourceUIDOK, error)
 	GetCorrelationsBySourceUIDWithParams(params *GetCorrelationsBySourceUIDParams, opts ...ClientOption) (*GetCorrelationsBySourceUIDOK, error)
-
-	GetDataSourceByID(id string, opts ...ClientOption) (*GetDataSourceByIDOK, error)
-	GetDataSourceByIDWithParams(params *GetDataSourceByIDParams, opts ...ClientOption) (*GetDataSourceByIDOK, error)
 
 	GetDataSourceByName(name string, opts ...ClientOption) (*GetDataSourceByNameOK, error)
 	GetDataSourceByNameWithParams(params *GetDataSourceByNameParams, opts ...ClientOption) (*GetDataSourceByNameOK, error)
@@ -105,9 +85,6 @@ type ClientService interface {
 	QueryMetricsWithExpressionsWithParams(params *QueryMetricsWithExpressionsParams, opts ...ClientOption) (*QueryMetricsWithExpressionsOK, *QueryMetricsWithExpressionsMultiStatus, error)
 
 	UpdateCorrelation(params *UpdateCorrelationParams, opts ...ClientOption) (*UpdateCorrelationOK, error)
-
-	UpdateDataSourceByID(id string, body *models.UpdateDataSourceCommand, opts ...ClientOption) (*UpdateDataSourceByIDOK, error)
-	UpdateDataSourceByIDWithParams(params *UpdateDataSourceByIDParams, opts ...ClientOption) (*UpdateDataSourceByIDOK, error)
 
 	UpdateDataSourceByUID(uid string, body *models.UpdateDataSourceCommand, opts ...ClientOption) (*UpdateDataSourceByUIDOK, error)
 	UpdateDataSourceByUIDWithParams(params *UpdateDataSourceByUIDParams, opts ...ClientOption) (*UpdateDataSourceByUIDOK, error)
@@ -167,52 +144,6 @@ func (a *Client) AddDataSourceWithParams(params *AddDataSourceParams, opts ...Cl
 }
 
 /*
-CallDatasourceResourceByID fetches data source resources by Id
-
-Please refer to [updated API](#/datasources/callDatasourceResourceWithUID) instead
-*/
-func (a *Client) CallDatasourceResourceByID(id string, datasourceProxyRoute string, opts ...ClientOption) (*CallDatasourceResourceByIDOK, error) {
-	params := NewCallDatasourceResourceByIDParams().WithDatasourceProxyRoute(datasourceProxyRoute).WithID(id)
-	return a.CallDatasourceResourceByIDWithParams(params, opts...)
-}
-
-func (a *Client) CallDatasourceResourceByIDWithParams(params *CallDatasourceResourceByIDParams, opts ...ClientOption) (*CallDatasourceResourceByIDOK, error) {
-	if params == nil {
-		params = NewCallDatasourceResourceByIDParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "callDatasourceResourceByID",
-		Method:             "GET",
-		PathPattern:        "/datasources/{id}/resources/{datasource_proxy_route}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &CallDatasourceResourceByIDReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*CallDatasourceResourceByIDOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for callDatasourceResourceByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
 CallDatasourceResourceWithUID fetches data source resources
 */
 func (a *Client) CallDatasourceResourceWithUID(uid string, datasourceProxyRoute string, opts ...ClientOption) (*CallDatasourceResourceWithUIDOK, error) {
@@ -253,52 +184,6 @@ func (a *Client) CallDatasourceResourceWithUIDWithParams(params *CallDatasourceR
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for callDatasourceResourceWithUID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-CheckDatasourceHealthByID sends a health check request to the plugin datasource identified by the ID
-
-Please refer to [updated API](#/datasources/checkDatasourceHealthWithUID) instead
-*/
-func (a *Client) CheckDatasourceHealthByID(id string, opts ...ClientOption) (*CheckDatasourceHealthByIDOK, error) {
-	params := NewCheckDatasourceHealthByIDParams().WithID(id)
-	return a.CheckDatasourceHealthByIDWithParams(params, opts...)
-}
-
-func (a *Client) CheckDatasourceHealthByIDWithParams(params *CheckDatasourceHealthByIDParams, opts ...ClientOption) (*CheckDatasourceHealthByIDOK, error) {
-	if params == nil {
-		params = NewCheckDatasourceHealthByIDParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "checkDatasourceHealthByID",
-		Method:             "GET",
-		PathPattern:        "/datasources/{id}/health",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &CheckDatasourceHealthByIDReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*CheckDatasourceHealthByIDOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for checkDatasourceHealthByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -437,54 +322,6 @@ func (a *Client) DatasourceProxyDELETEByUIDcallsWithParams(params *DatasourcePro
 }
 
 /*
-DatasourceProxyDELETEcalls data source proxy d e l e t e calls
-
-Proxies all calls to the actual data source.
-
-Please refer to [updated API](#/datasources/datasourceProxyDELETEByUIDcalls) instead
-*/
-func (a *Client) DatasourceProxyDELETEcalls(id string, datasourceProxyRoute string, opts ...ClientOption) (*DatasourceProxyDELETEcallsAccepted, error) {
-	params := NewDatasourceProxyDELETEcallsParams().WithDatasourceProxyRoute(datasourceProxyRoute).WithID(id)
-	return a.DatasourceProxyDELETEcallsWithParams(params, opts...)
-}
-
-func (a *Client) DatasourceProxyDELETEcallsWithParams(params *DatasourceProxyDELETEcallsParams, opts ...ClientOption) (*DatasourceProxyDELETEcallsAccepted, error) {
-	if params == nil {
-		params = NewDatasourceProxyDELETEcallsParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "datasourceProxyDELETEcalls",
-		Method:             "DELETE",
-		PathPattern:        "/datasources/proxy/{id}/{datasource_proxy_route}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &DatasourceProxyDELETEcallsReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*DatasourceProxyDELETEcallsAccepted)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for datasourceProxyDELETEcalls: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
 DatasourceProxyGETByUIDcalls data source proxy g e t calls
 
 Proxies all calls to the actual data source.
@@ -531,54 +368,6 @@ func (a *Client) DatasourceProxyGETByUIDcallsWithParams(params *DatasourceProxyG
 }
 
 /*
-DatasourceProxyGETcalls data source proxy g e t calls
-
-Proxies all calls to the actual data source.
-
-Please refer to [updated API](#/datasources/datasourceProxyGETByUIDcalls) instead
-*/
-func (a *Client) DatasourceProxyGETcalls(id string, datasourceProxyRoute string, opts ...ClientOption) (*DatasourceProxyGETcallsOK, error) {
-	params := NewDatasourceProxyGETcallsParams().WithDatasourceProxyRoute(datasourceProxyRoute).WithID(id)
-	return a.DatasourceProxyGETcallsWithParams(params, opts...)
-}
-
-func (a *Client) DatasourceProxyGETcallsWithParams(params *DatasourceProxyGETcallsParams, opts ...ClientOption) (*DatasourceProxyGETcallsOK, error) {
-	if params == nil {
-		params = NewDatasourceProxyGETcallsParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "datasourceProxyGETcalls",
-		Method:             "GET",
-		PathPattern:        "/datasources/proxy/{id}/{datasource_proxy_route}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &DatasourceProxyGETcallsReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*DatasourceProxyGETcallsOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for datasourceProxyGETcalls: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
 DatasourceProxyPOSTByUIDcalls data source proxy p o s t calls
 
 Proxies all calls to the actual data source. The data source should support POST methods for the specific path and role as defined
@@ -614,51 +403,6 @@ func (a *Client) DatasourceProxyPOSTByUIDcalls(params *DatasourceProxyPOSTByUIDc
 	case *DatasourceProxyPOSTByUIDcallsCreated:
 		return value, nil, nil
 	case *DatasourceProxyPOSTByUIDcallsAccepted:
-		return nil, value, nil
-	}
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for datasources: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-DatasourceProxyPOSTcalls data source proxy p o s t calls
-
-Proxies all calls to the actual data source. The data source should support POST methods for the specific path and role as defined
-
-Please refer to [updated API](#/datasources/datasourceProxyPOSTByUIDcalls) instead
-*/
-
-func (a *Client) DatasourceProxyPOSTcalls(params *DatasourceProxyPOSTcallsParams, opts ...ClientOption) (*DatasourceProxyPOSTcallsCreated, *DatasourceProxyPOSTcallsAccepted, error) {
-	if params == nil {
-		params = NewDatasourceProxyPOSTcallsParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "datasourceProxyPOSTcalls",
-		Method:             "POST",
-		PathPattern:        "/datasources/proxy/{id}/{datasource_proxy_route}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &DatasourceProxyPOSTcallsReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, nil, err
-	}
-	switch value := result.(type) {
-	case *DatasourceProxyPOSTcallsCreated:
-		return value, nil, nil
-	case *DatasourceProxyPOSTcallsAccepted:
 		return nil, value, nil
 	}
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
@@ -711,56 +455,7 @@ func (a *Client) DeleteCorrelationWithParams(params *DeleteCorrelationParams, op
 }
 
 /*
-DeleteDataSourceByID deletes an existing data source by id
-
-If you are running Grafana Enterprise and have Fine-grained access control enabled
-you need to have a permission with action: `datasources:delete` and scopes: `datasources:*`, `datasources:id:*` and `datasources:id:1` (single data source).
-
-Please refer to [updated API](#/datasources/deleteDataSourceByUID) instead
-*/
-func (a *Client) DeleteDataSourceByID(id string, opts ...ClientOption) (*DeleteDataSourceByIDOK, error) {
-	params := NewDeleteDataSourceByIDParams().WithID(id)
-	return a.DeleteDataSourceByIDWithParams(params, opts...)
-}
-
-func (a *Client) DeleteDataSourceByIDWithParams(params *DeleteDataSourceByIDParams, opts ...ClientOption) (*DeleteDataSourceByIDOK, error) {
-	if params == nil {
-		params = NewDeleteDataSourceByIDParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "deleteDataSourceByID",
-		Method:             "DELETE",
-		PathPattern:        "/datasources/{id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &DeleteDataSourceByIDReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*DeleteDataSourceByIDOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for deleteDataSourceByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-DeleteDataSourceByName deletes an existing data source by name
+DeleteDataSourceByName deletes an existing data source by name this function will be removed in the future
 
 If you are running Grafana Enterprise and have Fine-grained access control enabled
 you need to have a permission with action: `datasources:delete` and scopes: `datasources:*`, `datasources:name:*` and `datasources:name:test_datasource` (single data source).
@@ -982,56 +677,7 @@ func (a *Client) GetCorrelationsBySourceUIDWithParams(params *GetCorrelationsByS
 }
 
 /*
-GetDataSourceByID gets a single data source by Id
-
-If you are running Grafana Enterprise and have Fine-grained access control enabled
-you need to have a permission with action: `datasources:read` and scopes: `datasources:*`, `datasources:id:*` and `datasources:id:1` (single data source).
-
-Please refer to [updated API](#/datasources/getDataSourceByUID) instead
-*/
-func (a *Client) GetDataSourceByID(id string, opts ...ClientOption) (*GetDataSourceByIDOK, error) {
-	params := NewGetDataSourceByIDParams().WithID(id)
-	return a.GetDataSourceByIDWithParams(params, opts...)
-}
-
-func (a *Client) GetDataSourceByIDWithParams(params *GetDataSourceByIDParams, opts ...ClientOption) (*GetDataSourceByIDOK, error) {
-	if params == nil {
-		params = NewGetDataSourceByIDParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "getDataSourceByID",
-		Method:             "GET",
-		PathPattern:        "/datasources/{id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &GetDataSourceByIDReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*GetDataSourceByIDOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for getDataSourceByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-GetDataSourceByName gets a single data source by name
+GetDataSourceByName gets a single data source by name this function will be removed in the future
 
 If you are running Grafana Enterprise and have Fine-grained access control enabled
 you need to have a permission with action: `datasources:read` and scopes: `datasources:*`, `datasources:name:*` and `datasources:name:test_datasource` (single data source).
@@ -1125,7 +771,7 @@ func (a *Client) GetDataSourceByUIDWithParams(params *GetDataSourceByUIDParams, 
 }
 
 /*
-GetDataSourceIDByName gets data source Id by name
+GetDataSourceIDByName gets data source Id by name this function will be removed in the future
 
 If you are running Grafana Enterprise and have Fine-grained access control enabled
 you need to have a permission with action: `datasources:read` and scopes: `datasources:*`, `datasources:name:*` and `datasources:name:test_datasource` (single data source).
@@ -1303,59 +949,6 @@ func (a *Client) UpdateCorrelation(params *UpdateCorrelationParams, opts ...Clie
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for updateCorrelation: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-UpdateDataSourceByID updates an existing data source by its sequential ID
-
-Similar to creating a data source, `password` and `basicAuthPassword` should be defined under
-secureJsonData in order to be stored securely as an encrypted blob in the database. Then, the
-encrypted fields are listed under secureJsonFields section in the response.
-
-If you are running Grafana Enterprise and have Fine-grained access control enabled
-you need to have a permission with action: `datasources:write` and scopes: `datasources:*`, `datasources:id:*` and `datasources:id:1` (single data source).
-
-Please refer to [updated API](#/datasources/updateDataSourceByUID) instead
-*/
-func (a *Client) UpdateDataSourceByID(id string, body *models.UpdateDataSourceCommand, opts ...ClientOption) (*UpdateDataSourceByIDOK, error) {
-	params := NewUpdateDataSourceByIDParams().WithBody(body).WithID(id)
-	return a.UpdateDataSourceByIDWithParams(params, opts...)
-}
-
-func (a *Client) UpdateDataSourceByIDWithParams(params *UpdateDataSourceByIDParams, opts ...ClientOption) (*UpdateDataSourceByIDOK, error) {
-	if params == nil {
-		params = NewUpdateDataSourceByIDParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "updateDataSourceByID",
-		Method:             "PUT",
-		PathPattern:        "/datasources/{id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &UpdateDataSourceByIDReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*UpdateDataSourceByIDOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for updateDataSourceByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

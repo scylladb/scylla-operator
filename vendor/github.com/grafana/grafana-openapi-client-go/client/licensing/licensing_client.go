@@ -50,7 +50,7 @@ type ClientService interface {
 	PostLicenseToken(body *models.DeleteTokenCommand, opts ...ClientOption) (*PostLicenseTokenOK, error)
 	PostLicenseTokenWithParams(params *PostLicenseTokenParams, opts ...ClientOption) (*PostLicenseTokenOK, error)
 
-	PostRenewLicenseToken(body interface{}, opts ...ClientOption) (*PostRenewLicenseTokenOK, error)
+	PostRenewLicenseToken(body any, opts ...ClientOption) (*PostRenewLicenseTokenOK, error)
 	PostRenewLicenseTokenWithParams(params *PostRenewLicenseTokenParams, opts ...ClientOption) (*PostRenewLicenseTokenOK, error)
 
 	RefreshLicenseStats(opts ...ClientOption) (*RefreshLicenseStatsOK, error)
@@ -328,7 +328,7 @@ Manually ask license issuer for a new token. Available in Grafana Enterprise v7.
 
 You need to have a permission with action `licensing:write`.
 */
-func (a *Client) PostRenewLicenseToken(body interface{}, opts ...ClientOption) (*PostRenewLicenseTokenOK, error) {
+func (a *Client) PostRenewLicenseToken(body any, opts ...ClientOption) (*PostRenewLicenseTokenOK, error) {
 	params := NewPostRenewLicenseTokenParams().WithBody(body)
 	return a.PostRenewLicenseTokenWithParams(params, opts...)
 }

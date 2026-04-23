@@ -33,14 +33,17 @@ type ClientService interface {
 	GetLDAPStatus(opts ...ClientOption) (*GetLDAPStatusOK, error)
 	GetLDAPStatusWithParams(params *GetLDAPStatusParams, opts ...ClientOption) (*GetLDAPStatusOK, error)
 
+	GetSyncStatus(opts ...ClientOption) (*GetSyncStatusOK, error)
+	GetSyncStatusWithParams(params *GetSyncStatusParams, opts ...ClientOption) (*GetSyncStatusOK, error)
+
 	GetUserFromLDAP(userName string, opts ...ClientOption) (*GetUserFromLDAPOK, error)
 	GetUserFromLDAPWithParams(params *GetUserFromLDAPParams, opts ...ClientOption) (*GetUserFromLDAPOK, error)
 
 	PostSyncUserWithLDAP(userID int64, opts ...ClientOption) (*PostSyncUserWithLDAPOK, error)
 	PostSyncUserWithLDAPWithParams(params *PostSyncUserWithLDAPParams, opts ...ClientOption) (*PostSyncUserWithLDAPOK, error)
 
-	ReloadLDAPCfg(opts ...ClientOption) (*ReloadLDAPCfgOK, error)
-	ReloadLDAPCfgWithParams(params *ReloadLDAPCfgParams, opts ...ClientOption) (*ReloadLDAPCfgOK, error)
+	ReloadLDAPCfg(opts ...ClientOption) error
+	ReloadLDAPCfgWithParams(params *ReloadLDAPCfgParams, opts ...ClientOption) error
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -88,6 +91,52 @@ func (a *Client) GetLDAPStatusWithParams(params *GetLDAPStatusParams, opts ...Cl
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getLDAPStatus: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetSyncStatus returns the current state of the LDAP background sync integration
+
+You need to have a permission with action `ldap.status:read`.
+*/
+func (a *Client) GetSyncStatus(opts ...ClientOption) (*GetSyncStatusOK, error) {
+	params := NewGetSyncStatusParams()
+	return a.GetSyncStatusWithParams(params, opts...)
+}
+
+func (a *Client) GetSyncStatusWithParams(params *GetSyncStatusParams, opts ...ClientOption) (*GetSyncStatusOK, error) {
+	if params == nil {
+		params = NewGetSyncStatusParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getSyncStatus",
+		Method:             "GET",
+		PathPattern:        "/admin/ldap-sync-status",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &GetSyncStatusReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetSyncStatusOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getSyncStatus: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -188,12 +237,12 @@ ReloadLDAPCfg reloads the LDAP configuration
 
 If you are running Grafana Enterprise and have Fine-grained access control enabled, you need to have a permission with action `ldap.config:reload`.
 */
-func (a *Client) ReloadLDAPCfg(opts ...ClientOption) (*ReloadLDAPCfgOK, error) {
+func (a *Client) ReloadLDAPCfg(opts ...ClientOption) error {
 	params := NewReloadLDAPCfgParams()
 	return a.ReloadLDAPCfgWithParams(params, opts...)
 }
 
-func (a *Client) ReloadLDAPCfgWithParams(params *ReloadLDAPCfgParams, opts ...ClientOption) (*ReloadLDAPCfgOK, error) {
+func (a *Client) ReloadLDAPCfgWithParams(params *ReloadLDAPCfgParams, opts ...ClientOption) error {
 	if params == nil {
 		params = NewReloadLDAPCfgParams()
 	}
@@ -215,18 +264,11 @@ func (a *Client) ReloadLDAPCfgWithParams(params *ReloadLDAPCfgParams, opts ...Cl
 		}
 	}
 
-	result, err := a.transport.Submit(op)
+	_, err := a.transport.Submit(op)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	success, ok := result.(*ReloadLDAPCfgOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for reloadLDAPCfg: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
+	return nil
 }
 
 // SetTransport changes the transport on the client

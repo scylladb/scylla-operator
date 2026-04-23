@@ -30,6 +30,12 @@ func (o *GetTemplatesReader) ReadResponse(response runtime.ClientResponse, consu
 			return nil, err
 		}
 		return result, nil
+	case 403:
+		result := NewGetTemplatesForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[GET /v1/provisioning/templates] GetTemplates", response, response.Code())
 	}
@@ -97,6 +103,76 @@ func (o *GetTemplatesOK) readResponse(response runtime.ClientResponse, consumer 
 
 	// response payload
 	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewGetTemplatesForbidden creates a GetTemplatesForbidden with default headers values
+func NewGetTemplatesForbidden() *GetTemplatesForbidden {
+	return &GetTemplatesForbidden{}
+}
+
+/*
+GetTemplatesForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type GetTemplatesForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this get templates forbidden response has a 2xx status code
+func (o *GetTemplatesForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this get templates forbidden response has a 3xx status code
+func (o *GetTemplatesForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this get templates forbidden response has a 4xx status code
+func (o *GetTemplatesForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this get templates forbidden response has a 5xx status code
+func (o *GetTemplatesForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this get templates forbidden response a status code equal to that given
+func (o *GetTemplatesForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the get templates forbidden response
+func (o *GetTemplatesForbidden) Code() int {
+	return 403
+}
+
+func (o *GetTemplatesForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/templates][%d] getTemplatesForbidden %s", 403, payload)
+}
+
+func (o *GetTemplatesForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/templates][%d] getTemplatesForbidden %s", 403, payload)
+}
+
+func (o *GetTemplatesForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *GetTemplatesForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
 		return err
 	}
 

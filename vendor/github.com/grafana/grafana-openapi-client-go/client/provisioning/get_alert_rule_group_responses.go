@@ -30,6 +30,12 @@ func (o *GetAlertRuleGroupReader) ReadResponse(response runtime.ClientResponse, 
 			return nil, err
 		}
 		return result, nil
+	case 403:
+		result := NewGetAlertRuleGroupForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 404:
 		result := NewGetAlertRuleGroupNotFound()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -102,6 +108,76 @@ func (o *GetAlertRuleGroupOK) GetPayload() *models.AlertRuleGroup {
 func (o *GetAlertRuleGroupOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.AlertRuleGroup)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewGetAlertRuleGroupForbidden creates a GetAlertRuleGroupForbidden with default headers values
+func NewGetAlertRuleGroupForbidden() *GetAlertRuleGroupForbidden {
+	return &GetAlertRuleGroupForbidden{}
+}
+
+/*
+GetAlertRuleGroupForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type GetAlertRuleGroupForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this get alert rule group forbidden response has a 2xx status code
+func (o *GetAlertRuleGroupForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this get alert rule group forbidden response has a 3xx status code
+func (o *GetAlertRuleGroupForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this get alert rule group forbidden response has a 4xx status code
+func (o *GetAlertRuleGroupForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this get alert rule group forbidden response has a 5xx status code
+func (o *GetAlertRuleGroupForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this get alert rule group forbidden response a status code equal to that given
+func (o *GetAlertRuleGroupForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the get alert rule group forbidden response
+func (o *GetAlertRuleGroupForbidden) Code() int {
+	return 403
+}
+
+func (o *GetAlertRuleGroupForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/folder/{FolderUID}/rule-groups/{Group}][%d] getAlertRuleGroupForbidden %s", 403, payload)
+}
+
+func (o *GetAlertRuleGroupForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/folder/{FolderUID}/rule-groups/{Group}][%d] getAlertRuleGroupForbidden %s", 403, payload)
+}
+
+func (o *GetAlertRuleGroupForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *GetAlertRuleGroupForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

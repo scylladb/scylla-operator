@@ -36,6 +36,12 @@ func (o *PutPolicyTreeReader) ReadResponse(response runtime.ClientResponse, cons
 			return nil, err
 		}
 		return nil, result
+	case 403:
+		result := NewPutPolicyTreeForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[PUT /v1/provisioning/policies] PutPolicyTree", response, response.Code())
 	}
@@ -170,6 +176,76 @@ func (o *PutPolicyTreeBadRequest) GetPayload() *models.ValidationError {
 func (o *PutPolicyTreeBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ValidationError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPutPolicyTreeForbidden creates a PutPolicyTreeForbidden with default headers values
+func NewPutPolicyTreeForbidden() *PutPolicyTreeForbidden {
+	return &PutPolicyTreeForbidden{}
+}
+
+/*
+PutPolicyTreeForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type PutPolicyTreeForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this put policy tree forbidden response has a 2xx status code
+func (o *PutPolicyTreeForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this put policy tree forbidden response has a 3xx status code
+func (o *PutPolicyTreeForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this put policy tree forbidden response has a 4xx status code
+func (o *PutPolicyTreeForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this put policy tree forbidden response has a 5xx status code
+func (o *PutPolicyTreeForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this put policy tree forbidden response a status code equal to that given
+func (o *PutPolicyTreeForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the put policy tree forbidden response
+func (o *PutPolicyTreeForbidden) Code() int {
+	return 403
+}
+
+func (o *PutPolicyTreeForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/policies][%d] putPolicyTreeForbidden %s", 403, payload)
+}
+
+func (o *PutPolicyTreeForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/policies][%d] putPolicyTreeForbidden %s", 403, payload)
+}
+
+func (o *PutPolicyTreeForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *PutPolicyTreeForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

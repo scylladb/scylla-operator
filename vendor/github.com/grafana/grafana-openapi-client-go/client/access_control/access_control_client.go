@@ -60,14 +60,12 @@ type ClientService interface {
 
 	ListRoles(params *ListRolesParams, opts ...ClientOption) (*ListRolesOK, error)
 
-	ListTeamRoles(teamID int64, opts ...ClientOption) (*ListTeamRolesOK, error)
-	ListTeamRolesWithParams(params *ListTeamRolesParams, opts ...ClientOption) (*ListTeamRolesOK, error)
+	ListTeamRoles(params *ListTeamRolesParams, opts ...ClientOption) (*ListTeamRolesOK, error)
 
 	ListTeamsRoles(body *models.RolesSearchQuery, opts ...ClientOption) (*ListTeamsRolesOK, error)
 	ListTeamsRolesWithParams(params *ListTeamsRolesParams, opts ...ClientOption) (*ListTeamsRolesOK, error)
 
-	ListUserRoles(userID int64, opts ...ClientOption) (*ListUserRolesOK, error)
-	ListUserRolesWithParams(params *ListUserRolesParams, opts ...ClientOption) (*ListUserRolesOK, error)
+	ListUserRoles(params *ListUserRolesParams, opts ...ClientOption) (*ListUserRolesOK, error)
 
 	ListUsersRoles(body *models.RolesSearchQuery, opts ...ClientOption) (*ListUsersRolesOK, error)
 	ListUsersRolesWithParams(params *ListUsersRolesParams, opts ...ClientOption) (*ListUsersRolesOK, error)
@@ -88,11 +86,9 @@ type ClientService interface {
 	SetRoleAssignments(roleUID string, body *models.SetRoleAssignmentsCommand, opts ...ClientOption) (*SetRoleAssignmentsOK, error)
 	SetRoleAssignmentsWithParams(params *SetRoleAssignmentsParams, opts ...ClientOption) (*SetRoleAssignmentsOK, error)
 
-	SetTeamRoles(teamID int64, body *models.SetTeamRolesCommand, opts ...ClientOption) (*SetTeamRolesOK, error)
-	SetTeamRolesWithParams(params *SetTeamRolesParams, opts ...ClientOption) (*SetTeamRolesOK, error)
+	SetTeamRoles(params *SetTeamRolesParams, opts ...ClientOption) (*SetTeamRolesOK, error)
 
-	SetUserRoles(userID int64, body *models.SetUserRolesCommand, opts ...ClientOption) (*SetUserRolesOK, error)
-	SetUserRolesWithParams(params *SetUserRolesParams, opts ...ClientOption) (*SetUserRolesOK, error)
+	SetUserRoles(params *SetUserRolesParams, opts ...ClientOption) (*SetUserRolesOK, error)
 
 	UpdateRole(roleUID string, body *models.UpdateRoleCommand, opts ...ClientOption) (*UpdateRoleOK, error)
 	UpdateRoleWithParams(params *UpdateRoleParams, opts ...ClientOption) (*UpdateRoleOK, error)
@@ -571,12 +567,8 @@ ListTeamRoles gets team roles
 
 You need to have a permission with action `teams.roles:read` and scope `teams:id:<team ID>`.
 */
-func (a *Client) ListTeamRoles(teamID int64, opts ...ClientOption) (*ListTeamRolesOK, error) {
-	params := NewListTeamRolesParams().WithTeamID(teamID)
-	return a.ListTeamRolesWithParams(params, opts...)
-}
 
-func (a *Client) ListTeamRolesWithParams(params *ListTeamRolesParams, opts ...ClientOption) (*ListTeamRolesOK, error) {
+func (a *Client) ListTeamRoles(params *ListTeamRolesParams, opts ...ClientOption) (*ListTeamRolesOK, error) {
 	if params == nil {
 		params = NewListTeamRolesParams()
 	}
@@ -667,12 +659,8 @@ Lists the roles that have been directly assigned to a given user. The list does 
 
 You need to have a permission with action `users.roles:read` and scope `users:id:<user ID>`.
 */
-func (a *Client) ListUserRoles(userID int64, opts ...ClientOption) (*ListUserRolesOK, error) {
-	params := NewListUserRolesParams().WithUserID(userID)
-	return a.ListUserRolesWithParams(params, opts...)
-}
 
-func (a *Client) ListUserRolesWithParams(params *ListUserRolesParams, opts ...ClientOption) (*ListUserRolesOK, error) {
+func (a *Client) ListUserRoles(params *ListUserRolesParams, opts ...ClientOption) (*ListUserRolesOK, error) {
 	if params == nil {
 		params = NewListUserRolesParams()
 	}
@@ -1075,12 +1063,8 @@ SetTeamRoles updates team role
 
 You need to have a permission with action `teams.roles:add` and `teams.roles:remove` and scope `permissions:type:delegate` for each.
 */
-func (a *Client) SetTeamRoles(teamID int64, body *models.SetTeamRolesCommand, opts ...ClientOption) (*SetTeamRolesOK, error) {
-	params := NewSetTeamRolesParams().WithBody(body).WithTeamID(teamID)
-	return a.SetTeamRolesWithParams(params, opts...)
-}
 
-func (a *Client) SetTeamRolesWithParams(params *SetTeamRolesParams, opts ...ClientOption) (*SetTeamRolesOK, error) {
+func (a *Client) SetTeamRoles(params *SetTeamRolesParams, opts ...ClientOption) (*SetTeamRolesOK, error) {
 	if params == nil {
 		params = NewSetTeamRolesParams()
 	}
@@ -1125,12 +1109,8 @@ If you want to add or remove a single role, consider using Add a user role assig
 
 You need to have a permission with action `users.roles:add` and `users.roles:remove` and scope `permissions:type:delegate` for each. `permissions:type:delegate`  scope ensures that users can only assign or unassign roles which have same, or a subset of permissions which the user has. For example, if a user does not have required permissions for creating users, they won’t be able to assign or unassign a role which will allow to do that. This is done to prevent escalation of privileges.
 */
-func (a *Client) SetUserRoles(userID int64, body *models.SetUserRolesCommand, opts ...ClientOption) (*SetUserRolesOK, error) {
-	params := NewSetUserRolesParams().WithBody(body).WithUserID(userID)
-	return a.SetUserRolesWithParams(params, opts...)
-}
 
-func (a *Client) SetUserRolesWithParams(params *SetUserRolesParams, opts ...ClientOption) (*SetUserRolesOK, error) {
+func (a *Client) SetUserRoles(params *SetUserRolesParams, opts ...ClientOption) (*SetUserRolesOK, error) {
 	if params == nil {
 		params = NewSetUserRolesParams()
 	}

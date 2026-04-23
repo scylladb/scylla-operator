@@ -38,6 +38,9 @@ type ClientService interface {
 	ListAllProvidersSettings(opts ...ClientOption) (*ListAllProvidersSettingsOK, error)
 	ListAllProvidersSettingsWithParams(params *ListAllProvidersSettingsParams, opts ...ClientOption) (*ListAllProvidersSettingsOK, error)
 
+	PatchProviderSettings(key string, body *models.PatchProviderSettingsParamsBody, opts ...ClientOption) (*PatchProviderSettingsNoContent, error)
+	PatchProviderSettingsWithParams(params *PatchProviderSettingsParams, opts ...ClientOption) (*PatchProviderSettingsNoContent, error)
+
 	RemoveProviderSettings(key string, opts ...ClientOption) (*RemoveProviderSettingsNoContent, error)
 	RemoveProviderSettingsWithParams(params *RemoveProviderSettingsParams, opts ...ClientOption) (*RemoveProviderSettingsNoContent, error)
 
@@ -136,6 +139,54 @@ func (a *Client) ListAllProvidersSettingsWithParams(params *ListAllProvidersSett
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listAllProvidersSettings: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+PatchProviderSettings patches s s o settings
+
+Partially updates the SSO Settings for a provider. Only provided fields are updated.
+
+You need to have a permission with action `settings:write` and scope `settings:auth.<provider>:*`.
+*/
+func (a *Client) PatchProviderSettings(key string, body *models.PatchProviderSettingsParamsBody, opts ...ClientOption) (*PatchProviderSettingsNoContent, error) {
+	params := NewPatchProviderSettingsParams().WithBody(body).WithKey(key)
+	return a.PatchProviderSettingsWithParams(params, opts...)
+}
+
+func (a *Client) PatchProviderSettingsWithParams(params *PatchProviderSettingsParams, opts ...ClientOption) (*PatchProviderSettingsNoContent, error) {
+	if params == nil {
+		params = NewPatchProviderSettingsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "patchProviderSettings",
+		Method:             "PATCH",
+		PathPattern:        "/v1/sso-settings/{key}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http", "https"},
+		Params:             params,
+		Reader:             &PatchProviderSettingsReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(op)
+		}
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*PatchProviderSettingsNoContent)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for patchProviderSettings: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

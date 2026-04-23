@@ -84,27 +84,29 @@
       ]
     },
     {
-      "description": "Monitoring dependencies should be grouped and updated every weekday",
+      "description": "prometheus-operator dependency should be updated every weekday",
       "matchDepNames": [
-        "scylladb/scylla-monitoring",
         "prometheus-operator"
       ],
-      "groupName": "monitoring",
       "schedule": [
         "before 5am every weekday"
       ],
+      "addLabels": [
+        "do-not-merge/hold"
+      ],
       "prBodyNotes": [
         "### ⚠️ Manual Action Required",
-        "Renovate has bumped a monitoring dependency, but cannot automatically regenerate the manifests.",
+        "Renovate has bumped the prometheus-operator dependency, but cannot automatically regenerate the manifests.",
         "",
         "**Please complete the following steps before merging:**",
         "1. Check out this branch locally.",
         "2. Propagate changes by running:",
         "   ```bash",
         "   make update",
-        "   git add .",
+        "   git add pkg/thirdparty/github.com/prometheus-operator/ examples/third-party/prometheus-operator.yaml",
         "   git commit -m \"chore(deps): update generated files\" && git push --force",
-        "   ```"
+        "   ```",
+        "3. Remove the `do-not-merge/hold` label."
       ]
     },
     {
@@ -147,11 +149,15 @@
       ]
     },
     {
+      "description": "scylla-monitoring submodule dependency should be updated every weekday",
       "matchManagers": [
         "regex"
       ],
       "matchDepNames": [
         "scylladb/scylla-monitoring"
+      ],
+      "schedule": [
+        "before 5am every weekday"
       ],
       "addLabels": [
         "do-not-merge/hold"

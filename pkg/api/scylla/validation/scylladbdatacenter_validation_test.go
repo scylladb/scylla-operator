@@ -3,6 +3,7 @@
 package validation_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -827,7 +828,7 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.racks[0]", Detail: `rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.racks[0]", BadValue: fmt.Errorf(`rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`), Detail: `rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
 			},
 			expectedErrorString: `spec.racks[0]: Internal error: rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`,
 		},
@@ -851,7 +852,7 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 				return sdc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.racks[0]", Detail: `rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.racks[0]", BadValue: fmt.Errorf(`rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`), Detail: `rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
 			},
 			expectedErrorString: `spec.racks[0]: Internal error: rack "rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`,
 		},

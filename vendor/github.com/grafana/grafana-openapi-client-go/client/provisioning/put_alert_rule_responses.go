@@ -36,6 +36,12 @@ func (o *PutAlertRuleReader) ReadResponse(response runtime.ClientResponse, consu
 			return nil, err
 		}
 		return nil, result
+	case 403:
+		result := NewPutAlertRuleForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[PUT /v1/provisioning/alert-rules/{UID}] PutAlertRule", response, response.Code())
 	}
@@ -172,6 +178,76 @@ func (o *PutAlertRuleBadRequest) GetPayload() *models.ValidationError {
 func (o *PutAlertRuleBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ValidationError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPutAlertRuleForbidden creates a PutAlertRuleForbidden with default headers values
+func NewPutAlertRuleForbidden() *PutAlertRuleForbidden {
+	return &PutAlertRuleForbidden{}
+}
+
+/*
+PutAlertRuleForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type PutAlertRuleForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this put alert rule forbidden response has a 2xx status code
+func (o *PutAlertRuleForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this put alert rule forbidden response has a 3xx status code
+func (o *PutAlertRuleForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this put alert rule forbidden response has a 4xx status code
+func (o *PutAlertRuleForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this put alert rule forbidden response has a 5xx status code
+func (o *PutAlertRuleForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this put alert rule forbidden response a status code equal to that given
+func (o *PutAlertRuleForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the put alert rule forbidden response
+func (o *PutAlertRuleForbidden) Code() int {
+	return 403
+}
+
+func (o *PutAlertRuleForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/alert-rules/{UID}][%d] putAlertRuleForbidden %s", 403, payload)
+}
+
+func (o *PutAlertRuleForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/alert-rules/{UID}][%d] putAlertRuleForbidden %s", 403, payload)
+}
+
+func (o *PutAlertRuleForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *PutAlertRuleForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

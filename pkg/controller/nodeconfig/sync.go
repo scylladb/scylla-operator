@@ -570,7 +570,7 @@ func aggregateNodeStatusConditions(generation int64, conditions []metav1.Conditi
 			controllerNodeConditionType := f(n)
 			controllerNodeCondition := apimeta.FindStatusCondition(conditions, controllerNodeConditionType)
 			if controllerNodeCondition == nil || controllerNodeCondition.ObservedGeneration < generation {
-				errs = append(errs, fmt.Errorf("controller node condition missing in generation %q: %q", generation, controllerNodeConditionType))
+				errs = append(errs, fmt.Errorf("controller node condition missing in generation %d: %q", generation, controllerNodeConditionType))
 				continue
 			}
 

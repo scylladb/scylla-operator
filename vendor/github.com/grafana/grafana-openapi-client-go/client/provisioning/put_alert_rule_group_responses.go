@@ -36,6 +36,12 @@ func (o *PutAlertRuleGroupReader) ReadResponse(response runtime.ClientResponse, 
 			return nil, err
 		}
 		return nil, result
+	case 403:
+		result := NewPutAlertRuleGroupForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[PUT /v1/provisioning/folder/{FolderUID}/rule-groups/{Group}] PutAlertRuleGroup", response, response.Code())
 	}
@@ -172,6 +178,76 @@ func (o *PutAlertRuleGroupBadRequest) GetPayload() *models.ValidationError {
 func (o *PutAlertRuleGroupBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ValidationError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPutAlertRuleGroupForbidden creates a PutAlertRuleGroupForbidden with default headers values
+func NewPutAlertRuleGroupForbidden() *PutAlertRuleGroupForbidden {
+	return &PutAlertRuleGroupForbidden{}
+}
+
+/*
+PutAlertRuleGroupForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type PutAlertRuleGroupForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this put alert rule group forbidden response has a 2xx status code
+func (o *PutAlertRuleGroupForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this put alert rule group forbidden response has a 3xx status code
+func (o *PutAlertRuleGroupForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this put alert rule group forbidden response has a 4xx status code
+func (o *PutAlertRuleGroupForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this put alert rule group forbidden response has a 5xx status code
+func (o *PutAlertRuleGroupForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this put alert rule group forbidden response a status code equal to that given
+func (o *PutAlertRuleGroupForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the put alert rule group forbidden response
+func (o *PutAlertRuleGroupForbidden) Code() int {
+	return 403
+}
+
+func (o *PutAlertRuleGroupForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/folder/{FolderUID}/rule-groups/{Group}][%d] putAlertRuleGroupForbidden %s", 403, payload)
+}
+
+func (o *PutAlertRuleGroupForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/folder/{FolderUID}/rule-groups/{Group}][%d] putAlertRuleGroupForbidden %s", 403, payload)
+}
+
+func (o *PutAlertRuleGroupForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *PutAlertRuleGroupForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

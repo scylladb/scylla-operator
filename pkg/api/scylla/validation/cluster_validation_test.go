@@ -1,6 +1,7 @@
 package validation_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -1208,7 +1209,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			old:  withStatus(unit.NewSingleRackCluster(0), scyllav1.ScyllaClusterStatus{Racks: map[string]scyllav1.RackStatus{"test-rack": {Stale: pointer.Ptr(true), Members: 0}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", BadValue: fmt.Errorf(`rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`), Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
 			},
 			expectedErrorString: `spec.datacenter.racks[0]: Internal error: rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`,
 		},
@@ -1217,7 +1218,7 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			old:  withStatus(withGeneration(unit.NewSingleRackCluster(0), 123), scyllav1.ScyllaClusterStatus{ObservedGeneration: pointer.Ptr(int64(321)), Racks: map[string]scyllav1.RackStatus{"test-rack": {Members: 0}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenter.racks[0]", BadValue: fmt.Errorf(`rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`), Detail: `rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`},
 			},
 			expectedErrorString: `spec.datacenter.racks[0]: Internal error: rack "test-rack" can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later`,
 		},

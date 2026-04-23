@@ -507,7 +507,7 @@ func (sdcc *Controller) syncStatefulSets(
 			sdc,
 			corev1.EventTypeWarning,
 			"InvalidRack",
-			fmt.Sprintf("Failed to make rack: %v", err),
+			"Failed to make rack: %v", err,
 		)
 		return progressingConditions, err
 	}

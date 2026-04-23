@@ -36,6 +36,12 @@ func (o *PostContactpointsReader) ReadResponse(response runtime.ClientResponse, 
 			return nil, err
 		}
 		return nil, result
+	case 403:
+		result := NewPostContactpointsForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[POST /v1/provisioning/contact-points] PostContactpoints", response, response.Code())
 	}
@@ -172,6 +178,76 @@ func (o *PostContactpointsBadRequest) GetPayload() *models.ValidationError {
 func (o *PostContactpointsBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ValidationError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPostContactpointsForbidden creates a PostContactpointsForbidden with default headers values
+func NewPostContactpointsForbidden() *PostContactpointsForbidden {
+	return &PostContactpointsForbidden{}
+}
+
+/*
+PostContactpointsForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type PostContactpointsForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this post contactpoints forbidden response has a 2xx status code
+func (o *PostContactpointsForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this post contactpoints forbidden response has a 3xx status code
+func (o *PostContactpointsForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this post contactpoints forbidden response has a 4xx status code
+func (o *PostContactpointsForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this post contactpoints forbidden response has a 5xx status code
+func (o *PostContactpointsForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this post contactpoints forbidden response a status code equal to that given
+func (o *PostContactpointsForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the post contactpoints forbidden response
+func (o *PostContactpointsForbidden) Code() int {
+	return 403
+}
+
+func (o *PostContactpointsForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/contact-points][%d] postContactpointsForbidden %s", 403, payload)
+}
+
+func (o *PostContactpointsForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/contact-points][%d] postContactpointsForbidden %s", 403, payload)
+}
+
+func (o *PostContactpointsForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *PostContactpointsForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

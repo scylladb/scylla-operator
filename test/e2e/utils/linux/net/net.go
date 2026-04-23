@@ -94,7 +94,7 @@ func parseEntryState(v int) (EntryState, error) {
 	case entryStateMaxStatesIndex:
 		return EntryStateMaxStates, nil
 	default:
-		return "", fmt.Errorf("can't parse entry state %q", v)
+		return "", fmt.Errorf("can't parse entry state %d", v)
 	}
 }
 
@@ -154,7 +154,7 @@ func decodeState(hexString string) (*EntryState, error) {
 
 	state, err := parseEntryState(int(v))
 	if err != nil {
-		return nil, fmt.Errorf("can't parse state %q: %w", v, err)
+		return nil, fmt.Errorf("can't parse state %d: %w", v, err)
 	}
 
 	return &state, nil

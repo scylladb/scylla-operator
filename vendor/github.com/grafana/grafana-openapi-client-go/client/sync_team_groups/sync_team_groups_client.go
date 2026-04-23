@@ -32,10 +32,10 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	AddTeamGroupAPI(teamID int64, body *models.TeamGroupMapping, opts ...ClientOption) (*AddTeamGroupAPIOK, error)
+	AddTeamGroupAPI(teamID string, body *models.TeamGroupMapping, opts ...ClientOption) (*AddTeamGroupAPIOK, error)
 	AddTeamGroupAPIWithParams(params *AddTeamGroupAPIParams, opts ...ClientOption) (*AddTeamGroupAPIOK, error)
 
-	GetTeamGroupsAPI(teamID int64, opts ...ClientOption) (*GetTeamGroupsAPIOK, error)
+	GetTeamGroupsAPI(teamID string, opts ...ClientOption) (*GetTeamGroupsAPIOK, error)
 	GetTeamGroupsAPIWithParams(params *GetTeamGroupsAPIParams, opts ...ClientOption) (*GetTeamGroupsAPIOK, error)
 
 	RemoveTeamGroupAPIQuery(params *RemoveTeamGroupAPIQueryParams, opts ...ClientOption) (*RemoveTeamGroupAPIQueryOK, error)
@@ -48,7 +48,7 @@ type ClientService interface {
 /*
 AddTeamGroupAPI adds external group
 */
-func (a *Client) AddTeamGroupAPI(teamID int64, body *models.TeamGroupMapping, opts ...ClientOption) (*AddTeamGroupAPIOK, error) {
+func (a *Client) AddTeamGroupAPI(teamID string, body *models.TeamGroupMapping, opts ...ClientOption) (*AddTeamGroupAPIOK, error) {
 	params := NewAddTeamGroupAPIParams().WithBody(body).WithTeamID(teamID)
 	return a.AddTeamGroupAPIWithParams(params, opts...)
 }
@@ -92,7 +92,7 @@ func (a *Client) AddTeamGroupAPIWithParams(params *AddTeamGroupAPIParams, opts .
 /*
 GetTeamGroupsAPI gets external groups
 */
-func (a *Client) GetTeamGroupsAPI(teamID int64, opts ...ClientOption) (*GetTeamGroupsAPIOK, error) {
+func (a *Client) GetTeamGroupsAPI(teamID string, opts ...ClientOption) (*GetTeamGroupsAPIOK, error) {
 	params := NewGetTeamGroupsAPIParams().WithTeamID(teamID)
 	return a.GetTeamGroupsAPIWithParams(params, opts...)
 }

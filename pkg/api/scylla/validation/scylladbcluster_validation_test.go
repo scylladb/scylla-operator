@@ -1,6 +1,7 @@
 package validation_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -2689,7 +2690,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenters[0].racks[0]", Detail: `rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenters[0].racks[0]", BadValue: fmt.Errorf(`rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`), Detail: `rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`},
 			},
 			expectedErrorString: `spec.datacenters[0].racks[0]: Internal error: rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`,
 		},
@@ -2720,7 +2721,7 @@ func TestValidateScyllaDBClusterUpdate(t *testing.T) {
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenters[0].racks[0]", Detail: `rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`},
+				&field.Error{Type: field.ErrorTypeInternal, Field: "spec.datacenters[0].racks[0]", BadValue: fmt.Errorf(`rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`), Detail: `rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`},
 			},
 			expectedErrorString: `spec.datacenters[0].racks[0]: Internal error: rack "rack" can't be removed because its status, that's used to determine node count, is not yet up to date with the generation of this resource; please retry later`,
 		},

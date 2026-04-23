@@ -53,9 +53,9 @@ type ClientService interface {
 	GetSettingsImage(opts ...ClientOption) (*GetSettingsImageOK, error)
 	GetSettingsImageWithParams(params *GetSettingsImageParams, opts ...ClientOption) (*GetSettingsImageOK, error)
 
-	RenderReportCSVs(params *RenderReportCSVsParams, opts ...ClientOption) (*RenderReportCSVsOK, *RenderReportCSVsNoContent, error)
+	RenderReportCSVs(params *RenderReportCSVsParams, opts ...ClientOption) (*RenderReportCsvsOK, *RenderReportCsvsNoContent, error)
 
-	RenderReportPDFs(params *RenderReportPDFsParams, opts ...ClientOption) (*RenderReportPDFsOK, error)
+	RenderReportPDFs(params *RenderReportPDFsParams, opts ...ClientOption) (*RenderReportPdfsOK, error)
 
 	SaveReportSettings(body *models.ReportSettings, opts ...ClientOption) (*SaveReportSettingsOK, error)
 	SaveReportSettingsWithParams(params *SaveReportSettingsParams, opts ...ClientOption) (*SaveReportSettingsOK, error)
@@ -420,7 +420,7 @@ RenderReportCSVs downloads a CSV report
 Available to all users and with a valid license.
 */
 
-func (a *Client) RenderReportCSVs(params *RenderReportCSVsParams, opts ...ClientOption) (*RenderReportCSVsOK, *RenderReportCSVsNoContent, error) {
+func (a *Client) RenderReportCSVs(params *RenderReportCSVsParams, opts ...ClientOption) (*RenderReportCsvsOK, *RenderReportCsvsNoContent, error) {
 	if params == nil {
 		params = NewRenderReportCSVsParams()
 	}
@@ -447,9 +447,9 @@ func (a *Client) RenderReportCSVs(params *RenderReportCSVsParams, opts ...Client
 		return nil, nil, err
 	}
 	switch value := result.(type) {
-	case *RenderReportCSVsOK:
+	case *RenderReportCsvsOK:
 		return value, nil, nil
-	case *RenderReportCSVsNoContent:
+	case *RenderReportCsvsNoContent:
 		return nil, value, nil
 	}
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
@@ -463,7 +463,7 @@ RenderReportPDFs renders report for multiple dashboards
 Available to all users and with a valid license.
 */
 
-func (a *Client) RenderReportPDFs(params *RenderReportPDFsParams, opts ...ClientOption) (*RenderReportPDFsOK, error) {
+func (a *Client) RenderReportPDFs(params *RenderReportPDFsParams, opts ...ClientOption) (*RenderReportPdfsOK, error) {
 	if params == nil {
 		params = NewRenderReportPDFsParams()
 	}
@@ -489,7 +489,7 @@ func (a *Client) RenderReportPDFs(params *RenderReportPDFsParams, opts ...Client
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*RenderReportPDFsOK)
+	success, ok := result.(*RenderReportPdfsOK)
 	if ok {
 		return success, nil
 	}

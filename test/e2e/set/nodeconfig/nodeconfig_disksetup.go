@@ -36,7 +36,7 @@ var (
 	xfsVolumeSize = resource.MustParse("320M")
 )
 
-var _ = g.Describe("Node Setup", framework.Serial, framework.NotSupportedOnKind, func() {
+var _ = g.Describe("Node Setup", framework.SuiteSerial, func() {
 	var (
 		f             *framework.Framework
 		ncTemplate    *scyllav1alpha1.NodeConfig

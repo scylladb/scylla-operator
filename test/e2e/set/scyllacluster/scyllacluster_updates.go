@@ -30,7 +30,7 @@ func addQuantity(lhs resource.Quantity, rhs resource.Quantity) *resource.Quantit
 	return &res
 }
 
-var _ = g.Describe("ScyllaCluster", func() {
+var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

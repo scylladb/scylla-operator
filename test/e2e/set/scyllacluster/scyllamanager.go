@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ = g.Describe("Scylla Manager integration", func() {
+var _ = g.Describe("Scylla Manager integration", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

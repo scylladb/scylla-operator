@@ -29,7 +29,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.RequiresObjectStorage, func() {
+var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

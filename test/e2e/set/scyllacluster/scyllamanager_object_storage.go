@@ -27,7 +27,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-var _ = g.Describe("Scylla Manager integration", framework.RequiresObjectStorage, func() {
+var _ = g.Describe("Scylla Manager integration", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

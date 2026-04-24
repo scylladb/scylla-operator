@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = g.Describe("ScyllaCluster evictions", func() {
+var _ = g.Describe("ScyllaCluster evictions", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

@@ -780,7 +780,11 @@ verify-config:
 	$(diff) "$(tmp_dir)/config.yaml" ./assets/config/config.yaml || (echo 'Config is not up to date. Please run `make update-config` to update it.' && false)
 .PHONY: verify-config
 
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config
+verify-e2e-suite-coverage:
+	./hack/verify-e2e-suite-coverage.sh
+.PHONY: verify-e2e-suite-coverage
+
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config verify-e2e-suite-coverage
 .PHONY: verify
 
 update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports update-config

@@ -112,6 +112,7 @@ func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {
 	userAgent := "scylla-operator-e2e"
 	cmd.AddCommand(versioncmd.NewCmd(streams))
 	cmd.AddCommand(NewRunCommand(streams, Suites, userAgent))
+	cmd.AddCommand(NewListSuitesCommand(streams, Suites))
 
 	// TODO: wrap help func for the root command and every subcommand to add a line about automatic env vars and the prefix.
 

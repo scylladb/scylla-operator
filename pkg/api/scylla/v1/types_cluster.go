@@ -254,6 +254,7 @@ type NodeServiceTemplate struct {
 type ExposeOptions struct {
 	// cql specifies expose options for CQL SSL backend.
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// Deprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 	// +optional
 	CQL *CQLExposeOptions `json:"cql,omitempty"`
 
@@ -282,6 +283,7 @@ type RackNodeServiceTemplate struct {
 type CQLExposeOptions struct {
 	// ingress is an Ingress configuration options.
 	// EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+	// Deprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 	// +optional
 	Ingress *IngressOptions `json:"ingress,omitempty"`
 }

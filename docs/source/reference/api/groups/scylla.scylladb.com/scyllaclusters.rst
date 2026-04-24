@@ -4353,7 +4353,7 @@ object
      - BroadcastOptions defines how ScyllaDB node publishes its IP address to other nodes and clients.
    * - :ref:`cql<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.cql>`
      - object
-     - cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+     - cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field. Deprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
    * - :ref:`nodeService<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.nodeService>`
      - object
      - nodeService controls properties of Service dedicated for each ScyllaCluster node.
@@ -4499,7 +4499,7 @@ object
 
 Description
 """""""""""
-cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field. Deprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 
 Type
 """"
@@ -4515,7 +4515,7 @@ object
      - Description
    * - :ref:`ingress<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.cql.ingress>`
      - object
-     - ingress is an Ingress configuration options. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+     - ingress is an Ingress configuration options. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field. Deprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 
 .. _api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions.cql.ingress:
 
@@ -4524,7 +4524,7 @@ object
 
 Description
 """""""""""
-ingress is an Ingress configuration options. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+ingress is an Ingress configuration options. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field. Deprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 
 Type
 """"

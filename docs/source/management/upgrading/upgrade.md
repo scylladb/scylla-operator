@@ -126,6 +126,35 @@ If the command returns no output, all your `ScyllaClusters` are unaffected. If a
 A `ScyllaCluster` with an empty `spec.version` was never functional. The migration controller would fail to reconcile it, leaving the cluster in a permanently degraded state. Making the field required only prevents new broken clusters from being created.
 :::
 
+#### Review ScyllaDBMonitoring spec.type default change
+
+The default value of `ScyllaDBMonitoring` `spec.type` has changed from `SaaS` to `Platform`. Any existing `ScyllaDBMonitoring`
+object that omits `spec.type` will render `Platform` dashboards after the upgrade instead of `SaaS`. The `SaaS` value is
+also now deprecated and will be removed in a future release; the admission webhook will emit a warning when it is set explicitly.
+
+You can run the following snippet to list `ScyllaDBMonitoring` objects that will be affected by the default change or that
+still use the deprecated `SaaS` value:
+
+```bash
+output=$(kubectl get scylladbmonitorings --all-namespaces -o json | jq -r '
+  .items[] |
+  select((.spec.type // "SaaS") == "SaaS") |
+  "\(.metadata.namespace)/\(.metadata.name)\t(spec.type=\(.spec.type // "<unset, defaults to SaaS>"))"
+') && if [ -z "$output" ]; then echo "No ScyllaDBMonitoring objects rely on the SaaS type."; else echo "$output"; fi
+```
+
+If the command returns no output, none of your `ScyllaDBMonitoring` objects are affected. Otherwise, for each listed object,
+decide whether you want to:
+- keep the previous behavior by setting `spec.type: SaaS` explicitly before upgrading (the admission webhook will emit a
+  deprecation warning, and you will need to migrate to `Platform` before a future release removes `SaaS`), or
+- adopt the new default by either setting `spec.type: Platform` explicitly or leaving `spec.type` unset.
+
+:::{note}
+**Why is this not a breaking change?**
+The `Platform` dashboards are a superset of the `SaaS` dashboards, so switching from `SaaS` to `Platform` does not remove
+functionality.
+:::
+
 ### 1.17 to 1.18
 
 Upgrading from v1.17.x requires extra actions due to the removal of the standalone ScyllaDB Manager controller.

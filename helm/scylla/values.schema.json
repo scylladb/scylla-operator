@@ -249,10 +249,10 @@
           "type": "object"
         },
         "cql": {
-          "description": "cql specifies expose options for CQL SSL backend.\nEXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.",
+          "description": "cql specifies expose options for CQL SSL backend.\nEXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.\nDeprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
           "properties": {
             "ingress": {
-              "description": "ingress is an Ingress configuration options.\nEXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.",
+              "description": "ingress is an Ingress configuration options.\nEXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.\nDeprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
               "properties": {
                 "annotations": {
                   "additionalProperties": {

@@ -402,6 +402,7 @@ type RackNodeServiceTemplate struct {
 // ExposeOptions hold options related to exposing ScyllaDBDatacenter backends.
 type ExposeOptions struct {
 	// cql specifies expose options for CQL SSL backend.
+	// Deprecated: `cql` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 	// +optional
 	CQL *CQLExposeOptions `json:"cql,omitempty"`
 
@@ -418,6 +419,7 @@ type CQLExposeOptions struct {
 	// ingress specifies an Ingress configuration options.
 	// If provided and enabled, Ingress objects routing to CQL SSL port are generated for each ScyllaDB node
 	// with the following options.
+	// Deprecated: `ingress` is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.
 	Ingress *CQLExposeIngressOptions `json:"ingress,omitempty"`
 }
 

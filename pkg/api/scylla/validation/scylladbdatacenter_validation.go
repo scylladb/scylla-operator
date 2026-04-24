@@ -639,9 +639,30 @@ func validateScyllaArgIPAddress(argName string, expectedIPFamily corev1.IPFamily
 }
 
 func GetWarningsOnScyllaDBDatacenterCreate(sdc *scyllav1alpha1.ScyllaDBDatacenter) []string {
-	return nil
+	var warnings []string
+
+	warnings = append(warnings, getWarningsForScyllaDBDatacenterSpec(&sdc.Spec, field.NewPath("spec"))...)
+
+	return warnings
 }
 
 func GetWarningsOnScyllaDBDatacenterUpdate(new, old *scyllav1alpha1.ScyllaDBDatacenter) []string {
-	return nil
+	var warnings []string
+
+	warnings = append(warnings, getWarningsForScyllaDBDatacenterSpec(&new.Spec, field.NewPath("spec"))...)
+
+	return warnings
+}
+
+func getWarningsForScyllaDBDatacenterSpec(spec *scyllav1alpha1.ScyllaDBDatacenterSpec, fldPath *field.Path) []string {
+	var warnings []string
+
+	if spec.ExposeOptions != nil && spec.ExposeOptions.CQL != nil {
+		warnings = append(warnings, fmt.Sprintf(
+			"`%s` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
+			fldPath.Child("exposeOptions", "cql"),
+		))
+	}
+
+	return warnings
 }

@@ -18,6 +18,14 @@ Please refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.
 - `ScyllaCluster` backup and repair task names not conforming to RFC 1123 subdomain requirements (e.g. containing underscores `_`)
   are now rejected on object creation or update. The operator will refuse to start if any existing `ScyllaClusters` have non-conforming task names.
   [#3326](https://github.com/scylladb/scylla-operator/pull/3326)
+- `ScyllaCluster` `spec.exposeOptions.cql` and `ScyllaDBDatacenter` `spec.exposeOptions.cql` are deprecated and will be removed
+  in a future release, along with operator support for exposing CQL over an SNI proxy. The admission webhook emits a warning
+  when these fields are set.
+  [#3410](https://github.com/scylladb/scylla-operator/pull/3410)
+- `ScyllaDBMonitoring` `spec.type` value `SaaS` is deprecated and will be removed in a future release. The admission webhook
+  emits a warning when `SaaS` is explicitly set. The default value of `spec.type` changed from `SaaS` to `Platform`; existing
+  objects that omit `spec.type` will render `Platform` dashboards after the upgrade.
+  [#3410](https://github.com/scylladb/scylla-operator/pull/3410)
 
 ### Features & Enhancements
 

@@ -1507,3 +1507,107 @@ func TestValidateScyllaArgsIPFamily(t *testing.T) {
 		})
 	}
 }
+
+func newValidScyllaDBDatacenterForWarnings() *scyllav1alpha1.ScyllaDBDatacenter {
+	return &scyllav1alpha1.ScyllaDBDatacenter{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "basic",
+			UID:  "the-uid",
+		},
+		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+			ClusterName:    "basic",
+			DatacenterName: pointer.Ptr("dc"),
+			ScyllaDB: scyllav1alpha1.ScyllaDB{
+				Image: unit.ScyllaDBImage,
+			},
+			Racks: []scyllav1alpha1.RackSpec{
+				{
+					Name: "rack",
+				},
+			},
+		},
+	}
+}
+
+func TestGetWarningsOnScyllaDBDatacenterCreate(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name             string
+		datacenter       *scyllav1alpha1.ScyllaDBDatacenter
+		expectedWarnings []string
+	}{
+		{
+			name:             "no warnings",
+			datacenter:       newValidScyllaDBDatacenterForWarnings(),
+			expectedWarnings: nil,
+		},
+		{
+			name: "cql expose options deprecation warning",
+			datacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenterForWarnings()
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					CQL: &scyllav1alpha1.CQLExposeOptions{},
+				}
+				return sdc
+			}(),
+			expectedWarnings: []string{
+				"`spec.exposeOptions.cql` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			warnings := validation.GetWarningsOnScyllaDBDatacenterCreate(tc.datacenter)
+			if !reflect.DeepEqual(tc.expectedWarnings, warnings) {
+				t.Errorf("expected and actual warnings differ: %s", cmp.Diff(tc.expectedWarnings, warnings))
+			}
+		})
+	}
+}
+
+func TestGetWarningsOnScyllaDBDatacenterUpdate(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name             string
+		oldSDC           *scyllav1alpha1.ScyllaDBDatacenter
+		newSDC           *scyllav1alpha1.ScyllaDBDatacenter
+		expectedWarnings []string
+	}{
+		{
+			name:             "no warnings",
+			oldSDC:           newValidScyllaDBDatacenterForWarnings(),
+			newSDC:           newValidScyllaDBDatacenterForWarnings(),
+			expectedWarnings: nil,
+		},
+		{
+			name:   "cql expose options deprecation warning",
+			oldSDC: newValidScyllaDBDatacenterForWarnings(),
+			newSDC: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenterForWarnings()
+				sdc.Spec.ExposeOptions = &scyllav1alpha1.ExposeOptions{
+					CQL: &scyllav1alpha1.CQLExposeOptions{},
+				}
+				return sdc
+			}(),
+			expectedWarnings: []string{
+				"`spec.exposeOptions.cql` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			warnings := validation.GetWarningsOnScyllaDBDatacenterUpdate(tc.newSDC, tc.oldSDC)
+			if !reflect.DeepEqual(tc.expectedWarnings, warnings) {
+				t.Errorf("expected and actual warnings differ: %s", cmp.Diff(tc.expectedWarnings, warnings))
+			}
+		})
+	}
+}

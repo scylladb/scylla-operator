@@ -1431,6 +1431,19 @@ func TestGetWarningsOnScyllaClusterCreate(t *testing.T) {
 				"spec.sysctls: deprecated; use NodeConfig's .spec.sysctls instead",
 			},
 		},
+		{
+			name: "cql expose options deprecation warning",
+			cluster: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					CQL: &scyllav1.CQLExposeOptions{},
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"`spec.exposeOptions.cql` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
+			},
+		},
 	}
 
 	for _, tc := range tt {
@@ -1472,6 +1485,20 @@ func TestGetWarningsOnScyllaClusterUpdate(t *testing.T) {
 			}(),
 			expectedWarnings: []string{
 				"spec.sysctls: deprecated; use NodeConfig's .spec.sysctls instead",
+			},
+		},
+		{
+			name:  "cql expose options deprecation warning",
+			oldSC: unit.NewSingleRackCluster(3),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.ExposeOptions = &scyllav1.ExposeOptions{
+					CQL: &scyllav1.CQLExposeOptions{},
+				}
+				return sc
+			}(),
+			expectedWarnings: []string{
+				"`spec.exposeOptions.cql` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
 			},
 		},
 	}

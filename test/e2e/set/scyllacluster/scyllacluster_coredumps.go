@@ -30,7 +30,9 @@ const (
 	coredumpCollectionTimeout = 2 * time.Minute
 )
 
-var _ = g.Describe("ScyllaCluster coredumps", framework.Serial, framework.NotSupportedOnKind, func() {
+// Not part of SuiteKindFast: requires host-level coredump configuration
+// (sysctl, kernel.core_pattern) that isn't available in kind clusters.
+var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

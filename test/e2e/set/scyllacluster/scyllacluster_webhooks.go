@@ -18,7 +18,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/names"
 )
 
-var _ = g.Describe("ScyllaCluster's admission webhook", func() {
+var _ = g.Describe("ScyllaCluster's admission webhook", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

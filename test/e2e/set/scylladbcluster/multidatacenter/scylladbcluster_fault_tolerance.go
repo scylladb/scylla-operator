@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.MultiDatacenter, func() {
+var _ = g.Describe("Multi datacenter ScyllaDBCluster", framework.SuiteMultiDatacenterParallel, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

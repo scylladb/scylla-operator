@@ -20,6 +20,8 @@ const (
 	EnvVarPrefix = "SCYLLA_OPERATOR_TESTS_"
 )
 
+// Suites is the canonical list of scylla-operator test suites.
+// Each suite (other than "all") declares membership through a single Ginkgo label.
 var Suites = ginkgotest.TestSuites{
 	{
 		Name: "all",
@@ -33,13 +35,7 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that can be run in parallel.
 		`),
-		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s && !%s",
-			framework.SerialLabelName,
-			framework.MultiDatacenterLabelName,
-			framework.SupportedOnlyOnOpenShiftLabelName,
-			framework.IPv6LabelName,
-		),
+		LabelFilter:        framework.SuiteParallelLabelName,
 		DefaultParallelism: 70,
 	},
 	{
@@ -47,13 +43,7 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that can be run in parallel on an OpenShift cluster.
 		`),
-		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s && !%s",
-			framework.SerialLabelName,
-			framework.MultiDatacenterLabelName,
-			framework.NotSupportedOnOpenShiftLabelName,
-			framework.IPv6LabelName,
-		),
+		LabelFilter:        framework.SuiteParallelOpenShiftLabelName,
 		DefaultParallelism: 70,
 	},
 	{
@@ -61,11 +51,7 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that must be run serially.
 		`),
-		LabelFilter: fmt.Sprintf(
-			"%s && !%s",
-			framework.SerialLabelName,
-			framework.SupportedOnlyOnOpenShiftLabelName,
-		),
+		LabelFilter:        framework.SuiteSerialLabelName,
 		DefaultParallelism: 1,
 	},
 	{
@@ -73,11 +59,7 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests for multi-datacenter setups that can be run in parallel.
 		`),
-		LabelFilter: fmt.Sprintf(
-			"%s && !%s",
-			framework.MultiDatacenterLabelName,
-			framework.SupportedOnlyOnOpenShiftLabelName,
-		),
+		LabelFilter:        framework.SuiteMultiDatacenterParallelLabelName,
 		DefaultParallelism: 10,
 	},
 	{
@@ -85,7 +67,7 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Tests that ensure Scylla Operator is working properly with IPv6 and dual-stack networking.
 		`),
-		LabelFilter:        fmt.Sprintf("%s", framework.IPv6LabelName),
+		LabelFilter:        framework.SuiteParallelIPv6LabelName,
 		DefaultParallelism: 10,
 	},
 	{
@@ -93,16 +75,7 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Relatively fast tests that can be run on kind clusters.
 		`),
-		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s && !%s && !%s && !%s && !%s",
-			framework.NotSupportedOnKindLabelName,
-			framework.LongRunningLabelName,
-			framework.RequiresObjectStorageLabelName,
-			framework.MultiDatacenterLabelName,
-			framework.SerialLabelName,
-			framework.SupportedOnlyOnOpenShiftLabelName,
-			framework.IPv6LabelName,
-		),
+		LabelFilter:        framework.SuiteKindFastLabelName,
 		DefaultParallelism: 60,
 	},
 }

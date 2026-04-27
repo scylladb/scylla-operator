@@ -7,7 +7,6 @@ import (
 	"net"
 	"slices"
 	"sync"
-	"time"
 
 	monitoringinformers "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	monitoringversionedclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
@@ -57,15 +56,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const (
-	// RFC 5702: The key size of RSA/SHA-512 keys MUST NOT be less than 1024 bits and MUST NOT be more than 4096 bits.
-	// NIST Special Publication 800-57 Part 3 (DOI: 10.6028) recommends a minimum of 2048-bit keys for RSA.
-	rsaKeySizeMin = 2048
-	rsaKeySizeMax = 4096
-
-	cryptoKeyBufferSizeMaxFlagKey = "crypto-key-buffer-size-max"
-)
-
 type OperatorOptions struct {
 	genericclioptions.ClientConfig
 	genericclioptions.InClusterReflection
@@ -79,14 +69,10 @@ type OperatorOptions struct {
 	clusterKubeClient   remoteclient.ClusterClient[kubernetes.Interface]
 	clusterScyllaClient remoteclient.ClusterClient[scyllaversionedclient.Interface]
 
-	ConcurrentSyncs int
-	OperatorImage   string
-	CQLSIngressPort int
-
-	CryptoKeySize          int
-	CryptoKeyBufferSizeMin int
-	CryptoKeyBufferSizeMax int
-	CryptoKeyBufferDelay   time.Duration
+	ConcurrentSyncs  int
+	OperatorImage    string
+	CQLSIngressPort  int
+	CryptoKeyOptions CryptoKeyOptions
 }
 
 func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
@@ -95,14 +81,10 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		InClusterReflection: genericclioptions.InClusterReflection{},
 		LeaderElection:      genericclioptions.NewLeaderElection(),
 
-		ConcurrentSyncs: 50,
-		OperatorImage:   "",
-		CQLSIngressPort: 0,
-
-		CryptoKeySize:          4096,
-		CryptoKeyBufferSizeMin: 10,
-		CryptoKeyBufferSizeMax: 30,
-		CryptoKeyBufferDelay:   200 * time.Millisecond,
+		ConcurrentSyncs:  50,
+		OperatorImage:    "",
+		CQLSIngressPort:  0,
+		CryptoKeyOptions: NewCryptoKeyOptions(),
 	}
 }
 
@@ -149,10 +131,7 @@ func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
-	cmd.Flags().IntVarP(&o.CryptoKeySize, "crypto-key-size", "", o.CryptoKeySize, "The size of the RSA key to use, in bits.")
-	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMin, "crypto-key-buffer-size-min", "", o.CryptoKeyBufferSizeMin, "Minimal number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1.")
-	cmd.Flags().IntVarP(&o.CryptoKeyBufferSizeMax, cryptoKeyBufferSizeMaxFlagKey, "", o.CryptoKeyBufferSizeMax, "Maximum number of pre-generated crypto keys that are used for quick certificate issuance. The minimum size is 1. If not set, it will adjust to be at least the size of crypto-key-buffer-size-min.")
-	cmd.Flags().DurationVarP(&o.CryptoKeyBufferDelay, "crypto-key-buffer-delay", "", o.CryptoKeyBufferDelay, "Delay is the time to wait when generating next certificate in the (min, max) range. Certificate generation bellow the min threshold is not affected.")
+	o.CryptoKeyOptions.AddFlags(cmd)
 }
 
 func (o *OperatorOptions) Validate() error {
@@ -161,6 +140,7 @@ func (o *OperatorOptions) Validate() error {
 	errs = append(errs, o.ClientConfig.Validate())
 	errs = append(errs, o.InClusterReflection.Validate())
 	errs = append(errs, o.LeaderElection.Validate())
+	errs = append(errs, o.CryptoKeyOptions.Validate())
 
 	if len(o.OperatorImage) == 0 {
 		errs = append(errs, errors.New("operator image can't be empty"))
@@ -168,30 +148,6 @@ func (o *OperatorOptions) Validate() error {
 
 	if len(o.OperatorImage) == 0 {
 		errs = append(errs, errors.New("operator image can't be empty"))
-	}
-
-	if o.CryptoKeySize < rsaKeySizeMin {
-		errs = append(errs, fmt.Errorf("crypto-key-size must not be less than %d", rsaKeySizeMin))
-	}
-
-	if o.CryptoKeySize > rsaKeySizeMax {
-		errs = append(errs, fmt.Errorf("crypto-key-size must not be more than %d", rsaKeySizeMax))
-	}
-
-	if o.CryptoKeyBufferSizeMin < 1 {
-		errs = append(errs, fmt.Errorf("crypto-key-buffer-size-min (%d) has to be at least 1", o.CryptoKeyBufferSizeMin))
-	}
-
-	if o.CryptoKeyBufferSizeMax < 1 {
-		errs = append(errs, fmt.Errorf("crypto-key-buffer-size-max (%d) has to be at least 1", o.CryptoKeyBufferSizeMax))
-	}
-
-	if o.CryptoKeyBufferSizeMax < o.CryptoKeyBufferSizeMin {
-		errs = append(errs, fmt.Errorf(
-			"crypto-key-buffer-size-max (%d) can't be lower then crypto-key-buffer-size-min (%d)",
-			o.CryptoKeyBufferSizeMax,
-			o.CryptoKeyBufferSizeMin,
-		))
 	}
 
 	msg := apimachineryutilvalidation.IsInRange(o.CQLSIngressPort, 0, 65535)
@@ -263,9 +219,9 @@ func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 		return client, nil
 	})
 
-	maxChanged := cmd.Flags().Lookup(cryptoKeyBufferSizeMaxFlagKey).Changed
-	if !maxChanged && o.CryptoKeyBufferSizeMin > o.CryptoKeyBufferSizeMax {
-		o.CryptoKeyBufferSizeMax = o.CryptoKeyBufferSizeMin
+	err = o.CryptoKeyOptions.Complete(cmd)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -317,16 +273,11 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		)
 	}
 
-	rsaKeyGenerator, err := crypto.NewRSAKeyGenerator(
-		o.CryptoKeyBufferSizeMin,
-		o.CryptoKeyBufferSizeMax,
-		o.CryptoKeySize,
-		o.CryptoKeyBufferDelay,
-	)
+	keyGenerator, err := crypto.NewKeyGenerator(o.CryptoKeyOptions.ToKeyGeneratorConfig())
 	if err != nil {
-		return fmt.Errorf("can't create rsa key generator: %w", err)
+		return fmt.Errorf("can't create key generator: %w", err)
 	}
-	defer rsaKeyGenerator.Close()
+	defer keyGenerator.Close()
 
 	monitoringCRDsInstalled, err := helpers.IsAPIGroupVersionAvailable(o.kubeClient.Discovery(), "monitoring.coreos.com/v1")
 	if err != nil {
@@ -391,7 +342,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
 		o.OperatorImage,
 		o.CQLSIngressPort,
-		rsaKeyGenerator,
+		keyGenerator,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create scylladbdatacenter controller: %w", err)
@@ -490,7 +441,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 			monitoringInformers.Monitoring().V1().Prometheuses(),
 			monitoringInformers.Monitoring().V1().PrometheusRules(),
 			monitoringInformers.Monitoring().V1().ServiceMonitors(),
-			rsaKeyGenerator,
+			keyGenerator,
 		)
 		if err != nil {
 			return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)
@@ -775,7 +726,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		rsaKeyGenerator.Run(ctx)
+		keyGenerator.Run(ctx)
 	}()
 
 	wg.Add(1)
@@ -906,6 +857,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 
 	return nil
 }
+
 
 func listScyllaClustersWithNonRFC1123SubdomainTaskNames(ctx context.Context, scyllaV1Client scyllav1client.ScyllaV1Interface) ([]string, error) {
 	scyllaClusters, err := scyllaV1Client.ScyllaClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})

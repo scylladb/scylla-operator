@@ -30,7 +30,7 @@ const (
 	coredumpCollectionTimeout = 2 * time.Minute
 )
 
-var _ = g.Describe("ScyllaCluster coredumps", framework.Serial, framework.NotSupportedOnKind, func() {
+var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ = g.Describe("ScyllaCluster upgrades", func() {
+var _ = g.Describe("ScyllaCluster upgrades", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {
@@ -141,30 +141,30 @@ var _ = g.Describe("ScyllaCluster upgrades", func() {
 			rackSize:        1,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}),
+		}, framework.SuiteKindFast),
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}, framework.LongRunning),
+		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        1,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}),
+		}, framework.SuiteKindFast),
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}, framework.LongRunning),
+		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:       2,
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}, framework.LongRunning),
+		}),
 	)
 })

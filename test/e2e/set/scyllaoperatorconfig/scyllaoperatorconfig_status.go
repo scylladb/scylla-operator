@@ -20,7 +20,7 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-var _ = g.Describe("ScyllaOperatorConfig ", framework.Serial, func() {
+var _ = g.Describe("ScyllaOperatorConfig ", framework.SuiteSerial, func() {
 	defer g.GinkgoRecover()
 
 	var (

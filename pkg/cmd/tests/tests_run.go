@@ -53,7 +53,6 @@ type RunOptions struct {
 	FocusStrings          []string
 	SkipStrings           []string
 	RandomSeed            int64
-	DryRun                bool
 	Color                 bool
 	Parallelism           int
 	ParallelShard         int
@@ -76,7 +75,6 @@ func NewRunOptions(streams genericclioptions.IOStreams, testSuites ginkgotest.Te
 		FocusStrings:          []string{},
 		SkipStrings:           []string{},
 		RandomSeed:            time.Now().Unix(),
-		DryRun:                false,
 		Color:                 true,
 		Parallelism:           0,
 		ParallelShard:         0,

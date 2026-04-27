@@ -28,7 +28,7 @@ type ipv6TestEntry struct {
 	validateScyllaAddrs func(ctx context.Context, configClient *scyllaclient.ConfigClient, svc *corev1.Service, pod *corev1.Pod)
 }
 
-var _ = g.Describe("ScyllaCluster IPv6", framework.IPv6, func() {
+var _ = g.Describe("ScyllaCluster IPv6", framework.SuiteParallelIPv6, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

@@ -27,7 +27,7 @@ const (
 	gracePeriod = utils.ScyllaDBTerminationTimeout + (7 * 24 * time.Hour)
 )
 
-var _ = g.Describe("ScyllaCluster graceful termination", func() {
+var _ = g.Describe("ScyllaCluster graceful termination", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

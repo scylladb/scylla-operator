@@ -20,7 +20,7 @@ operatorTests:
 thirdParty:
   certManager:
     # renovate: datasource=github-releases depName=cert-manager packageName=cert-manager/cert-manager versioning=semver
-    version: "1.20.0"
+    version: "1.20.2"
   prometheusOperator:
     # renovate: datasource=github-releases depName=prometheus-operator packageName=prometheus-operator/prometheus-operator versioning=semver
     version: "0.90.1" # Latest compatible with .operator.prometheusVersion (https://prometheus-operator.dev/docs/getting-started/compatibility/)

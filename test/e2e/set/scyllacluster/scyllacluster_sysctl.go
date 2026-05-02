@@ -23,7 +23,8 @@ import (
 
 // Despite the sysctl configuration being a part of ScyllaCluster's API, it configures kernel parameters on the host.
 // Therefore, the test is disruptive and needs to run serially.
-var _ = g.Describe("ScyllaCluster sysctl", framework.Serial, framework.NotSupportedOnKind, func() {
+// Not part of SuiteKindFast: setting host sysctls isn't supported in kind clusters.
+var _ = g.Describe("ScyllaCluster sysctl", framework.SuiteSerial, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

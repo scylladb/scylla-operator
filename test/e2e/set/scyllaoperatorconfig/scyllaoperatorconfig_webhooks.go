@@ -15,7 +15,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var _ = g.Describe("ScyllaOperatorConfig webhook", func() {
+var _ = g.Describe("ScyllaOperatorConfig webhook", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	defer g.GinkgoRecover()
 
 	var f *framework.Framework

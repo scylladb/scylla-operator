@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with global ScyllaDB Manager", framework.MultiDatacenter, func() {
+var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with global ScyllaDB Manager", framework.SuiteMultiDatacenterParallel, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

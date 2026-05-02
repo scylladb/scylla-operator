@@ -100,6 +100,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 		framework.By("Verifying that Grafana is configured correctly")
 		e.VerifyGrafanaFn(ctx, f, sm)
 	},
+		// Not in SuiteParallelOpenShift: managed Prometheus is not supported on OpenShift.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
 			Description: "SAAS type",
 			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
@@ -117,7 +118,8 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			},
 				"cql-overview",
 			),
-		}, framework.NotSupportedOnOpenShift),
+		}, framework.SuiteParallel, framework.SuiteKindFast),
+		// Not in SuiteParallelOpenShift: managed Prometheus is not supported on OpenShift.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
 			Description: "Platform type",
 			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
@@ -126,7 +128,9 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: nil, // Using managed Prometheus.
 			VerifyPrometheusFn:          verifyManagedPrometheus,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}, framework.NotSupportedOnOpenShift),
+		}, framework.SuiteParallel, framework.SuiteKindFast),
+		// Not in SuiteParallelOpenShift: relies on a self-hosted external Prometheus,
+		// while OpenShift uses its built-in monitoring stack instead.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
 			Description: "Platform type with external Prometheus without TLS",
 			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
@@ -151,7 +155,9 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: prepareExternalPrometheusWithoutTLS,
 			VerifyPrometheusFn:          verifyExternalPrometheusWithoutTLS,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}, framework.NotSupportedOnOpenShift),
+		}, framework.SuiteParallel, framework.SuiteKindFast),
+		// Not in SuiteParallelOpenShift: relies on a self-hosted external Prometheus,
+		// while OpenShift uses its built-in monitoring stack instead.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
 			Description: "Platform type with external Prometheus with TLS",
 			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
@@ -177,7 +183,9 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: prepareExternalPrometheusWithTLS,
 			VerifyPrometheusFn:          verifyExternalPrometheusWithTLS,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}, framework.NotSupportedOnOpenShift),
+		}, framework.SuiteParallel, framework.SuiteKindFast),
+		// Only in SuiteParallelOpenShift: targets OpenShift's built-in
+		// Thanos Querier as the external Prometheus source.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
 			Description: "Platform type with Thanos Querier on OpenShift",
 			ScyllaDBMonitoringModifierFn: func(sm *scyllav1alpha1.ScyllaDBMonitoring) {
@@ -212,7 +220,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: prepareOpenShiftMonitoring,
 			VerifyPrometheusFn:          nil, // Grafana datasource is enough to verify access to Thanos Querier.
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}, framework.SupportedOnlyOnOpenShift),
+		}, framework.SuiteParallelOpenShift),
 	)
 })
 

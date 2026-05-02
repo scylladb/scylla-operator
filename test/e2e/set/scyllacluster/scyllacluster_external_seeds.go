@@ -17,7 +17,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-var _ = g.Describe("MultiDC cluster", func() {
+var _ = g.Describe("MultiDC cluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

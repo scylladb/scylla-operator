@@ -16,7 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = g.Describe("ScyllaDBCluster finalizer", framework.MultiDatacenter, func() {
+var _ = g.Describe("ScyllaDBCluster finalizer", framework.SuiteMultiDatacenterParallel, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

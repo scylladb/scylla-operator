@@ -36,7 +36,9 @@ const (
 
 // These tests modify global resource affecting global cluster state.
 // They must not be run asynchronously with other tests.
-var _ = g.Describe("NodeConfig Optimizations", framework.Serial, framework.NotSupportedOnKind, func() {
+// Not part of SuiteKindFast: applies node-level performance tuning that
+// requires host kernel access not available in kind clusters.
+var _ = g.Describe("NodeConfig Optimizations", framework.SuiteSerial, func() {
 	var (
 		f             *framework.Framework
 		ncTemplate    *scyllav1alpha1.NodeConfig

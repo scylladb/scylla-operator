@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = g.Describe("ScyllaDBDatacenter webhook", func() {
+var _ = g.Describe("ScyllaDBDatacenter webhook", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	defer g.GinkgoRecover()
 
 	var f *framework.Framework

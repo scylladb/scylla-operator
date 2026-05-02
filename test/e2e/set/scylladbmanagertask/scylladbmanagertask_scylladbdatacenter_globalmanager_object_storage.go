@@ -29,7 +29,8 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.RequiresObjectStorage, func() {
+// Not part of SuiteKindFast: requires external object storage configured on the cluster.
+var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var _ = g.Describe("RemoteKubernetesCluster", func() {
+var _ = g.Describe("RemoteKubernetesCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	var (

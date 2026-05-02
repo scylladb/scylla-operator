@@ -72,6 +72,7 @@ type TestFrameworkOptions struct {
 	ScyllaDBManagerAgentVersion string
 	ScyllaDBUpdateFrom          string
 	ScyllaDBUpgradeFrom         string
+	DryRun                      bool
 }
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
@@ -146,9 +147,13 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 func (o *TestFrameworkOptions) Validate(args []string) error {
 	var errors []error
 
-	err := o.MultiDatacenterClientConfig.Validate()
-	if err != nil {
-		errors = append(errors, err)
+	// In dry-run mode no spec body executes, so client configs aren't accessed.
+	// Skip validating them so dry-run can run without a kubeconfig.
+	if !o.DryRun {
+		err := o.MultiDatacenterClientConfig.Validate()
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
 
 	switch p := framework.CleanupPolicyType(o.CleanupPolicyUntyped); p {
@@ -217,7 +222,7 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 	}
 
 	if len(o.ArtifactsDir) > 0 {
-		_, err = os.Stat(o.ArtifactsDir)
+		_, err := os.Stat(o.ArtifactsDir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				errors = append(errors, fmt.Errorf("artifacts directory %q does not exist", o.ArtifactsDir))
@@ -231,8 +236,12 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 }
 
 func (o *TestFrameworkOptions) Complete(args []string) error {
-	if err := o.MultiDatacenterClientConfig.Complete(); err != nil {
-		return fmt.Errorf("can't complete multi-datacenter client config: %w", err)
+	// In dry-run mode no spec body executes, so client configs aren't accessed.
+	// Skip completing them so dry-run can run without a kubeconfig.
+	if !o.DryRun {
+		if err := o.MultiDatacenterClientConfig.Complete(); err != nil {
+			return fmt.Errorf("can't complete multi-datacenter client config: %w", err)
+		}
 	}
 	if err := o.ObjectStorageOptions.Complete(); err != nil {
 		return fmt.Errorf("can't complete object storage options: %w", err)

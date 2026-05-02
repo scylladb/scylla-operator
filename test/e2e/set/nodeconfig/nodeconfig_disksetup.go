@@ -36,7 +36,9 @@ var (
 	xfsVolumeSize = resource.MustParse("320M")
 )
 
-var _ = g.Describe("Node Setup", framework.Serial, framework.NotSupportedOnKind, func() {
+// Not part of SuiteKindFast: requires host-level disk operations (creating
+// loop devices, mkfs, mounts) that aren't available in kind clusters.
+var _ = g.Describe("Node Setup", framework.SuiteSerial, func() {
 	var (
 		f             *framework.Framework
 		ncTemplate    *scyllav1alpha1.NodeConfig

@@ -87,7 +87,7 @@ func (ks *KeyspaceMetadata) typesSortedTopologically() []*TypeMetadata {
 }
 
 var tableCQLTemplate = template.Must(template.New("table").
-	Funcs(map[string]interface{}{
+	Funcs(map[string]any{
 		"escape":               cqlHelpers.escape,
 		"tableColumnToCQL":     cqlHelpers.tableColumnToCQL,
 		"tablePropertiesToCQL": cqlHelpers.tablePropertiesToCQL,
@@ -99,7 +99,7 @@ CREATE TABLE {{ .KeyspaceName }}.{{ .Tm.Name }} (
 `))
 
 func (ks *KeyspaceMetadata) tableToCQL(w io.Writer, kn string, tm *TableMetadata) error {
-	if err := tableCQLTemplate.Execute(w, map[string]interface{}{
+	if err := tableCQLTemplate.Execute(w, map[string]any{
 		"Tm":           tm,
 		"KeyspaceName": kn,
 	}); err != nil {
@@ -109,7 +109,7 @@ func (ks *KeyspaceMetadata) tableToCQL(w io.Writer, kn string, tm *TableMetadata
 }
 
 var functionTemplate = template.Must(template.New("functions").
-	Funcs(map[string]interface{}{
+	Funcs(map[string]any{
 		"escape":      cqlHelpers.escape,
 		"zip":         cqlHelpers.zip,
 		"stripFrozen": cqlHelpers.stripFrozen,
@@ -128,7 +128,7 @@ CREATE FUNCTION {{ .keyspaceName }}.{{ .fm.Name }} (
 `))
 
 func (ks *KeyspaceMetadata) functionToCQL(w io.Writer, keyspaceName string, fm *FunctionMetadata) error {
-	if err := functionTemplate.Execute(w, map[string]interface{}{
+	if err := functionTemplate.Execute(w, map[string]any{
 		"fm":           fm,
 		"keyspaceName": keyspaceName,
 	}); err != nil {
@@ -138,7 +138,7 @@ func (ks *KeyspaceMetadata) functionToCQL(w io.Writer, keyspaceName string, fm *
 }
 
 var viewTemplate = template.Must(template.New("views").
-	Funcs(map[string]interface{}{
+	Funcs(map[string]any{
 		"zip":                  cqlHelpers.zip,
 		"partitionKeyString":   cqlHelpers.partitionKeyString,
 		"tablePropertiesToCQL": cqlHelpers.tablePropertiesToCQL,
@@ -158,7 +158,7 @@ CREATE MATERIALIZED VIEW {{ .vm.KeyspaceName }}.{{ .vm.ViewName }} AS
 `))
 
 func (ks *KeyspaceMetadata) viewToCQL(w io.Writer, vm *ViewMetadata) error {
-	if err := viewTemplate.Execute(w, map[string]interface{}{
+	if err := viewTemplate.Execute(w, map[string]any{
 		"vm": vm,
 	}); err != nil {
 		return err
@@ -167,7 +167,7 @@ func (ks *KeyspaceMetadata) viewToCQL(w io.Writer, vm *ViewMetadata) error {
 }
 
 var aggregatesTemplate = template.Must(template.New("aggregate").
-	Funcs(map[string]interface{}{
+	Funcs(map[string]any{
 		"stripFrozen": cqlHelpers.stripFrozen,
 	}).
 	Parse(`
@@ -195,7 +195,7 @@ func (ks *KeyspaceMetadata) aggregateToCQL(w io.Writer, am *AggregateMetadata) e
 }
 
 var typeCQLTemplate = template.Must(template.New("types").
-	Funcs(map[string]interface{}{
+	Funcs(map[string]any{
 		"zip": cqlHelpers.zip,
 	}).
 	Parse(`
@@ -249,7 +249,7 @@ func (ks *KeyspaceMetadata) indexToCQL(w io.Writer, im *IndexMetadata) error {
 }
 
 var keyspaceCQLTemplate = template.Must(template.New("keyspace").
-	Funcs(map[string]interface{}{
+	Funcs(map[string]any{
 		"escape":      cqlHelpers.escape,
 		"fixStrategy": cqlHelpers.fixStrategy,
 	}).
@@ -289,7 +289,7 @@ func (h toCQLHelpers) zip(a []string, b []string) [][]string {
 	return m
 }
 
-func (h toCQLHelpers) escape(e interface{}) string {
+func (h toCQLHelpers) escape(e any) string {
 	switch v := e.(type) {
 	case int, float64:
 		return fmt.Sprint(v)
@@ -318,7 +318,7 @@ func (h toCQLHelpers) fixQuote(v string) string {
 }
 
 func (h toCQLHelpers) tableOptionsToCQL(ops TableMetadataOptions) ([]string, error) {
-	opts := map[string]interface{}{
+	opts := map[string]any{
 		"bloom_filter_fp_chance":      ops.BloomFilterFpChance,
 		"comment":                     ops.Comment,
 		"crc_check_chance":            ops.CrcCheckChance,
@@ -368,8 +368,8 @@ func (h toCQLHelpers) tableOptionsToCQL(ops TableMetadataOptions) ([]string, err
 	return out, nil
 }
 
-func (h toCQLHelpers) tableExtensionsToCQL(extensions map[string]interface{}) ([]string, error) {
-	exts := map[string]interface{}{}
+func (h toCQLHelpers) tableExtensionsToCQL(extensions map[string]any) ([]string, error) {
+	exts := map[string]any{}
 
 	if blob, ok := extensions["scylla_encryption_options"]; ok {
 		encOpts := &scyllaEncryptionOptions{}
@@ -395,7 +395,7 @@ func (h toCQLHelpers) tableExtensionsToCQL(extensions map[string]interface{}) ([
 }
 
 func (h toCQLHelpers) tablePropertiesToCQL(cks []*ColumnMetadata, opts TableMetadataOptions,
-	extensions map[string]interface{}) (string, error) {
+	extensions map[string]any) (string, error) {
 	var sb strings.Builder
 
 	var properties []string

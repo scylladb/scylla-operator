@@ -14,8 +14,8 @@ func (d DefaultWarningHandler) HandleWarnings(qry ExecutableQuery, host *HostInf
 	if d.logger == nil {
 		return
 	}
-	if host != nil && len(host.hostId) > 0 {
-		d.logger.Printf("[%s] warnings: %v", host.hostId, warnings)
+	if host != nil && !host.hostId.IsEmpty() {
+		d.logger.Printf("[%s] warnings: %v", host.hostId.String(), warnings)
 	} else {
 		d.logger.Printf("Cluster warnings: %v", warnings)
 	}

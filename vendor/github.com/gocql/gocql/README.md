@@ -108,6 +108,8 @@ func main() {
 }
 ```
 
+`SliceMap()` consumes and closes the iterator before it returns.
+
 ## 4. Data Types
 
 Here's an list of all CQL Types reflected in the GoCQL environment:

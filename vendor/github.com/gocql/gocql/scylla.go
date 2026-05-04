@@ -380,17 +380,17 @@ type scyllaConnPicker struct {
 	logger StdLogger
 	// disableShardAwarePortUntil is used to temporarily disable new connections to the shard-aware port temporarily
 	disableShardAwarePortUntil *atomic.Value
-	hostId                     string
 	address                    string
-	conns                      []*Conn
 	excessConns                []*Conn
+	conns                      []*Conn
 	nrShards                   int
 	pos                        uint64
 	lastAttemptedShard         int
 	msbIgnore                  uint64
 	nrConns                    int
-	shardAwarePortDisabled     bool
 	excessConnsLimitRate       float32
+	hostId                     UUID
+	shardAwarePortDisabled     bool
 }
 
 func newScyllaConnPicker(conn *Conn, logger StdLogger) *scyllaConnPicker {
@@ -442,8 +442,8 @@ outer:
 		}
 
 		if qry != nil && conn.isTabletSupported() {
-			for _, replica := range conn.session.findTabletReplicasForToken(qry.Keyspace(), qry.Table(), int64(mmt)) {
-				if replica.HostID() == p.hostId {
+			for _, replica := range conn.session.findTabletReplicasUnsafeForToken(qry.Keyspace(), qry.Table(), int64(mmt)) {
+				if UUID(replica.HostUUIDValue()) == p.hostId {
 					idx = replica.ShardID()
 					break outer
 				}

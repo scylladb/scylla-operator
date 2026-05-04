@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-func Unmarshal(data []byte, value interface{}) error {
+func Unmarshal(data []byte, value any) error {
 	switch v := value.(type) {
 	case nil:
 		return nil
@@ -17,7 +17,7 @@ func Unmarshal(data []byte, value interface{}) error {
 		return DecBytes(data, v)
 	case **[]byte:
 		return DecBytesR(data, v)
-	case *interface{}:
+	case *any:
 		return DecInterface(data, v)
 	default:
 		// Custom types (type MyString string) can be deserialized only via `reflect` package.

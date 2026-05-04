@@ -65,8 +65,8 @@ const (
 type controlConnection interface {
 	getConn() *connHost
 	awaitSchemaAgreement() error
-	query(statement string, values ...interface{}) (iter *Iter)
-	querySystem(statement string, values ...interface{}) (iter *Iter)
+	query(statement string, values ...any) (iter *Iter)
+	querySystem(statement string, values ...any) (iter *Iter)
 	discoverProtocol(hosts []*HostInfo) (int, error)
 	connect(hosts []*HostInfo) error
 	close()
@@ -388,6 +388,7 @@ func (c *controlConn) registerEvents(conn *Conn) error {
 	if err != nil {
 		return err
 	}
+	defer framer.Release()
 
 	frame, err := framer.parseFrame()
 	if err != nil {
@@ -510,6 +511,15 @@ func (c *controlConn) getConn() *connHost {
 	return c.conn.Load().(*connHost)
 }
 
+// writeFrame sends frame w on the control connection and returns the parsed
+// response frame.
+//
+// NOTE: The returned frame must not retain any byte-slice references to the
+// framer's read buffer, because the framer is released back to the pool
+// immediately after parseFrame returns (via defer). Frame types that use
+// readBytesCopy (e.g. SupportedFrame, AuthChallengeFrame, AuthSuccessFrame)
+// are safe; frame types that use readBytes and expose []byte fields would not
+// be safe and must not be returned from this function.
 func (c *controlConn) writeFrame(w frameBuilder) (frame, error) {
 	ch := c.getConn()
 	if ch == nil {
@@ -520,12 +530,13 @@ func (c *controlConn) writeFrame(w frameBuilder) (frame, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer framer.Release()
 
 	return framer.parseFrame()
 }
 
 // query will return nil if the connection is closed or nil
-func (c *controlConn) querySystem(statement string, values ...interface{}) (iter *Iter) {
+func (c *controlConn) querySystem(statement string, values ...any) (iter *Iter) {
 	conn := c.getConn().conn.(*Conn)
 	return c.runQuery(c.session.Query(statement+conn.usingTimeoutClause, values...).
 		Consistency(One).
@@ -535,7 +546,7 @@ func (c *controlConn) querySystem(statement string, values ...interface{}) (iter
 }
 
 // query will return nil if the connection is closed or nil
-func (c *controlConn) query(statement string, values ...interface{}) (iter *Iter) {
+func (c *controlConn) query(statement string, values ...any) (iter *Iter) {
 	return c.runQuery(c.session.Query(statement, values...).Consistency(One).RoutingKey([]byte{}).Trace(nil))
 }
 
@@ -554,6 +565,7 @@ func (c *controlConn) runQuery(qry *Query) (iter *Iter) {
 		if iter.err == nil || !c.retry.Attempt(qry) {
 			break
 		}
+		iter.finalize(true)
 	}
 
 	return

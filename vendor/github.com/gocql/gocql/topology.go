@@ -70,7 +70,7 @@ type placementStrategy interface {
 	replicationFactor(dc string) int
 }
 
-func getReplicationFactorFromOpts(val interface{}) (int, error) {
+func getReplicationFactorFromOpts(val any) (int, error) {
 	switch v := val.(type) {
 	case int:
 		if v < 0 {
@@ -108,7 +108,7 @@ func getStrategy(ks *KeyspaceMetadata, logger StdLogger) placementStrategy {
 
 			rf, err := getReplicationFactorFromOpts(rf)
 			if err != nil {
-				logger.Println("parse rf for keyspace %q, dc %q: %v", err)
+				logger.Printf("parse rf for keyspace %q, dc %q: %v", ks.Name, dc, err)
 				// skip DC if the rf is invalid/unsupported, so that we can at least work with other working DCs.
 				continue
 			}
@@ -119,7 +119,7 @@ func getStrategy(ks *KeyspaceMetadata, logger StdLogger) placementStrategy {
 	case strings.Contains(ks.StrategyClass, "LocalStrategy"):
 		return nil
 	default:
-		logger.Printf("parse rf for keyspace %q: unsupported strategy class: %v", ks.StrategyClass)
+		logger.Printf("parse rf for keyspace %q: unsupported strategy class: %v", ks.Name, ks.StrategyClass)
 		return nil
 	}
 }

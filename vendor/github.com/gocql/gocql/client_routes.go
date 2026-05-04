@@ -65,7 +65,11 @@ type ClientRoutesConfig struct {
 	ResolveHealthyEndpointPeriod time.Duration
 	ResolverCacheDuration        time.Duration
 	MaxResolverConcurrency       int
-	BlockUnknownEndpoints        bool
+
+	// Deprecated: BlockUnknownEndpoints no longer has any effect. Unknown
+	// endpoints are always blocked. This field will be removed in a future
+	// release.
+	BlockUnknownEndpoints bool
 
 	// EnableShardAwareness controls whether the driver should use shard-aware
 	// connections when using ClientRoutes (PrivateLink).
@@ -601,10 +605,7 @@ func (p *ClientRoutesHandler) updateHostPortMappingSync(connectionIDs []string, 
 }
 
 func (p *ClientRoutesHandler) startReadingEvents() {
-	var connectionIDs []string
-	if p.cfg.BlockUnknownEndpoints {
-		connectionIDs = p.cfg.Endpoints.GetAllConnectionIDs()
-	}
+	connectionIDs := p.cfg.Endpoints.GetAllConnectionIDs()
 
 	go func() {
 		for event := range p.sub.Events() {
@@ -621,21 +622,17 @@ func (p *ClientRoutesHandler) startReadingEvents() {
 					}
 				}
 				var newConnectionIDs []string
-				if p.cfg.BlockUnknownEndpoints {
-					for _, connectionID := range evt.ConnectionIDs {
-						if connectionID == "" {
-							continue
-						}
-						if slices.ContainsFunc(p.cfg.Endpoints, func(ep ClientRoutesEndpoint) bool {
-							return ep.ConnectionID == connectionID
-						}) {
-							newConnectionIDs = append(newConnectionIDs, connectionID)
-						}
+				for _, connectionID := range evt.ConnectionIDs {
+					if connectionID == "" {
+						continue
 					}
-					if len(newConnectionIDs) != 0 {
-						p.updateHostPortMappingAsync(newConnectionIDs, evt.HostIDs)
+					if slices.ContainsFunc(p.cfg.Endpoints, func(ep ClientRoutesEndpoint) bool {
+						return ep.ConnectionID == connectionID
+					}) {
+						newConnectionIDs = append(newConnectionIDs, connectionID)
 					}
-				} else {
+				}
+				if len(newConnectionIDs) != 0 {
 					p.updateHostPortMappingAsync(newConnectionIDs, evt.HostIDs)
 				}
 			case *events.ControlConnectionRecreatedEvent:
@@ -715,7 +712,7 @@ func getHostPortMappingFromCluster(c controlConnection, table string, connection
 	var res UnresolvedClientRouteList
 
 	stmt := []string{fmt.Sprintf("select connection_id, host_id, address, port, tls_port from %s", table)}
-	var bounds []interface{}
+	var bounds []any
 	if len(connectionIDs) != 0 {
 		var inClause []string
 		for _, connectionID := range connectionIDs {

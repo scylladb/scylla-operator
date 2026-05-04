@@ -21,7 +21,7 @@ var (
 	errInvalidSign  = fmt.Errorf("failed to unmarshal duration: the data values of months, days and nanoseconds should have the same sign")
 )
 
-func errNilReference(v interface{}) error {
+func errNilReference(v any) error {
 	return fmt.Errorf("failed to unmarshal duration: can not unmarshal into nil reference (%T)(%[1]v))", v)
 }
 

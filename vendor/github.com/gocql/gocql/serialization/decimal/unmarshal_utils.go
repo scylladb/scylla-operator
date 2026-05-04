@@ -19,7 +19,7 @@ func errBrokenData(p []byte) error {
 	return nil
 }
 
-func errNilReference(v interface{}) error {
+func errNilReference(v any) error {
 	return fmt.Errorf("failed to unmarshal decimal: can not unmarshal into nil reference(%T)(%[1]v)", v)
 }
 

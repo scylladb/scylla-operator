@@ -4,7 +4,7 @@ import (
 	"reflect"
 )
 
-func Marshal(value interface{}) ([]byte, error) {
+func Marshal(value any) ([]byte, error) {
 	switch v := value.(type) {
 	case nil:
 		return nil, nil

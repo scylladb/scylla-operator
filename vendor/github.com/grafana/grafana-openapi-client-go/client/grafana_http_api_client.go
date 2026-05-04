@@ -344,11 +344,13 @@ func (c *GrafanaHTTPAPI) OrgID() int64 {
 	return c.cfg.OrgID
 }
 
-// WithOrgID sets the organization ID and returns the client
+// WithOrgID returns a new client with the given organization ID set.
+// The original client is not modified, making this safe for concurrent use.
 func (c *GrafanaHTTPAPI) WithOrgID(orgID int64) *GrafanaHTTPAPI {
-	c.cfg.OrgID = orgID
-	c.SetTransport(newTransportWithConfig(c.cfg))
-	return c
+	clone := c.Clone()
+	clone.cfg.OrgID = orgID
+	clone.SetTransport(newTransportWithConfig(clone.cfg))
+	return clone
 }
 
 // WithRetries sets retry parameters and returns the client
@@ -368,7 +370,9 @@ func (c *GrafanaHTTPAPI) WithHTTPClient(client *http.Client) *GrafanaHTTPAPI {
 }
 
 func newTransportWithConfig(cfg *TransportConfig) *httptransport.Runtime {
-	httpTransport := http.DefaultTransport.(*http.Transport)
+	// Clone http.DefaultTransport rather than mutating it — it is a package-level
+	// global and writing to it concurrently causes a data race.
+	httpTransport := http.DefaultTransport.(*http.Transport).Clone()
 	httpTransport.TLSClientConfig = cfg.TLSConfig
 
 	retryableTransport := &transport.RetryableTransport{

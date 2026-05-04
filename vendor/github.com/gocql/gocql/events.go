@@ -118,13 +118,7 @@ func (s *Session) publishEvent(event events.Event) {
 	}
 }
 
-func (s *Session) handleEvent(framer *framer) {
-	frame, err := framer.parseFrame()
-	if err != nil {
-		s.logger.Printf("gocql: unable to parse event frame: %v\n", err)
-		return
-	}
-
+func (s *Session) handleEvent(frame frame) {
 	if debug.Enabled {
 		s.logger.Printf("gocql: handling frame: %v\n", frame)
 	}

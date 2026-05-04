@@ -17,7 +17,7 @@ const (
 
 var errWrongDataLen = fmt.Errorf("failed to unmarshal tinyint: the length of the data should less or equal then 1")
 
-func errNilReference(v interface{}) error {
+func errNilReference(v any) error {
 	return fmt.Errorf("failed to unmarshal tinyint: can not unmarshal into nil reference(%T)(%[1]v)", v)
 }
 

@@ -22,7 +22,7 @@ var (
 	minDate = time.Date(-5877641, 06, 23, 0, 0, 0, 0, time.UTC)
 )
 
-func errWrongStringFormat(v interface{}) error {
+func errWrongStringFormat(v any) error {
 	return fmt.Errorf(`failed to marshal date: the (%T)(%[1]v) should have fromat "2006-01-02"`, v)
 }
 

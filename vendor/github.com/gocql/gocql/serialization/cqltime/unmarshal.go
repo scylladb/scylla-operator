@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func Unmarshal(data []byte, value interface{}) error {
+func Unmarshal(data []byte, value any) error {
 	switch v := value.(type) {
 	case nil:
 		return nil

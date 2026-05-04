@@ -386,7 +386,7 @@
 //
 // # User-defined types
 //
-// UDTs can be mapped (un)marshaled from/to map[string]interface{} a Go struct (or a type implementing
+// UDTs can be mapped (un)marshaled from/to map[string]any a Go struct (or a type implementing
 // UDTUnmarshaler, UDTMarshaler, Unmarshaler or Marshaler interfaces).
 //
 // For structs, cql tag can be used to specify the CQL field name to be mapped to a struct field:

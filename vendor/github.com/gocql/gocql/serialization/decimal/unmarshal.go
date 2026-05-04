@@ -7,7 +7,7 @@ import (
 	"gopkg.in/inf.v0"
 )
 
-func Unmarshal(data []byte, value interface{}) error {
+func Unmarshal(data []byte, value any) error {
 	switch v := value.(type) {
 	case nil:
 		return nil

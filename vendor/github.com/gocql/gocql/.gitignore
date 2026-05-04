@@ -18,6 +18,7 @@ docs/source/.doctrees
 TODO*.md
 
 # Codex - AI assistant metadata
+.codex
 .codex/
 .codex-cache/
 .codex-config.json

@@ -34,6 +34,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	frm "github.com/gocql/gocql/internal/frame"
@@ -51,12 +52,12 @@ type unsetColumn struct{}
 var UnsetValue = unsetColumn{}
 
 type namedValue struct {
-	value interface{}
+	value any
 	name  string
 }
 
 // NamedValue produce a value which will bind to the named parameter in a query
-func NamedValue(name string, value interface{}) interface{} {
+func NamedValue(name string, value any) any {
 	return &namedValue{
 		name:  name,
 		value: value,
@@ -216,32 +217,43 @@ type FrameHeaderObserver interface {
 	ObserveFrameHeader(context.Context, ObservedFrameHeader)
 }
 
+// framerInterface represents a frame reader/writer for the CQL protocol.
+//
+// Framers are pooled and reused. Any byte slices returned from frame parsing
+// methods may be backed by pooled buffers that are reused after Release() is
+// called. If data must outlive the framer, use readBytesCopy() instead of
+// readBytes() when implementing parseFrame(), or copy returned byte slices
+// before calling Release().
+//
+// After Release() is called, the framer and any slices derived from its
+// buffers must not be accessed.
 type framerInterface interface {
 	ReadBytesInternal() ([]byte, error)
 	GetCustomPayload() map[string][]byte
 	GetHeaderWarnings() []string
+	// Release returns the framer to its pool (if pooled).
+	// Must be called when the framer is no longer needed.
+	// Safe to call multiple times; subsequent calls are no-ops.
+	Release()
 }
 
 const headSize = 9
 
 // a framer is responsible for reading, writing and parsing frames on a single stream
 type framer struct {
-	compres Compressor
-	// if this frame was read then the header will be here
-	header        *frm.FrameHeader
-	customPayload map[string][]byte
-	// if tracing flag is set this is not nil
-	traceID []byte
-	// holds a ref to the whole byte slice for buf so that it can be reset to
-	// 0 after a read.
+	compressor            Compressor
+	header                *frm.FrameHeader
+	customPayload         map[string][]byte
+	release               func()
+	traceID               []byte
 	readBuffer            []byte
 	buf                   []byte
 	flagLWT               int
 	rateLimitingErrorCode int
+	flags                 byte
 	proto                 byte
-	// flags are for outgoing flags, enabling compression and tracing etc
-	flags            byte
-	tabletsRoutingV1 bool
+	tabletsRoutingV1      bool
+	released              atomic.Bool
 }
 
 func newFramer(compressor Compressor, version byte) *framer {
@@ -259,7 +271,7 @@ func newFramer(compressor Compressor, version byte) *framer {
 	}
 
 	version &= protoVersionMask
-	f.compres = compressor
+	f.compressor = compressor
 	f.proto = version
 	f.flags = flags
 	f.header = nil
@@ -268,6 +280,17 @@ func newFramer(compressor Compressor, version byte) *framer {
 	f.tabletsRoutingV1 = false
 
 	return f
+}
+
+// Release returns the framer to its pool. If the framer was not obtained
+// from a pool (release is nil), this is a no-op.
+//
+// Conn.releaseFramer owns the released-state guard, so this method delegates
+// directly to the release closure.
+func (f *framer) Release() {
+	if f.release != nil {
+		f.release()
+	}
 }
 
 func newFramerWithExts(compressor Compressor, version byte, cqlProtoExts []cqlProtocolExtension, logger StdLogger) *framer {
@@ -315,30 +338,19 @@ type frame interface {
 }
 
 func readHeader(r io.Reader, p []byte) (head frm.FrameHeader, err error) {
-	_, err = io.ReadFull(r, p[:1])
+	_, err = io.ReadFull(r, p[:headSize])
 	if err != nil {
 		return frm.FrameHeader{}, err
 	}
 
-	version := p[0] & protoVersionMask
+	head.Version = frm.ProtoVersion(p[0])
+	version := head.Version.Version()
 
 	if version < protoVersion3 || version > protoVersion5 {
 		return frm.FrameHeader{}, fmt.Errorf("gocql: unsupported protocol response version: %d", version)
 	}
 
-	_, err = io.ReadFull(r, p[1:headSize])
-	if err != nil {
-		return frm.FrameHeader{}, err
-	}
-
-	p = p[:headSize]
-
-	head.Version = frm.ProtoVersion(p[0])
 	head.Flags = p[1]
-
-	if len(p) != 9 {
-		return frm.FrameHeader{}, fmt.Errorf("not enough bytes to read header require 9 got: %d", len(p))
-	}
 
 	head.Stream = int(int16(binary.BigEndian.Uint16(p[2:4])))
 	head.Op = frm.Op(p[4])
@@ -384,11 +396,11 @@ func (f *framer) readFrame(r io.Reader, head *frm.FrameHeader) error {
 	}
 
 	if head.Flags&frm.FlagCompress == frm.FlagCompress {
-		if f.compres == nil {
+		if f.compressor == nil {
 			return NewErrProtocol("no compressor available with compressed frame body")
 		}
 
-		f.buf, err = f.compres.Decode(f.buf)
+		f.buf, err = f.compressor.Decode(f.buf)
 		if err != nil {
 			return err
 		}
@@ -503,10 +515,9 @@ func (f *framer) parseErrorFrame() frame {
 			Table:      table,
 		}
 	case ErrCodeUnprepared:
-		stmtId := f.readShortBytes()
 		return &RequestErrUnprepared{
 			ErrorFrame:  errD,
-			StatementId: copyBytes(stmtId), // defensively copy
+			StatementId: f.readShortBytesCopy(),
 		}
 	case ErrCodeReadFailure:
 		res := &RequestErrReadFailure{
@@ -615,12 +626,12 @@ func (f *framer) finish() error {
 	}
 
 	if f.buf[1]&frm.FlagCompress == frm.FlagCompress {
-		if f.compres == nil {
+		if f.compressor == nil {
 			panic("compress flag set with no compressor")
 		}
 
 		// TODO: only compress frames which are big enough
-		compressed, err := f.compres.Encode(f.buf[headSize:])
+		compressed, err := f.compressor.Encode(f.buf[headSize:])
 		if err != nil {
 			return err
 		}
@@ -721,6 +732,11 @@ func (f *framer) readTypeInfo() TypeInfo {
 	simple := NativeType{
 		proto: f.proto,
 		typ:   Type(id),
+	}
+
+	// Fast path for simple native types (through TypeDuration).
+	if id > 0 && id <= uint16(TypeDuration) {
+		return simple
 	}
 
 	if simple.typ == TypeCustom {
@@ -846,20 +862,34 @@ func (f *framer) parsePreparedMetadata() preparedMetadata {
 	}
 
 	var cols []ColumnInfo
+	readPerColumnSpec := !globalSpec
+	var tracker keyspaceTableTracker
 	if meta.colCount < 1000 {
 		// preallocate columninfo to avoid excess copying
 		cols = make([]ColumnInfo, meta.colCount)
 		for i := 0; i < meta.colCount; i++ {
-			f.readCol(&cols[i], &meta.resultMetadata, globalSpec, meta.keyspace, meta.table)
+			col := &cols[i]
+			keyspace, table := f.readColWithSpec(col, &meta.resultMetadata, globalSpec, meta.keyspace, meta.table, i, readPerColumnSpec)
+			if readPerColumnSpec {
+				tracker.track(i, keyspace, table)
+			}
 		}
 	} else {
 		// use append, huge number of columns usually indicates a corrupt frame or
 		// just a huge row.
 		for i := 0; i < meta.colCount; i++ {
 			var col ColumnInfo
-			f.readCol(&col, &meta.resultMetadata, globalSpec, meta.keyspace, meta.table)
+			keyspace, table := f.readColWithSpec(&col, &meta.resultMetadata, globalSpec, meta.keyspace, meta.table, i, readPerColumnSpec)
+			if readPerColumnSpec {
+				tracker.track(i, keyspace, table)
+			}
 			cols = append(cols, col)
 		}
+	}
+
+	if !globalSpec && meta.colCount > 0 && tracker.allSame {
+		meta.keyspace = tracker.keyspace
+		meta.table = tracker.table
 	}
 
 	meta.columns = cols
@@ -886,23 +916,46 @@ func (r resultMetadata) String() string {
 	return fmt.Sprintf("[metadata flags=0x%x paging_state=% X columns=%v]", r.flags, r.pagingState, r.columns)
 }
 
-func (f *framer) readCol(col *ColumnInfo, meta *resultMetadata, globalSpec bool, keyspace, table string) {
-	if !globalSpec {
+// keyspaceTableTracker tracks whether all columns share the same keyspace/table.
+type keyspaceTableTracker struct {
+	keyspace string
+	table    string
+	allSame  bool
+}
+
+func (t *keyspaceTableTracker) track(colIndex int, keyspace, table string) {
+	if colIndex == 0 {
+		t.keyspace = keyspace
+		t.table = table
+		t.allSame = true
+	} else if t.allSame && (keyspace != t.keyspace || table != t.table) {
+		t.allSame = false
+	}
+}
+
+func (f *framer) readColWithSpec(col *ColumnInfo, meta *resultMetadata, globalSpec bool, keyspace, table string, colIndex int, readPerColumnSpec bool) (string, string) {
+	if readPerColumnSpec {
+		// Per-column table spec encoding: read keyspace/table for this column.
 		col.Keyspace = f.readString()
 		col.Table = f.readString()
 	} else {
+		if !globalSpec && colIndex != 0 {
+			// Skip per-column keyspace/table already read from column 0.
+			f.skipString()
+			f.skipString()
+		}
 		col.Keyspace = keyspace
 		col.Table = table
 	}
 
 	col.Name = f.readString()
 	col.TypeInfo = f.readTypeInfo()
-	switch v := col.TypeInfo.(type) {
-	// maybe also UDT
-	case TupleTypeInfo:
+	if tuple, ok := col.TypeInfo.(TupleTypeInfo); ok {
 		// -1 because we already included the tuple column
-		meta.actualColCount += len(v.Elems) - 1
+		meta.actualColCount += len(tuple.Elems) - 1
 	}
+
+	return col.Keyspace, col.Table
 }
 
 func (f *framer) parseResultMetadata() resultMetadata {
@@ -923,9 +976,13 @@ func (f *framer) parseResultMetadata() resultMetadata {
 		return meta
 	}
 
-	var keyspace, table string
 	globalSpec := meta.flags&frm.FlagGlobalTableSpec == frm.FlagGlobalTableSpec
-	if globalSpec {
+
+	// Read keyspace/table once and reuse for all columns. ROWS results are
+	// always single-table; when !globalSpec this consumes column 0's wire
+	// values and readColWithSpec skips the rest via skipString().
+	var keyspace, table string
+	if globalSpec || meta.colCount > 0 {
 		keyspace = f.readString()
 		table = f.readString()
 	}
@@ -935,7 +992,7 @@ func (f *framer) parseResultMetadata() resultMetadata {
 		// preallocate columninfo to avoid excess copying
 		cols = make([]ColumnInfo, meta.colCount)
 		for i := 0; i < meta.colCount; i++ {
-			f.readCol(&cols[i], &meta, globalSpec, keyspace, table)
+			f.readColWithSpec(&cols[i], &meta, globalSpec, keyspace, table, i, false)
 		}
 
 	} else {
@@ -943,7 +1000,7 @@ func (f *framer) parseResultMetadata() resultMetadata {
 		// just a huge row.
 		for i := 0; i < meta.colCount; i++ {
 			var col ColumnInfo
-			f.readCol(&col, &meta, globalSpec, keyspace, table)
+			f.readColWithSpec(&col, &meta, globalSpec, keyspace, table, i, false)
 			cols = append(cols, col)
 		}
 	}
@@ -1030,7 +1087,7 @@ type resultPreparedFrame struct {
 func (f *framer) parseResultPrepared() frame {
 	frame := &resultPreparedFrame{
 		FrameHeader: *f.header,
-		preparedID:  f.readShortBytes(),
+		preparedID:  f.readShortBytesCopy(),
 		reqMeta:     f.parsePreparedMetadata(),
 	}
 
@@ -1096,14 +1153,14 @@ func (f *framer) parseAuthenticateFrame() frame {
 func (f *framer) parseAuthSuccessFrame() frame {
 	return &frm.AuthSuccessFrame{
 		FrameHeader: *f.header,
-		Data:        f.readBytes(),
+		Data:        f.readBytesCopy(),
 	}
 }
 
 func (f *framer) parseAuthChallengeFrame() frame {
 	return &frm.AuthChallengeFrame{
 		FrameHeader: *f.header,
-		Data:        f.readBytes(),
+		Data:        f.readBytesCopy(),
 	}
 }
 
@@ -1495,6 +1552,17 @@ func (f *framer) readString() (s string) {
 	return
 }
 
+// skipString advances past a string without allocating.
+func (f *framer) skipString() {
+	size := f.readShort()
+
+	if len(f.buf) < int(size) {
+		panic(fmt.Errorf("not enough bytes in buffer to skip string, requires %d got %d", size, len(f.buf)))
+	}
+
+	f.buf = f.buf[size:]
+}
+
 func (f *framer) readLongString() (s string) {
 	size := f.readInt()
 
@@ -1534,22 +1602,6 @@ func (f *framer) ReadBytesInternal() ([]byte, error) {
 	return l, nil
 }
 
-func (f *framer) readBytes() []byte {
-	size := f.readInt()
-	if size < 0 {
-		return nil
-	}
-
-	if len(f.buf) < size {
-		panic(fmt.Errorf("not enough bytes in buffer to read bytes require %d got: %d", size, len(f.buf)))
-	}
-
-	l := f.buf[:size]
-	f.buf = f.buf[size:]
-
-	return l
-}
-
 func (f *framer) readBytesCopy() []byte {
 	size := f.readInt()
 	if size < 0 {
@@ -1566,16 +1618,17 @@ func (f *framer) readBytesCopy() []byte {
 	return out
 }
 
-func (f *framer) readShortBytes() []byte {
+func (f *framer) readShortBytesCopy() []byte {
 	size := f.readShort()
 	if len(f.buf) < int(size) {
 		panic(fmt.Errorf("not enough bytes in buffer to read short bytes: require %d got %d", size, len(f.buf)))
 	}
 
-	l := f.buf[:size]
+	out := make([]byte, size)
+	copy(out, f.buf[:size])
 	f.buf = f.buf[size:]
 
-	return l
+	return out
 }
 
 func (f *framer) readInetAdressOnly() net.IP {

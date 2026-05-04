@@ -12,7 +12,7 @@ var (
 	errDataOutRangeDur   = fmt.Errorf("failed to unmarshal time: (time.Duration) the data should be in the range 0 to 86399999999999")
 )
 
-func errNilReference(v interface{}) error {
+func errNilReference(v any) error {
 	return fmt.Errorf("failed to unmarshal time: can not unmarshal into nil reference (%T)(%[1]v))", v)
 }
 

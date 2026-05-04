@@ -38,7 +38,7 @@ import (
 
 type RowData struct {
 	Columns []string
-	Values  []interface{}
+	Values  []any
 }
 
 // asVectorType attempts to convert a NativeType(custom) which represents a VectorType
@@ -128,11 +128,11 @@ func goType(t TypeInfo) (reflect.Type, error) {
 	case TypeVarint:
 		return reflect.TypeOf(*new(*big.Int)), nil
 	case TypeTuple:
-		// what can we do here? all there is to do is to make a list of interface{}
+		// what can we do here? all there is to do is to make a list of any
 		tuple := t.(TupleTypeInfo)
-		return reflect.TypeOf(make([]interface{}, len(tuple.Elems))), nil
+		return reflect.TypeOf(make([]any, len(tuple.Elems))), nil
 	case TypeUDT:
-		return reflect.TypeOf(make(map[string]interface{})), nil
+		return reflect.TypeOf(make(map[string]any)), nil
 	case TypeDate:
 		return reflect.TypeOf(*new(time.Time)), nil
 	case TypeDuration:
@@ -156,8 +156,49 @@ func goType(t TypeInfo) (reflect.Type, error) {
 	}
 }
 
-func dereference(i interface{}) interface{} {
-	return reflect.Indirect(reflect.ValueOf(i)).Interface()
+func dereference(i any) any {
+	// Fast path: avoid reflect for the common pointer types returned by
+	// NativeType.NewWithError and used in RowData/MapScan.
+	switch v := i.(type) {
+	case *string:
+		return *v
+	case *int:
+		return *v
+	case *int64:
+		return *v
+	case *int32:
+		return *v
+	case *int16:
+		return *v
+	case *int8:
+		return *v
+	case *float64:
+		return *v
+	case *float32:
+		return *v
+	case *bool:
+		return *v
+	case *[]byte:
+		return *v
+	case *time.Time:
+		return *v
+	case *time.Duration:
+		return *v
+	case *UUID:
+		return *v
+	case *Duration:
+		return *v
+	case *inf.Dec:
+		return *v
+	case *big.Int:
+		return *v
+	case *[]any:
+		return *v
+	case *map[string]any:
+		return *v
+	default:
+		return reflect.Indirect(reflect.ValueOf(i)).Interface()
+	}
 }
 
 // TODO: Cover with unit tests.
@@ -341,7 +382,7 @@ func getApacheCassandraType(class string) Type {
 	}
 }
 
-func (r *RowData) rowMap(m map[string]interface{}) {
+func (r *RowData) rowMap(m map[string]any) {
 	for i, column := range r.Columns {
 		val := dereference(r.Values[i])
 		if valVal := reflect.ValueOf(val); valVal.Kind() == reflect.Slice && !valVal.IsNil() {
@@ -367,41 +408,117 @@ func (iter *Iter) RowData() (RowData, error) {
 		return RowData{}, iter.err
 	}
 
-	columns := make([]string, 0, len(iter.Columns()))
-	values := make([]interface{}, 0, len(iter.Columns()))
+	columns, err := iter.getScanColumns()
+	if err != nil {
+		return RowData{}, err
+	}
 
+	values, err := iter.newScanValues()
+	if err != nil {
+		return RowData{}, err
+	}
+
+	return RowData{
+		Columns: columns,
+		Values:  values,
+	}, nil
+}
+
+// getScanColumns returns the cached column names for this iterator,
+// computing them on the first call. Column names don't change between
+// rows, so they are computed once and reused.
+//
+// The returned slice is shared across all callers and must not be mutated.
+func (iter *Iter) getScanColumns() ([]string, error) {
+	if iter.scanColumns != nil {
+		return iter.scanColumns, nil
+	}
+
+	actualSize := iter.meta.actualColCount
+	columns := make([]string, actualSize)
+	idx := 0
 	for _, column := range iter.Columns() {
 		if c, ok := column.TypeInfo.(TupleTypeInfo); !ok {
-			val, err := column.TypeInfo.NewWithError()
-			if err != nil {
+			if idx >= actualSize {
+				err := fmt.Errorf("gocql: column count overflow in RowData: metadata predicted %d columns but encountered more", actualSize)
 				iter.err = err
-				return RowData{}, err
+				return nil, err
 			}
-			columns = append(columns, column.Name)
-			values = append(values, val)
+			columns[idx] = column.Name
+			idx++
 		} else {
-			for i, elem := range c.Elems {
-				columns = append(columns, TupleColumnName(column.Name, i))
-				val, err := elem.NewWithError()
-				if err != nil {
+			for i := range c.Elems {
+				if idx >= actualSize {
+					err := fmt.Errorf("gocql: column count overflow in RowData: metadata predicted %d columns but encountered more", actualSize)
 					iter.err = err
-					return RowData{}, err
+					return nil, err
 				}
-				values = append(values, val)
+				columns[idx] = TupleColumnName(column.Name, i)
+				idx++
 			}
 		}
 	}
 
-	rowData := RowData{
-		Columns: columns,
-		Values:  values,
+	if idx != actualSize {
+		err := fmt.Errorf("gocql: column count mismatch in RowData: metadata predicted %d columns but got %d", actualSize, idx)
+		iter.err = err
+		return nil, err
 	}
 
-	return rowData, nil
+	iter.scanColumns = columns
+	return columns, nil
+}
+
+// newScanValues allocates fresh zero-value pointers for each column,
+// suitable for passing to Scan. Values must be freshly allocated each
+// call because Scan mutates them.
+func (iter *Iter) newScanValues() ([]any, error) {
+	actualSize := iter.meta.actualColCount
+	values := make([]any, actualSize)
+	idx := 0
+	for _, column := range iter.Columns() {
+		if c, ok := column.TypeInfo.(TupleTypeInfo); !ok {
+			if idx >= actualSize {
+				err := fmt.Errorf("gocql: column count overflow in newScanValues: metadata predicted %d columns but encountered more", actualSize)
+				iter.err = err
+				return nil, err
+			}
+			val, err := column.TypeInfo.NewWithError()
+			if err != nil {
+				iter.err = err
+				return nil, err
+			}
+			values[idx] = val
+			idx++
+		} else {
+			for _, elem := range c.Elems {
+				if idx >= actualSize {
+					err := fmt.Errorf("gocql: column count overflow in newScanValues: metadata predicted %d columns but encountered more", actualSize)
+					iter.err = err
+					return nil, err
+				}
+				val, err := elem.NewWithError()
+				if err != nil {
+					iter.err = err
+					return nil, err
+				}
+				values[idx] = val
+				idx++
+			}
+		}
+	}
+
+	if idx != actualSize {
+		err := fmt.Errorf("gocql: column count mismatch in newScanValues: metadata predicted %d columns but got %d", actualSize, idx)
+		iter.err = err
+		return nil, err
+	}
+
+	return values, nil
 }
 
 // TODO(zariel): is it worth exporting this?
-func (iter *Iter) rowMap() (map[string]interface{}, error) {
+func (iter *Iter) rowMap() (map[string]any, error) {
 	if iter.err != nil {
 		return nil, iter.err
 	}
@@ -411,14 +528,17 @@ func (iter *Iter) rowMap() (map[string]interface{}, error) {
 		return nil, err
 	}
 	iter.Scan(rowData.Values...)
-	m := make(map[string]interface{}, len(rowData.Columns))
+	m := make(map[string]any, len(rowData.Columns))
 	rowData.rowMap(m)
 	return m, nil
 }
 
-// SliceMap is a helper function to make the API easier to use
-// returns the data from the query in the form of []map[string]interface{}
-func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
+// SliceMap is a helper function to make the API easier to use.
+// It consumes the remaining rows, closes the iterator, and returns the data
+// in the form of []map[string]any.
+func (iter *Iter) SliceMap() ([]map[string]any, error) {
+	defer iter.Close()
+
 	if iter.err != nil {
 		return nil, iter.err
 	}
@@ -428,9 +548,9 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	dataToReturn := make([]map[string]interface{}, 0)
+	dataToReturn := make([]map[string]any, 0)
 	for iter.Scan(rowData.Values...) {
-		m := make(map[string]interface{}, len(rowData.Columns))
+		m := make(map[string]any, len(rowData.Columns))
 		rowData.rowMap(m)
 		dataToReturn = append(dataToReturn, m)
 	}
@@ -440,7 +560,7 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 	return dataToReturn, nil
 }
 
-// MapScan takes a map[string]interface{} and populates it with a row
+// MapScan takes a map[string]any and populates it with a row
 // that is returned from cassandra.
 //
 // Each call to MapScan() must be called with a new map object.
@@ -450,7 +570,7 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 //	iter := session.Query(`SELECT * FROM mytable`).Iter()
 //	for {
 //		// New map each iteration
-//		row := make(map[string]interface{})
+//		row := make(map[string]any)
 //		if !iter.MapScan(row) {
 //			break
 //		}
@@ -458,6 +578,9 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 //		if fullname, ok := row["fullname"]; ok {
 //			fmt.Printf("Full Name: %s\n", fullname)
 //		}
+//	}
+//	if err := iter.Close(); err != nil {
+//		return err
 //	}
 //
 // You can also pass pointers in the map before each call
@@ -468,7 +591,7 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 //	iter := session.Query(`SELECT * FROM scan_map_table`).Iter()
 //	for {
 //		// New map each iteration
-//		row := map[string]interface{}{
+//		row := map[string]any{
 //			"fullname": &fullName,
 //			"age":      &age,
 //			"address":  &address,
@@ -478,7 +601,10 @@ func (iter *Iter) SliceMap() ([]map[string]interface{}, error) {
 //		}
 //		fmt.Printf("First: %s Age: %d Address: %q\n", fullName.FirstName, age, address)
 //	}
-func (iter *Iter) MapScan(m map[string]interface{}) bool {
+//	if err := iter.Close(); err != nil {
+//		return err
+//	}
+func (iter *Iter) MapScan(m map[string]any) bool {
 	if iter.err != nil {
 		return false
 	}

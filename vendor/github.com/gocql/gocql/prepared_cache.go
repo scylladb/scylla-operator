@@ -33,9 +33,20 @@ import (
 
 const defaultMaxPreparedStmts = 1000
 
+// stmtCacheKey is a composite key for the prepared statement cache.
+// Using a struct avoids the string concatenation allocation that occurred
+// on every query and fixes the theoretical key collision bug where
+// different (hostID, keyspace, statement) tuples could produce the same
+// concatenated string.
+type stmtCacheKey struct {
+	hostID    string
+	keyspace  string
+	statement string
+}
+
 // preparedLRU is the prepared statement cache
 type preparedLRU struct {
-	lru *lru.Cache
+	lru *lru.Cache[stmtCacheKey]
 	mu  sync.Mutex
 }
 
@@ -48,19 +59,19 @@ func (p *preparedLRU) clear() {
 	}
 }
 
-func (p *preparedLRU) add(key string, val *inflightPrepare) {
+func (p *preparedLRU) add(key stmtCacheKey, val *inflightPrepare) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.lru.Add(key, val)
 }
 
-func (p *preparedLRU) remove(key string) bool {
+func (p *preparedLRU) remove(key stmtCacheKey) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.lru.Remove(key)
 }
 
-func (p *preparedLRU) execIfMissing(key string, fn func(lru *lru.Cache) *inflightPrepare) (*inflightPrepare, bool) {
+func (p *preparedLRU) execIfMissing(key stmtCacheKey, fn func(cache *lru.Cache[stmtCacheKey]) *inflightPrepare) (*inflightPrepare, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -72,12 +83,18 @@ func (p *preparedLRU) execIfMissing(key string, fn func(lru *lru.Cache) *infligh
 	return fn(p.lru), false
 }
 
-func (p *preparedLRU) keyFor(hostID, keyspace, statement string) string {
-	// TODO: we should just use a struct for the key in the map
-	return hostID + keyspace + statement
+// keyFor constructs a zero-allocation composite cache key from the given
+// components. The returned struct references the original strings without
+// copying, so no heap allocation occurs.
+func (p *preparedLRU) keyFor(hostID, keyspace, statement string) stmtCacheKey {
+	return stmtCacheKey{
+		hostID:    hostID,
+		keyspace:  keyspace,
+		statement: statement,
+	}
 }
 
-func (p *preparedLRU) evictPreparedID(key string, id []byte) {
+func (p *preparedLRU) evictPreparedID(key stmtCacheKey, id []byte) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -98,5 +115,4 @@ func (p *preparedLRU) evictPreparedID(key string, id []byte) {
 		}
 	default:
 	}
-
 }

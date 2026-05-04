@@ -55,6 +55,7 @@ func (r *ringDescriber) getClusterPeerInfo(localHost *HostInfo, c ConnInterface)
 	if iter == nil {
 		return nil, errNoControl
 	}
+	defer iter.Close()
 
 	rows, err := iter.SliceMap()
 	if err != nil {
@@ -65,7 +66,7 @@ func (r *ringDescriber) getClusterPeerInfo(localHost *HostInfo, c ConnInterface)
 	return getPeersFromQuerySystemPeers(rows, r.cfg.Port, r.logger)
 }
 
-func getPeersFromQuerySystemPeers(querySystemPeerRows []map[string]interface{}, defaultPort int, logger StdLogger) ([]*HostInfo, error) {
+func getPeersFromQuerySystemPeers(querySystemPeerRows []map[string]any, defaultPort int, logger StdLogger) ([]*HostInfo, error) {
 	var peers []*HostInfo
 
 	for _, row := range querySystemPeerRows {
@@ -91,7 +92,7 @@ func getPeersFromQuerySystemPeers(querySystemPeerRows []map[string]interface{}, 
 // Return true if the host is a valid peer
 func isValidPeer(host *HostInfo) bool {
 	return !(len(host.RPCAddress()) == 0 ||
-		host.hostId == "" ||
+		host.hostId.IsEmpty() ||
 		host.dataCenter == "" ||
 		host.rack == "")
 }

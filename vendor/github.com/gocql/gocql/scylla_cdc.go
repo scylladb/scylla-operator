@@ -82,15 +82,10 @@ func scyllaIsCdcTable(session *Session, keyspaceName, tableName string) (bool, e
 		return false, nil
 	}
 
-	// Get the table metadata to see if it has the cdc partitioner set
-	keyspaceMeta, err := session.KeyspaceMetadata(keyspaceName)
+	// Check if the table has the CDC partitioner set.
+	tableMeta, err := session.TableMetadata(keyspaceName, tableName)
 	if err != nil {
 		return false, err
-	}
-
-	tableMeta, ok := keyspaceMeta.Tables[tableName]
-	if !ok {
-		return false, ErrNoMetadata
 	}
 
 	return tableMeta.Options.Partitioner == scyllaCDCPartitionerFullName, nil

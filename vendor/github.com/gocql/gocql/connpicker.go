@@ -82,17 +82,23 @@ func (p *defaultConnPicker) Close() {
 }
 
 func (p *defaultConnPicker) InFlight() int {
+	p.mu.RLock()
 	size := len(p.conns)
+	p.mu.RUnlock()
 	return size
 }
 
 func (p *defaultConnPicker) Size() (int, int) {
+	p.mu.RLock()
 	size := len(p.conns)
+	p.mu.RUnlock()
 	return size, p.size - size
 }
 
 func (p *defaultConnPicker) Pick(Token, ExecutableQuery) *Conn {
 	pos := int(atomic.AddUint32(&p.pos, 1) - 1)
+
+	p.mu.RLock()
 	size := len(p.conns)
 
 	var (
@@ -111,6 +117,7 @@ func (p *defaultConnPicker) Pick(Token, ExecutableQuery) *Conn {
 			streamsAvailable = streams
 		}
 	}
+	p.mu.RUnlock()
 
 	return leastBusyConn
 }

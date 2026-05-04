@@ -87,7 +87,7 @@ print-config:
 .prepare-get-version: .prepare-bin
 	@if [[ ! -f "$(MAKEFILE_PATH)/bin/get-version" ]]; then
 		echo "bin/get-version is not found, installing it"
-		curl -sSLo /tmp/get-version.zip https://github.com/scylladb-actions/get-version/releases/download/v0.4.3/get-version_0.4.3_linux_amd64v3.zip
+		curl -sSLo /tmp/get-version.zip https://github.com/scylladb-actions/get-version/releases/download/v0.4.5/get-version_0.4.5_linux_amd64v3.zip
 		unzip /tmp/get-version.zip get-version -d "$(MAKEFILE_PATH)/bin" >/dev/null
 	fi
 
@@ -205,6 +205,9 @@ cassandra-start: .prepare-pki .prepare-cassandra-ccm .prepare-java resolve-cassa
 	ccm remove ${CCM_CASSANDRA_CLUSTER_NAME} 2>/dev/null 1>&2 || true
 	ccm create ${CCM_CASSANDRA_CLUSTER_NAME} -i ${CCM_CASSANDRA_IP_PREFIX} -v "$${CASSANDRA_VERSION_RESOLVED}" -n3 -d --vnodes --jvm_arg="-Xmx256m -XX:NewSize=100m"
 	ccm updateconf ${CASSANDRA_CONFIG}
+	for conf_dir in ${CCM_CONFIG_DIR}/${CCM_CASSANDRA_CLUSTER_NAME}/node*/conf; do \
+		sed -i 's/^#MAX_HEAP_SIZE=.*/MAX_HEAP_SIZE="256M"/' "$$conf_dir/cassandra-env.sh"; \
+	done
 	ccm start --wait-for-binary-proto --wait-other-notice --verbose
 	ccm status
 	ccm node1 nodetool status
@@ -282,8 +285,8 @@ test-integration-cassandra: cassandra-start
 		echo "Cassandra version ${CASSANDRA_VERSION} was not resolved"
 		exit 1
 	fi
-	echo "go test -v ${TEST_OPTS} -tags \"${TEST_INTEGRATION_TAGS}\" -distribution cassandra -timeout=5m -runauth -gocql.timeout=60s -runssl -proto=${TEST_CQL_PROTOCOL} -rf=3 -clusterSize=3 -autowait=2000ms -compressor=${TEST_COMPRESSOR} -gocql.cversion=$${CASSANDRA_VERSION_RESOLVED} -cluster=$$(ccm liveset) ./..."
-	go test -v ${TEST_OPTS} -tags "${TEST_INTEGRATION_TAGS}" -distribution cassandra -timeout=5m -runauth -gocql.timeout=60s -runssl -proto=${TEST_CQL_PROTOCOL} -rf=3 -clusterSize=3 -autowait=2000ms -compressor=${TEST_COMPRESSOR} -gocql.cversion=$$(ccm node1 versionfrombuild) -cluster=$$(ccm liveset) ./...
+	echo "go test -v ${TEST_OPTS} -tags \"${TEST_INTEGRATION_TAGS}\" -distribution cassandra -timeout=10m -runauth -gocql.timeout=60s -runssl -proto=${TEST_CQL_PROTOCOL} -rf=3 -clusterSize=3 -autowait=2000ms -compressor=${TEST_COMPRESSOR} -gocql.cversion=$${CASSANDRA_VERSION_RESOLVED} -cluster=$$(ccm liveset) ./..."
+	go test -v ${TEST_OPTS} -tags "${TEST_INTEGRATION_TAGS}" -distribution cassandra -timeout=10m -runauth -gocql.timeout=60s -runssl -proto=${TEST_CQL_PROTOCOL} -rf=3 -clusterSize=3 -autowait=2000ms -compressor=${TEST_COMPRESSOR} -gocql.cversion=$$(ccm node1 versionfrombuild) -cluster=$$(ccm liveset) ./...
 
 test-integration-scylla: scylla-start
 	@echo "Run integration tests for proto ${TEST_CQL_PROTOCOL} on scylla ${SCYLLA_VERSION}"
@@ -326,13 +329,25 @@ else
 	go test -bench=. -benchmem ./...
 endif
 
-check: .prepare-golangci
+check-go-mod-drift:
+	@echo "Check Go module drift"
+	go mod tidy -diff
+	go mod tidy -C lz4 -diff
+	go mod tidy -C tests/bench -diff
+
+check: .prepare-golangci check-go-mod-drift
 	@echo "Build"
 	go build -tags all .
 	echo "Check linting"
 	${BIN_DIR}/golangci-lint run
 
-fix: .prepare-golangci
+fix-go-mod-drift:
+	@echo "Fix Go module drift"
+	go mod tidy
+	go mod tidy -C lz4
+	go mod tidy -C tests/bench
+
+fix: .prepare-golangci fix-go-mod-drift
 	@echo "Fix linting"
 	${BIN_DIR}/golangci-lint run --fix
 

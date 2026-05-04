@@ -31,30 +31,30 @@ import (
 )
 
 type StdLogger interface {
-	Print(v ...interface{})
-	Printf(format string, v ...interface{})
-	Println(v ...interface{})
+	Print(v ...any)
+	Printf(format string, v ...any)
+	Println(v ...any)
 }
 
 type nopLogger struct{}
 
-func (n nopLogger) Print(_ ...interface{}) {}
+func (n nopLogger) Print(_ ...any) {}
 
-func (n nopLogger) Printf(_ string, _ ...interface{}) {}
+func (n nopLogger) Printf(_ string, _ ...any) {}
 
-func (n nopLogger) Println(_ ...interface{}) {}
+func (n nopLogger) Println(_ ...any) {}
 
 type testLogger struct {
 	capture bytes.Buffer
 }
 
-func (l *testLogger) Print(v ...interface{})                 { fmt.Fprint(&l.capture, v...) }
-func (l *testLogger) Printf(format string, v ...interface{}) { fmt.Fprintf(&l.capture, format, v...) }
-func (l *testLogger) Println(v ...interface{})               { fmt.Fprintln(&l.capture, v...) }
-func (l *testLogger) String() string                         { return l.capture.String() }
+func (l *testLogger) Print(v ...any)                 { fmt.Fprint(&l.capture, v...) }
+func (l *testLogger) Printf(format string, v ...any) { fmt.Fprintf(&l.capture, format, v...) }
+func (l *testLogger) Println(v ...any)               { fmt.Fprintln(&l.capture, v...) }
+func (l *testLogger) String() string                 { return l.capture.String() }
 
 type defaultLogger struct{}
 
-func (l *defaultLogger) Print(v ...interface{})                 { log.Print(v...) }
-func (l *defaultLogger) Printf(format string, v ...interface{}) { log.Printf(format, v...) }
-func (l *defaultLogger) Println(v ...interface{})               { log.Println(v...) }
+func (l *defaultLogger) Print(v ...any)                 { log.Print(v...) }
+func (l *defaultLogger) Printf(format string, v ...any) { log.Printf(format, v...) }
+func (l *defaultLogger) Println(v ...any)               { log.Println(v...) }

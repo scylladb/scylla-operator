@@ -26,7 +26,7 @@ import (
 // This function has access to internal frame types and can perform
 // type-safe conversions.
 // Returns nil if the frame is not an event frame.
-func FrameToEvent(f interface{}) Event {
+func FrameToEvent(f any) Event {
 	if f == nil {
 		return nil
 	}

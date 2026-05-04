@@ -14,7 +14,7 @@ func errInvalidData(p []byte) error {
 	return nil
 }
 
-func errNilReference(v interface{}) error {
+func errNilReference(v any) error {
 	return fmt.Errorf("failed to unmarshal ascii: can not unmarshal into nil reference(%T)(%[1]v)", v)
 }
 
@@ -38,7 +38,15 @@ func DecBytes(p []byte, v *[]byte) error {
 	if v == nil {
 		return errNilReference(v)
 	}
-	*v = decBytes(p)
+	if p == nil {
+		*v = nil
+		return nil
+	}
+	if len(p) == 0 {
+		*v = make([]byte, 0)
+		return nil
+	}
+	*v = append((*v)[:0], p...)
 	return errInvalidData(p)
 }
 

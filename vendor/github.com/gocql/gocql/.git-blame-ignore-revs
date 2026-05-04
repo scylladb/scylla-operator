@@ -1,0 +1,3 @@
+# Commit that replaced interface{} with any across the codebase.
+# Purely mechanical rename with no behavioral change.
+3ab64422067e24efb0b6b30eea0396d0e9395aee

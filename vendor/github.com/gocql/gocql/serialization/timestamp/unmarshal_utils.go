@@ -10,7 +10,7 @@ var (
 	errWrongDataLen = fmt.Errorf("failed to unmarshal timestamp: the length of the data should be 0 or 8")
 )
 
-func errNilReference(v interface{}) error {
+func errNilReference(v any) error {
 	return fmt.Errorf("failed to unmarshal timestamp: can not unmarshal into nil reference (%T)(%[1]v))", v)
 }
 

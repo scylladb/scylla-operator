@@ -8,7 +8,7 @@ import (
 
 var errWrongDataLen = fmt.Errorf("failed to unmarshal double: the length of the data should be 0 or 8")
 
-func errNilReference(v interface{}) error {
+func errNilReference(v any) error {
 	return fmt.Errorf("failed to unmarshal double: can not unmarshal into nil reference(%T)(%[1]v)", v)
 }
 
@@ -53,7 +53,7 @@ func DecReflect(p []byte, v reflect.Value) error {
 
 	switch v = v.Elem(); v.Kind() {
 	case reflect.Float64:
-		return decReflectFloat32(p, v)
+		return decReflectFloat64(p, v)
 	default:
 		return fmt.Errorf("failed to unmarshal double: unsupported value type (%T)(%[1]v), supported types: ~float64", v.Interface())
 	}
@@ -66,13 +66,13 @@ func DecReflectR(p []byte, v reflect.Value) error {
 
 	switch v.Type().Elem().Elem().Kind() {
 	case reflect.Float64:
-		return decReflectFloat32R(p, v)
+		return decReflectFloat64R(p, v)
 	default:
 		return fmt.Errorf("failed to unmarshal double: unsupported value type (%T)(%[1]v), supported types: ~float64", v.Interface())
 	}
 }
 
-func decReflectFloat32(p []byte, v reflect.Value) error {
+func decReflectFloat64(p []byte, v reflect.Value) error {
 	switch len(p) {
 	case 0:
 		v.SetFloat(0)
@@ -84,7 +84,7 @@ func decReflectFloat32(p []byte, v reflect.Value) error {
 	return nil
 }
 
-func decReflectFloat32R(p []byte, v reflect.Value) error {
+func decReflectFloat64R(p []byte, v reflect.Value) error {
 	switch len(p) {
 	case 0:
 		v.Elem().Set(decReflectNullableR(p, v))
@@ -118,7 +118,8 @@ func uint64ToFloat(v uint64) float64 {
 }
 
 func uint64ToFloatR(v uint64) *float64 {
-	return (*float64)(unsafe.Pointer(&v))
+	f := *(*float64)(unsafe.Pointer(&v))
+	return &f
 }
 
 func decUint64(p []byte) uint64 {

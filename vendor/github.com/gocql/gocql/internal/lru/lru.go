@@ -44,50 +44,50 @@ package lru
 
 import "container/list"
 
-// Cache is an LRU cache. It is not safe for concurrent access.
+// Cache is a generic LRU cache. It is not safe for concurrent access.
 //
-// This cache has been forked from github.com/golang/groupcache/lru, but
-// specialized with string keys to avoid the allocations caused by wrapping them
-// in interface{}.
-type Cache struct {
+// This cache has been forked from github.com/golang/groupcache/lru and
+// generalized with a comparable type parameter to avoid the allocations
+// caused by wrapping keys in any.
+type Cache[K comparable] struct {
 	// OnEvicted optionally specifies a callback function to be
 	// executed when an entry is purged from the cache.
-	OnEvicted func(key string, value interface{})
+	OnEvicted func(key K, value any)
 	ll        *list.List
-	cache     map[string]*list.Element
+	cache     map[K]*list.Element
 	// MaxEntries is the maximum number of cache entries before
 	// an item is evicted. Zero means no limit.
 	MaxEntries int
 }
 
-type entry struct {
-	value interface{}
-	key   string
+type entry[K comparable] struct {
+	value any
+	key   K
 }
 
 // New creates a new Cache.
 // If maxEntries is zero, the cache has no limit and it's assumed
 // that eviction is done by the caller.
-func New(maxEntries int) *Cache {
-	return &Cache{
+func New[K comparable](maxEntries int) *Cache[K] {
+	return &Cache[K]{
 		MaxEntries: maxEntries,
 		ll:         list.New(),
-		cache:      make(map[string]*list.Element),
+		cache:      make(map[K]*list.Element),
 	}
 }
 
 // Add adds a value to the cache.
-func (c *Cache) Add(key string, value interface{}) {
+func (c *Cache[K]) Add(key K, value any) {
 	if c.cache == nil {
-		c.cache = make(map[string]*list.Element)
+		c.cache = make(map[K]*list.Element)
 		c.ll = list.New()
 	}
 	if ee, ok := c.cache[key]; ok {
 		c.ll.MoveToFront(ee)
-		ee.Value.(*entry).value = value
+		ee.Value.(*entry[K]).value = value
 		return
 	}
-	ele := c.ll.PushFront(&entry{key: key, value: value})
+	ele := c.ll.PushFront(&entry[K]{key: key, value: value})
 	c.cache[key] = ele
 	if c.MaxEntries != 0 && c.ll.Len() > c.MaxEntries {
 		c.RemoveOldest()
@@ -95,19 +95,19 @@ func (c *Cache) Add(key string, value interface{}) {
 }
 
 // Get looks up a key's value from the cache.
-func (c *Cache) Get(key string) (value interface{}, ok bool) {
+func (c *Cache[K]) Get(key K) (value any, ok bool) {
 	if c.cache == nil {
 		return
 	}
 	if ele, hit := c.cache[key]; hit {
 		c.ll.MoveToFront(ele)
-		return ele.Value.(*entry).value, true
+		return ele.Value.(*entry[K]).value, true
 	}
 	return
 }
 
 // Remove removes the provided key from the cache.
-func (c *Cache) Remove(key string) bool {
+func (c *Cache[K]) Remove(key K) bool {
 	if c.cache == nil {
 		return false
 	}
@@ -121,7 +121,7 @@ func (c *Cache) Remove(key string) bool {
 }
 
 // RemoveOldest removes the oldest item from the cache.
-func (c *Cache) RemoveOldest() {
+func (c *Cache[K]) RemoveOldest() {
 	if c.cache == nil {
 		return
 	}
@@ -131,9 +131,9 @@ func (c *Cache) RemoveOldest() {
 	}
 }
 
-func (c *Cache) removeElement(e *list.Element) {
+func (c *Cache[K]) removeElement(e *list.Element) {
 	c.ll.Remove(e)
-	kv := e.Value.(*entry)
+	kv := e.Value.(*entry[K])
 	delete(c.cache, kv.key)
 	if c.OnEvicted != nil {
 		c.OnEvicted(kv.key, kv.value)
@@ -141,7 +141,7 @@ func (c *Cache) removeElement(e *list.Element) {
 }
 
 // Len returns the number of items in the cache.
-func (c *Cache) Len() int {
+func (c *Cache[K]) Len() int {
 	if c.cache == nil {
 		return 0
 	}

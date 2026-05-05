@@ -10,7 +10,7 @@ A ScyllaDB pod contains init containers that run sequentially before the main wo
 
 | # | Name | Image | Purpose | Conditional |
 |---|------|-------|---------|-------------|
-| 1 | `scylla-operator-binary-injector` | Operator | Copies the `scylla-operator` binary into the `/mnt/shared` volume so that other containers can use it without bundling the Operator image. | Always present |
+| 1 | `sidecar-injection` | Operator | Copies the `scylla-operator` binary into the `/mnt/shared` volume so that other containers can use it without bundling the Operator image. | Always present |
 | 2 | `sysctl-buddy` | Operator | Applies sysctl settings from a pod annotation. Used during migration from legacy tuning. | Only when the sysctls annotation is set |
 | 3 | `scylladb-bootstrap-barrier` | ScyllaDB | Blocks until all nodes in the cluster report each other as UP, preventing a new node from bootstrapping into an unhealthy cluster. See [Bootstrap synchronisation](bootstrap-sync.md). | Only when the `BootstrapSynchronisation` feature gate is enabled and the ScyllaDB version is ≥ 2025.2 |
 
@@ -31,7 +31,7 @@ Containers coordinate through volumes mounted into the pod:
 |--------|-----------|---------|
 | `shared` (emptyDir) | `/mnt/shared` | Carries the Operator binary (injected by init container 1) and the ignition signal file (`/mnt/shared/ignition.done`). Shared by all containers. |
 | Data PVC | `/var/lib/scylla` | Persistent storage for ScyllaDB data files. Mounted read-write in the main container, read-only in the bootstrap barrier. |
-| Managed ScyllaDB config (ConfigMap) | `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config/scylla.yaml` | Operator-generated `scylla.yaml` with cluster name, snitch, TLS, and other managed settings. |
+| Managed ScyllaDB config (ConfigMap) | `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config/scylladb-managed-config.yaml` | Operator-generated `scylla.yaml` with cluster name, snitch, TLS, and other managed settings. |
 | User ScyllaDB config (ConfigMap) | `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/config/scylla.yaml` | User-provided `scylla.yaml` overrides. |
 | Rack config (ConfigMap) | Snitch properties path | Datacenter and rack assignment for the gossip endpoint snitch. |
 | Agent auth token (Secret) | Agent config path | Manager Agent authentication token. |

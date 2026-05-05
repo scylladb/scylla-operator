@@ -10,7 +10,7 @@ ScyllaDB must not start until:
 - **Network identity is assigned** — the pod must have an IP address, and if LoadBalancer broadcasting is used, the load balancer must have provisioned an ingress address.
 - **The container is ready** — the ScyllaDB container must be running (container ID assigned) so that per-container tuning can target it.
 
-Without ignition gating, ScyllaDB could start before tuning DaemonSets finish their work or before the cloud provider assigns a load balancer IP, leading to misconfiguration that is difficult to correct without a restart.
+Without ignition gating, the ScyllaDB process could start before tuning DaemonSets finish their work or before the cloud provider assigns a load balancer IP, leading to misconfiguration that is difficult to correct without a restart.
 
 ## Signal-file mechanism
 
@@ -18,7 +18,7 @@ Ignition uses a simple file-based signal on the shared emptyDir volume mounted a
 
 1. The `scylladb-ignition` sidecar container runs the ignition controller, which continuously evaluates prerequisites.
 2. When **all** prerequisites are met, the controller creates the file `/mnt/shared/ignition.done`.
-3. The `scylla` container's entrypoint polls for this file in a shell loop (`until [[ -f "/mnt/shared/ignition.done" ]]; do sleep 1; done`). Once the file appears, it execs into the sidecar binary that configures and starts ScyllaDB.
+3. The `scylla` container's entrypoint polls for this file in a shell loop. Once the file appears, it execs into the sidecar binary that configures and starts ScyllaDB.
 4. The ScyllaDB Manager Agent container (when present) uses the same wait loop, ensuring the agent does not start before ScyllaDB is configured.
 
 ## Prerequisites evaluated
@@ -45,7 +45,7 @@ This ensures that if the container restarts (due to a crash or rolling update), 
 
 ## Force override
 
-For debugging or recovery scenarios, the annotation `internal.scylla-operator.scylladb.com/ignition-override` on the node's member Service can override the ignition decision:
+For debugging or recovery scenarios, the annotation `internal.scylla-operator.scylladb.com/force-ignition-value` on the node's member Service can override the ignition decision:
 
 | Value | Effect |
 |-------|--------|

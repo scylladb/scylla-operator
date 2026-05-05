@@ -89,7 +89,7 @@ StatefulSets are an ordered sequence. The Operator provides mechanisms for opera
 
 To replace a node at any ordinal (not just the tail), set the `scylla/replace` label on its member Service. The Operator deletes the pod (and optionally the PVC), then creates a new pod at the same ordinal. The new pod starts ScyllaDB with the `--replace-node-first-boot` flag, which tells ScyllaDB to take over the dead node's token ranges.
 
-Replacement works on any ordinal because the pod identity and PVC are tied to the ordinal — the StatefulSet recreates a pod with the same name at the same position.
+Replacement works on any ordinal because the pod identity and PVC are tied to the ordinal — the StatefulSet recreates a pod with the same name at the same position. See [Replace nodes](../operate/replace-nodes.md) for the step-by-step procedure.
 
 ### Maintenance mode
 

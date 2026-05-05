@@ -76,7 +76,7 @@ This ConfigMap is referenced in the `ScyllaCluster` spec and is merged with the 
 
 When `AutomaticTLSCertificates` is enabled, CQL connections also require mutual TLS (client certificate authentication). This provides two layers of authentication: TLS client certificates at the transport level and username/password at the CQL protocol level.
 
-The default superuser credentials are `cassandra`/`cassandra`. You should change the superuser password immediately after enabling authentication, and create application-specific roles with minimal privileges.
+Starting with ScyllaDB 2026.2, the default `cassandra`/`cassandra` superuser no [longer exists by default](https://github.com/scylladb/scylladb/pull/27215). It is recommended to create application-specific roles with minimal privileges.
 
 ### Alternator authorization
 
@@ -111,8 +111,6 @@ The member ClusterRole grants the sidecar running inside each ScyllaDB pod the m
 - **Write** pods and Services — the sidecar updates annotations on its own Service (host ID, token ring hash) and pod labels.
 - **Read** internal node-status report resources — used for [bootstrap synchronisation](bootstrap-sync.md) state.
 
-The member role does **not** grant permissions to modify StatefulSets, create or delete pods, or access resources outside the namespace.
-
 ### User-facing ClusterRoles
 
 The operator installs two ClusterRoles for Kubernetes users who manage ScyllaDB resources:
@@ -128,8 +126,8 @@ These ClusterRoles are aggregated into the default Kubernetes `admin`, `edit`, a
 
 Additional aggregate ClusterRoles exist for monitoring components:
 
-- **Prometheus** (`scylladb:controller:prometheus`): permissions to read endpoints, pods, Services, and nodes. Required for Prometheus service discovery.
-- **Grafana** (`scylladb:controller:grafana`): permissions to manage Grafana-related ConfigMaps and Secrets.
+- **Prometheus** (`scylladb:monitoring:prometheus`): permissions to read endpoints, pods, Services, and nodes. Required for Prometheus service discovery.
+- **Grafana** (`scylladb:monitoring:grafana`): permissions to manage Grafana-related ConfigMaps and Secrets.
 
 ## ScyllaDB Manager Agent security
 
@@ -155,29 +153,13 @@ The Agent authentication token is a bearer token. Anyone with read access to the
 
 ## Webhook validation
 
-The operator runs a dedicated webhook server (separate Deployment from the operator controller) that validates all CREATE and UPDATE operations on ScyllaDB CRDs:
-
-- `ScyllaCluster` (v1)
-- `NodeConfig`, `ScyllaOperatorConfig`, `ScyllaDBManagerClusterRegistration`, `ScyllaDBManagerTask`, `ScyllaDBMonitoring` (v1alpha1)
+The operator runs a dedicated webhook server (separate Deployment from the operator controller) that validates ScyllaDB CRDs upon creation or modification.
 
 The webhook is configured with `failurePolicy: Fail`, meaning that if the webhook server is unreachable, the Kubernetes API server rejects the request. This prevents invalid configurations from being applied when the webhook is down, but it also means the webhook server must be available for any ScyllaDB resource mutation.
 
-The webhook server has its own PDB (`minAvailable: 1`) to ensure availability during node drains. See [Pod disruption budgets](pod-disruption-budgets.md).
-
 ## Network policies
 
-The operator does **not** create Kubernetes NetworkPolicy resources. If your cluster enforces network policies, you must ensure that the following traffic is allowed:
-
-| Source | Destination | Port | Purpose |
-|--------|-------------|------|---------|
-| ScyllaDB pods | ScyllaDB pods | 7000, 7001 | Inter-node communication |
-| ScyllaDB pods | ScyllaDB pods | 9042, 9142 | CQL (seed resolution, sidecar) |
-| Application pods | ScyllaDB pods | 9042, 9142, 19042, 19142 | CQL client traffic |
-| Application pods | ScyllaDB pods | 8000, 8043 | Alternator (if enabled) |
-| ScyllaDB Manager | ScyllaDB pods | 10001 | Manager Agent API |
-| Prometheus | ScyllaDB pods | 9180, 5090, 9100 | Metrics scraping |
-| Kubernetes API server | Webhook server pods | 5000 | Admission webhook calls |
-| Operator pods | Kubernetes API server | 443 | Controller reconciliation |
+The operator does **not** create Kubernetes NetworkPolicy resources automatically. You can create them manually so that their selectors match node labels defined in `ScyllaCluster`'s `.spec.podMetadata.labels`.
 
 ## Related pages
 

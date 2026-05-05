@@ -26,7 +26,8 @@ Please refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.
   emits a warning when `SaaS` is explicitly set. The default value of `spec.type` changed from `SaaS` to `Platform`; existing
   objects that omit `spec.type` will render `Platform` dashboards after the upgrade.
   [#3410](https://github.com/scylladb/scylla-operator/pull/3410)
-
+- `--crypto-key-size` flag is now deprecated and remains accepted as a one-to-one alias for `--crypto-rsa-key-size`. It does not affect ECDSA key size.
+  Use `--crypto-rsa-key-size` to configure RSA key size and `--crypto-ecdsa-key-size` to configure ECDSA curve bit-size.
 ### Features & Enhancements
 
 - Prometheus Operator is now an optional dependency. Setups without Prometheus Operator CRDs (`monitoring.coreos.com/v1`) are
@@ -34,6 +35,10 @@ Please refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.
   If the CRDs are not found, an informational log message is printed.
   Refer to the [monitoring setup guide](https://operator.docs.scylladb.com/stable/management/monitoring/setup.html#requirements) for detailed instructions.
   [#3386](https://github.com/scylladb/scylla-operator/pull/3386)
+- Added ECDSA as an alternative to RSA for TLS certificate key generation. Opt in via `--crypto-key-type=ECDSA` flag and configure curve bit-size with `--crypto-ecdsa-key-size=256|384|521` (default: 384).
+  RSA key size is now configured with `--crypto-rsa-key-size` (default: 4096). The previous `--crypto-key-size` flag is deprecated and remains accepted as a one-to-one alias for `--crypto-rsa-key-size`; it does not affect the ECDSA key size.
+  RSA remains the default key type.
+  [#3401](https://github.com/scylladb/scylla-operator/pull/3401)
 
 ### Bug fixes
 

@@ -85,7 +85,7 @@ type Controller struct {
 	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBDatacenter]
 
-	keyGetter crypto.RSAKeyGetter
+	keyGetter crypto.KeyGenerator
 }
 
 func NewController(
@@ -105,7 +105,7 @@ func NewController(
 	scyllaDBDatacenterNodesStatusReportInformer scyllav1alpha1informers.ScyllaDBDatacenterNodesStatusReportInformer,
 	operatorImage string,
 	cqlsIngressPort int,
-	keyGetter crypto.RSAKeyGetter,
+	keyGetter crypto.KeyGenerator,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)

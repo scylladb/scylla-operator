@@ -4,7 +4,7 @@ package crypto
 
 import (
 	"context"
-	"crypto/rsa"
+	"crypto"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
@@ -13,8 +13,8 @@ import (
 )
 
 type CertCreator interface {
-	MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate
-	MakeCertificate(ctx context.Context, keyGetter RSAKeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error)
+	MakeCertificateTemplate(now time.Time, validity time.Duration, keyType KeyType) *x509.Certificate
+	MakeCertificate(ctx context.Context, keyGetter KeyGenerator, signer Signer, validity time.Duration) (*x509.Certificate, crypto.Signer, error)
 }
 
 type X509CertCreator struct {
@@ -28,22 +28,21 @@ type X509CertCreator struct {
 
 var _ CertCreator = &X509CertCreator{}
 
-func (c *X509CertCreator) MakeCertificateTemplate(now time.Time, validity time.Duration) *x509.Certificate {
+func (c *X509CertCreator) MakeCertificateTemplate(now time.Time, validity time.Duration, keyType KeyType) *x509.Certificate {
 	return &x509.Certificate{
 		Subject:               c.Subject,
 		IPAddresses:           c.IPAddresses,
 		DNSNames:              c.DNSNames,
 		IsCA:                  c.IsCA,
-		KeyUsage:              c.KeyUsage,
+		KeyUsage:              AdjustKeyUsageForKeyType(c.KeyUsage, keyType),
 		ExtKeyUsage:           c.ExtKeyUsage,
 		NotBefore:             now.Add(-1 * time.Second),
 		NotAfter:              now.Add(validity),
-		SignatureAlgorithm:    signatureAlgorithm,
 		BasicConstraintsValid: true,
 	}
 }
 
-func (c *X509CertCreator) MakeCertificate(ctx context.Context, keyGetter RSAKeyGetter, signer Signer, validity time.Duration) (*x509.Certificate, *rsa.PrivateKey, error) {
+func (c *X509CertCreator) MakeCertificate(ctx context.Context, keyGetter KeyGenerator, signer Signer, validity time.Duration) (*x509.Certificate, crypto.Signer, error) {
 	privateKey, err := keyGetter.GetNewKey(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't get generated key: %w", err)
@@ -54,14 +53,39 @@ func (c *X509CertCreator) MakeCertificate(ctx context.Context, keyGetter RSAKeyG
 		signer = NewSelfSignedSignerWithKey(selfSignedSigner.nowFunc, privateKey)
 	}
 
-	template := c.MakeCertificateTemplate(signer.Now(), validity)
+	template := c.MakeCertificateTemplate(signer.Now(), validity, keyGetter.GetKeyType())
 
-	cert, err := signer.SignCertificate(template, &privateKey.PublicKey)
+	sigAlg, err := SignatureAlgorithmForKey(privateKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't determine signature algorithm: %w", err)
+	}
+	template.SignatureAlgorithm = sigAlg
+	cert, err := signer.SignCertificate(template, privateKey.Public())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return cert, privateKey, nil
+}
+
+// AdjustKeyUsageForKeyType removes KeyUsageKeyEncipherment for non-RSA key types.
+// KeyUsageKeyEncipherment is required for RSA key exchange (TLS_RSA_* cipher suites
+// in TLS 1.2), where the client encrypts the pre-master secret with the server's RSA
+// public key. ScyllaDB's default TLS priority string (SECURE128) keeps those suites
+// active (https://github.com/scylladb/scylladb/blob/8e7ba7efe25cdb18923f0e350b022bef88c62194/db/config.cc#L1755),
+// so RSA certificates must retain this bit.
+// For ECDSA certificates the bit must be stripped: TLS cipher suites encode both the
+// key exchange and authentication algorithms, so TLS_RSA_* suites (which require RSA
+// key encipherment) can never be negotiated when the server certificate is ECDSA -
+// the TLS stack filters them out before the handshake. The bit would therefore be
+// meaningless even if present, and its inclusion produces a non-compliant certificate.
+func AdjustKeyUsageForKeyType(keyUsage x509.KeyUsage, keyType KeyType) x509.KeyUsage {
+	switch keyType {
+	case RSAKeyType:
+		return keyUsage
+	default:
+		return keyUsage &^ x509.KeyUsageKeyEncipherment
+	}
 }
 
 type CACertCreatorConfig struct {

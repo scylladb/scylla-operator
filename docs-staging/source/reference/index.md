@@ -13,6 +13,5 @@ known-issues
 conditions
 sizing-guide
 benchmarking
-glossary
 nodetool-alternatives
 :::

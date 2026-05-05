@@ -1,8 +1,7 @@
 # Releases
 
 ## Schedule
-
-A new release is shipped approximately every 2 months. The following schedule is advisory — there are no commitments to hitting these dates.
+We are aiming to ship a new release approximately every 2 months. The following release schedule is only advisory, there are no commitments made to hitting these dates.
 
 :::{list-table}
 :widths: 33 33 34
@@ -17,8 +16,7 @@ A new release is shipped approximately every 2 months. The following schedule is
 :::
 
 ## Supported releases
-
-The latest 2 releases are supported, giving everyone time to upgrade.
+We support the latest 2 releases of ScyllaDB Operator to give everyone time to upgrade.
 
 :::{list-table}
 :widths: 33 33 34
@@ -93,13 +91,11 @@ The latest 2 releases are supported, giving everyone time to upgrade.
 :::
 
 ### Backport policy
-
 Usually, only important bug fixes are eligible for being backported.
 This may depend on the situation and assessment of the maintainers.
 
 ## CI/CD
-
-[Prow](https://prow.scylla-operator.scylladb.com/) is used for CI/CD. Before any image is published, it must pass the E2E suite.
+We use [Prow](https://prow.scylla-operator.scylladb.com/) for our CI/CD. Before we publish any image, it must pass the E2E suite.
 
 ### Automated promotions
 
@@ -131,8 +127,7 @@ This may depend on the situation and assessment of the maintainers.
 :::
 
 ### Generally available
-
-GA images are not built from scratch but promoted from an existing release candidate. When a release candidate reaches the acceptable quality and QA signs it off, it is promoted to become the GA release. This ensures that the GA image has exactly the same content and SHA as the tested release candidate.
+GA images aren't built from scratch but rather promoted from an existing release candidate. When we decide a release candidate has the acceptable quality and QA signs it off, the release candidate is promoted to become the GA release. This ensures that the GA image has exactly the same content and SHA as the tested release candidate.
 
 ## Support matrix
 
@@ -182,25 +177,27 @@ The following table lists the versions of third-party dependencies that ScyllaDB
 
 ### Architectures
 
-The ScyllaDB Operator image is published as a manifest list to `docker.io/scylladb/scylla-operator:X.Y.Z` containing builds for `amd64` and `aarch64`.
+ScyllaDB Operator image is published as a manifest list to `docker.io/scylladb/scylla-operator:X.Y.Z` containing image build for `amd64` and `aarch64`.
 
 ### Supported Kubernetes environments
 
-The following environments are officially tested and recommended:
+We officially test and recommend to use the following environments:
 
 :::{list-table}
 :widths: 50 50
 :header-rows: 1
 
 * - Platform
-  - OS image
+  - OS Image
 * - GKE
   - Ubuntu
 * - EKS
   - Amazon Linux
 :::
 
-While the APIs generally work on any Kubernetes-conformant cluster, performance tuning and other pieces that interact with the host OS, kubelet, CRI, or kernel may hit incompatibilities on untested platforms.
+While our APIs generally work on any Kubernetes conformant cluster,
+performance tuning and other pieces that need to interact with the host OS, kubelet, CRI, kernel, etc. might hit some incompatibilities.
+
 
 :::{warning}
 The following environments are known **not to work correctly** at this time.
@@ -210,7 +207,7 @@ The following environments are known **not to work correctly** at this time.
 :header-rows: 1
 
 * - Platform
-  - OS image
+  - OS Image
   - Details
 * - GKE
   - Container OS

@@ -11,8 +11,8 @@ We are aiming to ship a new release approximately every 2 months. The following 
   - Code freeze
   - General availability
 * - 1.21
-  - 2026-04-13
-  - 2026-04-27
+  - 2026-05-11
+  - 2026-05-18
 :::
 
 ## Supported releases

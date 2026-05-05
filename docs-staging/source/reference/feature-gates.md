@@ -6,25 +6,21 @@ This page lists the available feature gates and explains how to configure them.
 ## Available feature gates
 
 :::{list-table}
-:widths: 50 15 15 20
+:widths: 50 15 20
 :header-rows: 1
 
 * - Feature gate
   - Default
-  - Stage
   - Since
 * - `AutomaticTLSCertificates`
   - `true`
-  - Beta
   - alpha: v1.8, beta: v1.11
 * - `BootstrapSynchronisation`
   - `false`
-  - Alpha
   - v1.19
 :::
 
 - **Default** — whether the feature is enabled when you don't set it explicitly.
-- **Stage** — `Alpha` features are disabled by default and may change without notice. `Beta` features are enabled by default and are considered stable, but may still change.
 - **Since** — the Operator version in which the feature gate was introduced or its default was changed.
 
 ### AutomaticTLSCertificates

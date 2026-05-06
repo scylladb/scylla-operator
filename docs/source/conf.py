@@ -184,3 +184,11 @@ linkcheck_anchors_ignore_for_url = [
 # Linkcheck timeout and retry configuration to handle slow-responding external sites.
 linkcheck_timeout = 180  # Increase from default for slow sites like docs.redhat.com.
 linkcheck_retries = 3   # Retry 3 times before failing to handle transient network issues.
+
+# docs.redhat.com blocks a User-Agent containing "Mozilla", which is what Sphinx sends by default.
+# Overriding with a plain non-browser UA bypasses the restriction.
+linkcheck_request_headers = {
+    'https://docs.redhat.com/': {
+        'User-Agent': 'python-requests/2.32.5',
+    },
+}

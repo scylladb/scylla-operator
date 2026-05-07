@@ -39,7 +39,7 @@ spec:
 ::::
 
 ::::{group-tab} Helm
-Add the `--feature-gates` argument through the `additionalArgs` value:
+Add the `--feature-gates` argument through the `additionalArgs` value in `values.yaml`:
 
 :::{code-block} yaml
 :emphasize-lines: 2
@@ -59,17 +59,17 @@ additionalArgs:
 
 * - Feature gate
   - Default
-  - Since
+  - Last changed
 * - `AutomaticTLSCertificates`
   - `true`
-  - alpha: v1.8, beta: v1.11
+  - v1.11
 * - `BootstrapSynchronisation`
   - `false`
   - v1.19
 :::
 
 - **Default** — whether the feature is enabled when you don't set it explicitly.
-- **Since** — the Operator version in which the feature gate was introduced or its default was changed.
+- **Last changed** — the Operator version in which the feature gate was introduced or its default was changed.
 
 ### AutomaticTLSCertificates
 

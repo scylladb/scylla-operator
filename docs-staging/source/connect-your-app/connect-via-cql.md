@@ -222,7 +222,7 @@ The Operator creates these resources automatically:
 | Serving CA | `configmap/<cluster-name>-local-serving-ca` | `ca-bundle.crt` — CA to validate server certificates. |
 | Admin client cert | `secret/<cluster-name>-local-user-admin` | `tls.crt`, `tls.key` — client certificate for mTLS. |
 
-To use your own TLS certificates instead of operator-managed ones, set `servingCertificate.type: UserManaged` on the ScyllaCluster. See [TLS and certificate management](../understand/security.md).
+For more details, see [TLS and certificate management](../understand/security.md).
 
 ## Related pages
 

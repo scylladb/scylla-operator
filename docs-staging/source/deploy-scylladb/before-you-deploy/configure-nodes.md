@@ -29,7 +29,7 @@ Both `NodeConfig` placement and `ScyllaCluster` rack placement must reference th
 
 ```{code-block} console
 :substitutions:
-kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/nodeconfig.yaml
+kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/nodeconfig-alpha.yaml
 ```
 
 :::
@@ -38,7 +38,7 @@ kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/
 
 ```{code-block} console
 :substitutions:
-kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/eks/nodeconfig.yaml
+kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/eks/nodeconfig-alpha.yaml
 ```
 
 :::

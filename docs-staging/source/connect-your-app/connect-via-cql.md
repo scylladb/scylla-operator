@@ -90,6 +90,32 @@ openssl x509 -in ca.crt -noout -subject -dates
 openssl x509 -in client.crt -noout -subject -dates
 ```
 
+**Step 5: Create a cqlshrc file**
+
+Set `SCYLLADB_CONFIG` to a directory containing the certificates and create a `cqlshrc` file:
+
+```bash
+export SCYLLADB_CONFIG=/path/to/scylladb-config
+mkdir -p "${SCYLLADB_CONFIG}"
+cp ca.crt client.crt client.key "${SCYLLADB_CONFIG}/"
+cat > "${SCYLLADB_CONFIG}/cqlshrc" <<EOF
+[connection]
+hostname = <cluster-name>-client.<namespace>.svc
+port = 9142
+ssl = true
+
+[ssl]
+certfile = ${SCYLLADB_CONFIG}/ca.crt
+usercert = ${SCYLLADB_CONFIG}/client.crt
+userkey = ${SCYLLADB_CONFIG}/client.key
+validate = true
+
+[authentication]
+username = cassandra
+password = <password>
+EOF
+```
+
 ### Connect
 
 ::::{tabs}

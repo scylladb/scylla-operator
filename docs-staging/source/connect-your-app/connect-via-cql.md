@@ -77,9 +77,9 @@ Replace `scylla-local-client-ca` with the actual secret name from Step 1.
 **Step 3: Extract client credentials**
 
 ```bash
-kubectl -n scylla get secret scylla-user-admin \
+kubectl -n scylla get secret scylla-local-user-admin \
   -o jsonpath='{.data.tls\.crt}' | base64 -d > client.crt
-kubectl -n scylla get secret scylla-user-admin \
+kubectl -n scylla get secret scylla-local-user-admin \
   -o jsonpath='{.data.tls\.key}' | base64 -d > client.key
 ```
 

@@ -111,7 +111,6 @@ The Operator creates these resources for Alternator:
 
 - **`AccessDeniedException`**: Confirms Alternator is reachable but credentials are wrong. Re-extract credentials per the steps above and verify they match.
 - **`Could not connect to the endpoint`**: Alternator may not be enabled on the cluster. Verify `spec.alternator` is set in the ScyllaCluster and pods are running. Check that the Service port (8043 for HTTPS by default) is reachable.
-- **`salted_hash not set`**: The credentials were created without the required `options={'timeout': 300}` parameter or were created before Alternator was enabled. Recreate the credentials via CQL.
 
 ## Multi-datacenter limitations
 

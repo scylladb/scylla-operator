@@ -59,20 +59,20 @@ In future releases, the unencrypted CQL port `9042` will be disabled by default 
 The example below simplifies credential file creation for brevity. In production, create the credentials file with a text editor to avoid passwords leaking into shell history or environment variables.
 :::
 
-**Step 1: Identify the CA certificate Secret**
+**Step 1: Identify the serving CA ConfigMap**
 
-The CA certificate secret is named `<cluster-name>-local-client-ca`:
+The serving CA is stored in a ConfigMap named `<cluster-name>-local-serving-ca`:
 ```bash
-kubectl -n scylla get secrets | grep client-ca
+kubectl -n scylla get configmaps | grep serving-ca
 ```
 
 **Step 2: Extract the CA certificate**
 
 ```bash
-kubectl -n scylla get secret scylla-local-client-ca \
-  -o jsonpath='{.data.tls\.crt}' | base64 -d > ca.crt
+kubectl -n scylla get configmap scylla-local-serving-ca \
+  --template='{{ index .data "ca-bundle.crt" }}' > ca.crt
 ```
-Replace `scylla-local-client-ca` with the actual secret name from Step 1.
+Replace `scylla-local-serving-ca` with the actual ConfigMap name from Step 1.
 
 **Step 3: Extract client credentials**
 

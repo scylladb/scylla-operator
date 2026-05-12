@@ -33,7 +33,7 @@ Unlike CQL clients, Alternator clients do not need to connect to every ScyllaDB 
 
 ## Obtain credentials
 
-Alternator uses the CQL `salted_hash` from `system_auth.roles` as the AWS secret access key. The access key ID is the CQL username.
+Alternator uses the CQL `salted_hash` from `system.roles` as the AWS secret access key. The access key ID is the CQL username.
 
 :::{caution}
 The `salted_hash` is only available when CQL password authentication is enabled. Always configure authentication before using Alternator.
@@ -44,7 +44,7 @@ CLUSTER_NAME=scylladb
 CQL_USER=cassandra
 
 kubectl exec -it service/${CLUSTER_NAME}-client -c scylla -- cqlsh --user ${CQL_USER} \
-  -e "SELECT salted_hash FROM system_auth.roles WHERE role = '${CQL_USER}'"
+  -e "SELECT salted_hash FROM system.roles WHERE role = '${CQL_USER}'"
 ```
 
 ## Connect with AWS CLI
@@ -68,7 +68,7 @@ export AWS_ACCESS_KEY_ID="${CQL_USER}"
 **Step 3: Get the secret access key**
 ```shell
 AWS_SECRET_ACCESS_KEY="$(kubectl exec -i service/${CLUSTER_NAME}-client -c scylla -- cqlsh --user ${CQL_USER} --no-color \
-  -e "SELECT salted_hash from system_auth.roles WHERE role = '${AWS_ACCESS_KEY_ID}';" \
+  -e "SELECT salted_hash from system.roles WHERE role = '${AWS_ACCESS_KEY_ID}';" \
   | sed -e 's/\r//g' | sed -e '4q;d' | sed -E -e 's/^\s+//')"
 export AWS_SECRET_ACCESS_KEY
 ```

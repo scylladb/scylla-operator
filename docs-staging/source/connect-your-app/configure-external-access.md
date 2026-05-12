@@ -176,10 +176,10 @@ scylla-us-east-1-us-east-1a-0             LoadBalancer   10.96.0.1      203.0.11
 
 ### Verify broadcast addresses
 
-Confirm that ScyllaDB is advertising the correct address to clients:
+Confirm that ScyllaDB node Services have the expected addresses by inspecting the per-node Services:
 
 ```bash
-kubectl -n scylla get scyllacluster scylla -o jsonpath='{range .status.racks[*].members[*]}{.name}{"\t"}{.address}{"\n"}{end}'
+kubectl -n scylla get services -l scylla/cluster=scylla -o custom-columns='NAME:.metadata.name,TYPE:.spec.type,CLUSTER-IP:.spec.clusterIP,EXTERNAL-IP:.status.loadBalancer.ingress[0].ip'
 ```
 
 ### Test connectivity

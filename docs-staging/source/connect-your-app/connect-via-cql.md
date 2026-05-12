@@ -19,6 +19,12 @@ data:
 
 Reference this ConfigMap from your ScyllaCluster via `scyllaConfig` on each rack.
 
+After deployment, follow the [Creating a Custom Superuser](https://docs.scylladb.com/manual/stable/operating-scylla/security/create-superuser.html) guide in the ScyllaDB documentation to replace the default `cassandra` superuser with a dedicated role.
+
+:::{caution}
+Starting with ScyllaDB 2026.2, the default `cassandra`/`cassandra` superuser credentials are being removed. New clusters will require configuring a custom superuser via `auth_superuser_name` and `auth_superuser_salted_password` in `scylla.yaml`. See [scylladb/scylladb#27215](https://github.com/scylladb/scylladb/pull/27215) for details.
+:::
+
 ## Embedded cqlsh
 
 Every ScyllaDB pod includes a built-in `cqlsh`. This is the simplest way to run queries:

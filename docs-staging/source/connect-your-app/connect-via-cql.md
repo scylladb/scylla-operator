@@ -45,8 +45,8 @@ kubectl exec -it pod/<cluster-name>-<datacenter>-<rack>-<ordinal> -c scylla -- c
 
 ```
 Password:
-Connected to scylla at 127.0.0.1:9042
-[cqlsh 6.2.0 | Scylla 2025.4.2 | CQL spec 3.3.1 | Native protocol v4]
+Connected to scylla at 0.0.0.0:9042
+[cqlsh 6.0.32 | Scylla 2026.1.0-0.20260309.9190d42863d4 | CQL spec 3.3.1 | Native protocol v4]
 Use HELP for help.
 <user>@cqlsh>
 ```

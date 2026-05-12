@@ -3,7 +3,7 @@
 This page explains how to configure ScyllaDB clusters for access from outside the Kubernetes cluster using the `exposeOptions` API.
 
 :::{note}
-`exposeOptions` are immutable — they cannot be changed after the ScyllaDB cluster is created.
+The following `exposeOptions` sub-fields are immutable after the ScyllaDB cluster is created: `nodeService.type`, `broadcastOptions.clients.type`, and `broadcastOptions.nodes.type`. Other fields (such as annotations and `loadBalancerClass`) can be updated.
 :::
 
 ## Expose options overview

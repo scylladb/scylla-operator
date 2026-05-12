@@ -193,20 +193,6 @@ kubectl run -it --rm --restart=Never cqlsh-test --image=scylladb/scylla \
 
 Replace `<EXTERNAL-IP>` with the address shown in the Service output.
 
-## Troubleshoot
-
-**Service stuck in `<pending>` state**
-: Cloud provider quota exceeded, or missing IAM permissions for load balancer creation. Check cloud provider events with `kubectl describe service <service-name> -n scylla`.
-
-**Cannot connect from outside**
-: Check firewall rules allow traffic on port 9042 (CQL) and 9142 (CQL/TLS) from client IP ranges. See [Prerequisites](../install-operator/prerequisites.md) for required firewall rules.
-
-**Broadcast address mismatch**
-: If ScyllaDB advertises an internal IP instead of the LoadBalancer IP, verify `broadcastOptions.clients.type` is set to `ServiceLoadBalancerIngress` and the LoadBalancer has an external IP assigned.
-
-**TLS connection refused**
-: Ensure clients use the correct CA certificate. See [Connect via CQL](connect-via-cql.md) for TLS connection setup.
-
 ## Related pages
 
 - [Discovery endpoint](discovery.md) — exposing the discovery Service.

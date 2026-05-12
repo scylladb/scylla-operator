@@ -15,7 +15,7 @@ NAME                                          READY   MEMBERS   RACKS   AVAILABL
 scyllacluster.scylla.scylladb.com/scylladb    1       1         1       True
 
 NAME                      TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)
-service/scylladb-client   ClusterIP   10.102.44.43   <none>        7000/TCP,7001/TCP,9042/TCP,9142/TCP,...
+service/scylladb-client   ClusterIP   10.102.44.43   <none>        7000/TCP,7001/TCP,9042/TCP,9142/TCP,19042/TCP,19142/TCP,7199/TCP,10001/TCP,9180/TCP,5090/TCP,9100/TCP,9160/TCP,8043/TCP
 ```
 
 ### Using the endpoint

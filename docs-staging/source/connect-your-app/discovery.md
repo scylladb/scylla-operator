@@ -29,32 +29,65 @@ Clients should use this endpoint as their initial contact point. The driver conn
 
 ## Exposing beyond the Kubernetes cluster
 
-If you need to connect from outside the Kubernetes cluster and are using Pod IPs as the broadcast address type, you can expose the `<cluster-name>-client` Service using a cloud provider's internal load balancer.
+If you need to connect from outside the Kubernetes cluster and are using Pod IPs as the broadcast address type, you can expose the discovery endpoint by creating a separate LoadBalancer Service that selects the same pods. Do **not** patch the operator-managed `<cluster-name>-client` Service directly — the operator reconciles it and will revert manual changes.
 
 ::::{tabs}
 :::{group-tab} GKE
-```shell
-kubectl patch service/<cluster-name>-client -p '{"metadata": {"annotations": {"networking.gke.io/load-balancer-type": "Internal"}}, "spec": {"type": "LoadBalancer"}}'
-kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<cluster-name>-client
-kubectl get service/<cluster-name>-client -o='jsonpath={.status.loadBalancer.ingress[0].ip}'
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: <cluster-name>-client-external
+  namespace: scylla
+  annotations:
+    networking.gke.io/load-balancer-type: Internal
+spec:
+  type: LoadBalancer
+  selector:
+    scylla/cluster: <cluster-name>
+    app: scylla
+  ports:
+  - name: cql
+    port: 9042
+    targetPort: 9042
+  - name: cql-ssl
+    port: 9142
+    targetPort: 9142
 ```
 
-Expected output:
-```
-10.128.0.5
+```shell
+kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<cluster-name>-client-external -n scylla
+kubectl get service/<cluster-name>-client-external -n scylla -o='jsonpath={.status.loadBalancer.ingress[0].ip}'
 ```
 :::
 
 :::{group-tab} EKS
-```shell
-kubectl patch service/<cluster-name>-client -p '{"metadata": {"annotations": {"service.beta.kubernetes.io/aws-load-balancer-scheme": "internal", "service.beta.kubernetes.io/aws-load-balancer-backend-protocol": "tcp"}}, "spec": {"type": "LoadBalancer"}}'
-kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<cluster-name>-client
-kubectl get service/<cluster-name>-client -o='jsonpath={.status.loadBalancer.ingress[0].hostname}'
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: <cluster-name>-client-external
+  namespace: scylla
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+spec:
+  type: LoadBalancer
+  selector:
+    scylla/cluster: <cluster-name>
+    app: scylla
+  ports:
+  - name: cql
+    port: 9042
+    targetPort: 9042
+  - name: cql-ssl
+    port: 9142
+    targetPort: 9142
 ```
 
-Expected output:
-```
-internal-a1b2c3d4e5f6g7h8-123456789.us-east-1.elb.amazonaws.com
+```shell
+kubectl wait --for=jsonpath='{.status.loadBalancer.ingress}' service/<cluster-name>-client-external -n scylla
+kubectl get service/<cluster-name>-client-external -n scylla -o='jsonpath={.status.loadBalancer.ingress[0].hostname}'
 ```
 :::
 ::::

@@ -4,7 +4,7 @@ This page explains how ScyllaDB clusters are discoverable by clients on Kubernet
 
 ## How discovery works
 
-For every ScyllaCluster, the Operator creates a Kubernetes Service named `<cluster-name>-client` that selects all ready ScyllaDB nodes. This Service acts as a stable entry point: clients connect to it to reach any available ScyllaDB node, and from there the driver automatically discovers all other nodes in the cluster.
+For every ScyllaCluster, the Operator creates a Kubernetes Service named `<cluster-name>-client` that matches all ScyllaDB pods in the cluster by label. Kubernetes routes traffic only to pods that pass their readiness probe. This Service acts as a stable entry point: clients connect to it to reach any available ScyllaDB node, and from there the driver automatically discovers all other nodes in the cluster.
 
 ```shell
 kubectl get scyllacluster/scylladb service/scylladb-client

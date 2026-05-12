@@ -120,31 +120,35 @@ EOF
 
 ### Connect
 
-::::{tabs}
-:::{group-tab} Native
+:::::{tabs}
+::::{group-tab} Native
 ```shell
 cqlsh --cqlshrc="${SCYLLADB_CONFIG}/cqlshrc"
 ```
-:::
+::::
 
-:::{group-tab} Podman
-```shell
+::::{group-tab} Podman
+:::{code-block} shell
+:substitutions:
+
 podman run -it --rm --entrypoint=cqlsh \
   -v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro,Z" \
   -v="${SCYLLADB_CONFIG}/cqlshrc:/root/.cassandra/cqlshrc:ro,Z" \
-  docker.io/scylladb/scylla:2025.4.2
-```
+  {{imageRepository}}:{{scyllaDBImageTag}}
 :::
+::::
 
-:::{group-tab} Docker
-```shell
+::::{group-tab} Docker
+:::{code-block} shell
+:substitutions:
+
 docker run -it --rm --entrypoint=cqlsh \
   -v="${SCYLLADB_CONFIG}:${SCYLLADB_CONFIG}:ro" \
   -v="${SCYLLADB_CONFIG}/cqlshrc:/root/.cassandra/cqlshrc:ro" \
-  docker.io/scylladb/scylla:2025.4.2
-```
+  {{imageRepository}}:{{scyllaDBImageTag}}
 :::
 ::::
+:::::
 
 ## Driver configuration tips
 

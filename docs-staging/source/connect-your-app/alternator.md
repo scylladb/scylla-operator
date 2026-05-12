@@ -25,7 +25,7 @@ This enables the Alternator API with HTTPS on port `8043` and authorization enab
 | `writeIsolation` | Write isolation level for Alternator operations. | `""` (ScyllaDB default) |
 | `insecureEnableHTTP` | Also serve Alternator on the unencrypted HTTP port. | `false` |
 | `insecureDisableAuthorization` | Disable Alternator authorization. | `false` |
-| `servingCertificate` | TLS certificate configuration (`OperatorManaged` or `UserManaged`). | `OperatorManaged` |
+| `servingCertificate.type` | TLS certificate configuration (`OperatorManaged` or `UserManaged`). | `OperatorManaged` |
 
 :::{note}
 Unlike CQL clients, Alternator clients do not need to connect to every ScyllaDB node directly or discover individual node IP addresses. The Alternator protocol is HTTP-based, so you can also expose it through an Ingress or other HTTP networking concepts.

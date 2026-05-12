@@ -152,63 +152,6 @@ When using a ScyllaDB or Cassandra driver in your application:
 | TLS | Enabled, with CA verification | Use the serving CA from `configmap/<cluster-name>-local-serving-ca`. |
 | Reconnection | Exponential backoff | Handles node restarts during rolling updates. |
 
-### Code examples
-
-The following snippets show minimal working examples. Replace `<discovery-service-clusterip>` with the ClusterIP address from [Discovery endpoint](discovery.md) and `<password>` with the credentials from the ScyllaDB Secret.
-
-**Python (cassandra-driver):**
-```python
-from cassandra.cluster import Cluster
-from cassandra.auth import PlainTextAuthProvider
-from ssl import SSLContext, PROTOCOL_TLS_CLIENT, CERT_REQUIRED
-
-# TLS connection (recommended for production)
-ssl_context = SSLContext(PROTOCOL_TLS_CLIENT)
-ssl_context.load_verify_locations('/path/to/ca.crt')
-ssl_context.check_hostname = False
-ssl_context.verify_mode = CERT_REQUIRED
-
-auth_provider = PlainTextAuthProvider(username='cassandra', password='<password>')
-cluster = Cluster(
-    contact_points=['<discovery-service-clusterip>'],
-    port=9142,  # TLS port
-    ssl_context=ssl_context,
-    auth_provider=auth_provider,
-    load_balancing_policy=...,  # configure local_dc
-)
-session = cluster.connect()
-```
-
-**Java (DataStax Java Driver 4.x):**
-```java
-// application.conf (in resources/)
-// datastax-java-driver {
-//   basic.contact-points = ["<discovery-service-clusterip>:9042"]
-//   basic.load-balancing-policy.local-datacenter = "us-east-1"
-//   advanced.auth-provider.class = PlainTextAuthProvider
-//   advanced.auth-provider.username = cassandra
-//   advanced.auth-provider.password = "<password>"
-// }
-
-CqlSession session = CqlSession.builder().build();
-```
-
-**Go (gocql):**
-```go
-cluster := gocql.NewCluster("<discovery-service-clusterip>")
-cluster.Keyspace = "system"
-cluster.Authenticator = gocql.PasswordAuthenticator{
-    Username: "cassandra",
-    Password: "<password>",
-}
-// cluster.SslOpts = &gocql.SslOptions{...} // for TLS
-session, err := cluster.CreateSession()
-if err != nil {
-    log.Fatal(err)
-}
-defer session.Close()
-```
-
 ## TLS certificate resources
 
 The Operator creates these resources automatically:

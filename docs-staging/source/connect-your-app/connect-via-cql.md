@@ -49,10 +49,6 @@ Use HELP for help.
 
 ScyllaDB Operator configures TLS certificates automatically. The encrypted CQL port `9142` works by default.
 
-:::{caution}
-In future releases, the unencrypted CQL port `9042` will be disabled by default unless explicitly opted in. Always use the TLS port `9142` for remote connections.
-:::
-
 ### Prepare credentials and certificates
 
 :::{caution}

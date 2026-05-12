@@ -119,7 +119,6 @@ When using Alternator with a multi-datacenter ScyllaDB deployment (multiple `Scy
 | Limitation | Detail |
 |---|---|
 | No built-in cross-DC routing | Alternator endpoints are per-datacenter. There is no built-in load balancer that routes DynamoDB API requests across datacenters. Connect your application to the Alternator endpoint in the datacenter closest to it. |
-| No Helm-based multi-DC install | Helm charts do not support multi-DC deployments. Use manifests directly for multi-DC setups. |
 | Authentication tokens are DC-local | Each `ScyllaCluster` has its own Alternator authentication credentials. If you require the same credentials across DCs, you must configure the same `alternatorWriteIsolation` and authentication settings on each cluster independently. |
 
 See [Known issues](../reference/known-issues.md#multi-datacenter-limitations) for the complete list of multi-datacenter limitations in ScyllaDB Operator.

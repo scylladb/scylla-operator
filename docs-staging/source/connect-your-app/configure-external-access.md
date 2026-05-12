@@ -138,25 +138,23 @@ LoadBalancer Services should be configured for TCP passthrough. Check your cloud
 
 ## TLS for external clients
 
-When exposing ScyllaDB externally, ensure TLS certificates include the external addresses as Subject Alternative Names (SANs). Use `operatorManagedOptions` to add custom DNS names or IP addresses:
+When exposing ScyllaDB externally, the operator-managed CQL serving certificates automatically include the node Service DNS names and IP addresses as Subject Alternative Names (SANs). No additional TLS configuration is needed for CQL.
+
+For Alternator, you can add custom DNS names or IP addresses to the serving certificate using `operatorManagedOptions`:
 
 ```yaml
 spec:
-  exposeOptions:
-    nodeService:
-      type: LoadBalancer
-  network:
-    tlsConfig:
-      servingCertificate:
-        type: OperatorManaged
-        operatorManagedOptions:
-          additionalDNSNames:
-          - scylladb.example.com
-          additionalIPAddresses:
-          - 203.0.113.10
+  alternator:
+    servingCertificate:
+      type: OperatorManaged
+      operatorManagedOptions:
+        additionalDNSNames:
+        - scylladb.example.com
+        additionalIPAddresses:
+        - 203.0.113.10
 ```
 
-Alternatively, use `UserManaged` certificates from your own PKI or cert-manager.
+Alternatively, use `UserManaged` certificates from your own PKI or cert-manager for Alternator. See [Alternator](alternator.md) for details.
 
 ## Verify external access
 

@@ -80,13 +80,6 @@ The `WaitForFirstConsumer` binding mode ensures the volume is provisioned on the
 - The Local CSI Driver provisions **directories**, not block devices.
 - Storage capacity is shared across all volumes on the same node. XFS project quotas enforce per-volume limits, but total capacity is bounded by the underlying disk.
 
-## Alternative: SIG Storage Static Local Volume Provisioner
-
-The [Kubernetes SIG Storage Local Persistence Volume Static Provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) is an alternative that turns local disks into dedicated PersistentVolumes.
-Unlike the ScyllaDB Local CSI Driver, it does not support dynamic provisioning — each PersistentVolume must be set up manually.
-
-Use this provisioner if you need each ScyllaDB pod to have exclusive access to an entire disk or partition rather than sharing a disk via quota-limited directories.
-
 ## Using network-attached storage
 
 If you choose network-attached storage, use the StorageClass provided by your cloud platform (e.g., `pd-ssd` on GKE, `gp3` on EKS).

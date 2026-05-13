@@ -115,19 +115,6 @@ Some Kubernetes platforms have non-conformant networking that prevents the API s
 If resource creation fails with webhook errors after installation, see [Troubleshoot installation issues](../troubleshoot/troubleshoot-installation.md).
 :::
 
-## Dependency chain
-
-The Operator has the following installation dependencies, which must be deployed in order:
-
-1. **cert-manager** — provisions TLS certificates for the webhook server. Must be available before the Operator is installed.
-2. **Prometheus Operator** (optional) — provides the `ServiceMonitor` and `PrometheusRule` CRDs used by `ScyllaDBMonitoring`. Required only if you use `ScyllaDBMonitoring`.
-3. **ScyllaDB Operator** — the controller manager and webhook server.
-4. **Local CSI Driver** (optional) — provides dynamic local volume provisioning with XFS and project quotas. Required if you use local NVMe storage with the ScyllaDB-provided storage provisioner. See [Storage](storage.md).
-5. **NodeConfig** — configures Kubernetes nodes for ScyllaDB (RAID, filesystem, tuning). See [Tuning](tuning.md).
-6. **ScyllaDB Manager** (optional) — coordinates repair and backup tasks. Depends on the Operator because it uses a `ScyllaCluster` for its internal database.
-
-For step-by-step installation instructions, see [Install with GitOps](../install-operator/install-with-gitops.md) or [Install with Helm](../install-operator/install-with-helm.md).
-
 :::{toctree}
 :maxdepth: 1
 :hidden:

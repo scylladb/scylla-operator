@@ -17,7 +17,7 @@ The `ScyllaDBMonitoring` custom resource (v1alpha1) describes a monitoring stack
 
 ScyllaDB Operator does **not** include its own metrics collection engine. It relies on [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator) to translate `ServiceMonitor` and `PrometheusRule` resources into Prometheus scraping and alerting configuration.
 
-Prometheus Operator must be installed in the cluster before you create a `ScyllaDBMonitoring` resource. See the [dependency chain](index.md) in the architecture overview.
+Prometheus Operator must be installed in the cluster before you create a `ScyllaDBMonitoring` resource.
 
 ## Prometheus modes
 
@@ -123,5 +123,4 @@ These values are stored in `assets/config/config.yaml` and propagated through `S
 
 ## Related pages
 
-- [Understand](index.md) — dependency chain showing where Prometheus Operator fits.
 - [Security](security.md) — TLS between Grafana and Prometheus (mTLS in Managed mode).

@@ -23,8 +23,8 @@ ScyllaDB Operator extends the Kubernetes API with [CustomResourceDefinitions (CR
 
 The Operator ships as a single binary that includes:
 
-- **Controllers** that watch CRDs and create or update the underlying Kubernetes objects (StatefulSets, Services, ConfigMaps, Jobs, PodDisruptionBudgets, and more).
-- **Admission webhooks** that validate and default your resource specs before they are persisted.
+- **Controllers** that watch CRDs and create or update the underlying Kubernetes objects (StatefulSets, Services, ConfigMaps, Jobs, PodDisruptionBudgets, and more) that orchestrate the ScyllaDB clusters you define.
+- **Admission webhooks** that validate configuration correctness.
 - **A sidecar** that runs inside each ScyllaDB pod to configure and manage the ScyllaDB process.
 - **Node setup agents** that run on Kubernetes nodes to prepare disks and tune the host.
 
@@ -47,23 +47,19 @@ The Operator manages each datacenter independently. The following must be manage
 
 For step-by-step instructions, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
 
-## Key resources
+## Key user-facing resources
 
 The Operator provides the following custom resources:
 
-| Resource | API version | Scope | Purpose |
-|---|---|---|---|
-| `ScyllaCluster` | `v1` | Namespaced | A ScyllaDB datacenter (one resource per DC; for multi-DC, create one per Kubernetes cluster and connect via `externalSeeds`) |
-| `NodeConfig` | `v1alpha1` | Cluster | Node-level disk setup, RAID, filesystem, and performance tuning |
-| `ScyllaOperatorConfig` | `v1alpha1` | Cluster | Global Operator configuration (images, cluster domain) |
-| `ScyllaDBMonitoring` | `v1alpha1` | Namespaced | Monitoring stack (Prometheus + Grafana) for ScyllaDB |
-| `ScyllaDBManagerTask` | `v1alpha1` | Namespaced | Backup or repair task managed by ScyllaDB Manager |
-| `ScyllaDBDatacenter` | `v1alpha1` | Namespaced | A ScyllaDB datacenter (next-generation API) |
-| `ScyllaDBCluster` | `v1alpha1` | Namespaced | A multi-datacenter ScyllaDB cluster |
-| `RemoteKubernetesCluster` | `v1alpha1` | Cluster | Reference to a remote Kubernetes cluster for multi-DC deployments |
-| `RemoteOwner` | `v1alpha1` | Namespaced | Tracks ownership of resources created by a remote cluster |
-| `ScyllaDBManagerClusterRegistration` | `v1alpha1` | Namespaced | Registers a ScyllaDB cluster with ScyllaDB Manager |
-| `ScyllaDBDatacenterNodesStatusReport` | `v1alpha1` | Namespaced | Reports node status from a remote datacenter |
+| Resource | Scope | Purpose |
+|---|---|---|
+| `ScyllaCluster` | Namespaced | A ScyllaDB datacenter (one resource per DC; for multi-DC, create one per Kubernetes cluster and connect via `externalSeeds`) |
+| `NodeConfig` | Cluster | Node-level disk setup, RAID, filesystem, and performance tuning |
+| `ScyllaOperatorConfig` | Cluster | Global Operator configuration (images, cluster domain) |
+| `ScyllaDBMonitoring` | Namespaced | Monitoring stack (Prometheus + Grafana) for ScyllaDB |
+| `ScyllaDBManagerTask` | Namespaced | Backup or repair task managed by ScyllaDB Manager |
+
+The Operator also uses several internal CRD types under the hood to orchestrate operations such as datacenter management, Manager cluster registration, and bootstrap synchronisation. These are not intended for direct user interaction.
 
 ## Supported platforms
 
@@ -71,6 +67,7 @@ ScyllaDB Operator is tested and supported on:
 
 - **Google Kubernetes Engine (GKE)** with Ubuntu node images
 - **Amazon Elastic Kubernetes Service (EKS)** with Amazon Linux node images
+- **Oracle Kubernetes Engine (OKE)**
 - **Architectures**: amd64 and arm64
 
 For the full support matrix including supported Kubernetes versions, ScyllaDB versions, and known platform incompatibilities, see [Releases](../reference/releases.md).

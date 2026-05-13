@@ -117,7 +117,6 @@ If you need assistance:
 ## Related documentation
 
 - [Networking overview](../index.md)
-- [ScyllaCluster API Reference](../../../reference/api/groups/scylla.scylladb.com/scyllaclusters)
 - [Kubernetes IPv6 Documentation](https://kubernetes.io/docs/concepts/services-networking/dual-stack/)
 
 ```{toctree}

@@ -18,10 +18,11 @@
 
 Apply the IPv6-only configuration:
 
-```bash
+:::{code-block} shell
+:substitutions:
 kubectl create namespace scylla
 kubectl apply -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/ipv6/scylla-cluster-ipv6.yaml
-```
+:::
 
 ## Step 2: Wait for the cluster to be ready
 

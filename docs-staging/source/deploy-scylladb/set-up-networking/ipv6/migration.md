@@ -37,7 +37,7 @@ This is the recommended migration path because:
 
 ### Step 1: Backup your data
 
-Before making any changes, ensure you have recent backups. See [Configuring backup tasks](../../../understand/manager.md#configuring-backup-and-repair-tasks-for-a-scyllacluster) for details on setting up backups for your ScyllaCluster.
+Before making any changes, ensure you have recent backups. See [Configuring backup tasks](../../../understand/manager.md) for details on setting up backups for your ScyllaCluster.
 
 ### Step 2: Update cluster configuration
 
@@ -185,7 +185,7 @@ Update all client applications to support IPv6 before migrating the cluster.
 
 ### Step 3: Backup your data
 
-Create a backup before proceeding. See [Configuring backup tasks](../../../understand/manager.md#configuring-backup-and-repair-tasks-for-a-scyllacluster) for details on setting up backups for your ScyllaCluster.
+Create a backup before proceeding. See [Configuring backup tasks](../../../understand/manager.md) for details on setting up backups for your ScyllaCluster.
 
 ### Step 4: Update cluster configuration
 

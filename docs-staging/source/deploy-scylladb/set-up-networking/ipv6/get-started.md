@@ -70,9 +70,10 @@ This is useful when you have clients on different network types that all need to
 
 Download the example dual-stack configuration:
 
-```bash
+:::{code-block} shell
+:substitutions:
 kubectl apply -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/ipv6/scylla-cluster-minimal-dual-stack.yaml
-```
+:::
 
 You can view the complete example configuration in the repository: [scylla-cluster-minimal-dual-stack.yaml](../../../../../examples/ipv6/scylla-cluster-minimal-dual-stack.yaml)
 
@@ -89,10 +90,11 @@ network:
 
 Or deploy directly:
 
-```bash
+:::{code-block} shell
+:substitutions:
 kubectl create namespace scylla
 kubectl apply -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/ipv6/scylla-cluster-minimal-dual-stack.yaml
-```
+:::
 
 ## Step 4: Watch the cluster deploy
 

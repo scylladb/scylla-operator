@@ -23,10 +23,11 @@ For configuration details, see the [IPv6 configuration reference](../../../refer
 
 Apply the dual-stack configuration:
 
-```bash
+:::{code-block} shell
+:substitutions:
 kubectl create namespace scylla
 kubectl apply -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/ipv6/scylla-cluster-dual-stack.yaml
-```
+:::
 
 ## Step 2: Wait for the cluster to be ready
 

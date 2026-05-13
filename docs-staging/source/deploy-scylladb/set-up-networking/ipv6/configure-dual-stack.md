@@ -1,4 +1,13 @@
-# Configure dual-stack networking with IPv4
+# Configure dual-stack networking
+
+This guide covers two dual-stack configurations:
+
+- [IPv4-first dual-stack](#configure-dual-stack-networking-with-ipv4) (recommended) — ScyllaDB uses IPv4 internally, services accessible via both protocols
+- [IPv6-first dual-stack](#configure-dual-stack-networking-with-ipv6) — ScyllaDB uses IPv6 internally, services accessible via both protocols
+
+For IPv6-only (single-stack) deployments, see [Configure IPv6-only](configure-single-stack.md). For configuration field details, see the [IPv6 configuration reference](../../../reference/ipv6-configuration.md).
+
+## Configure dual-stack networking with IPv4
 
 **What you'll achieve**: Deploy a ScyllaDB cluster that uses IPv4 for ScyllaDB communication and provides services accessible via both IPv4 and IPv6.
 
@@ -10,16 +19,10 @@
 **After completion**: Your ScyllaDB cluster will use IPv4 for inter-node communication while services are accessible via both IPv4 and IPv6.
 
 :::{note}
-This is the recommended configuration for production IPv6 deployments. For other configurations, see:
-- [Configure IPv6-first dual-stack](#configure-dual-stack-networking-with-ipv6) - ScyllaDB uses IPv6
-- [Configure IPv6-only](configure-single-stack.md) - Experimental
-
-For configuration details, see the [IPv6 configuration reference](../../../reference/ipv6-configuration.md).
+This is the recommended configuration for production IPv6 deployments.
 :::
 
-:::
-
-## Step 1: Apply the configuration
+### Step 1: Apply the configuration
 
 Apply the dual-stack configuration:
 
@@ -29,7 +32,7 @@ kubectl create namespace scylla
 kubectl apply -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/ipv6/scylla-cluster-dual-stack.yaml
 :::
 
-## Step 2: Wait for the cluster to be ready
+### Step 2: Wait for the cluster to be ready
 
 Monitor pod creation:
 
@@ -39,7 +42,7 @@ kubectl get pods -n scylla -l scylla-operator.scylladb.com/pod-type=scylladb-nod
 
 Wait until all pods show `Running` status.
 
-## Step 3: Verify dual-stack configuration
+### Step 3: Verify dual-stack configuration
 
 Check that services have both IP families:
 
@@ -55,7 +58,7 @@ scylla-dual-stack-client        [IPv4 IPv6]        PreferDualStack
 scylla-dual-stack-us-east-1a-0  [IPv4 IPv6]        PreferDualStack
 ```
 
-## Step 4: Verify cluster health
+### Step 4: Verify cluster health
 
 Check that all nodes are up:
 
@@ -77,12 +80,12 @@ UN  fd00:10:244:3::6c 494.96 KB 256     ?     7a4bb6da-415e-4fc3-a6ca-0369c0e76b
 
 All nodes should show `UN` (Up/Normal) status.
 
-## Next steps
+### Next steps
 
 - [Migrate existing clusters to IPv6](migration.md)
 - [Troubleshoot IPv6 issues](troubleshooting.md)
 
-# Configure dual-stack networking with IPv6
+## Configure dual-stack networking with IPv6
 
 **What you'll achieve**: Deploy a ScyllaDB cluster that uses IPv6 for ScyllaDB communication and provides services accessible via both IPv6 and IPv4.
 
@@ -97,7 +100,7 @@ All nodes should show `UN` (Up/Normal) status.
 This configuration is production-ready. For IPv4-first dual-stack, see [Configure dual-stack with IPv4](#configure-dual-stack-networking-with-ipv4).
 :::
 
-## Step 1: Create the configuration
+### Step 1: Create the configuration
 
 Create a file `scylla-ipv6-first.yaml`:
 
@@ -145,14 +148,14 @@ spec:
         type: ServiceClusterIP
 ```
 
-## Step 2: Apply the configuration
+### Step 2: Apply the configuration
 
 ```bash
 kubectl create namespace scylla
 kubectl apply -f scylla-ipv6-first.yaml
 ```
 
-## Step 3: Wait for the cluster to be ready
+### Step 3: Wait for the cluster to be ready
 
 Monitor pod creation:
 
@@ -162,7 +165,7 @@ kubectl get pods -n scylla -l scylla-operator.scylladb.com/pod-type=scylladb-nod
 
 Wait until all pods show `Running` status.
 
-## Step 4: Verify dual-stack configuration
+### Step 4: Verify dual-stack configuration
 
 Check that services have both IP families:
 
@@ -178,7 +181,7 @@ scylla-ipv6-first-client          [IPv6 IPv4]        PreferDualStack
 scylla-ipv6-first-datacenter1-... [IPv6 IPv4]        PreferDualStack
 ```
 
-## Step 5: Verify cluster uses IPv6
+### Step 5: Verify cluster uses IPv6
 
 Check that ScyllaDB is using IPv6 addresses:
 
@@ -206,7 +209,7 @@ UN  fd00:10:244:2::6d    494.49 KB 256     ?     b1f889b4-80e7-4685-a3c5-1b81797
 UN  fd00:10:244:3::6c    494.96 KB 256     ?     7a4bb6da-415e-4fc3-a6ca-0369c0e76bf0 rack1
 ```
 
-## Next steps
+### Next steps
 
 - [Migrate existing clusters to IPv6](migration.md)
 - [Troubleshoot IPv6 issues](troubleshooting.md)

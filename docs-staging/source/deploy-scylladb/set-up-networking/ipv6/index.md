@@ -16,8 +16,7 @@ Start here if you're new to IPv6 networking in ScyllaDB:
 
 Practical guides for specific tasks:
 
-- [Configure dual-stack with IPv4](configure-dual-stack.md) - IPv4-first dual-stack (recommended)
-- [Configure dual-stack with IPv6](configure-dual-stack.md#configure-dual-stack-networking-with-ipv6) - IPv6-first dual-stack
+- [Configure dual-stack networking](configure-dual-stack.md) - IPv4-first (recommended) and IPv6-first dual-stack
 - [Configure IPv6-only](configure-single-stack.md) - IPv6 single-stack (experimental)
 - [Migrate clusters to IPv6](migration.md) - Migrate existing clusters from IPv4 to IPv6
 - [Troubleshoot IPv6 networking issues](troubleshooting.md) - Diagnose and resolve common problems

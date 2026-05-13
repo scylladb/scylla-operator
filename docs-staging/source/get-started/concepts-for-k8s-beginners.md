@@ -6,7 +6,7 @@ If you are familiar with ScyllaDB but new to Kubernetes, this page maps the Scyl
 
 | ScyllaDB concept | Kubernetes equivalent | Notes |
 |---|---|---|
-| **ScyllaDB node** | **Pod** | Each ScyllaDB node runs inside a Kubernetes pod. A pod is the smallest deployable unit in Kubernetes and contains one or more containers. |
+| **ScyllaDB node** | ScyllaDB **Pod**, **node service** and **PVC** | Each ScyllaDB node runs inside a Kubernetes pod. A pod is the smallest deployable unit in Kubernetes and contains one or more containers. The node service is a Kubernetes service that allows connectivity to that node and stores some of its runtime metadata. The PVC (PersistentVolumeClaim) provides persistent storage for keyspaces. |
 | **ScyllaDB process** | **Container** (inside the pod) | The ScyllaDB process runs inside a container within the pod. The pod also contains sidecar containers for monitoring, tuning, and management. |
 | **Datacenter** | **`ScyllaCluster`** | A `ScyllaCluster` resource represents one ScyllaDB datacenter. For multi-DC setups, create one `ScyllaCluster` per datacenter in each Kubernetes cluster and connect them using `externalSeeds`. |
 | **Rack** | **StatefulSet** | Each rack in the ScyllaCluster spec maps to a Kubernetes StatefulSet. The StatefulSet guarantees stable pod names, persistent storage, and ordered startup/shutdown. |
@@ -15,58 +15,8 @@ If you are familiar with ScyllaDB but new to Kubernetes, this page maps the Scyl
 | **Data directory** | **PersistentVolumeClaim (PVC)** | Each ScyllaDB node's data is stored on a PersistentVolume, provisioned via a PVC. Data survives pod restarts. |
 | **Node IP / listen address** | **Service** (per member) | Each ScyllaDB node gets a dedicated Kubernetes Service that provides a stable network identity, independent of pod restarts. |
 | **Seed nodes** | Managed automatically | The Operator selects seed nodes and configures them. You do not need to manage seeds manually. |
-| **`nodetool`** | `kubectl exec` + `nodetool` | Run `nodetool` commands by executing into the ScyllaDB container: `kubectl exec -it <pod> -c scylla -- nodetool status`. Read-only commands are safe; state-changing commands should be avoided (see [nodetool alternatives](../reference/nodetool-alternatives.md)). |
-| **ScyllaDB Manager** | **ScyllaDB Manager deployment** | The Operator deploys and configures ScyllaDB Manager automatically. Repair and backup tasks are defined in the cluster spec or as `ScyllaDBManagerTask` resources. |
+| **`nodetool`** | `kubectl exec` + `nodetool` | Run `nodetool` commands by executing into the ScyllaDB container: `kubectl exec -it <pod> -c scylla -- nodetool status`. Read-only commands are safe; state-changing commands are (mostly) disallowed; see [nodetool alternatives](../reference/nodetool-alternatives.md). |
 | **Repair / Backup tasks** | **ScyllaDBManagerTask** resource or cluster spec fields | Instead of running `sctool` commands, you declare tasks as Kubernetes resources or in the ScyllaCluster spec. |
-
-## Common Kubernetes commands for ScyllaDB
-
-Here are copy-paste-ready commands for common tasks. Replace `<namespace>` with the namespace where your ScyllaDB cluster is deployed, and `<cluster>` with the cluster name.
-
-### Check cluster status
-
-:::{code-block} shell
-kubectl -n=<namespace> get scyllaclusters.scylla.scylladb.com/<cluster>
-:::
-
-### List ScyllaDB pods
-
-:::{code-block} shell
-kubectl -n=<namespace> get pods -l=scylla/cluster=<cluster>
-:::
-
-### Check a pod's status
-
-:::{code-block} shell
-kubectl -n=<namespace> describe pod/<pod-name>
-:::
-
-Look for:
-- **Status**: `Running`, `Pending`, `CrashLoopBackOff`, etc.
-- **Conditions**: whether the pod is `Ready`.
-- **Events**: recent events that may indicate problems.
-
-### View ScyllaDB logs
-
-:::{code-block} shell
-# Current container logs
-kubectl -n=<namespace> logs pod/<pod-name> -c=scylla
-
-# Previous container logs (after a restart)
-kubectl -n=<namespace> logs pod/<pod-name> -c=scylla --previous
-:::
-
-### Run nodetool
-
-:::{code-block} shell
-kubectl -n=<namespace> exec -it pod/<pod-name> -c=scylla -- nodetool status
-:::
-
-### Run cqlsh
-
-:::{code-block} shell
-kubectl -n=<namespace> exec -it pod/<pod-name> -c=scylla -- cqlsh localhost -u cassandra -p cassandra
-:::
 
 ## Understanding pod names
 

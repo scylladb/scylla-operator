@@ -272,7 +272,7 @@ The Operator does **not** create Kubernetes `NetworkPolicy` resources. If your e
 
 ## Related pages
 
-- [Overview](overview.md) — component diagram and CRD summary.
+- [Understand](index.md) — component diagram and CRD summary.
 - [Security](security.md) — TLS certificates and authentication.
 - [Sidecar](sidecar.md) — how the sidecar resolves broadcast addresses at startup.
 - [StatefulSets and racks](statefulsets-and-racks.md) — StatefulSet naming and stable network identity.

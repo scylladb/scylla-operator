@@ -77,5 +77,5 @@ When a node is decommissioned, the remaining nodes inherit its tokens. They do n
 
 ## Related pages
 
-- [Overview](overview.md) — component diagram and reconciliation model.
+- [Understand](index.md) — component diagram and reconciliation model.
 - [Sidecar](sidecar.md) — the sidecar that reports node status used for stability checks.

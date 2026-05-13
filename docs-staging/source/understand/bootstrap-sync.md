@@ -108,4 +108,4 @@ Forcing bootstrap bypass disables the safety check. Use this only when you are c
 
 - [Ignition](ignition.md) — the startup gating mechanism that runs after the bootstrap barrier.
 - [Sidecar](sidecar.md) — the sidecar container that runs the StatusReporter.
-- [Overview](overview.md) — component diagram and CRD list.
+- [Understand](index.md) — component diagram and CRD list.

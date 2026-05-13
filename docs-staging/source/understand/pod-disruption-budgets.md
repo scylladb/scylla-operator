@@ -66,4 +66,4 @@ When a Kubernetes node is drained (for example, during a Kubernetes upgrade), th
 ## Related pages
 
 - [Statefulsets and racks](statefulsets-and-racks.md) — rolling update strategy and partition-based rollout.
-- [Overview](overview.md) — reconciliation model.
+- [Understand](index.md) — reconciliation model.

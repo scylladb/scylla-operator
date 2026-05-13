@@ -21,6 +21,9 @@ Follow [Configure nodes](../before-you-deploy/configure-nodes.md), selecting the
 
 ## Deploy a ScyllaDB cluster
 
+:::{include} /_snippets/scyllacluster-namespace-tip.md
+:::
+
 Create a ScyllaDB cluster with one rack per fault domain.
 The resource requests are sized for `VM.DenseIO2.8` (8 OCPUs, 120 GB RAM), leaving headroom for the OS, kubelet, and `DaemonSets`.
 See the [ScyllaDB system requirements](https://docs.scylladb.com/manual/stable/getting-started/system-requirements.html) for general sizing guidance.
@@ -193,4 +196,3 @@ To tear down the OKE infrastructure, follow the [Clean up](../../install-operato
 - [Set up monitoring](../set-up-monitoring.md) with Prometheus and Grafana dashboards.
 - Review the [production checklist](../production-checklist.md) before going live.
 - Learn how to [connect your application](../../connect-your-app/index.md) to ScyllaDB.
-- Read the [Tuning](../../understand/tuning.md) and [Configure nodes](../before-you-deploy/configure-nodes.md) references to adjust the deployment for your workload.

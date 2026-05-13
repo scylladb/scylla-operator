@@ -8,31 +8,10 @@ For every ScyllaDB cluster the Operator manages two kinds of Kubernetes Service:
 
 | Service | Count | Purpose |
 |---------|-------|---------|
-| **Identity** | One per datacenter | Stable DNS names for the StatefulSet. A regular `ClusterIP` Service shared by all racks' StatefulSets as their `serviceName`, so that each pod gets a predictable DNS record (`<pod>.<svc>.<ns>.svc.cluster.local`). |
+| **Identity** (named `<cluster>-client`) | One per datacenter | Stable DNS names for the StatefulSet. A regular `ClusterIP` Service shared by all racks' StatefulSets as their `serviceName`, so that each pod gets a predictable DNS record (`<pod>.<cluster>-client.<ns>.svc.cluster.local`). Also serves as a client entry point that load-balances across all ScyllaDB pods. |
 | **Member** | One per pod | A dedicated Service whose type is controlled by `exposeOptions.nodeService.type`. Carries the address that is broadcast to clients or other nodes. |
 
 The member Service uses a selector that matches exactly one pod, giving every ScyllaDB node its own stable network identity independent of the pod IP lifecycle.
-
-### Ports exposed by the member Service
-
-| Port | Name | Number |
-|------|------|--------|
-| CQL (native transport) | `cql` | 9042 |
-| CQL over TLS | `cql-ssl` | 9142 |
-| CQL shard-aware | `cql-shard-aware` | 19042 |
-| CQL shard-aware over TLS | `cql-ssl-shard-aware` | 19142 |
-| Inter-node (storage port) | `inter-node-communication` | 7000 |
-| Inter-node over TLS | `ssl-inter-node-communication` | 7001 |
-| JMX | `jmx-monitoring` | 7199 |
-| Prometheus (ScyllaDB) | `prometheus` | 9180 |
-| Manager Agent API | `agent-api` | 10001 |
-| Agent Prometheus | `agent-prometheus` | 5090 |
-| Node Exporter | `node-exporter` | 9100 |
-| Thrift | `thrift` | 9160 |
-| Alternator (HTTPS) | `alternator-tls` | 8043 |
-| Alternator (HTTP) | `alternator` | 8000 |
-
-Alternator ports are included only when `alternator` is configured in the cluster spec.
 
 ## Node Service types
 
@@ -193,74 +172,9 @@ exposeOptions:
 
 Each node gets a load balancer with an externally reachable address. Clients outside the cluster connect through the load balancer address. Nodes still communicate within the cluster via ClusterIP.
 
-## CQL Ingress
-
-:::{warning}
-This feature is **experimental**. Do not rely on any particular behaviour controlled by the CQL Ingress configuration.
-:::
-
-`ScyllaCluster` supports an optional CQL Ingress that routes CQL-over-TLS traffic (port 9142) through a Kubernetes Ingress resource. When `exposeOptions.cql.ingress` is configured, the Operator creates:
-
-- One Ingress routing to the identity Service (any-node discovery).
-- One Ingress per member Service (node-specific connections using the host ID as a subdomain).
-
-The Ingress uses `dnsDomains` from the cluster spec to build host rules. This option is useful when a layer-7 load balancer is preferred over per-node LoadBalancer Services.
-
 ## IP families and dual-stack
 
-The Operator supports IPv4, IPv6, and dual-stack networking. IP family settings control both Kubernetes Service addressing and ScyllaDB's internal protocol.
-
-### Configuration fields
-
-| Field | Effect |
-|-------|--------|
-| `spec.network.ipFamilies` | Ordered list of IP families. The **first** entry determines which protocol ScyllaDB uses internally. |
-| `spec.network.ipFamilyPolicy` | `SingleStack`, `PreferDualStack`, or `RequireDualStack`. Defaults to `SingleStack`. |
-| `spec.network.dnsPolicy` | Pod DNS policy. Should be `ClusterFirst` for IPv6. |
-
-### Why the first IP family matters
-
-ScyllaDB uses a single IP protocol for all internal operations:
-
-- **Gossip** — nodes exchange membership information using one protocol. Mixed protocols break gossip.
-- **Data replication** — inter-node connections must use a consistent address family.
-- **Token ring** — the consistent hash ring requires uniform addressing across all nodes.
-
-The first entry in `ipFamilies` determines this protocol. The second entry (if present) is used only at the Kubernetes Service level, giving clients the option to connect via either protocol.
-
-### Dual-stack behaviour
-
-"Dual-stack" in this context means Kubernetes Services have both IPv4 and IPv6 addresses. ScyllaDB itself always uses a single protocol — the first IP family.
-
-```yaml
-network:
-  ipFamilies:
-    - IPv4    # ScyllaDB communicates over IPv4
-    - IPv6    # Services also get an IPv6 address
-  ipFamilyPolicy: PreferDualStack
-```
-
-Services receive both an A record (IPv4) and an AAAA record (IPv6), so clients can connect over either protocol. The actual database traffic between nodes uses only the first family.
-
-If the Kubernetes cluster does not support dual-stack but `ipFamilyPolicy` is `PreferDualStack`, Services gracefully fall back to the first IP family only.
-
-### Multi-datacenter IP family consistency
-
-When multiple `ScyllaCluster` resources form a multi-datacenter cluster (connected via `externalSeeds`), all datacenters **must** use the same primary IP family. Cross-datacenter replication, gossip, and the global token ring require uniform addressing.
-
-```yaml
-# Every ScyllaCluster in the multi-DC cluster must agree on the primary family
-network:
-  ipFamilies:
-    - IPv6
-    - IPv4
-```
-
-The secondary family can differ at the Service level, but the first entry in `ipFamilies` must match across all `ScyllaCluster` resources in the cluster.
-
-### DNS policy for IPv6
-
-When using IPv6, set `dnsPolicy: ClusterFirst` to ensure that Kubernetes cluster DNS (CoreDNS) resolves AAAA records correctly. Without it, pods may fall back to the node's resolver, which might not handle IPv6 service discovery.
+The Operator supports IPv4, IPv6, and dual-stack networking. See [IPv6](../deploy-scylladb/set-up-networking/ipv6/index.md) for configuration details.
 
 ## Per-rack overrides
 

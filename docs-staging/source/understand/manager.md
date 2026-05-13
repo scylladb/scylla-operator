@@ -120,9 +120,3 @@ For the full procedure, see [Deploy a multi-datacenter cluster](../deploy-scylla
 - **Restore** is not yet available through the Operator's declarative API. To restore from a Manager backup, you must exec into the Manager pod and use `sctool` directly. See [Back up and restore](../operate/back-up-and-restore.md).
 - There is one global Manager instance per Kubernetes cluster. Multi-tenancy isolation between clusters sharing the same Manager is limited to auth tokens.
 - Manager functionality beyond backup and repair (e.g., healthcheck configuration) is not yet exposed through CRDs.
-
-:::{note}
-ScyllaDB Manager is available for ScyllaDB Enterprise customers and ScyllaDB Open Source users.
-With ScyllaDB Open Source, ScyllaDB Manager is limited to 5 nodes.
-See the ScyllaDB Manager [Proprietary Software License Agreement](https://www.scylladb.com/scylla-manager-software-license-agreement/) for details.
-:::

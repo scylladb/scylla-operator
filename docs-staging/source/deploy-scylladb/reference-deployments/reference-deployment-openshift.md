@@ -1,27 +1,22 @@
 # Reference deployment: OpenShift
 
-This guide walks you through deploying ScyllaDB on Red Hat OpenShift. It combines the OpenShift-specific Operator installation with the standard ScyllaDB cluster deployment.
-
-If you already have ScyllaDB Operator installed, skip to [step 2](#step-2-deploy-a-scylladb-cluster).
+This guide walks you through deploying ScyllaDB on Red Hat OpenShift.
 
 ## Prerequisites
 
-- An OpenShift Container Platform cluster (see the supported version range in [Releases](../../reference/releases.md))
-- An account with `cluster-admin` permissions
-- `kubectl` or OpenShift CLI (`oc`) installed
+- An OpenShift Container Platform cluster (see the supported version range in [Releases](../../reference/releases.md)).
+  If you do not have one yet, follow [Set up an OpenShift cluster for ScyllaDB](../../install-operator/provision-infrastructure/set-up-openshift-cluster.md).
+- Dedicated nodes labeled and tainted per [Set up dedicated node pools](../before-you-deploy/set-up-dedicated-node-pools.md).
+- ScyllaDB Operator installed.
+  Follow [Install on OpenShift](../../install-operator/install-on-openshift.md) if you have not done so yet.
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) or OpenShift CLI ([`oc`](https://docs.redhat.com/en/documentation/openshift_container_platform/latest/html/cli_tools/openshift-cli-oc#installing-openshift-cli)) installed.
 
-## Step 1: Install ScyllaDB Operator
+## Set up nodes
 
-Follow the complete [Install on OpenShift](../../install-operator/install-on-openshift.md) guide to install ScyllaDB Operator and all its dependencies via the Operator Lifecycle Manager (OLM). This covers:
+Before deploying a `ScyllaCluster`, the dedicated nodes must be prepared with local disk setup and kernel tuning via `NodeConfig`, and the Local CSI Driver must be installed to provision `PersistentVolumes` from local storage.
+Follow [Configure nodes](../before-you-deploy/configure-nodes.md), selecting the **OpenShift** tab where applicable, then return here to deploy the cluster.
 
-- Installing ScyllaDB Operator from the OpenShift software catalog
-- Setting up NodeConfig for local storage and performance tuning
-- Installing the Local CSI Driver
-- Installing ScyllaDB Manager
-
-Once you have completed all steps in the installation guide and verified that the Operator, NodeConfig, Local CSI Driver, and ScyllaDB Manager are healthy, continue to step 2.
-
-## Step 2: Deploy a ScyllaDB cluster
+## Deploy a ScyllaDB cluster
 
 Follow the [Deploy your first cluster](../deploy-your-first-cluster.md) guide to create a ScyllaDB cluster. The quick path creates a minimal development cluster; the production section covers multi-rack, multi-zone deployments with properly sized resources.
 

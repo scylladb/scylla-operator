@@ -1,7 +1,7 @@
 # Back up and restore
 
 ScyllaDB Operator supports automated backup and restore through [ScyllaDB Manager](../understand/manager.md).
-The Manager Agent sidecar on each ScyllaDB pod uploads snapshots to object storage (Amazon S3, Google Cloud Storage, or Azure Blob Storage).
+The Manager Agent sidecar on each ScyllaDB pod uploads snapshots to a [supported backup destination](https://manager.docs.scylladb.com/stable/backup/index.html).
 
 ## Guides
 

@@ -164,6 +164,6 @@ This lets you patch the PVCs directly and then recreate the parent objects with 
 
 ## Related pages
 
-- [Scale a ScyllaDB cluster](scale-cluster.md) — changing the number of nodes instead of the volume size
+- [Scale, add, remove racks](scale-add-remove-racks.md) — changing the number of nodes instead of the volume size
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md) — why each rack maps to a StatefulSet and what constraints that implies
 - [Replace nodes](replace-nodes.md) — replacing a node with a fresh PVC rather than expanding the existing one

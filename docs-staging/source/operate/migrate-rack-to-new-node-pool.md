@@ -189,20 +189,8 @@ kubectl -n scylla exec -it scylla-us-east-1-us-east-1b-0 -c scylla -- nodetool r
 
 Or use a ScyllaDB Manager repair task if Manager is configured.
 
-## Key considerations
-
-| Consideration | Detail |
-|---|---|
-| One node at a time | Scale up and down one node at a time to minimise cluster impact. Each join and decommission involves data streaming. |
-| Scale up before scaling down | Always add a node to the new rack before removing one from the old rack to maintain capacity. |
-| Replication factor | Ensure your replication factor tolerates the temporary rack imbalance. With RF=3 and 3 racks, you can have one rack empty. |
-| Streaming impact | Data streaming consumes network bandwidth and disk I/O. Schedule migrations during low-traffic periods. |
-| Same datacenter | The new rack must be in the same datacenter as the old rack. Cross-datacenter rack migration is not supported. |
-| NodeConfig | If the new node pool requires different tuning (RAID, filesystem, sysctls), ensure a `NodeConfig` targeting the new nodes is applied before starting the migration. |
-| Run repair after migration | Always run a repair after the migration completes to ensure all replicas are consistent. |
-
 ## Related pages
 
-- [Scale a ScyllaDB cluster](scale-cluster.md) — adding and removing racks, scaling up and down
+- [Scale, add, remove racks](scale-add-remove-racks.md) — adding and removing racks, scaling up and down
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md) — how racks map to StatefulSets, scaling mechanics, and decommission workflow
 - [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) — setting up node pools with labels, taints, and NodeConfig

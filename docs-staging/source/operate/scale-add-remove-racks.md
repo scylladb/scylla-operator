@@ -1,4 +1,4 @@
-# Scale a ScyllaDB cluster
+# Scale, add, remove racks
 
 Change the number of ScyllaDB nodes in a rack or add entirely new racks to adjust capacity and throughput.
 

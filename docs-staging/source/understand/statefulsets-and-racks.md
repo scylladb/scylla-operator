@@ -116,6 +116,6 @@ Deleting a StatefulSet with the default cascade policy also deletes all its pods
 
 - [Pod disruption budgets](pod-disruption-budgets.md) — how PDBs interact with rolling updates and scale-down.
 - [Sidecar](sidecar.md) — what runs inside each pod and how decommission is driven.
-- [Scaling](../operate/scale-cluster.md) — how-to guide for scaling operations.
+- [Scaling](../operate/scale-add-remove-racks.md) — how-to guide for scaling operations.
 - [Replacing nodes](../operate/replace-nodes.md) — how-to guide for node replacement.
 - [Changing log level](../troubleshoot/change-log-level.md) — emergency changes when a rollout is stuck.

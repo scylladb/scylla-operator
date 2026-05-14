@@ -10,7 +10,7 @@ Replacement streams data from other replicas to a new pod, restoring the cluster
 :::{note}
 Replacement is for **permanently failed** nodes.
 If a node is temporarily down (for example, during a network partition or host reboot), wait for it to come back.
-Replacing a node that is still alive causes two nodes to own the same token range until the situation is resolved.
+Replacing a node that is still alive can cause consistency issues.
 :::
 
 ## How it works
@@ -165,58 +165,9 @@ In multi-DC clusters using multiple `ScyllaCluster` resources, node replacement 
 
 If the replacement gets stuck — for example, the new pod enters `CrashLoopBackOff` or streaming cannot complete — see [Recovering from a failed replace](../troubleshoot/recover-from-failed-replace.md) for a step-by-step fallback procedure.
 
-### Ghost node error after an aborted replacement
-
-If a previous replacement attempt was started but did not complete — for example, because the operator was restarted, the pod was manually deleted, or the new node was killed mid-stream — the new node may have registered in the Scylla gossip ring with the token range that was being replaced. When you trigger a second replacement, ScyllaDB refuses to start the new node with an error similar to:
-
-```
-WARN  [...] aborting startup because of ghost node - there is a node with the same token range already in the ring and in NORMAL status
-```
-
-**Cause:** The ghost node is an artifact from the aborted replacement. The token range shows as owned by both the old Host ID and the new replacement node from the first attempt.
-
-**Resolution:** Pass `ignore_dead_nodes_for_replace` as a ScyllaDB startup argument to tell ScyllaDB to ignore the ghost node and proceed with the replacement:
-
-```yaml
-spec:
-  scyllaArgs: "--ignore-dead-nodes-for-replace"
-```
-
-Apply this temporarily while the replacement completes:
-
-```bash
-kubectl -n scylla patch scyllacluster <cluster-name> \
-  --type=merge \
-  -p '{"spec":{"scyllaArgs":"--ignore-dead-nodes-for-replace"}}'
-```
-
-Wait for the replacement pod to reach `Running` and `Ready` state, then run a repair, and remove the argument:
-
-```bash
-kubectl -n scylla patch scyllacluster <cluster-name> \
-  --type=merge \
-  -p '{"spec":{"scyllaArgs":""}}'
-```
-
-:::{caution}
-Remove `--ignore-dead-nodes-for-replace` after the replacement completes.
-Leaving it in permanently allows ScyllaDB to start on a node with unresolved token conflicts, which can cause data inconsistency.
-:::
-
-## Key considerations
-
-| Consideration | Detail |
-|---|---|
-| Data streaming | Replacement streams data from other replicas. Duration depends on data size and network bandwidth. |
-| One at a time | Replace one node at a time. Concurrent replacements risk exhausting cluster resources and violating quorum. |
-| Repair after replace | Always repair after replacement to fix any inconsistencies from the streaming process. |
-| PVC deletion | The Operator deletes the PVC during replacement. All local data on the failed node is discarded. |
-| Host ID preservation | The new node inherits the old node's token range but gets a **new** Host ID. The old Host ID is removed from the ring. |
-| Replication factor | Ensure your replication factor is at least 2 (ideally 3) so that data is available from other replicas during streaming. |
-
 ## Related pages
 
-- [Scaling](scale-cluster.md) — adding or removing nodes without replacement
+- [Scaling](scale-add-remove-racks.md) — adding or removing nodes without replacement
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md) — pod identity and ordinal management
 - [Recovering from a failed replace](../troubleshoot/recover-from-failed-replace.md) — fallback when replacement is stuck
 - [Rolling restart](perform-rolling-restart.md) — restarting nodes without replacement

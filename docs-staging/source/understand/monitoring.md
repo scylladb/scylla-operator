@@ -83,3 +83,9 @@ You can access it outside the cluster using your preferred method:
   resources (e.g., HTTPRoute) for production access.
 
 You can learn more about exposing Grafana in the [Expose Grafana](../deploy-scylladb/set-up-monitoring/exposing-grafana.md) guide.
+
+## Related pages
+
+- [Set up ScyllaDB Monitoring](../deploy-scylladb/set-up-monitoring/setup.md) — deploy Prometheus and configure `ScyllaDBMonitoring` for your cluster.
+- [Set up ScyllaDB Monitoring on OpenShift](../deploy-scylladb/set-up-monitoring/external-prometheus-on-openshift.md) — use OpenShift User Workload Monitoring as an external Prometheus source.
+- [Expose Grafana](../deploy-scylladb/set-up-monitoring/exposing-grafana.md) — make the Grafana dashboard accessible outside the cluster.

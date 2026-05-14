@@ -1,4 +1,4 @@
-# Set Up Monitoring
+# Set up monitoring
 
 :::{toctree}
 :maxdepth: 1

@@ -1,4 +1,4 @@
-# Set Up ScyllaDB Monitoring on OpenShift
+# Set up ScyllaDB Monitoring on OpenShift
 
 This guide will walk you through setting up a monitoring stack for your ScyllaDB clusters using the
 [`ScyllaDBMonitoring`](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource and an

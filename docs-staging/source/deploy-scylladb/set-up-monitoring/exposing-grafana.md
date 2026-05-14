@@ -66,7 +66,7 @@ GRAFANA_USER="$( kubectl -n scylla get secret/example-grafana-admin-credentials 
 GRAFANA_PASSWORD="$( kubectl -n scylla get secret/example-grafana-admin-credentials --template '{{ index .data "password" }}' | base64 -d )"
 ```
 
-### Get Ingress IP and Port
+### Get Ingress IP and port
 
 If your cluster supports `LoadBalancer` services, your Ingress should be assigned an external IP address. You can get it by running:
 

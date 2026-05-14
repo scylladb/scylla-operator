@@ -1,4 +1,4 @@
-# Configure the Operator
+# Configure the operator
 
 This page explains how to configure the ScyllaDB Operator's global settings using the `ScyllaOperatorConfig` resource.
 
@@ -47,7 +47,7 @@ status:
 Fields prefixed with `unsupported` are not covered by the regular support policy. Use them only if you have a specific reason and understand the implications.
 :::
 
-## Change the ScyllaDB Utils Image
+## Change the ScyllaDB utils image
 
 By default, the Operator uses performance tuning scripts from the latest ScyllaDB image. To use a different image, set `scyllaUtilsImage`:
 

@@ -106,3 +106,36 @@ Complete example manifests are available in the repository:
 - [`examples/ipv6/scylla-cluster-dual-stack.yaml`](https://github.com/scylladb/scylla-operator/blob/master/examples/ipv6/scylla-cluster-dual-stack.yaml) — production-ready dual-stack setup
 - [`examples/ipv6/scylla-cluster-minimal-dual-stack.yaml`](https://github.com/scylladb/scylla-operator/blob/master/examples/ipv6/scylla-cluster-minimal-dual-stack.yaml) — minimal dual-stack example
 - [`examples/ipv6/scylla-cluster-ipv6.yaml`](https://github.com/scylladb/scylla-operator/blob/master/examples/ipv6/scylla-cluster-ipv6.yaml) — IPv6 single-stack setup
+
+## Version requirements
+
+### Minimum versions
+
+- **ScyllaDB**: 2024.1 or newer
+- **ScyllaDB Operator**: 1.20 or newer
+
+## Production readiness
+
+### Production-ready configurations
+
+The following configurations are **production-ready**:
+- **IPv4-only single-stack**: Fully supported (default Kubernetes behavior)
+- **IPv4-first dual-stack**: Fully supported and recommended for IPv6 adoption
+- **IPv6-first dual-stack**: Fully supported
+
+### Experimental configurations
+
+The following configurations are **experimental** and not recommended for production use:
+- **IPv6-only single-stack**: Currently under development
+
+:::{note}
+**Experimental status**: IPv6-only configurations work but have not undergone the same level of testing and validation as dual-stack configurations. For production IPv6 deployments, use dual-stack configurations instead.
+
+Track progress on productionizing IPv6-only: [#3211](https://github.com/scylladb/scylla-operator/issues/3211)
+:::
+
+## Related documentation
+
+- [IPv6 networking concepts](../deploy-scylladb/set-up-networking/ipv6/ipv6-concepts.md)
+- [Configure dual-stack networking](../deploy-scylladb/set-up-networking/ipv6/configure-dual-stack.md)
+- [Get started with IPv6](../deploy-scylladb/set-up-networking/ipv6/get-started.md)

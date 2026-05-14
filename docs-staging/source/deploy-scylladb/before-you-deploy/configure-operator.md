@@ -47,9 +47,9 @@ status:
 Fields prefixed with `unsupported` are not covered by the regular support policy. Use them only if you have a specific reason and understand the implications.
 :::
 
-## Tuning with ScyllaDB Enterprise
+## Change the ScyllaDB Utils Image
 
-By default, the Operator uses performance tuning scripts from the ScyllaDB image. If you run ScyllaDB Enterprise, set `scyllaUtilsImage` to an Enterprise image to use its tuning scripts:
+By default, the Operator uses performance tuning scripts from the latest ScyllaDB image. To use a different image, set `scyllaUtilsImage`:
 
 :::{code-block} yaml
 :substitutions:
@@ -100,4 +100,3 @@ Changes to `ScyllaOperatorConfig` trigger reconciliation in all dependent contro
 - [Configure nodes](configure-nodes.md) — performance tuning that uses the `scyllaUtilsImage`.
 - [Set up monitoring](../set-up-monitoring/index.md) — monitoring stack that uses the Grafana and Prometheus settings.
 - [Tuning architecture](../../understand/tuning.md) — how tuning scripts are executed.
-- [Deploy your first cluster](../deploy-your-first-cluster.md) — creating a ScyllaCluster.

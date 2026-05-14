@@ -5,5 +5,4 @@ The Manager Agent sidecar on each ScyllaDB pod uploads snapshots to object stora
 
 ## Guides
 
-- [Schedule backups](schedule-backups.md) — Configure credentials, schedule automated backup tasks, and list snapshots.
 - [Restore from backup](restore-from-backup.md) — Restore a ScyllaDB cluster from a Manager backup snapshot.

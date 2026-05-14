@@ -1,48 +1,134 @@
 # Restore from backup
 
-Restore a ScyllaDB cluster from a backup snapshot created by ScyllaDB Manager.
-Restore is performed manually by running `sctool` commands inside the ScyllaDB Manager pod into a fresh, empty target cluster.
+Restore from backup taken using [ScyllaDB Manager](../understand/manager.md) to a fresh **empty** cluster of any size.
+
+## Prerequisites
+
+- A running ScyllaDB cluster managed by ScyllaDB Operator.
+- ScyllaDB Manager installed and the cluster registered with Manager.
+- A backup snapshot stored in object storage (Amazon S3, Google Cloud Storage, or Azure Blob Storage).
+- The target cluster has access to the backup bucket (same object storage credentials as the source).
 
 :::{warning}
-Restoring data into a cluster that already contains data is not supported.
-Always restore to an empty target cluster.
+Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management` isn't supported.
+
+When creating the `target` ScyllaDB cluster, configure it with `consistent_cluster_management: false`.
+
+When following the steps for schema restore, ensure you follow the additional steps dedicated to affected ScyllaDB versions.
 :::
 
-## Step 1: Create the target cluster
+In the following example, the ScyllaCluster, which was used to take the backup, is called `source`. Backup will be restored into the ScyllaCluster named `target`.
 
-Deploy a new ScyllaDB cluster with the same ScyllaDB version and configuration as the source.
-The target cluster does not need to have the same number of nodes — ScyllaDB Manager handles the data distribution.
+:::::{tabs}
+::::{group-tab} Source ScyllaCluster
+:::{code-block} yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: source
+spec:
+  version: 6.2.2
+  developerMode: true
+  backups:
+  - name: foo
+    location:
+    - s3:source-backup
+    keyspace:
+    - '*'
+  datacenter:
+    name: us-east-1
+    racks:
+    - name: us-east-1a
+      members: 1
+      storage:
+        capacity: 1Gi
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+:::
+::::
+::::{group-tab} Target ScyllaCluster
+:::{code-block} yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: target
+spec:
+  version: 6.2.2
+  developerMode: true
+  datacenter:
+    name: us-east-1
+    racks:
+    - name: us-east-1a
+      members: 1
+      storage:
+        capacity: 1Gi
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+:::
+::::
+:::::
 
-Ensure the target cluster:
-- Is registered with ScyllaDB Manager (this happens automatically unless Manager integration is disabled).
-- Has access to the backup bucket (same object storage credentials as the source).
-
-Wait for the target cluster to be fully available:
-
-```bash
-kubectl -n scylla wait --timeout=10m --for='condition=Available' scyllaclusters.scylla.scylladb.com/target
+Make sure your target cluster is already registered in ScyllaDB Manager. To get a list of all registered clusters, execute the following command:
+```console
+$ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool cluster list
++--------------------------------------+---------------------------------------+---------+-----------------+
+| ID                                   | Name                                  | Port    | CQL credentials |
++--------------------------------------+---------------------------------------+---------+-----------------+
+| af1dd5cd-0406-4974-949f-dc9842980080 | scylla/target                        | default | set             |
+| ebd82268-efb7-407e-a540-3619ae053778 | scylla/source                        | default | set             |
++--------------------------------------+---------------------------------------+---------+-----------------+
 ```
 
-## Step 2: Restore the schema
-
-Restoring consists of two phases: first the schema, then the table data.
-
-Create a schema restore task:
-
-```bash
-kubectl -n scylla-manager exec -it deployment.apps/scylla-manager -- \
-  sctool restore -c <TARGET_CLUSTER_ID> -L <BACKUP_LOCATION> -T <SNAPSHOT_TAG> --restore-schema
+Identify the tag of a snapshot which you want to restore. To get a list of all available snapshots, execute following command:
+```console
+kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool backup list -c <CLUSTER_ID> --all-clusters -L <BACKUP_LOCATION>
 ```
 
-Monitor progress:
+Where:
+* `CLUSTER_ID` - the name or ID of a registered cluster with access to `BACKUP_LOCATION`. 
+* `BACKUP_LOCATION` - the location in which the backup is stored.
+
+In this example, `BACKUP_LOCATION` is `s3:source-backup`. Use the name of cluster which has access to the backup location for `CLUSTER_ID`. 
+In this example, it's `scylla/target`.
 
 ```console
-$ kubectl -n scylla-manager exec -it deployment.apps/scylla-manager -- \
-    sctool restore -c scylla/target -L s3:my-backup-bucket -T sm_20240105115931UTC --restore-schema
-restore/57228c52-7cf6-4271-8c8d-d446ff160747
+$ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool backup list -c scylla/target --all-clusters -L s3:source-backup
+backup/ff36d7e0-af2e-458c-afe6-868e0f3396b2
+Snapshots:
+  - sm_20240105115931UTC (409MiB, 1 nodes)
+Keyspaces:
+  - system_schema (15 tables)
+  - users (9 tables)
 
-$ kubectl -n scylla-manager exec -it deployment.apps/scylla-manager -- \
-    sctool progress -c scylla/target restore/57228c52-7cf6-4271-8c8d-d446ff160747
+```
+
+## Restore schema
+
+In the below commands, we are restoring the `sm_20240105115931UTC` snapshot. Replace it with a tag of a snapshot that you want to restore.
+Restoring consist of two steps. First, you'll restore the schema, and then the data.
+To restore schema, create a restore task manually on target ScyllaCluster by executing following command:
+```console
+kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager --  sctool restore -c <CLUSTER_ID> -L <BACKUP_LOCATION> -T <SNAPSHOT_TAG> --restore-schema
+```
+
+Where:
+* `CLUSTER_ID` -  a name or ID of a cluster you want to restore into.
+* `BACKUP_LOCATION` - the location in which the backup is stored.
+* `SNAPSHOT_TAG` - a tag of a snapshot that you want to restore.
+
+When the task is created, the command will output the ID of a restore task.
+```console
+$ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool restore -c scylla/target -L s3:source-backup -T sm_20240105115931UTC --restore-schema
+restore/57228c52-7cf6-4271-8c8d-d446ff160747
+```
+
+Use the following command to check progress of the restore task:
+```console
+$ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool progress -c scylla/target restore/57228c52-7cf6-4271-8c8d-d446ff160747
 Restore progress
 Run:            0dd20cdf-abc4-11ee-951c-6e7993cf42ed
 Status:         DONE - restart required (see restore docs)
@@ -59,45 +145,72 @@ Snapshot Tag:   sm_20240105115931UTC
 +---------------+-------------+----------+----------+------------+--------+
 ```
 
-For ScyllaDB 5.4 / ScyllaDB Enterprise 2024.1 and older, a rolling restart is required after the schema restore completes.
-Trigger it by patching the cluster:
+As suggested in the progress output, you will need to execute a rolling restart of the ScyllaCluster **if you are using ScyllaDB 5.4/2024.1 or older**. For ScyllaDB 2024.2 and newer, a rolling restart is not required after restoring the schema.
 
-```bash
-kubectl -n scylla patch scyllacluster/target --type=merge \
-  -p='{"spec": {"forceRedeploymentReason": "schema restored"}}'
-```
-
-Wait for the restart to finish:
-
-```bash
-kubectl -n scylla wait --timeout=10m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/target
-kubectl -n scylla wait --timeout=10m --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/target
-kubectl -n scylla wait --timeout=10m --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/target
-```
-
-:::{note}
-For ScyllaDB 2024.2 and newer, a rolling restart after schema restore is **not required**.
-See [New Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/restore-schema.html) for details.
-:::
-
-## Step 3: Restore the table data
-
-After the schema is in place, restore the table data:
-
-```bash
-kubectl -n scylla-manager exec -it deployment.apps/scylla-manager -- \
-  sctool restore -c <TARGET_CLUSTER_ID> -L <BACKUP_LOCATION> -T <SNAPSHOT_TAG> --restore-tables
-```
-
-Monitor progress:
+For more details, refer to the ScyllaDB Manager Restore documentation:
+- [Old Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/old-restore-schema.html) (for ScyllaDB 5.4/2024.1 or older)
+- [New Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/restore-schema.html) (for ScyllaDB 2024.2 and newer)
 
 ```console
-$ kubectl -n scylla-manager exec -it deployment.apps/scylla-manager -- \
-    sctool restore -c scylla/target -L s3:my-backup-bucket -T sm_20240105115931UTC --restore-tables
-restore/63642069-bed5-4def-ba0f-68c49e47ace1
+kubectl patch scyllacluster/target --type=merge -p='{"spec": {"forceRedeploymentReason": "schema restored"}}'
+```
 
-$ kubectl -n scylla-manager exec -it deployment.apps/scylla-manager -- \
-    sctool progress -c scylla/target restore/63642069-bed5-4def-ba0f-68c49e47ace1
+Use the following commands to wait until restart is finished:
+```console
+$ kubectl wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+
+$ kubectl wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+
+$ kubectl wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+```
+
+:::{caution}
+### Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management`
+
+After you've followed the above steps with a ScyllaDB target cluster with `consistent_cluster_management` disabled, you'll need to enable Raft by configuring the target cluster with `consistent_cluster_management: true`.
+
+You will then need to execute a rolling restart of the ScyllaCluster for the change to take effect.
+```console
+kubectl patch scyllacluster/target --type=merge -p='{"spec": {"forceRedeploymentReason": "raft enabled"}}'
+```
+
+Use the following commands to wait until restart is finished:
+```console
+$ kubectl wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+
+$ kubectl wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+
+$ kubectl wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/target
+scyllacluster.scylla.scylladb.com/target condition met
+```
+:::
+
+## Restore tables
+
+To restore the tables content, create a restore task manually on target ScyllaCluster by executing the following command:
+```console
+kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool restore -c <CLUSTER_ID> -L <BACKUP_LOCATION> -T <SNAPSHOT_TAG> --restore-tables
+```
+
+Where:
+* `CLUSTER_ID` - a name or ID of a cluster you want to restore into.
+* `BACKUP_LOCATION` - the location in which the backup is stored.
+* `SNAPSHOT_TAG` - a tag of a snapshot that you want to restore.
+
+When the task is created, the command will output the ID of a restore task.
+```console
+$ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool restore -c scylla/target -L s3:source-backup -T sm_20240105115931UTC --restore-tables
+restore/63642069-bed5-4def-ba0f-68c49e47ace1
+```
+
+Use the following command to check progress of the restore task:
+```console
+$ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool progress -c scylla/target restore/63642069-bed5-4def-ba0f-68c49e47ace1
 Restore progress
 Run:            ab015cef-abc8-11ee-9521-6e7993cf42ed
 Status:         DONE
@@ -130,11 +243,10 @@ Datacenters:
 +-------------+--------------+----------+----------+
 | users       | users        | 100%     | 0s       |
 +-------------+--------------+----------+----------+
+
 ```
 
-ScyllaDB Manager automatically runs a post-restore repair to ensure data consistency.
-
-## Step 4: Verify the restore
+## Verify the restore
 
 Connect to the target cluster and verify your data is present:
 
@@ -147,21 +259,9 @@ DESCRIBE KEYSPACES;
 SELECT COUNT(*) FROM users.users;
 ```
 
-## Key considerations
-
-| Consideration | Detail |
-|---|---|
-| Empty target cluster | Restore must be performed on a fresh cluster with no existing user data. |
-| Same ScyllaDB version | The target cluster should run the same ScyllaDB version as the source to avoid compatibility issues. |
-| Bucket access | Both the source and target clusters need credentials to access the same backup bucket. |
-| Cross-cluster restore | You can restore into a cluster with a different name, namespace, or even a different Kubernetes cluster, as long as it has access to the backup location. |
-| Backup retention | Set `retention` to control how many snapshots are kept. Older snapshots are automatically pruned. |
-| Schema and data separation | Schema and table data are restored separately. Always restore the schema first. |
-| Post-restore repair | Manager automatically runs a repair after table data restore to ensure consistency. |
-
 ## Related pages
 
-- [Schedule backups](schedule-backups.md) — configure credentials and schedule automated backup tasks.
-- [ScyllaDB Manager](../understand/manager.md) — how Manager integrates with the Operator, task synchronisation, and security model.
+- [Back up and restore](back-up-and-restore.md) — overview of backup and restore with ScyllaDB Manager.
+- [ScyllaDB Manager](../understand/manager.md) — how Manager integrates with the Operator.
 - [Rolling restart](perform-rolling-restart.md) — how to trigger a rolling restart (required after schema restore on older ScyllaDB versions).
 - [ScyllaDB Manager Restore Documentation](https://manager.docs.scylladb.com/stable/restore/) — upstream Manager restore reference.

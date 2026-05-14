@@ -5,7 +5,7 @@ Pass extra command-line arguments to the ScyllaDB binary at startup to tune beha
 :::{caution}
 When additional ScyllaDB arguments are set, ScyllaDB may behave unexpectedly.
 Every such setup is considered unsupported.
-Prefer using a custom ScyllaDB configuration file (`customConfigMapRef` / `scyllaConfig`) for configuration options that can be set through `scylla.yaml`.
+Prefer using a custom ScyllaDB configuration file (per-rack `scyllaConfig` field) for configuration options that can be set through `scylla.yaml`.
 :::
 
 ## How it works
@@ -76,16 +76,10 @@ After the rolling restart completes, confirm that the arguments were applied to 
 **Check the pod spec:**
 
 ```bash
-kubectl -n scylla get pod <pod-name> -o jsonpath='{.spec.containers[?(@.name=="scylla")].args}'
+kubectl -n scylla get pod <pod-name> -o jsonpath='{.spec.containers[?(@.name=="scylla")].command}'
 ```
 
-The arguments appear in the ScyllaDB container's args list alongside other default arguments added by the Operator.
-
-**Expected output:**
-
-```
-["--blocked-reactor-notify-ms","10","--abort-on-seastar-signal-handling-failure","1", ...]
-```
+The arguments appear in the ScyllaDB container's command alongside other default arguments added by the Operator.
 
 **Check the ScyllaDB startup logs:**
 

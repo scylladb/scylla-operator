@@ -4,8 +4,8 @@ Force a rolling restart of all ScyllaDB nodes in a cluster by changing the `forc
 
 ## How it works
 
-The Operator uses `forceRedeploymentReason` as a hash input for the StatefulSet pod template.
-When you change the value, the pod template hash changes, which triggers the StatefulSet controller to perform a rolling update.
+The Operator places `forceRedeploymentReason` as an annotation on the StatefulSet pod template.
+When you change the value, the pod template changes, which triggers the StatefulSet controller to perform a rolling update.
 The Operator orchestrates this update one pod at a time, draining each node before terminating it and waiting for the replacement to become ready before proceeding to the next.
 
 The value itself is arbitrary — it only needs to be different from the previous value.

@@ -9,7 +9,7 @@ Scaling changes the replica count of that StatefulSet:
 
 - **Scale up** — new pods are appended at the end of the ordinal sequence (highest index).
   After the new node joins the token ring, the Operator automatically triggers a data cleanup on affected nodes.
-- **Scale down** — the Operator decommissions the highest-ordinal pod first, streams its data to the remaining nodes, deletes the PVC, and then reduces the replica count.
+- **Scale down** — the Operator decommissions the highest-ordinal pod first, streams its data to the remaining nodes, reduces the replica count, and then deletes the PVC and Service.
   Only one node is decommissioned at a time.
 
 Because StatefulSets use `OrderedReady` pod management, you cannot remove an arbitrary node from the middle of a rack.
@@ -96,7 +96,8 @@ spec:
 ```
 
 :::{note}
-Rack names are immutable — once created, a rack name cannot be changed.
+Rack names serve as identity — they determine the StatefulSet and Service names.
+Choose rack names carefully, as renaming a rack requires removing it and creating a new one.
 :::
 
 ### Remove a rack
@@ -141,7 +142,7 @@ kubectl -n scylla edit scyllacluster scylla
 Delete the entire rack entry. Save and apply.
 
 :::{warning}
-Rack names are immutable. After a rack is deleted, you cannot add a rack with the same name.
+Removing a rack is irreversible — any data that was stored on the rack's nodes is streamed away during decommission.
 :::
 
 After both steps, verify the cluster is healthy:
@@ -161,7 +162,7 @@ In multi-DC clusters using multiple `ScyllaCluster` resources, each datacenter i
 |---|---|
 | One at a time | The Operator scales down one node at a time per rack, ensuring data is streamed away before the next decommission begins. |
 | Automatic cleanup | After scaling completes, the Operator triggers data cleanup Jobs on affected nodes to remove data that no longer belongs to them. |
-| PVC retention | PVCs are retained after scale-down. If you scale back up to the same ordinal, the new pod reattaches to the old PVC and the Operator handles it as a node replacement. |
+| PVC deletion | PVCs are deleted after scale-down. The Operator removes the PVC and Service of each decommissioned node after the replica count is reduced. |
 | Replication factor | Ensure you do not scale below the replication factor of your keyspaces. ScyllaDB will refuse queries if replicas become unavailable. |
 | PodDisruptionBudget | Each datacenter has a PDB with `maxUnavailable: 1`. This does not block Operator-driven scaling but prevents concurrent pod evictions during node drains. |
 | Run repair after scaling | After significant scaling operations, run a repair to ensure data consistency across the new token ranges. |

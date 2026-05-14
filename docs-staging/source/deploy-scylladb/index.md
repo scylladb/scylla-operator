@@ -9,7 +9,6 @@ reference-deployments/index
 deploy-multi-dc-cluster
 install-scylladb-manager
 set-up-networking/index
-set-up-monitoring
-expose-grafana
+set-up-monitoring/index
 production-checklist
 :::

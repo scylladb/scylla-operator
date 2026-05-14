@@ -23,6 +23,6 @@ After your cluster is running, see these guides for additional setup:
 
 - [Set up networking](set-up-networking/index.md) — expose ScyllaDB outside the Kubernetes cluster.
 - [Install ScyllaDB Manager](install-scylladb-manager.md) — enable automated backups, repairs, and restore.
-- [Set up monitoring](set-up-monitoring.md) — integrate with Prometheus and Grafana.
+- [Set up monitoring](set-up-monitoring/index.md) — integrate with Prometheus and Grafana.
 - [Deploy a multi-datacenter cluster](deploy-multi-dc-cluster.md) — span ScyllaDB across multiple Kubernetes clusters.
 - [Production checklist](production-checklist.md) — verify your deployment is production-ready.

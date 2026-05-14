@@ -26,11 +26,11 @@ Once you have completed all steps in the installation guide and verified that th
 Follow the [Deploy your first cluster](../deploy-your-first-cluster.md) guide to create a ScyllaDB cluster. The quick path creates a minimal development cluster; the production section covers multi-rack, multi-zone deployments with properly sized resources.
 
 :::{note}
-On OpenShift, you can use the built-in User Workload Monitoring with Prometheus instead of deploying a standalone Prometheus instance. See [Set up monitoring](../set-up-monitoring.md) for OpenShift-specific instructions.
+On OpenShift, you can use the built-in User Workload Monitoring with Prometheus instead of deploying a standalone Prometheus instance. See [Set up ScyllaDB Monitoring on OpenShift](../set-up-monitoring/external-prometheus-on-openshift.md) for OpenShift-specific instructions.
 :::
 
 ## Next steps
 
 - Review the [production checklist](../production-checklist.md) before going to production.
-- [Set up monitoring](../set-up-monitoring.md) using OpenShift User Workload Monitoring.
+- [Set up monitoring](../set-up-monitoring/external-prometheus-on-openshift.md) using OpenShift User Workload Monitoring.
 - Learn how to [connect your application](../../connect-your-app/index.md) to ScyllaDB.

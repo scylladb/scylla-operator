@@ -15,7 +15,7 @@ Work through this checklist after your cluster is deployed and functional. Each 
 | 3 | **Performance tuning co-located** | NodeConfig `placement` targets the same nodes as the ScyllaCluster placement. Both use the same label selector and toleration. If they target different node sets, tuning does not apply to ScyllaDB pods. | [Set up dedicated node pools](before-you-deploy/set-up-dedicated-node-pools.md) |
 | 4 | **`fs.nr_open` set** | The sysctl `fs.nr_open` is set to a high value (e.g., `1073741816`) via NodeConfig. This defines the ceiling for `RLIMIT_NOFILE`, which the Operator raises on each ScyllaDB process. Without it, ScyllaDB may fail to open files under heavy load. | [Configure nodes](before-you-deploy/configure-nodes.md) |
 | 5 | **Coredumps enabled** | `systemd-coredump` is configured on the host with sufficient backing storage. Coredumps are essential for diagnosing crashes. | [Coredumps](../troubleshoot/configure-coredumps.md) |
-| 6 | **Monitoring deployed** | A `ScyllaDBMonitoring` resource is created with Prometheus scraping ScyllaDB metrics and Grafana displaying dashboards. Alerts are configured for key failure modes. | [Set up monitoring](set-up-monitoring.md) |
+| 6 | **Monitoring deployed** | A `ScyllaDBMonitoring` resource is created with Prometheus scraping ScyllaDB metrics and Grafana displaying dashboards. Alerts are configured for key failure modes. | [Set up monitoring](set-up-monitoring/index.md) |
 | 7 | **Resource requests and limits set** | Both `resources` (ScyllaDB container) and `agentResources` (Manager Agent sidecar) have explicit requests and limits. ScyllaDB derives its memory allocation from the container memory limit. Ensure values match your instance type and workload. | [Deploy your first cluster](deploy-your-first-cluster.md) |
 | 8 | **CPU pinning active** | The kubelet uses `cpuManagerPolicy: static`. The ScyllaDB pod has Guaranteed QoS class (requests equal limits for all containers). ScyllaDB starts with `--overprovisioned=0`. | [Configure CPU pinning](before-you-deploy/configure-cpu-pinning.md) |
 | 9 | **XFS online discard enabled** | The `discard` mount option is set on ScyllaDB data volumes via NodeConfig's `unsupportedOptions`. This enables SSD TRIM for consistent write performance. | [Configure nodes](before-you-deploy/configure-nodes.md) |
@@ -64,4 +64,4 @@ Should show `AVAILABLE=True`.
 - [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md) — multi-datacenter deployment using multiple `ScyllaCluster` resources.
 - [Configure nodes](before-you-deploy/configure-nodes.md) — disk setup, sysctls, and performance tuning.
 - [Configure CPU pinning](before-you-deploy/configure-cpu-pinning.md) — configuring CPU exclusivity.
-- [Set up monitoring](set-up-monitoring.md) — Prometheus and Grafana setup.
+- [Set up monitoring](set-up-monitoring/index.md) — Prometheus and Grafana setup.

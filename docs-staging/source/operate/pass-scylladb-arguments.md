@@ -24,7 +24,7 @@ metadata:
   name: scylla
   namespace: scylla
 spec:
-  scyllaArgs: "--blocked-reactor-notify-ms 10 --abort-on-seastar-signal-handling-failure 1"
+  scyllaArgs: "--blocked-reactor-notify-ms 10"
   datacenter:
     name: us-east-1
     racks:
@@ -43,30 +43,10 @@ In the v1 API, `scyllaArgs` is a single string.
 Multiple arguments are separated by spaces.
 :::
 
-### Common examples
-
-**Reduce blocked reactor notification threshold (reduces log noise):**
-```yaml
-spec:
-  scyllaArgs: "--blocked-reactor-notify-ms 500"
-```
-
-**Increase compaction throughput (useful during data ingestion):**
-```yaml
-spec:
-  scyllaArgs: "--compaction-throughput-mb-per-sec 200"
-```
-
-**Adjust batch size warning threshold:**
-```yaml
-spec:
-  scyllaArgs: "--batch-size-warn-threshold-in-kb 128 --batch-size-fail-threshold-in-kb 1024"
-```
-
-:::{caution}
-These examples are for illustrative purposes only.
-Always consult [ScyllaDB documentation](https://opensource.docs.scylladb.com/) before changing startup arguments.
-Incorrect arguments may prevent ScyllaDB from starting.
+:::{note}
+Due to a technical limitation, arguments are represented internally as key-value pairs.
+Only flags that take a value are supported (e.g. `--blocked-reactor-notify-ms 500`).
+For boolean flags, pass `1` (true) or `0` (false) as the value — for example, `--developer-mode 0`.
 :::
 
 ## Verify

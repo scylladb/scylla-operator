@@ -2,7 +2,7 @@
 
 New to ScyllaDB Operator? Start here to understand what the Operator does and how Kubernetes concepts map to ScyllaDB.
 
-When you are ready to install, proceed to [Install Operator](../install-operator/index.md). To deploy a ScyllaDB cluster, see [Deploy ScyllaDB](../deploy-scylladb/index.md).
+When you are ready to install, proceed to [Install Operator](../install-operator/overview.md). To deploy a ScyllaDB cluster, see [Deploy ScyllaDB](../deploy-scylladb/overview.md).
 
 :::{toctree}
 :maxdepth: 1

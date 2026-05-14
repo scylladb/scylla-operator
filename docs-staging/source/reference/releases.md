@@ -193,6 +193,8 @@ We officially test and recommend to use the following environments:
   - Ubuntu
 * - EKS
   - Amazon Linux
+* - OKE
+  - Oracle Linux
 :::
 
 While our APIs generally work on any Kubernetes conformant cluster,

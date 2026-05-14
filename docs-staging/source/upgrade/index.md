@@ -1,11 +1,10 @@
 # Upgrade
 
-Guides for upgrading ScyllaDB Operator, ScyllaDB, and the underlying Kubernetes infrastructure.
+Guides for upgrading ScyllaDB Operator and ScyllaDB.
 
 :::{toctree}
 :maxdepth: 1
 
 upgrade-operator
 upgrade-scylladb
-upgrade-kubernetes
 :::

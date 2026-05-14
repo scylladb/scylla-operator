@@ -193,6 +193,6 @@ To tear down the OKE infrastructure, follow the [Clean up](../../install-operato
 
 ## Next steps
 
-- [Set up monitoring](../set-up-monitoring/index.md) with Prometheus and Grafana dashboards.
+- [Set up monitoring](../set-up-monitoring/overview.md) with Prometheus and Grafana dashboards.
 - Review the [production checklist](../production-checklist.md) before going live.
 - Learn how to [connect your application](../../connect-your-app/index.md) to ScyllaDB.

@@ -12,13 +12,19 @@ kubectl explain --api-version='scylla.scylladb.com/v1' ScyllaCluster.spec
 
 ## Prerequisites
 
-- ScyllaDB Operator installed ([GitOps](../install-operator/install-with-gitops.md), [Helm](../install-operator/install-with-helm.md), or [OpenShift](../install-operator/install-on-openshift.md))
-- NodeConfig applied and healthy
-- Local CSI Driver deployed (or another storage provisioner with XFS support)
+- ScyllaDB Operator installed.
+  Follow [Install with Helm](../install-operator/install-with-helm.md), [Install with GitOps](../install-operator/install-with-gitops.md), or [Install on OpenShift](../install-operator/install-on-openshift.md) if you have not done so yet.
+- Dedicated nodes labeled and tainted per [Set up dedicated node pools](before-you-deploy/set-up-dedicated-node-pools.md).
+- Nodes configured with local disk setup and kernel tuning via `NodeConfig`, and the Local CSI Driver installed to provision `PersistentVolumes` from local storage.
+  Follow [Configure nodes](before-you-deploy/configure-nodes.md) if you have not done so yet.
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) configured and pointed at the cluster.
 
 ## Quick path: create a development cluster
 
 If you have ScyllaDB Operator installed and just want to get a ScyllaDB cluster running, follow these steps.
+
+:::{include} /_snippets/scyllacluster-namespace-tip.md
+:::
 
 ### Create a ScyllaDB configuration
 
@@ -116,193 +122,13 @@ kubectl get pods -l scylla/cluster=scylladb -w
 
 **Expected output:** All pods show `READY 2/2` (ScyllaDB container + Manager Agent sidecar) and `STATUS Running`.
 
-### Connect with cqlsh
-
-Connect to the cluster using `cqlsh` from within the ScyllaDB pod:
-
-```shell
-kubectl exec -it pod/scylladb-us-east-1-us-east-1a-0 -c scylla -- cqlsh localhost -u cassandra -p cassandra
-```
-
-Try a few CQL commands:
-
-:::{code-block} cql
-CREATE KEYSPACE IF NOT EXISTS example WITH replication = {'class': 'NetworkTopologyStrategy', 'us-east-1': 1};
-USE example;
-CREATE TABLE users (id UUID PRIMARY KEY, name TEXT, email TEXT);
-INSERT INTO users (id, name, email) VALUES (uuid(), 'Alice', 'alice@example.com');
-SELECT * FROM users;
-:::
-
-Type `exit` to leave the `cqlsh` session.
-
-Your ScyllaDB cluster is running. Continue reading to learn how to configure a production-grade deployment, or explore the [next steps](#next-steps).
+Your ScyllaDB cluster is running. Explore the [next steps](#next-steps) to connect your application and prepare for production.
 
 ---
 
 ## Production deployment
 
-:::{warning}
-To ensure high availability and fault tolerance, **spread your nodes across multiple racks or availability zones**. As a general rule, use as many racks as your desired replication factor. For example, with replication factor 3, deploy across 3 different racks or availability zones.
-:::
-
-:::{important}
-For production deployments, use a **minimum of 3 racks** (one per availability zone) with a **minimum of 1 node per rack** (3 nodes total).
-This matches the standard replication factor of 3 and guarantees that any single availability zone failure does not cause data loss.
-A single-rack or single-node deployment is only appropriate for development and testing.
-:::
-
-### Production example
-
-A production-grade cluster with 3 racks across availability zones, authentication enabled, and properly sized resources:
-
-:::{code-block} yaml
-:substitutions:
-apiVersion: scylla.scylladb.com/v1
-kind: ScyllaCluster
-metadata:
-  name: scylladb
-spec:
-  repository: {{imageRepository}}
-  version: {{scyllaDBImageTag}}
-  agentVersion: {{agentVersion}}
-  developerMode: false
-  automaticOrphanedNodeCleanup: true
-  datacenter:
-    name: us-east-1
-    racks:
-    - name: us-east-1a
-      members: 3
-      scyllaConfig: scylladb-config
-      storage:
-        capacity: 100Gi
-        storageClassName: scylladb-local-xfs
-      resources:
-        requests:
-          cpu: 4
-          memory: 32Gi
-        limits:
-          cpu: 4
-          memory: 32Gi
-      agentResources:
-        requests:
-          cpu: 50m
-          memory: 10Mi
-        limits:
-          cpu: 50m
-          memory: 10Mi
-      placement:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: topology.kubernetes.io/zone
-                operator: In
-                values:
-                - us-east-1a
-              - key: scylla.scylladb.com/node-type
-                operator: In
-                values:
-                - scylla
-        tolerations:
-        - key: scylla-operator.scylladb.com/dedicated
-          operator: Equal
-          value: scyllaclusters
-          effect: NoSchedule
-    - name: us-east-1b
-      members: 3
-      scyllaConfig: scylladb-config
-      storage:
-        capacity: 100Gi
-        storageClassName: scylladb-local-xfs
-      resources:
-        requests:
-          cpu: 4
-          memory: 32Gi
-        limits:
-          cpu: 4
-          memory: 32Gi
-      agentResources:
-        requests:
-          cpu: 50m
-          memory: 10Mi
-        limits:
-          cpu: 50m
-          memory: 10Mi
-      placement:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: topology.kubernetes.io/zone
-                operator: In
-                values:
-                - us-east-1b
-              - key: scylla.scylladb.com/node-type
-                operator: In
-                values:
-                - scylla
-        tolerations:
-        - key: scylla-operator.scylladb.com/dedicated
-          operator: Equal
-          value: scyllaclusters
-          effect: NoSchedule
-    - name: us-east-1c
-      members: 3
-      scyllaConfig: scylladb-config
-      storage:
-        capacity: 100Gi
-        storageClassName: scylladb-local-xfs
-      resources:
-        requests:
-          cpu: 4
-          memory: 32Gi
-        limits:
-          cpu: 4
-          memory: 32Gi
-      agentResources:
-        requests:
-          cpu: 50m
-          memory: 10Mi
-        limits:
-          cpu: 50m
-          memory: 10Mi
-      placement:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: topology.kubernetes.io/zone
-                operator: In
-                values:
-                - us-east-1c
-              - key: scylla.scylladb.com/node-type
-                operator: In
-                values:
-                - scylla
-        tolerations:
-        - key: scylla-operator.scylladb.com/dedicated
-          operator: Equal
-          value: scyllaclusters
-          effect: NoSchedule
-:::
-
-:::{note}
-Adjust CPU, memory, and storage values to match your workload requirements and instance types. The values above are illustrative. See [Sizing guide](../reference/sizing-guide.md) for guidance.
-:::
-
-:::{caution}
-For CPU pinning and performance tuning, all containers in the pod must have **Guaranteed QoS class** (resource requests equal limits for both CPU and memory). This includes both the ScyllaDB container (`resources`) and the ScyllaDB Manager Agent sidecar (`agentResources`). See [CPU pinning](before-you-deploy/configure-cpu-pinning.md).
-:::
-
-:::{tip}
-**Manager Agent resource sizing:** The Agent sidecar performs backup uploads and repair coordination. For production clusters:
-- **CPU**: `200m` request, `200m` limit is a reasonable baseline for most clusters.
-- **Memory**: `200Mi` request, `200Mi` limit is a reasonable baseline.
-  For large clusters (>50M SSTables or heavy repair schedules) consider `500Mi` limit.
-
-Set `resources.requests` equal to `resources.limits` (Guaranteed QoS class) to prevent scheduler preemption during backup operations.
-:::
+For production-grade deployments with multi-rack, multi-zone configurations and properly sized resources, follow a [reference deployment](reference-deployments/index.md) for your platform.
 
 ## Key fields explained
 
@@ -310,10 +136,8 @@ For the full API reference, see the [API reference](../reference/api/).
 
 ## Spreading racks across availability zones
 
-Each rack should map to a Kubernetes availability zone. Use `placement.nodeAffinity` to pin each rack to a specific zone:
-
-::::{tabs}
-:::{group-tab} GKE
+Each rack should map to a Kubernetes availability zone.
+Use `placement.nodeAffinity` to pin each rack to a specific zone using the standard `topology.kubernetes.io/zone` label:
 
 ```yaml
 placement:
@@ -324,7 +148,7 @@ placement:
         - key: topology.kubernetes.io/zone
           operator: In
           values:
-          - us-east1-b
+          - <zone>
         - key: scylla.scylladb.com/node-type
           operator: In
           values:
@@ -335,70 +159,11 @@ placement:
     value: scyllaclusters
     effect: NoSchedule
 ```
-:::
 
-:::{group-tab} EKS
-
-```yaml
-placement:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: topology.kubernetes.io/zone
-          operator: In
-          values:
-          - us-east-1a
-        - key: scylla.scylladb.com/node-type
-          operator: In
-          values:
-          - scylla
-  tolerations:
-  - key: scylla-operator.scylladb.com/dedicated
-    operator: Equal
-    value: scyllaclusters
-    effect: NoSchedule
-```
-:::
-::::
-
-## Forcing a rolling restart
-
-To trigger a rolling restart without changing any configuration (for example, after modifying a ConfigMap that ScyllaDB does not live-reload), update the `forceRedeploymentReason` field:
-
-```shell
-kubectl patch scyllacluster scylladb --type=merge -p '{"spec":{"forceRedeploymentReason":"restart-2025-01-15"}}'
-```
-
-The Operator performs the restart one pod at a time in reverse ordinal order, respecting the PodDisruptionBudget. See [StatefulSets and racks](../understand/statefulsets-and-racks.md) for details on rolling update mechanics.
-
-## IPv6 networking
-
-To deploy a ScyllaDB cluster with IPv6 or dual-stack networking, see [IPv6 networking](set-up-networking/ipv6/index.md).
-The deployment steps above apply to both IPv4 and IPv6 clusters; only the `spec.network` field differs.
+Replace `<zone>` with the actual zone name for each rack (e.g., `us-east1-b`, `us-east-1a`).
 
 ## Next steps
 
+- Learn how to [connect your application](../connect-your-app/index.md) to ScyllaDB.
 - Review the [production checklist](production-checklist.md) before going to production.
-- [Connect your application](../connect-your-app/index.md) to ScyllaDB.
-- See the [reference deployments](#reference-deployments) for complete end-to-end examples on specific platforms.
-
-(reference-deployments)=
-## Reference deployments
-
-For complete end-to-end walkthroughs that cover Kubernetes cluster creation, Operator installation, and ScyllaDB deployment on a specific platform, see:
-
-- [Reference deployment: GKE](reference-deployments/reference-deployment-gke.md)
-- [Reference deployment: EKS](reference-deployments/reference-deployment-eks.md)
-- [Reference deployment: OpenShift](reference-deployments/reference-deployment-openshift.md)
-
-## Related pages
-
-- [Production checklist](production-checklist.md) — verify all production settings.
-- [Dedicated node pools](before-you-deploy/set-up-dedicated-node-pools.md) — isolating ScyllaDB on dedicated nodes.
-- [CPU pinning](before-you-deploy/configure-cpu-pinning.md) — configuring CPU exclusivity.
-- [Node configuration](before-you-deploy/configure-nodes.md) — disk and performance tuning.
-- [Connecting via CQL](../connect-your-app/connect-via-cql.md) — accessing your cluster.
-- [Scaling](../operate/scale-cluster.md) — adding or removing nodes.
-- [StatefulSets and racks](../understand/statefulsets-and-racks.md) — how racks map to StatefulSets.
-- [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md) — multi-datacenter deployment.
+- See the [reference deployments](reference-deployments/index.md) for complete end-to-end examples on specific platforms.

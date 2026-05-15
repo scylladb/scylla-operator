@@ -17,8 +17,9 @@ ScyllaDB Operator must run in the `scylla-operator` namespace.
 
 ## Prerequisites
 
-- Kubernetes (see the supported version range in [Releases](../reference/releases.md))
-- Helm 3+
+- A Kubernetes cluster meeting the [infrastructure requirements](provision-infrastructure/overview.md).
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) configured to communicate with the cluster.
+- [Helm 3+](https://helm.sh/docs/intro/install/) installed.
 
 ## Add the Helm chart repository
 

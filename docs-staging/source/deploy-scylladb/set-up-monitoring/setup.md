@@ -148,7 +148,7 @@ kubectl -n scylla rollout status --timeout=5m statefulset.apps/prometheus-promet
 
 ## Configure ScyllaDBMonitoring
 
-To set up the monitoring stack, you, finally, need to create a `ScyllaDBMonitoring` object.
+To set up the monitoring stack, create a `ScyllaDBMonitoring` object.
 
 :::{note}
 If you want to customize the `ScyllaDBMonitoring` configuration, we will explain the important configuration options in the following sections.
@@ -227,4 +227,4 @@ kubectl rollout status -n scylla --timeout=5m deployments.apps/example-grafana
 
 At this point, you should have a fully functional monitoring stack for your ScyllaDB cluster.
 
-To learn how to access Grafana, see the [Exposing Grafana](exposing-grafana.md) guide.
+To learn how to access Grafana, see the [Expose Grafana](exposing-grafana.md) guide.

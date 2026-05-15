@@ -104,7 +104,7 @@ If a pod fails to become Ready after a rolling update, the rollout stalls. No ot
 - `kubectl get statefulset` shows `READY` count lower than `REPLICAS`.
 - The `ScyllaCluster` status condition reports `WaitingForStatefulSetRollout`.
 
-To diagnose, check the logs of the failing pod and its events. If the problem is with the new configuration, fix the spec and the rollout resumes automatically. If the pod is stuck for other reasons (crash loop, resource issues), see [Node not starting](../troubleshoot/diagnose-node-not-starting.md).
+To diagnose, check the logs of the failing pod and its events. If the problem is with the new configuration, fix the spec and the rollout resumes automatically. If the pod is stuck for other reasons (crash loop, resource issues), see [Investigate pod restarts](../troubleshoot/investigate-restarts.md).
 
 For log-level changes on a stuck cluster where a rolling restart is not feasible, see [Changing log level](../troubleshoot/change-log-level.md).
 

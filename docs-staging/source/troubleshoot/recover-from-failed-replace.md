@@ -83,7 +83,7 @@ Run `nodetool status` again and note the Host IDs of:
 kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
 ```
 
-Cross-reference with the [ScyllaDB guide for handling failed membership changes](https://docs.scylladb.com/manual/branch-2025.1/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html).
+Cross-reference with the [ScyllaDB guide for handling failed membership changes](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html).
 
 ## Stop the culprit node
 

@@ -26,12 +26,8 @@ On EKS clusters using a custom CNI plugin, webhook connectivity can break becaus
 
 **Reference**: [aws/containers-roadmap#1215](https://github.com/aws/containers-roadmap/issues/1215)
 
-See [Troubleshoot installation issues](../troubleshoot/troubleshoot-installation.md) for diagnosis steps.
-
 ### GKE: private clusters require a firewall rule
 
 GKE private clusters restrict communication from the API server to node pods. A firewall rule must be added to allow the API server to reach the webhook pod on the serving port.
 
 **Reference**: [GKE private clusters — add firewall rules](https://cloud.google.com/kubernetes-engine/docs/how-to/latest/network-isolation#add_firewall_rules)
-
-See [Troubleshoot installation issues](../troubleshoot/troubleshoot-installation.md) for the firewall rule configuration.

@@ -177,4 +177,3 @@ In a multi-datacenter deployment using multiple `ScyllaCluster` resources, perfo
 - [Replace nodes](../operate/replace-nodes.md)
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md)
 - [Collect debugging information](collect-debugging-information/index.md)
-- [Diagnostic flowchart](diagnostic-flowchart.md)

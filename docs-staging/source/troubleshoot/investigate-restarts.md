@@ -120,7 +120,5 @@ See [Collect debugging information](collect-debugging-information/index.md) for 
 
 ## Related pages
 
-- [Diagnostic flowchart](diagnostic-flowchart.md)
-- [Node not starting](diagnose-node-not-starting.md)
 - [Cluster health](check-cluster-health.md)
 - [Collecting debugging information](collect-debugging-information/index.md)

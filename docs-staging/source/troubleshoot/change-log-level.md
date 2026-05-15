@@ -109,4 +109,3 @@ To make the change persistent, update the ScyllaCluster spec as described in [Me
 
 - [Passing ScyllaDB arguments](../operate/pass-scylladb-arguments.md)
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md)
-- [Diagnostic flowchart](diagnostic-flowchart.md)

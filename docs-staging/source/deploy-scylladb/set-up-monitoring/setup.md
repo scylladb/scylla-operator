@@ -102,7 +102,7 @@ You also need to ensure that your `Prometheus` instance is configured to discove
 :end-before: "# [/selectors]"
 :::
 
-#### Monitoring multiple ScyllaClusters with a single Prometheus
+#### Monitor multiple ScyllaClusters with a single Prometheus
 
 If you have more than one `ScyllaCluster` in your Kubernetes cluster, and you want to monitor all of them using the same `Prometheus` instance,
 you can customize the selectors to match `ServiceMonitors` and `PrometheusRules` created for multiple `ScyllaClusters`.

@@ -73,7 +73,7 @@ directly. It preconfigures Grafana with dashboards from [scylla-monitoring](http
 The Grafana image used in the deployment is tied to the version of ScyllaDB Operator. You can find the exact image used in the
 [config.yaml](https://github.com/scylladb/scylla-operator/blob/master/assets/config/config.yaml) file under `operator.grafanaImage` key.
 
-### Exposing Grafana
+### Expose Grafana
 
 ScyllaDB Operator creates a `ClusterIP` Service named `<scyllaDBMonitoringName>-grafana` for each `ScyllaDBMonitoring`.
 You can access it outside the cluster using your preferred method:

@@ -1,12 +1,12 @@
-# Configure the operator
+# Configure ScyllaDB Operator
 
-This page explains how to configure the ScyllaDB Operator's global settings using the `ScyllaOperatorConfig` resource.
+This page explains how to configure ScyllaDB Operator's global settings using the `ScyllaOperatorConfig` resource.
 
 ## Overview
 
-`ScyllaOperatorConfig` is a cluster-scoped singleton resource named `cluster`. The Operator creates it automatically on startup if it does not exist. It holds global settings that affect all ScyllaDB clusters managed by the Operator, such as auxiliary container images and the Kubernetes cluster domain.
+`ScyllaOperatorConfig` is a cluster-scoped singleton resource named `cluster`. ScyllaDB Operator creates it automatically on startup if it does not exist. It holds global settings that affect all ScyllaDB clusters managed by ScyllaDB Operator, such as auxiliary container images and the Kubernetes cluster domain.
 
-Most users do not need to modify this resource. The Operator ships with sensible defaults that are updated automatically when you upgrade the Operator.
+Most users do not need to modify this resource. ScyllaDB Operator ships with sensible defaults that are updated automatically when you upgrade.
 
 :::{tip}
 You can inspect all available fields with:
@@ -49,7 +49,7 @@ Fields prefixed with `unsupported` are not covered by the regular support policy
 
 ## Change the ScyllaDB utils image
 
-By default, the Operator uses performance tuning scripts from the latest ScyllaDB image. To use a different image, set `scyllaUtilsImage`:
+By default, ScyllaDB Operator uses performance tuning scripts from the latest ScyllaDB image. To use a different image, set `scyllaUtilsImage`:
 
 :::{code-block} yaml
 :substitutions:
@@ -69,9 +69,9 @@ kubectl apply --server-side -f scyllaoperatorconfig.yaml
 
 The NodeConfig DaemonSet picks up the new image and uses Enterprise-specific tuning scripts on the next reconciliation.
 
-## Setting the cluster domain
+## Set the cluster domain
 
-The Operator auto-discovers the Kubernetes cluster domain by performing a DNS CNAME lookup for `kubernetes.default.svc`. If your cluster uses a non-standard domain or the auto-discovery does not work, set it explicitly:
+ScyllaDB Operator auto-discovers the Kubernetes cluster domain by performing a DNS CNAME lookup for `kubernetes.default.svc`. If your cluster uses a non-standard domain or the auto-discovery does not work, set it explicitly:
 
 ```yaml
 apiVersion: scylla.scylladb.com/v1alpha1
@@ -93,7 +93,7 @@ ScyllaOperatorConfig settings are consumed by several Operator controllers:
 | NodeConfig controller | `scyllaDBUtilsImage` — configures the tuning DaemonSet with the correct ScyllaDB image for `perftune.py` and resource limits. |
 | ScyllaDBMonitoring controller | `grafanaImage`, `prometheusVersion` — configures the monitoring stack. |
 
-Changes to `ScyllaOperatorConfig` trigger reconciliation in all dependent controllers. You do not need to restart the Operator.
+Changes to `ScyllaOperatorConfig` trigger reconciliation in all dependent controllers. You do not need to restart Operator.
 
 ## Related pages
 

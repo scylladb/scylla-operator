@@ -28,7 +28,7 @@ If you have ScyllaDB Operator installed and just want to get a ScyllaDB cluster 
 
 ### Create a ScyllaDB configuration
 
-Create a ConfigMap containing the `scylla.yaml` configuration. The Operator generates most ScyllaDB settings automatically (networking, listen addresses, seeds), but you can use this ConfigMap to fine-tune settings that the Operator does not manage:
+Create a ConfigMap containing the `scylla.yaml` configuration. ScyllaDB Operator generates most ScyllaDB settings automatically (networking, listen addresses, seeds), but you can use this ConfigMap to fine-tune settings that ScyllaDB Operator does not manage:
 
 ```shell
 kubectl apply --server-side -f=- <<EOF
@@ -44,7 +44,7 @@ EOF
 ```
 
 :::{note}
-Do not configure networking, listen addresses, broadcast addresses, or seed nodes in this ConfigMap — the Operator manages these automatically. Conflicting options are overridden by the Operator. You can safely tune application-level settings like authenticator, authorizer, buffer sizes, compaction throughput, etc.
+Do not configure networking, listen addresses, broadcast addresses, or seed nodes in this ConfigMap — ScyllaDB Operator manages these automatically. Conflicting options are overridden by ScyllaDB Operator. You can safely tune application-level settings like authenticator, authorizer, buffer sizes, compaction throughput, etc.
 :::
 
 ### Create a ScyllaCluster
@@ -134,7 +134,7 @@ For production-grade deployments with multi-rack, multi-zone configurations and 
 
 For the full API reference, see the [API reference](../reference/api/).
 
-## Spreading racks across availability zones
+## Spread racks across availability zones
 
 Each rack should map to a Kubernetes availability zone.
 Use `placement.nodeAffinity` to pin each rack to a specific zone using the standard `topology.kubernetes.io/zone` label:

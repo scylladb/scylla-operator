@@ -113,38 +113,10 @@ Look for these events in the `Events` section:
 
 ## Collect evidence
 
-When filing a support ticket or investigating further, collect:
+When filing a support ticket or investigating further, collect a must-gather archive.
+It includes previous container logs, full pod status, and events needed to diagnose restarts.
 
-1. **Previous container logs:**
-   ```bash
-   kubectl -n scylla logs <pod-name> -c scylla --previous
-   ```
-
-2. **Full pod YAML with status:**
-   ```bash
-   kubectl -n scylla get pod <pod-name> -o yaml
-   ```
-
-3. **Pod events:**
-   ```bash
-   kubectl -n scylla describe pod <pod-name>
-   ```
-
-4. **must-gather archive:**
-
-   Collect a must-gather archive for escalation or offline analysis:
-
-   ```bash
-   podman run -it --pull=always --rm \
-     -v="${KUBECONFIG}:/kubeconfig:ro,Z" \
-     -v="$(pwd):/workspace:Z" \
-     --workdir=/workspace \
-     docker.io/scylladb/scylla-operator:latest \
-     must-gather --kubeconfig=/kubeconfig
-   ```
-
-   The archive contains the previous pod logs (`logs.previous`) needed to diagnose restarts.
-   See [must-gather](collect-debugging-information/must-gather.md) for full options (including Docker and `--all-resources`) and [must-gather contents](collect-debugging-information/must-gather-contents.md) for a guide to interpreting the files.
+See [Collect debugging information](collect-debugging-information/index.md) for instructions.
 
 ## Related pages
 

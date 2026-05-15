@@ -36,18 +36,8 @@ Note the **Host ID** of the problematic node.
 
 ## Collect a must-gather archive
 
-Before making any changes, capture the current state:
-
-```bash
-docker run -it --pull=always --rm \
-  -v="${KUBECONFIG}:/kubeconfig:ro" \
-  -v="$(pwd):/workspace" \
-  --workdir=/workspace \
-  docker.io/scylladb/scylla-operator:latest \
-  must-gather --kubeconfig=/kubeconfig
-```
-
-See [must-gather](collect-debugging-information/must-gather.md) for details.
+Before making any changes, capture the current state by collecting a must-gather archive.
+See [Collect debugging information](collect-debugging-information/index.md) for instructions.
 
 ## Pause ScyllaDB Operator
 

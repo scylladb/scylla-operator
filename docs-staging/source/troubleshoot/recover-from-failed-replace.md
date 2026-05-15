@@ -15,24 +15,34 @@ Use this guide when:
 - `nodetool status` shows a node with status `DN` or `?N` that was being replaced.
 - ScyllaDB Operator cannot apply further configuration changes because the rollout is blocked.
 
+This guide assumes that all other nodes in the cluster are healthy (`UN`).
+
 For normal node replacement, see [Replace nodes](../operate/replace-nodes.md).
 
 ## Prerequisites
 
 - `kubectl` access to the cluster.
-- Ability to scale the ScyllaDB Operator deployment.
-- A recent backup ([Back up and restore](../operate/back-up-and-restore.md)).
+- Ability to scale the ScyllaDB Operator Deployment.
+- A recent backup — this is a dangerous operation and a data backup is recommended before proceeding.
 
 ## Verify the failure
 
 Run `nodetool status` on a healthy node to confirm the stuck state:
 
-```bash
-kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
+```console
+$ kubectl -n <namespace> exec <healthy-pod> -c scylla -- nodetool status
+
+Datacenter: exampledc
+=====================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+-- Address        Load      Tokens Owns Host ID                              Rack
+UN 10.152.183.112 491.57 KB 256    ?    e7478c73-07a9-4fb2-a435-6603ccc9e6bd examplerack
+DN 10.152.183.214 466.12 KB 256    ?    09d815de-6f6d-4394-8439-bd8d34231835 examplerack
+UN 10.152.183.43  456.25 KB 256    ?    ac4e578d-cc82-4b71-9ba1-0f40aede9e8d examplerack
 ```
 
-Look for nodes with status other than `UN` — for example `DN` (Down/Normal) or nodes with `?` status.
-Note the **Host ID** of the problematic node.
+Ensure that the culprit entry matches either the old (replaced) node's Host ID or the new (attempting to replace) node's Host ID. Check the logs of the failing pod to determine which one it is.
 
 ## Collect a must-gather archive
 
@@ -41,14 +51,14 @@ See [Collect debugging information](collect-debugging-information/index.md) for 
 
 ## Pause ScyllaDB Operator
 
-Note the current replica count, then scale ScyllaDB Operator to zero:
+Note the current replica count, then scale ScyllaDB Operator to zero to prevent reconciliation while you perform manual recovery:
 
 ```bash
-# Note the current replicas
+# Note the current replicas (typically 2)
 kubectl -n scylla-operator get deploy scylla-operator -o jsonpath='{.spec.replicas}'
 
 # Scale to zero
-kubectl -n scylla-operator scale deploy scylla-operator --replicas=0
+kubectl -n scylla-operator scale deploy/scylla-operator --replicas=0 --timeout=5m
 ```
 
 Wait for ScyllaDB Operator pods to terminate:
@@ -59,46 +69,51 @@ kubectl -n scylla-operator get pods -w
 
 ## Orphan-delete the rack StatefulSet
 
-Delete the StatefulSet for the affected rack **without deleting its pods**:
+Delete the StatefulSet for the affected rack **without deleting its pods**.
+This prevents the StatefulSet from recreating the culprit pod when you delete it in the next step.
+ScyllaDB Operator will recreate the StatefulSet in its exact form when it resumes.
 
 ```bash
-kubectl -n scylla delete statefulset <cluster-name>-<dc>-<rack> --cascade=orphan
+kubectl -n <namespace> delete statefulset <cluster>-<dc>-<rack> --cascade=orphan
 ```
 
 :::{warning}
 You **must** use `--cascade=orphan`.
-Without this flag, `kubectl delete statefulset` also deletes all pods managed by the StatefulSet, causing a full outage for that rack.
+Without this flag, `kubectl delete statefulset` also deletes all pods managed by the StatefulSet, causing unavailability for that rack.
+Deletion of a StatefulSet does not delete associated PVCs, so even if you accidentally omit `--cascade=orphan`, data is preserved on the PVCs and Operator will recover the pods when it resumes.
 :::
 
 The existing pods continue running.
-ScyllaDB Operator will recreate the StatefulSet when it resumes.
 
 ## Identify Host IDs to remove
 
-Run `nodetool status` again and note the Host IDs of:
+Follow [Step One: Determining Host IDs of Ghost Members](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html#step-one-determining-host-ids-of-ghost-members) from the ScyllaDB documentation.
+
+Run `nodetool status` and note the Host IDs of:
 - The **culprit node** (the failed replacement).
 - Any **ghost members** — nodes that appear in the ring but have no corresponding running pod.
 
 ```bash
-kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
+kubectl -n <namespace> exec <healthy-pod> -c scylla -- nodetool status
 ```
-
-Cross-reference with the [ScyllaDB guide for handling failed membership changes](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html).
 
 ## Stop the culprit node
 
 Delete the pod, PVC, and Service for the failed node:
 
 ```bash
-# Delete the pod
-kubectl -n scylla delete pod <culprit-pod-name>
+# Stop the node that is failing to join the cluster.
+# The StatefulSet does not exist, so it will not recreate the pod.
+kubectl -n <namespace> delete pod <culprit-pod>
 
-# Delete the PVC (data loss for this node)
-kubectl -n scylla delete pvc <culprit-pvc-name>
+# WARNING: This causes data loss for this node.
+# Delete the PersistentVolumeClaim for the data volume held by the culprit node.
+kubectl -n <namespace> delete pvc <culprit-pvc>
 
-# Delete the per-node Service
-# This signals ScyllaDB Operator to provision a brand-new node instead of retrying the replace
-kubectl -n scylla delete svc <culprit-service-name>
+# Delete the per-node Service.
+# ScyllaDB Operator interprets this as a need to provision a brand-new node
+# instead of attempting to replace the old one in the rack.
+kubectl -n <namespace> delete service <culprit-service>
 ```
 
 :::{caution}
@@ -108,17 +123,28 @@ The data must be replicated on other nodes and will be recovered via streaming w
 
 ## Remove ghost members
 
+Follow [Step Two: Removing the Ghost Members](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html#step-two-removing-the-ghost-members) from the ScyllaDB documentation.
+
 For each ghost Host ID, run `nodetool removenode` from a healthy node:
 
 ```bash
-kubectl -n scylla exec -it <healthy-pod> -c scylla -- \
-  nodetool removenode <ghost-host-id>
+kubectl -n <namespace> exec <healthy-pod> -c scylla -- nodetool removenode <host-id>
 ```
+
+Repeat as necessary for each ghost member.
 
 Verify that only healthy nodes remain:
 
-```bash
-kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
+```console
+$ kubectl -n <namespace> exec <healthy-pod> -c scylla -- nodetool status
+
+Datacenter: exampledc
+=====================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+-- Address        Load      Tokens Owns Host ID                              Rack
+UN 10.152.183.112 491.57 KB 256    ?    e7478c73-07a9-4fb2-a435-6603ccc9e6bd examplerack
+UN 10.152.183.43  456.25 KB 256    ?    ac4e578d-cc82-4b71-9ba1-0f40aede9e8d examplerack
 ```
 
 All remaining nodes should show `UN`.
@@ -128,13 +154,14 @@ All remaining nodes should show `UN`.
 Scale ScyllaDB Operator back to its original replica count:
 
 ```bash
-kubectl -n scylla-operator scale deploy scylla-operator --replicas=<original-count>
+# Replace N with the number of replicas noted earlier (typically 2).
+kubectl -n scylla-operator scale deploy/scylla-operator --replicas=<N> --timeout=5m
 ```
 
 ScyllaDB Operator will:
-1. Recreate the rack StatefulSet.
+1. Recreate the (identical) StatefulSet for the rack.
 2. Recreate the per-node Service.
-3. Create a new pod and PVC for the removed node.
+3. Create a new Pod and PVC for the removed node.
 4. The new node joins the cluster as a fresh member and streams data from peers.
 
 ## Verify recovery
@@ -142,23 +169,25 @@ ScyllaDB Operator will:
 Wait for the new pod to become ready:
 
 ```bash
-kubectl -n scylla get pods -w
+kubectl -n <namespace> get pods -w
 ```
 
 Verify cluster health:
 
-```bash
-kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
+```console
+$ kubectl -n <namespace> exec <healthy-pod> -c scylla -- nodetool status
+
+Datacenter: exampledc
+=====================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+-- Address        Load      Tokens Owns Host ID                              Rack
+UN 10.152.183.112 491.57 KB 256    ?    e7478c73-07a9-4fb2-a435-6603ccc9e6bd examplerack
+UN 10.152.183.234 493.66 KB 256    ?    NEW-UUID-DIFFERENT-THAN-BEFORE-abcde examplerack
+UN 10.152.183.43  456.25 KB 256    ?    ac4e578d-cc82-4b71-9ba1-0f40aede9e8d examplerack
 ```
 
-All nodes should show `UN`.
-
-After recovery, run a repair to ensure data consistency:
-
-```bash
-# If using ScyllaDB Manager, trigger an ad-hoc repair
-kubectl -n scylla get scylladbmanagertask
-```
+All nodes should show `UN`. Note that the recovered node has a new Host ID.
 
 ## Multi-datacenter note
 
@@ -168,8 +197,8 @@ In a multi-datacenter deployment using multiple `ScyllaCluster` resources, perfo
 
 | Situation | Recovery |
 |---|---|
-| Accidentally deleted StatefulSet without `--cascade=orphan` | PVCs survive the deletion. When ScyllaDB Operator resumes and recreates the StatefulSet, new pods are created and reattach to existing PVCs. Data is preserved. |
-| Operator fails to recreate the StatefulSet | Manually recreate it from the must-gather archive (the StatefulSet YAML is captured). |
+| Accidentally deleted StatefulSet without `--cascade=orphan` | Pods are deleted (causing rack unavailability), but PVCs survive. When ScyllaDB Operator resumes and recreates the StatefulSet, new pods are created and reattach to existing PVCs. Data is preserved. |
+| ScyllaDB Operator fails to recreate the StatefulSet | Manually recreate it from the must-gather archive (the StatefulSet YAML is captured). |
 | New node fails to join | Repeat the procedure — verify that all ghost members were removed. Check seed configuration and network connectivity. |
 
 ## Related pages
@@ -177,3 +206,4 @@ In a multi-datacenter deployment using multiple `ScyllaCluster` resources, perfo
 - [Replace nodes](../operate/replace-nodes.md)
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md)
 - [Collect debugging information](collect-debugging-information/index.md)
+- [ScyllaDB: Handling membership change failures](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html)

@@ -17,7 +17,20 @@ data:
     authorizer: CassandraAuthorizer
 ```
 
-Reference this ConfigMap from your ScyllaCluster via `scyllaConfig` on each rack.
+Reference this ConfigMap from your ScyllaCluster via `scyllaConfig` on each rack:
+
+```yaml
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylladb
+spec:
+  datacenter:
+    racks:
+    - name: us-east-1a
+      scyllaConfig: scylladb-config
+      # ...
+```
 
 After deployment, follow the [Creating a Custom Superuser](https://docs.scylladb.com/manual/stable/operating-scylla/security/create-superuser.html) guide in the ScyllaDB documentation to replace the default `cassandra` superuser with a dedicated role.
 
@@ -27,7 +40,7 @@ Starting with ScyllaDB 2026.2, the default `cassandra`/`cassandra` superuser cre
 
 ## Embedded cqlsh
 
-Every ScyllaDB pod includes a built-in `cqlsh`. This is the simplest way to run queries:
+Every ScyllaDB Pod includes a built-in `cqlsh`. This is the simplest way to run queries:
 
 ::::{tabs}
 :::{group-tab} Any node (via Service)
@@ -57,44 +70,26 @@ ScyllaDB Operator configures TLS certificates automatically. The encrypted CQL p
 
 ### Prepare credentials and certificates
 
+The Operator automatically creates TLS resources for each ScyllaCluster. For programmatic access using the Go driver with clusters that have `dnsDomains` configured, use the pre-built connection bundle from `secret/<cluster-name>-local-cql-connection-configs-admin` directly (see [Security](../understand/security.md) for details).
+
+For `cqlsh`, extract the certificates and create a `cqlshrc` file:
+
 :::{caution}
 The example below simplifies credential file creation for brevity. In production, create the credentials file with a text editor to avoid passwords leaking into shell history or environment variables.
 :::
 
-**Step 1: Identify the serving CA ConfigMap**
-
-The serving CA is stored in a ConfigMap named `<cluster-name>-local-serving-ca`:
-```bash
-kubectl -n scylla get configmaps | grep serving-ca
-```
-
-**Step 2: Extract the CA certificate**
+**Step 1: Extract certificates**
 
 ```bash
-kubectl -n scylla get configmap scylla-local-serving-ca \
+kubectl -n scylla get configmap <cluster-name>-local-serving-ca \
   --template='{{ index .data "ca-bundle.crt" }}' > ca.crt
-```
-Replace `scylla-local-serving-ca` with the actual ConfigMap name from Step 1.
-
-**Step 3: Extract client credentials**
-
-```bash
-kubectl -n scylla get secret scylla-local-user-admin \
+kubectl -n scylla get secret <cluster-name>-local-user-admin \
   -o jsonpath='{.data.tls\.crt}' | base64 -d > client.crt
-kubectl -n scylla get secret scylla-local-user-admin \
+kubectl -n scylla get secret <cluster-name>-local-user-admin \
   -o jsonpath='{.data.tls\.key}' | base64 -d > client.key
 ```
 
-**Step 4: Verify the extracted files**
-
-```bash
-openssl x509 -in ca.crt -noout -subject -dates
-openssl x509 -in client.crt -noout -subject -dates
-```
-
-**Step 5: Create a cqlshrc file**
-
-Set `SCYLLADB_CONFIG` to a directory containing the certificates and create a `cqlshrc` file:
+**Step 2: Create a cqlshrc file**
 
 ```bash
 export SCYLLADB_CONFIG=/path/to/scylladb-config
@@ -156,22 +151,11 @@ When using a ScyllaDB or Cassandra driver in your application:
 
 | Setting | Recommended value | Why |
 |---------|-------------------|-----|
-| Contact points | `<cluster-name>-client.<namespace>.svc` (DNS) or the Service ClusterIP | Use the discovery Service, not individual pod IPs. The driver discovers all nodes automatically. |
+| Contact points | `<cluster-name>-client.<namespace>.svc` (DNS) or the Service ClusterIP | Use the discovery Service, not individual Pod IPs. The driver discovers all nodes automatically. |
 | Local datacenter | Your `datacenter.name` value (e.g., `us-east-1`) | Required for `DCAwareRoundRobinPolicy`. Prevents cross-DC queries. |
 | Load balancing | Token-aware + DC-aware round robin | Sends queries directly to the replica owning the partition. |
 | TLS | Enabled, with CA verification | Use the serving CA from `configmap/<cluster-name>-local-serving-ca`. |
 | Reconnection | Exponential backoff | Handles node restarts during rolling updates. |
-
-## TLS certificate resources
-
-The Operator creates these resources automatically:
-
-| Resource | Name | Contents |
-|----------|------|----------|
-| Serving CA | `configmap/<cluster-name>-local-serving-ca` | `ca-bundle.crt` — CA to validate server certificates. |
-| Admin client cert | `secret/<cluster-name>-local-user-admin` | `tls.crt`, `tls.key` — client certificate for mTLS. |
-
-For more details, see [TLS and certificate management](../understand/security.md).
 
 ## Related pages
 

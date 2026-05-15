@@ -110,7 +110,7 @@ The Operator creates these resources for Alternator:
 ### Troubleshoot
 
 - **`AccessDeniedException`**: Confirms Alternator is reachable but credentials are wrong. Re-extract credentials per the steps above and verify they match.
-- **`Could not connect to the endpoint`**: Alternator may not be enabled on the cluster. Verify `spec.alternator` is set in the ScyllaCluster and pods are running. Check that the Service port (8043 for HTTPS by default) is reachable.
+- **`Could not connect to the endpoint`**: Alternator may not be enabled on the cluster. Verify `spec.alternator` is set in the ScyllaCluster and Pods are running. Check that the Service port (8043 for HTTPS by default) is reachable.
 
 ## Multi-datacenter limitations
 

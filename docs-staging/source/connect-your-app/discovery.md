@@ -4,7 +4,7 @@ This page explains how ScyllaDB clusters are discoverable by clients on Kubernet
 
 ## How discovery works
 
-For every ScyllaCluster, the Operator creates a Kubernetes Service named `<cluster-name>-client` that matches all ScyllaDB pods in the cluster by label. Kubernetes routes traffic only to pods that pass their readiness probe. This Service acts as a stable entry point: clients connect to it to reach any available ScyllaDB node, and from there the driver automatically discovers all other nodes in the cluster.
+For every ScyllaCluster, the Operator creates a Kubernetes Service named `<cluster-name>-client` that matches all ScyllaDB Pods in the cluster by label. Kubernetes routes traffic only to Pods that pass their readiness probe. This Service acts as a stable entry point: clients connect to it to reach any available ScyllaDB node, and from there the driver automatically discovers all other nodes in the cluster.
 
 ```shell
 kubectl get scyllacluster/scylladb service/scylladb-client
@@ -29,7 +29,7 @@ Clients should use this endpoint as their initial contact point. The driver conn
 
 ## Exposing beyond the Kubernetes cluster
 
-If you need to connect from outside the Kubernetes cluster and are using Pod IPs as the broadcast address type, you can expose the discovery endpoint by creating a separate LoadBalancer Service that selects the same pods. Do **not** patch the operator-managed `<cluster-name>-client` Service directly — the operator reconciles it and will revert manual changes.
+If you need to connect from outside the Kubernetes cluster and are using Pod IPs as the broadcast address type, you can expose the discovery endpoint by creating a separate LoadBalancer Service that selects the same Pods. Do **not** patch the operator-managed `<cluster-name>-client` Service directly — the operator reconciles it and will revert manual changes.
 
 ::::{tabs}
 :::{group-tab} GKE
@@ -46,6 +46,7 @@ spec:
   selector:
     scylla/cluster: <cluster-name>
     app: scylla
+    scylla-operator.scylladb.com/pod-type: scylladb-node
   ports:
   - name: cql
     port: 9042
@@ -76,6 +77,7 @@ spec:
   selector:
     scylla/cluster: <cluster-name>
     app: scylla
+    scylla-operator.scylladb.com/pod-type: scylladb-node
   ports:
   - name: cql
     port: 9042
@@ -93,16 +95,8 @@ kubectl get service/<cluster-name>-client-external -n scylla -o='jsonpath={.stat
 ::::
 
 :::{tip}
-Having a stable discovery contact point is especially important when using ephemeral Pod IPs, because individual node IPs can change when pods are rescheduled.
+Having a stable discovery contact point is especially important when using ephemeral Pod IPs, because individual node IPs can change when Pods are rescheduled.
 :::
-
-## Troubleshoot discovery failures
-
-**Discovery Service has no EXTERNAL-IP**: The LoadBalancer has not yet been provisioned. Wait 1–2 minutes and retry, or check cloud provider events with `kubectl describe service <name> -n scylla`.
-
-**Clients cannot reach discovery endpoint**: Verify that firewall rules allow traffic on port 9042. See [Prerequisites](../install-operator/prerequisites.md).
-
-**Driver loses all contact points after a restart**: The ClusterIP (`<cluster>-client`) is stable across pod restarts. Prefer it over Pod IPs as the initial contact point. See [Connect via CQL](connect-via-cql.md).
 
 ## Related pages
 

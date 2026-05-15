@@ -32,7 +32,7 @@ Apply the change:
 kubectl apply --server-side -f scylla-cluster.yaml
 ```
 
-The Operator performs a rolling restart to apply the new argument.
+ScyllaDB Operator performs a rolling restart to apply the new argument.
 
 See [Passing ScyllaDB arguments](../operate/pass-scylladb-arguments.md) for details.
 
@@ -90,7 +90,7 @@ To make the change persistent, update the ScyllaCluster spec as described in [Me
 
 - **Debug and trace levels** generate significantly more log output and can impact performance.
   Revert to `info` once you have collected the needed diagnostics.
-- In a stuck rollout scenario, the Operator cannot process spec changes because the rollout is blocked.
+- In a stuck rollout scenario, ScyllaDB Operator cannot process spec changes because the rollout is blocked.
   The REST API is the only way to change log levels on pods that are already running.
   See [StatefulSets and racks](../understand/statefulsets-and-racks.md) for why a stuck rollout blocks further updates (partition-based rolling updates).
 

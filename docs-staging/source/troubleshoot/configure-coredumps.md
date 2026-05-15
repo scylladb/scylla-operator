@@ -124,7 +124,7 @@ Inside a pod managed by ScyllaDB Operator, the sidecar is PID 1 and the `scylla`
 kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -c scylla -- sh -c 'kill -ABRT $(pgrep -x scylla)'
 :::
 
-ScyllaDB logs a backtrace and terminates. The pod stays running because the Scylla Operator sidecar (PID 1) is unaffected; the Operator will restart the ScyllaDB process automatically. The dump is written to the node's host filesystem before the process exits.
+ScyllaDB logs a backtrace and terminates. The pod stays running because the ScyllaDB Operator sidecar (PID 1) is unaffected; ScyllaDB Operator will restart the ScyllaDB process automatically. The dump is written to the node's host filesystem before the process exits.
 
 ### 3. Confirm the dump was captured
 

@@ -43,19 +43,26 @@ Use the ScyllaDB REST API to change the log level on running pods without trigge
 ### Change log level on a single pod
 
 ```bash
-kubectl -n scylla exec -it <pod-name> -c scylla -- \
+kubectl -n scylla exec <pod-name> -c scylla -- \
   curl -s -X POST "http://localhost:10000/system/logger/<logger-name>?level=<level>"
 ```
 
 Where:
-- `<logger-name>` is the logger to adjust (e.g., `compaction`, `gossip`, `storage_proxy`, or `default` for all loggers)
+- `<logger-name>` is the logger to adjust (e.g., `compaction`, `gossip`, `storage_proxy`)
 - `<level>` is the desired level: `error`, `warn`, `info`, `debug`, `trace`
+
+To set **all** loggers at once, omit the logger name from the path:
+
+```bash
+kubectl -n scylla exec <pod-name> -c scylla -- \
+  curl -s -X POST "http://localhost:10000/system/logger?level=<level>"
+```
 
 **Example — set all loggers to debug:**
 
 ```bash
-kubectl -n scylla exec -it <pod-name> -c scylla -- \
-  curl -s -X POST "http://localhost:10000/system/logger/default?level=debug"
+kubectl -n scylla exec <pod-name> -c scylla -- \
+  curl -s -X POST "http://localhost:10000/system/logger?level=debug"
 ```
 
 ### Change log level on all pods
@@ -69,17 +76,21 @@ for pod in $(kubectl -n "${NAMESPACE}" get pods \
   -l scylla-operator.scylladb.com/pod-type=scylladb-node \
   -o jsonpath='{.items[*].metadata.name}'); do
   echo "Setting log level on ${pod}..."
-  kubectl -n "${NAMESPACE}" exec -it "${pod}" -c scylla -- \
-    curl -s -X POST "http://localhost:10000/system/logger/default?level=debug"
+  kubectl -n "${NAMESPACE}" exec "${pod}" -c scylla -- \
+    curl -s -X POST "http://localhost:10000/system/logger?level=debug"
 done
 ```
 
 ### Verify the change
 
+Check the level of a specific logger:
+
 ```bash
-kubectl -n scylla exec -it <pod-name> -c scylla -- \
-  curl -s "http://localhost:10000/system/logger" | jq .
+kubectl -n scylla exec <pod-name> -c scylla -- \
+  curl -s "http://localhost:10000/system/logger/compaction"
 ```
+
+The response is the current log level (e.g., `"debug"`).
 
 ### Important notes
 

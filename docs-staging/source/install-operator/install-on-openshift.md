@@ -24,9 +24,9 @@ All `kubectl` commands in this guide can be executed using the OpenShift CLI (`o
 
 ScyllaDB Operator can be installed from the OpenShift software catalog using either the web console or the CLI.
 
-:::::{tabs}
+::::::::{tabs}
 
-::::{group-tab} Web Console
+:::::::{group-tab} Web Console
 
 This procedure follows the generic Operator installation steps outlined in the upstream documentation: [Installing from the software catalog by using the web console](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/operators/administrator-tasks#olm-installing-from-software-catalog-using-web-console_olm-adding-operators-to-a-cluster).
 
@@ -50,9 +50,9 @@ This procedure follows the generic Operator installation steps outlined in the u
 6. In the **Install Plan** dialog, review the manual install plan and click **Approve**.
 7. Log in to the OpenShift cluster in the terminal. Ensure that `kubectl` is configured to communicate with your cluster.
 
-::::
+:::::::
 
-::::{group-tab} CLI
+:::::::{group-tab} CLI
 
 This procedure follows the generic Operator installation steps outlined in the upstream documentation: [Installing from the software catalog by using the CLI](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/operators/administrator-tasks#olm-installing-operator-from-software-catalog-using-cli_olm-adding-operators-to-a-cluster).
 
@@ -197,8 +197,8 @@ This procedure follows the generic Operator installation steps outlined in the u
     clusterserviceversion.operators.coreos.com/scylladb-operator.{{latestStableRelease}} condition met
     :::
 
-::::
-:::::
+:::::::
+::::::::
 
 ### Verify the installation
 
@@ -221,7 +221,7 @@ customresourcedefinition.apiextensions.k8s.io/scyllaoperatorconfigs.scylla.scyll
 customresourcedefinition.apiextensions.k8s.io/scylladbmonitorings.scylla.scylladb.com condition met
 ```
 
-Wait for the Operator and webhook server deployments:
+Wait for ScyllaDB Operator and webhook server Deployments:
 
 ```shell
 kubectl -n=scylla-operator rollout status --timeout=10m deployment.apps/scylla-operator
@@ -247,7 +247,7 @@ Local storage configuration depends on the OpenShift deployment model and the un
 Performance tuning is enabled for all nodes that are selected by `NodeConfig` by default, unless explicitly opted-out of.
 :::
 
-:::::{tabs}
+::::::{tabs}
 ::::{group-tab} ROSA (NVMe)
 
 The following manifest creates a RAID0 array from the available NVMe devices, formats it with the XFS filesystem, and enables performance tuning recommended for production-grade ScyllaDB deployments on the selected nodes.
@@ -277,7 +277,7 @@ kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/
 :::
 
 ::::
-:::::
+::::::
 
 Wait for NodeConfig to finish applying changes:
 
@@ -304,15 +304,11 @@ kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent
 kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-csi-driver
 ```
 
-**Expected output:** The DaemonSet reports all pods ready. The `scylladb-local-xfs` StorageClass is now available.
+**Expected output:** The DaemonSet reports all Pods ready. The `scylladb-local-xfs` StorageClass is now available.
 
 ## Step 4: Install ScyllaDB Manager
 
 ScyllaDB Manager provides automated repair and backup scheduling. It deploys a small internal ScyllaDB cluster for its own database.
-
-:::{note}
-ScyllaDB Manager is available for ScyllaDB Enterprise customers and ScyllaDB users. With ScyllaDB, ScyllaDB Manager is limited to 5 nodes. See the ScyllaDB Manager [Proprietary Software License Agreement](https://www.scylladb.com/scylla-manager-software-license-agreement/) for details.
-:::
 
 :::{code-block} shell
 :substitutions:
@@ -323,7 +319,7 @@ kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.c
 kubectl -n=scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
 ```
 
-**Expected output:** The deployment reports `successfully rolled out`.
+**Expected output:** The Deployment reports `successfully rolled out`.
 
 ## Step 5: Set up monitoring (optional)
 

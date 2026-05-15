@@ -87,8 +87,6 @@ The existing pods continue running.
 
 ## Identify Host IDs to remove
 
-Follow [Step One: Determining Host IDs of Ghost Members](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html#step-one-determining-host-ids-of-ghost-members) from the ScyllaDB documentation.
-
 Run `nodetool status` and note the Host IDs of:
 - The **culprit node** (the failed replacement).
 - Any **ghost members** — nodes that appear in the ring but have no corresponding running pod.
@@ -122,8 +120,6 @@ The data must be replicated on other nodes and will be recovered via streaming w
 :::
 
 ## Remove ghost members
-
-Follow [Step Two: Removing the Ghost Members](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html#step-two-removing-the-ghost-members) from the ScyllaDB documentation.
 
 For each ghost Host ID, run `nodetool removenode` from a healthy node:
 
@@ -206,4 +202,3 @@ In a multi-datacenter deployment using multiple `ScyllaCluster` resources, perfo
 - [Replace nodes](../operate/replace-nodes.md)
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md)
 - [Collect debugging information](collect-debugging-information/index.md)
-- [ScyllaDB: Handling membership change failures](https://docs.scylladb.com/stable/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html)

@@ -28,7 +28,7 @@ To provide precomputed values, mount a ConfigMap containing `io_properties.yaml`
 ### Step 1: Create the IO properties ConfigMap
 
 Create a ConfigMap containing your precomputed IO properties.
-Refer to the [ScyllaDB IO properties documentation](https://opensource.docs.scylladb.com/stable/sysadmin/admin-tools/scylla-io-setup.html) for the file format.
+Refer to the [Seastar iotune source](https://github.com/scylladb/seastar/blob/master/apps/iotune/iotune.cc) for the file format reference.
 
 ```yaml
 apiVersion: v1
@@ -119,4 +119,4 @@ Ensure the values match the actual capabilities of your storage.
 ## Related pages
 
 - [Pass additional ScyllaDB arguments](pass-scylladb-arguments.md) — passing arbitrary command-line flags to ScyllaDB
-- [ScyllaDB IO Setup documentation](https://opensource.docs.scylladb.com/stable/sysadmin/admin-tools/scylla-io-setup.html) — upstream reference for the `io_properties.yaml` format
+- [Seastar iotune source](https://github.com/scylladb/seastar/blob/master/apps/iotune/iotune.cc) — reference for the `io_properties.yaml` format

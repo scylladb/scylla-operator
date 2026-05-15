@@ -8,7 +8,7 @@ Each rack in a ScyllaDB cluster maps to a single Kubernetes StatefulSet.
 Scaling changes the replica count of that StatefulSet:
 
 - **Scale up** — new pods are appended at the end of the ordinal sequence (highest index).
-  After the new node joins the token ring, the Operator automatically triggers a data cleanup on affected nodes.
+  After the new node joins the token ring, the Operator automatically triggers a [data cleanup](../understand/automatic-data-cleanup.md) on affected nodes.
 - **Scale down** — the Operator decommissions the highest-ordinal pod first, streams its data to the remaining nodes, reduces the replica count, and then deletes the PVC and Service.
   Only one node is decommissioned at a time.
 

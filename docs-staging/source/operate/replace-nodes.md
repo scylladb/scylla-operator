@@ -22,11 +22,6 @@ Replacing a node that is still alive can cause consistency issues.
 5. The new node joins the cluster, takes ownership of the old node's token range, and streams data from other replicas.
 6. Once the new node is Ready, the Operator removes the replace labels from the Service.
 
-:::{note}
-The Operator uses **Host ID–based replacement** (available since ScyllaDB OS 5.2 and ScyllaDB Enterprise 2023.1).
-Older replacement via `replace_address_first_boot` is deprecated.
-:::
-
 ## Automatic orphaned node replacement
 
 When a Kubernetes node is permanently removed (for example, a node pool scale-down or a cloud instance termination), the PersistentVolume bound to the ScyllaDB pod becomes orphaned — it references a node that no longer exists.

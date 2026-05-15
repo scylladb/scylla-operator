@@ -16,6 +16,7 @@ Common reasons to migrate a rack to a new node pool:
 - The new node pool must already exist with appropriate labels, taints, and instance types.
   See [Set up dedicated node pools](../deploy-scylladb/before-you-deploy/set-up-dedicated-node-pools.md) for setup.
 - A `NodeConfig` resource targeting the new node pool must be applied (if your cluster uses tuning, RAID, or filesystem configuration).
+  See [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) for details.
 - The replication factor of your keyspaces must be large enough to tolerate the temporary imbalance during migration.
   For example, with RF=3 you can safely have one rack temporarily empty.
 - The new rack must be in the same datacenter as the old rack.

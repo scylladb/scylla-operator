@@ -32,6 +32,12 @@ Ensure the target nodes have enough disk capacity before proceeding.
 
 The following example assumes a ScyllaCluster named `scylla` in the `scylla` namespace.
 
+:::{danger}
+Every `kubectl delete` command in this procedure **must** use `--cascade='orphan'`.
+Omitting this flag deletes all dependent resources (Pods, PVCs, and their data) and results in **permanent data loss**.
+Double-check each command before executing it.
+:::
+
 ## Procedure overview
 
 Kubernetes does not allow changing the `storageClassName` or reducing `storage.capacity` in a StatefulSet's volume claim template. To expand storage, you must temporarily orphan the parent objects while keeping the Pods and PVCs running. The steps are:

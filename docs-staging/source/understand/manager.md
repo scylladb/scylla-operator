@@ -15,7 +15,7 @@ This is provided by a dedicated `ScyllaCluster` resource named `scylla-manager-c
 The backing ScyllaCluster has the annotation `scylla-operator.scylladb.com/disable-global-scylladb-manager-integration: "true"` to prevent it from being registered with the very Manager instance it supports.
 :::
 
-Manager depends on ScyllaDB Operator — the Operator must be installed first because the backing cluster uses the `ScyllaCluster` CRD.
+Manager depends on ScyllaDB Operator — the Operator must be installed first because the backing cluster uses the `ScyllaCluster` CRD. Additionally, a [NodeConfig](../deploy-scylladb/before-you-deploy/configure-nodes.md) must be applied and the [ScyllaDB Local CSI Driver](https://github.com/scylladb/local-csi-driver) must be installed to provide storage for the backing cluster.
 
 ## Manager Agent
 

@@ -23,7 +23,7 @@ Inside each DaemonSet pod, a controller creates two types of Jobs:
 
 | Job type | What it does |
 |---|---|
-| **NodePerftune** | Runs the `perftune.py` script (from the ScyllaDB utilities image) with `--tune=system --tune-clock`. This tunes kernel parameters, clock settings, network device settings, disk devices, and spreads IRQs across available CPUs. |
+| **NodePerftune** | Runs the [`perftune.py`](https://github.com/scylladb/seastar/blob/master/scripts/perftune.py) script (from the ScyllaDB utilities image) with `--tune=system --tune-clock`. This tunes kernel parameters, clock settings, network device settings, disk devices, and spreads IRQs across available CPUs. |
 | **NodeSysctls** | Applies the sysctls specified in the NodeConfig spec (e.g., `fs.aio-max-nr`, `fs.nr_open`, `vm.swappiness`) to the host via `sysctl --load`. |
 
 Both jobs run as privileged containers with access to the host filesystem.

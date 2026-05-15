@@ -19,19 +19,19 @@ The `exposeOptions.nodeService.type` field controls what kind of member Service 
 
 ### Headless
 
-Creates a headless Service (`clusterIP: None`). The DNS record for the Service resolves directly to the pod IP. No additional IP address is allocated.
+Creates a [headless Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) (`clusterIP: None`). The DNS record for the Service resolves directly to the pod IP. No additional IP address is allocated.
 
 Use Headless when pods broadcast their own IP and no cluster-internal virtual IP is needed — for example, in multi-VPC deployments where pod IPs are routable across VPCs.
 
 ### ClusterIP
 
-Creates a standard ClusterIP Service backed by a single pod. The Service receives a virtual IP that is routable only inside the Kubernetes cluster.
+Creates a standard [ClusterIP Service](https://kubernetes.io/docs/concepts/services-networking/service/#type-clusterip) backed by a single pod. The Service receives a virtual IP that is routable only inside the Kubernetes cluster.
 
 This is the **default** for `ScyllaCluster`.
 
 ### LoadBalancer
 
-Creates a LoadBalancer Service. On cloud platforms that support external load balancers the Service provisions one, giving each ScyllaDB node an externally reachable address.
+Creates a [LoadBalancer Service](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer). On cloud platforms that support external load balancers the Service provisions one, giving each ScyllaDB node an externally reachable address.
 
 Customisations such as restricting a load balancer to the internal network are managed through annotations on the Service. The `annotations` field in `nodeService` is merged into every member Service.
 

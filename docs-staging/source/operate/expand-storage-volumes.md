@@ -34,7 +34,7 @@ The following example assumes a ScyllaCluster named `scylla` in the `scylla` nam
 
 :::{danger}
 Every `kubectl delete` command in this procedure **must** use `--cascade='orphan'`.
-Omitting this flag deletes all dependent resources (Pods, PVCs, and their data) and results in **permanent data loss**.
+Omitting this flag deletes dependent resources (Pods, PVCs, and their data) and will result in availability disruption.
 Double-check each command before executing it.
 :::
 

@@ -1,4 +1,4 @@
-# Collecting core dumps
+# Collect core dumps
 
 This guide explains how to configure core dump collection on Kubernetes nodes running ScyllaDB Operator-managed ScyllaDB clusters and how to retrieve the resulting dump files.
 
@@ -22,7 +22,7 @@ This must be completed **before the anticipated crash**.
 
 A ready-to-use setup for GKE is provided below. On other platforms, apply these four steps using the OS package manager and systemd tooling available on the node.
 
-## Setting up core dump collection on GKE
+## Set up core dump collection on GKE
 
 GKE Ubuntu nodes do not ship `systemd-coredump` by default. The two manifests below handle all four setup steps via a single container on each ScyllaDB node. The container performs the setup once at startup and then sleeps, keeping the pod alive so that the DaemonSet re-applies the settings whenever the pod is evicted or rescheduled.
 
@@ -94,7 +94,7 @@ kubectl debug node/<node-name> -it --profile=sysadmin --image=docker.io/library/
 
 The output must be `active`.
 
-## Verifying that core dump collection works end to end
+## Verify that core dump collection works end to end
 
 The steps below trigger a test crash of a running ScyllaDB process and confirm the dump was captured by `systemd-coredump`.
 
@@ -130,7 +130,7 @@ ScyllaDB logs a backtrace and terminates. The pod stays running because the Scyl
 
 Confirm the dump was captured using coredumpctl list - see [Retrieving core dumps from nodes](#retrieving-core-dumps-from-nodes) for details.
 
-## Retrieving core dumps from nodes
+## Retrieve core dumps from nodes
 
 Core dumps are stored at `/var/lib/systemd/coredump/` on the host.
 

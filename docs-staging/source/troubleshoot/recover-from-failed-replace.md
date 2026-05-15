@@ -23,7 +23,7 @@ For normal node replacement, see [Replace nodes](../operate/replace-nodes.md).
 - Ability to scale the ScyllaDB Operator deployment.
 - A recent backup ([Back up and restore](../operate/back-up-and-restore.md)).
 
-## Step 1: Verify the failure
+## Verify the failure
 
 Run `nodetool status` on a healthy node to confirm the stuck state:
 
@@ -34,7 +34,7 @@ kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
 Look for nodes with status other than `UN` — for example `DN` (Down/Normal) or nodes with `?` status.
 Note the **Host ID** of the problematic node.
 
-## Step 2: Collect a must-gather archive
+## Collect a must-gather archive
 
 Before making any changes, capture the current state:
 
@@ -49,7 +49,7 @@ docker run -it --pull=always --rm \
 
 See [must-gather](collect-debugging-information/must-gather.md) for details.
 
-## Step 3: Pause ScyllaDB Operator
+## Pause ScyllaDB Operator
 
 Note the current replica count, then scale ScyllaDB Operator to zero:
 
@@ -67,7 +67,7 @@ Wait for ScyllaDB Operator pods to terminate:
 kubectl -n scylla-operator get pods -w
 ```
 
-## Step 4: Orphan-delete the rack StatefulSet
+## Orphan-delete the rack StatefulSet
 
 Delete the StatefulSet for the affected rack **without deleting its pods**:
 
@@ -83,7 +83,7 @@ Without this flag, `kubectl delete statefulset` also deletes all pods managed by
 The existing pods continue running.
 ScyllaDB Operator will recreate the StatefulSet when it resumes.
 
-## Step 5: Identify Host IDs to remove
+## Identify Host IDs to remove
 
 Run `nodetool status` again and note the Host IDs of:
 - The **culprit node** (the failed replacement).
@@ -95,7 +95,7 @@ kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
 
 Cross-reference with the [ScyllaDB guide for handling failed membership changes](https://docs.scylladb.com/manual/branch-2025.1/operating-scylla/procedures/cluster-management/handling-membership-change-failures.html).
 
-## Step 6: Stop the culprit node
+## Stop the culprit node
 
 Delete the pod, PVC, and Service for the failed node:
 
@@ -116,7 +116,7 @@ Deleting the PVC permanently destroys the data on that node.
 The data must be replicated on other nodes and will be recovered via streaming when a new node joins.
 :::
 
-## Step 7: Remove ghost members
+## Remove ghost members
 
 For each ghost Host ID, run `nodetool removenode` from a healthy node:
 
@@ -133,7 +133,7 @@ kubectl -n scylla exec -it <healthy-pod> -c scylla -- nodetool status
 
 All remaining nodes should show `UN`.
 
-## Step 8: Resume ScyllaDB Operator
+## Resume ScyllaDB Operator
 
 Scale ScyllaDB Operator back to its original replica count:
 
@@ -147,7 +147,7 @@ ScyllaDB Operator will:
 3. Create a new pod and PVC for the removed node.
 4. The new node joins the cluster as a fresh member and streams data from peers.
 
-## Step 9: Verify recovery
+## Verify recovery
 
 Wait for the new pod to become ready:
 

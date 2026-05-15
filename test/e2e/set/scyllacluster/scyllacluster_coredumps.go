@@ -60,9 +60,14 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 		ds, err = f.KubeAdminClient().AppsV1().DaemonSets(coredumpSetupNamespace).Create(ctx, ds, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		// Record the DaemonSet name and namespace before registering DeferCleanup,
+		// because ds may be reassigned to nil if WaitForDaemonSetState times out.
+		dsName := ds.Name
+		dsNamespace := ds.Namespace
+
 		g.DeferCleanup(func(ctx context.Context) {
 			framework.By("Deleting the coredump setup DaemonSet")
-			err := f.KubeAdminClient().AppsV1().DaemonSets(coredumpSetupNamespace).Delete(ctx, ds.Name, metav1.DeleteOptions{
+			err := f.KubeAdminClient().AppsV1().DaemonSets(dsNamespace).Delete(ctx, dsName, metav1.DeleteOptions{
 				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
 			})
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -72,8 +77,8 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 				ctx,
 				f.DynamicAdminClient(),
 				appsv1.SchemeGroupVersion.WithResource("daemonsets"),
-				ds.Namespace,
-				ds.Name,
+				dsNamespace,
+				dsName,
 				nil,
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())

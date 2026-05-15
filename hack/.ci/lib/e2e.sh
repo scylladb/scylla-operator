@@ -96,6 +96,9 @@ function gather-artifacts {
   kubectl create namespace gather-artifacts --dry-run=client -o=yaml | kubectl_apply -f=-
   kubectl create clusterrolebinding gather-artifacts --clusterrole=cluster-admin --serviceaccount=gather-artifacts:default --dry-run=client -o=yaml | kubectl_apply -f=-
   kubectl create -n=gather-artifacts pdb must-gather --selector='app=must-gather' --max-unavailable=0 --dry-run=client -o=yaml | kubectl_apply -f=-
+  # Wait until SA is created - eliminates an existing race condition; there is a potential further race if
+  # RBAC is not yet propagated to k8s API servers - in which case more hardening is due.
+  kubectl -n=gather-artifacts wait --for=jsonpath='{.metadata.name}'=default serviceaccount/default --timeout=60s
 
   kubectl_create -n=gather-artifacts -f=- <<EOF
 apiVersion: v1
@@ -401,6 +404,10 @@ function run-e2e {
   if [[ -n "${SCYLLADB_IMAGE_REF}" ]]; then
     e2e_command_args+=( "--scylladb-image-ref=${SCYLLADB_IMAGE_REF}" )
   fi
+
+  # Wait until SA is created - eliminates an existing race condition; there is a potential further race if
+  # RBAC is not yet propagated to k8s API servers - in which case more hardening is due.
+  kubectl -n=e2e wait --for=jsonpath='{.metadata.name}'=default serviceaccount/default --timeout=60s
 
   kubectl_create -n=e2e -f=- <<EOF
 apiVersion: v1

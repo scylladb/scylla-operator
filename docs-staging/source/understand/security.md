@@ -163,7 +163,7 @@ The operator does **not** create Kubernetes NetworkPolicy resources automaticall
 
 ## Related pages
 
-- [Overview](overview.md) — reconciliation model and component layout.
+- [Understand](index.md) — reconciliation model and component layout.
 - [Manager](manager.md) — ScyllaDB Manager deployment model.
 - [Pod disruption budgets](pod-disruption-budgets.md) — how operator and webhook PDBs protect availability.
 - [Sidecar](sidecar.md) — containers in a ScyllaDB pod, including the Agent sidecar.

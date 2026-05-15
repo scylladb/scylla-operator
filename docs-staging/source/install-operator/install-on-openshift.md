@@ -10,17 +10,15 @@ ScyllaDB Operator is a Red Hat OpenShift Certified Operator. It is available in 
 
 ## Prerequisites
 
-- An OpenShift Container Platform cluster (see the supported version range in [Releases](../reference/releases.md))
-- An account with `cluster-admin` permissions
-- `kubectl` or OpenShift CLI (`oc`) installed
-
-Ensure that your cluster meets the [general prerequisites](prerequisites.md) for ScyllaDB Operator installation.
+- An OpenShift Container Platform cluster meeting the [infrastructure requirements](provision-infrastructure/overview.md).
+- An account with `cluster-admin` permissions.
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) or OpenShift CLI (`oc`) configured to communicate with the cluster.
 
 :::{tip}
 All `kubectl` commands in this guide can be executed using the OpenShift CLI (`oc`) instead.
 :::
 
-## Step 1: Install ScyllaDB Operator
+## Install ScyllaDB Operator
 
 ScyllaDB Operator can be installed from the OpenShift software catalog using either the web console or the CLI.
 
@@ -235,106 +233,12 @@ deployment "scylla-operator" successfully rolled out
 deployment "webhook-server" successfully rolled out
 ```
 
-## Step 2: Set up NodeConfig
-
-NodeConfig configures local storage (RAID, filesystem, mount points) and performance tuning on the Kubernetes nodes where ScyllaDB will run.
-
-:::{caution}
-Local storage configuration depends on the OpenShift deployment model and the underlying platform and infrastructure. Review the examples below and adjust the manifest to your specific environment. See [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) for details.
-:::
-
-:::{note}
-Performance tuning is enabled for all nodes that are selected by `NodeConfig` by default, unless explicitly opted-out of.
-:::
-
-::::::{tabs}
-::::{group-tab} ROSA (NVMe)
-
-The following manifest creates a RAID0 array from the available NVMe devices, formats it with the XFS filesystem, and enables performance tuning recommended for production-grade ScyllaDB deployments on the selected nodes.
-
-:::{literalinclude} ../../../examples/openshift/rosa/nodeconfig.yaml
-:language: yaml
-:::
-
-:::{code-block} shell
-:substitutions:
-kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/openshift/rosa/nodeconfig.yaml
-:::
-
-::::
-
-::::{group-tab} Any platform (loop devices — dev only)
-
-The following manifest creates a loop device, formats it with the XFS filesystem, and enables performance tuning on the selected nodes.
-
-:::{caution}
-This configuration is only intended for development purposes in environments with no local NVMe disks available. Do not expect production-level performance.
-:::
-
-:::{code-block} shell
-:substitutions:
-kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/generic/nodeconfig-alpha.yaml
-:::
-
-::::
-::::::
-
-Wait for NodeConfig to finish applying changes:
-
-```shell
-kubectl wait --timeout=10m --for='condition=Progressing=False' nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1
-kubectl wait --timeout=10m --for='condition=Degraded=False' nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1
-kubectl wait --timeout=10m --for='condition=Available=True' nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1
-```
-
-**Expected output:** All three conditions are satisfied. If `Degraded` is `True` or `Available` is `False` after the timeout, check the NodeConfig status and node events for errors.
-
-## Step 3: Install the Local CSI Driver
-
-The Local CSI Driver dynamically provisions PersistentVolumes from the local storage set up by NodeConfig.
-
-The OpenShift installation includes an additional ClusterRole definition (`00_clusterrole_def_openshift`) that grants the CSI driver access to the `privileged` SecurityContextConstraints required to manage local disks.
-
-:::{code-block} shell
-:substitutions:
-kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/local-volume-provisioner/local-csi-driver/{00_clusterrole_def,00_clusterrole_def_openshift,00_clusterrole,00_namespace,00_scylladb-local-xfs.storageclass,10_csidriver,10_serviceaccount,20_clusterrolebinding,50_daemonset}.yaml
-:::
-
-```shell
-kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-csi-driver
-```
-
-**Expected output:** The DaemonSet reports all Pods ready. The `scylladb-local-xfs` StorageClass is now available.
-
-## Step 4: Install ScyllaDB Manager
-
-ScyllaDB Manager provides automated repair and backup scheduling. It deploys a small internal ScyllaDB cluster for its own database.
-
-:::{code-block} shell
-:substitutions:
-kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-prod.yaml
-:::
-
-```shell
-kubectl -n=scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
-```
-
-**Expected output:** The Deployment reports `successfully rolled out`.
-
-## Step 5: Set up monitoring (optional)
-
-On OpenShift, you can use the built-in User Workload Monitoring with Prometheus instead of deploying a standalone instance. See [Set up monitoring](../deploy-scylladb/set-up-monitoring.md#openshift-user-workload-monitoring) for OpenShift-specific instructions.
-
 ## Next steps
 
-You now have ScyllaDB Operator, storage, and Manager installed. To deploy your first ScyllaDB cluster, see [Deploy your first cluster](../deploy-scylladb/deploy-your-first-cluster.md).
-
-For production environments, review the [Production checklist](../deploy-scylladb/production-checklist.md) to verify that all recommended settings are in place.
+- [Deploy ScyllaDB](../deploy-scylladb/overview.md) — choose a platform-specific reference deployment or deploy your first cluster.
 
 ## Related pages
 
-- [Prerequisites](prerequisites.md) — Kubernetes and OpenShift version requirements, platform-specific setup.
 - [Install with GitOps](install-with-gitops.md) — alternative installation path using manifests (generic Kubernetes).
 - [Install with Helm](install-with-helm.md) — alternative installation path using Helm charts.
-- [Configure nodes](../deploy-scylladb/before-you-deploy/configure-nodes.md) — customizing NodeConfig for your environment.
 - [Upgrade ScyllaDB Operator](../upgrade/upgrade-operator.md) — version-specific upgrade steps.

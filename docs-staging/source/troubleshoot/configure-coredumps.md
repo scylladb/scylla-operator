@@ -128,7 +128,7 @@ ScyllaDB logs a backtrace and terminates. The pod stays running because the Scyl
 
 ### 3. Confirm the dump was captured
 
-Confirm the dump was captured using coredumpctl list - see [Retrieving core dumps from nodes](#retrieving-core-dumps-from-nodes) for details.
+Confirm the dump was captured using coredumpctl list - see [Retrieving core dumps from nodes](#retrieve-core-dumps-from-nodes) for details.
 
 ## Retrieve core dumps from nodes
 

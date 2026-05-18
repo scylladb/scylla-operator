@@ -110,10 +110,7 @@ The webhook server runs as a separate Deployment (`scylla-operator-webhook-serve
 TLS certificates for the webhook server are provisioned automatically using [cert-manager](https://cert-manager.io/).
 The `ValidatingWebhookConfiguration` is configured with a `caBundle` injected by cert-manager.
 
-:::{note}
-Some Kubernetes platforms have non-conformant networking that prevents the API server from reaching the webhook server.
-If resource creation fails with webhook errors after installation, see [Troubleshoot installation issues](../troubleshoot/troubleshoot-installation.md).
-:::
+
 
 :::{toctree}
 :maxdepth: 1

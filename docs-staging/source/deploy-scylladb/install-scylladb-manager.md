@@ -4,7 +4,6 @@
 With Manager installed, ScyllaDB Operator can:
 
 - **Schedule backups** — automatically snapshot your data and upload it to object storage.
-  See [Schedule backups](../operate/schedule-backups.md).
 - **Schedule repairs** — run automated anti-entropy repairs to keep data consistent across replicas.
 - **Restore from backup** — recover a ScyllaDB cluster from a previously created backup snapshot.
   See [Restore from backup](../operate/restore-from-backup.md).
@@ -72,5 +71,4 @@ You should see the `scylla-manager` Deployment Pod and one or more Pods for the 
 
 ## Next steps
 
-- [Schedule backups](../operate/schedule-backups.md) — configure object storage credentials and schedule automated backups.
 - [ScyllaDB Manager](../understand/manager.md) — understand Manager architecture, task synchronization, and security.

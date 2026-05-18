@@ -132,7 +132,7 @@ For production-grade deployments with multi-rack, multi-zone configurations and 
 
 ## Key fields explained
 
-For the full API reference, see the [API reference](../reference/api/).
+For the full API reference, see the [API reference](../reference/api/index.md).
 
 ## Spread racks across availability zones
 

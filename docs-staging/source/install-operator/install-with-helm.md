@@ -123,6 +123,6 @@ kubectl delete crd scyllaclusters.scylla.scylladb.com nodeconfigs.scylla.scyllad
 
 ## Related pages
 
-- [Prerequisites](prerequisites.md) — Kubernetes version requirements and platform-specific setup.
+- [Prerequisites](overview.md) — Kubernetes version requirements and platform-specific setup.
 - [Install with GitOps](install-with-gitops.md) — alternative installation path using manifests.
 - [Install on OpenShift](install-on-openshift.md) — installation path for Red Hat OpenShift via OLM.

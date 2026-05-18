@@ -14,7 +14,7 @@ See [Install with GitOps](install-with-gitops.md) for installation steps.
 
 ### Prometheus Operator (optional)
 
-If you plan to use ScyllaDB Operator's [monitoring integration](../deploy-scylladb/set-up-monitoring.md), the [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator) must be installed in the cluster.
+If you plan to use ScyllaDB Operator's [monitoring integration](../deploy-scylladb/set-up-monitoring/index.md), the [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator) must be installed in the cluster.
 This is not required for the operator itself to function.
 
 ## Installation methods

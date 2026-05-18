@@ -76,5 +76,5 @@ For the full support matrix including supported Kubernetes versions, ScyllaDB ve
 
 - [Install](../install-operator/index.md) ScyllaDB Operator in your Kubernetes cluster.
 - [Deploy your first cluster](../deploy-scylladb/deploy-your-first-cluster.md) once the Operator is installed.
-- See a complete end-to-end walkthrough for [GKE](../deploy-scylladb/reference-deployment-gke.md), [EKS](../deploy-scylladb/reference-deployment-eks.md), or [OpenShift](../deploy-scylladb/reference-deployment-openshift.md).
+- See a complete end-to-end walkthrough for [GKE](../deploy-scylladb/reference-deployments/reference-deployment-gke.md), [EKS](../deploy-scylladb/reference-deployments/reference-deployment-eks.md), or [OpenShift](../deploy-scylladb/reference-deployments/reference-deployment-openshift.md).
 - Learn about the Operator's [architecture](../understand/index.md).

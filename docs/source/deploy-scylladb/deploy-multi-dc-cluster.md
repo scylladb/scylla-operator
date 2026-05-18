@@ -12,7 +12,7 @@ Most notably, destroying one of the Kubernetes clusters or ScyllaDB datacenters 
 
 ## Prerequisites
 
-- Two interconnected Kubernetes clusters capable of communicating with each other over Pod IPs. If you have not set up the infrastructure yet, see [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md).
+- Two interconnected Kubernetes clusters capable of communicating with each other over Pod IPs. If you have not set up the infrastructure yet, see [Set up multi-DC infrastructure](../install-operator/provision-infrastructure/set-up-multi-dc-infrastructure.md).
 - Each cluster must have:
   - A node pool dedicated to ScyllaDB nodes composed of at least 3 nodes running in different zones, labeled with `scylla.scylladb.com/node-type: scylla`.
   - ScyllaDB Operator installed and its prerequisites met.
@@ -457,6 +457,6 @@ UN  172.16.87.27   503 KB     256          ?       c19c89cb-e24c-4062-9df4-2aa90
 
 ## Related pages
 
-- [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md)
+- [Set up multi-DC infrastructure](../install-operator/provision-infrastructure/set-up-multi-dc-infrastructure.md)
 - [Set up networking](set-up-networking/index.md)
 - [Deploy your first cluster](deploy-your-first-cluster.md)

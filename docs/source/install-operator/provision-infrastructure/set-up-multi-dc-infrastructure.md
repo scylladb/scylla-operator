@@ -1,6 +1,6 @@
 # Set up multi-DC infrastructure
 
-This guide describes how to create multiple interconnected Kubernetes clusters in different regions that can serve as a platform for [deploying a multi-datacenter ScyllaDB cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
+This guide describes how to create multiple interconnected Kubernetes clusters in different regions that can serve as a platform for [deploying a multi-datacenter ScyllaDB cluster](../../deploy-scylladb/deploy-multi-dc-cluster.md).
 
 The guide walks through creating and configuring clusters in two distinct regions. The provided values are exemplary and can be adjusted to your needs.
 
@@ -61,7 +61,7 @@ Save it as `CONTEXT_DC1` for use in subsequent commands.
 
 #### Deploy ScyllaDB Operator
 
-Deploy ScyllaDB Operator in this cluster by following the [installation guide](index.md).
+Deploy ScyllaDB Operator in this cluster by following the [installation guide](../index.md).
 
 #### Create the second EKS cluster
 
@@ -205,7 +205,7 @@ Save it as `CONTEXT_DC1` for use in subsequent commands.
 
 #### Deploy ScyllaDB Operator
 
-Deploy ScyllaDB Operator in this cluster by following the [installation guide](index.md).
+Deploy ScyllaDB Operator in this cluster by following the [installation guide](../index.md).
 
 #### Create the second GKE cluster
 
@@ -264,9 +264,9 @@ Refer to [Automatically created firewall rules](https://cloud.google.com/kuberne
 
 ## Next steps
 
-With the infrastructure prepared, proceed to [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
+With the infrastructure prepared, proceed to [Deploy a multi-datacenter cluster](../../deploy-scylladb/deploy-multi-dc-cluster.md).
 
 ## Related pages
 
-- [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md)
-- [Set up dedicated node pools](provision-infrastructure/index.md)
+- [Deploy a multi-datacenter cluster](../../deploy-scylladb/deploy-multi-dc-cluster.md)
+- [Set up dedicated node pools](index.md)

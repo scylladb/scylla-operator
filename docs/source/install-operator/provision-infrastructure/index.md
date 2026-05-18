@@ -21,4 +21,5 @@ set-up-gke-cluster
 set-up-eks-cluster
 set-up-oke-cluster
 set-up-openshift-cluster
+set-up-multi-dc-infrastructure
 :::

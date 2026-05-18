@@ -173,9 +173,6 @@ linkcheck_ignore = [
     "https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
     # Ignore anchor that works as expected in the browser (probably a matter of the JS page rendering).
     "https://www.scylladb.com/product/support/#enterprise-support",
-    # docs.openshift.com redirects to docs.redhat.com which blocks automated link checkers with 403.
-    "https://docs.openshift.com/container-platform/.*",
-    "https://docs.openshift.com/rosa/.*",
 ]
 
 linkcheck_anchors_ignore_for_url = [
@@ -195,6 +192,10 @@ linkcheck_retries = (
 # Overriding with a plain non-browser UA bypasses the restriction.
 linkcheck_request_headers = {
     "https://docs.redhat.com/": {
+        "User-Agent": "python-requests/2.32.5",
+    },
+    # docs.openshift.com redirects to docs.redhat.com.
+    "https://docs.openshift.com/": {
         "User-Agent": "python-requests/2.32.5",
     },
 }

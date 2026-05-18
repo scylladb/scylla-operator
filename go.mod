@@ -18,7 +18,7 @@ require (
 	github.com/containers/image/v5 v5.36.2
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/evanphx/json-patch v5.9.11+incompatible
-	github.com/go-openapi/runtime v0.30.0
+	github.com/go-openapi/runtime v0.31.0
 	github.com/go-openapi/strfmt v0.26.2
 	github.com/gobwas/glob v0.2.3
 	github.com/gocql/gocql v1.7.0
@@ -28,17 +28,17 @@ require (
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed
 	github.com/magiconair/properties v1.8.10
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/onsi/ginkgo/v2 v2.28.3
-	github.com/onsi/gomega v1.40.0
+	github.com/onsi/ginkgo/v2 v2.29.0
+	github.com/onsi/gomega v1.41.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.2
 	github.com/prometheus/client_golang v1.23.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/scylladb/go-set v1.0.2
 	github.com/scylladb/gocqlx/v3 v3.0.4
-	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260514105451-3c00c4895ed3
-	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260514105451-3c00c4895ed3
-	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260514105451-3c00c4895ed3
+	github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260514140515-84974b2a0571
+	github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260514140515-84974b2a0571
+	github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260514140515-84974b2a0571
 	github.com/scylladb/scylladb-swagger-go-client v0.2.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -47,7 +47,7 @@ require (
 	go.uber.org/config v1.4.1
 	golang.org/x/sys v0.44.0
 	golang.org/x/time v0.15.0
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.36.1
@@ -180,11 +180,11 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/lint v0.0.0-20241112194109-818c5a804067 // indirect
 	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/term v0.42.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/term v0.43.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260226221140-a57be14db171 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect

@@ -173,11 +173,16 @@ linkcheck_ignore = [
     "https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
     # Ignore anchor that works as expected in the browser (probably a matter of the JS page rendering).
     "https://www.scylladb.com/product/support/#enterprise-support",
+    # docs.openshift.com redirects to docs.redhat.com which blocks automated link checkers with 403.
+    "https://docs.openshift.com/container-platform/.*",
+    "https://docs.openshift.com/rosa/.*",
 ]
 
 linkcheck_anchors_ignore_for_url = [
     "https://github.com/prometheus-operator/prometheus-operator/blob/e4c727291acc543dab531bc4aaf16637067c1b86/pkg/apis/monitoring/v1/.*",
     "https://kubernetes.io/docs/concepts/storage/volumes",
+    # The IAM roles page uses dynamic JS rendering for anchors; they work in browsers but not in linkcheck.
+    "https://cloud.google.com/iam/docs/understanding-roles",
 ]
 
 # Linkcheck timeout and retry configuration to handle slow-responding external sites.

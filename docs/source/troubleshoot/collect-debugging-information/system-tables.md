@@ -96,7 +96,7 @@ SELECT * FROM system.large_cells LIMIT 20;
 ```
 
 Large partitions are a common cause of performance issues and timeouts.
-See the [ScyllaDB documentation on large partitions](https://docs.scylladb.com/stable/troubleshoot/large-partition-table.html).
+See the [ScyllaDB documentation on large partitions](https://docs.scylladb.com/manual/stable/troubleshooting/large-partition-table.html).
 
 ### Repair history
 

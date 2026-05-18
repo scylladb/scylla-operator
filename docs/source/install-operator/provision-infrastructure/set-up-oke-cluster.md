@@ -69,7 +69,7 @@ The `ScyllaCluster` manifest in the [reference deployment](../../deploy-scylladb
 
 OKE requires a VCN with appropriate subnets, gateways, route tables, and security rules.
 The topology created in this section is the minimum needed for an OKE cluster with VCN-Native Pod Networking and a public Kubernetes API endpoint.
-This guide uses a public API endpoint for simplicity; for production environments, consider using a [private endpoint](https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengclusternetworkconfig.htm) instead.
+This guide uses a public API endpoint for simplicity; for production environments, consider using a [private endpoint](https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengnetworkconfig.htm) instead.
 For full background on the supported topologies, see the [Container Engine for Kubernetes Networking](https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengnetworkconfig.htm) reference.
 
 The resources created are:
@@ -197,7 +197,7 @@ This pool runs system components (cert-manager, ScyllaDB Operator, etc.):
 ### Create the dedicated ScyllaDB node pool
 
 This pool is dedicated to ScyllaDB workloads.
-The Cloud-Init script enables the [static CPU manager policy](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/#static-policy), which is required for CPU pinning.
+The Cloud-Init script enables the [static CPU manager policy](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/#static-policy-configuration), which is required for CPU pinning.
 
 :::{literalinclude} ../../../../examples/oke/setup-oke-cluster.sh
 :language: bash

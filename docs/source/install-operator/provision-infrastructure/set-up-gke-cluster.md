@@ -53,7 +53,7 @@ Create a temporary directory for configuration files used in this guide:
 
 ## Create the kubelet configuration
 
-The dedicated ScyllaDB node pool requires [static CPU manager policy](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/#static-policy) for CPU pinning.
+The dedicated ScyllaDB node pool requires [static CPU manager policy](https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/#static-policy-configuration) for CPU pinning.
 Create a `systemconfig.yaml` that will be passed to the node pool:
 
 :::{literalinclude} ../../../../examples/gke/setup-gke-cluster.sh

@@ -154,7 +154,7 @@ spec:
         - 203.0.113.10
 ```
 
-Alternatively, use `UserManaged` certificates from your own PKI or cert-manager for Alternator. See [Alternator](alternator.md) for details.
+Alternatively, use `UserManaged` certificates from your own PKI or cert-manager for Alternator. See [Alternator](../../connect-your-app/alternator.md) for details.
 
 ## Verify external access
 
@@ -195,7 +195,7 @@ Replace `<EXTERNAL-IP>` with the address shown in the Service output.
 
 ## Related pages
 
-- [Discovery endpoint](discovery.md) — exposing the discovery Service.
-- [Connect via CQL](connect-via-cql.md) — client connection setup.
-- [Networking architecture](../understand/networking.md) — how Services and expose options work.
-- [Security](../understand/security.md) — TLS certificate management.
+- [Discovery endpoint](../../connect-your-app/discovery.md) — exposing the discovery Service.
+- [Connect via CQL](../../connect-your-app/connect-via-cql.md) — client connection setup.
+- [Networking architecture](../../understand/networking.md) — how Services and expose options work.
+- [Security](../../understand/security.md) — TLS certificate management.

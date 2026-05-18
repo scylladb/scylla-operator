@@ -101,5 +101,5 @@ Having a stable discovery contact point is especially important when using ephem
 ## Related pages
 
 - [Connect via CQL](connect-via-cql.md) — using the discovery endpoint for CQL connections.
-- [Configure external access](configure-external-access.md) — configuring expose options for external connectivity.
+- [Configure external access](../deploy-scylladb/set-up-networking/configure-external-access.md) — configuring expose options for external connectivity.
 - [Networking architecture](../understand/networking.md) — how Services and expose options work.

@@ -161,5 +161,5 @@ When using a ScyllaDB or Cassandra driver in your application:
 
 - [Discovery endpoint](discovery.md) — how the client Service works and how to expose it.
 - [Alternator (DynamoDB API)](alternator.md) — connecting via the DynamoDB-compatible API.
-- [Configure external access](configure-external-access.md) — connecting from outside the Kubernetes cluster.
+- [Configure external access](../deploy-scylladb/set-up-networking/configure-external-access.md) — connecting from outside the Kubernetes cluster.
 - [Security](../understand/security.md) — TLS certificate management.

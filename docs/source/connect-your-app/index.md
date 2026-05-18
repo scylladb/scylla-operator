@@ -8,5 +8,4 @@ This section covers how to connect applications and tools to a ScyllaDB cluster 
 connect-via-cql
 alternator
 discovery
-configure-external-access
 :::

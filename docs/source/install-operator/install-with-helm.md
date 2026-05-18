@@ -4,7 +4,7 @@ This page walks you through installing ScyllaDB Operator and its dependencies us
 
 :::{note}
 The Helm installation path supports single-datacenter deployments only.
-For multi-datacenter ScyllaDB clusters, use the [GitOps installation path](install-with-gitops.md) and follow [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
+For multi-datacenter ScyllaDB clusters, use the [GitOps installation path](install-with-gitops.md).
 :::
 
 :::{warning}

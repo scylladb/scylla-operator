@@ -85,7 +85,7 @@ The controller manager runs the following controllers:
 
 ### Experimental controllers
 
-The following controllers are run by Operator, but there is no current plan to make their respective CRDs generally available. These controllers and CRDs may be removed in a future version. For multi-datacenter deployments, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md) instead.
+The following controllers are run by Operator, but there is no current plan to make their respective CRDs generally available. These controllers and CRDs may be removed in a future version.
 
 | Controller | What it reconciles |
 |---|---|

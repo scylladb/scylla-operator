@@ -155,7 +155,7 @@ exposeOptions:
 
 Two or more Kubernetes clusters in separate VPCs with VPC peering or a shared VPC. Each datacenter is a separate `ScyllaCluster` resource connected to the others via `externalSeeds`. Pod IPs are routable across VPCs, so both nodes and clients use them directly. No virtual IP is needed, hence Headless.
 
-See [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md) for the step-by-step procedure and [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md) for the platform networking setup.
+See [Deploy a multi-datacenter cluster](../deploy-scylladb/index.md) for deployment guides.
 
 ### External access via load balancers
 

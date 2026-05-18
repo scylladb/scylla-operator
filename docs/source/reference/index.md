@@ -11,7 +11,5 @@ ipv6-configuration
 releases
 known-issues
 conditions
-sizing-guide
-benchmarking
 nodetool-alternatives
 :::

@@ -61,7 +61,6 @@ Should show `AVAILABLE=True`.
 ## Related pages
 
 - [Deploy your first cluster](deploy-your-first-cluster.md) — creating a ScyllaCluster.
-- [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md) — multi-datacenter deployment using multiple `ScyllaCluster` resources.
 - [Configure nodes](before-you-deploy/configure-nodes.md) — disk setup, sysctls, and performance tuning.
 - [Configure CPU pinning](before-you-deploy/configure-cpu-pinning.md) — configuring CPU exclusivity.
 - [Set up monitoring](set-up-monitoring/overview.md) — Prometheus and Grafana setup.

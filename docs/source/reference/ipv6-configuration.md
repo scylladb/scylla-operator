@@ -36,8 +36,6 @@ When `spec.network.ipFamilies` includes IPv6 as the first entry, the Operator au
 
 Broadcast addresses (`--broadcast-address` and `--broadcast-rpc-address`) are configured through `spec.exposeOptions.broadcastOptions`, not by setting ScyllaDB arguments directly. The Operator ensures broadcast addresses match the selected IP family.
 
-See [Exposing clusters](../deploy-scylladb/set-up-networking/expose-clusters.md) for details on broadcast options.
-
 ## Validation rules
 
 The Operator validates IPv6-related fields at admission time.

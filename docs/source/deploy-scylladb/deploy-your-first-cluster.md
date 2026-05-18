@@ -1,6 +1,6 @@
 # Deploy your first cluster
 
-This page walks you through creating a ScyllaDB cluster using the `ScyllaCluster` resource. It starts with a minimal development cluster you can deploy in minutes, then covers production-grade configuration. For multi-datacenter deployments, see [Deploy a multi-DC cluster](deploy-multi-dc-cluster.md).
+This page walks you through creating a ScyllaDB cluster using the `ScyllaCluster` resource. It starts with a minimal development cluster you can deploy in minutes, then covers production-grade configuration.
 
 :::{tip}
 You can inspect all available API fields for your installed Operator version with:

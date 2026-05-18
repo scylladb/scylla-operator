@@ -213,8 +213,6 @@ network:
 - The **second** IP family (`IPv6`) makes services accessible via IPv6 too
 - `PreferDualStack` falls back to single-stack if dual-stack isn't available
 
-For more details on how ScyllaDB nodes advertise themselves, see [Exposing ScyllaDB clusters](../expose-clusters.md).
-
 ## What's next?
 
 Now that you have a working IPv6-enabled cluster, you can:

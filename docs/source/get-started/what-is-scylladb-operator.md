@@ -43,9 +43,7 @@ The Operator manages each datacenter independently. The following must be manage
 - **Seed configuration** — the `externalSeeds` field of each `ScyllaCluster` must be populated with the node addresses of the other datacenters. These addresses must be kept up to date if nodes are replaced or IPs change.
 - **ScyllaDB Manager auth token synchronization** — when ScyllaDB Manager is deployed in one datacenter, its auth token Secret must be manually copied to each other datacenter and the Manager Agent pods restarted. See [ScyllaDB Manager](../understand/manager.md).
 - **Replication factor configuration** — keyspace replication factors must be updated via CQL after adding a new datacenter, using `ALTER KEYSPACE`.
-- **Network peering and firewall rules** — inter-cluster Pod-to-Pod connectivity must be configured at the infrastructure level. See [Set up multi-DC infrastructure](../install-operator/set-up-multi-dc-infrastructure.md).
-
-For step-by-step instructions, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
+- **Network peering and firewall rules** — inter-cluster Pod-to-Pod connectivity must be configured at the infrastructure level.
 
 ## Key user-facing resources
 

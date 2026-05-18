@@ -5,6 +5,5 @@ Configure how ScyllaDB clusters are exposed inside and outside Kubernetes, inclu
 :::{toctree}
 :maxdepth: 1
 
-expose-clusters
 ipv6/index
 :::

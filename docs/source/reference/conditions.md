@@ -53,5 +53,4 @@ Each condition object contains:
 
 ## Related pages
 
-- [Check cluster health](../troubleshoot/check-cluster-health.md) — using conditions to diagnose a cluster
 - [Investigate restarts](../troubleshoot/investigate-restarts.md) — using conditions alongside pod events

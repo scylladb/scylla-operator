@@ -113,8 +113,6 @@ Every `ScyllaCluster` is provisioned with a unique, randomly generated auth toke
 
 4. **Define Manager tasks** on the `ScyllaCluster` in the Kubernetes cluster where Manager is running.
 
-For the full procedure, see [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md).
-
 ## Limitations
 
 - **Restore** is not yet available through the Operator's declarative API. To restore from a Manager backup, you must exec into the Manager pod and use `sctool` directly. See [Back up and restore](../operate/back-up-and-restore.md).

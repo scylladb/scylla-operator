@@ -8,10 +8,10 @@ System tables contain ScyllaDB-internal state — repair history, SSTable activi
 
 | Use case | Tool |
 |---|---|
-| Kubernetes-level diagnostics (pod status, events, logs) | [must-gather](must-gather.md) |
+| Kubernetes-level diagnostics (pod status, events, logs) | [Collect debugging information](index.md) |
 | ScyllaDB-internal state (repair history, SSTable stats, large partitions) | System tables (this page) |
 
-Include system table output alongside must-gather archives when filing support tickets for ScyllaDB-level issues (performance, data consistency, repair).
+Include system table output alongside debugging information archives when filing support tickets for ScyllaDB-level issues (performance, data consistency, repair).
 
 ## How to query system tables
 
@@ -185,6 +185,4 @@ The `EXPAND ON` command formats each row vertically, making wide tables easier t
 
 ## Related pages
 
-- [must-gather](must-gather.md)
-- [must-gather contents](must-gather-contents.md)
-- [Cluster health](../check-cluster-health.md)
+- [Collect debugging information](index.md)

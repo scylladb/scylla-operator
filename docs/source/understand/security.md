@@ -141,7 +141,7 @@ The operator generates a unique authentication token for each `ScyllaCluster` an
 - Used by ScyllaDB Manager to authenticate API calls to the Agent.
 - Used by the operator itself when it communicates with the Agent (for example, to coordinate cleanup jobs).
 
-In multi-DC deployments using multiple `ScyllaCluster` resources, ScyllaDB Manager needs a single token to communicate with all datacenters. You must manually extract the token from one datacenter's `<cluster-name>-auth-token` Secret, patch it into the other datacenters' Secrets, and then rolling-restart those datacenters so the Agent picks up the new token. See [Deploy a multi-datacenter cluster](../deploy-scylladb/deploy-multi-dc-cluster.md) for the step-by-step procedure.
+In multi-DC deployments using multiple `ScyllaCluster` resources, ScyllaDB Manager needs a single token to communicate with all datacenters. You must manually extract the token from one datacenter's `<cluster-name>-auth-token` Secret, patch it into the other datacenters' Secrets, and then rolling-restart those datacenters so the Agent picks up the new token.
 
 ### Shared namespace
 

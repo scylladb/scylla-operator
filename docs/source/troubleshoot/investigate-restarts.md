@@ -120,5 +120,4 @@ See [Collect debugging information](collect-debugging-information/index.md) for 
 
 ## Related pages
 
-- [Cluster health](check-cluster-health.md)
 - [Collecting debugging information](collect-debugging-information/index.md)

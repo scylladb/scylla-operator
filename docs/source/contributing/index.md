@@ -69,7 +69,7 @@ Report issues on the [GitHub issue tracker](https://github.com/scylladb/scylla-o
 Before opening a new issue:
 1. Search existing issues to avoid duplicates.
 2. Include the Operator version (`kubectl -n scylla-operator get deployment scylla-operator -o jsonpath='{.spec.template.spec.containers[0].image}'`).
-3. Attach a [must-gather](../troubleshoot/collect-debugging-information/must-gather.md) archive if the issue is a runtime problem.
+3. Attach a [debugging information archive](../troubleshoot/collect-debugging-information/index.md) if the issue is a runtime problem.
 
 ## Related pages
 

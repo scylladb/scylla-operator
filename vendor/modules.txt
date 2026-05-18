@@ -298,7 +298,7 @@ github.com/go-openapi/jsonreference/internal
 # github.com/go-openapi/loads v0.23.3
 ## explicit; go 1.24.0
 github.com/go-openapi/loads
-# github.com/go-openapi/runtime v0.30.0
+# github.com/go-openapi/runtime v0.31.0
 ## explicit; go 1.25.0
 github.com/go-openapi/runtime
 github.com/go-openapi/runtime/client
@@ -574,7 +574,7 @@ github.com/munnerz/goautoneg
 # github.com/oklog/ulid/v2 v2.1.1
 ## explicit; go 1.15
 github.com/oklog/ulid/v2
-# github.com/onsi/ginkgo/v2 v2.28.3
+# github.com/onsi/ginkgo/v2 v2.29.0
 ## explicit; go 1.25.0
 github.com/onsi/ginkgo/v2
 github.com/onsi/ginkgo/v2/config
@@ -598,7 +598,7 @@ github.com/onsi/ginkgo/v2/internal/reporters
 github.com/onsi/ginkgo/v2/internal/testingtproxy
 github.com/onsi/ginkgo/v2/reporters
 github.com/onsi/ginkgo/v2/types
-# github.com/onsi/gomega v1.40.0
+# github.com/onsi/gomega v1.41.0
 ## explicit; go 1.24.0
 github.com/onsi/gomega
 github.com/onsi/gomega/format
@@ -695,11 +695,11 @@ github.com/scylladb/go-set/strset
 github.com/scylladb/gocqlx/v3
 github.com/scylladb/gocqlx/v3/qb
 github.com/scylladb/gocqlx/v3/table
-# github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260514105451-3c00c4895ed3
+# github.com/scylladb/scylla-manager/v3/pkg/managerclient v0.0.0-20260514140515-84974b2a0571
 ## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/pkg/managerclient
 github.com/scylladb/scylla-manager/v3/pkg/managerclient/table
-# github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260514105451-3c00c4895ed3
+# github.com/scylladb/scylla-manager/v3/pkg/util v0.0.0-20260514140515-84974b2a0571
 ## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/pkg/util
 github.com/scylladb/scylla-manager/v3/pkg/util/inexlist
@@ -709,7 +709,7 @@ github.com/scylladb/scylla-manager/v3/pkg/util/sizesuffix
 github.com/scylladb/scylla-manager/v3/pkg/util/timeutc
 github.com/scylladb/scylla-manager/v3/pkg/util/uuid
 github.com/scylladb/scylla-manager/v3/pkg/util/version
-# github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260514105451-3c00c4895ed3
+# github.com/scylladb/scylla-manager/v3/swagger v0.0.0-20260514140515-84974b2a0571
 ## explicit; go 1.25.1
 github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/client/operations
 github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models
@@ -797,7 +797,7 @@ go.yaml.in/yaml/v3
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.53.0
+# golang.org/x/net v0.54.0
 ## explicit; go 1.25.0
 golang.org/x/net/html
 golang.org/x/net/html/atom
@@ -827,10 +827,10 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.42.0
+# golang.org/x/term v0.43.0
 ## explicit; go 1.25.0
 golang.org/x/term
-# golang.org/x/text v0.36.0
+# golang.org/x/text v0.37.0
 ## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -888,7 +888,7 @@ golang.org/x/tools/internal/versions
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171
 ## explicit; go 1.25.0
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.81.0
+# google.golang.org/grpc v1.81.1
 ## explicit; go 1.25.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes

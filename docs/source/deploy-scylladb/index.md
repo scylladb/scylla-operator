@@ -35,5 +35,6 @@ reference-deployments/index
 install-scylladb-manager
 set-up-networking/index
 set-up-monitoring/index
+deploy-multi-dc-cluster
 production-checklist
 :::

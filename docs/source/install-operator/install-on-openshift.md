@@ -10,7 +10,7 @@ ScyllaDB Operator is a Red Hat OpenShift Certified Operator. It is available in 
 
 ## Prerequisites
 
-- An OpenShift Container Platform cluster meeting the [infrastructure requirements](provision-infrastructure/overview.md).
+- An OpenShift Container Platform cluster meeting the [infrastructure requirements](provision-infrastructure/index.md).
 - An account with `cluster-admin` permissions.
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) or [OpenShift CLI (`oc`)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/cli_tools/openshift-cli-oc#installing-openshift-cli) configured to communicate with the cluster.
 
@@ -235,7 +235,7 @@ deployment "webhook-server" successfully rolled out
 
 ## Next steps
 
-- [Deploy ScyllaDB](../deploy-scylladb/overview.md) — choose a platform-specific reference deployment or deploy your first cluster.
+- [Deploy ScyllaDB](../deploy-scylladb/index.md) — choose a platform-specific reference deployment or deploy your first cluster.
 
 ## Related pages
 

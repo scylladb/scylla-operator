@@ -3,7 +3,7 @@
 This guide will walk you through setting up a complete monitoring stack for your ScyllaDB clusters using the
 [`ScyllaDBMonitoring`](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource and an external `Prometheus` instance.
 
-The guide assumes you have read the [overview](overview.md) of ScyllaDB monitoring and are familiar with the concepts of Prometheus and Grafana.
+The guide assumes you have read the [overview](index.md) of ScyllaDB monitoring and are familiar with the concepts of Prometheus and Grafana.
 It doesn't cover every possible configuration option, but it will highlight the most important ones. For a complete reference of all configuration options, 
 see the [`ScyllaDBMonitoring` API reference](../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst).
 
@@ -26,7 +26,7 @@ Before you can set up your ScyllaDB monitoring, you need the following component
   kubectl rollout restart -n scylla-operator deployment/scylla-operator
   :::
 
-- **ScyllaDB Operator** - for more information on how to deploy it, see [the installation guide](../../install-operator/overview.md).
+- **ScyllaDB Operator** - for more information on how to deploy it, see [the installation guide](../../install-operator/index.md).
 - **A ScyllaCluster** - the ScyllaDB cluster you want to monitor.
 
 ## Deploy external Prometheus

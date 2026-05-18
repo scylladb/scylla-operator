@@ -138,4 +138,4 @@ kubectl get pods -l scylla/cluster=scylladb -o wide
 
 ## Platform-specific guides
 
-For end-to-end node pool creation on a specific platform, see the [platform-specific cluster setup guides](../../install-operator/provision-infrastructure/overview.md).
+For end-to-end node pool creation on a specific platform, see the [platform-specific cluster setup guides](../../install-operator/provision-infrastructure/index.md).

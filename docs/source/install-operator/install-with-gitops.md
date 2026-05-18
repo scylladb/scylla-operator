@@ -14,7 +14,7 @@ ScyllaDB Operator must run in the `scylla-operator` namespace.
 
 ## Prerequisites
 
-- A Kubernetes cluster meeting the [infrastructure requirements](provision-infrastructure/overview.md).
+- A Kubernetes cluster meeting the [infrastructure requirements](provision-infrastructure/index.md).
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) configured to communicate with the cluster.
 
 ## Install cert-manager
@@ -92,4 +92,4 @@ kubectl wait --for='condition=established' --timeout=60s crd/prometheuses.monito
 
 ## Next steps
 
-- [Deploy ScyllaDB](../deploy-scylladb/overview.md) — choose a platform-specific reference deployment or deploy your first cluster.
+- [Deploy ScyllaDB](../deploy-scylladb/index.md) — choose a platform-specific reference deployment or deploy your first cluster.

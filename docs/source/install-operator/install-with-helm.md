@@ -17,7 +17,7 @@ ScyllaDB Operator must run in the `scylla-operator` namespace.
 
 ## Prerequisites
 
-- A Kubernetes cluster meeting the [infrastructure requirements](provision-infrastructure/overview.md).
+- A Kubernetes cluster meeting the [infrastructure requirements](provision-infrastructure/index.md).
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) configured to communicate with the cluster.
 - [Helm 3+](https://helm.sh/docs/intro/install/) installed.
 
@@ -101,7 +101,7 @@ kubectl -n=prometheus-operator rollout status --timeout=10m deployment.apps/prom
 
 ## Next steps
 
-- [Deploy ScyllaDB](../deploy-scylladb/overview.md) — choose a platform-specific reference deployment or deploy your first cluster.
+- [Deploy ScyllaDB](../deploy-scylladb/index.md) — choose a platform-specific reference deployment or deploy your first cluster.
 
 ## Clean up
 
@@ -123,6 +123,6 @@ kubectl delete crd scyllaclusters.scylla.scylladb.com nodeconfigs.scylla.scyllad
 
 ## Related pages
 
-- [Prerequisites](overview.md) — Kubernetes version requirements and platform-specific setup.
+- [Prerequisites](index.md) — Kubernetes version requirements and platform-specific setup.
 - [Install with GitOps](install-with-gitops.md) — alternative installation path using manifests.
 - [Install on OpenShift](install-on-openshift.md) — installation path for Red Hat OpenShift via OLM.

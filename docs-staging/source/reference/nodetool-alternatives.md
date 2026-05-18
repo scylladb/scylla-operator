@@ -42,7 +42,7 @@ These commands change cluster membership or topology. Using them directly will d
   - Operator alternative
 * - [`decommission`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/decommission.html)
   - Desyncs StatefulSet replica count and Operator tracking labels. Operator will not know the node was decommissioned.
-  - Scale down the rack's `members` count by 1. The Operator labels the service, the sidecar calls decommission, and the StatefulSet scales down after completion. See [Scale cluster](../operate/scale-cluster.md).
+  - Scale down the rack's `members` count by 1. The Operator labels the service, the sidecar calls decommission, and the StatefulSet scales down after completion. See [Scale, add, remove racks](../operate/scale-add-remove-racks.md).
 * - [`removenode`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html)
   - Removes a node from the ring without Operator knowledge. Operator expects to manage membership via scale-down or replace.
   - Use the `scylla/replace` label on the member Service to trigger Operator-managed replacement. For dead nodes, see [Recover from failed replace](../troubleshoot/recover-from-failed-replace.md).
@@ -133,6 +133,6 @@ These commands are safe to use directly. The Operator either handles them automa
 ## Related pages
 
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md) — how the Operator maps ScyllaDB topology onto Kubernetes primitives.
-- [Scale cluster](../operate/scale-cluster.md) — adding and removing nodes via the Operator.
+- [Scale, add, remove racks](../operate/scale-add-remove-racks.md) — adding and removing nodes via the Operator.
 - [Replace nodes](../operate/replace-nodes.md) — Operator-managed node replacement.
 - [Automatic data cleanup](../understand/automatic-data-cleanup.md) — how the Operator handles post-scaling cleanup.

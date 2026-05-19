@@ -7,7 +7,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -38,19 +37,20 @@ import (
 )
 
 var (
-	deploymentResourceInfo = collect.ResourceInfo{
+	subscriptionResourceInfo = collect.ResourceInfo{
 		Resource: schema.GroupVersionResource{
-			Group:    "apps",
-			Version:  "v1",
-			Resource: "deployments",
+			Group:    "operators.coreos.com",
+			Version:  "v1alpha1",
+			Resource: "subscriptions",
 		},
 		Scope: meta.RESTScopeNamespace,
 	}
 )
 
 const (
-	operatorNamespace      = "scylla-operator"
-	operatorDeploymentName = "scylla-operator"
+	operatorNamespace        = "scylla-operator"
+	operatorDeploymentName   = "scylla-operator"
+	operatorSubscriptionName = "scylladb-operator-subscription"
 )
 
 var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
@@ -353,63 +353,49 @@ var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, func() {
 			g.Skip(fmt.Sprintf("Skipping because %q feature is disabled", features.AutomaticTLSCertificates))
 		}
 
-		framework.By("Snapshotting the operator Deployment for restoration")
+		ecdsaKeyType := "ECDSA"
+		ecdsaKeySize := "256"
+
+		framework.By("Snapshotting the operator Subscription for restoration")
 		rc := framework.NewRestoringCleaner(
 			ctx,
 			f.AdminClientConfig(),
 			f.KubeAdminClient(),
 			f.DynamicAdminClient(),
-			deploymentResourceInfo,
+			subscriptionResourceInfo,
 			operatorNamespace,
-			operatorDeploymentName,
+			operatorSubscriptionName,
 			framework.RestoreStrategyUpdate,
 		)
 		f.AddCleaners(rc)
 
-		framework.By("Patching the operator Deployment to use ECDSA keys")
-		operatorDeploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
+		framework.By("Patching the operator Subscription to use ECDSA keys")
+		subscriptionGVR := subscriptionResourceInfo.Resource
+		subscription, err := f.DynamicAdminClient().Resource(subscriptionGVR).Namespace(operatorNamespace).Get(ctx, operatorSubscriptionName, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		// Find the operator container and add ECDSA args.
-		o.Expect(operatorDeploy.Spec.Template.Spec.Containers).NotTo(o.BeEmpty())
-		containerIdx := -1
-		for i, c := range operatorDeploy.Spec.Template.Spec.Containers {
-			if c.Name == "scylla-operator" {
-				containerIdx = i
-				break
+		config, ok := subscription.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})
+		if !ok {
+			if subscription.Object["spec"].(map[string]interface{})["config"] == nil {
+				subscription.Object["spec"].(map[string]interface{})["config"] = map[string]interface{}{}
 			}
+			config = subscription.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})
 		}
-		o.Expect(containerIdx).NotTo(o.Equal(-1), "operator container not found in Deployment")
 
-		// Add --crypto-key-type=ECDSA to the container args using a JSON patch.
-		newArgs := append(
-			operatorDeploy.Spec.Template.Spec.Containers[containerIdx].Args,
-			"--crypto-key-type=ECDSA",
-			"--crypto-ecdsa-key-size=256",
-		)
-
-		type patchOp struct {
-			Op    string      `json:"op"`
-			Path  string      `json:"path"`
-			Value interface{} `json:"value"`
-		}
-		patch := []patchOp{
-			{
-				Op:    "replace",
-				Path:  fmt.Sprintf("/spec/template/spec/containers/%d/args", containerIdx),
-				Value: newArgs,
+		existingEnvs, _ := config["env"].([]interface{})
+		ecdsaConfig := []interface{}{
+			map[string]interface{}{
+				"name":  "SCYLLA_OPERATOR_CRYPTO_KEY_TYPE",
+				"value": ecdsaKeyType,
+			},
+			map[string]interface{}{
+				"name":  "SCYLLA_OPERATOR_CRYPTO_ECDSA_KEY_SIZE",
+				"value": ecdsaKeySize,
 			},
 		}
-		patchBytes, err := json.Marshal(patch)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		config["env"] = append(existingEnvs, ecdsaConfig...)
 
-		_, err = f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Patch(
-			ctx,
-			operatorDeploymentName,
-			types.JSONPatchType,
-			patchBytes,
-			metav1.PatchOptions{},
-		)
+		_, err = f.DynamicAdminClient().Resource(subscriptionGVR).Namespace(operatorNamespace).Update(ctx, subscription, metav1.UpdateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the operator Deployment to roll out with ECDSA configuration")
@@ -422,6 +408,12 @@ var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, func() {
 			eg.Expect(deploy.Status.UpdatedReplicas).To(o.Equal(*deploy.Spec.Replicas))
 			eg.Expect(deploy.Status.ReadyReplicas).To(o.Equal(*deploy.Spec.Replicas))
 			eg.Expect(deploy.Status.AvailableReplicas).To(o.Equal(*deploy.Spec.Replicas))
+			eg.Expect(deploy.Spec.Template.Spec.Containers).To(o.ContainElement(
+				o.HaveField("Env", o.ContainElements(
+					corev1.EnvVar{Name: "SCYLLA_OPERATOR_CRYPTO_KEY_TYPE", Value: ecdsaKeyType},
+					corev1.EnvVar{Name: "SCYLLA_OPERATOR_CRYPTO_ECDSA_KEY_SIZE", Value: ecdsaKeySize},
+				)),
+			))
 
 			for _, cond := range deploy.Status.Conditions {
 				if cond.Type == appsv1.DeploymentAvailable {

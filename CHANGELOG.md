@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.21.0](#1210)
 - [1.20.2](#1202)
 - [1.20.1](#1201)
 - [1.19.2](#1192)
@@ -7,7 +8,17 @@
 
 ## Unreleased
 
+## [1.21.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.0)
+
+Release date: 2026-05-20
+
 ### Highlights
+
+- Oracle Kubernetes Engine (OKE) is now a supported platform. Refer to the [OKE reference deployment](https://operator.docs.scylladb.com/v1.21/deploy-scylladb/reference-deployments/reference-deployment-oke.html) in documentation.
+- Added ECDSA as an alternative to RSA for TLS certificate key generation.
+- Prometheus Operator is now an optional dependency; setups without its CRDs are fully supported.
+- ⚠️  `ScyllaCluster` backup/repair task names not conforming to RFC 1123 are now rejected (previously warned).
+- 🐛 Several bug fixes including identity service selector, monitoring status conditions, and `must-gather` resilience.
 
 ### Upgrade requirements
   

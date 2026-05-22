@@ -1,7 +1,7 @@
 # Releases
 
 ## Schedule
-We are aiming to ship a new release approximately every 2 months. The following release schedule is only advisory, there are no commitments made to hitting these dates.
+The following release schedule is only advisory, there are no commitments made to hitting these dates.
 
 :::{list-table}
 :widths: 33 33 34
@@ -10,9 +10,9 @@ We are aiming to ship a new release approximately every 2 months. The following 
 * - Release
   - Code freeze
   - General availability
-* - 1.21
-  - 2026-05-11
-  - 2026-05-18
+* - 1.22
+  - TBD
+  - TBD
 :::
 
 ## Supported releases
@@ -25,12 +25,15 @@ We support the latest 2 releases of ScyllaDB Operator to give everyone time to u
 * - Release
   - General availability
   - Support ends
+* - 1.21
+  - 2026-05-20
+  - Release of 1.23
 * - 1.20
   - 2026-02-23
   - Release of 1.22
 * - 1.19
   - 2025-11-19
-  - Release of 1.21
+  - 2026-05-20
 * - 1.18
   - 2025-08-11
   - 2026-02-23

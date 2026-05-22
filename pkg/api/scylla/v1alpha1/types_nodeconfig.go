@@ -232,7 +232,7 @@ type NodeConfigSpec struct {
 	// TODO(rzetelskik): rename this field to indicate that this only affects ScyllaDB-specific performance tuning (e.g. DisablePerftune) in the next API version.
 	// disableOptimizations controls if nodes matching placement requirements are going to be optimized for performance.
 	// Turning off optimizations on already optimized Nodes does not revert changes.
-	// See https://operator.docs.scylladb.com/stable/architecture/tuning.html for details.
+	// See https://operator.docs.scylladb.com/stable/understand/tuning.html for details.
 	DisableOptimizations bool `json:"disableOptimizations"`
 
 	// localDiskSetup contains options of automatic local disk setup.

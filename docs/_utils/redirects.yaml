@@ -1,26 +1,189 @@
 ### a dictionary of redirections
 #old path: new path
-#
-/stable/nodeoperations/restore.html: /stable/resources/scyllaclusters/nodeoperations/restore.html
-/stable/manager.html: /stable/architecture/manager.html
-/master/resources/scylladbmonitorings.html: /master/management/monitoring/overview.html
-# TODO: uncomment this redirect when setting stable to 1.19
-# /stable/resources/scylladbmonitorings.html: /stable/management/monitoring/overview.html
 
-# TODO: uncomment this redirect when setting stable to 1.19
-#/stable/api-reference/index.rst: /stable/reference/api/index.rst
-#/stable/api-reference/groups/scylla.scylladb.com.rst: /stable/reference/api/groups/scylla.scylladb.com.rst
-#/stable/api-reference/groups/scylla.scylladb.com/nodeconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.rst
-#/stable/api-reference/groups/scylla.scylladb.com/remotekubernetesclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.rst
-#/stable/api-reference/groups/scylla.scylladb.com/remoteowners.rst: /stable/reference/api/groups/scylla.scylladb.com/remoteowners.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scyllaclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scylladbclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbclusters.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenters.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenters.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagertasks.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst
-#/stable/api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst
+# --- Legacy redirects (updated targets for the new structure) ---
+/stable/nodeoperations/restore.html: /stable/operate/restore-from-backup.html
+/stable/manager.html: /stable/understand/manager.html
+/master/resources/scylladbmonitorings.html: /master/understand/monitoring.html
+/stable/resources/scylladbmonitorings.html: /stable/understand/monitoring.html
 
-# removing redirection html script files
-# test: /
+# --- API reference redirects ---
+/stable/api-reference/index.rst: /stable/reference/api/index.rst
+/stable/api-reference/groups/scylla.scylladb.com.rst: /stable/reference/api/groups/scylla.scylladb.com.rst
+/stable/api-reference/groups/scylla.scylladb.com/nodeconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.rst
+/stable/api-reference/groups/scylla.scylladb.com/remotekubernetesclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.rst
+/stable/api-reference/groups/scylla.scylladb.com/remoteowners.rst: /stable/reference/api/groups/scylla.scylladb.com/remoteowners.rst
+/stable/api-reference/groups/scylla.scylladb.com/scyllaclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
+/stable/api-reference/groups/scylla.scylladb.com/scylladbclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbclusters.rst
+/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst
+/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenters.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenters.rst
+/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst
+/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagertasks.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.rst
+/stable/api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst
+/stable/api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst
+
+# --- Restructured docs redirects (PR #3443) ---
+
+# architecture/ -> understand/
+/stable/architecture/index.html: /stable/understand/index.html
+/stable/architecture/overview.html: /stable/understand/index.html
+/stable/architecture/manager.html: /stable/understand/manager.html
+/stable/architecture/tuning.html: /stable/understand/tuning.html
+/stable/architecture/storage/index.html: /stable/understand/storage.html
+/stable/architecture/storage/overview.html: /stable/understand/storage.html
+/stable/architecture/storage/local-csi-driver.html: /stable/understand/storage.html
+/master/architecture/index.html: /master/understand/index.html
+/master/architecture/overview.html: /master/understand/index.html
+/master/architecture/manager.html: /master/understand/manager.html
+/master/architecture/tuning.html: /master/understand/tuning.html
+/master/architecture/storage/index.html: /master/understand/storage.html
+/master/architecture/storage/overview.html: /master/understand/storage.html
+/master/architecture/storage/local-csi-driver.html: /master/understand/storage.html
+
+# installation/ -> install-operator/
+/stable/installation/index.html: /stable/install-operator/index.html
+/stable/installation/overview.html: /stable/install-operator/index.html
+/stable/installation/helm.html: /stable/install-operator/install-with-helm.html
+/stable/installation/gitops.html: /stable/install-operator/install-with-gitops.html
+/stable/installation/openshift.html: /stable/install-operator/install-on-openshift.html
+/stable/installation/kubernetes-prerequisites.html: /stable/install-operator/provision-infrastructure/index.html
+/master/installation/index.html: /master/install-operator/index.html
+/master/installation/overview.html: /master/install-operator/index.html
+/master/installation/helm.html: /master/install-operator/install-with-helm.html
+/master/installation/gitops.html: /master/install-operator/install-with-gitops.html
+/master/installation/openshift.html: /master/install-operator/install-on-openshift.html
+/master/installation/kubernetes-prerequisites.html: /master/install-operator/provision-infrastructure/index.html
+
+# management/ -> various new locations
+/stable/management/index.html: /stable/operate/index.html
+/stable/management/bootstrap-sync.html: /stable/understand/bootstrap-sync.html
+/stable/management/coredumps.html: /stable/troubleshoot/configure-coredumps.html
+/stable/management/data-cleanup.html: /stable/understand/automatic-data-cleanup.html
+/stable/management/sysctls.html: /stable/deploy-scylladb/before-you-deploy/configure-nodes.html
+/master/management/index.html: /master/operate/index.html
+/master/management/bootstrap-sync.html: /master/understand/bootstrap-sync.html
+/master/management/coredumps.html: /master/troubleshoot/configure-coredumps.html
+/master/management/data-cleanup.html: /master/understand/automatic-data-cleanup.html
+/master/management/sysctls.html: /master/deploy-scylladb/before-you-deploy/configure-nodes.html
+
+# management/monitoring/ -> deploy-scylladb/set-up-monitoring/
+/stable/management/monitoring/index.html: /stable/deploy-scylladb/set-up-monitoring/index.html
+/stable/management/monitoring/overview.html: /stable/understand/monitoring.html
+/stable/management/monitoring/setup.html: /stable/deploy-scylladb/set-up-monitoring/setup.html
+/stable/management/monitoring/exposing-grafana.html: /stable/deploy-scylladb/set-up-monitoring/exposing-grafana.html
+/stable/management/monitoring/external-prometheus-on-openshift.html: /stable/deploy-scylladb/set-up-monitoring/external-prometheus-on-openshift.html
+/master/management/monitoring/index.html: /master/deploy-scylladb/set-up-monitoring/index.html
+/master/management/monitoring/overview.html: /master/understand/monitoring.html
+/master/management/monitoring/setup.html: /master/deploy-scylladb/set-up-monitoring/setup.html
+/master/management/monitoring/exposing-grafana.html: /master/deploy-scylladb/set-up-monitoring/exposing-grafana.html
+/master/management/monitoring/external-prometheus-on-openshift.html: /master/deploy-scylladb/set-up-monitoring/external-prometheus-on-openshift.html
+
+# management/networking/ -> deploy-scylladb/set-up-networking/
+/stable/management/networking/index.html: /stable/deploy-scylladb/set-up-networking/index.html
+/stable/management/networking/ipv6/index.html: /stable/deploy-scylladb/set-up-networking/ipv6/index.html
+/stable/management/networking/ipv6/concepts/ipv6-networking.html: /stable/deploy-scylladb/set-up-networking/ipv6/ipv6-concepts.html
+/stable/management/networking/ipv6/how-to/ipv6-configure.html: /stable/deploy-scylladb/set-up-networking/ipv6/configure-dual-stack.html
+/stable/management/networking/ipv6/how-to/ipv6-configure-ipv6-first.html: /stable/deploy-scylladb/set-up-networking/ipv6/configure-dual-stack.html
+/stable/management/networking/ipv6/how-to/ipv6-configure-ipv6-only.html: /stable/deploy-scylladb/set-up-networking/ipv6/configure-single-stack.html
+/stable/management/networking/ipv6/how-to/ipv6-migrate.html: /stable/deploy-scylladb/set-up-networking/ipv6/migration.html
+/stable/management/networking/ipv6/how-to/ipv6-troubleshoot.html: /stable/deploy-scylladb/set-up-networking/ipv6/troubleshooting.html
+/stable/management/networking/ipv6/reference/ipv6-configuration.html: /stable/reference/ipv6-configuration.html
+/stable/management/networking/ipv6/tutorials/ipv6-getting-started.html: /stable/deploy-scylladb/set-up-networking/ipv6/get-started.html
+/master/management/networking/index.html: /master/deploy-scylladb/set-up-networking/index.html
+/master/management/networking/ipv6/index.html: /master/deploy-scylladb/set-up-networking/ipv6/index.html
+/master/management/networking/ipv6/concepts/ipv6-networking.html: /master/deploy-scylladb/set-up-networking/ipv6/ipv6-concepts.html
+/master/management/networking/ipv6/how-to/ipv6-configure.html: /master/deploy-scylladb/set-up-networking/ipv6/configure-dual-stack.html
+/master/management/networking/ipv6/how-to/ipv6-configure-ipv6-first.html: /master/deploy-scylladb/set-up-networking/ipv6/configure-dual-stack.html
+/master/management/networking/ipv6/how-to/ipv6-configure-ipv6-only.html: /master/deploy-scylladb/set-up-networking/ipv6/configure-single-stack.html
+/master/management/networking/ipv6/how-to/ipv6-migrate.html: /master/deploy-scylladb/set-up-networking/ipv6/migration.html
+/master/management/networking/ipv6/how-to/ipv6-troubleshoot.html: /master/deploy-scylladb/set-up-networking/ipv6/troubleshooting.html
+/master/management/networking/ipv6/reference/ipv6-configuration.html: /master/reference/ipv6-configuration.html
+/master/management/networking/ipv6/tutorials/ipv6-getting-started.html: /master/deploy-scylladb/set-up-networking/ipv6/get-started.html
+
+# management/upgrading/ -> upgrade/
+/stable/management/upgrading/index.html: /stable/upgrade/index.html
+/stable/management/upgrading/upgrade.html: /stable/upgrade/upgrade-operator.html
+/stable/management/upgrading/upgrade-scylladb.html: /stable/upgrade/upgrade-scylladb.html
+/master/management/upgrading/index.html: /master/upgrade/index.html
+/master/management/upgrading/upgrade.html: /master/upgrade/upgrade-operator.html
+/master/management/upgrading/upgrade-scylladb.html: /master/upgrade/upgrade-scylladb.html
+
+# quickstarts/ -> deploy-scylladb/reference-deployments/
+/stable/quickstarts/index.html: /stable/deploy-scylladb/reference-deployments/index.html
+/stable/quickstarts/gke.html: /stable/deploy-scylladb/reference-deployments/reference-deployment-gke.html
+/stable/quickstarts/eks.html: /stable/deploy-scylladb/reference-deployments/reference-deployment-eks.html
+/master/quickstarts/index.html: /master/deploy-scylladb/reference-deployments/index.html
+/master/quickstarts/gke.html: /master/deploy-scylladb/reference-deployments/reference-deployment-gke.html
+/master/quickstarts/eks.html: /master/deploy-scylladb/reference-deployments/reference-deployment-eks.html
+
+# resources/ -> various new locations
+/stable/resources/index.html: /stable/deploy-scylladb/index.html
+/stable/resources/overview.html: /stable/deploy-scylladb/index.html
+/stable/resources/nodeconfigs.html: /stable/deploy-scylladb/before-you-deploy/configure-nodes.html
+/stable/resources/remotekubernetesclusters.html: /stable/deploy-scylladb/deploy-your-first-cluster.html
+/stable/resources/scyllaoperatorconfigs.html: /stable/deploy-scylladb/before-you-deploy/configure-operator.html
+/stable/resources/common/exposing.html: /stable/deploy-scylladb/set-up-networking/configure-external-access.html
+/stable/resources/common/multidc/gke.html: /stable/deploy-scylladb/reference-deployments/reference-deployment-gke.html
+/stable/resources/common/multidc/eks.html: /stable/deploy-scylladb/reference-deployments/reference-deployment-eks.html
+/master/resources/index.html: /master/deploy-scylladb/index.html
+/master/resources/overview.html: /master/deploy-scylladb/index.html
+/master/resources/nodeconfigs.html: /master/deploy-scylladb/before-you-deploy/configure-nodes.html
+/master/resources/remotekubernetesclusters.html: /master/deploy-scylladb/deploy-your-first-cluster.html
+/master/resources/scyllaoperatorconfigs.html: /master/deploy-scylladb/before-you-deploy/configure-operator.html
+/master/resources/common/exposing.html: /master/deploy-scylladb/set-up-networking/configure-external-access.html
+/master/resources/common/multidc/gke.html: /master/deploy-scylladb/reference-deployments/reference-deployment-gke.html
+/master/resources/common/multidc/eks.html: /master/deploy-scylladb/reference-deployments/reference-deployment-eks.html
+
+# resources/scyllaclusters/ -> various
+/stable/resources/scyllaclusters/index.html: /stable/deploy-scylladb/deploy-your-first-cluster.html
+/stable/resources/scyllaclusters/basics.html: /stable/deploy-scylladb/deploy-your-first-cluster.html
+/stable/resources/scyllaclusters/clients/index.html: /stable/connect-your-app/index.html
+/stable/resources/scyllaclusters/clients/cql.html: /stable/connect-your-app/connect-via-cql.html
+/stable/resources/scyllaclusters/clients/alternator.html: /stable/connect-your-app/alternator.html
+/stable/resources/scyllaclusters/clients/discovery.html: /stable/connect-your-app/discovery.html
+/stable/resources/scyllaclusters/multidc/index.html: /stable/deploy-scylladb/reference-deployments/index.html
+/stable/resources/scyllaclusters/multidc/multidc.html: /stable/deploy-scylladb/reference-deployments/index.html
+/stable/resources/scyllaclusters/nodeoperations/index.html: /stable/operate/index.html
+/stable/resources/scyllaclusters/nodeoperations/automatic-cleanup.html: /stable/understand/automatic-data-cleanup.html
+/stable/resources/scyllaclusters/nodeoperations/maintenance-mode.html: /stable/operate/use-maintenance-mode.html
+/stable/resources/scyllaclusters/nodeoperations/replace-node.html: /stable/operate/replace-nodes.html
+/stable/resources/scyllaclusters/nodeoperations/restore.html: /stable/operate/restore-from-backup.html
+/stable/resources/scyllaclusters/nodeoperations/scylla-upgrade.html: /stable/upgrade/upgrade-scylladb.html
+/stable/resources/scyllaclusters/nodeoperations/volume-expansion.html: /stable/operate/expand-storage-volumes.html
+/master/resources/scyllaclusters/index.html: /master/deploy-scylladb/deploy-your-first-cluster.html
+/master/resources/scyllaclusters/basics.html: /master/deploy-scylladb/deploy-your-first-cluster.html
+/master/resources/scyllaclusters/clients/index.html: /master/connect-your-app/index.html
+/master/resources/scyllaclusters/clients/cql.html: /master/connect-your-app/connect-via-cql.html
+/master/resources/scyllaclusters/clients/alternator.html: /master/connect-your-app/alternator.html
+/master/resources/scyllaclusters/clients/discovery.html: /master/connect-your-app/discovery.html
+/master/resources/scyllaclusters/multidc/index.html: /master/deploy-scylladb/reference-deployments/index.html
+/master/resources/scyllaclusters/multidc/multidc.html: /master/deploy-scylladb/reference-deployments/index.html
+/master/resources/scyllaclusters/nodeoperations/index.html: /master/operate/index.html
+/master/resources/scyllaclusters/nodeoperations/automatic-cleanup.html: /master/understand/automatic-data-cleanup.html
+/master/resources/scyllaclusters/nodeoperations/maintenance-mode.html: /master/operate/use-maintenance-mode.html
+/master/resources/scyllaclusters/nodeoperations/replace-node.html: /master/operate/replace-nodes.html
+/master/resources/scyllaclusters/nodeoperations/restore.html: /master/operate/restore-from-backup.html
+/master/resources/scyllaclusters/nodeoperations/scylla-upgrade.html: /master/upgrade/upgrade-scylladb.html
+/master/resources/scyllaclusters/nodeoperations/volume-expansion.html: /master/operate/expand-storage-volumes.html
+
+# resources/scylladbclusters/ -> deploy-scylladb/
+/stable/resources/scylladbclusters/index.html: /stable/deploy-scylladb/deploy-your-first-cluster.html
+/stable/resources/scylladbclusters/scylladbclusters.html: /stable/deploy-scylladb/deploy-your-first-cluster.html
+/master/resources/scylladbclusters/index.html: /master/deploy-scylladb/deploy-your-first-cluster.html
+/master/resources/scylladbclusters/scylladbclusters.html: /master/deploy-scylladb/deploy-your-first-cluster.html
+
+# support/ -> various
+/stable/support/index.html: /stable/troubleshoot/index.html
+/stable/support/overview.html: /stable/troubleshoot/index.html
+/stable/support/known-issues.html: /stable/reference/known-issues.html
+/stable/support/must-gather.html: /stable/troubleshoot/collect-debugging-information/must-gather.html
+/stable/support/releases.html: /stable/reference/releases.html
+/stable/support/troubleshooting/index.html: /stable/troubleshoot/index.html
+/stable/support/troubleshooting/installation.html: /stable/troubleshoot/index.html
+/master/support/index.html: /master/troubleshoot/index.html
+/master/support/overview.html: /master/troubleshoot/index.html
+/master/support/known-issues.html: /master/reference/known-issues.html
+/master/support/must-gather.html: /master/troubleshoot/collect-debugging-information/must-gather.html
+/master/support/releases.html: /master/reference/releases.html
+/master/support/troubleshooting/index.html: /master/troubleshoot/index.html
+/master/support/troubleshooting/installation.html: /master/troubleshoot/index.html

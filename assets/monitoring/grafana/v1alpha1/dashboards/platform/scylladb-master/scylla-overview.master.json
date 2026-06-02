@@ -17,7 +17,7 @@
                 "class": "annotation_restart",
                 "datasource": "prometheus",
                 "enable": true,
-                "expr": "resets(scylla_gossip_heart_beat{cluster=\"$cluster\"}[$__rate_interval])>0",
+                "expr": "resets(scylla_gossip_heart_beat{cluster=\"$cluster\"}[5m])>0",
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
@@ -946,7 +946,7 @@
                                 "value": [
                                     {
                                         "title": "Group",
-                                        "url": "/d/${__dashboard.uid}/${__dashboard.slug}?from=${__from}&to=${__to}&var-cluster=${cluster}&var-dc=${dc}&var-node=${node}&var-shard=${shard}&var-func=${func}&var-sg=${__value.text}"
+                                        "url": "/d/${__dashboard.uid}/${__dashboard.slug}?${__url_time_range}&var-cluster=${cluster}&var-dc=${dc}&var-node=${node}&var-shard=${shard}&var-func=${func}&var-sg=${__value.text}"
                                     }
                                 ]
                             }
@@ -1228,7 +1228,7 @@
                                 "value": [
                                     {
                                         "title": "DC",
-                                        "url": "/d/${__dashboard.uid}/${__dashboard.slug}?from=${__from}&to=${__to}&var-cluster=${cluster}&var-dc=${__value.text}&var-node=${node}&var-shard=${shard}&var-func=${func}&var-sg=${sg}"
+                                        "url": "/d/${__dashboard.uid}/${__dashboard.slug}?${__url_time_range}&var-cluster=${cluster}&var-dc=${__value.text}&var-node=${node}&var-shard=${shard}&var-func=${func}&var-sg=${sg}"
                                     }
                                 ]
                             }
@@ -2395,7 +2395,7 @@
                                 "value": [
                                     {
                                         "title": "Detailed view",
-                                        "url": "/d/detailed-[[dash_version]]/detailed?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
+                                        "url": "/d/detailed-[[dash_version]]/detailed?orgId=1&var-by=instance&var-node=${__data.fields[0]}&${__url_time_range}"
                                     }
                                 ]
                             }
@@ -2533,7 +2533,7 @@
                                 "value": [
                                     {
                                         "title": "OS Information Dashboard, an Error indicates there are OS related errors",
-                                        "url": "/d/OS-[[dash_version]]/os-metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
+                                        "url": "/d/OS-[[dash_version]]/os-metrics?orgId=1&var-by=instance&var-node=${__data.fields[0]}&${__url_time_range}"
                                     }
                                 ]
                             },
@@ -2607,7 +2607,7 @@
                                 "value": [
                                     {
                                         "title": "Cordinator and Replica node errors",
-                                        "url": "/d/detailed-[[dash_version]]/detailed?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
+                                        "url": "/d/detailed-[[dash_version]]/detailed?orgId=1&var-by=instance&var-node=${__data.fields[0]}&${__url_time_range}"
                                     }
                                 ]
                             },
@@ -3901,7 +3901,7 @@
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.14.3</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.15.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -4263,8 +4263,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.14.3",
-                    "value": "4.14.3"
+                    "text": "4.15.0",
+                    "value": "4.15.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -4275,11 +4275,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.14.3",
-                        "value": "4.14.3"
+                        "text": "4.15.0",
+                        "value": "4.15.0"
                     }
                 ],
-                "query": "4.14.3",
+                "query": "4.15.0",
                 "skipUrlSync": false,
                 "type": "custom"
             }

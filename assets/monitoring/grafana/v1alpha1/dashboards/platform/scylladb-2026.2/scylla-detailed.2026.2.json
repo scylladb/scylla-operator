@@ -90,13 +90,13 @@
                 "type": "tags"
             },
             {
-                "class": "annotation_hints_sent_old",
+                "class": "annotation_hints_sent",
                 "dashversion": [
-                    "<2025.1"
+                    ">2025.1"
                 ],
                 "datasource": "prometheus",
                 "enable": false,
-                "expr": "changes(scylla_hints_manager_sent{cluster=\"$cluster\"}[$__rate_interval])>0",
+                "expr": "changes(scylla_hints_manager_sent_total{cluster=\"$cluster\"}[$__rate_interval])>0",
                 "hide": false,
                 "iconColor": "rgb(50, 176, 0, 128)",
                 "limit": 100,
@@ -251,7 +251,7 @@
             },
             "gridPos": {
                 "h": 6,
-                "w": 6,
+                "w": 4,
                 "x": 0,
                 "y": 3
             },
@@ -273,10 +273,10 @@
             "seriesOverrides": [
                 {}
             ],
-            "span": 3,
+            "span": 5,
             "targets": [
                 {
-                    "expr": "$topbottom($filter_limit, avg(scylla_reactor_utilization{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], avg(scylla_reactor_utilization{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"} ) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -335,8 +335,8 @@
             },
             "gridPos": {
                 "h": 6,
-                "w": 6,
-                "x": 6,
+                "w": 5,
+                "x": 4,
                 "y": 3
             },
             "id": 3,
@@ -357,7 +357,7 @@
             "seriesOverrides": [
                 {}
             ],
-            "span": 3,
+            "span": 5,
             "targets": [
                 {
                     "expr": "$topbottom([[filter_limit]], $func(rate(scylla_transport_requests_served{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
@@ -420,8 +420,8 @@
             },
             "gridPos": {
                 "h": 6,
-                "w": 6,
-                "x": 12,
+                "w": 5,
+                "x": 9,
                 "y": 3
             },
             "id": 4,
@@ -439,7 +439,7 @@
                     "sort": "desc"
                 }
             },
-            "span": 3,
+            "span": 5,
             "targets": [
                 {
                     "expr": "$topbottom([[filter_limit]], $func(rate(scylla_database_total_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
@@ -501,8 +501,8 @@
             },
             "gridPos": {
                 "h": 6,
-                "w": 6,
-                "x": 18,
+                "w": 5,
+                "x": 14,
                 "y": 3
             },
             "id": 5,
@@ -520,7 +520,7 @@
                     "sort": "desc"
                 }
             },
-            "span": 3,
+            "span": 5,
             "targets": [
                 {
                     "expr": "$topbottom([[filter_limit]], $func(rate(scylla_database_total_writes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
@@ -535,6 +535,87 @@
             "type": "timeseries"
         },
         {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 5,
+                "x": 19,
+                "y": 3
+            },
+            "id": 6,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 5,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_tablets_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by([[by]]))",
+                    "format": "time_series",
+                    "instant": false,
+                    "legendFormat": "{{dc}} {{instance}} {{shard}}",
+                    "range": false,
+                    "refId": "A"
+                }
+            ],
+            "title": "Tablets over time per [[by]]",
+            "type": "timeseries"
+        },
+        {
             "class": "collapsible_row_panel",
             "collapsed": false,
             "datasource": null,
@@ -544,7 +625,193 @@
                 "x": 0,
                 "y": 9
             },
-            "id": 6,
+            "id": 7,
+            "panels": [],
+            "repeat": "",
+            "title": "Tablets information",
+            "type": "row"
+        },
+        {
+            "class": "barchart_panel",
+            "datasource": "prometheus",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "fillOpacity": 80,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineWidth": 1,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 18,
+                "x": 0,
+                "y": 10
+            },
+            "id": 8,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "barRadius": 0,
+                "barWidth": 0.89,
+                "fullHighlight": false,
+                "groupWidth": 0.7,
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "orientation": "auto",
+                "showValue": "always",
+                "stacking": "none",
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                },
+                "xTickLabelRotation": 0,
+                "xTickLabelSpacing": 0
+            },
+            "span": 9,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_tablets_count{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by([[by]]))",
+                    "format": "table",
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "A"
+                }
+            ],
+            "title": "Tablets per [[by]]",
+            "type": "barchart"
+        },
+        {
+            "class": "graph_panel",
+            "datasource": "prometheus",
+            "description": "Represents the \u2018load\u2019 value the balancer equalizes across instances.\n\nIt is based on the number of tablets assigned to each instance, adjusted so larger disks are expected to hold proportionally more tablets.\n\nscylla_load_balancer_load",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 6,
+                "x": 18,
+                "y": 10
+            },
+            "id": 9,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 3,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], sum(scylla_load_balancer_load{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by(target_node, [[by]]))",
+                    "format": "time_series",
+                    "instant": false,
+                    "legendFormat": "{{dc}} {{target_node}} {{instance}} {{shard}}",
+                    "range": false,
+                    "refId": "A"
+                }
+            ],
+            "title": "Tablets load by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "collapsible_row_panel",
+            "collapsed": false,
+            "datasource": null,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 16
+            },
+            "id": 10,
             "panels": [],
             "repeat": "",
             "title": "reads and writes",
@@ -566,9 +833,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 10
+                "y": 17
             },
-            "id": 7,
+            "id": 11,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -630,9 +897,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 12
+                "y": 19
             },
-            "id": 8,
+            "id": 12,
             "isNew": true,
             "links": [],
             "options": {
@@ -711,9 +978,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 12
+                "y": 19
             },
-            "id": 9,
+            "id": 13,
             "isNew": true,
             "links": [],
             "options": {
@@ -792,9 +1059,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 12
+                "y": 19
             },
-            "id": 10,
+            "id": 14,
             "isNew": true,
             "links": [],
             "options": {
@@ -874,9 +1141,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 12
+                "y": 19
             },
-            "id": 11,
+            "id": 15,
             "isNew": true,
             "links": [],
             "options": {
@@ -955,9 +1222,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 18
+                "y": 25
             },
-            "id": 12,
+            "id": 16,
             "isNew": true,
             "links": [],
             "options": {
@@ -1036,9 +1303,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 18
+                "y": 25
             },
-            "id": 13,
+            "id": 17,
             "isNew": true,
             "links": [],
             "options": {
@@ -1060,9 +1327,9 @@
             "targets": [
                 {
                     "dashversion": [
-                        "<2025.1"
+                        ">2025.1"
                     ],
-                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_hints_manager_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                    "expr": "$topbottom([[filter_limit]], $func(rate(scylla_hints_manager_sent_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                     "intervalFactor": 1,
                     "legendFormat": "",
                     "refId": "A",
@@ -1123,9 +1390,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 18
+                "y": 25
             },
-            "id": 14,
+            "id": 18,
             "isNew": true,
             "links": [],
             "options": {
@@ -1204,9 +1471,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 18
+                "y": 25
             },
-            "id": 15,
+            "id": 19,
             "isNew": true,
             "links": [],
             "options": {
@@ -1285,9 +1552,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 24
+                "y": 31
             },
-            "id": 16,
+            "id": 20,
             "isNew": true,
             "links": [],
             "options": {
@@ -1366,9 +1633,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 24
+                "y": 31
             },
-            "id": 17,
+            "id": 21,
             "isNew": true,
             "links": [],
             "options": {
@@ -1404,9 +1671,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 30
+                "y": 37
             },
-            "id": 18,
+            "id": 22,
             "panels": [],
             "repeat": "",
             "title": "Latencies",
@@ -1463,9 +1730,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 31
+                "y": 38
             },
-            "id": 19,
+            "id": 23,
             "isNew": true,
             "links": [],
             "options": {
@@ -1544,9 +1811,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 31
+                "y": 38
             },
-            "id": 20,
+            "id": 24,
             "isNew": true,
             "links": [],
             "options": {
@@ -1635,9 +1902,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 31
+                "y": 38
             },
-            "id": 21,
+            "id": 25,
             "isNew": true,
             "links": [],
             "options": {
@@ -1727,9 +1994,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 31
+                "y": 38
             },
-            "id": 22,
+            "id": 26,
             "isNew": true,
             "links": [],
             "options": {
@@ -1819,9 +2086,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 37
+                "y": 44
             },
-            "id": 23,
+            "id": 27,
             "isNew": true,
             "links": [],
             "options": {
@@ -1900,9 +2167,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 37
+                "y": 44
             },
-            "id": 24,
+            "id": 28,
             "isNew": true,
             "links": [],
             "options": {
@@ -1991,9 +2258,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 37
+                "y": 44
             },
-            "id": 25,
+            "id": 29,
             "isNew": true,
             "links": [],
             "options": {
@@ -2083,9 +2350,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 37
+                "y": 44
             },
-            "id": 26,
+            "id": 30,
             "isNew": true,
             "links": [],
             "options": {
@@ -2132,9 +2399,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 43
+                "y": 50
             },
-            "id": 27,
+            "id": 31,
             "panels": [],
             "repeat": "",
             "title": "Timeouts and Errors",
@@ -2156,9 +2423,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 44
+                "y": 51
             },
-            "id": 28,
+            "id": 32,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2220,9 +2487,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 46
+                "y": 53
             },
-            "id": 29,
+            "id": 33,
             "isNew": true,
             "links": [],
             "options": {
@@ -2301,9 +2568,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 46
+                "y": 53
             },
-            "id": 30,
+            "id": 34,
             "isNew": true,
             "links": [],
             "options": {
@@ -2382,9 +2649,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 46
+                "y": 53
             },
-            "id": 31,
+            "id": 35,
             "isNew": true,
             "links": [],
             "options": {
@@ -2477,9 +2744,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 46
+                "y": 53
             },
-            "id": 32,
+            "id": 36,
             "isNew": true,
             "links": [],
             "options": {
@@ -2516,9 +2783,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 52
+                "y": 59
             },
-            "id": 33,
+            "id": 37,
             "panels": [],
             "repeat": "",
             "title": "Replica",
@@ -2540,9 +2807,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 53
+                "y": 60
             },
-            "id": 34,
+            "id": 38,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2604,9 +2871,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 55
+                "y": 62
             },
-            "id": 35,
+            "id": 39,
             "isNew": true,
             "links": [],
             "options": {
@@ -2685,9 +2952,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 55
+                "y": 62
             },
-            "id": 36,
+            "id": 40,
             "isNew": true,
             "links": [],
             "options": {
@@ -2766,9 +3033,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 55
+                "y": 62
             },
-            "id": 37,
+            "id": 41,
             "isNew": true,
             "links": [],
             "options": {
@@ -2847,9 +3114,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 55
+                "y": 62
             },
-            "id": 38,
+            "id": 42,
             "isNew": true,
             "links": [],
             "options": {
@@ -2928,9 +3195,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 61
+                "y": 68
             },
-            "id": 39,
+            "id": 43,
             "isNew": true,
             "links": [],
             "options": {
@@ -3009,9 +3276,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 61
+                "y": 68
             },
-            "id": 40,
+            "id": 44,
             "isNew": true,
             "links": [],
             "options": {
@@ -3090,9 +3357,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 61
+                "y": 68
             },
-            "id": 41,
+            "id": 45,
             "isNew": true,
             "links": [],
             "options": {
@@ -3171,9 +3438,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 61
+                "y": 68
             },
-            "id": 42,
+            "id": 46,
             "isNew": true,
             "links": [],
             "options": {
@@ -3253,9 +3520,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 67
+                "y": 74
             },
-            "id": 43,
+            "id": 47,
             "isNew": true,
             "links": [],
             "options": {
@@ -3334,9 +3601,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 67
+                "y": 74
             },
-            "id": 44,
+            "id": 48,
             "isNew": true,
             "links": [],
             "options": {
@@ -3421,9 +3688,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 67
+                "y": 74
             },
-            "id": 45,
+            "id": 49,
             "isNew": true,
             "links": [],
             "options": {
@@ -3502,9 +3769,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 67
+                "y": 74
             },
-            "id": 46,
+            "id": 50,
             "isNew": true,
             "links": [],
             "options": {
@@ -3540,9 +3807,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 73
+                "y": 80
             },
-            "id": 47,
+            "id": 51,
             "panels": [],
             "repeat": "",
             "title": "Storage",
@@ -3599,9 +3866,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 74
+                "y": 81
             },
-            "id": 48,
+            "id": 52,
             "isNew": true,
             "links": [],
             "options": {
@@ -3680,9 +3947,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 74
+                "y": 81
             },
-            "id": 49,
+            "id": 53,
             "isNew": true,
             "links": [],
             "options": {
@@ -3761,9 +4028,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 74
+                "y": 81
             },
-            "id": 50,
+            "id": 54,
             "isNew": true,
             "links": [],
             "options": {
@@ -3799,9 +4066,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 80
+                "y": 87
             },
-            "id": 51,
+            "id": 55,
             "panels": [
                 {
                     "class": "bytes_panel",
@@ -3854,9 +4121,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 81
+                        "y": 88
                     },
-                    "id": 52,
+                    "id": 56,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -3935,9 +4202,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 81
+                        "y": 88
                     },
-                    "id": 53,
+                    "id": 57,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -4016,9 +4283,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 81
+                        "y": 88
                     },
-                    "id": 54,
+                    "id": 58,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -4097,9 +4364,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 81
+                        "y": 88
                     },
-                    "id": 55,
+                    "id": 59,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -4140,9 +4407,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 87
+                "y": 94
             },
-            "id": 56,
+            "id": 60,
             "panels": [],
             "repeat": "",
             "title": "Cache",
@@ -4164,9 +4431,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 88
+                "y": 95
             },
-            "id": 57,
+            "id": 61,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -4228,9 +4495,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 90
+                "y": 97
             },
-            "id": 58,
+            "id": 62,
             "isNew": true,
             "links": [],
             "options": {
@@ -4309,9 +4576,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 90
+                "y": 97
             },
-            "id": 59,
+            "id": 63,
             "isNew": true,
             "links": [],
             "options": {
@@ -4390,9 +4657,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 96
+                "y": 103
             },
-            "id": 60,
+            "id": 64,
             "isNew": true,
             "links": [],
             "options": {
@@ -4474,9 +4741,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 96
+                "y": 103
             },
-            "id": 61,
+            "id": 65,
             "isNew": true,
             "links": [],
             "options": {
@@ -4558,9 +4825,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 96
+                "y": 103
             },
-            "id": 62,
+            "id": 66,
             "isNew": true,
             "links": [],
             "options": {
@@ -4642,9 +4909,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 96
+                "y": 103
             },
-            "id": 63,
+            "id": 67,
             "isNew": true,
             "links": [],
             "options": {
@@ -4726,9 +4993,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 102
+                "y": 109
             },
-            "id": 64,
+            "id": 68,
             "isNew": true,
             "links": [],
             "options": {
@@ -4810,9 +5077,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 102
+                "y": 109
             },
-            "id": 65,
+            "id": 69,
             "isNew": true,
             "links": [],
             "options": {
@@ -4894,9 +5161,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 102
+                "y": 109
             },
-            "id": 66,
+            "id": 70,
             "isNew": true,
             "links": [],
             "options": {
@@ -4978,9 +5245,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 102
+                "y": 109
             },
-            "id": 67,
+            "id": 71,
             "isNew": true,
             "links": [],
             "options": {
@@ -5062,9 +5329,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 108
+                "y": 115
             },
-            "id": 68,
+            "id": 72,
             "isNew": true,
             "links": [],
             "options": {
@@ -5146,9 +5413,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 108
+                "y": 115
             },
-            "id": 69,
+            "id": 73,
             "isNew": true,
             "links": [],
             "options": {
@@ -5230,9 +5497,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 108
+                "y": 115
             },
-            "id": 70,
+            "id": 74,
             "isNew": true,
             "links": [],
             "options": {
@@ -5314,9 +5581,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 108
+                "y": 115
             },
-            "id": 71,
+            "id": 75,
             "isNew": true,
             "links": [],
             "options": {
@@ -5398,9 +5665,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 114
+                "y": 121
             },
-            "id": 72,
+            "id": 76,
             "isNew": true,
             "links": [],
             "options": {
@@ -5479,9 +5746,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 114
+                "y": 121
             },
-            "id": 73,
+            "id": 77,
             "isNew": true,
             "links": [],
             "options": {
@@ -5560,9 +5827,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 114
+                "y": 121
             },
-            "id": 74,
+            "id": 78,
             "isNew": true,
             "links": [],
             "options": {
@@ -5641,9 +5908,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 114
+                "y": 121
             },
-            "id": 75,
+            "id": 79,
             "isNew": true,
             "links": [],
             "options": {
@@ -5722,9 +5989,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 120
+                "y": 127
             },
-            "id": 76,
+            "id": 80,
             "isNew": true,
             "links": [],
             "options": {
@@ -5803,9 +6070,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 120
+                "y": 127
             },
-            "id": 77,
+            "id": 81,
             "isNew": true,
             "links": [],
             "options": {
@@ -5884,9 +6151,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 120
+                "y": 127
             },
-            "id": 78,
+            "id": 82,
             "isNew": true,
             "links": [],
             "options": {
@@ -5965,9 +6232,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 120
+                "y": 127
             },
-            "id": 79,
+            "id": 83,
             "isNew": true,
             "links": [],
             "options": {
@@ -6049,9 +6316,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 126
+                "y": 133
             },
-            "id": 80,
+            "id": 84,
             "isNew": true,
             "links": [],
             "options": {
@@ -6133,9 +6400,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 126
+                "y": 133
             },
-            "id": 81,
+            "id": 85,
             "isNew": true,
             "links": [],
             "options": {
@@ -6214,9 +6481,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 126
+                "y": 133
             },
-            "id": 82,
+            "id": 86,
             "isNew": true,
             "links": [],
             "options": {
@@ -6295,9 +6562,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 132
+                "y": 139
             },
-            "id": 83,
+            "id": 87,
             "isNew": true,
             "links": [],
             "options": {
@@ -6376,9 +6643,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 132
+                "y": 139
             },
-            "id": 84,
+            "id": 88,
             "isNew": true,
             "links": [],
             "options": {
@@ -6460,9 +6727,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 132
+                "y": 139
             },
-            "id": 85,
+            "id": 89,
             "isNew": true,
             "links": [],
             "options": {
@@ -6544,9 +6811,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 132
+                "y": 139
             },
-            "id": 86,
+            "id": 90,
             "isNew": true,
             "links": [],
             "options": {
@@ -6628,9 +6895,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 138
+                "y": 145
             },
-            "id": 87,
+            "id": 91,
             "isNew": true,
             "links": [],
             "options": {
@@ -6712,9 +6979,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 138
+                "y": 145
             },
-            "id": 88,
+            "id": 92,
             "isNew": true,
             "links": [],
             "options": {
@@ -6793,9 +7060,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 138
+                "y": 145
             },
-            "id": 89,
+            "id": 93,
             "isNew": true,
             "links": [],
             "options": {
@@ -6877,9 +7144,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 138
+                "y": 145
             },
-            "id": 90,
+            "id": 94,
             "isNew": true,
             "links": [],
             "options": {
@@ -6961,9 +7228,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 144
+                "y": 151
             },
-            "id": 91,
+            "id": 95,
             "isNew": true,
             "links": [],
             "options": {
@@ -7045,9 +7312,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 144
+                "y": 151
             },
-            "id": 92,
+            "id": 96,
             "isNew": true,
             "links": [],
             "options": {
@@ -7086,9 +7353,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 150
+                "y": 157
             },
-            "id": 93,
+            "id": 97,
             "panels": [
                 {
                     "class": "text_panel",
@@ -7106,9 +7373,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 151
+                        "y": 158
                     },
-                    "id": 94,
+                    "id": 98,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -7170,9 +7437,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 153
+                        "y": 160
                     },
-                    "id": 95,
+                    "id": 99,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7251,9 +7518,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 153
+                        "y": 160
                     },
-                    "id": 96,
+                    "id": 100,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7332,9 +7599,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 153
+                        "y": 160
                     },
-                    "id": 97,
+                    "id": 101,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7413,9 +7680,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 153
+                        "y": 160
                     },
-                    "id": 98,
+                    "id": 102,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7497,9 +7764,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 159
+                        "y": 166
                     },
-                    "id": 99,
+                    "id": 103,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7578,9 +7845,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 159
+                        "y": 166
                     },
-                    "id": 100,
+                    "id": 104,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7599,9 +7866,9 @@
                     "targets": [
                         {
                             "dashversion": [
-                                "<2025.1"
+                                ">2025.1"
                             ],
-                            "expr": "$topbottom([[filter_limit]], $func(rate(scylla_hints_for_views_manager_sent{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval]))  by ([[by]]))",
+                            "expr": "$topbottom([[filter_limit]], $func(rate(scylla_hints_for_views_manager_sent_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]|$^\"}[$__rate_interval]))  by ([[by]]))",
                             "intervalFactor": 1,
                             "legendFormat": "",
                             "refId": "A",
@@ -7662,9 +7929,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 159
+                        "y": 166
                     },
-                    "id": 101,
+                    "id": 105,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7743,9 +8010,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 159
+                        "y": 166
                     },
-                    "id": 102,
+                    "id": 106,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7786,9 +8053,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 165
+                "y": 172
             },
-            "id": 103,
+            "id": 107,
             "panels": [
                 {
                     "class": "rps_panel",
@@ -7841,9 +8108,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 166
+                        "y": 173
                     },
-                    "id": 104,
+                    "id": 108,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -7922,9 +8189,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 166
+                        "y": 173
                     },
-                    "id": 105,
+                    "id": 109,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8003,9 +8270,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 166
+                        "y": 173
                     },
-                    "id": 106,
+                    "id": 110,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8084,9 +8351,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 166
+                        "y": 173
                     },
-                    "id": 107,
+                    "id": 111,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8165,9 +8432,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 172
+                        "y": 179
                     },
-                    "id": 108,
+                    "id": 112,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8246,9 +8513,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 172
+                        "y": 179
                     },
-                    "id": 109,
+                    "id": 113,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8327,9 +8594,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 172
+                        "y": 179
                     },
-                    "id": 110,
+                    "id": 114,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8370,9 +8637,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 178
+                "y": 185
             },
-            "id": 111,
+            "id": 115,
             "panels": [
                 {
                     "class": "text_panel",
@@ -8390,9 +8657,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 179
+                        "y": 186
                     },
-                    "id": 112,
+                    "id": 116,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -8454,9 +8721,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 181
+                        "y": 188
                     },
-                    "id": 113,
+                    "id": 117,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8535,9 +8802,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 181
+                        "y": 188
                     },
-                    "id": 114,
+                    "id": 118,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8619,9 +8886,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 181
+                        "y": 188
                     },
-                    "id": 115,
+                    "id": 119,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8703,9 +8970,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 181
+                        "y": 188
                     },
-                    "id": 116,
+                    "id": 120,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8784,9 +9051,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 187
+                        "y": 194
                     },
-                    "id": 117,
+                    "id": 121,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8865,9 +9132,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 187
+                        "y": 194
                     },
-                    "id": 118,
+                    "id": 122,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -8949,9 +9216,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 187
+                        "y": 194
                     },
-                    "id": 119,
+                    "id": 123,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9033,9 +9300,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 187
+                        "y": 194
                     },
-                    "id": 120,
+                    "id": 124,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9114,9 +9381,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 193
+                        "y": 200
                     },
-                    "id": 121,
+                    "id": 125,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9198,9 +9465,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 193
+                        "y": 200
                     },
-                    "id": 122,
+                    "id": 126,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9279,9 +9546,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 193
+                        "y": 200
                     },
-                    "id": 123,
+                    "id": 127,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9324,9 +9591,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 193
+                        "y": 200
                     },
-                    "id": 124,
+                    "id": 128,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -9389,9 +9656,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 199
+                        "y": 206
                     },
-                    "id": 125,
+                    "id": 129,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9470,9 +9737,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 199
+                        "y": 206
                     },
-                    "id": 126,
+                    "id": 130,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9551,9 +9818,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 199
+                        "y": 206
                     },
-                    "id": 127,
+                    "id": 131,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9632,9 +9899,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 199
+                        "y": 206
                     },
-                    "id": 128,
+                    "id": 132,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9713,9 +9980,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 205
+                        "y": 212
                     },
-                    "id": 129,
+                    "id": 133,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9794,9 +10061,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 205
+                        "y": 212
                     },
-                    "id": 130,
+                    "id": 134,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9875,9 +10142,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 205
+                        "y": 212
                     },
-                    "id": 131,
+                    "id": 135,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -9956,9 +10223,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 18,
-                        "y": 205
+                        "y": 212
                     },
-                    "id": 132,
+                    "id": 136,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -10037,9 +10304,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 0,
-                        "y": 211
+                        "y": 218
                     },
-                    "id": 133,
+                    "id": 137,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -10118,9 +10385,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 6,
-                        "y": 211
+                        "y": 218
                     },
-                    "id": 134,
+                    "id": 138,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -10202,9 +10469,9 @@
                         "h": 6,
                         "w": 6,
                         "x": 12,
-                        "y": 211
+                        "y": 218
                     },
-                    "id": 135,
+                    "id": 139,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -10248,9 +10515,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 217
+                "y": 224
             },
-            "id": 136,
+            "id": 140,
             "panels": [
                 {
                     "class": "text_panel",
@@ -10268,9 +10535,9 @@
                         "h": 2,
                         "w": 24,
                         "x": 0,
-                        "y": 218
+                        "y": 225
                     },
-                    "id": 137,
+                    "id": 141,
                     "isNew": true,
                     "links": [],
                     "mode": "html",
@@ -10332,9 +10599,9 @@
                         "h": 6,
                         "w": 8,
                         "x": 0,
-                        "y": 220
+                        "y": 227
                     },
-                    "id": 138,
+                    "id": 142,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -10416,9 +10683,9 @@
                         "h": 6,
                         "w": 8,
                         "x": 8,
-                        "y": 220
+                        "y": 227
                     },
-                    "id": 139,
+                    "id": 143,
                     "isNew": true,
                     "links": [],
                     "options": {
@@ -10462,9 +10729,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 226
+                "y": 233
             },
-            "id": 140,
+            "id": 144,
             "panels": [],
             "repeat": "",
             "title": "Memory",
@@ -10486,9 +10753,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 227
+                "y": 234
             },
-            "id": 141,
+            "id": 145,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -10550,9 +10817,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 229
+                "y": 236
             },
-            "id": 142,
+            "id": 146,
             "isNew": true,
             "links": [],
             "options": {
@@ -10631,9 +10898,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 229
+                "y": 236
             },
-            "id": 143,
+            "id": 147,
             "isNew": true,
             "links": [],
             "options": {
@@ -10713,9 +10980,9 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 229
+                "y": 236
             },
-            "id": 144,
+            "id": 148,
             "isNew": true,
             "links": [],
             "options": {
@@ -10751,9 +11018,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 235
+                "y": 242
             },
-            "id": 145,
+            "id": 149,
             "panels": [],
             "repeat": "",
             "title": "Compaction",
@@ -10775,9 +11042,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 236
+                "y": 243
             },
-            "id": 146,
+            "id": 150,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -10839,9 +11106,9 @@
                 "h": 6,
                 "w": 3,
                 "x": 0,
-                "y": 238
+                "y": 245
             },
-            "id": 147,
+            "id": 151,
             "isNew": true,
             "links": [],
             "options": {
@@ -10919,9 +11186,9 @@
                 "h": 6,
                 "w": 5,
                 "x": 3,
-                "y": 238
+                "y": 245
             },
-            "id": 148,
+            "id": 152,
             "isNew": true,
             "links": [],
             "options": {
@@ -11001,9 +11268,9 @@
                 "h": 6,
                 "w": 5,
                 "x": 8,
-                "y": 238
+                "y": 245
             },
-            "id": 149,
+            "id": 153,
             "isNew": true,
             "links": [],
             "options": {
@@ -11036,6 +11303,176 @@
             "type": "timeseries"
         },
         {
+            "class": "graph_panel_int",
+            "dashversion": [
+                ">2026.1"
+            ],
+            "datasource": "prometheus",
+            "description": "Holds the sum of compaction backlog for all tables in the system.",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 5,
+                "x": 13,
+                "y": 245
+            },
+            "id": 154,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 5,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_compaction_manager_backlog{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Compactions backlog $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
+            "class": "graph_panel",
+            "dashversion": [
+                ">2026.1"
+            ],
+            "datasource": "prometheus",
+            "description": "the sum of normalized compaction backlog for all tables in the system.\n\nBacklog is normalized by dividing backlog by shard's available memory.",
+            "editable": true,
+            "error": false,
+            "fieldConfig": {
+                "defaults": {
+                    "class": "fieldConfig_defaults",
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "axisSoftMin": 0,
+                        "barAlignment": 0,
+                        "class": "fieldConfig_defaults_custom",
+                        "drawStyle": "line",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 5,
+                "x": 18,
+                "y": 245
+            },
+            "id": 155,
+            "isNew": true,
+            "links": [],
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "hidden",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "maxHeight": 600,
+                    "mode": "multi",
+                    "sort": "desc"
+                }
+            },
+            "span": 5,
+            "targets": [
+                {
+                    "expr": "$topbottom([[filter_limit]], $func(scylla_compaction_manager_normalized_backlog{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                    "intervalFactor": 1,
+                    "legendFormat": "",
+                    "metric": "",
+                    "refId": "A",
+                    "step": 1
+                }
+            ],
+            "title": "Normalized Compactions backlog $func by [[by]]",
+            "type": "timeseries"
+        },
+        {
             "class": "collapsible_row_panel",
             "collapsed": false,
             "datasource": null,
@@ -11043,9 +11480,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 244
+                "y": 251
             },
-            "id": 150,
+            "id": 156,
             "panels": [],
             "repeat": "sg",
             "title": "Latencies - $sg",
@@ -11102,9 +11539,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 245
+                "y": 252
             },
-            "id": 151,
+            "id": 157,
             "isNew": true,
             "links": [],
             "options": {
@@ -11182,9 +11619,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 245
+                "y": 252
             },
-            "id": 152,
+            "id": 158,
             "isNew": true,
             "links": [],
             "options": {
@@ -11272,9 +11709,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 245
+                "y": 252
             },
-            "id": 153,
+            "id": 159,
             "isNew": true,
             "links": [],
             "options": {
@@ -11363,9 +11800,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 245
+                "y": 252
             },
-            "id": 154,
+            "id": 160,
             "isNew": true,
             "links": [],
             "options": {
@@ -11455,9 +11892,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 251
+                "y": 258
             },
-            "id": 155,
+            "id": 161,
             "isNew": true,
             "links": [],
             "options": {
@@ -11535,9 +11972,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 251
+                "y": 258
             },
-            "id": 156,
+            "id": 162,
             "isNew": true,
             "links": [],
             "options": {
@@ -11625,9 +12062,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 251
+                "y": 258
             },
-            "id": 157,
+            "id": 163,
             "isNew": true,
             "links": [],
             "options": {
@@ -11716,9 +12153,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 251
+                "y": 258
             },
-            "id": 158,
+            "id": 164,
             "isNew": true,
             "links": [],
             "options": {
@@ -11808,9 +12245,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 257
+                "y": 264
             },
-            "id": 159,
+            "id": 165,
             "isNew": true,
             "links": [],
             "options": {
@@ -11890,9 +12327,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 257
+                "y": 264
             },
-            "id": 160,
+            "id": 166,
             "isNew": true,
             "links": [],
             "options": {
@@ -11972,9 +12409,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 257
+                "y": 264
             },
-            "id": 161,
+            "id": 167,
             "isNew": true,
             "links": [],
             "options": {
@@ -12054,9 +12491,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 257
+                "y": 264
             },
-            "id": 162,
+            "id": 168,
             "isNew": true,
             "links": [],
             "options": {
@@ -12136,9 +12573,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 263
+                "y": 270
             },
-            "id": 163,
+            "id": 169,
             "isNew": true,
             "links": [],
             "options": {
@@ -12218,9 +12655,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 263
+                "y": 270
             },
-            "id": 164,
+            "id": 170,
             "isNew": true,
             "links": [],
             "options": {
@@ -12300,9 +12737,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 263
+                "y": 270
             },
-            "id": 165,
+            "id": 171,
             "isNew": true,
             "links": [],
             "options": {
@@ -12382,9 +12819,9 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 263
+                "y": 270
             },
-            "id": 166,
+            "id": 172,
             "isNew": true,
             "links": [],
             "options": {
@@ -12422,9 +12859,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 269
+                "y": 276
             },
-            "id": 167,
+            "id": 173,
             "panels": [],
             "repeat": "",
             "title": "Your panels",
@@ -12445,9 +12882,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 270
+                "y": 277
             },
-            "id": 168,
+            "id": 174,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -12512,9 +12949,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 272
+                "y": 279
             },
-            "id": 169,
+            "id": 175,
             "isNew": true,
             "links": [],
             "options": {
@@ -12587,9 +13024,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 272
+                "y": 279
             },
-            "id": 170,
+            "id": 176,
             "isNew": true,
             "links": [],
             "options": {
@@ -12627,9 +13064,9 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 278
+                "y": 285
             },
-            "id": 171,
+            "id": 177,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -12648,7 +13085,7 @@
     "schemaVersion": 26,
     "style": "dark",
     "tags": [
-        "2024.1"
+        "2026.2"
     ],
     "templating": {
         "list": [
@@ -13035,8 +13472,8 @@
                 "allValue": null,
                 "class": "template_variable_custom",
                 "current": {
-                    "text": "2024.1",
-                    "value": "2024.1"
+                    "text": "2026.2",
+                    "value": "2026.2"
                 },
                 "error": null,
                 "hide": 2,
@@ -13047,11 +13484,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "2024.1",
-                        "value": "2024.1"
+                        "text": "2026.2",
+                        "value": "2026.2"
                     }
                 ],
-                "query": "2024.1",
+                "query": "2026.2",
                 "skipUrlSync": false,
                 "type": "custom"
             },
@@ -13113,6 +13550,6 @@
     },
     "timezone": "utc",
     "title": "Detailed",
-    "uid": "detailed-2024-1",
+    "uid": "detailed-2026-2",
     "version": 5
 }

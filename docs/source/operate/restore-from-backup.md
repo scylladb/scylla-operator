@@ -9,14 +9,6 @@ Restore from backup taken using [ScyllaDB Manager](../understand/manager.md) to 
 - A backup snapshot stored in object storage (Amazon S3, Google Cloud Storage, or Azure Blob Storage).
 - The target cluster has access to the backup bucket (same object storage credentials as the source).
 
-:::{warning}
-Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management` isn't supported.
-
-When creating the `target` ScyllaDB cluster, configure it with `consistent_cluster_management: false`.
-
-When following the steps for schema restore, ensure you follow the additional steps dedicated to affected ScyllaDB versions.
-:::
-
 In the following example, the ScyllaCluster, which was used to take the backup, is called `source`. Backup will be restored into the ScyllaCluster named `target`.
 
 :::::{tabs}
@@ -131,7 +123,7 @@ Use the following command to check progress of the restore task:
 $ kubectl -n scylla-manager exec -ti deployment.apps/scylla-manager -- sctool progress -c scylla/target restore/57228c52-7cf6-4271-8c8d-d446ff160747
 Restore progress
 Run:            0dd20cdf-abc4-11ee-951c-6e7993cf42ed
-Status:         DONE - restart required (see restore docs)
+Status:         DONE
 Start time:     05 Jan 24 12:15:02 UTC
 End time:       05 Jan 24 12:15:09 UTC
 Duration:       6s
@@ -145,50 +137,7 @@ Snapshot Tag:   sm_20240105115931UTC
 +---------------+-------------+----------+----------+------------+--------+
 ```
 
-As suggested in the progress output, you will need to execute a rolling restart of the ScyllaCluster **if you are using ScyllaDB 5.4/2024.1 or older**. For ScyllaDB 2024.2 and newer, a rolling restart is not required after restoring the schema.
-
-For more details, refer to the ScyllaDB Manager Restore documentation:
-- [Old Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/old-restore-schema.html) (for ScyllaDB 5.4/2024.1 or older)
-- [New Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/restore-schema.html) (for ScyllaDB 2024.2 and newer)
-
-```console
-kubectl patch scyllacluster/target --type=merge -p='{"spec": {"forceRedeploymentReason": "schema restored"}}'
-```
-
-Use the following commands to wait until restart is finished:
-```console
-$ kubectl wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/target
-scyllacluster.scylla.scylladb.com/target condition met
-
-$ kubectl wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/target
-scyllacluster.scylla.scylladb.com/target condition met
-
-$ kubectl wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/target
-scyllacluster.scylla.scylladb.com/target condition met
-```
-
-:::{caution}
-### Restoring schema with **ScyllaDB OS 5.4.X** or **ScyllaDB Enterprise 2024.1.X** and `consistent_cluster_management`
-
-After you've followed the above steps with a ScyllaDB target cluster with `consistent_cluster_management` disabled, you'll need to enable Raft by configuring the target cluster with `consistent_cluster_management: true`.
-
-You will then need to execute a rolling restart of the ScyllaCluster for the change to take effect.
-```console
-kubectl patch scyllacluster/target --type=merge -p='{"spec": {"forceRedeploymentReason": "raft enabled"}}'
-```
-
-Use the following commands to wait until restart is finished:
-```console
-$ kubectl wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/target
-scyllacluster.scylla.scylladb.com/target condition met
-
-$ kubectl wait --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/target
-scyllacluster.scylla.scylladb.com/target condition met
-
-$ kubectl wait --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/target
-scyllacluster.scylla.scylladb.com/target condition met
-```
-:::
+For more details, refer to the [ScyllaDB Manager Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/restore-schema.html).
 
 ## Restore tables
 
@@ -263,5 +212,4 @@ SELECT COUNT(*) FROM users.users;
 
 - [Back up and restore](back-up-and-restore.md) — overview of backup and restore with ScyllaDB Manager.
 - [ScyllaDB Manager](../understand/manager.md) — how Manager integrates with the Operator.
-- [Rolling restart](perform-rolling-restart.md) — how to trigger a rolling restart (required after schema restore on older ScyllaDB versions).
 - [ScyllaDB Manager Restore Documentation](https://manager.docs.scylladb.com/stable/restore/) — upstream Manager restore reference.

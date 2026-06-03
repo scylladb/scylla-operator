@@ -45,4 +45,3 @@ In multi-DC clusters using multiple `ScyllaCluster` resources, restart each data
 
 - [StatefulSets and racks](../understand/statefulsets-and-racks.md) — how StatefulSets manage rolling updates with partition-based rollouts
 - [Upgrade ScyllaDB](../upgrade/upgrade-scylladb.md) — version upgrades that include an automatic rolling restart
-- [Back up and restore](back-up-and-restore.md) — schema restores on older ScyllaDB versions require a rolling restart after the restore completes

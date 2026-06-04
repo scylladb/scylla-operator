@@ -382,6 +382,14 @@ Locations:
 {{- range .Location }}
   - {{ . }}
 {{- end }}
+{{ if .SkipSchema }}
+Skip Schema: snapshot won't contain schema that can be restored
+{{- end }}
+{{- if .PurgeOnly }}
+Purge only: backup task execution will only purge snapshots (according to retention policy)
+{{- end }}
+
+Backup Method: {{ .Method }}
 
 Bandwidth Limits:
 {{- if .RateLimit -}}
@@ -409,9 +417,14 @@ Upload Parallel Limits:
 {{- else }}
   - All hosts in parallel
 {{- end }}
+{{ if ne .Transfers -1 }}
+Transfers:	{{ .Transfers }}
+{{- else }}
+Transfers: defined in scylla-manager-agent.yaml config
+{{- end }}
 
 Retention Policy:
-{{ FormatRetentionPolicy .Retention .RetentionDays }}
+{{ FormatRetentionPolicy .Retention .RetentionDays .RetentionLockMode .OverrideRetentionLock }}
 `
 
 // Render implements Renderer interface.
@@ -1095,6 +1108,8 @@ Datacenters:	{{ range .Dcs }}
   - {{ . }}
 {{- end }}
 {{ end -}}
+Retention Lock:
+{{ FormatRetentionLock .RetentionLockMode .OverrideRetentionLock .RetentionDays -}}
 {{ else }}Progress:	0%
 {{ end }}
 {{- if .Errors -}}
@@ -1112,6 +1127,7 @@ func (bp BackupProgress) addHeader(w io.Writer) error {
 		"FormatError":          FormatError,
 		"FormatUploadProgress": FormatUploadProgress,
 		"status":               bp.status,
+		"FormatRetentionLock":  FormatRetentionLock,
 	}).Parse(backupProgressTemplate))
 	return temp.Execute(w, bp)
 }

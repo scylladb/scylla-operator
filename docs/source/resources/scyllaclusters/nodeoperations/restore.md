@@ -146,7 +146,7 @@ Snapshot Tag:   sm_20240105115931UTC
 As suggested in the progress output, you will need to execute a rolling restart of the ScyllaCluster **if you are using ScyllaDB 5.4/2024.1 or older**. For ScyllaDB 2024.2 and newer, a rolling restart is not required after restoring the schema.
 
 For more details, refer to the ScyllaDB Manager Restore documentation:
-- [Old Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/old-restore-schema.html) (for ScyllaDB 5.4/2024.1 or older)
+- [Old Restore Schema Documentation](https://manager.docs.scylladb.com/branch-3.9/restore/old-restore-schema.html) (for ScyllaDB 5.4/2024.1 or older)
 - [New Restore Schema Documentation](https://manager.docs.scylladb.com/stable/restore/restore-schema.html) (for ScyllaDB 2024.2 and newer)
 
 ```console

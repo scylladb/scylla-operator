@@ -4,7 +4,7 @@ package auth
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -101,7 +101,7 @@ func TestValidateTokenFailure(t *testing.T) {
 		if w.Code != http.StatusUnauthorized {
 			t.Error("expected status 401 got", w)
 		}
-		responseBody, err := ioutil.ReadAll(ioutil.NopCloser(w.Result().Body))
+		responseBody, err := io.ReadAll(io.NopCloser(w.Result().Body))
 		if err != nil {
 			t.Error("expected nil err, got", err)
 		}

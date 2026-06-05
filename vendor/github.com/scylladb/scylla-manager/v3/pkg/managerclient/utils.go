@@ -261,13 +261,13 @@ func FormatIntensity(v float64) string {
 }
 
 // FormatRetentionPolicy returns text representation of retention policy.
-func FormatRetentionPolicy(retention, retentionDays int64) string {
+func FormatRetentionPolicy(retention, retentionDays int64, retentionLockMode string, overrideRetention bool) string {
 	var res string
 	if retention == 0 && retentionDays == 0 {
-		res += "  - Scylla Manager will not purge any backups created by this task\n"
+		res += "  - ScyllaDB Manager will not purge any backups created by this task\n"
 	}
 	if retention > 0 {
-		res += "  - Last "
+		res += "  - Retain last "
 		if retention == 1 {
 			res += "backup\n"
 		} else {
@@ -275,14 +275,33 @@ func FormatRetentionPolicy(retention, retentionDays int64) string {
 		}
 	}
 	if retentionDays > 0 {
-		res += fmt.Sprintf("  - Backups not older than %d ", retentionDays)
-		if retentionDays == 1 {
-			res += "day\n"
-		} else {
-			res += "days\n"
-		}
+		res += fmt.Sprintf("  - Retain backups not older than %s\n", formatDays(retentionDays))
+	}
+	res += FormatRetentionLock(retentionLockMode, overrideRetention, retentionDays)
+
+	return res
+}
+
+// FormatRetentionLock returns text representation of retention lock configuration.
+func FormatRetentionLock(mode string, override bool, retentionDays int64) string {
+	if (mode == "" || mode == "disabled") && !override {
+		return fmt.Sprintf("  - Retention lock is not applied to snapshot files\n")
+	}
+	var res string
+	if mode != "" && mode != "disabled" {
+		res += fmt.Sprintf("  - Retention lock snapshot files with mode %q for %s\n", mode, formatDays(retentionDays))
+	}
+	if override {
+		res += fmt.Sprintf("  - Override retention lock configuration on existing snapshot files\n")
 	}
 	return res
+}
+
+func formatDays(days int64) string {
+	if days == 1 {
+		return fmt.Sprintf("%d day", days)
+	}
+	return fmt.Sprintf("%d days", days)
 }
 
 // FormatTablesProgress calculates percent of restored table bytes.

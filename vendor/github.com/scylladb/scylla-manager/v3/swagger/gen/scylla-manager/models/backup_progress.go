@@ -32,6 +32,15 @@ type BackupProgress struct {
 	// hosts
 	Hosts []*HostProgress `json:"hosts"`
 
+	// override retention lock
+	OverrideRetentionLock bool `json:"override_retention_lock,omitempty"`
+
+	// retention days
+	RetentionDays int64 `json:"retention_days,omitempty"`
+
+	// retention lock mode
+	RetentionLockMode string `json:"retention_lock_mode,omitempty"`
+
 	// size
 	Size int64 `json:"size,omitempty"`
 

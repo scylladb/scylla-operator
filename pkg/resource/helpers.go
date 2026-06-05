@@ -37,7 +37,7 @@ func GetObjectGVKOrUnknown(obj runtime.Object) *schema.GroupVersionKind {
 	kinds, _, err := Scheme.ObjectKinds(obj)
 	if err != nil || len(kinds) == 0 {
 		t := reflect.TypeOf(obj)
-		if t.Kind() == reflect.Ptr {
+		if t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		return &schema.GroupVersionKind{

@@ -5,7 +5,7 @@ package cloud
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -49,7 +49,7 @@ func (c *eksMetadataClient) readString(ctx context.Context, path string) (string
 		return "", fmt.Errorf("get metadata at path %q: %w", path, err)
 	}
 
-	buf, err := ioutil.ReadAll(resp.Content)
+	buf, err := io.ReadAll(resp.Content)
 	if err != nil {
 		return "", fmt.Errorf("read response: %w", err)
 	}

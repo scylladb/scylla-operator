@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"maps"
 	"os"
 	"os/exec"
@@ -341,7 +340,7 @@ func mergeYAMLs(initialYAML []byte, overrideYAMLs ...[]byte) ([]byte, error) {
 }
 
 func getCPUsAllowedList(procFile string) (string, error) {
-	statusFile, err := ioutil.ReadFile(procFile)
+	statusFile, err := os.ReadFile(procFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "error reading proc status file '%s'", procFile)
 	}

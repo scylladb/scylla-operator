@@ -52,6 +52,17 @@ else
     echo "Reusing existing KinD cluster: ${CLUSTER_NAME}"
 fi
 
+# Bump etcd CPU request from the kubeadm default of 100m to avoid compaction stalls under high test parallelism.
+podman exec "${CLUSTER_NAME}-control-plane" sed -i 's/cpu: 100m/cpu: 500m/' /etc/kubernetes/manifests/etcd.yaml
+echo "Waiting for API server to become ready after etcd CPU bump..."
+wait_kubeconfig="$(mktemp)"
+kind get kubeconfig --name="${CLUSTER_NAME}" > "${wait_kubeconfig}"
+until KUBECONFIG="${wait_kubeconfig}" kubectl get --raw /readyz >/dev/null 2>&1; do
+    echo "API server not ready yet, retrying..."
+    sleep 2
+done
+rm "${wait_kubeconfig}"
+
 # Set up a local registry for the KinD cluster following https://kind.sigs.k8s.io/docs/user/local-registry/.
 reg_name='kind-registry'
 reg_port='5001'

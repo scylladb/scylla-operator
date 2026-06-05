@@ -11,6 +11,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -143,12 +144,17 @@ func NewCertificateManager(
 // recreated when their desired config changes. Certificates are automatically refreshed when they reach their refresh
 // interval, or 80% of their lifetime, whichever comes sooner.
 func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc func() time.Time, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, caConfig *CAConfig, caBundleConfig *CABundleConfig, certConfigs []*CertificateConfig, existingSecrets map[string]*corev1.Secret, existingConfigMaps map[string]*corev1.ConfigMap) error {
+	existingCASecret, err := getSecretWithCache(ctx, cm.secretsClient, controller.GetNamespace(), caConfig.Name, existingSecrets)
+	if err != nil {
+		return fmt.Errorf("can't get CA secret %q: %w", caConfig.Name, err)
+	}
+
 	caCertCreatorConfig := &ocrypto.CACertCreatorConfig{
 		Subject: pkix.Name{
 			CommonName: caConfig.Name,
 		},
 	}
-	caTLSSecret, err := MakeSelfSignedCA(ctx, caConfig.Name, caCertCreatorConfig.ToCreator(), cm.keyGetter, nowFunc, caConfig.Validity, caConfig.Refresh, controller, controllerGVK, existingSecrets[caConfig.Name])
+	caTLSSecret, err := MakeSelfSignedCA(ctx, caConfig.Name, caCertCreatorConfig.ToCreator(), cm.keyGetter, nowFunc, caConfig.Validity, caConfig.Refresh, controller, controllerGVK, existingCASecret)
 	if err != nil {
 		return fmt.Errorf("can't make selfsigned CA %q: %w", caConfig.Name, err)
 	}
@@ -165,7 +171,12 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 		caTLSSecret.Refresh(updatedCASecret)
 	}
 
-	caBundleCM, err := caTLSSecret.MakeCABundle(caBundleConfig.Name, controller, controllerGVK, existingConfigMaps[caBundleConfig.Name], nowFunc())
+	existingBundleCM, err := getConfigMapWithCache(ctx, cm.configMapClient, controller.GetNamespace(), caBundleConfig.Name, existingConfigMaps)
+	if err != nil {
+		return fmt.Errorf("can't get CA bundle ConfigMap %q: %w", caBundleConfig.Name, err)
+	}
+
+	caBundleCM, err := caTLSSecret.MakeCABundle(caBundleConfig.Name, controller, controllerGVK, existingBundleCM, nowFunc())
 	if err != nil {
 		return fmt.Errorf("can't make ca bundle ConfigMap %q: %w", caBundleConfig.Name, err)
 	}
@@ -179,7 +190,12 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 	}
 
 	for _, cc := range certConfigs {
-		tlsSecret, err := caTLSSecret.MakeCertificate(ctx, cc.Name, cc.CertCreator, cm.keyGetter, controller, controllerGVK, existingSecrets[cc.Name], cc.Validity, cc.Refresh)
+		existingCertSecret, err := getSecretWithCache(ctx, cm.secretsClient, controller.GetNamespace(), cc.Name, existingSecrets)
+		if err != nil {
+			return fmt.Errorf("can't get certificate secret %q: %w", cc.Name, err)
+		}
+
+		tlsSecret, err := caTLSSecret.MakeCertificate(ctx, cc.Name, cc.CertCreator, cm.keyGetter, controller, controllerGVK, existingCertSecret, cc.Validity, cc.Refresh)
 		if err != nil {
 			return fmt.Errorf("can't make certificate %q: %w", cc.Name, err)
 		}
@@ -199,4 +215,39 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 
 func (cm *CertificateManager) ManageCertificateChain(ctx context.Context, nowFunc func() time.Time, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, certChainConfig *CertChainConfig, existingSecrets map[string]*corev1.Secret, existingConfigMaps map[string]*corev1.ConfigMap) error {
 	return cm.ManageCertificates(ctx, nowFunc, controller, controllerGVK, certChainConfig.CAConfig, certChainConfig.CABundleConfig, certChainConfig.CertConfigs, existingSecrets, existingConfigMaps)
+}
+
+// getSecretWithCache returns the named Secret from cache, falling back to a live GET on a cache miss.
+// Returns nil, nil if the Secret does not exist.
+func getSecretWithCache(ctx context.Context, client corev1client.SecretsGetter, namespace, name string, cache map[string]*corev1.Secret) (*corev1.Secret, error) {
+	return getWithCache(ctx, namespace, name, cache, func(ctx context.Context, name string) (*corev1.Secret, error) {
+		return client.Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
+	})
+}
+
+// getConfigMapWithCache returns the named ConfigMap from cache, falling back to a live GET on a cache miss.
+// Returns nil, nil if the ConfigMap does not exist.
+func getConfigMapWithCache(ctx context.Context, client corev1client.ConfigMapsGetter, namespace, name string, cache map[string]*corev1.ConfigMap) (*corev1.ConfigMap, error) {
+	return getWithCache(ctx, namespace, name, cache, func(ctx context.Context, name string) (*corev1.ConfigMap, error) {
+		return client.ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
+	})
+}
+
+// getWithCache returns the named object from cache, falling back to a live GET on a cache miss.
+// Returns nil, nil if the object does not exist.
+func getWithCache[T any](ctx context.Context, namespace, name string, cache map[string]*T, get func(context.Context, string) (*T, error)) (*T, error) {
+	if obj, ok := cache[name]; ok {
+		return obj, nil
+	}
+
+	obj, err := get(ctx, name)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("can't get object %q: %w", naming.ManualRef(namespace, name), err)
+	}
+
+	return obj, nil
 }

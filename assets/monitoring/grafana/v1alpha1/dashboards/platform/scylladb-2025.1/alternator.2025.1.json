@@ -14,7 +14,7 @@
                 "class": "annotation_restart",
                 "datasource": "prometheus",
                 "enable": true,
-                "expr": "resets(scylla_gossip_heart_beat{cluster=\"$cluster\"}[$__rate_interval])>0",
+                "expr": "resets(scylla_gossip_heart_beat{cluster=\"$cluster\"}[5m])>0",
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
@@ -29,7 +29,7 @@
                 "class": "annotation_stall",
                 "datasource": "prometheus",
                 "enable": false,
-                "expr": "changes(scylla_stall_detector_reported{cluster=\"$cluster\"}[$__rate_interval])>0",
+                "expr": "changes(scylla_stall_detector_reported{cluster=\"$cluster\"}[5m])>0",
                 "hide": false,
                 "iconColor": "rgba(255, 96, 96, 1)",
                 "limit": 100,
@@ -787,7 +787,7 @@
                 "uid": "grafana"
             },
             "gridPos": {
-                "h": 6,
+                "h": 12,
                 "w": 8,
                 "x": 0,
                 "y": 7
@@ -809,9 +809,277 @@
                 },
                 "viewMode": "list"
             },
-            "span": 4,
             "title": "Active Alerts",
             "type": "alertlist"
+        },
+        {
+            "class": "alternator_tables",
+            "datasource": "prometheus",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "align": "auto",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "filterable": true,
+                        "footer": {
+                            "reducers": []
+                        },
+                        "inspect": false
+                    },
+                    "links": [
+                        {
+                            "title": "Table data",
+                            "url": "/d/${__dashboard.uid}/${__dashboard.slug}?${__url_time_range}&var-table=${__data.fields[0]}"
+                        }
+                    ],
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "cf"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Table"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Value #A"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "OP/s"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "ops"
+                            },
+                            {
+                                "id": "custom.width",
+                                "value": 120
+                            },
+                            {
+                                "id": "decimals",
+                                "value": 1
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Value #B"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Disk Usage"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "decbytes"
+                            },
+                            {
+                                "id": "custom.width",
+                                "value": 120
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Value #C"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "P50"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            },
+                            {
+                                "id": "custom.width",
+                                "value": 120
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Value #D"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "P95"
+                            },
+                            {
+                                "id": "custom.width",
+                                "value": 120
+                            },
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Value #E"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "P99"
+                            },
+                            {
+                                "id": "unit",
+                                "value": "\u00b5s"
+                            },
+                            {
+                                "id": "custom.width",
+                                "value": 120
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 12,
+                "w": 8,
+                "x": 8,
+                "y": 7
+            },
+            "options": {
+                "cellHeight": "sm",
+                "showHeader": true
+            },
+            "targets": [
+                {
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "sum(rate(scylla_alternator_table_operation{ks=~\"alternator_.*\"}[10m])) by (cf)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "P1809F7CD0C75ACF3"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "sum(scylla_column_family_total_disk_space{ks=~\"alternator_.*\"}) by (cf)",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "P1809F7CD0C75ACF3"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": " ((sum(rate(scylla_alternator_table_op_latency_bucket{ks=~\"alternator_.*\"}[2m])) by (cf) < 1)*0 or on(cf) histogram_quantile(0.5, sum(rate(scylla_alternator_table_op_latency_bucket{ks=~\"alternator_.*\"}[2m])) by (cf, le))) ",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "C"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "P1809F7CD0C75ACF3"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": " ((sum(rate(scylla_alternator_table_op_latency_bucket{ks=~\"alternator_.*\"}[2m])) by (cf) < 1)*0 or on(cf) histogram_quantile(0.95, sum(rate(scylla_alternator_table_op_latency_bucket{ks=~\"alternator_.*\"}[2m])) by (cf, le))) ",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "D"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "P1809F7CD0C75ACF3"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": " ((sum(rate(scylla_alternator_table_op_latency_bucket{ks=~\"alternator_.*\"}[2m])) by (cf) < 1)*0 or on(cf) histogram_quantile(0.99, sum(rate(scylla_alternator_table_op_latency_bucket{ks=~\"alternator_.*\"}[2m])) by (cf, le))) ",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "legendFormat": "__auto",
+                    "range": false,
+                    "refId": "E"
+                }
+            ],
+            "title": "Tables",
+            "transformations": [
+                {
+                    "id": "joinByField",
+                    "options": {
+                        "byField": "cf",
+                        "mode": "outer"
+                    }
+                },
+                {
+                    "id": "filterFieldsByName",
+                    "options": {
+                        "include": {
+                            "names": [
+                                "cf",
+                                "Value #A",
+                                "Value #B",
+                                "Value #C",
+                                "Value #D",
+                                "Value #E"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "type": "table"
         },
         {
             "class": "bytes_panel",
@@ -862,7 +1130,7 @@
             "gridPos": {
                 "h": 6,
                 "w": 3,
-                "x": 8,
+                "x": 16,
                 "y": 7
             },
             "id": 10,
@@ -952,7 +1220,7 @@
             "gridPos": {
                 "h": 6,
                 "w": 5,
-                "x": 11,
+                "x": 19,
                 "y": 7
             },
             "id": 11,
@@ -1041,7 +1309,7 @@
                 "h": 6,
                 "w": 4,
                 "x": 16,
-                "y": 7
+                "y": 13
             },
             "id": 12,
             "isNew": true,
@@ -1129,7 +1397,7 @@
                 "h": 6,
                 "w": 4,
                 "x": 20,
-                "y": 7
+                "y": 13
             },
             "id": 13,
             "isNew": true,
@@ -1173,7 +1441,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 13
+                "y": 25
             },
             "id": 14,
             "panels": [],
@@ -1196,7 +1464,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 14
+                "y": 26
             },
             "id": 15,
             "isNew": true,
@@ -1444,7 +1712,7 @@
                                 "value": [
                                     {
                                         "title": "OS Information Dashboard, an Error indicates there are OS related errors",
-                                        "url": "/d/OS-[[dash_version]]/os-metrics?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
+                                        "url": "/d/OS-[[dash_version]]/os-metrics?orgId=1&var-by=instance&var-node=${__data.fields[0]}&${__url_time_range}"
                                     }
                                 ]
                             },
@@ -1518,7 +1786,7 @@
                                 "value": [
                                     {
                                         "title": "Cordinator and Replica node errors",
-                                        "url": "/d/detailed-[[dash_version]]/detailed?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
+                                        "url": "/d/detailed-[[dash_version]]/detailed?orgId=1&var-by=instance&var-node=${__data.fields[0]}&${__url_time_range}"
                                     }
                                 ]
                             },
@@ -1592,7 +1860,7 @@
                                 "value": [
                                     {
                                         "title": "Detailed view",
-                                        "url": "/d/detailed-[[dash_version]]/detailed?refresh=30s&orgId=1&var-by=instance&var-node=${__data.fields[0]}&from=${__from}&to=${__to}"
+                                        "url": "/d/detailed-[[dash_version]]/detailed?orgId=1&var-by=instance&var-node=${__data.fields[0]}&${__url_time_range}"
                                     }
                                 ]
                             }
@@ -1848,7 +2116,7 @@
                 "h": 14,
                 "w": 24,
                 "x": 0,
-                "y": 16
+                "y": 28
             },
             "id": 16,
             "scopedVars": {
@@ -2023,7 +2291,7 @@
                 "h": 1,
                 "w": 10,
                 "x": 0,
-                "y": 30
+                "y": 42
             },
             "id": 17,
             "isNew": true,
@@ -2047,7 +2315,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 31
+                "y": 43
             },
             "id": 18,
             "panels": [],
@@ -2070,7 +2338,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 32
+                "y": 44
             },
             "id": 19,
             "isNew": true,
@@ -2141,7 +2409,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 34
+                "y": 46
             },
             "id": 20,
             "isNew": true,
@@ -2224,7 +2492,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 34
+                "y": 46
             },
             "id": 21,
             "isNew": true,
@@ -2307,7 +2575,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 34
+                "y": 46
             },
             "id": 22,
             "isNew": true,
@@ -2390,7 +2658,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 40
+                "y": 52
             },
             "id": 23,
             "isNew": true,
@@ -2473,7 +2741,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 40
+                "y": 52
             },
             "id": 24,
             "isNew": true,
@@ -2556,7 +2824,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 40
+                "y": 52
             },
             "id": 25,
             "isNew": true,
@@ -2639,7 +2907,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 46
+                "y": 58
             },
             "id": 26,
             "isNew": true,
@@ -2723,7 +2991,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 46
+                "y": 58
             },
             "id": 27,
             "isNew": true,
@@ -2810,7 +3078,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 46
+                "y": 58
             },
             "id": 28,
             "isNew": true,
@@ -2896,7 +3164,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 52
+                "y": 64
             },
             "id": 29,
             "isNew": true,
@@ -2980,7 +3248,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 52
+                "y": 64
             },
             "id": 30,
             "isNew": true,
@@ -3067,7 +3335,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 52
+                "y": 64
             },
             "id": 31,
             "isNew": true,
@@ -3154,7 +3422,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 58
+                "y": 70
             },
             "id": 32,
             "isNew": true,
@@ -3202,7 +3470,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 64
+                "y": 76
             },
             "id": 33,
             "isNew": true,
@@ -3230,7 +3498,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 66
+                "y": 78
             },
             "id": 34,
             "panels": [],
@@ -3288,7 +3556,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 67
+                "y": 79
             },
             "id": 35,
             "isNew": true,
@@ -3371,7 +3639,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 67
+                "y": 79
             },
             "id": 36,
             "isNew": true,
@@ -3454,7 +3722,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 67
+                "y": 79
             },
             "id": 37,
             "isNew": true,
@@ -3538,7 +3806,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 67
+                "y": 79
             },
             "id": 38,
             "isNew": true,
@@ -3580,7 +3848,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 73
+                "y": 85
             },
             "id": 39,
             "panels": [],
@@ -3603,7 +3871,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 74
+                "y": 86
             },
             "id": 40,
             "isNew": true,
@@ -3674,7 +3942,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 76
+                "y": 88
             },
             "id": 41,
             "isNew": true,
@@ -3757,7 +4025,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 76
+                "y": 88
             },
             "id": 42,
             "isNew": true,
@@ -3840,7 +4108,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 76
+                "y": 88
             },
             "id": 43,
             "isNew": true,
@@ -3923,7 +4191,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 82
+                "y": 94
             },
             "id": 44,
             "isNew": true,
@@ -3971,7 +4239,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 88
+                "y": 100
             },
             "id": 45,
             "isNew": true,
@@ -3999,7 +4267,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 90
+                "y": 102
             },
             "id": 46,
             "panels": [],
@@ -4057,7 +4325,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 91
+                "y": 103
             },
             "id": 47,
             "isNew": true,
@@ -4140,7 +4408,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 91
+                "y": 103
             },
             "id": 48,
             "isNew": true,
@@ -4223,7 +4491,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 91
+                "y": 103
             },
             "id": 49,
             "isNew": true,
@@ -4307,7 +4575,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 91
+                "y": 103
             },
             "id": 50,
             "isNew": true,
@@ -4349,7 +4617,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 97
+                "y": 109
             },
             "id": 51,
             "panels": [],
@@ -4372,7 +4640,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 98
+                "y": 110
             },
             "id": 52,
             "isNew": true,
@@ -4443,7 +4711,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 100
+                "y": 112
             },
             "id": 53,
             "isNew": true,
@@ -4526,7 +4794,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 100
+                "y": 112
             },
             "id": 54,
             "isNew": true,
@@ -4609,7 +4877,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 16,
-                "y": 100
+                "y": 112
             },
             "id": 55,
             "isNew": true,
@@ -4692,7 +4960,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 0,
-                "y": 106
+                "y": 118
             },
             "id": 56,
             "isNew": true,
@@ -4775,7 +5043,7 @@
                 "h": 6,
                 "w": 8,
                 "x": 8,
-                "y": 106
+                "y": 118
             },
             "id": 57,
             "isNew": true,
@@ -4823,7 +5091,7 @@
                 "h": 2,
                 "w": 12,
                 "x": 0,
-                "y": 112
+                "y": 124
             },
             "id": 58,
             "isNew": true,
@@ -4859,7 +5127,7 @@
                 "h": 2,
                 "w": 12,
                 "x": 12,
-                "y": 112
+                "y": 124
             },
             "id": 59,
             "isNew": true,
@@ -4931,7 +5199,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 114
+                "y": 126
             },
             "id": 60,
             "isNew": true,
@@ -5015,7 +5283,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 114
+                "y": 126
             },
             "id": 61,
             "isNew": true,
@@ -5099,7 +5367,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 12,
-                "y": 114
+                "y": 126
             },
             "id": 62,
             "isNew": true,
@@ -5180,7 +5448,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 18,
-                "y": 114
+                "y": 126
             },
             "id": 63,
             "isNew": true,
@@ -5261,7 +5529,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 0,
-                "y": 120
+                "y": 132
             },
             "id": 64,
             "isNew": true,
@@ -5343,7 +5611,7 @@
                 "h": 6,
                 "w": 6,
                 "x": 6,
-                "y": 120
+                "y": 132
             },
             "id": 65,
             "isNew": true,
@@ -5388,7 +5656,7 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 126
+                "y": 138
             },
             "id": 66,
             "isNew": true,
@@ -5455,7 +5723,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 128
+                "y": 140
             },
             "id": 67,
             "isNew": true,
@@ -5530,7 +5798,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 128
+                "y": 140
             },
             "id": 68,
             "isNew": true,
@@ -5570,14 +5838,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 134
+                "y": 146
             },
             "id": 69,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.14.3</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.15.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -5889,8 +6157,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.14.3",
-                    "value": "4.14.3"
+                    "text": "4.15.0",
+                    "value": "4.15.0"
                 },
                 "error": null,
                 "hide": 2,
@@ -5901,11 +6169,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.14.3",
-                        "value": "4.14.3"
+                        "text": "4.15.0",
+                        "value": "4.15.0"
                     }
                 ],
-                "query": "4.14.3",
+                "query": "4.15.0",
                 "skipUrlSync": false,
                 "type": "custom"
             },

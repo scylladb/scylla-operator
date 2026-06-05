@@ -31,7 +31,7 @@ fi
 
 # Extract version variables from versions.sh.
 prometheus_version=$(sed -n 's/^PROMETHEUS_VERSION=//p' "${scylla_monitoring_versions_path}")
-grafana_version=$(sed -n 's/^GRAFANA_VERSION="\(.*\)"/\1/p' "${scylla_monitoring_versions_path}")
+grafana_version=$(sed -n 's/^GRAFANA_VERSION=//p' "${scylla_monitoring_versions_path}")
 
 if [[ ! "${prometheus_version}" =~ ${permissive_semver_pattern} ]]; then
   echo "Error: PROMETHEUS_VERSION '${prometheus_version}' is not semver compliant" >&2

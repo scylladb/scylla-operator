@@ -34,7 +34,24 @@
         "scylla-manager",
         "scylla-manager-agent"
       ],
-      "groupName": "scylla-manager"
+      "groupName": "scylla-manager",
+      "addLabels": [
+        "do-not-merge/hold"
+      ],
+      "prBodyNotes": [
+        "### ⚠️ Manual Action Required",
+        "Renovate has bumped the scylla-manager dependency, but cannot automatically regenerate the manifests.",
+        "",
+        "**Please complete the following steps before merging:**",
+        "1. Check out this branch locally.",
+        "2. Propagate changes by running:",
+        "   ```bash",
+        "   make update",
+        "   git add deploy examples helm",
+        "   git commit -m \"chore(deps): update generated files\" && git push --force",
+        "   ```",
+        "3. Remove the `do-not-merge/hold` label."
+      ]
     },
     {
       "description": "go.mod dependencies should be updated together",

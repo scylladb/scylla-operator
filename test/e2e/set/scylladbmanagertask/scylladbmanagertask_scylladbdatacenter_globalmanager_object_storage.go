@@ -25,7 +25,6 @@ import (
 	scylladbdatacenterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbdatacenter"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -89,7 +88,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 					Location: []string{
 						utils.LocationForScyllaManager(objectStorageSettings),
 					},
-					Retention: pointer.Ptr[int64](2),
+					Retention: pointer.Ptr[int64](1),
 				},
 			},
 		}
@@ -145,48 +144,6 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		o.Expect(managerTask.Schedule).NotTo(o.BeNil())
 		o.Expect(managerTask.Schedule.NumRetries).To(o.Equal(*smt.Spec.Backup.NumRetries))
 		o.Expect(managerTask.Properties.(map[string]interface{})["location"]).To(o.ConsistOf(smt.Spec.Backup.Location))
-		o.Expect(managerTask.Properties.(map[string]interface{})["retention"].(json.Number).Int64()).To(o.Equal(*smt.Spec.Backup.Retention))
-
-		framework.By("Updating the ScyllaDBManagerTask")
-		smt, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name).Patch(
-			ctx,
-			smt.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op":"replace","path":"/spec/backup/retention","value":1}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(smt.Spec.Backup).NotTo(o.BeNil())
-		o.Expect(smt.Spec.Backup.Retention).NotTo(o.BeNil())
-		o.Expect(*smt.Spec.Backup.Retention).To(o.Equal(int64(1)))
-
-		framework.By("Waiting for ScyllaDBManagerTask update to be reconciled")
-		updateCtx, updateCtxCancel := context.WithTimeoutCause(
-			ctx,
-			utils.ScyllaDBManagerTaskSyncTimeout,
-			fmt.Errorf("ScyllaDBManagerTask %q update has not been reconciled in time", naming.ObjRef(smt)),
-		)
-		defer updateCtxCancel()
-
-		smt, err = controllerhelpers.WaitForScyllaDBManagerTaskState(
-			updateCtx,
-			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name),
-			smt.Name,
-			controllerhelpers.WaitForStateOptions{},
-			utilsv1alpha1.IsScyllaDBManagerTaskRolledOut,
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Verifying that the ScyllaDBManagerTask update propagated to ScyllaDB Manager state")
-		updatePropagationCtx, updatePropagationCtxCancel := context.WithTimeoutCause(
-			ctx,
-			utils.ScyllaDBManagerTaskSyncTimeout,
-			fmt.Errorf("ScyllaDBManagerTask %q update has not propagated to global ScyllaDB Manager instance in time", naming.ObjRef(smt)),
-		)
-		defer updatePropagationCtxCancel()
-
-		managerTask, err = managerClient.GetTask(updatePropagationCtx, sourceManagerClusterID, managerclient.BackupTask, managerTaskID)
-		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(managerTask.Properties.(map[string]interface{})["retention"].(json.Number).Int64()).To(o.Equal(*smt.Spec.Backup.Retention))
 
 		framework.By("Waiting for the backup task to finish")

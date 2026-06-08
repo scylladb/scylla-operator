@@ -27,15 +27,30 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	repairTaskInitialParallel = int64(1)
+	repairTaskUpdatedParallel = int64(2)
+)
+
 var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with global ScyllaDB Manager", framework.SuiteMultiDatacenterParallel, func() {
 	var f *framework.Framework
+
+	var (
+		nsClient         framework.Client
+		smt              *scyllav1alpha1.ScyllaDBManagerTask
+		managerClient    *managerclient.Client
+		managerClusterID string
+		managerTaskID    uuid.UUID
+		managerTask      *managerclient.Task
+	)
 
 	g.BeforeEach(func(ctx context.Context) {
 		f = framework.NewFramework(ctx, "scylladbmanagertask")
 	})
 
-	g.It("should synchronise a repair task", func(ctx g.SpecContext) {
-		ns, nsClient := f.CreateUserNamespace(ctx)
+	g.JustBeforeEach(func(ctx context.Context) {
+		ns, nc := f.CreateUserNamespace(ctx)
+		nsClient = nc
 
 		workerClusters := f.WorkerClusters()
 		o.Expect(workerClusters).NotTo(o.BeEmpty(), "At least 1 worker cluster is required")
@@ -69,9 +84,9 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		o.Expect(allHosts).To(o.HaveLen(int(controllerhelpers.GetScyllaDBClusterNodeCount(sc))))
 
 		di := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
-		defer di.Close()
+		g.DeferCleanup(di.Close)
 
-		smt := &scyllav1alpha1.ScyllaDBManagerTask{
+		smt = &scyllav1alpha1.ScyllaDBManagerTask{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "repair",
 				Namespace: ns.Name,
@@ -89,7 +104,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 							Duration: utils.ScyllaDBManagerTaskRetryWait,
 						},
 					},
-					Parallel: pointer.Ptr[int64](2),
+					Parallel: pointer.Ptr(repairTaskInitialParallel),
 				},
 			},
 		}
@@ -117,7 +132,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(smt.Status.TaskID).NotTo(o.BeNil())
 		o.Expect(*smt.Status.TaskID).NotTo(o.BeEmpty())
-		managerTaskID, err := uuid.Parse(*smt.Status.TaskID)
+		managerTaskID, err = uuid.Parse(*smt.Status.TaskID)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		smcrName, err := naming.ScyllaDBManagerClusterRegistrationNameForScyllaDBCluster(sc)
@@ -126,13 +141,13 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(smcr.Status.ClusterID).NotTo(o.BeNil())
 		o.Expect(*smcr.Status.ClusterID).NotTo(o.BeEmpty())
-		managerClusterID := *smcr.Status.ClusterID
+		managerClusterID = *smcr.Status.ClusterID
 
-		managerClient, err := utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
+		managerClient, err = utils.GetManagerClient(ctx, f.KubeAdminClient().CoreV1())
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Verifying that ScyllaDBManagerTask was registered with global ScyllaDB Manager")
-		managerTask, err := managerClient.GetTask(ctx, managerClusterID, managerclient.RepairTask, managerTaskID)
+		managerTask, err = managerClient.GetTask(ctx, managerClusterID, managerclient.RepairTask, managerTaskID)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(managerTask.Labels).NotTo(o.BeNil())
 		o.Expect(managerTask.Labels[naming.OwnerUIDLabel]).To(o.Equal(string(smt.UID)))
@@ -140,50 +155,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		framework.By("Verifying that ScyllaDBManagerTask properties were propagated to ScyllaDB Manager state")
 		o.Expect(managerTask.Schedule).NotTo(o.BeNil())
 		o.Expect(managerTask.Schedule.NumRetries).To(o.Equal(*smt.Spec.Repair.NumRetries))
-		o.Expect(managerTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(*smt.Spec.Repair.Parallel))
-
-		framework.By("Updating the ScyllaDBManagerTask")
-		smt, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name).Patch(
-			ctx,
-			smt.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op":"replace","path":"/spec/repair/parallel","value":1}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(smt.Spec.Repair).NotTo(o.BeNil())
-		o.Expect(smt.Spec.Repair.Parallel).NotTo(o.BeNil())
-		o.Expect(*smt.Spec.Repair.Parallel).To(o.Equal(int64(1)))
-
-		framework.By("Waiting for ScyllaDBManagerTask update to propagate")
-		updateCtx, updateCtxCancel := context.WithTimeoutCause(
-			ctx,
-			utils.ScyllaDBManagerTaskSyncTimeout,
-			fmt.Errorf("ScyllaDBManagerTask %q update has not been reconciled in time", naming.ObjRef(smt)),
-		)
-		defer updateCtxCancel()
-
-		smt, err = controllerhelpers.WaitForScyllaDBManagerTaskState(
-			updateCtx,
-			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name),
-			smt.Name,
-			controllerhelpers.WaitForStateOptions{},
-			utilsv1alpha1.IsScyllaDBManagerTaskRolledOut,
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Verifying that the ScyllaDBManagerTask update propagated to ScyllaDB Manager state")
-		updatePropagationCtx, updatePropagationCtxCancel := context.WithTimeoutCause(
-			ctx,
-			utils.ScyllaDBManagerTaskSyncTimeout,
-			fmt.Errorf("ScyllaDBManagerTask %q update has not propagated to global ScyllaDB Manager instance in time", naming.ObjRef(smt)),
-		)
-
-		defer updatePropagationCtxCancel()
-
-		managerTask, err = managerClient.GetTask(updatePropagationCtx, managerClusterID, managerclient.RepairTask, managerTaskID)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(managerTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(*smt.Spec.Repair.Parallel))
+		o.Expect(managerTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(repairTaskInitialParallel))
 
 		framework.By("Waiting for the repair task to finish")
 		repairTaskCompletionCtx, repairTaskCompletionCtxCancel := context.WithTimeoutCause(
@@ -198,9 +170,11 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 			WithPolling(5*time.Second).
 			WithArguments(managerClient, managerClusterID, managerTask.ID).
 			Should(o.Succeed())
+	})
 
+	g.It("should delete a repair task", func(ctx g.SpecContext) {
 		framework.By("Deleting ScyllaDBManagerTask")
-		err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(ns.Name).Delete(
+		err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(smt.Namespace).Delete(
 			ctx,
 			smt.Name,
 			metav1.DeleteOptions{
@@ -239,5 +213,63 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		o.Expect(slices.ContainsFunc(tasks.TaskListItemSlice, func(t *managerclient.TaskListItem) bool {
 			return t.ID == managerTaskID.String()
 		})).To(o.BeFalse())
+	})
+
+	g.It("should update repair task properties and complete with updated properties", func(ctx g.SpecContext) {
+		framework.By("Updating the ScyllaDBManagerTask")
+		updatedSmt, err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(smt.Namespace).Patch(
+			ctx,
+			smt.Name,
+			types.JSONPatchType,
+			[]byte(fmt.Sprintf(`[{"op":"replace","path":"/spec/repair/parallel","value":%d}]`, repairTaskUpdatedParallel)),
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(updatedSmt.Spec.Repair).NotTo(o.BeNil())
+		o.Expect(updatedSmt.Spec.Repair.Parallel).NotTo(o.BeNil())
+		o.Expect(*updatedSmt.Spec.Repair.Parallel).To(o.Equal(repairTaskUpdatedParallel))
+
+		framework.By("Waiting for ScyllaDBManagerTask update to be reconciled")
+		updateCtx, updateCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q update has not been reconciled in time", naming.ObjRef(updatedSmt)),
+		)
+		defer updateCtxCancel()
+
+		updatedSmt, err = controllerhelpers.WaitForScyllaDBManagerTaskState(
+			updateCtx,
+			nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBManagerTasks(updatedSmt.Namespace),
+			updatedSmt.Name,
+			controllerhelpers.WaitForStateOptions{},
+			utilsv1alpha1.IsScyllaDBManagerTaskRolledOut,
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that the ScyllaDBManagerTask update propagated to ScyllaDB Manager state")
+		updatePropagationCtx, updatePropagationCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerTaskSyncTimeout,
+			fmt.Errorf("ScyllaDBManagerTask %q update has not propagated to global ScyllaDB Manager instance in time", naming.ObjRef(updatedSmt)),
+		)
+		defer updatePropagationCtxCancel()
+
+		updatedManagerTask, err := managerClient.GetTask(updatePropagationCtx, managerClusterID, managerclient.RepairTask, managerTaskID)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(updatedManagerTask.Properties.(map[string]interface{})["parallel"].(json.Number).Int64()).To(o.Equal(repairTaskUpdatedParallel))
+
+		framework.By("Waiting for repair with updated properties to finish")
+		repairTaskSecondCompletionCtx, repairTaskSecondCompletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBManagerMultiDatacenterTaskCompletionTimeout,
+			fmt.Errorf("repair task %q has not completed in time after property update", managerTaskID),
+		)
+		defer repairTaskSecondCompletionCtxCancel()
+
+		o.Eventually(verification.VerifyScyllaDBManagerRepairTaskCompleted).
+			WithContext(repairTaskSecondCompletionCtx).
+			WithPolling(5*time.Second).
+			WithArguments(managerClient, managerClusterID, updatedManagerTask.ID).
+			Should(o.Succeed())
 	})
 })

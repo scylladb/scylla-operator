@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 450" width="700" height="450">
+  <defs>
+    <style>
+      .service-box { fill: #e3f2fd; stroke: #1976d2; stroke-width: 2; }
+      .client-box { fill: #fff3e0; stroke: #f57c00; stroke-width: 2; }
+      .pod-box { fill: #e8f5e9; stroke: #388e3c; stroke-width: 2; }
+      .text { font-family: Arial, sans-serif; font-size: 14px; fill: #333; }
+      .text-bold { font-family: Arial, sans-serif; font-size: 15px; font-weight: bold; fill: #333; }
+      .text-small { font-family: Arial, sans-serif; font-size: 12px; fill: #666; }
+      .arrow { stroke: #666; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#666" />
+    </marker>
+  </defs>
+  
+  <!-- Clients at the top -->
+  <rect class="client-box" x="50" y="30" width="180" height="70" rx="5"/>
+  <text class="text-bold" x="140" y="55" text-anchor="middle">IPv4-only Client</text>
+  <text class="text-small" x="140" y="75" text-anchor="middle">Uses IPv4: 10.96.10.20</text>
+  <text class="text-small" x="140" y="90" text-anchor="middle">to connect to service</text>
+  
+  <rect class="client-box" x="470" y="30" width="180" height="70" rx="5"/>
+  <text class="text-bold" x="560" y="55" text-anchor="middle">IPv6-only Client</text>
+  <text class="text-small" x="560" y="75" text-anchor="middle">Uses IPv6: fd00:10:96::1234</text>
+  <text class="text-small" x="560" y="90" text-anchor="middle">to connect to service</text>
+  
+  <!-- Arrows from clients to service -->
+  <path class="arrow" d="M 140 100 L 275 180"/>
+  <path class="arrow" d="M 560 100 L 425 180"/>
+  
+  <!-- Kubernetes Service in the middle -->
+  <rect class="service-box" x="200" y="180" width="300" height="90" rx="5"/>
+  <text class="text-bold" x="350" y="205" text-anchor="middle">Kubernetes Service (Dual-Stack)</text>
+  <text class="text-small" x="350" y="227" text-anchor="middle">ClusterIP (IPv4): 10.96.10.20</text>
+  <text class="text-small" x="350" y="245" text-anchor="middle">ClusterIP (IPv6): fd00:10:96::1234</text>
+  <text class="text-small" x="350" y="263" text-anchor="middle">Routes to pods using IPv4</text>
+  
+  <!-- Arrows from service to pods -->
+  <path class="arrow" d="M 280 270 L 180 320"/>
+  <path class="arrow" d="M 350 270 L 350 320"/>
+  <path class="arrow" d="M 420 270 L 520 320"/>
+  
+  <!-- ScyllaDB Pods at the bottom -->
+  <rect class="pod-box" x="80" y="320" width="160" height="90" rx="5"/>
+  <text class="text-bold" x="160" y="345" text-anchor="middle">ScyllaDB Pod 1</text>
+  <text class="text-small" x="160" y="365" text-anchor="middle">IPv4: 10.244.1.5</text>
+  <text class="text-small" x="160" y="383" text-anchor="middle">Gossip, replication,</text>
+  <text class="text-small" x="160" y="398" text-anchor="middle">CQL all use IPv4</text>
+  
+  <rect class="pod-box" x="270" y="320" width="160" height="90" rx="5"/>
+  <text class="text-bold" x="350" y="345" text-anchor="middle">ScyllaDB Pod 2</text>
+  <text class="text-small" x="350" y="365" text-anchor="middle">IPv4: 10.244.2.6</text>
+  <text class="text-small" x="350" y="383" text-anchor="middle">Gossip, replication,</text>
+  <text class="text-small" x="350" y="398" text-anchor="middle">CQL all use IPv4</text>
+  
+  <rect class="pod-box" x="460" y="320" width="160" height="90" rx="5"/>
+  <text class="text-bold" x="540" y="345" text-anchor="middle">ScyllaDB Pod 3</text>
+  <text class="text-small" x="540" y="365" text-anchor="middle">IPv4: 10.244.3.7</text>
+  <text class="text-small" x="540" y="383" text-anchor="middle">Gossip, replication,</text>
+  <text class="text-small" x="540" y="398" text-anchor="middle">CQL all use IPv4</text>
+</svg>

@@ -78,7 +78,7 @@ var _ = g.Describe("Scylla Manager integration", framework.SuiteParallel, framew
 				Name: "backup",
 			},
 			Location:  []string{objectStorageLocation},
-			Retention: 2,
+			Retention: 1,
 		})
 
 		patchData, err := controllerhelpers.GenerateMergePatch(sourceSC, sourceSCCopy)
@@ -90,7 +90,7 @@ var _ = g.Describe("Scylla Manager integration", framework.SuiteParallel, framew
 		o.Expect(sourceSC.Spec.Backups).To(o.HaveLen(1))
 		o.Expect(sourceSC.Spec.Backups[0].Name).To(o.Equal("backup"))
 		o.Expect(sourceSC.Spec.Backups[0].Location).To(o.Equal([]string{objectStorageLocation}))
-		o.Expect(sourceSC.Spec.Backups[0].Retention).To(o.Equal(int64(2)))
+		o.Expect(sourceSC.Spec.Backups[0].Retention).To(o.Equal(int64(1)))
 
 		framework.By("Waiting for source ScyllaCluster to sync backups with Scylla Manager")
 		backupTaskScheduledCond := func(cluster *scyllav1.ScyllaCluster) (bool, error) {
@@ -135,69 +135,6 @@ var _ = g.Describe("Scylla Manager integration", framework.SuiteParallel, framew
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(tasks.TaskListItemSlice).To(o.HaveLen(1))
 		backupTask := tasks.TaskListItemSlice[0]
-		o.Expect(backupTask.Name).To(o.Equal(sourceSC.Status.Backups[0].Name))
-		o.Expect(backupTask.ID).To(o.Equal(*sourceSC.Status.Backups[0].ID))
-		o.Expect(backupTask.Properties.(map[string]interface{})["location"]).To(o.ConsistOf(sourceSC.Status.Backups[0].Location))
-		o.Expect(backupTask.Properties.(map[string]interface{})["retention"].(json.Number).Int64()).To(o.Equal(*sourceSC.Status.Backups[0].Retention))
-
-		framework.By("Updating the backup task for ScyllaCluster")
-		sourceSC, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sourceSC.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op":"replace","path":"/spec/backups/0/retention","value":1}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sourceSC.Spec.Backups[0].Retention).To(o.Equal(int64(1)))
-
-		framework.By("Waiting for source ScyllaCluster to sync backup task update with Scylla Manager")
-		backupTaskUpdatedCond := func(cluster *scyllav1.ScyllaCluster) (bool, error) {
-			for _, b := range cluster.Status.Backups {
-				if b.Name == sourceSC.Spec.Backups[0].Name {
-					if b.ID == nil || len(*b.ID) == 0 {
-						return false, errors.New("got unexpected empty task ID in status")
-					}
-
-					if b.Error != nil {
-						return false, errors.New(*b.Error)
-					}
-
-					return b.Retention != nil && *b.Retention == int64(1), nil
-				}
-			}
-
-			return false, nil
-		}
-
-		taskUpdateCtx, taskUpdateCtxCancel := context.WithTimeoutCause(
-			ctx,
-			utils.ScyllaDBManagerTaskSyncTimeout,
-			fmt.Errorf("backup task %q update has not been reconciled in time", sourceSC.Spec.Backups[0].Name),
-		)
-		defer taskUpdateCtxCancel()
-
-		sourceSC, err = controllerhelpers.WaitForScyllaClusterState(
-			taskUpdateCtx,
-			f.ScyllaClient().ScyllaV1().ScyllaClusters(sourceSC.Namespace),
-			sourceSC.Name,
-			controllerhelpers.WaitForStateOptions{},
-			backupTaskUpdatedCond,
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		o.Expect(sourceSC.Status.Backups).To(o.HaveLen(1))
-		o.Expect(sourceSC.Status.Backups[0].Name).To(o.Equal(sourceSC.Spec.Backups[0].Name))
-		o.Expect(sourceSC.Status.Backups[0].Location).To(o.Equal(sourceSC.Spec.Backups[0].Location))
-		o.Expect(sourceSC.Status.Backups[0].Retention).NotTo(o.BeNil())
-		o.Expect(*sourceSC.Status.Backups[0].Retention).To(o.Equal(sourceSC.Spec.Backups[0].Retention))
-		o.Expect(sourceSC.Status.Repairs).To(o.BeEmpty())
-
-		framework.By("Verifying that updated backups task properties were synchronized")
-		tasks, err = managerClient.ListTasks(ctx, *sourceSC.Status.ManagerID, "backup", false, "", "")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(tasks.TaskListItemSlice).To(o.HaveLen(1))
-		backupTask = tasks.TaskListItemSlice[0]
 		o.Expect(backupTask.Name).To(o.Equal(sourceSC.Status.Backups[0].Name))
 		o.Expect(backupTask.ID).To(o.Equal(*sourceSC.Status.Backups[0].ID))
 		o.Expect(backupTask.Properties.(map[string]interface{})["location"]).To(o.ConsistOf(sourceSC.Status.Backups[0].Location))

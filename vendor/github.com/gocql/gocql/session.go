@@ -102,7 +102,7 @@ var queryPool = &sync.Pool{
 	New: func() any {
 		return &Query{
 			routingInfo: &queryRoutingInfo{},
-			metrics:     &queryMetrics{m: make(map[string]*hostMetrics)},
+			metrics:     &queryMetrics{m: make(map[UUID]*hostMetrics)},
 			refCount:    1,
 		}
 	},
@@ -1092,7 +1092,7 @@ type hostMetrics struct {
 }
 
 type queryMetrics struct {
-	m map[string]*hostMetrics
+	m map[UUID]*hostMetrics
 	// totalAttempts is total number of attempts.
 	// Equal to sum of all hostMetrics' Attempts
 	totalAttempts int
@@ -1100,7 +1100,7 @@ type queryMetrics struct {
 }
 
 // preFilledQueryMetrics initializes new queryMetrics based on per-host supplied data.
-func preFilledQueryMetrics(m map[string]*hostMetrics) *queryMetrics {
+func preFilledQueryMetrics(m map[UUID]*hostMetrics) *queryMetrics {
 	qm := &queryMetrics{m: m}
 	for _, hm := range qm.m {
 		qm.totalAttempts += hm.Attempts
@@ -1122,11 +1122,12 @@ func (qm *queryMetrics) hostMetrics(host *HostInfo) *hostMetrics {
 // hostMetricsLocked gets or creates host metrics for given host.
 // It must be called only while holding qm.l lock.
 func (qm *queryMetrics) hostMetricsLocked(host *HostInfo) *hostMetrics {
-	metrics, exists := qm.m[host.HostID()]
+	id := host.hostUUID()
+	metrics, exists := qm.m[id]
 	if !exists {
 		// if the host is not in the map, it means it's been accessed for the first time
 		metrics = &hostMetrics{}
-		qm.m[host.HostID()] = metrics
+		qm.m[id] = metrics
 	}
 
 	return metrics
@@ -1280,7 +1281,7 @@ func (q *Query) defaultsFromSession() {
 	q.defaultTimestamp = s.cfg.DefaultTimestamp
 	q.idempotent = s.cfg.DefaultIdempotence
 	if q.metrics == nil {
-		q.metrics = &queryMetrics{m: make(map[string]*hostMetrics)}
+		q.metrics = &queryMetrics{m: make(map[UUID]*hostMetrics)}
 	}
 
 	q.spec = defaultNonSpecExec
@@ -2209,9 +2210,9 @@ func (is *iterScanner) Scan(dest ...any) error {
 	// slices of dest
 	i := 0
 	var err error
-	for _, col := range iter.meta.columns {
+	for j, col := range iter.meta.columns {
 		var n int
-		n, err = scanColumn(is.cols[i], col, dest[i:])
+		n, err = scanColumn(is.cols[j], col, dest[i:])
 		if err != nil {
 			break
 		}
@@ -2538,7 +2539,7 @@ func (s *Session) Batch(typ BatchType) *Batch {
 		Cons:             s.cons,
 		defaultTimestamp: s.cfg.DefaultTimestamp,
 		keyspace:         s.cfg.Keyspace,
-		metrics:          &queryMetrics{m: make(map[string]*hostMetrics)},
+		metrics:          &queryMetrics{m: make(map[UUID]*hostMetrics)},
 		spec:             defaultNonSpecExec,
 		routingInfo:      &queryRoutingInfo{},
 		requestTimeout:   s.cfg.Timeout,

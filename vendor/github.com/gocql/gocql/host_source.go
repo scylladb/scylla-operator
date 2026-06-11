@@ -412,18 +412,24 @@ func (h *HostInfo) hostUUID() UUID {
 	return h.hostId
 }
 
+// Deprecated: WorkLoad is a DSE-specific field that is no longer queried
+// from system tables. It will always return "" for hosts discovered via
+// the driver. Only populated if set explicitly via HostInfoBuilder.
 func (h *HostInfo) WorkLoad() string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.workload
 }
 
+// Deprecated: Graph is a DSE-specific field that is no longer queried
+// from system tables. It always returns false.
 func (h *HostInfo) Graph() bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return h.graph
+	return false
 }
 
+// Deprecated: DSEVersion is a DSE-specific field that is no longer queried
+// from system tables. It will always return "" for hosts discovered via
+// the driver. Only populated if set explicitly via HostInfoBuilder.
 func (h *HostInfo) DSEVersion() string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -721,25 +727,10 @@ func hostInfoFromMap(row map[string]any, defaultPort int) (*HostInfo, error) {
 				return nil, fmt.Errorf(assertErrorMsg, "native_port")
 			}
 			host.port = native_port
-		case "workload":
-			host.workload, ok = value.(string)
-			if !ok {
-				return nil, fmt.Errorf(assertErrorMsg, "workload")
-			}
-		case "graph":
-			host.graph, ok = value.(bool)
-			if !ok {
-				return nil, fmt.Errorf(assertErrorMsg, "graph")
-			}
 		case "tokens":
 			host.tokens, ok = value.([]string)
 			if !ok {
 				return nil, fmt.Errorf(assertErrorMsg, "tokens")
-			}
-		case "dse_version":
-			host.dseVersion, ok = value.(string)
-			if !ok {
-				return nil, fmt.Errorf(assertErrorMsg, "dse_version")
 			}
 		case "schema_version":
 			schemaVersion, ok := value.(UUID)

@@ -171,6 +171,7 @@ type ConnInterface interface {
 	querySystem(ctx context.Context, query string, values ...any) *Iter
 	getIsSchemaV2() bool
 	setSchemaV2(s bool)
+	isScyllaConn() bool
 	getScyllaSupported() ScyllaConnectionFeatures
 }
 
@@ -1775,7 +1776,7 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 			newQry := new(Query)
 			*newQry = *qry
 			newQry.pageState = x.meta.pagingState
-			newQry.metrics = &queryMetrics{m: make(map[string]*hostMetrics)}
+			newQry.metrics = &queryMetrics{m: make(map[UUID]*hostMetrics)}
 
 			iter.next = newNextIter(newQry, int((1-qry.prefetch)*float64(x.numRows)))
 
@@ -1990,10 +1991,11 @@ func (c *Conn) querySystem(ctx context.Context, query string, values ...any) *It
 	return c.executeQuery(ctx, q)
 }
 
-const qrySystemPeers = "SELECT * FROM system.peers"
-const qrySystemPeersV2 = "SELECT * FROM system.peers_v2"
+const qrySystemPeers = "SELECT peer, data_center, host_id, rack, release_version, rpc_address, schema_version, tokens FROM system.peers"
+const qrySystemPeersCassandra = "SELECT peer, data_center, host_id, preferred_ip, rack, release_version, rpc_address, schema_version, tokens FROM system.peers"
+const qrySystemPeersV2 = "SELECT peer, data_center, host_id, native_address, native_port, preferred_ip, rack, release_version, schema_version, tokens FROM system.peers_v2"
 
-const qrySystemLocal = "SELECT * FROM system.local WHERE key='local'"
+const qrySystemLocal = "SELECT broadcast_address, cluster_name, data_center, host_id, listen_address, partitioner, rack, release_version, rpc_address, schema_version, tokens FROM system.local WHERE key='local'"
 
 func getSchemaAgreement(queryLocalSchemasRows []string, querySystemPeersRows []schemaAgreementHost, logger StdLogger) (err error) {
 	versions := make(map[string]struct{})
@@ -2058,7 +2060,7 @@ func (c *Conn) awaitSchemaAgreement(ctx context.Context) error {
 		} else {
 			iter = c.querySystem(ctx, "SELECT host_id, data_center, rack, schema_version, rpc_address FROM system.peers")
 		}
-		// data_center, rack, host_id, schema_version, rpc_address
+		// Scan order: host_id, data_center, rack, schema_version, rpc_address/preferred_ip
 		var hosts []schemaAgreementHost
 		var tmp schemaAgreementHost
 		for iter.Scan(&tmp.HostID, &tmp.DataCenter, &tmp.Rack, &tmp.SchemaVersion, &tmp.RPCAddress) {
@@ -2145,28 +2147,6 @@ func (e *QueryError) Unwrap() error {
 	return e.err
 }
 
-func unmarshalTabletHint(hint []byte, v uint8, keyspace, table string) (tablets.TabletInfo, error) {
-	tabletBuilder := tablets.NewTabletInfoBuilder()
-	err := Unmarshal(TupleTypeInfo{
-		NativeType: NativeType{proto: v, typ: TypeTuple},
-		Elems: []TypeInfo{
-			NativeType{typ: TypeBigInt},
-			NativeType{typ: TypeBigInt},
-			CollectionType{
-				NativeType: NativeType{proto: v, typ: TypeList},
-				Elem: TupleTypeInfo{
-					NativeType: NativeType{proto: v, typ: TypeTuple},
-					Elems: []TypeInfo{
-						NativeType{proto: v, typ: TypeUUID},
-						NativeType{proto: v, typ: TypeInt},
-					}},
-			},
-		},
-	}, hint, []any{&tabletBuilder.FirstToken, &tabletBuilder.LastToken, &tabletBuilder.Replicas})
-	if err != nil {
-		return tablets.TabletInfo{}, err
-	}
-	tabletBuilder.KeyspaceName = keyspace
-	tabletBuilder.TableName = table
-	return tabletBuilder.Build()
+func unmarshalTabletHint(hint []byte, _ uint8, keyspace, table string) (tablets.TabletInfo, error) {
+	return tablets.ParseHint(hint, keyspace, table)
 }

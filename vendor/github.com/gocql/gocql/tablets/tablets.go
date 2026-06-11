@@ -73,6 +73,11 @@ func (r ReplicaInfo) HostID() string {
 	return r.hostId.String()
 }
 
+// NewReplicaInfo creates a ReplicaInfo from a binary host UUID and shard ID.
+func NewReplicaInfo(hostID HostUUID, shardID int) ReplicaInfo {
+	return ReplicaInfo{hostId: hostID, shardId: shardID}
+}
+
 // HostUUIDValue returns the raw binary host UUID for zero-allocation comparison.
 func (r ReplicaInfo) HostUUIDValue() HostUUID {
 	return r.hostId
@@ -154,6 +159,22 @@ func (b TabletInfoBuilder) Build() (TabletInfo, error) {
 		firstToken:   b.FirstToken,
 		lastToken:    b.LastToken,
 		replicas:     tabletReplicas,
+	}, nil
+}
+
+// NewTabletInfo creates a TabletInfo directly from pre-parsed fields,
+// bypassing the builder's type-assertion and string-parsing logic.
+func NewTabletInfo(keyspace, table string, firstToken, lastToken int64, replicas []ReplicaInfo) (TabletInfo, error) {
+	if firstToken > lastToken {
+		return TabletInfo{}, fmt.Errorf("invalid token range: firstToken (%d) > lastToken (%d)",
+			firstToken, lastToken)
+	}
+	return TabletInfo{
+		keyspaceName: keyspace,
+		tableName:    table,
+		firstToken:   firstToken,
+		lastToken:    lastToken,
+		replicas:     replicas,
 	}, nil
 }
 

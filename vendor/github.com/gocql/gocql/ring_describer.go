@@ -48,8 +48,10 @@ func (r *ringDescriber) getClusterPeerInfo(localHost *HostInfo, c ConnInterface)
 	var iter *Iter
 	if c.getIsSchemaV2() {
 		iter = c.querySystem(context.TODO(), qrySystemPeersV2)
-	} else {
+	} else if c.isScyllaConn() {
 		iter = c.querySystem(context.TODO(), qrySystemPeers)
+	} else {
+		iter = c.querySystem(context.TODO(), qrySystemPeersCassandra)
 	}
 
 	if iter == nil {

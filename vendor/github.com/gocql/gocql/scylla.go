@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -383,6 +384,7 @@ type scyllaConnPicker struct {
 	address                    string
 	excessConns                []*Conn
 	conns                      []*Conn
+	mu                         sync.RWMutex
 	nrShards                   int
 	pos                        uint64
 	lastAttemptedShard         int
@@ -419,6 +421,9 @@ func newScyllaConnPicker(conn *Conn, logger StdLogger) *scyllaConnPicker {
 }
 
 func (p *scyllaConnPicker) Pick(t Token, qry ExecutableQuery) *Conn {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
 	if len(p.conns) == 0 {
 		return nil
 	}
@@ -524,6 +529,9 @@ func (p *scyllaConnPicker) Put(conn *Conn) error {
 		return errors.New("server reported that it has no shards")
 	}
 
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if nrShards != p.nrShards {
 		if debug.Enabled {
 			p.logger.Printf("scylla: %s shard count changed from %d to %d, rebuilding connection pool",
@@ -568,7 +576,7 @@ func (p *scyllaConnPicker) Put(conn *Conn) error {
 	}
 
 	if p.shouldCloseExcessConns() {
-		p.closeExcessConns()
+		p.closeExcessConnsLocked()
 	}
 
 	return nil
@@ -622,14 +630,20 @@ func (p *scyllaConnPicker) shouldCloseExcessConns() bool {
 }
 
 func (p *scyllaConnPicker) GetConnectionCount() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return p.nrConns
 }
 
 func (p *scyllaConnPicker) GetExcessConnectionCount() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return len(p.excessConns)
 }
 
 func (p *scyllaConnPicker) GetShardCount() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return p.nrShards
 }
 
@@ -648,6 +662,9 @@ func (p *scyllaConnPicker) Remove(conn *Conn) {
 		p.logger.Printf("scylla: %s remove shard %d connection", p.address, shard)
 	}
 
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if p.conns[shard] != nil {
 		p.conns[shard] = nil
 		p.nrConns--
@@ -655,6 +672,8 @@ func (p *scyllaConnPicker) Remove(conn *Conn) {
 }
 
 func (p *scyllaConnPicker) InFlight() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	result := 0
 	for _, conn := range p.conns {
 		if conn != nil {
@@ -665,33 +684,44 @@ func (p *scyllaConnPicker) InFlight() int {
 }
 
 func (p *scyllaConnPicker) Size() (int, int) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return p.nrConns, p.nrShards - p.nrConns
 }
 
 func (p *scyllaConnPicker) Close() {
-	p.closeConns()
-	p.closeExcessConns()
-}
-
-func (p *scyllaConnPicker) closeConns() {
-	if len(p.conns) == 0 {
-		if debug.Enabled {
-			p.logger.Printf("scylla: %s no connections to close", p.address)
-		}
-		return
-	}
-
+	p.mu.Lock()
 	conns := p.conns
 	p.conns = nil
 	p.nrConns = 0
+	excessConns := p.excessConns
+	p.excessConns = nil
+	p.mu.Unlock()
 
-	if debug.Enabled {
-		p.logger.Printf("scylla: %s closing %d connections", p.address, len(conns))
+	// Close connections outside of the lock to avoid deadlocks when a
+	// connection close triggers HandleError. See scylladb/gocql#53.
+	if len(conns) > 0 {
+		if debug.Enabled {
+			p.logger.Printf("scylla: %s closing %d connections", p.address, len(conns))
+		}
+		go closeConns(conns...)
+	} else if debug.Enabled {
+		p.logger.Printf("scylla: %s no connections to close", p.address)
 	}
-	go closeConns(conns...)
+
+	if len(excessConns) > 0 {
+		if debug.Enabled {
+			p.logger.Printf("scylla: %s closing %d excess connections", p.address, len(excessConns))
+		}
+		go closeConns(excessConns...)
+	} else if debug.Enabled {
+		p.logger.Printf("scylla: %s no excess connections to close", p.address)
+	}
 }
 
-func (p *scyllaConnPicker) closeExcessConns() {
+// closeExcessConnsLocked closes excess connections. Must be called with p.mu held.
+// The actual connection closing happens asynchronously outside the lock.
+func (p *scyllaConnPicker) closeExcessConnsLocked() {
 	if len(p.excessConns) == 0 {
 		if debug.Enabled {
 			p.logger.Printf("scylla: %s no excess connections to close", p.address)
@@ -708,8 +738,8 @@ func (p *scyllaConnPicker) closeExcessConns() {
 	go closeConns(conns...)
 }
 
-// Closing must be done outside of hostConnPool lock. If holding a lock
-// a deadlock can occur when closing one of the connections returns error on close.
+// closeConns closes a list of connections. Must be called outside of any lock
+// to avoid deadlocks when a connection close triggers HandleError.
 // See scylladb/gocql#53.
 func closeConns(conns ...*Conn) {
 	for _, conn := range conns {
@@ -733,6 +763,9 @@ func (p *scyllaConnPicker) NextShard() (shardID, nrShards int) {
 		// or misconfigured, fall back to the non-shard-aware port
 		return 0, 0
 	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	// Find the shard without a connection
 	// It's important to start counting from 1 here because we want

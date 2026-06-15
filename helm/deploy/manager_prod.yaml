@@ -1,7 +1,7 @@
 # Scylla Manager image
 image:
   repository: docker.io/scylladb
-  tag: 3.11.0@sha256:bbd3bb8ebe4d4006976096c486c2c4ce982f09a96e87ed5eff125a7379390d05
+  tag: 3.11.1@sha256:607270019bd1dae1da3799d2144f79480ccac37893aed0b115786a8dccb70298
 controllerImage:
   repository: docker.io/scylladb
 logLevel: info
@@ -22,7 +22,7 @@ scylla:
     repository: docker.io/scylladb/scylla
     tag: 2026.1.3
   agentImage:
-    tag: 3.11.0@sha256:f38af9285d295c4bef2c415fd7d44d3c6499333145470381098c0fe6b6d7f851
+    tag: 3.11.1@sha256:32b3767ff46729bdb8f086b6b99d3f07ac606cf10a1ed287dbfa3d9379bc83f1
     repository: docker.io/scylladb/scylla-manager-agent
   developerMode: true
   cpuset: true

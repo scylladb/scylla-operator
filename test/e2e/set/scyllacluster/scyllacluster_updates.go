@@ -3,13 +3,19 @@
 package scyllacluster
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/gather/collect"
+	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
@@ -28,6 +34,29 @@ func addQuantity(lhs resource.Quantity, rhs resource.Quantity) *resource.Quantit
 	_ = res.String()
 
 	return &res
+}
+
+func IsIOTunePerformed(ctx context.Context, f *framework.Framework, podName string, sc *scyllav1.ScyllaCluster) (bool, error) {
+	logOptions := &corev1.PodLogOptions{
+		Container: naming.ScyllaContainerName,
+	}
+
+	logs := &bytes.Buffer{}
+	err := collect.GetPodLogs(ctx, f.KubeClient().CoreV1().Pods(f.Namespace()), logs, podName, logOptions)
+	if err != nil {
+		return false, fmt.Errorf("can't get scylla logs from pod %q: %w", podName, err)
+	}
+
+	entrypointCommand := logs.String()
+	if !strings.Contains(entrypointCommand, "Scylla entrypoint") {
+		return false, fmt.Errorf("can't find Scylla entrypoint log in pod %q", podName)
+	}
+
+	hasIOSetupDisabled := strings.Contains(entrypointCommand, "--io-setup=0")
+	hasIOPropertiesFile := strings.Contains(entrypointCommand, "--io-properties-file")
+	isIOTuneSkipped := hasIOSetupDisabled && hasIOPropertiesFile
+
+	return !sc.Spec.DeveloperMode && !isIOTuneSkipped, nil
 }
 
 var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
@@ -63,6 +92,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 			metav1.GetOptions{},
 		)
 		o.Expect(err).NotTo(o.HaveOccurred())
+
 		initialPodUID := pod.UID
 		framework.Infof("Initial pod %q UID is %q", pod.Name, initialPodUID)
 
@@ -209,5 +239,85 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.HaveLen(int(newMebmers)))
 		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 		verification.VerifyCQLData(ctx, di)
+	})
+})
+
+var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
+
+	g.It("should skip iotune on restart when io properties are cached", func(specCtx context.Context) {
+		testCtx, testCtxCancel := context.WithTimeout(specCtx, testTimeout)
+		defer testCtxCancel()
+
+		framework.By("Creating a ScyllaCluster with developer mode disabled")
+		sc := f.GetNonDevModeScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+		var isIOTunePerformed bool
+
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(testCtx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		initialRolloutCtx, initialRolloutCtxCancel := utils.ContextForRollout(testCtx, sc)
+		defer initialRolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(initialRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(testCtx, f.KubeClient(), f.ScyllaClient(), sc)
+
+		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
+			testCtx,
+			utils.GetNodeName(sc, 0),
+			metav1.GetOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that iotune was performed on initial rollout")
+		isIOTunePerformed, err = IsIOTunePerformed(testCtx, f, pod.Name, sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(isIOTunePerformed).To(o.BeTrue())
+
+		initialPodUID := pod.UID
+		framework.Infof("Initial pod %q UID is %q", pod.Name, initialPodUID)
+
+		framework.By("Restarting the ScyllaDB Pod")
+		err = f.KubeClient().CoreV1().Pods(f.Namespace()).Delete(testCtx, pod.Name, metav1.DeleteOptions{
+			Preconditions: &metav1.Preconditions{
+				UID: &initialPodUID,
+			},
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the old ScyllaDB Pod to be deleted")
+		deletionCtx, deletionCtxCancel := context.WithTimeoutCause(
+			testCtx,
+			utils.ScyllaDBTerminationTimeout,
+			fmt.Errorf("pod %q has not finished termination in time", naming.ObjRef(pod)),
+		)
+		defer deletionCtxCancel()
+		err = framework.WaitForObjectDeletion(
+			deletionCtx,
+			f.DynamicClient(),
+			corev1.SchemeGroupVersion.WithResource("pods"),
+			pod.Namespace,
+			pod.Name,
+			pointer.Ptr(initialPodUID),
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		restartRolloutCtx, restartRolloutCtxCancel := utils.ContextForRollout(testCtx, sc)
+		defer restartRolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(restartRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that iotune was skipped on restart")
+		isIOTunePerformed, err = IsIOTunePerformed(testCtx, f, pod.Name, sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(isIOTunePerformed).To(o.BeFalse())
 	})
 })

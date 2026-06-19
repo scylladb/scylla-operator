@@ -231,6 +231,25 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 	return sc
 }
 
+func (f *Framework) GetNonDevModeScyllaCluster() *scyllav1.ScyllaCluster {
+	scyllaDBRepository, scyllaDBVersion := scyllaDBTargetRepositoryVersion()
+	renderArgs := map[string]any{
+		"scyllaDBRepository":          scyllaDBRepository,
+		"scyllaDBVersion":             scyllaDBVersion,
+		"scyllaDBManagerVersion":      TestContext.ScyllaDBManagerAgentVersion,
+		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                  TestContext.ScyllaClusterOptions.ScyllaArgs(),
+	}
+
+	sc, _, err := scyllafixture.NonDevModeScyllaClusterTemplate.RenderObject(renderArgs)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return sc
+}
+
 func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
 	scyllaDBRepository, scyllaDBVersion := scyllaDBTargetRepositoryVersion()
 	renderArgs := map[string]any{

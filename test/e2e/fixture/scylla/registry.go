@@ -21,6 +21,10 @@ var (
 	ScyllaClusterTemplateString string
 	ScyllaClusterTemplate       = ParseObjectTemplateOrDie[*scyllav1.ScyllaCluster]("scyllacluster", ScyllaClusterTemplateString)
 
+	//go:embed "nondevmode.scyllacluster.yaml.tmpl"
+	NonDevModeScyllaClusterTemplateString string
+	NonDevModeScyllaClusterTemplate       = ParseObjectTemplateOrDie[*scyllav1.ScyllaCluster]("nondevmode-scyllacluster", NonDevModeScyllaClusterTemplateString)
+
 	//go:embed "zonal.scyllacluster.yaml.tmpl"
 	ZonalScyllaClusterTemplateString string
 	ZonalScyllaClusterTemplate       = ParseObjectTemplateOrDie[*scyllav1.ScyllaCluster]("zonal-scyllacluster", ZonalScyllaClusterTemplateString)

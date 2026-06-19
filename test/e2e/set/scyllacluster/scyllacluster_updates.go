@@ -10,6 +10,8 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
@@ -209,5 +211,85 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.HaveLen(int(newMebmers)))
 		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 		verification.VerifyCQLData(ctx, di)
+	})
+})
+
+var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
+
+	g.It("should skip iotune on restart when io properties are cached", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		framework.By("Creating a ScyllaCluster with developer mode disabled")
+		sc := f.GetNonDevModeScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx1Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+
+		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
+			ctx,
+			utils.GetNodeName(sc, 0),
+			metav1.GetOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		initialPodUID := pod.UID
+		framework.Infof("Initial pod %q UID is %q", pod.Name, initialPodUID)
+
+		framework.By("Restarting the ScyllaDB Pod")
+		err = f.KubeClient().CoreV1().Pods(f.Namespace()).Delete(ctx, pod.Name, metav1.DeleteOptions{
+			Preconditions: &metav1.Preconditions{
+				UID: &initialPodUID,
+			},
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the old ScyllaDB Pod to be deleted")
+		deletionCtx, deletionCtxCancel := context.WithTimeoutCause(
+			ctx,
+			utils.ScyllaDBTerminationTimeout,
+			fmt.Errorf("pod %q has not finished termination in time", naming.ObjRef(pod)),
+		)
+		defer deletionCtxCancel()
+		err = framework.WaitForObjectDeletion(
+			deletionCtx,
+			f.DynamicClient(),
+			corev1.SchemeGroupVersion.WithResource("pods"),
+			pod.Namespace,
+			pod.Name,
+			pointer.Ptr(initialPodUID),
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx2Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that iotune was skipped on restart")
+		stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+			Command:       []string{"sh", "-c", "cat /proc/$(pgrep -x scylla)/cmdline | tr '\\0' ' '"},
+			Namespace:     f.Namespace(),
+			PodName:       pod.Name,
+			ContainerName: naming.ScyllaContainerName,
+			CaptureStdout: true,
+			CaptureStderr: true,
+		})
+		o.Expect(err).NotTo(o.HaveOccurred(), "failed to get scylla process args: %s", stderr)
+		o.Expect(stdout).To(o.ContainSubstring("--io-properties-file=/etc/scylla.d/io_properties.yaml"), "expected iotune to be configured on restart, but --io-properties-file is missing from scylla process args: %s", stdout)
 	})
 })

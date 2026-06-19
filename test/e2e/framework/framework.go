@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/names"
@@ -227,6 +228,16 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 
 	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
 	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return sc
+}
+
+func (f *Framework) GetNonDevModeScyllaCluster() *scyllav1.ScyllaCluster {
+	sc := f.GetDefaultScyllaCluster()
+	sc.Spec.DeveloperMode = false
+	// ScyllaDB production mode requires at least 10Gi to run iotune and 4Gi of memory (system requirements)
+	sc.Spec.Datacenter.Racks[0].Storage.Capacity = "10Gi"
+	sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("4Gi")
 
 	return sc
 }

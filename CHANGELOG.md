@@ -22,7 +22,7 @@ Release date: 2026-05-20
 
 ### Upgrade requirements
   
-Please refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.com/stable/management/upgrading/upgrade/#to-1-21).
+Please refer to the [1.20 to 1.21 upgrade guide](https://operator.docs.scylladb.com/v1.21/upgrade/upgrade-operator.html#to-1-21).
 
 ### Deprecations
 

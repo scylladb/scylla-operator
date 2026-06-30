@@ -1634,7 +1634,7 @@ func (q *Query) IsIdempotent() bool {
 }
 
 func (q *Query) IsLWT() bool {
-	return q.routingInfo.isLWT()
+	return q.routingInfo.isLWT() || q.cons.IsSerial()
 }
 
 func (q *Query) GetCustomPartitioner() Partitioner {
@@ -2623,7 +2623,7 @@ func (b *Batch) IsIdempotent() bool {
 }
 
 func (b *Batch) IsLWT() bool {
-	return b.routingInfo.isLWT()
+	return b.routingInfo.isLWT() || b.Cons.IsSerial()
 }
 
 func (b *Batch) GetCustomPartitioner() Partitioner {

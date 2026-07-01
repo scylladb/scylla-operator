@@ -77,6 +77,7 @@ type Controller struct {
 	scyllaDBDatacenterLister                  scyllav1alpha1listers.ScyllaDBDatacenterLister
 	jobLister                                 batchv1listers.JobLister
 	scyllaDBDatacenterNodesStatusReportLister scyllav1alpha1listers.ScyllaDBDatacenterNodesStatusReportLister
+	scyllaOperatorConfigLister                scyllav1alpha1listers.ScyllaOperatorConfigLister
 
 	cachesToSync []cache.InformerSynced
 
@@ -103,6 +104,7 @@ func NewController(
 	jobInformer batchv1informers.JobInformer,
 	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
 	scyllaDBDatacenterNodesStatusReportInformer scyllav1alpha1informers.ScyllaDBDatacenterNodesStatusReportInformer,
+	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
 	operatorImage string,
 	cqlsIngressPort int,
 	keyGetter crypto.KeyGenerator,
@@ -130,6 +132,7 @@ func NewController(
 		scyllaDBDatacenterLister: scyllaDBDatacenterInformer.Lister(),
 		jobLister:                jobInformer.Lister(),
 		scyllaDBDatacenterNodesStatusReportLister: scyllaDBDatacenterNodesStatusReportInformer.Lister(),
+		scyllaOperatorConfigLister:                scyllaOperatorConfigInformer.Lister(),
 
 		cachesToSync: []cache.InformerSynced{
 			podInformer.Informer().HasSynced,
@@ -144,6 +147,7 @@ func NewController(
 			scyllaDBDatacenterInformer.Informer().HasSynced,
 			jobInformer.Informer().HasSynced,
 			scyllaDBDatacenterNodesStatusReportInformer.Informer().HasSynced,
+			scyllaOperatorConfigInformer.Informer().HasSynced,
 		},
 
 		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scylladbdatacenter-controller"}),
@@ -250,6 +254,12 @@ func NewController(
 		AddFunc:    sdcc.addScyllaDBDatacenterNodesStatusReport,
 		UpdateFunc: sdcc.updateScyllaDBDatacenterNodesStatusReport,
 		DeleteFunc: sdcc.deleteScyllaDBDatacenterNodesStatusReport,
+	})
+
+	scyllaOperatorConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    sdcc.addScyllaOperatorConfig,
+		UpdateFunc: sdcc.updateScyllaOperatorConfig,
+		DeleteFunc: sdcc.deleteScyllaOperatorConfig,
 	})
 
 	return sdcc, nil
@@ -676,5 +686,28 @@ func (sdcc *Controller) deleteScyllaDBDatacenterNodesStatusReport(obj interface{
 	sdcc.handlers.HandleDelete(
 		obj,
 		sdcc.handlers.EnqueueOwner,
+	)
+}
+
+func (sdcc *Controller) addScyllaOperatorConfig(obj interface{}) {
+	sdcc.handlers.HandleAdd(
+		obj.(*scyllav1alpha1.ScyllaOperatorConfig),
+		sdcc.handlers.EnqueueAll,
+	)
+}
+
+func (sdcc *Controller) updateScyllaOperatorConfig(old, cur interface{}) {
+	sdcc.handlers.HandleUpdate(
+		old.(*scyllav1alpha1.ScyllaOperatorConfig),
+		cur.(*scyllav1alpha1.ScyllaOperatorConfig),
+		sdcc.handlers.EnqueueAll,
+		sdcc.deleteScyllaOperatorConfig,
+	)
+}
+
+func (sdcc *Controller) deleteScyllaOperatorConfig(obj interface{}) {
+	sdcc.handlers.HandleDelete(
+		obj,
+		sdcc.handlers.EnqueueAll,
 	)
 }

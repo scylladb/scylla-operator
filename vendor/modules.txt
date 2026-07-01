@@ -267,7 +267,7 @@ github.com/fatih/color
 ## explicit; go 1.23
 github.com/fsnotify/fsnotify
 github.com/fsnotify/fsnotify/internal
-# github.com/fxamacker/cbor/v2 v2.9.1
+# github.com/fxamacker/cbor/v2 v2.9.2
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
 # github.com/go-errors/errors v1.5.1
@@ -326,10 +326,10 @@ github.com/go-openapi/spec
 ## explicit; go 1.25.0
 github.com/go-openapi/strfmt
 github.com/go-openapi/strfmt/internal/bsonlite
-# github.com/go-openapi/swag v0.26.0
+# github.com/go-openapi/swag v0.26.1
 ## explicit; go 1.25.0
 github.com/go-openapi/swag
-# github.com/go-openapi/swag/cmdutils v0.26.0
+# github.com/go-openapi/swag/cmdutils v0.26.1
 ## explicit; go 1.25.0
 github.com/go-openapi/swag/cmdutils
 # github.com/go-openapi/swag/conv v0.26.1
@@ -353,7 +353,7 @@ github.com/go-openapi/swag/loading
 # github.com/go-openapi/swag/mangling v0.26.1
 ## explicit; go 1.25.0
 github.com/go-openapi/swag/mangling
-# github.com/go-openapi/swag/netutils v0.26.0
+# github.com/go-openapi/swag/netutils v0.26.1
 ## explicit; go 1.25.0
 github.com/go-openapi/swag/netutils
 # github.com/go-openapi/swag/stringutils v0.26.1
@@ -635,14 +635,14 @@ github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0 => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0
-## explicit; go 1.25.0
+# github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1 => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1
+## explicit; go 1.26.0
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1beta1
-# github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.2 => github.com/prometheus-operator/prometheus-operator/pkg/client v0.91.0
-## explicit; go 1.25.0
+# github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.2 => github.com/prometheus-operator/prometheus-operator/pkg/client v0.92.1
+## explicit; go 1.26.0
 github.com/prometheus-operator/prometheus-operator/pkg/client/applyconfiguration/monitoring/v1
 github.com/prometheus-operator/prometheus-operator/pkg/client/applyconfiguration/monitoring/v1alpha1
 github.com/prometheus-operator/prometheus-operator/pkg/client/applyconfiguration/monitoring/v1beta1
@@ -1572,8 +1572,8 @@ k8s.io/klog/v2/internal/sloghandler
 k8s.io/klog/v2/internal/verbosity
 k8s.io/klog/v2/ktesting
 k8s.io/klog/v2/textlogger
-# k8s.io/kube-openapi v0.0.0-20260427204847-8949caaa1199
-## explicit; go 1.23.0
+# k8s.io/kube-openapi v0.0.0-20260603220949-865597e52e25
+## explicit; go 1.24.0
 k8s.io/kube-openapi/cmd/openapi-gen
 k8s.io/kube-openapi/cmd/openapi-gen/args
 k8s.io/kube-openapi/pkg/cached
@@ -1583,6 +1583,11 @@ k8s.io/kube-openapi/pkg/generators/rules
 k8s.io/kube-openapi/pkg/handler3
 k8s.io/kube-openapi/pkg/internal
 k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json
+k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json/internal
+k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json/internal/jsonflags
+k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json/internal/jsonopts
+k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json/internal/jsonwire
+k8s.io/kube-openapi/pkg/internal/third_party/go-json-experiment/json/jsontext
 k8s.io/kube-openapi/pkg/schemaconv
 k8s.io/kube-openapi/pkg/spec3
 k8s.io/kube-openapi/pkg/util
@@ -1750,5 +1755,5 @@ sigs.k8s.io/structured-merge-diff/v6/value
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/kyaml
 # github.com/gocql/gocql => github.com/scylladb/gocql v1.18.3
-# github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0
-# github.com/prometheus-operator/prometheus-operator/pkg/client => github.com/prometheus-operator/prometheus-operator/pkg/client v0.91.0
+# github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1
+# github.com/prometheus-operator/prometheus-operator/pkg/client => github.com/prometheus-operator/prometheus-operator/pkg/client v0.92.1

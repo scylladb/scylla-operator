@@ -1,6 +1,6 @@
 operator:
   # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
-  scyllaDBVersion: "2026.1.3"
+  scyllaDBVersion: "2026.2.0"
   scyllaDBUtilsImage: "docker.io/scylladb/scylla:2026.1.0@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver
   scyllaDBManagerVersion: "3.11.1@sha256:607270019bd1dae1da3799d2144f79480ccac37893aed0b115786a8dccb70298"
@@ -8,12 +8,12 @@ operator:
   scyllaDBManagerAgentVersion: "3.11.1@sha256:32b3767ff46729bdb8f086b6b99d3f07ac606cf10a1ed287dbfa3d9379bc83f1"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
   grafanaImage: "docker.io/grafana/grafana:12.4.3" # Generated from scylla-monitoring/versions.sh GRAFANA_VERSION.
-  grafanaDefaultPlatformDashboard: "scylladb-2026.1/scylla-overview.2026.1.json"
+  grafanaDefaultPlatformDashboard: "scylladb-2026.2/scylla-overview.2026.2.json"
   prometheusVersion: "v3.11.3" # Generated from scylla-monitoring/versions.sh PROMETHEUS_VERSION.
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "2026.1.2" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
-    upgradeFrom: "2025.4.5" # One minor lower than .operator.scyllaDBVersion
+    updateFrom: "2026.2.0-rc3" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
+    upgradeFrom: "2026.1.6" # One minor lower than .operator.scyllaDBVersion
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.4@sha256:8d77b91db6cffb40337e3db9c9a2f73f190eda9f9e547a752f0beab8aea322ef"
   # renovate: datasource=custom.envtest depName=envtest versioning=semver
   envTestKubernetesVersion: "v1.36.0"

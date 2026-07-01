@@ -2436,7 +2436,7 @@ func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyl
 
 	if len(hostID) == 0 {
 		// Host ID hasn't been propagated yet, report an empty status without a hostID.
-		klog.V(4).InfoS("HostID of an expected node has nod been propagated yet, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName))
+		klog.V(4).InfoS("HostID of an expected node has not been propagated yet, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName))
 		return nodeStatusReport, true, nil
 	}
 	nodeStatusReport.HostID = &hostID

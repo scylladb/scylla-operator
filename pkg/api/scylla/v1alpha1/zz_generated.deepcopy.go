@@ -2917,6 +2917,11 @@ func (in *ScyllaOperatorConfigSpec) DeepCopyInto(out *ScyllaOperatorConfigSpec) 
 		*out = new(string)
 		**out = **in
 	}
+	if in.ScyllaDBNodeExporterImage != nil {
+		in, out := &in.ScyllaDBNodeExporterImage, &out.ScyllaDBNodeExporterImage
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
@@ -2967,6 +2972,11 @@ func (in *ScyllaOperatorConfigStatus) DeepCopyInto(out *ScyllaOperatorConfigStat
 	}
 	if in.ClusterDomain != nil {
 		in, out := &in.ClusterDomain, &out.ClusterDomain
+		*out = new(string)
+		**out = **in
+	}
+	if in.ScyllaDBNodeExporterImage != nil {
+		in, out := &in.ScyllaDBNodeExporterImage, &out.ScyllaDBNodeExporterImage
 		*out = new(string)
 		**out = **in
 	}

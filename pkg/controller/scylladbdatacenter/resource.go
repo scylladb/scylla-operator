@@ -334,7 +334,7 @@ func getServicePorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ServicePo
 
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
-func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, existingSts *appsv1.StatefulSet, sidecarImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
+func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, existingSts *appsv1.StatefulSet, sidecarImage string, nodeExporterImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
 	selectorLabels, err := naming.RackSelectorLabels(rack, sdc)
 	if err != nil {
 		return nil, fmt.Errorf("can't get selector labels: %w", err)
@@ -344,6 +344,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 	if err != nil {
 		return nil, fmt.Errorf("can't get version of image %q: %w", sdc.Spec.ScyllaDB.Image, err)
 	}
+	scyllaDBSemver := semver.NewScyllaVersion(scyllaDBVersion)
 
 	if sdc.Spec.RackTemplate != nil {
 		rack = applyRackTemplateOnRackSpec(sdc.Spec.RackTemplate, rack)
@@ -469,7 +470,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		minReadySeconds = int(*sdc.Spec.MinReadySeconds)
 	}
 
-	scyllaContainerPorts, err := containerPorts(sdc)
+	scyllaContainerPorts, err := containerPorts(sdc, scyllaDBSemver)
 	if err != nil {
 		return nil, fmt.Errorf("can't get scylla container ports: %w", err)
 	}
@@ -1109,10 +1110,14 @@ wait
 		sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *agentContainer)
 	}
 
+	if nodeExporterContainer := getScyllaDBNodeExporterContainer(nodeExporterImage, scyllaDBSemver); nodeExporterContainer != nil {
+		sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, *nodeExporterContainer)
+	}
+
 	return sts, nil
 }
 
-func containerPorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ContainerPort, error) {
+func containerPorts(sdc *scyllav1alpha1.ScyllaDBDatacenter, sv semver.ScyllaVersion) ([]corev1.ContainerPort, error) {
 	ports := []corev1.ContainerPort{
 		{
 			Name:          "intra-node",
@@ -1139,13 +1144,16 @@ func containerPorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ContainerP
 			ContainerPort: scylla.DefaultScyllaDBMetricsPort,
 		},
 		{
-			Name:          "node-exporter",
-			ContainerPort: 9100,
-		},
-		{
 			Name:          "thrift",
 			ContainerPort: 9160,
 		},
+	}
+
+	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionRequiredForNodeExporterSidecar) {
+		ports = append(ports, corev1.ContainerPort{
+			Name:          "node-exporter",
+			ContainerPort: 9100,
+		})
 	}
 
 	if sdc.Spec.ScyllaDB.AlternatorOptions != nil {
@@ -1453,6 +1461,31 @@ exec scylla-manager-agent \
 	}
 
 	return cnt, nil
+}
+
+func getScyllaDBNodeExporterContainer(image string, sv semver.ScyllaVersion) *corev1.Container {
+	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionRequiredForNodeExporterSidecar) {
+		return nil
+	}
+
+	return &corev1.Container{
+		Name:            naming.ScyllaDBNodeExporterContainerName,
+		Image:           image,
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "node-exporter",
+				ContainerPort: 9100,
+			},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      naming.PVCTemplateName,
+				MountPath: naming.DataDir,
+				ReadOnly:  true,
+			},
+		},
+	}
 }
 
 func MakePodDisruptionBudget(sdc *scyllav1alpha1.ScyllaDBDatacenter) *policyv1.PodDisruptionBudget {

@@ -64,6 +64,8 @@ func (opc *Controller) calculateStatus(soc *scyllav1alpha1.ScyllaOperatorConfig)
 
 	if soc.Spec.ScyllaDBNodeExporterImage != nil {
 		status.ScyllaDBNodeExporterImage = pointer.Ptr(*soc.Spec.ScyllaDBNodeExporterImage)
+	} else {
+		status.ScyllaDBNodeExporterImage = pointer.Ptr(configassests.Project.Operator.ScyllaDBNodeExporterImage)
 	}
 
 	return status

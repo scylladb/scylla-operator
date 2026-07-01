@@ -978,14 +978,14 @@ func runTestStatefulSetForRack(t *testing.T) {
 										Name:          "prometheus",
 										ContainerPort: 9180,
 									},
-									{
-										Name:          "node-exporter",
-										ContainerPort: 9100,
-									},
-									{
-										Name:          "thrift",
-										ContainerPort: 9160,
-									},
+								{
+									Name:          "thrift",
+									ContainerPort: 9160,
+								},
+								{
+									Name:          "node-exporter",
+									ContainerPort: 9100,
+								},
 								},
 								Command: func() []string {
 									return []string{
@@ -2033,13 +2033,61 @@ exec scylla-manager-agent \
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "new StatefulSet with ScyllaDB version requiring node-exporter sidecar",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = "scylladb/scylla:2026.3.0"
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Labels["scylla/scylla-version"] = "2026.3.0"
+				sts.Spec.Template.Labels["scylla/scylla-version"] = "2026.3.0"
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = "scylladb/scylla:2026.3.0"
+
+				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+					sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Image = "scylladb/scylla:2026.3.0"
+				}
+
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Ports = slices.DeleteFunc(
+					sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Ports,
+					func(p corev1.ContainerPort) bool { return p.Name == "node-exporter" },
+				)
+
+				sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, corev1.Container{
+					Name:            naming.ScyllaDBNodeExporterContainerName,
+					Image:           "scylladb/scylladb-node-exporter:latest",
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Ports: []corev1.ContainerPort{
+						{
+							Name:          "node-exporter",
+							ContainerPort: 9100,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      naming.PVCTemplateName,
+							MountPath: naming.DataDir,
+							ReadOnly:  true,
+						},
+					},
+				})
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0, "")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, "scylladb/scylla-operator:latest", "scylladb/scylladb-node-exporter:latest", 0, "")
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",

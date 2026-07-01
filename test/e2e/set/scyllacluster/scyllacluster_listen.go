@@ -12,6 +12,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/semver"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/tools"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -56,6 +57,15 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+
+		scyllaClient, _, err := utils.GetScyllaClient(ctx, f.KubeAdminClient().CoreV1(), sc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaDBVersion, err := scyllaClient.ScyllaVersion(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaDBSemver := semver.NewScyllaVersion(scyllaDBVersion)
+		expectedListenProcNetEntries := getExpectedListenProcNetEntries(scyllaDBSemver)
 
 		serviceName := naming.MemberServiceNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, 0)
 		nodeService, err := f.KubeClient().CoreV1().Services(sc.Namespace).Get(ctx, serviceName, metav1.GetOptions{})
@@ -103,90 +113,99 @@ tail -n +2 /proc/net/tcp6
 		o.Expect(procNetEntries).NotTo(o.BeEmpty())
 
 		listenProcNetEntries := procNetEntries.FilterListen()
-		/*
-		 * This is a list of allowed ports to be exposed using default configuration.
-		 * All of these ports should use encryption and force AuthN/AuthZ, unless it is not appropriate
-		 * or required for the type of data, e.g. /readyz probes.
-		 * We have some techdebt in this area so this contains some historical ports that don't uphold
-		 * to this standard. All such entries should have an issue link attached.
-		 *
-		 * Note: Some applications bind dedicated IPv4 and IPv6 socket while some reuse the IPv6 socket for IPv4 as well.
-		 */
-		o.Expect(listenProcNetEntries).To(o.ConsistOf([]linuxnetutils.AddressPort{
-			{
-				Address: net.ParseIP("::"),
-				Port:    5090, // ScyllaDB Manager agent - metrics (insecure)
-			},
-			{
-				Address: net.ParseIP("127.0.0.1"),
-				Port:    5112, // ScyllaDB Manager agent - debug (insecure)
-			},
-			{
-				Address: net.ParseIP("0.0.0.0"),
-				Port:    7000, // ScyllaDB inter-node (insecure)
-				// FIXME: Remove
-				//        https://github.com/scylladb/scylla-operator/issues/1217
-			},
-			{
-				Address: net.ParseIP("0.0.0.0"),
-				Port:    8043, // Alternator TLS
-			},
-			{
-				Address: net.ParseIP("::"),
-				Port:    8080, // Scylla Operator probes (insecure, non-sensitive data)
-			},
-			{
-				Address: net.ParseIP("::"),
-				Port:    42081, // ScyllaDB ignition probe
-			},
-			{
-				Address: net.ParseIP("127.0.0.1"),
-				Port:    9001, // supervisord (planned for removal with cont)
-				// FIXME: Remove
-				//        https://github.com/scylladb/scylla-operator/issues/1769
-			},
-			{
-				Address: net.ParseIP("::"),
-				Port:    9100, // Node exporter - metrics (insecure)
-			},
-			{
-				Address: net.ParseIP("0.0.0.0"),
-				Port:    9042, // CQL (insecure)
-				// FIXME: Remove
-				//        https://github.com/scylladb/scylla-operator/issues/1764
-			},
-			{
-				Address: net.ParseIP("0.0.0.0"),
-				Port:    9142, // CQL TLS (not AuthZ by default)
-				// FIXME: Enforce AuthN+AuthZ by default
-				//        https://github.com/scylladb/scylla-operator/issues/1770
-			},
-			{
-				Address: net.ParseIP("0.0.0.0"),
-				Port:    9180, // ScyllaDB - metrics (insecure)
-			},
-			{
-				Address: net.ParseIP("127.0.0.1"),
-				Port:    10000, // ScyllaDB API (insecure and unprotected)
-			},
-			{
-				Address: net.ParseIP("::"),
-				Port:    10001, // ScyllaDB Manager API (insecure but authorized)
-				// FIXME: This needs to be replaced with TLS
-				//        https://github.com/scylladb/scylla-operator/issues/1772
-			},
-			{
-				Address: net.ParseIP("0.0.0.0"),
-				Port:    19042, // Shard-aware CQL (insecure)
-				// FIXME: Remove in favour of port 19142
-				//        https://github.com/scylladb/scylla-operator/issues/1764
-			},
-			{
-				Address: net.ParseIP("0.0.0.0"),
-				Port:    19142, // Shard-aware CQL TLS
-				// FIXME: Enforce AuthN+AuthZ by default
-				//        https://github.com/scylladb/scylla-operator/issues/1770
-			},
-		}))
+		o.Expect(listenProcNetEntries).To(o.ConsistOf(expectedListenProcNetEntries))
 	})
 })
+
+/*
+ * This is a list of allowed ports to be exposed using default configuration.
+ * All of these ports should use encryption and force AuthN/AuthZ, unless it is not appropriate
+ * or required for the type of data, e.g. /readyz probes.
+ * We have some techdebt in this area so this contains some historical ports that don't uphold
+ * to this standard. All such entries should have an issue link attached.
+ *
+ * Note: Some applications bind dedicated IPv4 and IPv6 socket while some reuse the IPv6 socket for IPv4 as well.
+ */
+func getExpectedListenProcNetEntries(sv semver.ScyllaVersion) []linuxnetutils.AddressPort {
+	res := []linuxnetutils.AddressPort{
+		{
+			Address: net.ParseIP("::"),
+			Port:    5090, // ScyllaDB Manager agent - metrics (insecure)
+		},
+		{
+			Address: net.ParseIP("127.0.0.1"),
+			Port:    5112, // ScyllaDB Manager agent - debug (insecure)
+		},
+		{
+			Address: net.ParseIP("0.0.0.0"),
+			Port:    7000, // ScyllaDB inter-node (insecure)
+			// FIXME: Remove
+			//        https://github.com/scylladb/scylla-operator/issues/1217
+		},
+		{
+			Address: net.ParseIP("0.0.0.0"),
+			Port:    8043, // Alternator TLS
+		},
+		{
+			Address: net.ParseIP("::"),
+			Port:    8080, // Scylla Operator probes (insecure, non-sensitive data)
+		},
+		{
+			Address: net.ParseIP("::"),
+			Port:    42081, // ScyllaDB ignition probe
+		},
+		{
+			Address: net.ParseIP("127.0.0.1"),
+			Port:    9001, // supervisord (planned for removal with cont)
+			// FIXME: Remove
+			//        https://github.com/scylladb/scylla-operator/issues/1769
+		},
+		{
+			Address: net.ParseIP("0.0.0.0"),
+			Port:    9042, // CQL (insecure)
+			// FIXME: Remove
+			//        https://github.com/scylladb/scylla-operator/issues/1764
+		},
+		{
+			Address: net.ParseIP("0.0.0.0"),
+			Port:    9142, // CQL TLS (not AuthZ by default)
+			// FIXME: Enforce AuthN+AuthZ by default
+			//        https://github.com/scylladb/scylla-operator/issues/1770
+		},
+		{
+			Address: net.ParseIP("0.0.0.0"),
+			Port:    9180, // ScyllaDB - metrics (insecure)
+		},
+		{
+			Address: net.ParseIP("127.0.0.1"),
+			Port:    10000, // ScyllaDB API (insecure and unprotected)
+		},
+		{
+			Address: net.ParseIP("::"),
+			Port:    10001, // ScyllaDB Manager API (insecure but authorized)
+			// FIXME: This needs to be replaced with TLS
+			//        https://github.com/scylladb/scylla-operator/issues/1772
+		},
+		{
+			Address: net.ParseIP("0.0.0.0"),
+			Port:    19042, // Shard-aware CQL (insecure)
+			// FIXME: Remove in favour of port 19142
+			//        https://github.com/scylladb/scylla-operator/issues/1764
+		},
+		{
+			Address: net.ParseIP("0.0.0.0"),
+			Port:    19142, // Shard-aware CQL TLS
+			// FIXME: Enforce AuthN+AuthZ by default
+			//        https://github.com/scylladb/scylla-operator/issues/1770
+		},
+	}
+
+	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionWithoutNodeExporter) {
+		res = append(res, linuxnetutils.AddressPort{
+			Address: net.ParseIP("::"),
+			Port:    9100, // Node exporter - metrics (insecure)
+		})
+	}
+
+	return res
+}

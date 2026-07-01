@@ -44,6 +44,11 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	soc, err := sdcc.scyllaOperatorConfigLister.Get(naming.SingletonName)
+	if err != nil {
+		return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
+	}
+
 	sdcSelector := labels.SelectorFromSet(labels.Set{
 		naming.ClusterNameLabel: sdc.Name,
 	})
@@ -295,7 +300,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		statefulSetControllerDegradedCondition,
 		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return sdcc.syncStatefulSets(ctx, key, sdc, status, statefulSetMap, serviceMap, configMapMap)
+			return sdcc.syncStatefulSets(ctx, key, sdc, soc, status, statefulSetMap, serviceMap, configMapMap)
 		},
 	)
 	if err != nil {

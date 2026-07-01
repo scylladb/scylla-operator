@@ -29,6 +29,10 @@ type ScyllaOperatorConfigSpec struct {
 	// configuredClusterDomain allows users to set the configured Kubernetes cluster domain explicitly, instead of letting Scylla Operator automatically discover it.
 	// +optional
 	ConfiguredClusterDomain *string `json:"configuredClusterDomain,omitempty"`
+
+	// scyllaDBNodeExporterImage is the node-exporter image used by the operator to collect node metrics from ScyllaDB Pods.
+	// +optional
+	ScyllaDBNodeExporterImage *string `json:"scyllaDBNodeExporterImage,omitempty"`
 }
 
 type ScyllaOperatorConfigStatus struct {
@@ -58,6 +62,10 @@ type ScyllaOperatorConfigStatus struct {
 
 	// clusterDomain is the Kubernetes cluster domain used by the Scylla Operator.
 	ClusterDomain *string `json:"clusterDomain,omitempty"`
+
+	// scyllaDBNodeExporterImage is the node-exporter image used by the operator to collect node metrics from ScyllaDB Pods.
+	// +optional
+	ScyllaDBNodeExporterImage *string `json:"scyllaDBNodeExporterImage,omitempty"`
 }
 
 // +kubebuilder:object:root=true

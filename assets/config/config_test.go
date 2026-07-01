@@ -114,6 +114,14 @@ func TestProjectConfig(t *testing.T) {
 			),
 		},
 		{
+			name:        "scyllaDBNodeExporterImage",
+			configField: Project.Operator.ScyllaDBNodeExporterImage,
+			testFn: composeValidators(
+				validateRequired,
+				validateMultiPlatformImage(ctx),
+			),
+		},
+		{
 			name:        "scyllaDBManagerVersion",
 			configField: Project.Operator.ScyllaDBManagerVersion,
 			testFn: composeValidators(

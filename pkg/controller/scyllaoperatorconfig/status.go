@@ -5,7 +5,6 @@ import (
 
 	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -36,30 +35,36 @@ func (opc *Controller) updateStatus(ctx context.Context, currentSOC *scyllav1alp
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
 func (opc *Controller) calculateStatus(soc *scyllav1alpha1.ScyllaOperatorConfig) *scyllav1alpha1.ScyllaOperatorConfigStatus {
 	status := soc.Status.DeepCopy()
-	status.ObservedGeneration = pointer.Ptr(soc.Generation)
+	status.ObservedGeneration = new(soc.Generation)
 
 	if len(soc.Spec.ScyllaUtilsImage) != 0 {
-		status.ScyllaDBUtilsImage = pointer.Ptr(soc.Spec.ScyllaUtilsImage)
+		status.ScyllaDBUtilsImage = new(soc.Spec.ScyllaUtilsImage)
 	} else {
-		status.ScyllaDBUtilsImage = pointer.Ptr(configassests.Project.Operator.ScyllaDBUtilsImage)
+		status.ScyllaDBUtilsImage = new(configassests.Project.Operator.ScyllaDBUtilsImage)
 	}
 
 	if soc.Spec.UnsupportedBashToolsImageOverride != nil {
-		status.BashToolsImage = pointer.Ptr(*soc.Spec.UnsupportedBashToolsImageOverride)
+		status.BashToolsImage = new(*soc.Spec.UnsupportedBashToolsImageOverride)
 	} else {
-		status.BashToolsImage = pointer.Ptr(configassests.Project.Operator.BashToolsImage)
+		status.BashToolsImage = new(configassests.Project.Operator.BashToolsImage)
 	}
 
 	if soc.Spec.UnsupportedGrafanaImageOverride != nil {
-		status.GrafanaImage = pointer.Ptr(*soc.Spec.UnsupportedGrafanaImageOverride)
+		status.GrafanaImage = new(*soc.Spec.UnsupportedGrafanaImageOverride)
 	} else {
-		status.GrafanaImage = pointer.Ptr(configassests.Project.Operator.GrafanaImage)
+		status.GrafanaImage = new(configassests.Project.Operator.GrafanaImage)
 	}
 
 	if soc.Spec.UnsupportedPrometheusVersionOverride != nil {
-		status.PrometheusVersion = pointer.Ptr(*soc.Spec.UnsupportedPrometheusVersionOverride)
+		status.PrometheusVersion = new(*soc.Spec.UnsupportedPrometheusVersionOverride)
 	} else {
-		status.PrometheusVersion = pointer.Ptr(configassests.Project.Operator.PrometheusVersion)
+		status.PrometheusVersion = new(configassests.Project.Operator.PrometheusVersion)
+	}
+
+	if soc.Spec.ScyllaDBNodeExporterImage != nil {
+		status.ScyllaDBNodeExporterImage = new(*soc.Spec.ScyllaDBNodeExporterImage)
+	} else {
+		status.ScyllaDBNodeExporterImage = new(configassests.Project.Operator.ScyllaDBNodeExporterImage)
 	}
 
 	return status

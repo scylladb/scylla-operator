@@ -10,6 +10,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
@@ -209,5 +210,80 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.HaveLen(int(newMebmers)))
 		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 		verification.VerifyCQLData(ctx, di)
+	})
+})
+
+var _ = g.Describe("ScyllaCluster", framework.SuiteSerial, framework.SuiteKindFast, func() {
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
+
+	g.It("should skip iotune on restart when io properties are cached", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+		defer cancel()
+
+		framework.By("Creating a ScyllaCluster with developer mode disabled")
+		sc := f.GetNonDevModeScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx1Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
+			ctx,
+			utils.GetNodeName(sc, 0),
+			metav1.GetOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		initialPodUID := pod.UID
+		framework.Infof("Initial pod %q UID is %q", pod.Name, initialPodUID)
+
+		framework.By("Restarting the ScyllaDB Pod")
+		err = f.KubeClient().CoreV1().Pods(f.Namespace()).Delete(ctx, pod.Name, metav1.DeleteOptions{
+			Preconditions: &metav1.Preconditions{
+				UID: &initialPodUID,
+			},
+		})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtx2Cancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+
+		pod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Get(
+			ctx,
+			utils.GetNodeName(sc, 0),
+			metav1.GetOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(pod.UID).NotTo(o.Equal(initialPodUID))
+
+		framework.By("Verifying that iotune was skipped on restart")
+		stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+			Command:       []string{"sh", "-c", "cat /proc/$(pgrep -x scylla)/cmdline | tr '\\0' ' '"},
+			Namespace:     f.Namespace(),
+			PodName:       pod.Name,
+			ContainerName: naming.ScyllaContainerName,
+			CaptureStdout: true,
+			CaptureStderr: true,
+		})
+		o.Expect(err).NotTo(o.HaveOccurred(), "failed to get scylla process args: %s", stderr)
+		o.Expect(stdout).To(o.ContainSubstring("--io-setup=0"), "expected iotune to be skipped on restart, but --io-setup=0 flag is missing from scylla process args: %s", stdout)
 	})
 })

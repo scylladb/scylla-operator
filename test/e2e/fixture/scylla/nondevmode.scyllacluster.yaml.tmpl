@@ -1,0 +1,55 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  generateName: basic-
+  labels:
+   foo: bar
+  annotations:
+   bar: foo
+spec:
+  agentVersion: "{{ .scyllaDBManagerVersion }}"
+  repository: "{{ .scyllaDBRepository }}"
+  version: "{{ .scyllaDBVersion }}"
+  developerMode: false
+  {{- if .scyllaArgs }}
+  scyllaArgs: "{{ join .scyllaArgs " " }}"
+  {{- end }}
+  exposeOptions:
+    nodeService:
+      type: {{ .nodeServiceType }}
+    broadcastOptions:
+      nodes:
+        type: {{ .nodesBroadcastAddressType }}
+      clients:
+        type: {{ .clientsBroadcastAddressType }}
+  datacenter:
+    name: us-east-1
+    racks:
+    - name: us-east-1a
+      members: 1
+      storage:
+        capacity: 11Gi
+        {{- if .storageClassName }}
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
+      resources:
+        requests:
+          cpu: 10m
+          memory: 100Mi
+        limits:
+          cpu: 1
+          memory: 3Gi
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: scylla.scylladb.com/node-type
+                operator: In
+                values:
+                - scylla
+        tolerations:
+        - effect: NoSchedule
+          key: scylla-operator.scylladb.com/dedicated
+          operator: Equal
+          value: scyllaclusters

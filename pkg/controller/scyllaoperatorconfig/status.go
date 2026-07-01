@@ -62,5 +62,9 @@ func (opc *Controller) calculateStatus(soc *scyllav1alpha1.ScyllaOperatorConfig)
 		status.PrometheusVersion = pointer.Ptr(configassests.Project.Operator.PrometheusVersion)
 	}
 
+	if soc.Spec.ScyllaDBNodeExporterImage != nil {
+		status.ScyllaDBNodeExporterImage = pointer.Ptr(*soc.Spec.ScyllaDBNodeExporterImage)
+	}
+
 	return status
 }

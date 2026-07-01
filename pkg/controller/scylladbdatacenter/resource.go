@@ -1149,7 +1149,7 @@ func containerPorts(sdc *scyllav1alpha1.ScyllaDBDatacenter, sv semver.ScyllaVers
 		},
 	}
 
-	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionRequiredForNodeExporterSidecar) {
+	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionWithoutNodeExporter) {
 		ports = append(ports, corev1.ContainerPort{
 			Name:          "node-exporter",
 			ContainerPort: 9100,
@@ -1464,7 +1464,7 @@ exec scylla-manager-agent \
 }
 
 func getScyllaDBNodeExporterContainer(image string, sv semver.ScyllaVersion) *corev1.Container {
-	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionRequiredForNodeExporterSidecar) {
+	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionWithoutNodeExporter) {
 		return nil
 	}
 

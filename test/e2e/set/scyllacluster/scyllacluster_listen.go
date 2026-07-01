@@ -200,7 +200,7 @@ func getExpectedListenProcNetEntries(sv semver.ScyllaVersion) []linuxnetutils.Ad
 		},
 	}
 
-	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionRequiredForNodeExporterSidecar) {
+	if !sv.SupportFeatureSafe(semver.ScyllaDBVersionWithoutNodeExporter) {
 		res = append(res, linuxnetutils.AddressPort{
 			Address: net.ParseIP("::"),
 			Port:    9100, // Node exporter - metrics (insecure)

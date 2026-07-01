@@ -69,7 +69,10 @@ func NewSingleHostQueryExecutor(cfg *ClusterConfig) (e SingleHostQueryExecutor, 
 	}
 
 	var hosts []*HostInfo
-	if hosts, err = resolveInitialEndpoints(c.DNSResolver, c.Hosts, c.Port, c.Logger); err != nil {
+	// Use the port resolved by Validate() (stored in the session config) rather
+	// than the original c.Port which may still be 0 if the user did not set it
+	// explicitly.
+	if hosts, err = resolveInitialEndpoints(c.DNSResolver, c.Hosts, e.session.cfg.Port, c.Logger); err != nil {
 		err = fmt.Errorf("addrs to hosts: %w", err)
 		return
 	}

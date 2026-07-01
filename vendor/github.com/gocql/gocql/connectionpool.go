@@ -571,7 +571,8 @@ func (pool *hostConnPool) initConnPicker(conn *Conn) {
 		return
 	}
 
-	if conn.isScyllaConn() {
+	// Use the shard-aware picker only when the server enabled shard awareness (nrShards != 0).
+	if conn.isScyllaConn() && conn.getScyllaSupported().nrShards != 0 {
 		pool.connPicker = newScyllaConnPicker(conn, pool.logger)
 		return
 	}

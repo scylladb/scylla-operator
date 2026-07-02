@@ -24,7 +24,7 @@ The Agent communicates with Manager to execute operations on the local node (str
 
 The Agent:
 - Listens on port 10001.
-- Waits for [ignition](ignition.md) before starting — it does not run until ScyllaDB itself is ready.
+- Waits for [ignition](ignition.md) and for the ScyllaDB REST API (port 10000) to become available before starting — this covers the gap between ignition completing and ScyllaDB finishing IO tuning on first boot.
 - Is configured through layered YAML config files and an auth token that the Operator manages automatically.
 - Uses the image specified by the `agentVersion` and `agentRepository` fields on the `ScyllaCluster` spec.
 

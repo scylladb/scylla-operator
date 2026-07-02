@@ -21,7 +21,7 @@ A ScyllaDB pod contains init containers that run sequentially before the main wo
 | 1 | `scylla` | ScyllaDB | The main container. Waits for the ignition signal, then execs the sidecar binary which configures and starts ScyllaDB. | Always present |
 | 2 | `scylladb-api-status-probe` | Operator | Translates ScyllaDB's native HTTP API status into Kubernetes health-check endpoints (`/healthz`, `/readyz`) on port 8080. | Always present |
 | 3 | `scylladb-ignition` | Operator | Evaluates startup prerequisites (tuning done, IPs assigned, container running) and creates the ignition signal file when all are met. See [Ignition](ignition.md). | Always present |
-| 4 | `scylla-manager-agent` | Manager Agent | Runs the ScyllaDB Manager Agent for backup, repair, and health-check operations. Waits for the ignition signal before starting. | Only when Manager integration is configured |
+| 4 | `scylla-manager-agent` | Manager Agent | Runs the ScyllaDB Manager Agent for backup, repair, and health-check operations. Waits for the ignition signal and for the ScyllaDB REST API to become available before starting. | Only when Manager integration is configured |
 
 ## Shared volumes
 
@@ -45,7 +45,7 @@ The `/mnt/shared/ignition.done` file is the coordination point between the ignit
 1. The `scylla` container's entrypoint loops, sleeping until the file appears.
 2. The `scylladb-ignition` container evaluates prerequisites and creates the file when all conditions are satisfied.
 3. On container termination, the `scylla` container's shutdown trap removes the file so that on restart the ignition sidecar must re-evaluate.
-4. The Manager Agent container uses the same wait loop before starting the agent process.
+4. The Manager Agent container uses the same wait loop, and additionally polls the ScyllaDB REST API (port 10000) to ensure ScyllaDB has finished IO tuning and is accepting connections before starting the agent process.
 
 This mechanism ensures that ScyllaDB never starts before node-level tuning is complete and network addresses are assigned. See [Ignition](ignition.md) for the full list of prerequisites.
 

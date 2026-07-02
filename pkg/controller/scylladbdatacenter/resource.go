@@ -1371,7 +1371,7 @@ func getScyllaDBManagerAgentContainer(r scyllav1alpha1.RackSpec, sdc *scyllav1al
 		Name:            naming.ScyllaManagerAgentContainerName,
 		Image:           *sdc.Spec.ScyllaDBManagerAgent.Image,
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		// There is no point in starting scylla-manager before ScyllaDB is tuned and ignited. The manager agent fails after 60 attempts and hits backoff unnecessarily.
+		// There is no point in starting ScyllaDB Manager Agent before ScyllaDB is ignited and tuned. The manager agent fails after 60 attempts and hits backoff unnecessarily.
 		Command: []string{
 			"/usr/bin/bash",
 			"-euEo",
@@ -1387,7 +1387,13 @@ until [[ -f "/mnt/shared/ignition.done" ]]; do
   sleep 1 &
   wait
 done
-printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+printf '{"L":"INFO","T":"%s","M":"Ignited. Waiting for ScyllaDB API to become available"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+
+until curl --connect-timeout 5 --max-time 10 -s -o /dev/null -w "" "http://localhost:` + strconv.Itoa(naming.ScyllaAPIPort) + `/"; do
+  sleep 1 &
+  wait
+done
+printf '{"L":"INFO","T":"%s","M":"ScyllaDB API is available. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 
 exec scylla-manager-agent \
 -c ` + fmt.Sprintf("%q ", naming.ScyllaAgentConfigDefaultFile) + `\

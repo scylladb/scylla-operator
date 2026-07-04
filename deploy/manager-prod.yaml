@@ -129,7 +129,7 @@ metadata:
   annotations:
     scylla-operator.scylladb.com/disable-global-scylladb-manager-integration: "true"
 spec:
-  version: 2026.1.3
+  version: 2026.2.0
   agentVersion: 3.11.1@sha256:32b3767ff46729bdb8f086b6b99d3f07ac606cf10a1ed287dbfa3d9379bc83f1
   repository: docker.io/scylladb/scylla
   agentRepository: docker.io/scylladb/scylla-manager-agent

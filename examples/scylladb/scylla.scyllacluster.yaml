@@ -3,7 +3,7 @@ kind: ScyllaCluster
 metadata:
   name: scylla
 spec:
-  agentVersion: 3.11.1@sha256:32b3767ff46729bdb8f086b6b99d3f07ac606cf10a1ed287dbfa3d9379bc83f1
+  agentVersion: 3.11.2@sha256:9fd3ba869f1d610b5f3f635a958ecfd3083c7abb8c9cdb12d0d26c6add0b67d9
   version: 2026.2.0
   developerMode: true
   automaticOrphanedNodeCleanup: true

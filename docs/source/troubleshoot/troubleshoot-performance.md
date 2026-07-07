@@ -30,13 +30,28 @@ kubectl -n scylla-operator-node-tuning get jobs \
 
 ### Common issues
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `qosClass: Burstable` | `agentResources` has no limits, or requests ≠ limits on any container | Set matching requests and limits on **both** `resources` and `agentResources` |
-| `--overprovisioned=1` in logs | Pod is not Guaranteed QoS, or kubelet lacks static CPU policy | Check QoS class and kubelet configuration |
-| No `ContainerPerftune` job | Pod is Burstable — tuning is skipped for non-Guaranteed Pods | Fix QoS class |
-| `cpuset.cpus.effective` shows all CPUs | Kubelet not using static policy, or CPU request is fractional | Enable `cpuManagerPolicy: static` and use integer CPU values |
-| Latency spikes despite pinning | IRQ affinity not set — perftune job failed or did not run | Verify `NodeConfig` `disableOptimizations` is `false` (default) and check perftune job logs |
+```{list-table}
+:header-rows: 1
+
+* - Symptom
+  - Cause
+  - Fix
+* - `qosClass: Burstable`
+  - `agentResources` has no limits, or requests ≠ limits on any container
+  - Set matching requests and limits on **both** `resources` and `agentResources`
+* - `--overprovisioned=1` in logs
+  - Pod is not Guaranteed QoS, or kubelet lacks static CPU policy
+  - Check QoS class and kubelet configuration
+* - No `ContainerPerftune` job
+  - Pod is Burstable — tuning is skipped for non-Guaranteed Pods
+  - Fix QoS class
+* - `cpuset.cpus.effective` shows all CPUs
+  - Kubelet not using static policy, or CPU request is fractional
+  - Enable `cpuManagerPolicy: static` and use integer CPU values
+* - Latency spikes despite pinning
+  - IRQ affinity not set — perftune job failed or did not run
+  - Verify `NodeConfig` `disableOptimizations` is `false` (default) and check perftune job logs
+```
 
 ## See also
 

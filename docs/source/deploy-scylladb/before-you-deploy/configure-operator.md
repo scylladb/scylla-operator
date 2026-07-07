@@ -35,13 +35,28 @@ status:
 
 ## Configurable fields
 
-| Spec field | Description | Default |
-|------------|-------------|---------|
-| `scyllaUtilsImage` | ScyllaDB image used for running utility scripts (perftune, sysctl). Determines which tuning scripts are used for performance optimization. | Latest ScyllaDB image. |
-| `configuredClusterDomain` | Kubernetes cluster domain. Must be a fully qualified domain name. | Auto-discovered via DNS lookup of `kubernetes.default.svc`. |
-| `unsupportedBashToolsImageOverride` | Override the Bash tools image. **Unsupported** — for advanced use only. | UBI 9 image. |
-| `unsupportedGrafanaImageOverride` | Override the Grafana image. **Unsupported** — for advanced use only. | Official Grafana image. |
-| `unsupportedPrometheusVersionOverride` | Override the Prometheus version. **Unsupported** — for advanced use only. | Latest tested Prometheus version. |
+```{list-table}
+:header-rows: 1
+
+* - Spec field
+  - Description
+  - Default
+* - `scyllaUtilsImage`
+  - ScyllaDB image used for running utility scripts (perftune, sysctl). Determines which tuning scripts are used for performance optimization.
+  - Latest ScyllaDB image.
+* - `configuredClusterDomain`
+  - Kubernetes cluster domain. Must be a fully qualified domain name.
+  - Auto-discovered via DNS lookup of `kubernetes.default.svc`.
+* - `unsupportedBashToolsImageOverride`
+  - Override the Bash tools image. **Unsupported** — for advanced use only.
+  - UBI 9 image.
+* - `unsupportedGrafanaImageOverride`
+  - Override the Grafana image. **Unsupported** — for advanced use only.
+  - Official Grafana image.
+* - `unsupportedPrometheusVersionOverride`
+  - Override the Prometheus version. **Unsupported** — for advanced use only.
+  - Latest tested Prometheus version.
+```
 
 :::{caution}
 Fields prefixed with `unsupported` are not covered by the regular support policy. Use them only if you have a specific reason and understand the implications.
@@ -88,10 +103,16 @@ The cluster domain is used internally for Kubernetes DNS resolution. Most users 
 
 ScyllaOperatorConfig settings are consumed by several Operator controllers:
 
-| Consumer | Setting used |
-|----------|-------------|
-| NodeConfig controller | `scyllaDBUtilsImage` — configures the tuning DaemonSet with the correct ScyllaDB image for `perftune.py` and resource limits. |
-| ScyllaDBMonitoring controller | `grafanaImage`, `prometheusVersion` — configures the monitoring stack. |
+```{list-table}
+:header-rows: 1
+
+* - Consumer
+  - Setting used
+* - NodeConfig controller
+  - `scyllaDBUtilsImage` — configures the tuning DaemonSet with the correct ScyllaDB image for `perftune.py` and resource limits.
+* - ScyllaDBMonitoring controller
+  - `grafanaImage`, `prometheusVersion` — configures the monitoring stack.
+```
 
 Changes to `ScyllaOperatorConfig` trigger reconciliation in all dependent controllers. You do not need to restart Operator.
 

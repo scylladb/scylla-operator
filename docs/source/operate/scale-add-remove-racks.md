@@ -158,14 +158,24 @@ In multi-DC clusters using multiple `ScyllaCluster` resources, each datacenter i
 
 ## Key considerations
 
-| Consideration | Detail |
-|---|---|
-| One at a time | The Operator scales down one node at a time per rack, ensuring data is streamed away before the next decommission begins. |
-| Automatic cleanup | After scaling completes, the Operator triggers data cleanup Jobs on affected nodes to remove data that no longer belongs to them. |
-| PVC deletion | PVCs are deleted after scale-down. The Operator removes the PVC and Service of each decommissioned node after the replica count is reduced. |
-| Replication factor | Ensure you do not scale below the replication factor of your keyspaces. ScyllaDB will refuse queries if replicas become unavailable. |
-| PodDisruptionBudget | Each datacenter has a PDB with `maxUnavailable: 1`. This does not block Operator-driven scaling but prevents concurrent pod evictions during node drains. |
-| Run repair after scaling | After significant scaling operations, run a repair to ensure data consistency across the new token ranges. |
+```{list-table}
+:header-rows: 1
+
+* - Consideration
+  - Detail
+* - One at a time
+  - The Operator scales down one node at a time per rack, ensuring data is streamed away before the next decommission begins.
+* - Automatic cleanup
+  - After scaling completes, the Operator triggers data cleanup Jobs on affected nodes to remove data that no longer belongs to them.
+* - PVC deletion
+  - PVCs are deleted after scale-down. The Operator removes the PVC and Service of each decommissioned node after the replica count is reduced.
+* - Replication factor
+  - Ensure you do not scale below the replication factor of your keyspaces. ScyllaDB will refuse queries if replicas become unavailable.
+* - PodDisruptionBudget
+  - Each datacenter has a PDB with `maxUnavailable: 1`. This does not block Operator-driven scaling but prevents concurrent pod evictions during node drains.
+* - Run repair after scaling
+  - After significant scaling operations, run a repair to ensure data consistency across the new token ranges.
+```
 
 ## Related pages
 

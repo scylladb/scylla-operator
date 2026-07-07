@@ -25,13 +25,28 @@ Ignition uses a simple file-based signal on the shared emptyDir volume mounted a
 
 The ignition controller checks the following conditions. **All** must be true before the signal file is created:
 
-| # | Condition | Why |
-|---|-----------|-----|
-| 1 | **LoadBalancer ingress available** (only when broadcast address type is `ServiceLoadBalancerIngress`) | The broadcast address cannot be resolved until the cloud provider assigns an external IP or hostname to the member Service. |
-| 2 | **Pod has an IP** (`status.podIP` is set) | ScyllaDB needs a listen address. The sidecar cannot resolve `PodIP`-type broadcast addresses without it. |
-| 3 | **ScyllaDB container has a container ID** (`containerStatuses[].containerID` is set) | Per-container tuning (CPU pinning, cgroup settings) targets a specific container ID. Tuning cannot complete until the container exists. |
-| 4 | **Tuning ConfigMap exists** with matching container ID | A ConfigMap labeled for this pod must exist, created by the tuning infrastructure. Its `ContainerID` field must match the current ScyllaDB container ID, confirming that tuning ran for this specific container instance. |
-| 5 | **No blocking NodeConfigs** in the tuning ConfigMap | The ConfigMap must report that all `NodeConfig` resources have completed tuning. If any are still in progress, ignition waits. |
+```{list-table}
+:header-rows: 1
+
+* - #
+  - Condition
+  - Why
+* - 1
+  - **LoadBalancer ingress available** (only when broadcast address type is `ServiceLoadBalancerIngress`)
+  - The broadcast address cannot be resolved until the cloud provider assigns an external IP or hostname to the member Service.
+* - 2
+  - **Pod has an IP** (`status.podIP` is set)
+  - ScyllaDB needs a listen address. The sidecar cannot resolve `PodIP`-type broadcast addresses without it.
+* - 3
+  - **ScyllaDB container has a container ID** (`containerStatuses[].containerID` is set)
+  - Per-container tuning (CPU pinning, cgroup settings) targets a specific container ID. Tuning cannot complete until the container exists.
+* - 4
+  - **Tuning ConfigMap exists** with matching container ID
+  - A ConfigMap labeled for this pod must exist, created by the tuning infrastructure. Its `ContainerID` field must match the current ScyllaDB container ID, confirming that tuning ran for this specific container instance.
+* - 5
+  - **No blocking NodeConfigs** in the tuning ConfigMap
+  - The ConfigMap must report that all `NodeConfig` resources have completed tuning. If any are still in progress, ignition waits.
+```
 
 ## Cleanup on shutdown
 
@@ -47,10 +62,16 @@ This ensures that if the container restarts (due to a crash or rolling update), 
 
 For debugging or recovery scenarios, the annotation `internal.scylla-operator.scylladb.com/force-ignition-value` on the node's member Service can override the ignition decision:
 
-| Value | Effect |
-|-------|--------|
-| `"true"` | Ignition proceeds immediately, bypassing all prerequisite checks. |
-| `"false"` | Ignition is blocked indefinitely, regardless of prerequisite status. |
+```{list-table}
+:header-rows: 1
+
+* - Value
+  - Effect
+* - `"true"`
+  - Ignition proceeds immediately, bypassing all prerequisite checks.
+* - `"false"`
+  - Ignition is blocked indefinitely, regardless of prerequisite status.
+```
 
 :::{caution}
 The force override is an internal mechanism intended for debugging. Forcing ignition to `true` while tuning is incomplete results in degraded performance. Forcing it to `false` prevents the ScyllaDB node from starting.

@@ -31,10 +31,19 @@ The PDB selector uses the same labels as the ScyllaDB pods but adds a `MatchExpr
 
 The Operator deployment and the webhook server deployment each have their own PDB:
 
-| Component | PDB spec | When created |
-|-----------|----------|-------------|
-| `scylla-operator` | `minAvailable: 1` | When running with more than one replica |
-| `webhook-server` | `minAvailable: 1` | When running with more than one replica |
+```{list-table}
+:header-rows: 1
+
+* - Component
+  - PDB spec
+  - When created
+* - `scylla-operator`
+  - `minAvailable: 1`
+  - When running with more than one replica
+* - `webhook-server`
+  - `minAvailable: 1`
+  - When running with more than one replica
+```
 
 These PDBs ensure that at least one Operator pod and one webhook pod remain available during node drains, preventing a complete loss of the control plane during cluster maintenance.
 

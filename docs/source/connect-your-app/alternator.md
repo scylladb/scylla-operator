@@ -20,12 +20,25 @@ This enables the Alternator API with HTTPS on port `8043` and authorization enab
 
 ### Configuration options
 
-| Field | Description | Default |
-|-------|-------------|---------|
-| `writeIsolation` | Write isolation level for Alternator operations. | `""` (ScyllaDB default) |
-| `insecureEnableHTTP` | Also serve Alternator on the unencrypted HTTP port. | `false` |
-| `insecureDisableAuthorization` | Disable Alternator authorization. | `false` |
-| `servingCertificate.type` | TLS certificate configuration (`OperatorManaged` or `UserManaged`). | `OperatorManaged` |
+```{list-table}
+:header-rows: 1
+
+* - Field
+  - Description
+  - Default
+* - `writeIsolation`
+  - Write isolation level for Alternator operations.
+  - `""` (ScyllaDB default)
+* - `insecureEnableHTTP`
+  - Also serve Alternator on the unencrypted HTTP port.
+  - `false`
+* - `insecureDisableAuthorization`
+  - Disable Alternator authorization.
+  - `false`
+* - `servingCertificate.type`
+  - TLS certificate configuration (`OperatorManaged` or `UserManaged`).
+  - `OperatorManaged`
+```
 
 :::{note}
 Unlike CQL clients, Alternator clients do not need to connect to every ScyllaDB node directly or discover individual node IP addresses. The Alternator protocol is HTTP-based, so you can also expose it through an Ingress or other HTTP networking concepts.
@@ -103,9 +116,16 @@ TABLENAMES      SeaMonsters
 
 The Operator creates these resources for Alternator:
 
-| Resource | Name | Contents |
-|----------|------|----------|
-| Serving CA | `configmap/<cluster-name>-alternator-local-serving-ca` | `ca-bundle.crt` — CA to validate Alternator HTTPS. |
+```{list-table}
+:header-rows: 1
+
+* - Resource
+  - Name
+  - Contents
+* - Serving CA
+  - `configmap/<cluster-name>-alternator-local-serving-ca`
+  - `ca-bundle.crt` — CA to validate Alternator HTTPS.
+```
 
 ### Troubleshoot
 
@@ -116,10 +136,16 @@ The Operator creates these resources for Alternator:
 
 When using Alternator with a multi-datacenter ScyllaDB deployment (multiple `ScyllaCluster` resources connected via `externalSeeds`), the following constraints apply:
 
-| Limitation | Detail |
-|---|---|
-| No built-in cross-DC routing | Alternator endpoints are per-datacenter. There is no built-in load balancer that routes DynamoDB API requests across datacenters. Connect your application to the Alternator endpoint in the datacenter closest to it. |
-| Authentication tokens are DC-local | Each `ScyllaCluster` has its own Alternator authentication credentials. If you require the same credentials across DCs, you must configure the same `alternatorWriteIsolation` and authentication settings on each cluster independently. |
+```{list-table}
+:header-rows: 1
+
+* - Limitation
+  - Detail
+* - No built-in cross-DC routing
+  - Alternator endpoints are per-datacenter. There is no built-in load balancer that routes DynamoDB API requests across datacenters. Connect your application to the Alternator endpoint in the datacenter closest to it.
+* - Authentication tokens are DC-local
+  - Each `ScyllaCluster` has its own Alternator authentication credentials. If you require the same credentials across DCs, you must configure the same `alternatorWriteIsolation` and authentication settings on each cluster independently.
+```
 
 ## Related pages
 

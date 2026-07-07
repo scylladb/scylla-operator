@@ -21,10 +21,16 @@ The NodeConfig controller creates a privileged DaemonSet in the `scylla-operator
 This DaemonSet runs on every node that matches the NodeConfig's placement selectors.
 Inside each DaemonSet pod, a controller creates two types of Jobs:
 
-| Job type | What it does |
-|---|---|
-| **NodePerftune** | Runs the [`perftune.py`](https://github.com/scylladb/seastar/blob/master/scripts/perftune.py) script (from the ScyllaDB utilities image) with `--tune=system --tune-clock`. This tunes kernel parameters, clock settings, network device settings, disk devices, and spreads IRQs across available CPUs. |
-| **NodeSysctls** | Applies the sysctls specified in the NodeConfig spec (e.g., `fs.aio-max-nr`, `fs.nr_open`, `vm.swappiness`) to the host via `sysctl --load`. |
+```{list-table}
+:header-rows: 1
+
+* - Job type
+  - What it does
+* - **NodePerftune**
+  - Runs the [`perftune.py`](https://github.com/scylladb/seastar/blob/master/scripts/perftune.py) script (from the ScyllaDB utilities image) with `--tune=system --tune-clock`. This tunes kernel parameters, clock settings, network device settings, disk devices, and spreads IRQs across available CPUs.
+* - **NodeSysctls**
+  - Applies the sysctls specified in the NodeConfig spec (e.g., `fs.aio-max-nr`, `fs.nr_open`, `vm.swappiness`) to the host via `sysctl --load`.
+```
 
 Both jobs run as privileged containers with access to the host filesystem.
 
@@ -42,10 +48,16 @@ It tunes the host specifically for the CPUs assigned to that ScyllaDB container.
 
 The same DaemonSet controller that creates node-level jobs also creates container-level jobs for each ScyllaDB pod:
 
-| Job type | What it does |
-|---|---|
-| **ContainerPerftune** | Runs `perftune.py` with `--tune=net` (and `--tune=disks` when data host paths are configured), setting IRQ affinity masks so that network and disk IRQs are handled by CPUs **not** assigned to the ScyllaDB container. Also configures per-NIC and per-disk settings. |
-| **ContainerResourceLimits** | Raises OS-level resource limits (such as the maximum number of open file descriptors) for the ScyllaDB process. |
+```{list-table}
+:header-rows: 1
+
+* - Job type
+  - What it does
+* - **ContainerPerftune**
+  - Runs `perftune.py` with `--tune=net` (and `--tune=disks` when data host paths are configured), setting IRQ affinity masks so that network and disk IRQs are handled by CPUs **not** assigned to the ScyllaDB container. Also configures per-NIC and per-disk settings.
+* - **ContainerResourceLimits**
+  - Raises OS-level resource limits (such as the maximum number of open file descriptors) for the ScyllaDB process.
+```
 
 ContainerPerftune runs only for pods with [Guaranteed QoS class](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/#guaranteed) — because only Guaranteed pods have pinned CPUs.
 ContainerResourceLimits runs for all ScyllaDB pods regardless of QoS class.

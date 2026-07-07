@@ -8,33 +8,92 @@ A ScyllaDB pod contains init containers that run sequentially before the main wo
 
 ### Init containers (in order)
 
-| # | Name | Image | Purpose | Conditional |
-|---|------|-------|---------|-------------|
-| 1 | `sidecar-injection` | Operator | Copies the `scylla-operator` binary into the `/mnt/shared` volume so that other containers can use it without bundling the Operator image. | Always present |
-| 2 | `sysctl-buddy` | Operator | Applies sysctl settings from a pod annotation. Used during migration from legacy tuning. | Only when the sysctls annotation is set |
-| 3 | `scylladb-bootstrap-barrier` | ScyllaDB | Blocks until all nodes in the cluster report each other as UP, preventing a new node from bootstrapping into an unhealthy cluster. See [Bootstrap synchronisation](bootstrap-sync.md). | Only when the `BootstrapSynchronisation` feature gate is enabled and the ScyllaDB version is ≥ 2025.2 |
+```{list-table}
+:header-rows: 1
+
+* - #
+  - Name
+  - Image
+  - Purpose
+  - Conditional
+* - 1
+  - `sidecar-injection`
+  - Operator
+  - Copies the `scylla-operator` binary into the `/mnt/shared` volume so that other containers can use it without bundling the Operator image.
+  - Always present
+* - 2
+  - `sysctl-buddy`
+  - Operator
+  - Applies sysctl settings from a pod annotation. Used during migration from legacy tuning.
+  - Only when the sysctls annotation is set
+* - 3
+  - `scylladb-bootstrap-barrier`
+  - ScyllaDB
+  - Blocks until all nodes in the cluster report each other as UP, preventing a new node from bootstrapping into an unhealthy cluster. See [Bootstrap synchronisation](bootstrap-sync.md).
+  - Only when the `BootstrapSynchronisation` feature gate is enabled and the ScyllaDB version is ≥ 2025.2
+```
 
 ### Long-running containers
 
-| # | Name | Image | Purpose | Conditional |
-|---|------|-------|---------|-------------|
-| 1 | `scylla` | ScyllaDB | The main container. Waits for the ignition signal, then execs the sidecar binary which configures and starts ScyllaDB. | Always present |
-| 2 | `scylladb-api-status-probe` | Operator | Translates ScyllaDB's native HTTP API status into Kubernetes health-check endpoints (`/healthz`, `/readyz`) on port 8080. | Always present |
-| 3 | `scylladb-ignition` | Operator | Evaluates startup prerequisites (tuning done, IPs assigned, container running) and creates the ignition signal file when all are met. See [Ignition](ignition.md). | Always present |
-| 4 | `scylla-manager-agent` | Manager Agent | Runs the ScyllaDB Manager Agent for backup, repair, and health-check operations. Waits for the ignition signal and for the ScyllaDB REST API to become available before starting. | Only when Manager integration is configured |
+```{list-table}
+:header-rows: 1
+
+* - #
+  - Name
+  - Image
+  - Purpose
+  - Conditional
+* - 1
+  - `scylla`
+  - ScyllaDB
+  - The main container. Waits for the ignition signal, then execs the sidecar binary which configures and starts ScyllaDB.
+  - Always present
+* - 2
+  - `scylladb-api-status-probe`
+  - Operator
+  - Translates ScyllaDB's native HTTP API status into Kubernetes health-check endpoints (`/healthz`, `/readyz`) on port 8080.
+  - Always present
+* - 3
+  - `scylladb-ignition`
+  - Operator
+  - Evaluates startup prerequisites (tuning done, IPs assigned, container running) and creates the ignition signal file when all are met. See [Ignition](ignition.md).
+  - Always present
+* - 4
+  - `scylla-manager-agent`
+  - Manager Agent
+  - Runs the ScyllaDB Manager Agent for backup, repair, and health-check operations. Waits for the ignition signal and for the ScyllaDB REST API to become available before starting.
+  - Only when Manager integration is configured
+```
 
 ## Shared volumes
 
 Containers coordinate through volumes mounted into the pod:
 
-| Volume | Mount path | Purpose |
-|--------|-----------|---------|
-| `shared` (emptyDir) | `/mnt/shared` | Carries the Operator binary (injected by init container 1) and the ignition signal file (`/mnt/shared/ignition.done`). Shared by all containers. |
-| Data PVC | `/var/lib/scylla` | Persistent storage for ScyllaDB data files. Mounted read-write in the main container, read-only in the bootstrap barrier. |
-| Managed ScyllaDB config (ConfigMap) | `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config/scylladb-managed-config.yaml` | Operator-generated `scylla.yaml` with cluster name, snitch, TLS, and other managed settings. |
-| User ScyllaDB config (ConfigMap) | `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/config/scylla.yaml` | User-provided `scylla.yaml` overrides. |
-| Rack config (ConfigMap) | Snitch properties path | Datacenter and rack assignment for the gossip endpoint snitch. |
-| Agent auth token (Secret) | Agent config path | Manager Agent authentication token. |
+```{list-table}
+:header-rows: 1
+
+* - Volume
+  - Mount path
+  - Purpose
+* - `shared` (emptyDir)
+  - `/mnt/shared`
+  - Carries the Operator binary (injected by init container 1) and the ignition signal file (`/mnt/shared/ignition.done`). Shared by all containers.
+* - Data PVC
+  - `/var/lib/scylla`
+  - Persistent storage for ScyllaDB data files. Mounted read-write in the main container, read-only in the bootstrap barrier.
+* - Managed ScyllaDB config (ConfigMap)
+  - `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config/scylladb-managed-config.yaml`
+  - Operator-generated `scylla.yaml` with cluster name, snitch, TLS, and other managed settings.
+* - User ScyllaDB config (ConfigMap)
+  - `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/config/scylla.yaml`
+  - User-provided `scylla.yaml` overrides.
+* - Rack config (ConfigMap)
+  - Snitch properties path
+  - Datacenter and rack assignment for the gossip endpoint snitch.
+* - Agent auth token (Secret)
+  - Agent config path
+  - Manager Agent authentication token.
+```
 
 Additional TLS-related volumes (serving certificates, client CA, admin user credentials, Alternator certificates) are mounted when the `AutomaticTLSCertificates` feature gate is enabled or when Alternator is configured.
 
@@ -108,10 +167,19 @@ Periodically polls the ScyllaDB storage service API and writes the node's gossip
 
 The `scylladb-api-status-probe` container runs an HTTP server on port 8080 that translates ScyllaDB's native HTTP API into Kubernetes probe responses:
 
-| Endpoint | Kubernetes probe | What it checks |
-|----------|-----------------|----------------|
-| `/healthz` | Startup and liveness | ScyllaDB process is alive and responsive. |
-| `/readyz` | Readiness | ScyllaDB node is ready to serve traffic. |
+```{list-table}
+:header-rows: 1
+
+* - Endpoint
+  - Kubernetes probe
+  - What it checks
+* - `/healthz`
+  - Startup and liveness
+  - ScyllaDB process is alive and responsive.
+* - `/readyz`
+  - Readiness
+  - ScyllaDB node is ready to serve traffic.
+```
 
 The `scylla` container's health probes point to these endpoints rather than directly to ScyllaDB, because ScyllaDB's native API is not designed to return the HTTP status codes that Kubernetes expects.
 

@@ -34,12 +34,20 @@ In multi-DC clusters using multiple `ScyllaCluster` resources, restart each data
 
 ## Key considerations
 
-| Consideration | Detail |
-|---|---|
-| One at a time | The Operator restarts one node at a time per rack. Each node is drained before termination, and the replacement must be ready before the next node is restarted. |
-| Unique value | The value of `forceRedeploymentReason` must be different from the current value to trigger a restart. Repeating the same string has no effect. |
-| Impact on availability | A rolling restart temporarily reduces the number of available replicas by one. Ensure your replication factor allows for one node to be unavailable. |
-| PodDisruptionBudget | The PDB (`maxUnavailable: 1`) ensures that at most one node per datacenter is unavailable at any given time, even during a rolling restart. |
+```{list-table}
+:header-rows: 1
+
+* - Consideration
+  - Detail
+* - One at a time
+  - The Operator restarts one node at a time per rack. Each node is drained before termination, and the replacement must be ready before the next node is restarted.
+* - Unique value
+  - The value of `forceRedeploymentReason` must be different from the current value to trigger a restart. Repeating the same string has no effect.
+* - Impact on availability
+  - A rolling restart temporarily reduces the number of available replicas by one. Ensure your replication factor allows for one node to be unavailable.
+* - PodDisruptionBudget
+  - The PDB (`maxUnavailable: 1`) ensures that at most one node per datacenter is unavailable at any given time, even during a rolling restart.
+```
 
 ## Related pages
 

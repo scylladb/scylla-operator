@@ -109,12 +109,20 @@ Ensure the values match the actual capabilities of your storage.
 
 ## Key considerations
 
-| Consideration | Detail |
-|---|---|
-| Persistent cache | By default, iotune results are cached on the persistent volume. Precomputed values are only needed if you want to skip or override the benchmark. |
-| Consistent values | All nodes sharing the same storage type should use the same IO properties. Mount the same ConfigMap across all racks that use the same storage class. |
-| Rolling restart | Adding or changing the volume mount triggers a rolling restart. The Operator restarts nodes one at a time. |
-| Storage class changes | If you change the storage class or move to a different disk type, update the IO properties ConfigMap to match the new storage. |
+```{list-table}
+:header-rows: 1
+
+* - Consideration
+  - Detail
+* - Persistent cache
+  - By default, iotune results are cached on the persistent volume. Precomputed values are only needed if you want to skip or override the benchmark.
+* - Consistent values
+  - All nodes sharing the same storage type should use the same IO properties. Mount the same ConfigMap across all racks that use the same storage class.
+* - Rolling restart
+  - Adding or changing the volume mount triggers a rolling restart. The Operator restarts nodes one at a time.
+* - Storage class changes
+  - If you change the storage class or move to a different disk type, update the IO properties ConfigMap to match the new storage.
+```
 
 ## Related pages
 

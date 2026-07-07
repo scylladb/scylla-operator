@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -135,12 +136,18 @@ type ClusterConfig struct {
 	Keyspace string
 	// CQL version (default: 3.0.0)
 	CQLVersion string
-	// addresses for the initial connections. It is recommended to use the value set in
+	// Addresses for the initial connections. It is recommended to use the value set in
 	// the Cassandra config for broadcast_address or listen_address, an IP address not
 	// a domain name. This is because events from Cassandra will use the configured IP
 	// address, which is used to index connected hosts. If the domain name specified
 	// resolves to more than 1 IP address then the driver may connect multiple times to
 	// the same host, and will not mark the node being down or up from events.
+	//
+	// Each entry may optionally include a port in host:port format. When cfg.Port
+	// is 0 (not explicitly set) and ClientRoutesConfig is nil, the driver learns
+	// the port from these entries (see cfg.Port for details). When cfg.Port is
+	// set to a non-zero value, embedded ports in host strings are ignored for
+	// the purpose of peer discovery.
 	Hosts []string
 	// The time to wait for frames before flushing the frames connection to Cassandra.
 	// Can help reduce syscall overhead by making less calls to write. Set to 0 to
@@ -197,7 +204,19 @@ type ClusterConfig struct {
 	// ConnectTimeout has a default value of 11 seconds.
 	ConnectTimeout time.Duration
 	// Port used when dialing.
-	// Default: 9042
+	//
+	// When left at 0 (the zero value, i.e. not explicitly set) and
+	// ClientRoutesConfig is nil, the driver attempts to learn the port from
+	// cfg.Hosts: if every host entry embeds the same port, that port is used;
+	// if no entry embeds a port, the default 9042 is used; any inconsistency
+	// (some entries have a port, some don't, or they differ) is an error.
+	//
+	// When set to a non-zero value the driver uses that port for all
+	// connections — including peer-discovered nodes — and never learns from
+	// cfg.Hosts. Set to 9042 explicitly if you want the default port and
+	// also want to prevent any learning from host strings.
+	//
+	// Default: 0 (auto-detect; effectively 9042 when no port is in Hosts)
 	Port int
 	// The size of the connection pool for each host.
 	// The pool filling runs in separate gourutine during the session initialization phase.
@@ -375,7 +394,6 @@ func NewCluster(hosts ...string) *ClusterConfig {
 		ConnectTimeout:                60 * time.Second,
 		ReadTimeout:                   11 * time.Second,
 		WriteTimeout:                  11 * time.Second,
-		Port:                          9042,
 		MaxExcessShardConnectionsRate: 2,
 		NumConns:                      2,
 		Consistency:                   Quorum,
@@ -549,6 +567,30 @@ func (cfg *ClusterConfig) Validate() error {
 		return errors.New("NumConns should be positive non-zero number or zero")
 	}
 
+	// Resolve cfg.Port: when the user has not set it explicitly (Port == 0),
+	// attempt to learn it from the host strings (unless client routes are in
+	// use, which manage their own addressing). Fall back to defaultCQLPort when
+	// no port is embedded in the host strings.
+	if cfg.Port == 0 {
+		// When ClientRoutesConfig is set we skip learning from cfg.Hosts because
+		// Private Service Connect (PSC) discovery entry points have different
+		// ports by design, so a uniform port derived from the initial contact
+		// points would be incorrect for peer-discovered nodes.
+		if cfg.ClientRoutesConfig == nil {
+			learned, err := learnPortFromHosts(cfg.Hosts)
+			if err != nil {
+				return err
+			}
+			if learned != 0 {
+				cfg.Port = learned
+			} else {
+				cfg.Port = defaultCQLPort
+			}
+		} else {
+			cfg.Port = defaultCQLPort
+		}
+	}
+
 	if cfg.Port <= 0 || cfg.Port > 65535 {
 		return errors.New("Port should be a valid port number: a number between 1 and 65535")
 	}
@@ -613,11 +655,56 @@ func (cfg *ClusterConfig) Validate() error {
 	return cfg.ValidateAndInitSSL()
 }
 
+const defaultCQLPort = 9042
+
 var (
 	ErrNoHosts              = errors.New("no hosts provided")
 	ErrNoConnectionsStarted = errors.New("no connections were made when creating the session")
 	ErrHostQueryFailed      = errors.New("unable to populate Hosts")
 )
+
+// learnPortFromHosts inspects the host entries for embedded ports.
+// It returns the common port (> 0) if every entry carries the same explicit
+// port, 0 if no entry carries a port, or an error as soon as inconsistency
+// is detected: some entries have a port while others don't, or two entries
+// carry different port values.
+func learnPortFromHosts(hosts []string) (int, error) {
+	var port int // 0 = not yet seen
+	sawPortless := false
+	for _, addr := range hosts {
+		_, portStr, err := net.SplitHostPort(addr)
+		if err != nil {
+			// No port in this entry.
+			if port != 0 {
+				// Already saw a ported entry – return immediately.
+				return 0, errors.New(
+					"cfg.Hosts entries must either all include a port or none: " +
+						"use cfg.Port to set a uniform port instead")
+			}
+			sawPortless = true
+			continue
+		}
+		p, err := strconv.Atoi(portStr)
+		if err != nil || p <= 0 || p > 65535 {
+			return 0, fmt.Errorf("invalid port %q in host entry %q: port must be a number between 1 and 65535", portStr, addr)
+		}
+		if sawPortless {
+			// Already saw a portless entry – return immediately.
+			return 0, errors.New(
+				"cfg.Hosts entries must either all include a port or none: " +
+					"use cfg.Port to set a uniform port instead")
+		}
+		if port == 0 {
+			port = p
+		} else if port != p {
+			return 0, fmt.Errorf(
+				"all cfg.Hosts entries must use the same port, got %d and %d: "+
+					"use cfg.Port to set a uniform port instead",
+				port, p)
+		}
+	}
+	return port, nil
+}
 
 func setupTLSConfig(sslOpts *SslOptions) (*tls.Config, error) {
 	//  Config.InsecureSkipVerify | EnableHostVerification | Result

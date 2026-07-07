@@ -52,10 +52,14 @@ type ScyllaHostFeatures struct {
 	// https://github.com/scylladb/scylladb/issues/20860
 	// https://github.com/scylladb/scylladb/pull/23292
 	isMetadataIDSupported bool
+	// True when the node is identified as ScyllaDB; stays true even when
+	// shard awareness is disabled on the server.
+	isScylla bool
 }
 
+// IsPresent reports whether the host is a ScyllaDB node.
 func (f ScyllaHostFeatures) IsPresent() bool {
-	return f.nrShards != 0
+	return f.isScylla
 }
 
 func (f ScyllaHostFeatures) Partitioner() string {
@@ -328,12 +332,20 @@ func parseSupported(supported map[string][]string, logger StdLogger) ScyllaConne
 		si.isMetadataIDSupported = true
 	}
 
+	_, hasLWT := supported[lwtAddMetadataMarkKey]
+	_, hasRateLimit := supported[rateLimitError]
+	si.isScylla = hasLWT || hasRateLimit || si.isMetadataIDSupported || si.nrShards != 0
+
 	if si.partitioner != "org.apache.cassandra.dht.Murmur3Partitioner" || si.shardingAlgorithm != "biased-token-round-robin" || si.nrShards == 0 || si.msbIgnore == 0 {
 		if debug.Enabled {
 			logger.Printf("scylla: unsupported sharding configuration, partitioner=%s, algorithm=%s, no_shards=%d, msb_ignore=%d",
 				si.partitioner, si.shardingAlgorithm, si.nrShards, si.msbIgnore)
 		}
-		return ScyllaConnectionFeatures{}
+		// Clear shard-routing fields only; host-wide features are preserved.
+		si.shard = 0
+		si.nrShards = 0
+		si.msbIgnore = 0
+		si.shardingAlgorithm = ""
 	}
 
 	return si
@@ -360,9 +372,9 @@ func parseCQLProtocolExtensions(supported map[string][]string, logger StdLogger)
 	return exts
 }
 
-// isScyllaConn checks if conn is suitable for scyllaConnPicker.
+// isScyllaConn checks if conn is connected to a ScyllaDB node.
 func (c *Conn) isScyllaConn() bool {
-	return c.getScyllaSupported().nrShards != 0
+	return c.getScyllaSupported().IsPresent()
 }
 
 // scyllaConnPicker is a specialised ConnPicker that selects connections based

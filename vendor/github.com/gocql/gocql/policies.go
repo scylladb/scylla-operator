@@ -119,6 +119,7 @@ type RetryableQuery interface {
 	Attempts() int
 	SetConsistency(c Consistency)
 	GetConsistency() Consistency
+	IsLWT() bool
 	Context() context.Context
 }
 
@@ -279,6 +280,11 @@ func (d *DowngradingConsistencyRetryPolicy) Attempt(q RetryableQuery) bool {
 	if currentAttempt > len(d.ConsistencyLevelsToTry) {
 		return false
 	} else if currentAttempt > 0 {
+		// Never downgrade LWT queries (including serial consistency reads),
+		// as that would break Paxos/serial read guarantees.
+		if q.IsLWT() {
+			return false
+		}
 		q.SetConsistency(d.ConsistencyLevelsToTry[currentAttempt-1])
 	}
 	return true

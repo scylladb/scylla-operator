@@ -338,6 +338,12 @@ func VerifyWithOptions(ctx context.Context, kubeClient kubernetes.Interface, scy
 
 	verifyPersistentVolumeClaims(ctx, kubeClient.CoreV1(), sc)
 
+	memberServiceList, err := kubeClient.CoreV1().Services(sc.Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: utils.GetMemberServiceSelector(sc).String(),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(memberServiceList.Items).To(o.HaveLen(memberCount), "expected exactly %d member services, got %d", memberCount, len(memberServiceList.Items))
+
 	clusterClient, hosts, err := utils.GetScyllaClient(ctx, kubeClient.CoreV1(), sc)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	defer clusterClient.Close()

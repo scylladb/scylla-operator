@@ -6,10 +6,16 @@ System tables contain ScyllaDB-internal state — repair history, SSTable activi
 
 ## When to use system tables
 
-| Use case | Tool |
-|---|---|
-| Kubernetes-level diagnostics (pod status, events, logs) | [Collect debugging information](index.md) |
-| ScyllaDB-internal state (repair history, SSTable stats, large partitions) | System tables (this page) |
+```{list-table}
+:header-rows: 1
+
+* - Use case
+  - Tool
+* - Kubernetes-level diagnostics (pod status, events, logs)
+  - [Collect debugging information](index.md)
+* - ScyllaDB-internal state (repair history, SSTable stats, large partitions)
+  - System tables (this page)
+```
 
 Include system table output alongside debugging information archives when filing support tickets for ScyllaDB-level issues (performance, data consistency, repair).
 

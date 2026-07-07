@@ -191,11 +191,18 @@ In a multi-datacenter deployment using multiple `ScyllaCluster` resources, perfo
 
 ## What if something goes wrong
 
-| Situation | Recovery |
-|---|---|
-| Accidentally deleted StatefulSet without `--cascade=orphan` | Pods are deleted (causing rack unavailability), but PVCs survive. When ScyllaDB Operator resumes and recreates the StatefulSet, new pods are created and reattach to existing PVCs. Data is preserved. |
-| ScyllaDB Operator fails to recreate the StatefulSet | Manually recreate it from the must-gather archive (the StatefulSet YAML is captured). |
-| New node fails to join | Repeat the procedure — verify that all ghost members were removed. Check seed configuration and network connectivity. |
+```{list-table}
+:header-rows: 1
+
+* - Situation
+  - Recovery
+* - Accidentally deleted StatefulSet without `--cascade=orphan`
+  - Pods are deleted (causing rack unavailability), but PVCs survive. When ScyllaDB Operator resumes and recreates the StatefulSet, new pods are created and reattach to existing PVCs. Data is preserved.
+* - ScyllaDB Operator fails to recreate the StatefulSet
+  - Manually recreate it from the must-gather archive (the StatefulSet YAML is captured).
+* - New node fails to join
+  - Repeat the procedure — verify that all ghost members were removed. Check seed configuration and network connectivity.
+```
 
 ## Related pages
 

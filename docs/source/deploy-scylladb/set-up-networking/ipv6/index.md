@@ -96,11 +96,22 @@ Before configuring IPv6:
 
 ## Feature status
 
-| Configuration | Status | Production Ready |
-|---------------|--------|------------------|
-| Dual-stack (IPv4 + IPv6) | Stable | Yes |
-| IPv6-only | Experimental | No |
-| IPv4-only | Stable | Yes |
+```{list-table}
+:header-rows: 1
+
+* - Configuration
+  - Status
+  - Production Ready
+* - Dual-stack (IPv4 + IPv6)
+  - Stable
+  - Yes
+* - IPv6-only
+  - Experimental
+  - No
+* - IPv4-only
+  - Stable
+  - Yes
+```
 
 For IPv6-only production support progress, see [#3211](https://github.com/scylladb/scylla-operator/issues/3211).
 

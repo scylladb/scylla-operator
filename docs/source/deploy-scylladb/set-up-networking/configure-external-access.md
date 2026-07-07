@@ -29,19 +29,37 @@ spec:
 
 ### Node Service types
 
-| Type | Description |
-|------|-------------|
-| `Headless` | No additional IP allocated. DNS resolves to Pod IP. Use when broadcasting Pod IPs. |
-| `ClusterIP` | Allocates a cluster-internal virtual IP. Routable only within the Kubernetes cluster. |
-| `LoadBalancer` | Provisions an external load balancer. Use for internet-facing or cross-VPC access. Supports custom annotations and `loadBalancerClass`. |
+```{list-table}
+:header-rows: 1
+
+* - Type
+  - Description
+* - `Headless`
+  - No additional IP allocated. DNS resolves to Pod IP. Use when broadcasting Pod IPs.
+* - `ClusterIP`
+  - Allocates a cluster-internal virtual IP. Routable only within the Kubernetes cluster.
+* - `LoadBalancer`
+  - Provisions an external load balancer. Use for internet-facing or cross-VPC access. Supports custom annotations and `loadBalancerClass`.
+```
 
 ### Broadcast address types
 
-| Type | Source | Use case |
-|------|--------|----------|
-| `PodIP` | `Pod.status.podIP` | When Pod IPs are routable (same VPC, VPC peering, multi-DC). |
-| `ServiceClusterIP` | `Service.spec.clusterIP` | In-cluster access only. |
-| `ServiceLoadBalancerIngress` | `Service.status.loadBalancer.ingress[0]` | External access via load balancer. |
+```{list-table}
+:header-rows: 1
+
+* - Type
+  - Source
+  - Use case
+* - `PodIP`
+  - `Pod.status.podIP`
+  - When Pod IPs are routable (same VPC, VPC peering, multi-DC).
+* - `ServiceClusterIP`
+  - `Service.spec.clusterIP`
+  - In-cluster access only.
+* - `ServiceLoadBalancerIngress`
+  - `Service.status.loadBalancer.ingress[0]`
+  - External access via load balancer.
+```
 
 ## Common deployment scenarios
 

@@ -22,13 +22,28 @@ When the `AutomaticTLSCertificates` feature gate is enabled (default since v1.11
 
 For each ScyllaDB datacenter (that is, each `ScyllaCluster` resource) the operator creates:
 
-| Resource | Type | Purpose |
-|----------|------|---------|
-| `<name>-local-client-ca` | Secret + ConfigMap | Client certificate authority — signs client certificates used for mutual TLS authentication to CQL. The CA bundle ConfigMap is distributed to ScyllaDB nodes as a truststore. |
-| `<name>-local-user-admin` | Secret | Client certificate for the `admin` user — used for mTLS authentication to CQL. |
-| `<name>-local-serving-ca` | Secret + ConfigMap | Serving certificate authority — signs the server certificate used by ScyllaDB for encrypted CQL connections. |
-| `<name>-local-serving-certs` | Secret | Server certificate for ScyllaDB — contains a multi-SAN certificate covering all pod IPs, Service ClusterIPs, LoadBalancer addresses, internal DNS names, and `cql.<domain>` / `<hostID>.cql.<domain>` DNS names for each configured DNS domain. |
-| `<name>-local-cql-connection-configs-admin` | Secret | Pre-built CQL connection configuration file containing the admin client certificate, key, and serving CA bundle for each DNS domain. |
+```{list-table}
+:header-rows: 1
+
+* - Resource
+  - Type
+  - Purpose
+* - `<name>-local-client-ca`
+  - Secret + ConfigMap
+  - Client certificate authority — signs client certificates used for mutual TLS authentication to CQL. The CA bundle ConfigMap is distributed to ScyllaDB nodes as a truststore.
+* - `<name>-local-user-admin`
+  - Secret
+  - Client certificate for the `admin` user — used for mTLS authentication to CQL.
+* - `<name>-local-serving-ca`
+  - Secret + ConfigMap
+  - Serving certificate authority — signs the server certificate used by ScyllaDB for encrypted CQL connections.
+* - `<name>-local-serving-certs`
+  - Secret
+  - Server certificate for ScyllaDB — contains a multi-SAN certificate covering all pod IPs, Service ClusterIPs, LoadBalancer addresses, internal DNS names, and `cql.<domain>` / `<hostID>.cql.<domain>` DNS names for each configured DNS domain.
+* - `<name>-local-cql-connection-configs-admin`
+  - Secret
+  - Pre-built CQL connection configuration file containing the admin client certificate, key, and serving CA bundle for each DNS domain.
+```
 
 The operator watches all member Services and pod IPs and regenerates the serving certificate whenever the set of addresses changes (new pods, LoadBalancer address assignment, etc.).
 
@@ -51,10 +66,16 @@ The `OperatorManaged` / `UserManaged` certificate toggle described below under [
 
 When Alternator is enabled (`spec.alternator` in `ScyllaCluster`), the operator creates a separate serving CA and certificate:
 
-| Resource | Purpose |
-|----------|---------|
-| `<name>-alternator-local-serving-ca` | CA for Alternator serving certificates. |
-| `<name>-alternator-local-serving-certs` | Server certificate for the Alternator HTTPS endpoint (port 8043). |
+```{list-table}
+:header-rows: 1
+
+* - Resource
+  - Purpose
+* - `<name>-alternator-local-serving-ca`
+  - CA for Alternator serving certificates.
+* - `<name>-alternator-local-serving-certs`
+  - Server certificate for the Alternator HTTPS endpoint (port 8043).
+```
 
 The Alternator serving certificate is configured through `spec.alternator.servingCertificate`, which supports two modes:
 
@@ -115,10 +136,19 @@ The member ClusterRole grants the sidecar running inside each ScyllaDB pod the m
 
 The operator installs two ClusterRoles for Kubernetes users who manage ScyllaDB resources:
 
-| ClusterRole | Aggregated to | Permissions |
-|-------------|---------------|-------------|
-| `scyllacluster-view` | `admin`, `edit`, `view` | Read-only access to ScyllaDB CRDs (`ScyllaClusters`, `ScyllaDBMonitorings`, `ScyllaDBManagerClusterRegistrations`, `ScyllaDBManagerTasks`). |
-| `scyllacluster-edit` | `admin`, `edit` | Create, update, patch, and delete ScyllaDB CRDs. |
+```{list-table}
+:header-rows: 1
+
+* - ClusterRole
+  - Aggregated to
+  - Permissions
+* - `scyllacluster-view`
+  - `admin`, `edit`, `view`
+  - Read-only access to ScyllaDB CRDs (`ScyllaClusters`, `ScyllaDBMonitorings`, `ScyllaDBManagerClusterRegistrations`, `ScyllaDBManagerTasks`).
+* - `scyllacluster-edit`
+  - `admin`, `edit`
+  - Create, update, patch, and delete ScyllaDB CRDs.
+```
 
 These ClusterRoles are aggregated into the default Kubernetes `admin`, `edit`, and `view` ClusterRoles. This means any user who has the Kubernetes `edit` role in a namespace can automatically create and manage ScyllaDB clusters in that namespace.
 

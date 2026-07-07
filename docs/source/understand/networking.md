@@ -6,10 +6,19 @@ This page explains how ScyllaDB Operator exposes ScyllaDB nodes on the network, 
 
 For every ScyllaDB cluster the Operator manages two kinds of Kubernetes Service:
 
-| Service | Count | Purpose |
-|---------|-------|---------|
-| **Identity** (named `<cluster>-client`) | One per datacenter | Stable DNS names for the StatefulSet. A regular `ClusterIP` Service shared by all racks' StatefulSets as their `serviceName`, so that each pod gets a predictable DNS record (`<pod>.<cluster>-client.<ns>.svc.cluster.local`). Also serves as a client entry point that load-balances across all ScyllaDB pods. |
-| **Member** | One per pod | A dedicated Service whose type is controlled by `exposeOptions.nodeService.type`. Carries the address that is broadcast to clients or other nodes. |
+```{list-table}
+:header-rows: 1
+
+* - Service
+  - Count
+  - Purpose
+* - **Identity** (named `<cluster>-client`)
+  - One per datacenter
+  - Stable DNS names for the StatefulSet. A regular `ClusterIP` Service shared by all racks' StatefulSets as their `serviceName`, so that each pod gets a predictable DNS record (`<pod>.<cluster>-client.<ns>.svc.cluster.local`). Also serves as a client entry point that load-balances across all ScyllaDB pods.
+* - **Member**
+  - One per pod
+  - A dedicated Service whose type is controlled by `exposeOptions.nodeService.type`. Carries the address that is broadcast to clients or other nodes.
+```
 
 The member Service uses a selector that matches exactly one pod, giving every ScyllaDB node its own stable network identity independent of the pod IP lifecycle.
 
@@ -77,11 +86,22 @@ The Operator lets you configure these independently via `exposeOptions.broadcast
 
 ### Broadcast address types
 
-| Type | Address source | When to use |
-|------|---------------|-------------|
-| **`PodIP`** | Pod's IP from `status.podIP` (or a specific entry in `status.podIPs` selected by IP family) | Pod IPs are routable from wherever the consumer lives — for example, within a VPC or across peered VPCs. |
-| **`ServiceClusterIP`** | `spec.clusterIP` of the member Service | Consumers are inside the same Kubernetes cluster. Requires `nodeService.type` to be `ClusterIP` or `LoadBalancer`. |
-| **`ServiceLoadBalancerIngress`** | First entry in `status.loadBalancer.ingress` (IP or hostname) of the member Service | Consumers are outside the Kubernetes cluster and reach nodes through a load balancer. Requires `nodeService.type` to be `LoadBalancer`. |
+```{list-table}
+:header-rows: 1
+
+* - Type
+  - Address source
+  - When to use
+* - **`PodIP`**
+  - Pod's IP from `status.podIP` (or a specific entry in `status.podIPs` selected by IP family)
+  - Pod IPs are routable from wherever the consumer lives — for example, within a VPC or across peered VPCs.
+* - **`ServiceClusterIP`**
+  - `spec.clusterIP` of the member Service
+  - Consumers are inside the same Kubernetes cluster. Requires `nodeService.type` to be `ClusterIP` or `LoadBalancer`.
+* - **`ServiceLoadBalancerIngress`**
+  - First entry in `status.loadBalancer.ingress` (IP or hostname) of the member Service
+  - Consumers are outside the Kubernetes cluster and reach nodes through a load balancer. Requires `nodeService.type` to be `LoadBalancer`.
+```
 
 ### How broadcast addresses reach ScyllaDB
 
@@ -95,11 +115,18 @@ The ScyllaDB process itself listens on all interfaces (`0.0.0.0` for IPv4, `::` 
 
 A `ScyllaCluster` created without explicit `exposeOptions` uses the following defaults:
 
-| Field | Default |
-|-------|---------|
-| `nodeService.type` | `ClusterIP` |
-| `broadcastOptions.nodes.type` | `ServiceClusterIP` |
-| `broadcastOptions.clients.type` | `ServiceClusterIP` |
+```{list-table}
+:header-rows: 1
+
+* - Field
+  - Default
+* - `nodeService.type`
+  - `ClusterIP`
+* - `broadcastOptions.nodes.type`
+  - `ServiceClusterIP`
+* - `broadcastOptions.clients.type`
+  - `ServiceClusterIP`
+```
 
 For multi-datacenter deployments using multiple `ScyllaCluster` resources connected via `externalSeeds`, you typically need to override these defaults to use `Headless` / `PodIP` so that pod IPs are broadcast directly. See the [Multi-VPC / multi-datacenter](#multi-vpc-multi-datacenter) scenario below.
 

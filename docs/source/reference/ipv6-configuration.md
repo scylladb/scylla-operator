@@ -26,11 +26,26 @@ Sets the DNS resolution policy for ScyllaDB pods. Defaults to `ClusterFirstWithH
 
 When `spec.network.ipFamilies` includes IPv6 as the first entry, the Operator automatically applies the following ScyllaDB arguments. You do not need to set these manually.
 
-| ScyllaDB argument | IPv4 value | IPv6 value | Purpose |
-|---|---|---|---|
-| `--listen-address` | `0.0.0.0` | `::` | Interface ScyllaDB listens on for inter-node communication |
-| `--rpc-address` | not set (ScyllaDB defaults to `0.0.0.0`) | `::` | Interface ScyllaDB listens on for CQL client connections |
-| `--enable-ipv6-dns-lookup` | not set | `1` | Enables AAAA DNS record resolution in ScyllaDB |
+```{list-table}
+:header-rows: 1
+
+* - ScyllaDB argument
+  - IPv4 value
+  - IPv6 value
+  - Purpose
+* - `--listen-address`
+  - `0.0.0.0`
+  - `::`
+  - Interface ScyllaDB listens on for inter-node communication
+* - `--rpc-address`
+  - not set (ScyllaDB defaults to `0.0.0.0`)
+  - `::`
+  - Interface ScyllaDB listens on for CQL client connections
+* - `--enable-ipv6-dns-lookup`
+  - not set
+  - `1`
+  - Enables AAAA DNS record resolution in ScyllaDB
+```
 
 ### Broadcast addresses
 

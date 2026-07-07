@@ -9,11 +9,26 @@ These conditions apply to all Operator-managed custom resources that report stat
 
 Every condition-reporting resource exposes three top-level conditions:
 
-| Condition type | Meaning when `True` | Meaning when `False` | Meaning when `Unknown` |
-|---|---|---|---|
-| `Available` | The resource is functional and can serve its purpose | The resource is not functional | Availability cannot yet be determined |
-| `Progressing` | The Operator is actively reconciling (rolling update, scaling, version change) | Either completed or stuck | Reconciliation state cannot yet be determined |
-| `Degraded` | Something is unhealthy or an error occurred during reconciliation | Resource is healthy | Health cannot yet be determined |
+```{list-table}
+:header-rows: 1
+
+* - Condition type
+  - Meaning when `True`
+  - Meaning when `False`
+  - Meaning when `Unknown`
+* - `Available`
+  - The resource is functional and can serve its purpose
+  - The resource is not functional
+  - Availability cannot yet be determined
+* - `Progressing`
+  - The Operator is actively reconciling (rolling update, scaling, version change)
+  - Either completed or stuck
+  - Reconciliation state cannot yet be determined
+* - `Degraded`
+  - Something is unhealthy or an error occurred during reconciliation
+  - Resource is healthy
+  - Health cannot yet be determined
+```
 
 A fully healthy, quiescent resource shows: `Available=True`, `Progressing=False`, `Degraded=False`.
 
@@ -42,14 +57,24 @@ kubectl -n scylla get scyllacluster <cluster-name> \
 
 Each condition object contains:
 
-| Field | Description |
-|---|---|
-| `type` | Condition name (e.g. `Available`, `StatefulSetControllerDegraded`) |
-| `status` | `True`, `False`, or `Unknown` |
-| `reason` | A CamelCase machine-readable reason string |
-| `message` | A human-readable description of the current state |
-| `lastTransitionTime` | When the condition last changed |
-| `observedGeneration` | The `metadata.generation` the condition was computed from |
+```{list-table}
+:header-rows: 1
+
+* - Field
+  - Description
+* - `type`
+  - Condition name (e.g. `Available`, `StatefulSetControllerDegraded`)
+* - `status`
+  - `True`, `False`, or `Unknown`
+* - `reason`
+  - A CamelCase machine-readable reason string
+* - `message`
+  - A human-readable description of the current state
+* - `lastTransitionTime`
+  - When the condition last changed
+* - `observedGeneration`
+  - The `metadata.generation` the condition was computed from
+```
 
 ## Related pages
 

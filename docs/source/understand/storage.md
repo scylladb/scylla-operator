@@ -8,13 +8,28 @@ This page explains how ScyllaDB Operator integrates with Kubernetes storage, the
 ScyllaDB works with both local and network-attached storage provisioners.
 However, **local NVMe storage provides substantially better performance** and is the recommended choice for production deployments.
 
-| | Local NVMe storage | Network-attached storage (e.g., EBS, Persistent Disk) |
-|---|---|---|
-| **Latency** | Microseconds — direct access to physical drives on the host | Milliseconds — network round-trip to remote block device |
-| **Throughput** | Full drive bandwidth, often multiple NVMes in RAID0 | Limited by network bandwidth and provider throttling |
-| **Data durability on node loss** | Data is lost when the node is lost. ScyllaDB's replication across multiple nodes provides durability. | Data survives node loss. PersistentVolume can be reattached to a new node. |
-| **Dynamic provisioning** | Requires a local provisioner (e.g., ScyllaDB Local CSI Driver) | Natively supported by most cloud providers |
-| **Setup complexity** | Requires NodeConfig for RAID/filesystem setup and a local provisioner | Minimal — use the cloud provider's default StorageClass |
+```{list-table}
+:header-rows: 1
+
+* - 
+  - Local NVMe storage
+  - Network-attached storage (e.g., EBS, Persistent Disk)
+* - **Latency**
+  - Microseconds — direct access to physical drives on the host
+  - Milliseconds — network round-trip to remote block device
+* - **Throughput**
+  - Full drive bandwidth, often multiple NVMes in RAID0
+  - Limited by network bandwidth and provider throttling
+* - **Data durability on node loss**
+  - Data is lost when the node is lost. ScyllaDB's replication across multiple nodes provides durability.
+  - Data survives node loss. PersistentVolume can be reattached to a new node.
+* - **Dynamic provisioning**
+  - Requires a local provisioner (e.g., ScyllaDB Local CSI Driver)
+  - Natively supported by most cloud providers
+* - **Setup complexity**
+  - Requires NodeConfig for RAID/filesystem setup and a local provisioner
+  - Minimal — use the cloud provider's default StorageClass
+```
 
 :::{tip}
 For production workloads, use **local NVMe storage** with the ScyllaDB Local CSI Driver.

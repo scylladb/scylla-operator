@@ -149,13 +149,28 @@ docker run -it --rm --entrypoint=cqlsh \
 
 When using a ScyllaDB or Cassandra driver in your application:
 
-| Setting | Recommended value | Why |
-|---------|-------------------|-----|
-| Contact points | `<cluster-name>-client.<namespace>.svc` (DNS) or the Service ClusterIP | Use the discovery Service, not individual Pod IPs. The driver discovers all nodes automatically. |
-| Local datacenter | Your `datacenter.name` value (e.g., `us-east-1`) | Required for `DCAwareRoundRobinPolicy`. Prevents cross-DC queries. |
-| Load balancing | Token-aware + DC-aware round robin | Sends queries directly to the replica owning the partition. |
-| TLS | Enabled, with CA verification | Use the serving CA from `configmap/<cluster-name>-local-serving-ca`. |
-| Reconnection | Exponential backoff | Handles node restarts during rolling updates. |
+```{list-table}
+:header-rows: 1
+
+* - Setting
+  - Recommended value
+  - Why
+* - Contact points
+  - `<cluster-name>-client.<namespace>.svc` (DNS) or the Service ClusterIP
+  - Use the discovery Service, not individual Pod IPs. The driver discovers all nodes automatically.
+* - Local datacenter
+  - Your `datacenter.name` value (e.g., `us-east-1`)
+  - Required for `DCAwareRoundRobinPolicy`. Prevents cross-DC queries.
+* - Load balancing
+  - Token-aware + DC-aware round robin
+  - Sends queries directly to the replica owning the partition.
+* - TLS
+  - Enabled, with CA verification
+  - Use the serving CA from `configmap/<cluster-name>-local-serving-ca`.
+* - Reconnection
+  - Exponential backoff
+  - Handles node restarts during rolling updates.
+```
 
 ## Related pages
 

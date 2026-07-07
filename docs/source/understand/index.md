@@ -24,11 +24,18 @@ To make changes, always modify the custom resource spec.
 
 ScyllaDB Operator installs into three namespaces:
 
-| Namespace | What runs there |
-|---|---|
-| `scylla-operator` | Two Deployments: the **controller manager** (`scylla-operator`) that runs all controllers, and the **webhook server** (`webhook-server`) that validates API requests. Both run with 2 replicas by default and are protected by PodDisruptionBudgets. |
-| `scylla-manager` | **ScyllaDB Manager** — a separate component that coordinates repair and backup tasks. It uses a small internal ScyllaDB cluster as its own database. Deployed optionally. |
-| `scylla-operator-node-tuning` | **Node tuning agents** — privileged DaemonSets and Jobs created by the NodeConfig controller to set up disks, filesystems, and performance tuning on Kubernetes nodes. |
+```{list-table}
+:header-rows: 1
+
+* - Namespace
+  - What runs there
+* - `scylla-operator`
+  - Two Deployments: the **controller manager** (`scylla-operator`) that runs all controllers, and the **webhook server** (`webhook-server`) that validates API requests. Both run with 2 replicas by default and are protected by PodDisruptionBudgets.
+* - `scylla-manager`
+  - **ScyllaDB Manager** — a separate component that coordinates repair and backup tasks. It uses a small internal ScyllaDB cluster as its own database. Deployed optionally.
+* - `scylla-operator-node-tuning`
+  - **Node tuning agents** — privileged DaemonSets and Jobs created by the NodeConfig controller to set up disks, filesystems, and performance tuning on Kubernetes nodes.
+```
 
 Your ScyllaDB clusters run in your own namespaces, separate from the Operator.
 
@@ -40,20 +47,40 @@ The Operator provides the following CRDs, all in the `scylla.scylladb.com` API g
 
 Cluster-scoped resources affect the entire Kubernetes cluster and require elevated privileges.
 
-| Resource | API version | Purpose |
-|---|---|---|
-| `NodeConfig` | `v1alpha1` | Configures Kubernetes nodes for ScyllaDB: RAID setup, filesystem creation, mount points, sysctls, and performance tuning. See [Tuning](tuning.md). |
-| `ScyllaOperatorConfig` | `v1alpha1` | Global Operator configuration: auxiliary images, cluster domain, tuning image overrides. A singleton named `cluster`. |
+```{list-table}
+:header-rows: 1
+
+* - Resource
+  - API version
+  - Purpose
+* - `NodeConfig`
+  - `v1alpha1`
+  - Configures Kubernetes nodes for ScyllaDB: RAID setup, filesystem creation, mount points, sysctls, and performance tuning. See [Tuning](tuning.md).
+* - `ScyllaOperatorConfig`
+  - `v1alpha1`
+  - Global Operator configuration: auxiliary images, cluster domain, tuning image overrides. A singleton named `cluster`.
+```
 
 ### Namespaced resources
 
 Namespaced resources are scoped to a Kubernetes namespace and can be managed by namespace-level RBAC.
 
-| Resource | API version | Purpose |
-|---|---|---|
-| `ScyllaCluster` | `v1` (stable) | Defines a single-datacenter ScyllaDB cluster. The primary resource for most deployments. |
-| `ScyllaDBMonitoring` | `v1alpha1` | Defines a monitoring stack (Prometheus + Grafana) for ScyllaDB. See [Set up monitoring](monitoring.md). |
-| `ScyllaDBManagerTask` | `v1alpha1` | Defines a backup or repair task managed by ScyllaDB Manager. |
+```{list-table}
+:header-rows: 1
+
+* - Resource
+  - API version
+  - Purpose
+* - `ScyllaCluster`
+  - `v1` (stable)
+  - Defines a single-datacenter ScyllaDB cluster. The primary resource for most deployments.
+* - `ScyllaDBMonitoring`
+  - `v1alpha1`
+  - Defines a monitoring stack (Prometheus + Grafana) for ScyllaDB. See [Set up monitoring](monitoring.md).
+* - `ScyllaDBManagerTask`
+  - `v1alpha1`
+  - Defines a backup or repair task managed by ScyllaDB Manager.
+```
 
 :::{tip}
 You can discover the available resources in your cluster by running:
@@ -70,37 +97,72 @@ kubectl explain --api-version='scylla.scylladb.com/v1alpha1' NodeConfig.spec
 
 The controller manager runs the following controllers:
 
-| Controller | What it reconciles |
-|---|---|
-| ScyllaCluster | Primary controller for single-datacenter deployments. Manages a ScyllaDB datacenter — StatefulSets, Services, ConfigMaps, Jobs, PDBs, Ingresses, TLS certificates — and synchronises Manager tasks based on the stable `ScyllaCluster` (v1) API. |
-| ScyllaDBDatacenter | Internal controller that creates and manages the underlying Kubernetes objects for each datacenter. Users do not interact with `ScyllaDBDatacenter` resources directly — the ScyllaCluster controller translates each `ScyllaCluster` into an internal `ScyllaDBDatacenter` resource, which this controller then reconciles. |
-| NodeConfig | Deploys privileged DaemonSets and Jobs that set up RAID, filesystems, mount points, sysctls, and performance tuning on Kubernetes nodes. |
-| NodeConfigPod | Watches ScyllaDB pods and creates per-pod tuning ConfigMaps that tie container-level tuning to a specific container instance. |
-| ScyllaOperatorConfig | Reconciles the global Operator configuration, discovers cluster domain, and resolves auxiliary images. |
-| ScyllaDBMonitoring | Deploys and configures Prometheus, Grafana, ServiceMonitors, PrometheusRules, and dashboards. |
-| OrphanedPV | Detects and cleans up PersistentVolumes that become orphaned when ScyllaDB nodes are removed. |
-| ScyllaDBManager | Coordinates global ScyllaDB Manager state across all clusters. |
-| ScyllaDBManagerClusterRegistration | Registers ScyllaDB clusters with ScyllaDB Manager. |
-| ScyllaDBManagerTask | Reconciles backup and repair task definitions with ScyllaDB Manager. |
+```{list-table}
+:header-rows: 1
+
+* - Controller
+  - What it reconciles
+* - ScyllaCluster
+  - Primary controller for single-datacenter deployments. Manages a ScyllaDB datacenter — StatefulSets, Services, ConfigMaps, Jobs, PDBs, Ingresses, TLS certificates — and synchronises Manager tasks based on the stable `ScyllaCluster` (v1) API.
+* - ScyllaDBDatacenter
+  - Internal controller that creates and manages the underlying Kubernetes objects for each datacenter. Users do not interact with `ScyllaDBDatacenter` resources directly — the ScyllaCluster controller translates each `ScyllaCluster` into an internal `ScyllaDBDatacenter` resource, which this controller then reconciles.
+* - NodeConfig
+  - Deploys privileged DaemonSets and Jobs that set up RAID, filesystems, mount points, sysctls, and performance tuning on Kubernetes nodes.
+* - NodeConfigPod
+  - Watches ScyllaDB pods and creates per-pod tuning ConfigMaps that tie container-level tuning to a specific container instance.
+* - ScyllaOperatorConfig
+  - Reconciles the global Operator configuration, discovers cluster domain, and resolves auxiliary images.
+* - ScyllaDBMonitoring
+  - Deploys and configures Prometheus, Grafana, ServiceMonitors, PrometheusRules, and dashboards.
+* - OrphanedPV
+  - Detects and cleans up PersistentVolumes that become orphaned when ScyllaDB nodes are removed.
+* - ScyllaDBManager
+  - Coordinates global ScyllaDB Manager state across all clusters.
+* - ScyllaDBManagerClusterRegistration
+  - Registers ScyllaDB clusters with ScyllaDB Manager.
+* - ScyllaDBManagerTask
+  - Reconciles backup and repair task definitions with ScyllaDB Manager.
+```
 
 ### Experimental controllers
 
 The following controllers are run by Operator, but there is no current plan to make their respective CRDs generally available. These controllers and CRDs may be removed in a future version.
 
-| Controller | What it reconciles |
-|---|---|
-| ScyllaDBCluster | Orchestrates multi-datacenter clusters by managing `ScyllaDBDatacenter` resources across remote Kubernetes clusters. |
-| RemoteKubernetesCluster | Manages connections and informers for remote Kubernetes clusters used in multi-DC deployments. |
+```{list-table}
+:header-rows: 1
+
+* - Controller
+  - What it reconciles
+* - ScyllaDBCluster
+  - Orchestrates multi-datacenter clusters by managing `ScyllaDBDatacenter` resources across remote Kubernetes clusters.
+* - RemoteKubernetesCluster
+  - Manages connections and informers for remote Kubernetes clusters used in multi-DC deployments.
+```
 
 Additional controllers run **inside ScyllaDB pods** rather than in the Operator deployment:
 
-| Controller | Where it runs | What it does |
-|---|---|---|
-| Sidecar | Main ScyllaDB container | Manages the ScyllaDB process lifecycle, syncs member service annotations with host ID and token ring state. See [Sidecar](sidecar.md). |
-| Ignition | `scylladb-ignition` sidecar container | Evaluates startup prerequisites (tuning done, IP assigned, LB ready) and creates the ignition signal file. See [Ignition](ignition.md). |
-| StatusReport | Main ScyllaDB container | Reports node status to internal status report resources for bootstrap synchronisation. |
-| BootstrapBarrier | `scylladb-bootstrap-barrier` init container | Blocks pod startup until bootstrap preconditions are met (feature-gated). See [Bootstrap Sync](bootstrap-sync.md). |
-| NodeSetup | Node tuning DaemonSet pods | Configures the host machine (runs via the `node-setup-daemon` subcommand). |
+```{list-table}
+:header-rows: 1
+
+* - Controller
+  - Where it runs
+  - What it does
+* - Sidecar
+  - Main ScyllaDB container
+  - Manages the ScyllaDB process lifecycle, syncs member service annotations with host ID and token ring state. See [Sidecar](sidecar.md).
+* - Ignition
+  - `scylladb-ignition` sidecar container
+  - Evaluates startup prerequisites (tuning done, IP assigned, LB ready) and creates the ignition signal file. See [Ignition](ignition.md).
+* - StatusReport
+  - Main ScyllaDB container
+  - Reports node status to internal status report resources for bootstrap synchronisation.
+* - BootstrapBarrier
+  - `scylladb-bootstrap-barrier` init container
+  - Blocks pod startup until bootstrap preconditions are met (feature-gated). See [Bootstrap Sync](bootstrap-sync.md).
+* - NodeSetup
+  - Node tuning DaemonSet pods
+  - Configures the host machine (runs via the `node-setup-daemon` subcommand).
+```
 
 ## Admission webhooks
 

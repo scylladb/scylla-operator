@@ -65,10 +65,16 @@ If any node is missing a host ID, has not yet reported, does not list another no
 
 ## Feature gate and version requirements
 
-| Requirement | Value |
-|-------------|-------|
-| Feature gate | `BootstrapSynchronisation` (default off since v1.19) |
-| Minimum ScyllaDB version | 2025.2 |
+```{list-table}
+:header-rows: 1
+
+* - Requirement
+  - Value
+* - Feature gate
+  - `BootstrapSynchronisation` (default off since v1.19)
+* - Minimum ScyllaDB version
+  - 2025.2
+```
 
 The feature gate must be enabled in the Operator's command-line flags. The Operator also checks the ScyllaDB container image version and only adds the init container when the version satisfies `≥ 2025.2.0`.
 

@@ -29,12 +29,20 @@ kubectl -n scylla get pod <pod-name> -o jsonpath='{.status.containerStatuses}' |
 
 Key fields:
 
-| Field | Description |
-|---|---|
-| `restartCount` | Total number of restarts for this container |
-| `lastState.terminated.reason` | Why the container stopped (`OOMKilled`, `Error`, `Completed`) |
-| `lastState.terminated.exitCode` | Process exit code (`137` = SIGKILL / OOMKilled, `1` = error) |
-| `lastState.terminated.finishedAt` | Timestamp of the last termination |
+```{list-table}
+:header-rows: 1
+
+* - Field
+  - Description
+* - `restartCount`
+  - Total number of restarts for this container
+* - `lastState.terminated.reason`
+  - Why the container stopped (`OOMKilled`, `Error`, `Completed`)
+* - `lastState.terminated.exitCode`
+  - Process exit code (`137` = SIGKILL / OOMKilled, `1` = error)
+* - `lastState.terminated.finishedAt`
+  - Timestamp of the last termination
+```
 
 ### Pod events
 
@@ -44,13 +52,22 @@ kubectl -n scylla describe pod <pod-name>
 
 Look for these events in the `Events` section:
 
-| Event | Meaning |
-|---|---|
-| `Killing` | Container was killed (by kubelet or OOM killer) |
-| `BackOff` | Container is in `CrashLoopBackOff` — restarting repeatedly |
-| `OOMKilling` | Container exceeded its memory limit |
-| `Unhealthy` | Liveness probe failed — kubelet killed the container |
-| `FailedScheduling` | Pod cannot be placed on any node |
+```{list-table}
+:header-rows: 1
+
+* - Event
+  - Meaning
+* - `Killing`
+  - Container was killed (by kubelet or OOM killer)
+* - `BackOff`
+  - Container is in `CrashLoopBackOff` — restarting repeatedly
+* - `OOMKilling`
+  - Container exceeded its memory limit
+* - `Unhealthy`
+  - Liveness probe failed — kubelet killed the container
+* - `FailedScheduling`
+  - Pod cannot be placed on any node
+```
 
 ## Distinguish restart causes
 

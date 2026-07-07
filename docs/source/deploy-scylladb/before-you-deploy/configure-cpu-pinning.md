@@ -16,11 +16,18 @@ CPU pinning ensures:
 
 CPU pinning requires three things to work together:
 
-| Requirement | Who configures it |
-|-------------|-------------------|
-| Kubelet static CPU manager policy | Platform administrator (node pool configuration) |
-| Guaranteed QoS class on the ScyllaDB Pod | `ScyllaCluster` author |
-| Performance tuning enabled in `NodeConfig` | `NodeConfig` author (enabled by default) |
+```{list-table}
+:header-rows: 1
+
+* - Requirement
+  - Who configures it
+* - Kubelet static CPU manager policy
+  - Platform administrator (node pool configuration)
+* - Guaranteed QoS class on the ScyllaDB Pod
+  - `ScyllaCluster` author
+* - Performance tuning enabled in `NodeConfig`
+  - `NodeConfig` author (enabled by default)
+```
 
 If any of these is missing, CPU pinning silently does not apply.
 

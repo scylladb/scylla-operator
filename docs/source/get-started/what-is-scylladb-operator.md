@@ -6,16 +6,37 @@ ScyllaDB Operator is a [Kubernetes Operator](https://kubernetes.io/docs/concepts
 
 Running ScyllaDB on Kubernetes without an operator requires manually handling many tasks that the Operator automates:
 
-| Concern | Without the Operator | With ScyllaDB Operator |
-|---|---|---|
-| **Provisioning** | Manually create StatefulSets, Services, ConfigMaps, PVCs, and configure ScyllaDB seed lists, snitch settings, and rack/DC placement. | Declare a `ScyllaCluster` resource. The Operator creates and configures all Kubernetes objects. |
-| **Scaling** | Manually adjust StatefulSet replicas, update seed lists, and run `nodetool cleanup` on existing nodes after the new node finishes streaming. | Change the `members` count in the spec. The Operator handles the StatefulSet update and runs cleanup automatically when token ownership changes. |
-| **Upgrades** | Manually update the container image, coordinate a rolling restart, and verify each node rejoins before proceeding to the next. | Update the image field in the spec. The Operator performs a rolling upgrade one node at a time, verifying health at each step. |
-| **Node replacement** | Manually drain the node, remove it from the cluster, recreate the pod, and pass the `replace_address_first_boot` flag. | Label the node's Service for replacement. The Operator handles draining, decommissioning, and bootstrapping the replacement. |
-| **Performance tuning** | SSH into each Kubernetes node to run `perftune`, configure IRQ affinity, set sysctls, and prepare RAID/filesystem layouts. | Create a `NodeConfig` resource. The Operator deploys privileged DaemonSets and Jobs that tune each node and prepare disks automatically. |
-| **Repairs and backups** | Install and configure ScyllaDB Manager separately, register clusters manually, and schedule tasks. | Define repair and backup tasks in the cluster spec or as `ScyllaDBManagerTask` resources. The Operator deploys Manager and registers clusters. |
-| **Monitoring** | Deploy and configure Prometheus, Grafana, ServiceMonitors, and dashboards manually. | Create a `ScyllaDBMonitoring` resource. The Operator provisions the monitoring stack with ScyllaDB-specific dashboards. |
-| **TLS** | Generate and distribute certificates, configure ScyllaDB to use them, and handle rotation. | Enable TLS in the spec. The Operator uses cert-manager to provision and rotate certificates automatically. |
+```{list-table}
+:header-rows: 1
+
+* - Concern
+  - Without the Operator
+  - With ScyllaDB Operator
+* - **Provisioning**
+  - Manually create StatefulSets, Services, ConfigMaps, PVCs, and configure ScyllaDB seed lists, snitch settings, and rack/DC placement.
+  - Declare a `ScyllaCluster` resource. The Operator creates and configures all Kubernetes objects.
+* - **Scaling**
+  - Manually adjust StatefulSet replicas, update seed lists, and run `nodetool cleanup` on existing nodes after the new node finishes streaming.
+  - Change the `members` count in the spec. The Operator handles the StatefulSet update and runs cleanup automatically when token ownership changes.
+* - **Upgrades**
+  - Manually update the container image, coordinate a rolling restart, and verify each node rejoins before proceeding to the next.
+  - Update the image field in the spec. The Operator performs a rolling upgrade one node at a time, verifying health at each step.
+* - **Node replacement**
+  - Manually drain the node, remove it from the cluster, recreate the pod, and pass the `replace_address_first_boot` flag.
+  - Label the node's Service for replacement. The Operator handles draining, decommissioning, and bootstrapping the replacement.
+* - **Performance tuning**
+  - SSH into each Kubernetes node to run `perftune`, configure IRQ affinity, set sysctls, and prepare RAID/filesystem layouts.
+  - Create a `NodeConfig` resource. The Operator deploys privileged DaemonSets and Jobs that tune each node and prepare disks automatically.
+* - **Repairs and backups**
+  - Install and configure ScyllaDB Manager separately, register clusters manually, and schedule tasks.
+  - Define repair and backup tasks in the cluster spec or as `ScyllaDBManagerTask` resources. The Operator deploys Manager and registers clusters.
+* - **Monitoring**
+  - Deploy and configure Prometheus, Grafana, ServiceMonitors, and dashboards manually.
+  - Create a `ScyllaDBMonitoring` resource. The Operator provisions the monitoring stack with ScyllaDB-specific dashboards.
+* - **TLS**
+  - Generate and distribute certificates, configure ScyllaDB to use them, and handle rotation.
+  - Enable TLS in the spec. The Operator uses cert-manager to provision and rotate certificates automatically.
+```
 
 ## How it works
 
@@ -49,13 +70,28 @@ The Operator manages each datacenter independently. The following must be manage
 
 The Operator provides the following custom resources:
 
-| Resource | Scope | Purpose |
-|---|---|---|
-| `ScyllaCluster` | Namespaced | A ScyllaDB datacenter (one resource per DC; for multi-DC, create one per Kubernetes cluster and connect via `externalSeeds`) |
-| `NodeConfig` | Cluster | Node-level disk setup, RAID, filesystem, and performance tuning |
-| `ScyllaOperatorConfig` | Cluster | Global Operator configuration (images, cluster domain) |
-| `ScyllaDBMonitoring` | Namespaced | Monitoring stack (Prometheus + Grafana) for ScyllaDB |
-| `ScyllaDBManagerTask` | Namespaced | Backup or repair task managed by ScyllaDB Manager |
+```{list-table}
+:header-rows: 1
+
+* - Resource
+  - Scope
+  - Purpose
+* - `ScyllaCluster`
+  - Namespaced
+  - A ScyllaDB datacenter (one resource per DC; for multi-DC, create one per Kubernetes cluster and connect via `externalSeeds`)
+* - `NodeConfig`
+  - Cluster
+  - Node-level disk setup, RAID, filesystem, and performance tuning
+* - `ScyllaOperatorConfig`
+  - Cluster
+  - Global Operator configuration (images, cluster domain)
+* - `ScyllaDBMonitoring`
+  - Namespaced
+  - Monitoring stack (Prometheus + Grafana) for ScyllaDB
+* - `ScyllaDBManagerTask`
+  - Namespaced
+  - Backup or repair task managed by ScyllaDB Manager
+```
 
 The Operator also uses several internal CRD types under the hood to orchestrate operations such as datacenter management, Manager cluster registration, and bootstrap synchronisation. These are not intended for direct user interaction.
 

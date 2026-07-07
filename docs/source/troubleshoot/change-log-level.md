@@ -5,11 +5,22 @@ This is useful when a rolling restart is not feasible — for example, when a St
 
 ## When to use each method
 
-| Scenario | Method | Persistent? |
-|---|---|---|
-| Normal operations — rolling restart is acceptable | [Spec change](#method-1-spec-change-rolling-restart) | Yes |
-| StatefulSet stuck mid-rollout | [REST API](#method-2-rest-api-no-restart) | No — lost on pod restart |
-| Cluster degraded — cannot tolerate a rolling restart | [REST API](#method-2-rest-api-no-restart) | No — lost on pod restart |
+```{list-table}
+:header-rows: 1
+
+* - Scenario
+  - Method
+  - Persistent?
+* - Normal operations — rolling restart is acceptable
+  - [Spec change](#method-1-spec-change-rolling-restart)
+  - Yes
+* - StatefulSet stuck mid-rollout
+  - [REST API](#method-2-rest-api-no-restart)
+  - No — lost on pod restart
+* - Cluster degraded — cannot tolerate a rolling restart
+  - [REST API](#method-2-rest-api-no-restart)
+  - No — lost on pod restart
+```
 
 ## Method 1: Spec change (rolling restart)
 

@@ -5,6 +5,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1284,7 +1285,13 @@ until [[ -f "/mnt/shared/ignition.done" ]]; do
   sleep 1 &
   wait
 done
-printf '{"L":"INFO","T":"%s","M":"Ignited. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+printf '{"L":"INFO","T":"%s","M":"Ignited. Waiting for ScyllaDB API to become available"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
+
+until curl --connect-timeout 5 --max-time 10 -s -o /dev/null -w "" "http://localhost:` + strconv.Itoa(naming.ScyllaAPIPort) + `/"; do
+  sleep 1 &
+  wait
+done
+printf '{"L":"INFO","T":"%s","M":"ScyllaDB API is available. Starting ScyllaDB Manager Agent"}\n' "$( date -u '+%Y-%m-%dT%H:%M:%S,%3NZ' )" > /dev/stderr
 
 exec scylla-manager-agent \
 -c "/etc/scylla-manager-agent/scylla-manager-agent.yaml" \

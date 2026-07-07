@@ -27,6 +27,7 @@ The `status` section shows the resolved values that are actually in use, includi
 ```yaml
 status:
   scyllaDBUtilsImage: docker.io/scylladb/scylla:2025.1.9@sha256:...
+  scyllaDBNodeExporterImage: quay.io/prometheus/node-exporter:v1.11.1
   bashToolsImage: registry.access.redhat.com/ubi9/ubi:9.5-...@sha256:...
   grafanaImage: docker.io/grafana/grafana:12.2.0@sha256:...
   prometheusVersion: v3.6.0
@@ -35,7 +36,7 @@ status:
 
 ## Configurable fields
 
-```{list-table}
+:::{list-table}
 :header-rows: 1
 
 * - Spec field
@@ -44,6 +45,9 @@ status:
 * - `scyllaUtilsImage`
   - ScyllaDB image used for running utility scripts (perftune, sysctl). Determines which tuning scripts are used for performance optimization.
   - Latest ScyllaDB image.
+* - `scyllaDBNodeExporterImage`
+  - `scylladb-node-exporter` image that ScyllaDB Operator runs as a sidecar to expose node-level OS metrics for ScyllaDB clusters. For versions before 2026.3.0, this field is ineffective because node-exporter is bundled and run directly within `scyllaDBImage`.
+  - Latest scylladb-node-exporter image.
 * - `configuredClusterDomain`
   - Kubernetes cluster domain. Must be a fully qualified domain name.
   - Auto-discovered via DNS lookup of `kubernetes.default.svc`.
@@ -56,7 +60,7 @@ status:
 * - `unsupportedPrometheusVersionOverride`
   - Override the Prometheus version. **Unsupported** — for advanced use only.
   - Latest tested Prometheus version.
-```
+:::
 
 :::{caution}
 Fields prefixed with `unsupported` are not covered by the regular support policy. Use them only if you have a specific reason and understand the implications.
@@ -103,16 +107,18 @@ The cluster domain is used internally for Kubernetes DNS resolution. Most users 
 
 ScyllaOperatorConfig settings are consumed by several Operator controllers:
 
-```{list-table}
+:::{list-table}
 :header-rows: 1
 
 * - Consumer
   - Setting used
 * - NodeConfig controller
   - `scyllaDBUtilsImage` — configures the tuning DaemonSet with the correct ScyllaDB image for `perftune.py` and resource limits.
+* - ScyllaDBDatacenter controller
+  - `scyllaDBNodeExporterImage` — configures the `scylladb-node-exporter` sidecar for ScyllaDB clusters running version 2026.3 or later.
 * - ScyllaDBMonitoring controller
   - `grafanaImage`, `prometheusVersion` — configures the monitoring stack.
-```
+:::
 
 Changes to `ScyllaOperatorConfig` trigger reconciliation in all dependent controllers. You do not need to restart Operator.
 

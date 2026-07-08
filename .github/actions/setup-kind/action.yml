@@ -1,0 +1,61 @@
+name: Setup KinD with ScyllaDB Operator image
+description: >
+  Creates a KinD cluster, builds the operator image from source,
+  loads it into the cluster, and deploys cert-manager.
+
+outputs:
+  image-ref:
+    description: The operator image reference loaded into the cluster.
+    value: ${{ steps.meta.outputs.image-ref }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set image metadata
+      id: meta
+      shell: bash
+      run: echo "image-ref=localhost/scylladb/scylla-operator:e2e" >> "${GITHUB_OUTPUT}"
+
+    - name: Write KinD cluster config
+      shell: bash
+      run: |
+        cat > /tmp/kind-config.yaml <<'EOF'
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        networking:
+          ipFamily: ipv4
+        nodes:
+          - role: control-plane
+          - role: worker
+        EOF
+
+    - name: Create KinD cluster
+      uses: helm/kind-action@v1
+      with:
+        cluster_name: e2e
+        config: /tmp/kind-config.yaml
+
+    - name: Build operator image
+      shell: bash
+      run: docker build . -t ${{ steps.meta.outputs.image-ref }}
+
+    - name: Load operator image into KinD
+      shell: bash
+      run: kind load docker-image ${{ steps.meta.outputs.image-ref }} --name e2e
+
+    - name: Deploy cert-manager
+      shell: bash
+      run: |
+        kubectl apply --server-side --force-conflicts -f examples/third-party/cert-manager.yaml
+
+        kubectl wait --for=condition=established --timeout=60s \
+          crd/certificates.cert-manager.io \
+          crd/issuers.cert-manager.io
+
+        for deploy in cert-manager cert-manager-cainjector cert-manager-webhook; do
+          kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${deploy}"
+        done
+
+        # Wait for the webhook CA secret to be created before proceeding,
+        # otherwise the operator's Certificate resource may fail to be issued.
+        kubectl wait --timeout=60s --for=create -n cert-manager secret/cert-manager-webhook-ca

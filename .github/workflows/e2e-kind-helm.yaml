@@ -1,0 +1,113 @@
+name: "E2E: KinD (Helm)"
+
+on:
+  push:
+    branches:
+      - mf/gha-poc
+  workflow_dispatch:
+
+jobs:
+  e2e-kind-helm:
+    name: Deploy ScyllaDB on KinD using Helm
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup KinD cluster
+        id: setup
+        uses: ./.github/actions/setup-kind
+
+      - name: Deploy operator (Helm)
+        env:
+          IMAGE_REF: ${{ steps.setup.outputs.image-ref }}
+        run: |
+          # Extract repository and tag from the full image reference.
+          # "localhost/scylladb/scylla-operator:e2e" -> repo="localhost/scylladb", tag="e2e"
+          repo="${IMAGE_REF%/*}"
+          tag="${IMAGE_REF##*:}"
+
+          helm install scylla-operator helm/scylla-operator \
+            --create-namespace \
+            --namespace scylla-operator \
+            --set "image.repository=${repo}" \
+            --set "image.tag=${tag}" \
+            --set replicas=1 \
+            --set webhookServerReplicas=1
+
+          # Wait for CRDs to be established.
+          kubectl wait --for=condition=established --timeout=60s \
+            crd/scyllaclusters.scylla.scylladb.com
+
+          # Wait for rollout.
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/scylla-operator
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/webhook-server
+
+      - name: Deploy ScyllaDB cluster (Helm)
+        run: |
+          helm install scylla helm/scylla \
+            --create-namespace \
+            --namespace scylla \
+            --set developerMode=true \
+            --set "scyllaArgs=--reactor-backend=io_uring" \
+            --set "exposeOptions.nodeService.type=Headless" \
+            --set "exposeOptions.broadcastOptions.nodes.type=PodIP" \
+            --set "exposeOptions.broadcastOptions.clients.type=PodIP" \
+            --set "racks[0].name=us-east-1a" \
+            --set "racks[0].members=1" \
+            --set "racks[0].storage.storageClassName=standard" \
+            --set "racks[0].storage.capacity=1Gi" \
+            --set "racks[0].resources.requests.cpu=10m" \
+            --set "racks[0].resources.requests.memory=100Mi" \
+            --set "racks[0].resources.limits.cpu=1" \
+            --set "racks[0].resources.limits.memory=1Gi" \
+            --set "racks[0].placement=null"
+
+      - name: Wait for ScyllaCluster to be ready
+        run: |
+          echo "Waiting for ScyllaCluster to roll out..."
+          kubectl -n scylla wait --timeout=10m --for='condition=Progressing=False' \
+            scyllacluster/scylla
+          kubectl -n scylla wait --timeout=10m --for='condition=Degraded=False' \
+            scyllacluster/scylla
+          kubectl -n scylla wait --timeout=10m --for='condition=Available=True' \
+            scyllacluster/scylla
+          echo "ScyllaCluster is available."
+
+      - name: Verify CQL connectivity
+        run: |
+          pod="$(kubectl -n scylla get pods -l "scylla/cluster=scylla" -o jsonpath='{.items[0].metadata.name}')"
+          echo "Running CQL query against pod ${pod}..."
+
+          kubectl -n scylla exec "${pod}" -c scylla -- \
+            cqlsh localhost -e "SELECT key, cluster_name, data_center FROM system.local"
+
+          echo "CQL connectivity verified."
+
+      - name: Collect debug info
+        if: always()
+        run: |
+          echo "=== Cluster-wide pod status ==="
+          kubectl get pods -A -o wide || true
+
+          echo ""
+          echo "=== ScyllaCluster status ==="
+          kubectl -n scylla get scyllaclusters -o yaml || true
+
+          echo ""
+          echo "=== Scylla pods ==="
+          kubectl -n scylla describe pods || true
+
+          echo ""
+          echo "=== Operator logs ==="
+          kubectl -n scylla-operator logs deployment/scylla-operator --tail=100 || true
+
+          echo ""
+          echo "=== Webhook server logs ==="
+          kubectl -n scylla-operator logs deployment/webhook-server --tail=50 || true
+
+          echo ""
+          echo "=== Helm releases ==="
+          helm list -A || true

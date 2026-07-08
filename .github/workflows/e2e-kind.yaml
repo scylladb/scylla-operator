@@ -1,0 +1,163 @@
+name: "E2E: KinD"
+
+on:
+  push:
+    branches:
+      - mf/gha-poc
+  workflow_dispatch:
+
+jobs:
+  e2e-kind:
+    name: Deploy ScyllaDB on KinD
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create KinD cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: e2e
+          config: |
+            kind: Cluster
+            apiVersion: kind.x-k8s.io/v1alpha4
+            networking:
+              ipFamily: ipv4
+            nodes:
+              - role: control-plane
+              - role: worker
+
+      - name: Build operator image
+        run: docker build . -t localhost/scylladb/scylla-operator:e2e
+
+      - name: Load operator image into KinD
+        run: kind load docker-image localhost/scylladb/scylla-operator:e2e --name e2e
+
+      - name: Deploy cert-manager
+        run: |
+          kubectl apply --server-side --force-conflicts -f examples/third-party/cert-manager.yaml
+
+          kubectl wait --for=condition=established --timeout=60s \
+            crd/certificates.cert-manager.io \
+            crd/issuers.cert-manager.io
+
+          for deploy in cert-manager cert-manager-cainjector cert-manager-webhook; do
+            kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${deploy}"
+          done
+
+          # Wait for the webhook CA secret to be created before proceeding,
+          # otherwise the operator's Certificate resource may fail to be issued.
+          kubectl wait --timeout=60s --for=create -n cert-manager secret/cert-manager-webhook-ca
+
+      - name: Deploy operator
+        env:
+          IMAGE_REF: localhost/scylladb/scylla-operator:e2e
+        run: |
+          kubectl apply --server-side --force-conflicts -f deploy/operator.yaml
+
+          # Scale to 1 replica — a 2-node KinD cluster can't satisfy the
+          # pod anti-affinity preferred by the default 2-replica Deployments.
+          kubectl -n scylla-operator scale --replicas=1 \
+            deployment/scylla-operator \
+            deployment/webhook-server
+
+          # Point both Deployments at the locally-built image.
+          kubectl -n scylla-operator set image \
+            deployment/scylla-operator scylla-operator="${IMAGE_REF}"
+          kubectl -n scylla-operator set env \
+            deployment/scylla-operator SCYLLA_OPERATOR_IMAGE="${IMAGE_REF}"
+          kubectl -n scylla-operator set image \
+            deployment/webhook-server webhook-server="${IMAGE_REF}"
+
+          # Wait for CRDs to be established.
+          kubectl wait --for=condition=established --timeout=60s \
+            crd/scyllaclusters.scylla.scylladb.com
+
+          # Wait for rollout.
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/scylla-operator
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/webhook-server
+
+      - name: Create ScyllaCluster
+        run: |
+          kubectl create namespace scylla
+
+          kubectl apply -f - <<'EOF'
+          apiVersion: scylla.scylladb.com/v1
+          kind: ScyllaCluster
+          metadata:
+            name: scylla-test
+            namespace: scylla
+          spec:
+            version: "2026.2.0"
+            agentVersion: "3.11.2@sha256:9fd3ba869f1d610b5f3f635a958ecfd3083c7abb8c9cdb12d0d26c6add0b67d9"
+            developerMode: true
+            scyllaArgs: "--reactor-backend=io_uring"
+            exposeOptions:
+              nodeService:
+                type: Headless
+              broadcastOptions:
+                nodes:
+                  type: PodIP
+                clients:
+                  type: PodIP
+            datacenter:
+              name: us-east-1
+              racks:
+                - name: us-east-1a
+                  members: 1
+                  storage:
+                    capacity: 1Gi
+                    storageClassName: standard
+                  resources:
+                    requests:
+                      cpu: 10m
+                      memory: 100Mi
+                    limits:
+                      cpu: 1
+                      memory: 1Gi
+          EOF
+
+      - name: Wait for ScyllaCluster to be ready
+        run: |
+          echo "Waiting for ScyllaCluster to roll out..."
+          kubectl -n scylla wait --timeout=10m --for='condition=Progressing=False' \
+            scyllacluster/scylla-test
+          kubectl -n scylla wait --timeout=10m --for='condition=Degraded=False' \
+            scyllacluster/scylla-test
+          kubectl -n scylla wait --timeout=10m --for='condition=Available=True' \
+            scyllacluster/scylla-test
+          echo "ScyllaCluster is available."
+
+      - name: Verify CQL connectivity
+        run: |
+          pod="$(kubectl -n scylla get pods -l "scylla/cluster=scylla-test" -o jsonpath='{.items[0].metadata.name}')"
+          echo "Running CQL query against pod ${pod}..."
+
+          kubectl -n scylla exec "${pod}" -c scylla -- \
+            cqlsh localhost -e "SELECT key, cluster_name, data_center FROM system.local"
+
+          echo "CQL connectivity verified."
+
+      - name: Collect debug info
+        if: always()
+        run: |
+          echo "=== Cluster-wide pod status ==="
+          kubectl get pods -A -o wide || true
+
+          echo ""
+          echo "=== ScyllaCluster status ==="
+          kubectl -n scylla get scyllaclusters -o yaml || true
+
+          echo ""
+          echo "=== Scylla pods ==="
+          kubectl -n scylla describe pods || true
+
+          echo ""
+          echo "=== Operator logs ==="
+          kubectl -n scylla-operator logs deployment/scylla-operator --tail=100 || true
+
+          echo ""
+          echo "=== Webhook server logs ==="
+          kubectl -n scylla-operator logs deployment/webhook-server --tail=50 || true

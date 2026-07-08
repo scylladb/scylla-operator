@@ -6,6 +6,9 @@ on:
       - mf/gha-poc
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   e2e-kind:
     name: Deploy ScyllaDB on KinD

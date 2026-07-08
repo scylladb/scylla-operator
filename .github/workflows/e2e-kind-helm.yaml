@@ -47,23 +47,36 @@ jobs:
 
       - name: Deploy ScyllaDB cluster (Helm)
         run: |
+          cat > /tmp/scylla-values.yaml <<'EOF'
+          developerMode: true
+          scyllaArgs: "--reactor-backend=io_uring"
+          exposeOptions:
+            nodeService:
+              type: Headless
+            broadcastOptions:
+              nodes:
+                type: PodIP
+              clients:
+                type: PodIP
+          racks:
+            - name: us-east-1a
+              members: 1
+              storage:
+                storageClassName: standard
+                capacity: 1Gi
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 100Mi
+                limits:
+                  cpu: 1
+                  memory: 1Gi
+          EOF
+
           helm install scylla helm/scylla \
             --create-namespace \
             --namespace scylla \
-            --set developerMode=true \
-            --set "scyllaArgs=--reactor-backend=io_uring" \
-            --set "exposeOptions.nodeService.type=Headless" \
-            --set "exposeOptions.broadcastOptions.nodes.type=PodIP" \
-            --set "exposeOptions.broadcastOptions.clients.type=PodIP" \
-            --set "racks[0].name=us-east-1a" \
-            --set "racks[0].members=1" \
-            --set "racks[0].storage.storageClassName=standard" \
-            --set "racks[0].storage.capacity=1Gi" \
-            --set "racks[0].resources.requests.cpu=10m" \
-            --set "racks[0].resources.requests.memory=100Mi" \
-            --set "racks[0].resources.limits.cpu=1" \
-            --set "racks[0].resources.limits.memory=1Gi" \
-            --set "racks[0].placement=null"
+            -f /tmp/scylla-values.yaml
 
       - name: Wait for ScyllaCluster to be ready
         run: |

@@ -16,18 +16,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Write KinD cluster config
+        run: |
+          cat > /tmp/kind-config.yaml <<'EOF'
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          networking:
+            ipFamily: ipv4
+          nodes:
+            - role: control-plane
+            - role: worker
+          EOF
+
       - name: Create KinD cluster
         uses: helm/kind-action@v1
         with:
           cluster_name: e2e
-          config: |
-            kind: Cluster
-            apiVersion: kind.x-k8s.io/v1alpha4
-            networking:
-              ipFamily: ipv4
-            nodes:
-              - role: control-plane
-              - role: worker
+          config: /tmp/kind-config.yaml
 
       - name: Build operator image
         run: docker build . -t localhost/scylladb/scylla-operator:e2e

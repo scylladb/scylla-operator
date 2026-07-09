@@ -1,0 +1,136 @@
+name: "E2E: KinD (Helm)"
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind-helm:
+    name: Deploy ScyllaDB on KinD using Helm
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup KinD cluster
+        id: setup
+        uses: ./.github/actions/setup-kind
+
+      - name: Deploy operator (Helm)
+        env:
+          IMAGE_REF: ${{ steps.setup.outputs.image-ref }}
+        run: |
+          # Extract repository and tag from the full image reference.
+          # "localhost/scylladb/scylla-operator:e2e" -> repo="localhost/scylladb", tag="e2e"
+          repo="${IMAGE_REF%/*}"
+          tag="${IMAGE_REF##*:}"
+
+          helm install scylla-operator helm/scylla-operator \
+            --create-namespace \
+            --namespace scylla-operator \
+            --set "image.repository=${repo}" \
+            --set "image.tag=${tag}" \
+            --set replicas=1 \
+            --set webhookServerReplicas=1
+
+          # Wait for CRDs to be established.
+          kubectl wait --for=condition=established --timeout=60s \
+            crd/scyllaclusters.scylla.scylladb.com
+
+          # Wait for rollout.
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/scylla-operator
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/webhook-server
+
+      - name: Deploy ScyllaDB cluster (Helm)
+        run: |
+          SCYLLADB_VERSION="$(grep -m1 '^  scyllaDBVersion:' assets/config/config.yaml | awk -F'"' '{print $2}')"
+          SCYLLADB_MANAGER_AGENT_VERSION="$(grep -m1 '^  scyllaDBManagerAgentVersion:' assets/config/config.yaml | awk -F'"' '{print $2}')"
+
+          cat > /tmp/scylla-values.yaml <<EOF
+          scyllaImage:
+            tag: ${SCYLLADB_VERSION}
+          agentImage:
+            tag: ${SCYLLADB_MANAGER_AGENT_VERSION}
+          developerMode: true
+          scyllaArgs: "--reactor-backend=io_uring"
+          exposeOptions:
+            nodeService:
+              type: Headless
+            broadcastOptions:
+              nodes:
+                type: PodIP
+              clients:
+                type: PodIP
+          racks:
+            - name: us-east-1a
+              members: 1
+              storage:
+                storageClassName: standard
+                capacity: 1Gi
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 100Mi
+                limits:
+                  cpu: 1
+                  memory: 1Gi
+          EOF
+
+          helm install scylla helm/scylla \
+            --create-namespace \
+            --namespace scylla \
+            -f /tmp/scylla-values.yaml
+
+      - name: Wait for ScyllaCluster to be ready
+        run: |
+          echo "Waiting for ScyllaCluster to roll out..."
+          kubectl -n scylla wait --timeout=10m --for='condition=Progressing=False' \
+            scyllacluster/scylla
+          kubectl -n scylla wait --timeout=10m --for='condition=Degraded=False' \
+            scyllacluster/scylla
+          kubectl -n scylla wait --timeout=10m --for='condition=Available=True' \
+            scyllacluster/scylla
+          echo "ScyllaCluster is available."
+
+      - name: Verify CQL connectivity
+        run: |
+          pod="$(kubectl -n scylla get pods -l "scylla/cluster=scylla" -o jsonpath='{.items[0].metadata.name}')"
+          echo "Running CQL query against pod ${pod}..."
+
+          kubectl -n scylla exec "${pod}" -c scylla -- \
+            cqlsh localhost -e "SELECT key, cluster_name, data_center FROM system.local"
+
+          echo "CQL connectivity verified."
+
+      - name: Collect debug info
+        if: always()
+        run: |
+          echo "=== Cluster-wide pod status ==="
+          kubectl get pods -A -o wide || true
+
+          echo ""
+          echo "=== ScyllaCluster status ==="
+          kubectl -n scylla get scyllaclusters -o yaml || true
+
+          echo ""
+          echo "=== Scylla pods ==="
+          kubectl -n scylla describe pods || true
+
+          echo ""
+          echo "=== Operator logs ==="
+          kubectl -n scylla-operator logs deployment/scylla-operator --tail=100 || true
+
+          echo ""
+          echo "=== Webhook server logs ==="
+          kubectl -n scylla-operator logs deployment/webhook-server --tail=50 || true
+
+          echo ""
+          echo "=== Helm releases ==="
+          helm list -A || true

@@ -7,6 +7,9 @@ outputs:
   image-ref:
     description: The operator image reference loaded into the cluster.
     value: ${{ steps.meta.outputs.image-ref }}
+  cluster-name:
+    description: The KinD cluster name used for this run.
+    value: ${{ steps.meta.outputs.cluster-name }}
 
 runs:
   using: composite
@@ -14,7 +17,12 @@ runs:
     - name: Set image metadata
       id: meta
       shell: bash
-      run: echo "image-ref=localhost/scylladb/scylla-operator:e2e" >> "${GITHUB_OUTPUT}"
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number || 'manual' }}
+      run: |
+        suffix="pr${PR_NUMBER}-run${GITHUB_RUN_ID}-a${GITHUB_RUN_ATTEMPT}"
+        echo "cluster-name=e2e-${suffix}" >> "${GITHUB_OUTPUT}"
+        echo "image-ref=localhost/scylladb/scylla-operator:${suffix}" >> "${GITHUB_OUTPUT}"
 
     - name: Write KinD cluster config
       shell: bash
@@ -30,9 +38,9 @@ runs:
         EOF
 
     - name: Create KinD cluster
-      uses: helm/kind-action@v1
+      uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc
       with:
-        cluster_name: e2e
+        cluster_name: ${{ steps.meta.outputs.cluster-name }}
         config: /tmp/kind-config.yaml
 
     - name: Build operator image
@@ -41,7 +49,7 @@ runs:
 
     - name: Load operator image into KinD
       shell: bash
-      run: kind load docker-image ${{ steps.meta.outputs.image-ref }} --name e2e
+      run: kind load docker-image ${{ steps.meta.outputs.image-ref }} --name ${{ steps.meta.outputs.cluster-name }}
 
     - name: Deploy cert-manager
       shell: bash

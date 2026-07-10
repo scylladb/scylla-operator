@@ -3,7 +3,9 @@ package controllerhelpers
 import (
 	"fmt"
 
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -38,6 +40,44 @@ func IsStatefulSetRolledOut(sts *appsv1.StatefulSet) (bool, error) {
 	} else {
 		return sts.Status.UpdateRevision == sts.Status.CurrentRevision, nil
 	}
+}
+
+func IsDeploymentRolledOut(deploy *appsv1.Deployment) (bool, error) {
+	if deploy.Spec.Replicas == nil {
+		return false, fmt.Errorf("deployment.spec.replicas can't be nil")
+	}
+
+	if deploy.Status.ObservedGeneration == 0 || deploy.Generation > deploy.Status.ObservedGeneration {
+		klog.V(4).InfoS("Observed generation not caught up yet", "Deployment", klog.KObj(deploy))
+		return false, nil
+	}
+
+	if deploy.Status.UpdatedReplicas < *deploy.Spec.Replicas {
+		klog.V(4).InfoS("Not all replicas are updated yet", "Deployment", klog.KObj(deploy))
+		return false, nil
+	}
+
+	if deploy.Status.ReadyReplicas < *deploy.Spec.Replicas {
+		klog.V(4).InfoS("Not all replicas are ready yet", "Deployment", klog.KObj(deploy))
+		return false, nil
+	}
+
+	if deploy.Status.AvailableReplicas < *deploy.Spec.Replicas {
+		klog.V(4).InfoS("Not all replicas are available yet", "Deployment", klog.KObj(deploy))
+		return false, nil
+	}
+
+	_, _, availableConditionTrue := oslices.Find(deploy.Status.Conditions, func(condition appsv1.DeploymentCondition) bool {
+		return condition.Type == appsv1.DeploymentAvailable && condition.Status == corev1.ConditionTrue
+	})
+	if !availableConditionTrue {
+		klog.V(4).InfoS("Available condition is not True", "Deployment", klog.KObj(deploy))
+		return false, nil
+	}
+
+	klog.V(4).InfoS("Fully rolled out", "Deployment", klog.KObj(deploy))
+
+	return true, nil
 }
 
 func IsDaemonSetRolledOut(ds *appsv1.DaemonSet) (bool, error) {

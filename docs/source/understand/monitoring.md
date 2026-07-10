@@ -6,7 +6,7 @@ ScyllaDB [exposes](https://monitoring.docs.scylladb.com/stable/reference/monitor
 ScyllaDB Operator provides the [`ScyllaDBMonitoring`](../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst) custom resource
 that allows you to set up a complete monitoring stack for your ScyllaDB clusters based on the following components:
 
-- [**Prometheus**](https://prometheus.io) for metrics collection and alerting (along with scraping and alerting rules targeting ScyllaDB instances).
+- [**Prometheus**](https://prometheus.io) for metrics collection and alerting (scraping ScyllaDB and host-level metrics, and alerting rules targeting ScyllaDB instances).
 - [**Grafana**](https://grafana.com) for metrics visualization (with pre-configured dashboards for ScyllaDB).
 
 :::{include} ../deploy-scylladb/set-up-monitoring/diagrams/monitoring-overview.mmd
@@ -38,6 +38,13 @@ The following Prometheus Operator resources are created by ScyllaDB Operator whe
 The Prometheus version used in the deployment is tied to the version of ScyllaDB Operator. You can find the exact version used in the
 [`config.yaml`](https://github.com/scylladb/scylla-operator/blob/master/assets/config/config.yaml) file under `operator.prometheusVersion` key.
 
+Alongside ScyllaDB's own metrics, Prometheus also collects metrics from `scylladb-node-exporter`, ScyllaDB's packaging of the [Prometheus node_exporter agent](https://github.com/prometheus/node_exporter),
+exposing host/OS-level metrics (CPU, memory, disk I/O, network, filesystem) from every ScyllaDB Pod. 
+This is what feeds the OS-level dashboards in ScyllaDB Monitoring's Grafana.
+
+For ScyllaDB version 2026.3 or later, ScyllaDB Operator deploys a dedicated `scylladb-node-exporter` sidecar Container inside the Pod; for earlier versions, the
+exporter runs as a process inside the main ScyllaDB Container.
+
 ### External
 
 The **External** mode plugs into an existing Prometheus that is managed by Prometheus Operator (and therefore can be configured by `ServiceMonitor`).
@@ -64,6 +71,27 @@ What this means is that when you create a `ScyllaDBMonitoring` resource, ScyllaD
 resource (from the [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator)) in the same namespace as the `ScyllaDBMonitoring` resource.
 This Prometheus instance will be configured to scrape metrics from the ScyllaDB nodes in the cluster that `ScyllaDBMonitoring` is monitoring and
 will also have alerting rules configured for ScyllaDB (using `ServiceMonitor` and `PrometheusRule` CRs).
+
+### Node exporter resource boundaries and limitations
+
+Because `scylladb-node-exporter` runs within the ScyllaDB Pod's namespaces rather than directly on the host, the metrics it exposes reflect these isolation boundaries:
+
+:::{list-table}
+:header-rows: 1
+
+* - Domain
+  - Namespace isolation
+  - Metric effect and limitations
+* - **CPU, memory, and system state**
+  - Reads host-level `/proc` and `/sys` filesystems without cgroup-scoped constraints.
+  - Metrics (like CPU, memory, disk I/O, and vmstat) report global Node-wide resource usage rather than Pod-level resource limits. When running multiple ScyllaDB Pods on the same Node, their exporters report identical and duplicated Node-level values.
+* - **Network**
+  - Restricted to the Pod's network namespace.
+  - Network and TCP metrics reflect the Pod's virtual ethernet interface (`veth`) and namespace activity, not the physical host network interface cards (NICs). Host-level NIC ethtool allowance counters are unavailable and return zero.
+* - **Storage and filesystem**
+  - Restricted to the Container's mount namespace.
+  - Filesystem metrics report capacity and usage for paths mounted inside the Container (such as the `/var/lib/scylla` volume). They do not reflect the physical host's mount namespace, meaning the host's actual root partition and other host-level mounts are completely invisible.
+:::
 
 ## Grafana
 

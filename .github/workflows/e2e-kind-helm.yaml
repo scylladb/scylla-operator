@@ -1,10 +1,12 @@
 name: "E2E: KinD (Helm)"
 
 on:
-  push:
-    branches:
-      - '**'
+  pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -28,7 +30,7 @@ jobs:
           IMAGE_REF: ${{ steps.setup.outputs.image-ref }}
         run: |
           # Extract repository and tag from the full image reference.
-          # "localhost/scylladb/scylla-operator:e2e" -> repo="localhost/scylladb", tag="e2e"
+          # "localhost/scylladb/scylla-operator:pr123-run456-a1" -> repo="localhost/scylladb", tag="pr123-run456-a1"
           repo="${IMAGE_REF%/*}"
           tag="${IMAGE_REF##*:}"
 

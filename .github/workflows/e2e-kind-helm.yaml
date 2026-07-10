@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup KinD cluster
         id: setup
@@ -111,28 +111,90 @@ jobs:
 
           echo "CQL connectivity verified."
 
-      - name: Collect debug info
-        if: always()
+      - name: Collect must-gather evidence
+        id: collect-must-gather
+        if: failure()
+        env:
+          IMAGE_REF: ${{ steps.setup.outputs.image-ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number || 'manual' }}
         run: |
-          echo "=== Cluster-wide pod status ==="
-          kubectl get pods -A -o wide || true
+          set -euo pipefail
 
-          echo ""
-          echo "=== ScyllaCluster status ==="
-          kubectl -n scylla get scyllaclusters -o yaml || true
+          if ! kubectl cluster-info >/dev/null 2>&1; then
+            echo "Kubernetes cluster is not reachable, skipping must-gather collection."
+            exit 0
+          fi
 
-          echo ""
-          echo "=== Scylla pods ==="
-          kubectl -n scylla describe pods || true
+          ARTIFACT_DIR="${RUNNER_TEMP}/must-gather"
+          mkdir -p "${ARTIFACT_DIR}"
 
-          echo ""
-          echo "=== Operator logs ==="
-          kubectl -n scylla-operator logs deployment/scylla-operator --tail=100 || true
+          gather_failed=0
 
-          echo ""
-          echo "=== Webhook server logs ==="
-          kubectl -n scylla-operator logs deployment/webhook-server --tail=50 || true
+          {
+            kubectl create namespace gather-artifacts --dry-run=client -o yaml | kubectl apply -f -
+            kubectl create clusterrolebinding gather-artifacts \
+              --clusterrole=cluster-admin \
+              --serviceaccount=gather-artifacts:default \
+              --dry-run=client -o yaml | kubectl apply -f -
 
-          echo ""
-          echo "=== Helm releases ==="
-          helm list -A || true
+            kubectl -n gather-artifacts wait --for=jsonpath='{.metadata.name}'=default serviceaccount/default --timeout=60s
+
+            cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            labels:
+              app: must-gather
+            name: must-gather
+            namespace: gather-artifacts
+          spec:
+            restartPolicy: Never
+            containers:
+            - name: wait-for-artifacts
+              command: ["/usr/bin/sleep", "infinity"]
+              image: ${IMAGE_REF}
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+              - name: artifacts
+                mountPath: /tmp/artifacts
+            - name: must-gather
+              args: ["must-gather", "--all-resources", "--loglevel=2", "--dest-dir=/tmp/artifacts"]
+              image: ${IMAGE_REF}
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+              - name: artifacts
+                mountPath: /tmp/artifacts
+            volumes:
+            - name: artifacts
+              emptyDir: {}
+          EOF
+
+            kubectl -n gather-artifacts wait --timeout=300s --for=condition=Ready pod/must-gather || true
+            kubectl -n gather-artifacts wait --timeout=600s --for=jsonpath='{.status.containerStatuses[?(@.name=="must-gather")].state.terminated.exitCode}'=0 pod/must-gather
+
+            kubectl cp -n gather-artifacts -c wait-for-artifacts must-gather:/tmp/artifacts/. "${ARTIFACT_DIR}"
+          } || gather_failed=1
+
+          if [[ "${gather_failed}" -ne 0 ]]; then
+            {
+              echo "must-gather collection did not complete successfully."
+              echo "=== gather-artifacts namespace resources ==="
+              kubectl -n gather-artifacts get all || true
+              echo "=== must-gather pod describe ==="
+              kubectl -n gather-artifacts describe pod must-gather || true
+              echo "=== must-gather pod logs ==="
+              kubectl -n gather-artifacts logs pod/must-gather --all-containers=true || true
+            } > "${ARTIFACT_DIR}/must-gather-collection.log"
+          fi
+
+          kubectl -n gather-artifacts delete pod/must-gather --wait=false || true
+
+          tar -czf "${RUNNER_TEMP}/must-gather-pr${PR_NUMBER}-run${GITHUB_RUN_ID}.tar.gz" -C "${RUNNER_TEMP}" must-gather
+
+      - name: Upload must-gather artifact
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ runner.temp }}/must-gather-pr${{ github.event.pull_request.number || 'manual' }}-run${{ github.run_id }}.tar.gz
+          archive: false
+          if-no-files-found: ignore

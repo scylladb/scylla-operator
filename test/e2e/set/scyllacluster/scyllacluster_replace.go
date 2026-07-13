@@ -4,11 +4,13 @@ package scyllacluster
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -67,6 +69,37 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		var scyllaClusterProgressingWG sync.WaitGroup
 		// Ensure we wait for all background tasks on a test failure.
 		defer scyllaClusterProgressingWG.Wait()
+
+		// Start collecting logs from the pre-replacement Pod before the replacement is triggered,
+		// so we capture the full log history under a stable artifact name.
+		var stopPreReplacementPodLogCollection func(context.Context) error
+		if artifactsDir := f.GetDefaultArtifactsDir(); artifactsDir != "" {
+			var waitForStreamOpened func(context.Context) error
+			waitForStreamOpened, stopPreReplacementPodLogCollection, err = framework.DumpPodAndFollowLogs(
+				ctx,
+				nsClient.ClientConfig(),
+				nsClient.DynamicClient(),
+				nsClient.KubeClient().CoreV1(),
+				artifactsDir,
+				targetPod.Namespace,
+				targetPod.Name,
+				collect.CollectObjectOptions{
+					TransformName: func(name string) string {
+						return fmt.Sprintf("%s.pre-replacement", name)
+					},
+				},
+			)
+			o.Expect(err).NotTo(o.HaveOccurred(), "Failed to start following pod logs")
+			g.DeferCleanup(func(ctx context.Context) {
+				err := stopPreReplacementPodLogCollection(ctx)
+				o.Expect(err).NotTo(o.HaveOccurred(), "Failed to stop following pod logs")
+			})
+
+			// Wait until the log stream is open before triggering the replacement,
+			// to avoid a race where the Pod disappears before we start streaming.
+			err := waitForStreamOpened(ctx)
+			o.Expect(err).NotTo(o.HaveOccurred(), "Pre-replacement log stream failed before opening")
+		}
 
 		// Wait for the controllers to pick up the Pod replacement.
 		// Do this in the background to ensure we don't miss the progressing state if it happens too quickly.

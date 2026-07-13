@@ -1,6 +1,6 @@
 operator:
   # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
-  scyllaDBVersion: "2026.2.0"
+  scyllaDBVersion: "2026.2.1"
   scyllaDBUtilsImage: "docker.io/scylladb/scylla:2026.1.0@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver
   scyllaDBManagerVersion: "3.11.2@sha256:61ec1396d438945abf3db46db893d7e4d2324acb5523d143077f8fdfea05779d"
@@ -12,8 +12,8 @@ operator:
   prometheusVersion: "v3.12.0" # Generated from scylla-monitoring/versions.sh PROMETHEUS_VERSION.
 operatorTests:
   scyllaDBVersions:
-    updateFrom: "2026.2.0-rc3" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
-    upgradeFrom: "2026.1.6" # One minor lower than .operator.scyllaDBVersion
+    updateFrom: "2026.2.0" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
+    upgradeFrom: "2026.1.8" # One minor lower than .operator.scyllaDBVersion
   nodeSetupImage: "quay.io/scylladb/scylla-operator-images:node-setup-v0.0.4@sha256:8d77b91db6cffb40337e3db9c9a2f73f190eda9f9e547a752f0beab8aea322ef"
   # renovate: datasource=custom.envtest depName=envtest versioning=semver
   envTestKubernetesVersion: "v1.36.2"

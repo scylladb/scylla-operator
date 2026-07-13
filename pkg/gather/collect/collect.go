@@ -171,7 +171,17 @@ func (c *Collector) collectScyllaDBMonitoring(ctx context.Context, u *unstructur
 	return nil
 }
 
+// CollectObjectOptions customizes how a single object is collected.
+type CollectObjectOptions struct {
+	// TransformName, if set, is applied to a resource's name to produce the name used for its filesystem artifact path.
+	TransformName func(name string) string
+}
+
 func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
+	return c.CollectObjectWithOptions(ctx, u, resourceInfo, CollectObjectOptions{})
+}
+
+func (c *Collector) CollectObjectWithOptions(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 	key := getResourceKey(u, resourceInfo)
 	if c.collectedResources.Has(key) {
 		klog.V(3).InfoS("Skipping already collected resource", "Resource", resourceInfo.Resource, "Ref", naming.ObjRef(u))
@@ -181,7 +191,7 @@ func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructu
 
 	switch resourceInfo.Resource.GroupResource() {
 	case corev1.SchemeGroupVersion.WithResource("pods").GroupResource():
-		return c.podCollector.Collect(ctx, u, resourceInfo)
+		return c.podCollector.CollectWithOptions(ctx, u, resourceInfo, options)
 
 	case corev1.SchemeGroupVersion.WithResource("namespaces").GroupResource():
 		return c.collectNamespace(ctx, u, resourceInfo)

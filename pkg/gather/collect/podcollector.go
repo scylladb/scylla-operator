@@ -26,7 +26,7 @@ import (
 
 type PodRuntimeCollector struct {
 	Filter  func(pod *corev1.Pod) bool
-	Collect func(context.Context, *corev1.Pod, *ResourceInfo) error
+	Collect func(context.Context, *corev1.Pod, *ResourceInfo, CollectObjectOptions) error
 }
 
 type PodCollector struct {
@@ -87,18 +87,22 @@ func NewPodCollector(restConfig *rest.Config, corev1Client corev1client.CoreV1In
 }
 
 func (c *PodCollector) Collect(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
+	return c.CollectWithOptions(ctx, u, resourceInfo, CollectObjectOptions{})
+}
+
+func (c *PodCollector) CollectWithOptions(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 	pod := &corev1.Pod{}
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, pod)
 	if err != nil {
 		return fmt.Errorf("can't convert secret from unstructured: %w", err)
 	}
 
-	err = c.resourceWriter.WriteResource(ctx, pod, resourceInfo)
+	err = c.resourceWriter.WriteResourceWithOptions(ctx, pod, resourceInfo, options)
 	if err != nil {
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
 	}
 
-	err = c.collectPodRuntimeInformation(ctx, pod, resourceInfo)
+	err = c.collectPodRuntimeInformation(ctx, pod, resourceInfo, options)
 	if err != nil {
 		return fmt.Errorf("can't collect runtime information: %w", err)
 	}
@@ -193,14 +197,14 @@ func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string,
 	return nil
 }
 
-func (c *PodCollector) collectPodRuntimeInformation(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
+func (c *PodCollector) collectPodRuntimeInformation(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 	var errs []error
 	for _, fc := range c.podRuntimeCollectors {
 		if fc.Filter != nil && !fc.Filter(pod) {
 			continue
 		}
 
-		err := fc.Collect(ctx, pod, resourceInfo)
+		err := fc.Collect(ctx, pod, resourceInfo, options)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't collect Pod %q runtime information: %w", naming.ObjRef(pod), err))
 		}
@@ -209,8 +213,8 @@ func (c *PodCollector) collectPodRuntimeInformation(ctx context.Context, pod *co
 	return nil
 }
 
-func (c *PodCollector) collectPodLogs(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
-	podDir, err := c.createPodDirectory(pod, resourceInfo)
+func (c *PodCollector) collectPodLogs(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
+	podDir, err := c.createPodDirectory(pod, resourceInfo, options)
 	if err != nil {
 		return fmt.Errorf("can't create pod directory: %w", err)
 	}
@@ -239,12 +243,16 @@ func (c *PodCollector) collectPodLogs(ctx context.Context, pod *corev1.Pod, reso
 	return nil
 }
 
-func (c *PodCollector) createPodDirectory(pod *corev1.Pod, resourceInfo *ResourceInfo) (string, error) {
+func (c *PodCollector) createPodDirectory(pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) (string, error) {
 	resourceDir, err := c.resourceWriter.GetResourceDir(pod, resourceInfo)
 	if err != nil {
 		return "", fmt.Errorf("can't get resourceDir: %q", err)
 	}
-	podDir := filepath.Join(resourceDir, pod.GetName())
+	name := pod.GetName()
+	if options.TransformName != nil {
+		name = options.TransformName(name)
+	}
+	podDir := filepath.Join(resourceDir, name)
 
 	err = os.MkdirAll(podDir, 0770)
 	if err != nil {
@@ -288,11 +296,11 @@ func (c *PodCollector) executeRemoteCommand(ctx context.Context, pod *corev1.Pod
 	return stdout, stderr, nil
 }
 
-func (c *PodCollector) collectContainerCommandOutputFunc(containerName string, filename string, command []string) func(context.Context, *corev1.Pod, *ResourceInfo) error {
-	return func(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
+func (c *PodCollector) collectContainerCommandOutputFunc(containerName string, filename string, command []string) func(context.Context, *corev1.Pod, *ResourceInfo, CollectObjectOptions) error {
+	return func(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 		klog.V(4).InfoS("Collecting container command output", "Namespace", pod.Namespace, "Pod", pod.Name, "Container", containerName, "Command", command)
 
-		podDir, err := c.createPodDirectory(pod, resourceInfo)
+		podDir, err := c.createPodDirectory(pod, resourceInfo, options)
 		if err != nil {
 			return fmt.Errorf("can't create pod directory: %w", err)
 		}

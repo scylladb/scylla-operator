@@ -216,6 +216,36 @@ func (c *Collector) CollectResourceObject(ctx context.Context, resourceInfo *Res
 	return c.CollectObject(ctx, obj, resourceInfo)
 }
 
+// CollectResourceObjectWithOptionsAndFollowLogs gets the object using the dynamic client and follows its logs.
+func (c *Collector) CollectResourceObjectWithOptionsAndFollowLogs(ctx context.Context, resourceInfo *ResourceInfo, namespace, name string, options CollectObjectOptions, streamOpenCallback func()) error {
+	obj, err := c.dynamicClient.Resource(resourceInfo.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get resource %q: %w", resourceInfo.Resource, err)
+	}
+
+	return c.CollectObjectWithOptionsAndFollowLogs(ctx, obj, resourceInfo, options, streamOpenCallback)
+}
+
+// CollectObjectWithOptionsAndFollowLogs collects the object's manifest and follows its current container logs until
+// the stream ends. Previous and terminated logs are dumped once without following.
+// Only Pods are supported.
+// streamOpenCallback, if non-nil, is called once all running container log streams are successfully opened.
+func (c *Collector) CollectObjectWithOptionsAndFollowLogs(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo, options CollectObjectOptions, streamOpenCallback func()) error {
+	key := getResourceKey(u, resourceInfo)
+	if c.collectedResources.Has(key) {
+		klog.V(3).InfoS("Skipping already collected resource", "Resource", resourceInfo.Resource, "Ref", naming.ObjRef(u))
+		return nil
+	}
+	c.collectedResources.Insert(key)
+
+	switch resourceInfo.Resource.GroupResource() {
+	case corev1.SchemeGroupVersion.WithResource("pods").GroupResource():
+		return c.podCollector.CollectAndFollowLogs(ctx, u, resourceInfo, options, streamOpenCallback)
+	default:
+		return fmt.Errorf("following logs is only supported for Pods, got %q", resourceInfo.Resource.GroupResource())
+	}
+}
+
 func (c *Collector) CollectResourceObjects(ctx context.Context, resourceInfo *ResourceInfo, namespace string) error {
 	l, err := c.dynamicClient.Resource(resourceInfo.Resource).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {

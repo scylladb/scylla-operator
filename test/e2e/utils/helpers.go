@@ -236,7 +236,7 @@ func RunEphemeralContainerAndCollectLogs(ctx context.Context, client corev1clien
 	}
 	logs := &bytes.Buffer{}
 
-	err = collect.GetPodLogs(ctx, client, logs, podName, logOptions)
+	err = collect.GetPodLogs(ctx, client, logs, podName, logOptions, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't collect Pod logs: %w", err)
 	}

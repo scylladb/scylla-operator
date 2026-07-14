@@ -249,10 +249,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		f = framework.NewFramework(ctx, "scyllacluster")
 	})
 
-	g.It("should skip iotune on restart when io properties are cached", func(specCtx context.Context) {
-		testCtx, testCtxCancel := context.WithTimeout(specCtx, testTimeout)
-		defer testCtxCancel()
-
+	g.It("should skip iotune on restart when io properties are cached", func(testCtx context.Context) {
 		framework.By("Creating a ScyllaCluster with developer mode disabled")
 		sc := f.GetNonDevModeScyllaCluster()
 		sc.Spec.Datacenter.Racks[0].Members = 1

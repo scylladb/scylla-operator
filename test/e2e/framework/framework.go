@@ -235,8 +235,9 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 func (f *Framework) GetNonDevModeScyllaCluster() *scyllav1.ScyllaCluster {
 	sc := f.GetDefaultScyllaCluster()
 	sc.Spec.DeveloperMode = false
-	sc.Spec.Datacenter.Racks[0].Storage.Capacity = "11Gi"
-	sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("3Gi")
+	// ScyllaDB production mode requires at least 10Gi to run iotune and 4Gi of memory (system requirements)
+	sc.Spec.Datacenter.Racks[0].Storage.Capacity = "10Gi"
+	sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceMemory] = resource.MustParse("4Gi")
 
 	return sc
 }

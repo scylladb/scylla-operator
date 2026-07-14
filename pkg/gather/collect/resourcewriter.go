@@ -48,10 +48,15 @@ func (c *ResourceWriter) GetResourceDir(obj kubeinterfaces.ObjectInterface, reso
 	}
 }
 
-func (c *ResourceWriter) WriteObject(ctx context.Context, dirPath string, obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo) error {
+func (c *ResourceWriter) WriteObjectWithOptions(ctx context.Context, dirPath string, obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
+	name := obj.GetName()
+	if options.TransformName != nil {
+		name = options.TransformName(name)
+	}
+
 	var err error
 	for _, printer := range c.printers {
-		filePath := filepath.Join(dirPath, obj.GetName()+printer.GetSuffix())
+		filePath := filepath.Join(dirPath, name+printer.GetSuffix())
 		err = writeObject(printer, filePath, resourceInfo, obj)
 		if err != nil {
 			return fmt.Errorf("can't write object: %w", err)
@@ -62,6 +67,10 @@ func (c *ResourceWriter) WriteObject(ctx context.Context, dirPath string, obj ku
 }
 
 func (c *ResourceWriter) WriteResource(ctx context.Context, obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo) error {
+	return c.WriteResourceWithOptions(ctx, obj, resourceInfo, CollectObjectOptions{})
+}
+
+func (c *ResourceWriter) WriteResourceWithOptions(ctx context.Context, obj kubeinterfaces.ObjectInterface, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 	resourceDir, err := c.GetResourceDir(obj, resourceInfo)
 	if err != nil {
 		return fmt.Errorf("can't get resourceDir: %q", err)
@@ -72,7 +81,7 @@ func (c *ResourceWriter) WriteResource(ctx context.Context, obj kubeinterfaces.O
 		return fmt.Errorf("can't create resource dir %q: %w", resourceDir, err)
 	}
 
-	err = c.WriteObject(ctx, resourceDir, obj, resourceInfo)
+	err = c.WriteObjectWithOptions(ctx, resourceDir, obj, resourceInfo, options)
 	if err != nil {
 		return fmt.Errorf("can't write object: %w", err)
 	}

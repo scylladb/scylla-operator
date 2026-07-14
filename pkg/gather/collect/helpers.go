@@ -10,7 +10,9 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func GetPodLogs(ctx context.Context, podClient corev1client.PodInterface, writer io.Writer, podName string, logOptions *corev1.PodLogOptions) error {
+// GetPodLogs streams logs into a writer.
+// streamOpenCallback is called after the stream is opened.
+func GetPodLogs(ctx context.Context, podClient corev1client.PodInterface, writer io.Writer, podName string, logOptions *corev1.PodLogOptions, streamOpenCallback func()) error {
 	logsReq := podClient.GetLogs(podName, logOptions)
 	readCloser, err := logsReq.Stream(ctx)
 	if err != nil {
@@ -22,6 +24,10 @@ func GetPodLogs(ctx context.Context, podClient corev1client.PodInterface, writer
 			klog.ErrorS(err, "can't close log stream", "Pod", podName, "Container", logOptions.Container)
 		}
 	}()
+
+	if streamOpenCallback != nil {
+		streamOpenCallback()
+	}
 
 	_, err = io.Copy(writer, readCloser)
 	if err != nil {

@@ -48,6 +48,7 @@ func TestCollector_CollectObject(t *testing.T) {
 		existingObjects  []runtime.Object
 		relatedResources bool
 		keepGoing        bool
+		collectOptions   CollectObjectOptions
 		expectedDump     *testhelpers.GatherDump
 		expectedError    error
 	}{
@@ -278,6 +279,130 @@ status:
 					},
 					{
 						Name:    "namespaces/test/pods/my-pod/my-init-container.current",
+						Content: "fake logs",
+					},
+				},
+			},
+		},
+		{
+			name: "applies TransformName to the manifest filename and pod log directory",
+			targetedObject: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "my-pod",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "my-container"},
+					},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  "my-container",
+							State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+						},
+					},
+				},
+			},
+			existingObjects:  nil,
+			relatedResources: false,
+			keepGoing:        false,
+			collectOptions: CollectObjectOptions{
+				TransformName: func(name string) string {
+					return name + ".suffix"
+				},
+			},
+			expectedError: nil,
+			expectedDump: &testhelpers.GatherDump{
+				Files: []testhelpers.File{
+					{
+						Name: "namespaces/test/pods/my-pod.suffix.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: test
+spec:
+  containers:
+  - name: my-container
+    resources: {}
+status:
+  containerStatuses:
+  - image: ""
+    imageID: ""
+    lastState: {}
+    name: my-container
+    ready: false
+    restartCount: 0
+    state:
+      running:
+        startedAt: null
+`, "\n"),
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod.suffix/my-container.current",
+						Content: "fake logs",
+					},
+				},
+			},
+		},
+		{
+			name: "nil TransformName behaves like zero-value options",
+			targetedObject: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "my-pod",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{Name: "my-container"},
+					},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Name:  "my-container",
+							State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+						},
+					},
+				},
+			},
+			existingObjects:  nil,
+			relatedResources: false,
+			keepGoing:        false,
+			collectOptions:   CollectObjectOptions{},
+			expectedError:    nil,
+			expectedDump: &testhelpers.GatherDump{
+				Files: []testhelpers.File{
+					{
+						Name: "namespaces/test/pods/my-pod.yaml",
+						Content: strings.TrimPrefix(`
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  namespace: test
+spec:
+  containers:
+  - name: my-container
+    resources: {}
+status:
+  containerStatuses:
+  - image: ""
+    imageID: ""
+    lastState: {}
+    name: my-container
+    ready: false
+    restartCount: 0
+    state:
+      running:
+        startedAt: null
+`, "\n"),
+					},
+					{
+						Name:    "namespaces/test/pods/my-pod/my-container.current",
 						Content: "fake logs",
 					},
 				},
@@ -1007,7 +1132,7 @@ status: {}
 				t.Fatal(err)
 			}
 
-			err = collector.CollectObject(ctx, u, NewResourceInfoFromMapping(mapping))
+			err = collector.CollectObjectWithOptions(ctx, u, NewResourceInfoFromMapping(mapping), tc.collectOptions)
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatal(err)
 			}

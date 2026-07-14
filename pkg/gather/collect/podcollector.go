@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
@@ -26,7 +27,7 @@ import (
 
 type PodRuntimeCollector struct {
 	Filter  func(pod *corev1.Pod) bool
-	Collect func(context.Context, *corev1.Pod, *ResourceInfo) error
+	Collect func(context.Context, *corev1.Pod, *ResourceInfo, CollectObjectOptions) error
 }
 
 type PodCollector struct {
@@ -87,18 +88,22 @@ func NewPodCollector(restConfig *rest.Config, corev1Client corev1client.CoreV1In
 }
 
 func (c *PodCollector) Collect(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
+	return c.CollectWithOptions(ctx, u, resourceInfo, CollectObjectOptions{})
+}
+
+func (c *PodCollector) CollectWithOptions(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 	pod := &corev1.Pod{}
 	err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, pod)
 	if err != nil {
 		return fmt.Errorf("can't convert secret from unstructured: %w", err)
 	}
 
-	err = c.resourceWriter.WriteResource(ctx, pod, resourceInfo)
+	err = c.resourceWriter.WriteResourceWithOptions(ctx, pod, resourceInfo, options)
 	if err != nil {
 		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
 	}
 
-	err = c.collectPodRuntimeInformation(ctx, pod, resourceInfo)
+	err = c.collectPodRuntimeInformation(ctx, pod, resourceInfo, options)
 	if err != nil {
 		return fmt.Errorf("can't collect runtime information: %w", err)
 	}
@@ -106,7 +111,36 @@ func (c *PodCollector) Collect(ctx context.Context, u *unstructured.Unstructured
 	return nil
 }
 
-func writeContainerLogsToFile(ctx context.Context, podClient corev1client.PodInterface, destinationPath string, podName string, logOptions *corev1.PodLogOptions) error {
+// CollectAndFollowLogs writes the Pod manifest and collects all container logs.
+// For running containers, logs are streamed with Follow=true and the call blocks until the stream ends.
+// For previously-terminated and currently-terminated containers, logs are collected as one-shot dumps.
+// streamOpenCallback, if non-nil, is called once all running container log streams are successfully opened.
+func (c *PodCollector) CollectAndFollowLogs(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo, options CollectObjectOptions, streamOpenCallback func()) error {
+	pod := &corev1.Pod{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, pod)
+	if err != nil {
+		return fmt.Errorf("can't convert pod from unstructured: %w", err)
+	}
+
+	err = c.resourceWriter.WriteResourceWithOptions(ctx, pod, resourceInfo, options)
+	if err != nil {
+		return fmt.Errorf("can't write resource %q: %w", resourceInfo, err)
+	}
+
+	podDir, err := c.createPodDirectory(pod, resourceInfo, options)
+	if err != nil {
+		return fmt.Errorf("can't create pod directory: %w", err)
+	}
+
+	err = c.followPodLogs(ctx, podDir, pod, streamOpenCallback)
+	if err != nil {
+		return fmt.Errorf("can't collect pod logs: %w", err)
+	}
+
+	return nil
+}
+
+func writeContainerLogsToFile(ctx context.Context, podClient corev1client.PodInterface, destinationPath string, podName string, logOptions *corev1.PodLogOptions, streamOpenCallback func()) error {
 	dest, err := os.OpenFile(destinationPath, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return fmt.Errorf("can't open file %q: %w", destinationPath, err)
@@ -118,24 +152,7 @@ func writeContainerLogsToFile(ctx context.Context, podClient corev1client.PodInt
 		}
 	}()
 
-	logsReq := podClient.GetLogs(podName, logOptions)
-	readCloser, err := logsReq.Stream(ctx)
-	if err != nil {
-		return fmt.Errorf("can't create a log stream: %w", err)
-	}
-	defer func() {
-		err := readCloser.Close()
-		if err != nil {
-			klog.ErrorS(err, "can't close log stream", "Path", destinationPath, "Pod", podName, "Container", logOptions.Container)
-		}
-	}()
-
-	_, err = io.Copy(dest, readCloser)
-	if err != nil {
-		return fmt.Errorf("can't read logs: %w", err)
-	}
-
-	return nil
+	return GetPodLogs(ctx, podClient, dest, podName, logOptions, streamOpenCallback)
 }
 
 func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string, podMeta *metav1.ObjectMeta, podCSs []corev1.ContainerStatus, containerName string) error {
@@ -157,8 +174,8 @@ func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string,
 	logOptions := &corev1.PodLogOptions{
 		Container:  containerName,
 		Timestamps: true,
-		Follow:     false,
 		LimitBytes: limitBytes,
+		Follow:     false,
 	}
 
 	// TODO: Tolerate errors in case state changes in the meantime (like when a pod is being restarted in backoff)
@@ -168,7 +185,7 @@ func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string,
 	if cs.State.Running != nil {
 		// Retrieve current logs.
 		logOptions.Previous = false
-		err = writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".current"), podMeta.Name, logOptions)
+		err = writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".current"), podMeta.Name, logOptions, nil)
 		if err != nil {
 			return fmt.Errorf("can't retrieve pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
 		}
@@ -176,7 +193,7 @@ func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string,
 
 	if cs.LastTerminationState.Terminated != nil {
 		logOptions.Previous = true
-		err = writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".previous"), podMeta.Name, logOptions)
+		err = writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".previous"), podMeta.Name, logOptions, nil)
 		if err != nil {
 			return fmt.Errorf("can't retrieve previous pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
 		}
@@ -184,7 +201,7 @@ func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string,
 
 	if cs.State.Terminated != nil {
 		logOptions.Previous = false
-		err = writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".terminated"), podMeta.Name, logOptions)
+		err = writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".terminated"), podMeta.Name, logOptions, nil)
 		if err != nil {
 			return fmt.Errorf("can't retrieve pod logs for terminated container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
 		}
@@ -193,14 +210,35 @@ func (c *PodCollector) collectContainerLogs(ctx context.Context, logsDir string,
 	return nil
 }
 
-func (c *PodCollector) collectPodRuntimeInformation(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
+func (c *PodCollector) followContainerLogs(ctx context.Context, logsDir string, podMeta *metav1.ObjectMeta, containerName string, streamOpenCallback func()) error {
+	var limitBytes *int64
+	if c.logsLimitBytes > 0 {
+		limitBytes = pointer.Ptr(c.logsLimitBytes)
+	}
+
+	logOptions := &corev1.PodLogOptions{
+		Container:  containerName,
+		Timestamps: true,
+		LimitBytes: limitBytes,
+		Follow:     true,
+	}
+
+	err := writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".current"), podMeta.Name, logOptions, streamOpenCallback)
+	if err != nil {
+		return fmt.Errorf("can't retrieve pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
+	}
+
+	return nil
+}
+
+func (c *PodCollector) collectPodRuntimeInformation(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 	var errs []error
 	for _, fc := range c.podRuntimeCollectors {
 		if fc.Filter != nil && !fc.Filter(pod) {
 			continue
 		}
 
-		err := fc.Collect(ctx, pod, resourceInfo)
+		err := fc.Collect(ctx, pod, resourceInfo, options)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't collect Pod %q runtime information: %w", naming.ObjRef(pod), err))
 		}
@@ -209,8 +247,8 @@ func (c *PodCollector) collectPodRuntimeInformation(ctx context.Context, pod *co
 	return nil
 }
 
-func (c *PodCollector) collectPodLogs(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
-	podDir, err := c.createPodDirectory(pod, resourceInfo)
+func (c *PodCollector) collectPodLogs(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
+	podDir, err := c.createPodDirectory(pod, resourceInfo, options)
 	if err != nil {
 		return fmt.Errorf("can't create pod directory: %w", err)
 	}
@@ -239,12 +277,183 @@ func (c *PodCollector) collectPodLogs(ctx context.Context, pod *corev1.Pod, reso
 	return nil
 }
 
-func (c *PodCollector) createPodDirectory(pod *corev1.Pod, resourceInfo *ResourceInfo) (string, error) {
+func (c *PodCollector) followPodLogs(ctx context.Context, podDir string, pod *corev1.Pod, streamOpenCallback func()) error {
+	var errs []error
+	for _, container := range pod.Spec.InitContainers {
+		err := c.collectContainerOneShotLogs(ctx, podDir, &pod.ObjectMeta, pod.Status.InitContainerStatuses, container.Name)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't collect logs for init container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err))
+		}
+	}
+
+	for _, container := range pod.Spec.Containers {
+		err := c.collectContainerOneShotLogs(ctx, podDir, &pod.ObjectMeta, pod.Status.ContainerStatuses, container.Name)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't collect logs for container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err))
+		}
+	}
+
+	for _, container := range pod.Spec.EphemeralContainers {
+		err := c.collectContainerOneShotLogs(ctx, podDir, &pod.ObjectMeta, pod.Status.EphemeralContainerStatuses, container.Name)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't collect logs for ephemeral container %q in pod %q: %w", container.Name, naming.ObjRef(pod), err))
+		}
+	}
+
+	if len(errs) != 0 {
+		return apimachineryutilerrors.NewAggregate(errs)
+	}
+
+	return c.followCurrentContainerLogs(ctx, podDir, pod, streamOpenCallback)
+}
+
+func (c *PodCollector) collectContainerOneShotLogs(ctx context.Context, logsDir string, podMeta *metav1.ObjectMeta, podCSs []corev1.ContainerStatus, containerName string) error {
+	cs, _, found := oslices.Find(podCSs, func(s corev1.ContainerStatus) bool {
+		return s.Name == containerName
+	})
+	if !found {
+		klog.InfoS("Container doesn't yet have a status", "Pod", naming.ObjRef(podMeta), "Container", containerName)
+		return nil
+	}
+
+	var limitBytes *int64
+	if c.logsLimitBytes > 0 {
+		limitBytes = pointer.Ptr(c.logsLimitBytes)
+	}
+
+	logOptions := &corev1.PodLogOptions{
+		Container:  containerName,
+		Timestamps: true,
+		LimitBytes: limitBytes,
+		Follow:     false,
+	}
+
+	if cs.LastTerminationState.Terminated != nil {
+		logOptions.Previous = true
+		err := writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".previous"), podMeta.Name, logOptions, nil)
+		if err != nil {
+			return fmt.Errorf("can't retrieve previous pod logs for container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
+		}
+	}
+
+	if cs.State.Terminated != nil {
+		logOptions.Previous = false
+		err := writeContainerLogsToFile(ctx, c.corev1Client.Pods(podMeta.Namespace), filepath.Join(logsDir, containerName+".terminated"), podMeta.Name, logOptions, nil)
+		if err != nil {
+			return fmt.Errorf("can't retrieve pod logs for terminated container %q in pod %q: %w", containerName, naming.ObjRef(podMeta), err)
+		}
+	}
+
+	return nil
+}
+
+func (c *PodCollector) followCurrentContainerLogs(ctx context.Context, podDir string, pod *corev1.Pod, streamOpenCallback func()) error {
+	type containerLogs struct {
+		name string
+		kind string
+	}
+
+	var containers []containerLogs
+	for _, container := range pod.Spec.InitContainers {
+		if isContainerRunning(pod.Status.InitContainerStatuses, container.Name) {
+			containers = append(containers, containerLogs{name: container.Name, kind: "init container"})
+		}
+	}
+
+	for _, container := range pod.Spec.Containers {
+		if isContainerRunning(pod.Status.ContainerStatuses, container.Name) {
+			containers = append(containers, containerLogs{name: container.Name, kind: "container"})
+		}
+	}
+
+	for _, container := range pod.Spec.EphemeralContainers {
+		if isContainerRunning(pod.Status.EphemeralContainerStatuses, container.Name) {
+			containers = append(containers, containerLogs{name: container.Name, kind: "ephemeral container"})
+		}
+	}
+
+	followCtx, followCtxCancel := context.WithCancel(ctx)
+	defer followCtxCancel()
+
+	var wg sync.WaitGroup
+	openCh := make(chan struct{}, len(containers))
+	errCh := make(chan error, len(containers))
+
+	for _, container := range containers {
+		wg.Add(1)
+
+		go func(container containerLogs) {
+			defer wg.Done()
+
+			err := c.followContainerLogs(followCtx, podDir, &pod.ObjectMeta, container.name, func() {
+				openCh <- struct{}{}
+			})
+			if err != nil {
+				errCh <- fmt.Errorf("can't collect logs for %s %q in pod %q: %w", container.kind, container.name, naming.ObjRef(pod), err)
+			}
+		}(container)
+	}
+
+	for range containers {
+		select {
+		case <-openCh:
+
+		case err := <-errCh:
+			followCtxCancel()
+
+			wg.Wait()
+			close(errCh)
+
+			errs := []error{err}
+			for err := range errCh {
+				errs = append(errs, err)
+			}
+
+			return apimachineryutilerrors.NewAggregate(errs)
+
+		case <-ctx.Done():
+			followCtxCancel()
+			wg.Wait()
+
+			return ctx.Err()
+
+		}
+	}
+
+	if streamOpenCallback != nil {
+		streamOpenCallback()
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	var errs []error
+	for err := range errCh {
+		errs = append(errs, err)
+	}
+
+	return apimachineryutilerrors.NewAggregate(errs)
+}
+
+func isContainerRunning(statuses []corev1.ContainerStatus, containerName string) bool {
+	cs, _, found := oslices.Find(statuses, func(s corev1.ContainerStatus) bool {
+		return s.Name == containerName
+	})
+
+	return found && cs.State.Running != nil
+}
+
+func (c *PodCollector) createPodDirectory(pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) (string, error) {
 	resourceDir, err := c.resourceWriter.GetResourceDir(pod, resourceInfo)
 	if err != nil {
 		return "", fmt.Errorf("can't get resourceDir: %q", err)
 	}
-	podDir := filepath.Join(resourceDir, pod.GetName())
+
+	name := pod.GetName()
+	if options.TransformName != nil {
+		name = options.TransformName(name)
+	}
+	podDir := filepath.Join(resourceDir, name)
 
 	err = os.MkdirAll(podDir, 0770)
 	if err != nil {
@@ -288,11 +497,11 @@ func (c *PodCollector) executeRemoteCommand(ctx context.Context, pod *corev1.Pod
 	return stdout, stderr, nil
 }
 
-func (c *PodCollector) collectContainerCommandOutputFunc(containerName string, filename string, command []string) func(context.Context, *corev1.Pod, *ResourceInfo) error {
-	return func(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo) error {
+func (c *PodCollector) collectContainerCommandOutputFunc(containerName string, filename string, command []string) func(context.Context, *corev1.Pod, *ResourceInfo, CollectObjectOptions) error {
+	return func(ctx context.Context, pod *corev1.Pod, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 		klog.V(4).InfoS("Collecting container command output", "Namespace", pod.Namespace, "Pod", pod.Name, "Container", containerName, "Command", command)
 
-		podDir, err := c.createPodDirectory(pod, resourceInfo)
+		podDir, err := c.createPodDirectory(pod, resourceInfo, options)
 		if err != nil {
 			return fmt.Errorf("can't create pod directory: %w", err)
 		}

@@ -171,7 +171,17 @@ func (c *Collector) collectScyllaDBMonitoring(ctx context.Context, u *unstructur
 	return nil
 }
 
+// CollectObjectOptions customizes how a single object is collected.
+type CollectObjectOptions struct {
+	// TransformName, if set, is applied to a resource's name to produce the name used for its filesystem artifact path.
+	TransformName func(name string) string
+}
+
 func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo) error {
+	return c.CollectObjectWithOptions(ctx, u, resourceInfo, CollectObjectOptions{})
+}
+
+func (c *Collector) CollectObjectWithOptions(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo, options CollectObjectOptions) error {
 	key := getResourceKey(u, resourceInfo)
 	if c.collectedResources.Has(key) {
 		klog.V(3).InfoS("Skipping already collected resource", "Resource", resourceInfo.Resource, "Ref", naming.ObjRef(u))
@@ -181,7 +191,7 @@ func (c *Collector) CollectObject(ctx context.Context, u *unstructured.Unstructu
 
 	switch resourceInfo.Resource.GroupResource() {
 	case corev1.SchemeGroupVersion.WithResource("pods").GroupResource():
-		return c.podCollector.Collect(ctx, u, resourceInfo)
+		return c.podCollector.CollectWithOptions(ctx, u, resourceInfo, options)
 
 	case corev1.SchemeGroupVersion.WithResource("namespaces").GroupResource():
 		return c.collectNamespace(ctx, u, resourceInfo)
@@ -204,6 +214,36 @@ func (c *Collector) CollectResourceObject(ctx context.Context, resourceInfo *Res
 	}
 
 	return c.CollectObject(ctx, obj, resourceInfo)
+}
+
+// CollectResourceObjectWithOptionsAndFollowLogs gets the object using the dynamic client and follows its logs.
+func (c *Collector) CollectResourceObjectWithOptionsAndFollowLogs(ctx context.Context, resourceInfo *ResourceInfo, namespace, name string, options CollectObjectOptions, streamOpenCallback func()) error {
+	obj, err := c.dynamicClient.Resource(resourceInfo.Resource).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("can't get resource %q: %w", resourceInfo.Resource, err)
+	}
+
+	return c.CollectObjectWithOptionsAndFollowLogs(ctx, obj, resourceInfo, options, streamOpenCallback)
+}
+
+// CollectObjectWithOptionsAndFollowLogs collects the object's manifest and follows its current container logs until
+// the stream ends. Previous and terminated logs are dumped once without following.
+// Only Pods are supported.
+// streamOpenCallback, if non-nil, is called once all running container log streams are successfully opened.
+func (c *Collector) CollectObjectWithOptionsAndFollowLogs(ctx context.Context, u *unstructured.Unstructured, resourceInfo *ResourceInfo, options CollectObjectOptions, streamOpenCallback func()) error {
+	key := getResourceKey(u, resourceInfo)
+	if c.collectedResources.Has(key) {
+		klog.V(3).InfoS("Skipping already collected resource", "Resource", resourceInfo.Resource, "Ref", naming.ObjRef(u))
+		return nil
+	}
+	c.collectedResources.Insert(key)
+
+	switch resourceInfo.Resource.GroupResource() {
+	case corev1.SchemeGroupVersion.WithResource("pods").GroupResource():
+		return c.podCollector.CollectAndFollowLogs(ctx, u, resourceInfo, options, streamOpenCallback)
+	default:
+		return fmt.Errorf("following logs is only supported for Pods, got %q", resourceInfo.Resource.GroupResource())
+	}
 }
 
 func (c *Collector) CollectResourceObjects(ctx context.Context, resourceInfo *ResourceInfo, namespace string) error {

@@ -3,7 +3,6 @@
 package scyllacluster
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
@@ -37,19 +35,25 @@ func addQuantity(lhs resource.Quantity, rhs resource.Quantity) *resource.Quantit
 }
 
 func IsIOTunePerformed(ctx context.Context, f *framework.Framework, podName string, sc *scyllav1.ScyllaCluster) (bool, error) {
-	logOptions := &corev1.PodLogOptions{
-		Container: naming.ScyllaContainerName,
-	}
-
-	logs := &bytes.Buffer{}
-	err := collect.GetPodLogs(ctx, f.KubeClient().CoreV1().Pods(f.Namespace()), logs, podName, logOptions)
+	// The sidecar starts /docker-entrypoint.py as a long-lived child process (it blocks on
+	// supervisord.wait()), so its arguments are readable for the whole container lifetime by
+	// execing into the container. --io-setup=0 and --io-properties-file are only passed to the
+	// entrypoint when the cached IO properties file already exists, i.e. when iotune was skipped.
+	stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+		Command:       []string{"/usr/bin/pgrep", "-af", "docker-entrypoint.py"},
+		Namespace:     f.Namespace(),
+		PodName:       podName,
+		ContainerName: naming.ScyllaContainerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	})
 	if err != nil {
-		return false, fmt.Errorf("can't get scylla logs from pod %q: %w", podName, err)
+		return false, fmt.Errorf("can't read entrypoint process args from pod %q: %w (stderr: %q)", podName, err, stderr)
 	}
 
-	entrypointCommand := logs.String()
-	if !strings.Contains(entrypointCommand, "Scylla entrypoint") {
-		return false, fmt.Errorf("can't find Scylla entrypoint log in pod %q", podName)
+	entrypointCommand := stdout
+	if !strings.Contains(entrypointCommand, "docker-entrypoint.py") {
+		return false, fmt.Errorf("can't find docker-entrypoint.py process in pod %q", podName)
 	}
 
 	hasIOSetupDisabled := strings.Contains(entrypointCommand, "--io-setup=0")

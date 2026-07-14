@@ -5,6 +5,7 @@ package scyllacluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -22,7 +23,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/exec"
 )
+
+// scyllaIOPropertiesPath is where the sidecar expects the IO properties file. It's a symlink to the
+// cached results on the data volume, dangling until iotune actually produces output.
+const scyllaIOPropertiesPath = "/etc/scylla.d/" + naming.ScyllaIOPropertiesName
 
 func addQuantity(lhs resource.Quantity, rhs resource.Quantity) *resource.Quantity {
 	res := lhs.DeepCopy()
@@ -61,6 +67,31 @@ func IsIOTunePerformed(ctx context.Context, f *framework.Framework, podName stri
 	isIOTuneSkipped := hasIOSetupDisabled && hasIOPropertiesFile
 
 	return !sc.Spec.DeveloperMode && !isIOTuneSkipped, nil
+}
+
+// IOPropertiesFileExists reports whether the resolved io_properties file exists in the ScyllaDB
+// container. The path is a symlink that's always present, but its target only exists once iotune has
+// actually produced output, so `test -f` (which follows the symlink) confirms iotune was performed
+// rather than merely requested.
+func IOPropertiesFileExists(ctx context.Context, f *framework.Framework, podName string) (bool, error) {
+	_, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+		Command:       []string{"test", "-f", scyllaIOPropertiesPath},
+		Namespace:     f.Namespace(),
+		PodName:       podName,
+		ContainerName: naming.ScyllaContainerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	})
+	if err != nil {
+		var codeExitErr exec.CodeExitError
+		if errors.As(err, &codeExitErr) && codeExitErr.Code == 1 {
+			// `test -f` exits with 1 when the file doesn't exist (or the symlink is dangling).
+			return false, nil
+		}
+		return false, fmt.Errorf("can't check for io_properties file in pod %q: %w (stderr: %q)", podName, err, stderr)
+	}
+
+	return true, nil
 }
 
 var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
@@ -281,6 +312,11 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		isIOTunePerformed, err = IsIOTunePerformed(testCtx, f, pod.Name, sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(isIOTunePerformed).To(o.BeTrue())
+
+		framework.By("Verifying that iotune produced the io_properties file")
+		ioPropertiesFileExists, err := IOPropertiesFileExists(testCtx, f, pod.Name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(ioPropertiesFileExists).To(o.BeTrue())
 
 		initialPodUID := pod.UID
 		framework.Infof("Initial pod %q UID is %q", pod.Name, initialPodUID)

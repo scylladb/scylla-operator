@@ -21,19 +21,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Build operator image (background)
-        run: |
-          nohup bash -c 'make image IMAGE_TAG=dev; echo $? > /tmp/build.exit' > /tmp/build.log 2>&1 &
-          disown
+      - name: Build operator image
+        run: make image IMAGE_TAG=dev
 
       - name: Setup KinD cluster
         uses: ./.github/actions/setup-kind
-
-      - name: Wait for image build
-        run: |
-          while [ ! -f /tmp/build.exit ]; do sleep 2; done
-          cat /tmp/build.log
-          exit "$(cat /tmp/build.exit)"
 
       - name: Load operator image into KinD
         run: kind load docker-image docker.io/scylladb/scylla-operator:dev --name e2e

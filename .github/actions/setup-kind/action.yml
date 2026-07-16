@@ -1,29 +1,15 @@
-name: Setup KinD with ScyllaDB Operator image
+name: Setup KinD cluster
 description: >
-  Creates a KinD cluster, builds the operator image from source,
-  loads it into the cluster, and deploys cert-manager.
+  Creates a KinD cluster and deploys cert-manager.
 
 outputs:
-  image-ref:
-    description: The operator image reference loaded into the cluster.
-    value: ${{ steps.meta.outputs.image-ref }}
   cluster-name:
-    description: The KinD cluster name used for this run.
-    value: ${{ steps.meta.outputs.cluster-name }}
+    description: The KinD cluster name.
+    value: e2e
 
 runs:
   using: composite
   steps:
-    - name: Set image metadata
-      id: meta
-      shell: bash
-      env:
-        PR_NUMBER: ${{ github.event.pull_request.number || 'manual' }}
-      run: |
-        suffix="pr${PR_NUMBER}-run${GITHUB_RUN_ID}-a${GITHUB_RUN_ATTEMPT}"
-        echo "cluster-name=e2e-${suffix}" >> "${GITHUB_OUTPUT}"
-        echo "image-ref=localhost/scylladb/scylla-operator:${suffix}" >> "${GITHUB_OUTPUT}"
-
     - name: Write KinD cluster config
       shell: bash
       run: |
@@ -40,16 +26,8 @@ runs:
     - name: Create KinD cluster
       uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc
       with:
-        cluster_name: ${{ steps.meta.outputs.cluster-name }}
+        cluster_name: e2e
         config: /tmp/kind-config.yaml
-
-    - name: Build operator image
-      shell: bash
-      run: docker build . -t ${{ steps.meta.outputs.image-ref }}
-
-    - name: Load operator image into KinD
-      shell: bash
-      run: kind load docker-image ${{ steps.meta.outputs.image-ref }} --name ${{ steps.meta.outputs.cluster-name }}
 
     - name: Deploy cert-manager
       shell: bash

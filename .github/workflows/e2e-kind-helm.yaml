@@ -21,24 +21,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
+      - name: Build operator image (background)
+        run: |
+          make image IMAGE_TAG=dev &
+          echo $! > /tmp/build.pid
+
       - name: Setup KinD cluster
-        id: setup
         uses: ./.github/actions/setup-kind
 
-      - name: Deploy operator (Helm)
-        env:
-          IMAGE_REF: ${{ steps.setup.outputs.image-ref }}
-        run: |
-          # Extract repository and tag from the full image reference.
-          # "localhost/scylladb/scylla-operator:pr123-run456-a1" -> repo="localhost/scylladb", tag="pr123-run456-a1"
-          repo="${IMAGE_REF%/*}"
-          tag="${IMAGE_REF##*:}"
+      - name: Wait for image build
+        run: wait "$(cat /tmp/build.pid)"
 
+      - name: Load operator image into KinD
+        run: kind load docker-image localhost/scylladb/scylla-operator:dev --name e2e
+
+      - name: Deploy operator (Helm)
+        run: |
           helm install scylla-operator helm/scylla-operator \
             --create-namespace \
             --namespace scylla-operator \
-            --set "image.repository=${repo}" \
-            --set "image.tag=${tag}" \
+            --set image.repository=localhost/scylladb/scylla-operator \
+            --set image.tag=dev \
             --set replicas=1 \
             --set webhookServerReplicas=1
 
@@ -52,43 +55,22 @@ jobs:
 
       - name: Deploy ScyllaDB cluster (Helm)
         run: |
-          SCYLLADB_VERSION="$(grep -m1 '^  scyllaDBVersion:' assets/config/config.yaml | awk -F'"' '{print $2}')"
-          SCYLLADB_MANAGER_AGENT_VERSION="$(grep -m1 '^  scyllaDBManagerAgentVersion:' assets/config/config.yaml | awk -F'"' '{print $2}')"
-
-          cat > /tmp/scylla-values.yaml <<EOF
-          scyllaImage:
-            tag: ${SCYLLADB_VERSION}
-          agentImage:
-            tag: ${SCYLLADB_MANAGER_AGENT_VERSION}
-          developerMode: true
-          scyllaArgs: "--reactor-backend=io_uring"
-          exposeOptions:
-            nodeService:
-              type: Headless
-            broadcastOptions:
-              nodes:
-                type: PodIP
-              clients:
-                type: PodIP
-          racks:
-            - name: us-east-1a
-              members: 1
-              storage:
-                storageClassName: standard
-                capacity: 1Gi
-              resources:
-                requests:
-                  cpu: 10m
-                  memory: 100Mi
-                limits:
-                  cpu: 1
-                  memory: 1Gi
-          EOF
-
           helm install scylla helm/scylla \
             --create-namespace \
             --namespace scylla \
-            -f /tmp/scylla-values.yaml
+            --set developerMode=true \
+            --set 'scyllaArgs=--reactor-backend=io_uring' \
+            --set exposeOptions.nodeService.type=Headless \
+            --set exposeOptions.broadcastOptions.nodes.type=PodIP \
+            --set exposeOptions.broadcastOptions.clients.type=PodIP \
+            --set 'racks[0].name=us-east-1a' \
+            --set 'racks[0].members=1' \
+            --set 'racks[0].storage.storageClassName=standard' \
+            --set 'racks[0].storage.capacity=1Gi' \
+            --set 'racks[0].resources.requests.cpu=10m' \
+            --set 'racks[0].resources.requests.memory=100Mi' \
+            --set 'racks[0].resources.limits.cpu=1' \
+            --set 'racks[0].resources.limits.memory=1Gi'
 
       - name: Wait for ScyllaCluster to be ready
         run: |
@@ -112,89 +94,5 @@ jobs:
           echo "CQL connectivity verified."
 
       - name: Collect must-gather evidence
-        id: collect-must-gather
         if: failure()
-        env:
-          IMAGE_REF: ${{ steps.setup.outputs.image-ref }}
-          PR_NUMBER: ${{ github.event.pull_request.number || 'manual' }}
-        run: |
-          set -euo pipefail
-
-          if ! kubectl cluster-info >/dev/null 2>&1; then
-            echo "Kubernetes cluster is not reachable, skipping must-gather collection."
-            exit 0
-          fi
-
-          ARTIFACT_DIR="${RUNNER_TEMP}/must-gather"
-          mkdir -p "${ARTIFACT_DIR}"
-
-          gather_failed=0
-
-          {
-            kubectl create namespace gather-artifacts --dry-run=client -o yaml | kubectl apply -f -
-            kubectl create clusterrolebinding gather-artifacts \
-              --clusterrole=cluster-admin \
-              --serviceaccount=gather-artifacts:default \
-              --dry-run=client -o yaml | kubectl apply -f -
-
-            kubectl -n gather-artifacts wait --for=jsonpath='{.metadata.name}'=default serviceaccount/default --timeout=60s
-
-            cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: Pod
-          metadata:
-            labels:
-              app: must-gather
-            name: must-gather
-            namespace: gather-artifacts
-          spec:
-            restartPolicy: Never
-            containers:
-            - name: wait-for-artifacts
-              command: ["/usr/bin/sleep", "infinity"]
-              image: ${IMAGE_REF}
-              imagePullPolicy: IfNotPresent
-              volumeMounts:
-              - name: artifacts
-                mountPath: /tmp/artifacts
-            - name: must-gather
-              args: ["must-gather", "--all-resources", "--loglevel=2", "--dest-dir=/tmp/artifacts"]
-              image: ${IMAGE_REF}
-              imagePullPolicy: IfNotPresent
-              volumeMounts:
-              - name: artifacts
-                mountPath: /tmp/artifacts
-            volumes:
-            - name: artifacts
-              emptyDir: {}
-          EOF
-
-            kubectl -n gather-artifacts wait --timeout=300s --for=condition=Ready pod/must-gather || true
-            kubectl -n gather-artifacts wait --timeout=600s --for=jsonpath='{.status.containerStatuses[?(@.name=="must-gather")].state.terminated.exitCode}'=0 pod/must-gather
-
-            kubectl cp -n gather-artifacts -c wait-for-artifacts must-gather:/tmp/artifacts/. "${ARTIFACT_DIR}"
-          } || gather_failed=1
-
-          if [[ "${gather_failed}" -ne 0 ]]; then
-            {
-              echo "must-gather collection did not complete successfully."
-              echo "=== gather-artifacts namespace resources ==="
-              kubectl -n gather-artifacts get all || true
-              echo "=== must-gather pod describe ==="
-              kubectl -n gather-artifacts describe pod must-gather || true
-              echo "=== must-gather pod logs ==="
-              kubectl -n gather-artifacts logs pod/must-gather --all-containers=true || true
-            } > "${ARTIFACT_DIR}/must-gather-collection.log"
-          fi
-
-          kubectl -n gather-artifacts delete pod/must-gather --wait=false || true
-
-          tar -czf "${RUNNER_TEMP}/must-gather-pr${PR_NUMBER}-run${GITHUB_RUN_ID}.tar.gz" -C "${RUNNER_TEMP}" must-gather
-
-      - name: Upload must-gather artifact
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          path: ${{ runner.temp }}/must-gather-pr${{ github.event.pull_request.number || 'manual' }}-run${{ github.run_id }}.tar.gz
-          archive: false
-          if-no-files-found: ignore
+        uses: ./.github/actions/collect-must-gather

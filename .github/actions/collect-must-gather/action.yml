@@ -1,0 +1,28 @@
+name: Collect must-gather evidence
+description: >
+  Runs must-gather against the cluster and uploads the archive as a workflow artifact.
+
+runs:
+  using: composite
+  steps:
+    - name: Collect must-gather evidence
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if ! kubectl cluster-info >/dev/null 2>&1; then
+          echo "Kubernetes cluster is not reachable, skipping."
+          exit 0
+        fi
+
+        ARTIFACT_DIR="${RUNNER_TEMP}/must-gather"
+        mkdir -p "${ARTIFACT_DIR}"
+        go run ./cmd/scylla-operator must-gather --all-resources --loglevel=2 --dest-dir="${ARTIFACT_DIR}" || true
+        tar -czf "${RUNNER_TEMP}/must-gather.tar.gz" -C "${RUNNER_TEMP}" must-gather
+
+    - name: Upload must-gather artifact
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        path: ${{ runner.temp }}/must-gather.tar.gz
+        archive: false
+        if-no-files-found: ignore

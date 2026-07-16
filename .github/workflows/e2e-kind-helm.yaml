@@ -23,24 +23,27 @@ jobs:
 
       - name: Build operator image (background)
         run: |
-          make image IMAGE_TAG=dev &
-          echo $! > /tmp/build.pid
+          nohup bash -c 'make image IMAGE_TAG=dev; echo $? > /tmp/build.exit' > /tmp/build.log 2>&1 &
+          disown
 
       - name: Setup KinD cluster
         uses: ./.github/actions/setup-kind
 
       - name: Wait for image build
-        run: wait "$(cat /tmp/build.pid)"
+        run: |
+          while [ ! -f /tmp/build.exit ]; do sleep 2; done
+          cat /tmp/build.log
+          exit "$(cat /tmp/build.exit)"
 
       - name: Load operator image into KinD
-        run: kind load docker-image localhost/scylladb/scylla-operator:dev --name e2e
+        run: kind load docker-image docker.io/scylladb/scylla-operator:dev --name e2e
 
       - name: Deploy operator (Helm)
         run: |
           helm install scylla-operator helm/scylla-operator \
             --create-namespace \
             --namespace scylla-operator \
-            --set image.repository=localhost/scylladb/scylla-operator \
+            --set image.repository=scylladb \
             --set image.tag=dev \
             --set replicas=1 \
             --set webhookServerReplicas=1

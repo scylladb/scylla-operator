@@ -32,6 +32,7 @@ jobs:
       - name: Wait for image build
         run: |
           while [ ! -f /tmp/build.exit ]; do sleep 2; done
+          cat /tmp/build.log
           exit "$(cat /tmp/build.exit)"
 
       - name: Load operator image into KinD

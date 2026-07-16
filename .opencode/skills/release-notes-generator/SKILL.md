@@ -28,12 +28,13 @@ Your release notes must be strictly limited to the following sections (omit a se
 * **Deprecations**: Mention deprecated features/functionalities and recommend alternatives.
 * **Features & Enhancements**: List brand-new features, or enhancements made to existing features or performance.
 * **Bug Fixes**: List fixed bugs, briefly describing the issue and the resolution.
+* **Other changes**: List user-facing behavior changes that do not fit features, bug fixes, deprecations, upgrade requirements, or dependency updates. Use this sparingly; prefer a more specific category when one applies.
 * **Dependencies**: List dependency updates and their new versions.
     * *High-Priority:* List user-facing/important dependencies first (e.g., Kubernetes client libraries, ScyllaDB client go mod dependencies, items in `assets/config/config.yaml`). Explain *why* it was updated and how it affects users.
     * *Low-Priority:* List minor bumps in a collapsible `<details><summary>Other dependencies updates</summary>...` block using a bulleted list, without detailed explanations (add only the PR link and the version change).
 
 **Important Constraints**:
-* Never add any other sections. If you encounter a change that does not fit into the above categories, list it separately in your agent response so we can discuss where it belongs before finalizing the notes.
+* Never add any sections other than the ones listed above. If you encounter a change that does not fit into the above categories, list it separately in your agent response so we can discuss where it belongs before finalizing the notes.
 * Updates to documentation should NOT be included in the release notes. If there are articles added or updated in the `docs/` that are relevant to other items in the release notes, you can link to those articles when describing the relevant item. Link to https://operator.docs.scylladb.com/ for general documentation references.
 
 ### List of dependencies that are not considered "user-facing/important" (not exhaustive):

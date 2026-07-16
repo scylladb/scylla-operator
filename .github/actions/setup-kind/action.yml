@@ -1,0 +1,34 @@
+name: Setup KinD cluster
+description: >
+  Creates a KinD cluster and deploys cert-manager.
+
+outputs:
+  cluster-name:
+    description: The KinD cluster name.
+    value: e2e
+
+runs:
+  using: composite
+  steps:
+    - name: Create KinD cluster
+      uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc
+      with:
+        cluster_name: e2e
+        config: hack/kind/cluster-config.yaml
+
+    - name: Deploy cert-manager
+      shell: bash
+      run: |
+        kubectl apply --server-side --force-conflicts -f examples/third-party/cert-manager.yaml
+
+        kubectl wait --for=condition=established --timeout=60s \
+          crd/certificates.cert-manager.io \
+          crd/issuers.cert-manager.io
+
+        for deploy in cert-manager cert-manager-cainjector cert-manager-webhook; do
+          kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${deploy}"
+        done
+
+        # Wait for the webhook CA secret to be created before proceeding,
+        # otherwise the operator's Certificate resource may fail to be issued.
+        kubectl wait --timeout=60s --for=create -n cert-manager secret/cert-manager-webhook-ca

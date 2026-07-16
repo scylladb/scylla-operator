@@ -1,0 +1,93 @@
+name: "E2E: KinD (Helm)"
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind-helm:
+    name: Deploy ScyllaDB on KinD using Helm
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Build operator image
+        run: make image IMAGE_TAG=dev
+
+      - name: Setup KinD cluster
+        uses: ./.github/actions/setup-kind
+
+      - name: Load operator image into KinD
+        run: kind load docker-image docker.io/scylladb/scylla-operator:dev --name e2e
+
+      - name: Deploy operator (Helm)
+        run: |
+          helm install scylla-operator helm/scylla-operator \
+            --create-namespace \
+            --namespace scylla-operator \
+            --set image.repository=scylladb \
+            --set image.tag=dev \
+            --set replicas=1 \
+            --set webhookServerReplicas=1
+
+          # Wait for CRDs to be established.
+          kubectl wait --for=condition=established --timeout=60s \
+            crd/scyllaclusters.scylla.scylladb.com
+
+          # Wait for rollout.
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/scylla-operator
+          kubectl -n scylla-operator rollout status --timeout=5m deployment/webhook-server
+
+      - name: Deploy ScyllaDB cluster (Helm)
+        run: |
+          helm install scylla helm/scylla \
+            --create-namespace \
+            --namespace scylla \
+            --set developerMode=true \
+            --set 'scyllaArgs=--reactor-backend=io_uring' \
+            --set exposeOptions.nodeService.type=Headless \
+            --set exposeOptions.broadcastOptions.nodes.type=PodIP \
+            --set exposeOptions.broadcastOptions.clients.type=PodIP \
+            --set 'racks[0].name=us-east-1a' \
+            --set 'racks[0].members=1' \
+            --set 'racks[0].storage.storageClassName=standard' \
+            --set 'racks[0].storage.capacity=1Gi' \
+            --set 'racks[0].resources.requests.cpu=10m' \
+            --set 'racks[0].resources.requests.memory=100Mi' \
+            --set 'racks[0].resources.limits.cpu=1' \
+            --set 'racks[0].resources.limits.memory=1Gi'
+
+      - name: Wait for ScyllaCluster to be ready
+        run: |
+          echo "Waiting for ScyllaCluster to roll out..."
+          kubectl -n scylla wait --timeout=10m --for='condition=Progressing=False' \
+            scyllacluster/scylla
+          kubectl -n scylla wait --timeout=10m --for='condition=Degraded=False' \
+            scyllacluster/scylla
+          kubectl -n scylla wait --timeout=10m --for='condition=Available=True' \
+            scyllacluster/scylla
+          echo "ScyllaCluster is available."
+
+      - name: Verify CQL connectivity
+        run: |
+          pod="$(kubectl -n scylla get pods -l "scylla/cluster=scylla" -o jsonpath='{.items[0].metadata.name}')"
+          echo "Running CQL query against pod ${pod}..."
+
+          kubectl -n scylla exec "${pod}" -c scylla -- \
+            cqlsh localhost -e "SELECT key, cluster_name, data_center FROM system.local"
+
+          echo "CQL connectivity verified."
+
+      - name: Collect must-gather evidence
+        if: failure()
+        uses: ./.github/actions/collect-must-gather

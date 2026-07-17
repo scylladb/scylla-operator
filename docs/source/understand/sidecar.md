@@ -35,41 +35,40 @@ A ScyllaDB pod contains init containers that run sequentially before the main wo
 
 ### Long-running containers
 
-```{list-table}
+:::{list-table}
 :header-rows: 1
 
-* - #
-  - Name
+* - Name
   - Image
   - Purpose
   - Conditional
-* - 1
-  - `scylla`
+* - `scylla`
   - ScyllaDB
   - The main container. Waits for the ignition signal, then execs the sidecar binary which configures and starts ScyllaDB.
   - Always present
-* - 2
-  - `scylladb-api-status-probe`
+* - `scylladb-api-status-probe`
   - Operator
   - Translates ScyllaDB's native HTTP API status into Kubernetes health-check endpoints (`/healthz`, `/readyz`) on port 8080.
   - Always present
-* - 3
-  - `scylladb-ignition`
+* - `scylladb-ignition`
   - Operator
   - Evaluates startup prerequisites (tuning done, IPs assigned, container running) and creates the ignition signal file when all are met. See [Ignition](ignition.md).
   - Always present
-* - 4
-  - `scylla-manager-agent`
+* - `scylla-manager-agent`
   - Manager Agent
   - Runs the ScyllaDB Manager Agent for backup, repair, and health-check operations. Waits for the ignition signal and for the ScyllaDB REST API to become available before starting.
-  - Only when Manager integration is configured
-```
+  - Always present
+* - `scylladb-node-exporter`
+  - ScyllaDB Node Exporter
+  - Exposes node-level OS metrics (CPU, disk, network) for Prometheus to scrape.
+  - Only when ScyllaDB version is ≥ 2026.3
+:::
 
 ## Shared volumes
 
 Containers coordinate through volumes mounted into the pod:
 
-```{list-table}
+:::{list-table}
 :header-rows: 1
 
 * - Volume
@@ -80,7 +79,7 @@ Containers coordinate through volumes mounted into the pod:
   - Carries the Operator binary (injected by init container 1) and the ignition signal file (`/mnt/shared/ignition.done`). Shared by all containers.
 * - Data PVC
   - `/var/lib/scylla`
-  - Persistent storage for ScyllaDB data files. Mounted read-write in the main container, read-only in the bootstrap barrier.
+  - Persistent storage for ScyllaDB data files. Mounted read-write in the main container, read-only in the bootstrap barrier and scylladb-node-exporter sidecars.
 * - Managed ScyllaDB config (ConfigMap)
   - `/var/run/configmaps/scylla-operator.scylladb.com/scylladb/managed-config/scylladb-managed-config.yaml`
   - Operator-generated `scylla.yaml` with cluster name, snitch, TLS, and other managed settings.
@@ -93,7 +92,7 @@ Containers coordinate through volumes mounted into the pod:
 * - Agent auth token (Secret)
   - Agent config path
   - Manager Agent authentication token.
-```
+:::
 
 Additional TLS-related volumes (serving certificates, client CA, admin user credentials, Alternator certificates) are mounted when the `AutomaticTLSCertificates` feature gate is enabled or when Alternator is configured.
 

@@ -2,6 +2,8 @@ operator:
   # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
   scyllaDBVersion: "2026.2.1"
   scyllaDBUtilsImage: "docker.io/scylladb/scylla:2026.1.0@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a"
+  # FIXME: switch to scylladb-node-exporter image once https://scylladb.atlassian.net/browse/RELENG-711 is completed.
+  scyllaDBNodeExporterImage: "quay.io/prometheus/node-exporter:v1.11.1"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver
   scyllaDBManagerVersion: "3.11.2@sha256:61ec1396d438945abf3db46db893d7e4d2324acb5523d143077f8fdfea05779d"
   # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver

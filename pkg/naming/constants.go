@@ -146,14 +146,15 @@ const (
 
 // Configuration Values
 const (
-	ScyllaContainerName             = "scylla"
-	ScyllaDBIgnitionContainerName   = "scylladb-ignition"
-	ScyllaManagerAgentContainerName = "scylla-manager-agent"
-	SidecarInjectorContainerName    = "sidecar-injection"
-	PerftuneContainerName           = "perftune"
-	SysctlsContainerName            = "sysctls"
-	CleanupContainerName            = "cleanup"
-	RLimitsContainerName            = "rlimits"
+	ScyllaContainerName               = "scylla"
+	ScyllaDBIgnitionContainerName     = "scylladb-ignition"
+	ScyllaManagerAgentContainerName   = "scylla-manager-agent"
+	ScyllaDBNodeExporterContainerName = "scylladb-node-exporter"
+	SidecarInjectorContainerName      = "sidecar-injection"
+	PerftuneContainerName             = "perftune"
+	SysctlsContainerName              = "sysctls"
+	CleanupContainerName              = "cleanup"
+	RLimitsContainerName              = "rlimits"
 
 	PVCTemplateName = "data"
 

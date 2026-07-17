@@ -133,8 +133,8 @@ func TestMemberService(t *testing.T) {
 			Port: 5090,
 		},
 		{
-			Name: "node-exporter",
-			Port: 9100,
+			Name: nodeExporterPortName,
+			Port: nodeExporterPort,
 		},
 		{
 			Name: "thrift",
@@ -699,7 +699,7 @@ func runTestStatefulSetForRack(t *testing.T) {
 			"scylla/cluster":                        "basic",
 			"scylla/datacenter":                     "dc",
 			"scylla/rack":                           "rack",
-			"scylla/scylla-version":                 "latest",
+			"scylla/scylla-version":                 unit.ScyllaDBImageTag,
 			"scylla/rack-ordinal":                   fmt.Sprintf("%d", ordinal),
 			"scylla-operator.scylladb.com/pod-type": "scylladb-node",
 		}
@@ -870,7 +870,7 @@ func runTestStatefulSetForRack(t *testing.T) {
 								{
 									Name:            "sidecar-injection",
 									ImagePullPolicy: "IfNotPresent",
-									Image:           "scylladb/scylla-operator:latest",
+									Image:           unit.ScyllaDBOperatorImage,
 									Command: []string{
 										"/bin/sh",
 										"-c",
@@ -980,12 +980,12 @@ func runTestStatefulSetForRack(t *testing.T) {
 										ContainerPort: 9180,
 									},
 									{
-										Name:          "node-exporter",
-										ContainerPort: 9100,
-									},
-									{
 										Name:          "thrift",
 										ContainerPort: 9160,
+									},
+									{
+										Name:          nodeExporterPortName,
+										ContainerPort: nodeExporterPort,
 									},
 								},
 								Command: func() []string {
@@ -1173,7 +1173,7 @@ wait`),
 							},
 							{
 								Name:            "scylladb-api-status-probe",
-								Image:           "scylladb/scylla-operator:latest",
+								Image:           unit.ScyllaDBOperatorImage,
 								ImagePullPolicy: corev1.PullIfNotPresent,
 								Command: []string{
 									"/usr/bin/scylla-operator",
@@ -1217,7 +1217,7 @@ wait`),
 							},
 							{
 								Name:            "scylladb-ignition",
-								Image:           "scylladb/scylla-operator:latest",
+								Image:           unit.ScyllaDBOperatorImage,
 								ImagePullPolicy: corev1.PullIfNotPresent,
 								Command: []string{
 									"/usr/bin/scylla-operator",
@@ -1711,7 +1711,7 @@ exec scylla-manager-agent \
 					"scylla/datacenter":                     "dc",
 					"scylla/rack":                           "rack",
 					"scylla/rack-ordinal":                   "0",
-					"scylla/scylla-version":                 "latest",
+					"scylla/scylla-version":                 unit.ScyllaDBImageTag,
 					"scylla-operator.scylladb.com/pod-type": "scylladb-node",
 				}
 
@@ -1890,16 +1890,16 @@ exec scylla-manager-agent \
 			rack: newBasicRack(),
 			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := newBasicScyllaDBDatacenter()
-				sdc.Spec.ScyllaDB.Image = "scylla/scylla:2025.1.0"
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageBelowBootstrapSynchronisationThreshold
 				return sdc
 			}(),
 			existingStatefulSet: nil,
 			expectedStatefulSet: func() *appsv1.StatefulSet {
 				sts := newBasicStatefulSet()
 
-				sts.Labels["scylla/scylla-version"] = "2025.1.0"
-				sts.Spec.Template.Labels["scylla/scylla-version"] = "2025.1.0"
-				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = "scylla/scylla:2025.1.0"
+				sts.Labels["scylla/scylla-version"] = unit.ScyllaDBImageBelowBootstrapSynchronisationThresholdTag
+				sts.Spec.Template.Labels["scylla/scylla-version"] = unit.ScyllaDBImageBelowBootstrapSynchronisationThresholdTag
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = unit.ScyllaDBImageBelowBootstrapSynchronisationThreshold
 
 				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
 					sts.Spec.Template.Spec.InitContainers = append(sts.Spec.Template.Spec.InitContainers[:runBootstrapBarrierInitContainerIndex],
@@ -2040,13 +2040,102 @@ exec scylla-manager-agent \
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "new StatefulSet with ScyllaDB version requiring node-exporter sidecar",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAboveNodeExporterThreshold
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Labels["scylla/scylla-version"] = unit.ScyllaDBImageAboveNodeExporterThresholdTag
+				sts.Spec.Template.Labels["scylla/scylla-version"] = unit.ScyllaDBImageAboveNodeExporterThresholdTag
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = unit.ScyllaDBImageAboveNodeExporterThreshold
+
+				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+					sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Image = unit.ScyllaDBImageAboveNodeExporterThreshold
+				}
+
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Ports = slices.DeleteFunc(
+					sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Ports,
+					func(p corev1.ContainerPort) bool { return p.Name == nodeExporterPortName },
+				)
+
+				sts.Spec.Template.Spec.Containers = append(sts.Spec.Template.Spec.Containers, corev1.Container{
+					Name:            naming.ScyllaDBNodeExporterContainerName,
+					Image:           unit.ScyllaDBNodeExporterImage,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Ports: []corev1.ContainerPort{
+						{
+							Name:          nodeExporterPortName,
+							ContainerPort: nodeExporterPort,
+						},
+					},
+					LivenessProbe: &corev1.Probe{
+						ProbeHandler: corev1.ProbeHandler{
+							TCPSocket: &corev1.TCPSocketAction{
+								Port: apimachineryutilintstr.FromInt32(nodeExporterPort),
+							},
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("50Mi"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("10m"),
+							corev1.ResourceMemory: resource.MustParse("50Mi"),
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      naming.PVCTemplateName,
+							MountPath: naming.DataDir,
+							ReadOnly:  true,
+						},
+					},
+				})
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with ScyllaDB version below node-exporter threshold",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageBelowNodeExporterThreshold
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Labels["scylla/scylla-version"] = unit.ScyllaDBImageBelowNodeExporterThresholdTag
+				sts.Spec.Template.Labels["scylla/scylla-version"] = unit.ScyllaDBImageBelowNodeExporterThresholdTag
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = unit.ScyllaDBImageBelowNodeExporterThreshold
+
+				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+					sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Image = unit.ScyllaDBImageBelowNodeExporterThreshold
+				}
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, "scylladb/scylla-operator:latest", 0, "")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, unit.ScyllaDBOperatorImage, unit.ScyllaDBNodeExporterImage, 0, "")
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",
@@ -2835,7 +2924,7 @@ func TestIdentityService(t *testing.T) {
 				{Name: "agent-api", Port: 10001},
 				{Name: "prometheus", Port: 9180},
 				{Name: "agent-prometheus", Port: 5090},
-				{Name: "node-exporter", Port: 9100},
+				{Name: nodeExporterPortName, Port: nodeExporterPort},
 				{Name: "thrift", Port: 9160},
 			},
 		},
@@ -3075,7 +3164,7 @@ func TestMakeJobs(t *testing.T) {
 								Containers: []corev1.Container{
 									{
 										Name:            naming.CleanupContainerName,
-										Image:           "scylladb/scylla-operator:latest",
+										Image:           unit.ScyllaDBOperatorImage,
 										ImagePullPolicy: corev1.PullIfNotPresent,
 										Args: []string{
 											"cleanup-job",
@@ -3344,7 +3433,7 @@ func TestMakeJobs(t *testing.T) {
 								Containers: []corev1.Container{
 									{
 										Name:            naming.CleanupContainerName,
-										Image:           "scylladb/scylla-operator:latest",
+										Image:           unit.ScyllaDBOperatorImage,
 										ImagePullPolicy: corev1.PullIfNotPresent,
 										Args: []string{
 											"cleanup-job",
@@ -3473,7 +3562,7 @@ func TestMakeJobs(t *testing.T) {
 								Containers: []corev1.Container{
 									{
 										Name:            naming.CleanupContainerName,
-										Image:           "scylladb/scylla-operator:latest",
+										Image:           unit.ScyllaDBOperatorImage,
 										ImagePullPolicy: corev1.PullIfNotPresent,
 										Args: []string{
 											"cleanup-job",
@@ -3582,7 +3671,7 @@ func TestMakeJobs(t *testing.T) {
 								Containers: []corev1.Container{
 									{
 										Name:            naming.CleanupContainerName,
-										Image:           "scylladb/scylla-operator:latest",
+										Image:           unit.ScyllaDBOperatorImage,
 										ImagePullPolicy: corev1.PullIfNotPresent,
 										Args: []string{
 											"cleanup-job",
@@ -3700,7 +3789,7 @@ func TestMakeJobs(t *testing.T) {
 								Containers: []corev1.Container{
 									{
 										Name:            naming.CleanupContainerName,
-										Image:           "scylladb/scylla-operator:latest",
+										Image:           unit.ScyllaDBOperatorImage,
 										ImagePullPolicy: corev1.PullIfNotPresent,
 										Args: []string{
 											"cleanup-job",
@@ -3818,7 +3907,7 @@ func TestMakeJobs(t *testing.T) {
 								Containers: []corev1.Container{
 									{
 										Name:            naming.CleanupContainerName,
-										Image:           "scylladb/scylla-operator:latest",
+										Image:           unit.ScyllaDBOperatorImage,
 										ImagePullPolicy: corev1.PullIfNotPresent,
 										Args: []string{
 											"cleanup-job",
@@ -3914,7 +4003,7 @@ func TestMakeJobs(t *testing.T) {
 								Containers: []corev1.Container{
 									{
 										Name:            naming.CleanupContainerName,
-										Image:           "scylladb/scylla-operator:latest",
+										Image:           unit.ScyllaDBOperatorImage,
 										ImagePullPolicy: corev1.PullIfNotPresent,
 										Args: []string{
 											"cleanup-job",
@@ -3964,7 +4053,7 @@ func TestMakeJobs(t *testing.T) {
 
 			podLister := corev1listers.NewPodLister(podCache)
 
-			gotJobs, gotConditions, err := MakeJobs(tc.scyllaDBDatacenter, tc.services, podLister, "scylladb/scylla-operator:latest")
+			gotJobs, gotConditions, err := MakeJobs(tc.scyllaDBDatacenter, tc.services, podLister, unit.ScyllaDBOperatorImage)
 			if err != nil {
 				t.Errorf("expected nil err, got: %v", err)
 			}

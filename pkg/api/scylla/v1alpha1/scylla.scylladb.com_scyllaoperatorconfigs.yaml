@@ -46,6 +46,9 @@ spec:
                 configuredClusterDomain:
                   description: configuredClusterDomain allows users to set the configured Kubernetes cluster domain explicitly, instead of letting Scylla Operator automatically discover it.
                   type: string
+                scyllaDBNodeExporterImage:
+                  description: scyllaDBNodeExporterImage is the node-exporter image used by the operator to collect node metrics from ScyllaDB Pods.
+                  type: string
                 scyllaUtilsImage:
                   description: scyllaUtilsImage is a ScyllaDB image used for running ScyllaDB utilities.
                   type: string
@@ -144,6 +147,9 @@ spec:
                   type: integer
                 prometheusVersion:
                   description: prometheusVersion is the Prometheus version used by the operator to create a Prometheus instance.
+                  type: string
+                scyllaDBNodeExporterImage:
+                  description: scyllaDBNodeExporterImage is the node-exporter image used by the operator to collect node metrics from ScyllaDB Pods.
                   type: string
                 scyllaDBUtilsImage:
                   description: scyllaDBUtilsImage is the ScyllaDB image used for running ScyllaDB utilities.

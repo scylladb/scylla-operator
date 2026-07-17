@@ -8,6 +8,13 @@
 
 ## Unreleased
 
+### Other changes
+
+- ScyllaDB Operator now runs `scylladb-node-exporter` as a dedicated sidecar container for ScyllaDB clusters running
+  version 2026.3 or later, since these versions no longer bundle node-exporter. The node-exporter container image is configurable via
+  `ScyllaOperatorConfig.spec.scyllaDBNodeExporterImage`.
+  [#3482](https://github.com/scylladb/scylla-operator/pull/3482)
+
 ## [1.21.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.0)
 
 Release date: 2026-05-20

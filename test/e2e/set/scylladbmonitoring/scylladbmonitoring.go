@@ -118,7 +118,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			},
 				"cql-overview",
 			),
-		}, framework.SuiteParallel, framework.SuiteKindFast),
+		}, framework.SuiteParallel, framework.SuiteKindFast, framework.SuiteKindScyllaDBMonitoring),
 		// Not in SuiteParallelOpenShift: managed Prometheus is not supported on OpenShift.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
 			Description: "Platform type",
@@ -128,7 +128,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: nil, // Using managed Prometheus.
 			VerifyPrometheusFn:          verifyManagedPrometheus,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}, framework.SuiteParallel, framework.SuiteKindFast),
+		}, framework.SuiteParallel, framework.SuiteKindFast, framework.SuiteKindScyllaDBMonitoring),
 		// Not in SuiteParallelOpenShift: relies on a self-hosted external Prometheus,
 		// while OpenShift uses its built-in monitoring stack instead.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
@@ -155,7 +155,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: prepareExternalPrometheusWithoutTLS,
 			VerifyPrometheusFn:          verifyExternalPrometheusWithoutTLS,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}, framework.SuiteParallel, framework.SuiteKindFast),
+		}, framework.SuiteParallel, framework.SuiteKindFast, framework.SuiteKindScyllaDBMonitoring),
 		// Not in SuiteParallelOpenShift: relies on a self-hosted external Prometheus,
 		// while OpenShift uses its built-in monitoring stack instead.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{
@@ -183,7 +183,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 			PrepareExternalPrometheusFn: prepareExternalPrometheusWithTLS,
 			VerifyPrometheusFn:          verifyExternalPrometheusWithTLS,
 			VerifyGrafanaFn:             verifyManagedGrafanaWithDashboards(getExpectedPlatformDashboards()),
-		}, framework.SuiteParallel, framework.SuiteKindFast),
+		}, framework.SuiteParallel, framework.SuiteKindFast, framework.SuiteKindScyllaDBMonitoring),
 		// Only in SuiteParallelOpenShift: targets OpenShift's built-in
 		// Thanos Querier as the external Prometheus source.
 		g.Entry(describeEntry, &scyllaDBMonitoringEntry{

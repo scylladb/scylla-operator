@@ -78,6 +78,14 @@ var Suites = ginkgotest.TestSuites{
 		LabelFilter:        framework.SuiteKindFastLabelName,
 		DefaultParallelism: 60,
 	},
+	{
+		Name: "kind-scylladb-monitoring",
+		Description: templates.LongDesc(`
+		Tests that verify ScyllaDBMonitoring functionality, possible to be run on kind clusters.
+		`),
+		LabelFilter:        framework.SuiteKindScyllaDBMonitoringLabelName,
+		DefaultParallelism: 8,
+	},
 }
 
 func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {

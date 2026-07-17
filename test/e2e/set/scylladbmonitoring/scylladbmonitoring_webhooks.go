@@ -15,7 +15,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/names"
 )
 
-var _ = g.Describe("ScyllaDBMonitoring webhook", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
+var _ = g.Describe("ScyllaDBMonitoring webhook", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, framework.SuiteKindScyllaDBMonitoring, func() {
 	var (
 		f         *framework.Framework
 		validSDBM *scyllav1alpha1.ScyllaDBMonitoring

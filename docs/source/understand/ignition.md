@@ -28,7 +28,7 @@ The ignition controller checks the following conditions. **All** must be true be
 ```{list-table}
 :header-rows: 1
 
-* - #
+* - \#
   - Condition
   - Why
 * - 1

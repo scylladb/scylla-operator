@@ -21,7 +21,7 @@ type TableRepairProgress struct {
 	// Format: date-time
 	CompletedAt *strfmt.DateTime `json:"completed_at,omitempty"`
 
-	// duration ms
+	// Wall-clock duration in milliseconds for the current task run. A value of 0 with full progress indicates that the repair was completed in a previous run.
 	DurationMs int64 `json:"duration_ms,omitempty"`
 
 	// error

@@ -18,8 +18,7 @@ Set `AWS_REGION`, then run the script to provision everything in one go.
 - The [`eksctl` CLI](https://eksctl.io/installation/) installed.
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) installed.
 - AWS credentials configured (`aws configure` or environment variables).
-- Sufficient quota for `i4i.2xlarge` instances in your target region.
-  See [ScyllaDB cloud instance recommendations for AWS](https://docs.scylladb.com/manual/stable/getting-started/cloud-instance-recommendations.html#amazon-web-services-aws) for recommended instance types and [system requirements](https://docs.scylladb.com/manual/stable/getting-started/system-requirements.html) for minimum specifications.
+- Sufficient quota for `i` instances in your target region, as advised in the  [ScyllaDB cloud instance recommendations for AWS](https://docs.scylladb.com/manual/stable/getting-started/cloud-instance-recommendations.html#amazon-web-services-aws) and the [minimum system requirements](https://docs.scylladb.com/manual/stable/getting-started/system-requirements.html).
 
 ## Set environment variables
 
@@ -61,7 +60,7 @@ Generate the configuration file:
 :end-before: "# [END create_cluster_config]"
 :::
 
-The ScyllaDB node group uses `i4i.2xlarge` instances (8 vCPU, 64 GiB RAM, 1x1875 GB NVMe SSD) with:
+The ScyllaDB node group uses storage-optimized `i` instances, as advised in the [ScyllaDB cloud instance recommendations for AWS](https://docs.scylladb.com/manual/stable/getting-started/cloud-instance-recommendations.html#amazon-web-services-aws)
 
 - `cpuManagerPolicy: static` for CPU pinning.
 - ScyllaDB labels and taints so only ScyllaDB pods are scheduled on these nodes.

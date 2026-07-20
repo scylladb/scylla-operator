@@ -41,8 +41,7 @@ Follow [Configure nodes](../before-you-deploy/configure-nodes.md), selecting the
 :::
 
 Create a ScyllaDB cluster with one rack per availability zone.
-The resource requests are sized for `i4i.2xlarge` (8 vCPU, 64 GiB RAM), leaving headroom for the OS, kubelet, and `DaemonSets`.
-See the [ScyllaDB system requirements](https://docs.scylladb.com/manual/stable/getting-started/system-requirements.html) for general sizing guidance.
+The resource requests are sized for the OS, kubelet, and `DaemonSets` and follow the [ScyllaDB system requirements](https://docs.scylladb.com/manual/stable/getting-started/system-requirements.html) - see for general sizing guidance.
 Adjust if you use a different instance type.
 
 :::{code-block} console

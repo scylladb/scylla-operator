@@ -34,13 +34,13 @@ export EKS_AZ_1="${EKS_AZ_1:-${AWS_REGION}a}"
 export EKS_AZ_2="${EKS_AZ_2:-${AWS_REGION}b}"
 export EKS_AZ_3="${EKS_AZ_3:-${AWS_REGION}c}"
 
-# Dedicated ScyllaDB node group. i4i.2xlarge provides 8 vCPU, 64 GiB RAM, and 1x1875 GB NVMe.
+# Dedicated ScyllaDB node group. i7i.2xlarge provides 8 vCPU, 64 GiB RAM, and 1x1875 GB NVMe.
 # See https://docs.scylladb.com/manual/stable/getting-started/cloud-instance-recommendations.html#amazon-web-services-aws
-export SCYLLA_INSTANCE_TYPE="${SCYLLA_INSTANCE_TYPE:-i4i.2xlarge}"
+export SCYLLA_INSTANCE_TYPE="${SCYLLA_INSTANCE_TYPE:-i7i.2xlarge}"
 export SCYLLA_NODE_COUNT="${SCYLLA_NODE_COUNT:-3}"
 
 # Infrastructure node group.
-export INFRA_INSTANCE_TYPE="${INFRA_INSTANCE_TYPE:-i3.large}"
+export INFRA_INSTANCE_TYPE="${INFRA_INSTANCE_TYPE:-m7i.large}"
 export INFRA_NODE_COUNT="${INFRA_NODE_COUNT:-1}"
 # [END env_defaults]
 

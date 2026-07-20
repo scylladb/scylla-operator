@@ -787,7 +787,7 @@ func (rp RepairProgress) addRepairTableProgress(d *table.Table) {
 			p = FormatRepairProgress(t.TokenRanges, t.Success, t.Error)
 		}
 
-		d.AddRow(t.Keyspace, t.Table, p, FormatMsDuration(t.DurationMs))
+		d.AddRow(t.Keyspace, t.Table, p, FormatRepairDuration(t.DurationMs, t.TokenRanges, t.Success))
 	}
 }
 
@@ -800,7 +800,7 @@ func (rp RepairProgress) addRepairTableDetailedProgress(d *table.Table, t *model
 		t.Error,
 		FormatTimePointer(t.StartedAt),
 		FormatTimePointer(t.CompletedAt),
-		FormatMsDuration(t.DurationMs),
+		FormatRepairDuration(t.DurationMs, t.TokenRanges, t.Success),
 	)
 }
 

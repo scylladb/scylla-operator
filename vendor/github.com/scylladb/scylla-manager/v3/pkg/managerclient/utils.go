@@ -198,6 +198,16 @@ func FormatMsDuration(d int64) string {
 	return (time.Duration(d)*time.Millisecond + time.Second - 1).Truncate(time.Second).String()
 }
 
+// FormatRepairDuration returns duration string for repair progress entries.
+// For entries that were fully completed in a previous run (0 duration, 100% success),
+// it returns "done" instead of "0s".
+func FormatRepairDuration(durationMs, tokenRanges, success int64) string {
+	if durationMs == 0 && tokenRanges > 0 && success == tokenRanges {
+		return "done"
+	}
+	return FormatMsDuration(durationMs)
+}
+
 func isZero(t strfmt.DateTime) bool {
 	return time.Time(t).IsZero()
 }

@@ -11,7 +11,7 @@ Work through this checklist after your cluster is deployed and functional. Each 
 ```{list-table}
 :header-rows: 1
 
-* - #
+* - \#
   - Item
   - Expected state
   - Guide

@@ -11,7 +11,7 @@ A ScyllaDB pod contains init containers that run sequentially before the main wo
 ```{list-table}
 :header-rows: 1
 
-* - #
+* - \#
   - Name
   - Image
   - Purpose

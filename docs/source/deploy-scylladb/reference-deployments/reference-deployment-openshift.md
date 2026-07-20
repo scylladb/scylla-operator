@@ -9,7 +9,7 @@ This guide walks you through deploying ScyllaDB on Red Hat OpenShift.
 - Dedicated nodes labeled and tainted per [Set up dedicated node pools](../before-you-deploy/set-up-dedicated-node-pools.md).
 - ScyllaDB Operator installed.
   Follow [Install on OpenShift](../../install-operator/install-on-openshift.md) if you have not done so yet.
-- [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) or OpenShift CLI ([`oc`](https://docs.redhat.com/en/documentation/openshift_container_platform/latest/html/cli_tools/openshift-cli-oc#installing-openshift-cli)) installed.
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) or OpenShift CLI ([`oc`](https://docs.redhat.com/en/documentation/openshift_container_platform/latest/html/cli_tools/openshift-cli-oc)) installed.
 
 ## Set up nodes
 

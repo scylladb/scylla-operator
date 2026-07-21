@@ -1,0 +1,3013 @@
+# ScyllaCluster (scylla.scylladb.com/v1)
+
+**APIVersion**: scylla.scylladb.com/v1
+<br/>
+**Kind**: ScyllaCluster
+<br/>
+**PluralName**: scyllaclusters
+<br/>
+**SingularName**: scyllacluster
+<br/>
+**Scope**: Namespaced
+<br/>
+**ListKind**: ScyllaClusterList
+<br/>
+**Served**: true
+<br/>
+**Storage**: true
+<br/>
+
+## Description
+
+ScyllaCluster defines a Scylla cluster.
+
+## Specification
+
+| Property                                                        | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                           |
+|-----------------------------------------------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| apiVersion                                                      | string | APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: [https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources](https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources)    |
+| kind                                                            | string | Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: [https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds](https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds) |
+| [metadata](#api-scylla-scylladb-com-scyllaclusters-v1-metadata) | object |                                                                                                                                                                                                                                                                                                                                                                                                       |
+| [spec](#api-scylla-scylladb-com-scyllaclusters-v1-spec)         | object | spec defines the desired state of this scylla cluster.                                                                                                                                                                                                                                                                                                                                                |
+| [status](#api-scylla-scylladb-com-scyllaclusters-v1-status)     | object | status is the current status of this scylla cluster.                                                                                                                                                                                                                                                                                                                                                  |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-metadata"></a>
+
+### .metadata
+
+#### Description
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec"></a>
+
+### .spec
+
+#### Description
+
+spec defines the desired state of this scylla cluster.
+
+#### Type
+
+object
+
+| Property                                                                             | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|--------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| agentRepository                                                                      | string         | agentRepository is the repository to pull the agent image from.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| agentVersion                                                                         | string         | agentVersion indicates the version of Scylla Manager Agent to use.                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [alternator](#api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator)             | object         | alternator designates this cluster an Alternator cluster.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| automaticOrphanedNodeCleanup                                                         | boolean        | automaticOrphanedNodeCleanup controls if automatic orphan node cleanup should be performed.                                                                                                                                                                                                                                                                                                                                                                                                               |
+| [backups](#api-scylla-scylladb-com-scyllaclusters-v1-spec-backups)                   | array (object) | backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.                                                                                                                                                                                                                                                                                                                                                                                            |
+| cpuset                                                                               | boolean        | cpuset determines if the cluster will use cpu-pinning. Deprecated: cpuset is deprecated. It is now treated as if it is always set to true regardless of its value.                                                                                                                                                                                                                                                                                                                                        |
+| [datacenter](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter)             | object         | datacenter holds a specification of a datacenter.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| developerMode                                                                        | boolean        | developerMode determines if the cluster runs in developer-mode.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| dnsDomains                                                                           | array (string) | dnsDomains is a list of DNS domains this cluster is reachable by. These domains are used when setting up the infrastructure, like certificates. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.                                                                                                                                                                                                                                                                           |
+| [exposeOptions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions)       | object         | exposeOptions specifies options for exposing ScyllaCluster services. This field is immutable. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.                                                                                                                                                                                                                                                                                                                             |
+| externalSeeds                                                                        | array (string) | externalSeeds specifies the external seeds to propagate to ScyllaDB binary on startup as “seeds” parameter of seed-provider.                                                                                                                                                                                                                                                                                                                                                                              |
+| forceRedeploymentReason                                                              | string         | forceRedeploymentReason can be used to force a rolling update of all racks by providing a unique string.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| [genericUpgrade](#api-scylla-scylladb-com-scyllaclusters-v1-spec-genericupgrade)     | object         | genericUpgrade allows to configure behavior of generic upgrade logic.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| [imagePullSecrets](#api-scylla-scylladb-com-scyllaclusters-v1-spec-imagepullsecrets) | array (object) | imagePullSecrets is an optional list of references to secrets in the same namespace used for pulling Scylla and Agent images.                                                                                                                                                                                                                                                                                                                                                                             |
+| minReadySeconds                                                                      | integer        | minReadySeconds is the minimum number of seconds for which a newly created ScyllaDB node should be ready for it to be considered available. When used to control load balanced traffic, this can give the load balancer in front of a node enough time to notice that the node is ready and start forwarding traffic in time. Because it all depends on timing, the order is not guaranteed and, if possible, you should use readinessGates instead. If not provided, Operator will determine this value. |
+| minTerminationGracePeriodSeconds                                                     | integer        | minTerminationGracePeriodSeconds specifies minimum duration in seconds to wait before every drained node is terminated. This gives time to potential load balancer in front of a node to notice that node is not ready anymore and stop forwarding new requests. This applies only when node is terminated gracefully. If not provided, Operator will determine this value. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.                                               |
+| [network](#api-scylla-scylladb-com-scyllaclusters-v1-spec-network)                   | object         | network holds the networking config.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| [podMetadata](#api-scylla-scylladb-com-scyllaclusters-v1-spec-podmetadata)           | object         | podMetadata controls shared metadata for all pods created based on this spec.                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| [readinessGates](#api-scylla-scylladb-com-scyllaclusters-v1-spec-readinessgates)     | array (object) | readinessGates specifies custom readiness gates that will be evaluated for every ScyllaDB Pod readiness. It’s projected into every ScyllaDB Pod as its readinessGate. Refer to upstream documentation to learn more about readiness gates.                                                                                                                                                                                                                                                                |
+| [repairs](#api-scylla-scylladb-com-scyllaclusters-v1-spec-repairs)                   | array (object) | repairs specify repair tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.                                                                                                                                                                                                                                                                                                                                                                                              |
+| repository                                                                           | string         | repository is the image repository to pull the Scylla image from.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| scyllaArgs                                                                           | string         | scyllaArgs will be appended to Scylla binary during startup. This is supported from 4.2.0 Scylla version.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| sysctls                                                                              | array (string) | sysctls holds the sysctl properties to be applied during initialization given as a list of key=value pairs. Example: fs.aio-max-nr=232323                                                                                                                                                                                                                                                                                                                                                                 |
+| version                                                                              | string         | version is a version tag of Scylla to use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator"></a>
+
+### .spec.alternator
+
+#### Description
+
+alternator designates this cluster an Alternator cluster.
+
+#### Type
+
+object
+
+| Property                                                                                            | Type    | Description                                                                                                                                                                                                                           |
+|-----------------------------------------------------------------------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| insecureDisableAuthorization                                                                        | boolean | insecureDisableAuthorization disables Alternator authorization. If not specified, the authorization is enabled. For backwards compatibility the authorization is disabled when this field is not specified and a manual port is used. |
+| insecureEnableHTTP                                                                                  | boolean | insecureEnableHTTP enables serving Alternator traffic also on insecure HTTP port.                                                                                                                                                     |
+| port                                                                                                | integer | port is the port number used to bind the Alternator API. Deprecated: port is deprecated and may be ignored in the future. Please make sure to avoid using hostNetworking and work with standard Kubernetes concepts like Services.    |
+| [servingCertificate](#api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator-servingcertificate) | object  | servingCertificate references a TLS certificate for serving secure traffic.                                                                                                                                                           |
+| writeIsolation                                                                                      | string  | writeIsolation indicates the isolation level.                                                                                                                                                                                         |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator-servingcertificate"></a>
+
+### .spec.alternator.servingCertificate
+
+#### Description
+
+servingCertificate references a TLS certificate for serving secure traffic.
+
+#### Type
+
+object
+
+| Property                                                                                                                       | Type   | Description                                                                       |
+|--------------------------------------------------------------------------------------------------------------------------------|--------|-----------------------------------------------------------------------------------|
+| [operatorManagedOptions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator-servingcertificate-operatormanagedoptions) | object | operatorManagedOptions specifies options for certificates manged by the operator. |
+| type                                                                                                                           | string | type determines the source of this certificate.                                   |
+| [userManagedOptions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator-servingcertificate-usermanagedoptions)         | object | userManagedOptions specifies options for certificates manged by users.            |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator-servingcertificate-operatormanagedoptions"></a>
+
+### .spec.alternator.servingCertificate.operatorManagedOptions
+
+#### Description
+
+operatorManagedOptions specifies options for certificates manged by the operator.
+
+#### Type
+
+object
+
+| Property              | Type           | Description                                                                                        |
+|-----------------------|----------------|----------------------------------------------------------------------------------------------------|
+| additionalDNSNames    | array (string) | additionalDNSNames represents external DNS names that the certificates should be signed for.       |
+| additionalIPAddresses | array (string) | additionalIPAddresses represents external IP addresses that the certificates should be signed for. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-alternator-servingcertificate-usermanagedoptions"></a>
+
+### .spec.alternator.servingCertificate.userManagedOptions
+
+#### Description
+
+userManagedOptions specifies options for certificates manged by users.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                            |
+|------------|--------|----------------------------------------------------------------------------------------|
+| secretName | string | secretName references a kubernetes.io/tls type secret containing the TLS cert and key. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-backups"></a>
+
+### .spec.backups[]
+
+#### Description
+
+#### Type
+
+object
+
+| Property         | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                       |
+|------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cron             | string         | cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].                                                                                                                                                                                                                                                   |
+| dc               | array (string) | dc is a list of datacenter glob patterns, e.g. ‘dc1,!otherdc\*’ used to specify the DCs to include or exclude from backup.                                                                                                                                                                                                                                                                                        |
+| interval         | string         | interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.                                                                                                                                                                                                                                                                                       |
+| keyspace         | array (string) | keyspace is a list of keyspace/tables glob patterns, e.g. ‘keyspace,!keyspace.table_prefix_\*’ used to include or exclude keyspaces from repair.                                                                                                                                                                                                                                                                  |
+| location         | array (string) | location is a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket. The <dc>: part is optional and is only needed when different datacenters are being used to upload data to different locations. <name> must be an alphanumeric string and may contain a dash and or a dot, but other characters are forbidden. The only supported storage <provider> at the moment are s3 and gcs. |
+| name             | string         | name specifies the name of a task.                                                                                                                                                                                                                                                                                                                                                                                |
+| numRetries       | integer        | numRetries indicates how many times a scheduled task will be retried before failing.                                                                                                                                                                                                                                                                                                                              |
+| rateLimit        | array (string) | rateLimit is a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>. The <dc>: part is optional and only needed when different datacenters need different upload limits. Set to 0 for no limit (default 100).                                                                                                                                                                    |
+| retention        | integer        | retention is the number of backups which are to be stored.                                                                                                                                                                                                                                                                                                                                                        |
+| snapshotParallel | array (string) | snapshotParallel is a list of snapshot parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set, the limit is global (e.g. ‘dc1:2,5’) the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.                                                                   |
+| startDate        | string         | startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.                                                                                                                                                                                                                                                                          |
+| timezone         | string         | timezone specifies the timezone of cron field.                                                                                                                                                                                                                                                                                                                                                                    |
+| uploadParallel   | array (string) | uploadParallel is a list of upload parallelism limits in the format [<dc>:]<limit>. The <dc>: part is optional and allows for specifying different limits in selected datacenters. If The <dc>: part is not set the limit is global (e.g. ‘dc1:2,5’) the runs are parallel in n nodes (2 in dc1) and n nodes in all the other datacenters.                                                                        |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter"></a>
+
+### .spec.datacenter
+
+#### Description
+
+datacenter holds a specification of a datacenter.
+
+#### Type
+
+object
+
+| Property                                                                  | Type           | Description                                                                              |
+|---------------------------------------------------------------------------|----------------|------------------------------------------------------------------------------------------|
+| name                                                                      | string         | name is the name of the scylla datacenter. Used in the cassandra-rackdc.properties file. |
+| [racks](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks) | array (object) | racks specify the racks in the datacenter.                                               |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks"></a>
+
+### .spec.datacenter.racks[]
+
+#### Description
+
+RackSpec is the desired state for a Scylla Rack.
+
+#### Type
+
+object
+
+| Property                                                                                                | Type           | Description                                                                                       |
+|---------------------------------------------------------------------------------------------------------|----------------|---------------------------------------------------------------------------------------------------|
+| [agentResources](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources)       | object         | agentResources specify the resources for the Agent container.                                     |
+| [agentVolumeMounts](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentvolumemounts) | array (object) | AgentVolumeMounts to be added to Agent container.                                                 |
+| [exposeOptions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions)         | object         | exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends. |
+| members                                                                                                 | integer        | members is the number of Scylla instances in this rack.                                           |
+| name                                                                                                    | string         | name is the name of the Scylla Rack. Used in the cassandra-rackdc.properties file.                |
+| [placement](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement)                 | object         | placement describes restrictions for the nodes Scylla is scheduled on.                            |
+| [resources](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources)                 | object         | resources the Scylla container will use.                                                          |
+| scyllaAgentConfig                                                                                       | string         | Scylla config map name to customize scylla manager agent                                          |
+| scyllaConfig                                                                                            | string         | Scylla config map name to customize scylla.yaml                                                   |
+| [storage](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage)                     | object         | storage describes the underlying storage that Scylla will consume.                                |
+| [volumeMounts](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumemounts)           | array (object) | VolumeMounts to be added to Scylla container.                                                     |
+| [volumes](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes)                     | array (object) | Volumes added to Scylla Pod.                                                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources"></a>
+
+### .spec.datacenter.racks[].agentResources
+
+#### Description
+
+agentResources specify the resources for the Agent container.
+
+#### Type
+
+object
+
+| Property                                                                                             | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|------------------------------------------------------------------------------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [claims](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources-claims)     | array (object) | Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container.  This is an alpha field and requires enabling the DynamicResourceAllocation feature gate.  This field is immutable. It can only be set for containers.                                                                                                                                                                 |
+| [limits](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources-limits)     | object         | Limits describes the maximum amount of compute resources allowed. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)                                                                                                                                                                                |
+| [requests](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources-requests) | object         | Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources-claims"></a>
+
+### .spec.datacenter.racks[].agentResources.claims[]
+
+#### Description
+
+ResourceClaim references one entry in PodSpec.ResourceClaims.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                         |
+|------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container.          |
+| request    | string | Request is the name chosen for a request in the referenced claim. If empty, everything from the claim is made available, otherwise only the result of this request. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources-limits"></a>
+
+### .spec.datacenter.racks[].agentResources.limits
+
+#### Description
+
+Limits describes the maximum amount of compute resources allowed. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentresources-requests"></a>
+
+### .spec.datacenter.racks[].agentResources.requests
+
+#### Description
+
+Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-agentvolumemounts"></a>
+
+### .spec.datacenter.racks[].agentVolumeMounts[]
+
+#### Description
+
+VolumeMount describes a mounting of a Volume within a container.
+
+#### Type
+
+object
+
+| Property          | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|-------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| mountPath         | string  | Path within the container at which the volume should be mounted.  Must not contain ‘:’.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| mountPropagation  | string  | mountPropagation determines how mounts are propagated from the host to container and the other way around. When not set, MountPropagationNone is used. This field is beta in 1.10. When RecursiveReadOnly is set to IfPossible or to Enabled, MountPropagation must be None or unspecified (which defaults to None).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| name              | string  | This must match the Name of a Volume.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| readOnly          | boolean | Mounted read-only if true, read-write otherwise (false or unspecified). Defaults to false.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| recursiveReadOnly | string  | RecursiveReadOnly specifies whether read-only mounts should be handled recursively.  If ReadOnly is false, this field has no meaning and must be unspecified.  If ReadOnly is true, and this field is set to Disabled, the mount is not made recursively read-only.  If this field is set to IfPossible, the mount is made recursively read-only, if it is supported by the container runtime.  If this field is set to Enabled, the mount is made recursively read-only if it is supported by the container runtime, otherwise the pod will not be started and an error will be generated to indicate the reason.  If this field is set to IfPossible or Enabled, MountPropagation must be set to None (or be unspecified, which defaults to None).  If this field is not specified, it is treated as an equivalent of Disabled. |
+| subPath           | string  | Path within the volume from which the container’s volume should be mounted. Defaults to “” (volume’s root).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| subPathExpr       | string  | Expanded path within the volume from which the container’s volume should be mounted. Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container’s environment. Defaults to “” (volume’s root). SubPathExpr and SubPath are mutually exclusive.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions"></a>
+
+### .spec.datacenter.racks[].exposeOptions
+
+#### Description
+
+exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.
+
+#### Type
+
+object
+
+| Property                                                                                                  | Type   | Description                                                                                          |
+|-----------------------------------------------------------------------------------------------------------|--------|------------------------------------------------------------------------------------------------------|
+| [nodeService](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions-nodeservice) | object | nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions-nodeservice"></a>
+
+### .spec.datacenter.racks[].exposeOptions.nodeService
+
+#### Description
+
+nodeService controls properties of Service dedicated for each ScyllaDBDatacenter node in given rack.
+
+#### Type
+
+object
+
+| Property                                                                                                              | Type   | Description                                                                             |
+|-----------------------------------------------------------------------------------------------------------------------|--------|-----------------------------------------------------------------------------------------|
+| [annotations](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions-nodeservice-annotations) | object | annotations is a custom key value map that gets merged with managed object annotations. |
+| [labels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions-nodeservice-labels)           | object | labels is a custom key value map that gets merged with managed object labels.           |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions-nodeservice-annotations"></a>
+
+### .spec.datacenter.racks[].exposeOptions.nodeService.annotations
+
+#### Description
+
+annotations is a custom key value map that gets merged with managed object annotations.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-exposeoptions-nodeservice-labels"></a>
+
+### .spec.datacenter.racks[].exposeOptions.nodeService.labels
+
+#### Description
+
+labels is a custom key value map that gets merged with managed object labels.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement"></a>
+
+### .spec.datacenter.racks[].placement
+
+#### Description
+
+placement describes restrictions for the nodes Scylla is scheduled on.
+
+#### Type
+
+object
+
+| Property                                                                                                      | Type           | Description                                                                                                             |
+|---------------------------------------------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------|
+| [nodeAffinity](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity)       | object         | nodeAffinity describes node affinity scheduling rules for the pod.                                                      |
+| [podAffinity](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity)         | object         | podAffinity describes pod affinity scheduling rules.                                                                    |
+| [podAntiAffinity](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity) | object         | podAntiAffinity describes pod anti-affinity scheduling rules.                                                           |
+| [tolerations](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-tolerations)         | array (object) | tolerations allow the pod to tolerate any taint that matches the triple <key,value,effect> using the matching operator. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity
+
+#### Description
+
+nodeAffinity describes node affinity scheduling rules for the pod.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                   | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [preferredDuringSchedulingIgnoredDuringExecution](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution) | array (object) | The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding “weight” to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred. |
+| [requiredDuringSchedulingIgnoredDuringExecution](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution)   | object         | If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.                                                                                                                                                                                                                                                                                    |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[]
+
+#### Description
+
+An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it’s a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
+
+#### Type
+
+object
+
+| Property                                                                                                                                                         | Type    | Description                                                                             |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------|
+| [preference](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution-preference) | object  | A node selector term, associated with the corresponding weight.                         |
+| weight                                                                                                                                                           | integer | Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution-preference"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference
+
+#### Description
+
+A node selector term, associated with the corresponding weight.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                | Type           | Description                                            |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|--------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchexpressions) | array (object) | A list of node selector requirements by node’s labels. |
+| [matchFields](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchfields)           | array (object) | A list of node selector requirements by node’s fields. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference.matchExpressions[]
+
+#### Description
+
+A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                                                                                                                         |
+|------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | The label key that the selector applies to.                                                                                                                                                                                                                                                                                                         |
+| operator   | string         | Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.                                                                                                                                                                                                                                |
+| values     | array (string) | An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-preferredduringschedulingignoredduringexecution-preference-matchfields"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[].preference.matchFields[]
+
+#### Description
+
+A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                                                                                                                         |
+|------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | The label key that the selector applies to.                                                                                                                                                                                                                                                                                                         |
+| operator   | string         | Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.                                                                                                                                                                                                                                |
+| values     | array (string) | An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution
+
+#### Description
+
+If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                      | Type           | Description                                                  |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|--------------------------------------------------------------|
+| [nodeSelectorTerms](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms) | array (object) | Required. A list of node selector terms. The terms are ORed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[]
+
+#### Description
+
+A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                      | Type           | Description                                            |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|--------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchexpressions) | array (object) | A list of node selector requirements by node’s labels. |
+| [matchFields](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchfields)           | array (object) | A list of node selector requirements by node’s fields. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchExpressions[]
+
+#### Description
+
+A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                                                                                                                         |
+|------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | The label key that the selector applies to.                                                                                                                                                                                                                                                                                                         |
+| operator   | string         | Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.                                                                                                                                                                                                                                |
+| values     | array (string) | An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-nodeaffinity-requiredduringschedulingignoredduringexecution-nodeselectorterms-matchfields"></a>
+
+### .spec.datacenter.racks[].placement.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[].matchFields[]
+
+#### Description
+
+A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                                                                                                                         |
+|------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | The label key that the selector applies to.                                                                                                                                                                                                                                                                                                         |
+| operator   | string         | Represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.                                                                                                                                                                                                                                |
+| values     | array (string) | An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity
+
+#### Description
+
+podAffinity describes pod affinity scheduling rules.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                  | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [preferredDuringSchedulingIgnoredDuringExecution](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution) | array (object) | The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding “weight” to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred. |
+| [requiredDuringSchedulingIgnoredDuringExecution](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution)   | array (object) | If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.                                                                                                                                           |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[]
+
+#### Description
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                  | Type    | Description                                                                            |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------|
+| [podAffinityTerm](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm) | object  | Required. A pod affinity term, associated with the corresponding weight.               |
+| weight                                                                                                                                                                    | integer | weight associated with matching the corresponding podAffinityTerm, in the range 1-100. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm
+
+#### Description
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                      | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [labelSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector)         | object         | A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| matchLabelKeys                                                                                                                                                                                | array (string) | MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key in (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.             |
+| mismatchLabelKeys                                                                                                                                                                             | array (string) | MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key notin (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set. |
+| [namespaceSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector) | object         | A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.                                                                                                                                                                                                                                                                                                        |
+| namespaces                                                                                                                                                                                    | array (string) | namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.                                                                                                                                                                                                                                                                                                                                    |
+| topologyKey                                                                                                                                                                                   | string         | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.                                                                                                                                                                                                                                                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector
+
+#### Description
+
+A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                                  | Type           | Description                                                                                                                                                                                                                                                     |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector
+
+#### Description
+
+A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                                      | Type           | Description                                                                                                                                                                                                                                                     |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[]
+
+#### Description
+
+Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> matches that of any node on which a pod of the set of pods is running
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                     | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [labelSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-labelselector)         | object         | A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| matchLabelKeys                                                                                                                                                               | array (string) | MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key in (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.             |
+| mismatchLabelKeys                                                                                                                                                            | array (string) | MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key notin (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set. |
+| [namespaceSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector) | object         | A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.                                                                                                                                                                                                                                                                                                        |
+| namespaces                                                                                                                                                                   | array (string) | namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.                                                                                                                                                                                                                                                                                                                                    |
+| topologyKey                                                                                                                                                                  | string         | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.                                                                                                                                                                                                                                                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-labelselector"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector
+
+#### Description
+
+A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                 | Type           | Description                                                                                                                                                                                                                                                     |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector
+
+#### Description
+
+A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                     | Type           | Description                                                                                                                                                                                                                                                     |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity
+
+#### Description
+
+podAntiAffinity describes pod anti-affinity scheduling rules.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                      | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [preferredDuringSchedulingIgnoredDuringExecution](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution) | array (object) | The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding “weight” to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred. |
+| [requiredDuringSchedulingIgnoredDuringExecution](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution)   | array (object) | If the anti-affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the anti-affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.                                                                                                                                           |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[]
+
+#### Description
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                      | Type    | Description                                                                            |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------|
+| [podAffinityTerm](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm) | object  | Required. A pod affinity term, associated with the corresponding weight.               |
+| weight                                                                                                                                                                        | integer | weight associated with matching the corresponding podAffinityTerm, in the range 1-100. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm
+
+#### Description
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                          | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [labelSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector)         | object         | A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| matchLabelKeys                                                                                                                                                                                    | array (string) | MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key in (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.             |
+| mismatchLabelKeys                                                                                                                                                                                 | array (string) | MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key notin (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set. |
+| [namespaceSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector) | object         | A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.                                                                                                                                                                                                                                                                                                        |
+| namespaces                                                                                                                                                                                        | array (string) | namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.                                                                                                                                                                                                                                                                                                                                    |
+| topologyKey                                                                                                                                                                                       | string         | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.                                                                                                                                                                                                                                                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector
+
+#### Description
+
+A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                                      | Type           | Description                                                                                                                                                                                                                                                     |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-labelselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.labelSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector
+
+#### Description
+
+A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                                          | Type           | Description                                                                                                                                                                                                                                                     |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-preferredduringschedulingignoredduringexecution-podaffinityterm-namespaceselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[].podAffinityTerm.namespaceSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[]
+
+#### Description
+
+Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> matches that of any node on which a pod of the set of pods is running
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                         | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [labelSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector)         | object         | A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| matchLabelKeys                                                                                                                                                                   | array (string) | MatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key in (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both matchLabelKeys and labelSelector. Also, matchLabelKeys cannot be set when labelSelector isn’t set.             |
+| mismatchLabelKeys                                                                                                                                                                | array (string) | MismatchLabelKeys is a set of pod label keys to select which pods will be taken into consideration. The keys are used to lookup values from the incoming pod labels, those key-value labels are merged with labelSelector as key notin (value) to select the group of existing pods which pods will be taken into consideration for the incoming pod’s pod (anti) affinity. Keys that don’t exist in the incoming pod labels will be ignored. The default value is empty. The same key is forbidden to exist in both mismatchLabelKeys and labelSelector. Also, mismatchLabelKeys cannot be set when labelSelector isn’t set. |
+| [namespaceSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector) | object         | A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.                                                                                                                                                                                                                                                                                                        |
+| namespaces                                                                                                                                                                       | array (string) | namespaces specifies a static list of namespace names that the term applies to. The term is applied to the union of the namespaces listed in this field and the ones selected by namespaceSelector. null or empty namespaces list and null namespaceSelector means “this pod’s namespace”.                                                                                                                                                                                                                                                                                                                                    |
+| topologyKey                                                                                                                                                                      | string         | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.                                                                                                                                                                                                                                                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector
+
+#### Description
+
+A label query over a set of resources, in this case pods. If it’s null, this PodAffinityTerm matches with no Pods.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                     | Type           | Description                                                                                                                                                                                                                                                     |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-labelselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].labelSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector
+
+#### Description
+
+A label query over the set of namespaces that the term applies to. The term is applied to the union of the namespaces selected by this field and the ones listed in the namespaces field. null selector and null or empty namespaces list means “this pod’s namespace”. An empty selector ({}) matches all namespaces.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                                                         | Type           | Description                                                                                                                                                                                                                                                     |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-podantiaffinity-requiredduringschedulingignoredduringexecution-namespaceselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].placement.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[].namespaceSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-placement-tolerations"></a>
+
+### .spec.datacenter.racks[].placement.tolerations[]
+
+#### Description
+
+The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.
+
+#### Type
+
+object
+
+| Property          | Type    | Description                                                                                                                                                                                                                                                                                                                 |
+|-------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| effect            | string  | Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.                                                                                                                                                             |
+| key               | string  | Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.                                                                                                                               |
+| operator          | string  | Operator represents a key’s relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.                                                                                                 |
+| tolerationSeconds | integer | TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system. |
+| value             | string  | Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.                                                                                                                                                                                  |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources"></a>
+
+### .spec.datacenter.racks[].resources
+
+#### Description
+
+resources the Scylla container will use.
+
+#### Type
+
+object
+
+| Property                                                                                        | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|-------------------------------------------------------------------------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [claims](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources-claims)     | array (object) | Claims lists the names of resources, defined in spec.resourceClaims, that are used by this container.  This is an alpha field and requires enabling the DynamicResourceAllocation feature gate.  This field is immutable. It can only be set for containers.                                                                                                                                                                 |
+| [limits](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources-limits)     | object         | Limits describes the maximum amount of compute resources allowed. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)                                                                                                                                                                                |
+| [requests](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources-requests) | object         | Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources-claims"></a>
+
+### .spec.datacenter.racks[].resources.claims[]
+
+#### Description
+
+ResourceClaim references one entry in PodSpec.ResourceClaims.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                         |
+|------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name must match the name of one entry in pod.spec.resourceClaims of the Pod where this field is used. It makes that resource available inside a container.          |
+| request    | string | Request is the name chosen for a request in the referenced claim. If empty, everything from the claim is made available, otherwise only the result of this request. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources-limits"></a>
+
+### .spec.datacenter.racks[].resources.limits
+
+#### Description
+
+Limits describes the maximum amount of compute resources allowed. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-resources-requests"></a>
+
+### .spec.datacenter.racks[].resources.requests
+
+#### Description
+
+Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage"></a>
+
+### .spec.datacenter.racks[].storage
+
+#### Description
+
+storage describes the underlying storage that Scylla will consume.
+
+#### Type
+
+object
+
+| Property                                                                                      | Type   | Description                                                                                                                                                                                                                                                                         |
+|-----------------------------------------------------------------------------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| capacity                                                                                      | string | capacity describes the requested size of each persistent volume.                                                                                                                                                                                                                    |
+| [metadata](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage-metadata) | object | metadata controls shared metadata for the volume claim for this rack. At this point, the values are applied only for the initial claim and are not reconciled during its lifetime. Note that this may get fixed in the future and this behaviour shouldn’t be relied on in any way. |
+| storageClassName                                                                              | string | storageClassName is the name of a storageClass to request.                                                                                                                                                                                                                          |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage-metadata"></a>
+
+### .spec.datacenter.racks[].storage.metadata
+
+#### Description
+
+metadata controls shared metadata for the volume claim for this rack. At this point, the values are applied only for the initial claim and are not reconciled during its lifetime. Note that this may get fixed in the future and this behaviour shouldn’t be relied on in any way.
+
+#### Type
+
+object
+
+| Property                                                                                                     | Type   | Description                                                                             |
+|--------------------------------------------------------------------------------------------------------------|--------|-----------------------------------------------------------------------------------------|
+| [annotations](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage-metadata-annotations) | object | annotations is a custom key value map that gets merged with managed object annotations. |
+| [labels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage-metadata-labels)           | object | labels is a custom key value map that gets merged with managed object labels.           |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage-metadata-annotations"></a>
+
+### .spec.datacenter.racks[].storage.metadata.annotations
+
+#### Description
+
+annotations is a custom key value map that gets merged with managed object annotations.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-storage-metadata-labels"></a>
+
+### .spec.datacenter.racks[].storage.metadata.labels
+
+#### Description
+
+labels is a custom key value map that gets merged with managed object labels.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumemounts"></a>
+
+### .spec.datacenter.racks[].volumeMounts[]
+
+#### Description
+
+VolumeMount describes a mounting of a Volume within a container.
+
+#### Type
+
+object
+
+| Property          | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|-------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| mountPath         | string  | Path within the container at which the volume should be mounted.  Must not contain ‘:’.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| mountPropagation  | string  | mountPropagation determines how mounts are propagated from the host to container and the other way around. When not set, MountPropagationNone is used. This field is beta in 1.10. When RecursiveReadOnly is set to IfPossible or to Enabled, MountPropagation must be None or unspecified (which defaults to None).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| name              | string  | This must match the Name of a Volume.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| readOnly          | boolean | Mounted read-only if true, read-write otherwise (false or unspecified). Defaults to false.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| recursiveReadOnly | string  | RecursiveReadOnly specifies whether read-only mounts should be handled recursively.  If ReadOnly is false, this field has no meaning and must be unspecified.  If ReadOnly is true, and this field is set to Disabled, the mount is not made recursively read-only.  If this field is set to IfPossible, the mount is made recursively read-only, if it is supported by the container runtime.  If this field is set to Enabled, the mount is made recursively read-only if it is supported by the container runtime, otherwise the pod will not be started and an error will be generated to indicate the reason.  If this field is set to IfPossible or Enabled, MountPropagation must be set to None (or be unspecified, which defaults to None).  If this field is not specified, it is treated as an equivalent of Disabled. |
+| subPath           | string  | Path within the volume from which the container’s volume should be mounted. Defaults to “” (volume’s root).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| subPathExpr       | string  | Expanded path within the volume from which the container’s volume should be mounted. Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container’s environment. Defaults to “” (volume’s root). SubPathExpr and SubPath are mutually exclusive.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes"></a>
+
+### .spec.datacenter.racks[].volumes[]
+
+#### Description
+
+Volume represents a named volume in a pod that may be accessed by any container in the pod.
+
+#### Type
+
+object
+
+| Property                                                                                                                | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|-------------------------------------------------------------------------------------------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [awsElasticBlockStore](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-awselasticblockstore)   | object | awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet’s host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: [https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore](https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| [azureDisk](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-azuredisk)                         | object | azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| [azureFile](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-azurefile)                         | object | azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| [cephfs](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cephfs)                               | object | cephFS represents a Ceph FS mount on the host that shares a pod’s lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| [cinder](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cinder)                               | object | cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: [https://examples.k8s.io/mysql-cinder-pd/README.md](https://examples.k8s.io/mysql-cinder-pd/README.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| [configMap](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-configmap)                         | object | configMap represents a configMap that should populate this volume                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| [csi](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-csi)                                     | object | csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| [downwardAPI](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi)                     | object | downwardAPI represents downward API about the pod that should populate this volume                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| [emptyDir](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-emptydir)                           | object | emptyDir represents a temporary directory that shares a pod’s lifetime. More info: [https://kubernetes.io/docs/concepts/storage/volumes#emptydir](https://kubernetes.io/docs/concepts/storage/volumes#emptydir)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| [ephemeral](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral)                         | object | ephemeral represents a volume that is handled by a cluster storage driver. The volume’s lifecycle is tied to the pod that defines it - it will be created before the pod starts, and deleted when the pod is removed.  Use this if: a) the volume is only needed while the pod runs, b) features of normal volumes like restoring from snapshot or capacity    tracking are needed, c) the storage driver is specified through a storage class, and d) the storage driver supports dynamic volume provisioning through    a PersistentVolumeClaim (see EphemeralVolumeSource for more    information on the connection between this volume type    and PersistentVolumeClaim).  Use PersistentVolumeClaim or one of the vendor-specific APIs for volumes that persist for longer than the lifecycle of an individual pod.  Use CSI for light-weight local ephemeral volumes if the CSI driver is meant to be used that way - see the documentation of the driver for more information.  A pod can use both types of ephemeral volumes and persistent volumes at the same time.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| [fc](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-fc)                                       | object | fc represents a Fibre Channel resource that is attached to a kubelet’s host machine and then exposed to the pod.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| [flexVolume](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flexvolume)                       | object | flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| [flocker](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flocker)                             | object | flocker represents a Flocker volume attached to a kubelet’s host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| [gcePersistentDisk](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-gcepersistentdisk)         | object | gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet’s host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: [https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk](https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| [gitRepo](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-gitrepo)                             | object | gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod’s container.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| [glusterfs](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-glusterfs)                         | object | glusterfs represents a Glusterfs mount on the host that shares a pod’s lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: [https://examples.k8s.io/volumes/glusterfs/README.md](https://examples.k8s.io/volumes/glusterfs/README.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| [hostPath](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-hostpath)                           | object | hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: [https://kubernetes.io/docs/concepts/storage/volumes#hostpath](https://kubernetes.io/docs/concepts/storage/volumes#hostpath)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| [image](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-image)                                 | object | image represents an OCI object (a container image or artifact) pulled and mounted on the kubelet’s host machine. The volume is resolved at pod startup depending on which PullPolicy value is provided:  - Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails. - Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn’t present. - IfNotPresent: the kubelet pulls if the reference isn’t already present on disk. Container creation will fail if the reference isn’t present and the pull fails.  The volume gets re-resolved if the pod gets deleted and recreated, which means that new remote content will become available on pod recreation. A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message. The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field. The OCI object gets mounted in a single directory (spec.containers[\*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images. The volume will be mounted read-only (ro) and non-executable files (noexec). Sub path mounts for containers are not supported (spec.containers[\*].volumeMounts.subpath) before 1.33. The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type. |
+| [iscsi](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-iscsi)                                 | object | iscsi represents an ISCSI Disk resource that is attached to a kubelet’s host machine and then exposed to the pod. More info: [https://examples.k8s.io/volumes/iscsi/README.md](https://examples.k8s.io/volumes/iscsi/README.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| name                                                                                                                    | string | name of the volume. Must be a DNS_LABEL and unique within the pod. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| [nfs](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-nfs)                                     | object | nfs represents an NFS mount on the host that shares a pod’s lifetime More info: [https://kubernetes.io/docs/concepts/storage/volumes#nfs](https://kubernetes.io/docs/concepts/storage/volumes#nfs)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| [persistentVolumeClaim](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-persistentvolumeclaim) | object | persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: [https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| [photonPersistentDisk](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-photonpersistentdisk)   | object | photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| [portworxVolume](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-portworxvolume)               | object | portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| [projected](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected)                         | object | projected items for all in one resources secrets, configmaps, and downward API                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| [quobyte](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-quobyte)                             | object | quobyte represents a Quobyte mount on the host that shares a pod’s lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| [rbd](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-rbd)                                     | object | rbd represents a Rados Block Device mount on the host that shares a pod’s lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: [https://examples.k8s.io/volumes/rbd/README.md](https://examples.k8s.io/volumes/rbd/README.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| [scaleIO](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-scaleio)                             | object | scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| [secret](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-secret)                               | object | secret represents a secret that should populate this volume. More info: [https://kubernetes.io/docs/concepts/storage/volumes#secret](https://kubernetes.io/docs/concepts/storage/volumes#secret)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| [storageos](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-storageos)                         | object | storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| [vsphereVolume](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-vspherevolume)                 | object | vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-awselasticblockstore"></a>
+
+### .spec.datacenter.racks[].volumes[].awsElasticBlockStore
+
+#### Description
+
+awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet’s host machine and then exposed to the pod. Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: [https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore](https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore)
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                           |
+|------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType     | string  | fsType is the filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. More info: [https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore](https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore) |
+| partition  | integer | partition is the partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as “1”. Similarly, the volume partition for /dev/sda is “0” (or you can leave the property empty).                                                                                                                     |
+| readOnly   | boolean | readOnly value true will force the readOnly setting in VolumeMounts. More info: [https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore](https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore)                                                                                                                                                                  |
+| volumeID   | string  | volumeID is unique ID of the persistent disk resource in AWS (Amazon EBS volume). More info: [https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore](https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore)                                                                                                                                                     |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-azuredisk"></a>
+
+### .spec.datacenter.racks[].volumes[].azureDisk
+
+#### Description
+
+azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod. Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
+
+#### Type
+
+object
+
+| Property    | Type    | Description                                                                                                                                                                                                        |
+|-------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cachingMode | string  | cachingMode is the Host Caching mode: None, Read Only, Read Write.                                                                                                                                                 |
+| diskName    | string  | diskName is the Name of the data disk in the blob storage                                                                                                                                                          |
+| diskURI     | string  | diskURI is the URI of data disk in the blob storage                                                                                                                                                                |
+| fsType      | string  | fsType is Filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified.                                  |
+| kind        | string  | kind expected values are Shared: multiple blob disks per storage account  Dedicated: single blob disk per storage account  Managed: azure managed data disk (only in managed availability set). defaults to shared |
+| readOnly    | boolean | readOnly Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.                                                                                                            |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-azurefile"></a>
+
+### .spec.datacenter.racks[].volumes[].azureFile
+
+#### Description
+
+azureFile represents an Azure File Service mount on the host and bind mount to the pod. Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                             |
+|------------|---------|---------------------------------------------------------------------------------------------------------|
+| readOnly   | boolean | readOnly defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. |
+| secretName | string  | secretName is the  name of secret that contains Azure Storage Account Name and Key                      |
+| shareName  | string  | shareName is the azure share Name                                                                       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cephfs"></a>
+
+### .spec.datacenter.racks[].volumes[].cephfs
+
+#### Description
+
+cephFS represents a Ceph FS mount on the host that shares a pod’s lifetime. Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
+
+#### Type
+
+object
+
+| Property                                                                                               | Type           | Description                                                                                                                                                                                                                                                      |
+|--------------------------------------------------------------------------------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| monitors                                                                                               | array (string) | monitors is Required: Monitors is a collection of Ceph monitors More info: [https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it](https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it)                                                      |
+| path                                                                                                   | string         | path is Optional: Used as the mounted root, rather than the full Ceph tree, default is /                                                                                                                                                                         |
+| readOnly                                                                                               | boolean        | readOnly is Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: [https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it](https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it) |
+| secretFile                                                                                             | string         | secretFile is Optional: SecretFile is the path to key ring for User, default is /etc/ceph/user.secret More info: [https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it](https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it)                |
+| [secretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cephfs-secretref) | object         | secretRef is Optional: SecretRef is reference to the authentication secret for User, default is empty. More info: [https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it](https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it)               |
+| user                                                                                                   | string         | user is optional: User is the rados user name, default is admin More info: [https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it](https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it)                                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cephfs-secretref"></a>
+
+### .spec.datacenter.racks[].volumes[].cephfs.secretRef
+
+#### Description
+
+secretRef is Optional: SecretRef is reference to the authentication secret for User, default is empty. More info: [https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it](https://examples.k8s.io/volumes/cephfs/README.md#how-to-use-it)
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cinder"></a>
+
+### .spec.datacenter.racks[].volumes[].cinder
+
+#### Description
+
+cinder represents a cinder volume attached and mounted on kubelets host machine. Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: [https://examples.k8s.io/mysql-cinder-pd/README.md](https://examples.k8s.io/mysql-cinder-pd/README.md)
+
+#### Type
+
+object
+
+| Property                                                                                               | Type    | Description                                                                                                                                                                                                                                                                                                   |
+|--------------------------------------------------------------------------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType                                                                                                 | string  | fsType is the filesystem type to mount. Must be a filesystem type supported by the host operating system. Examples: “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. More info: [https://examples.k8s.io/mysql-cinder-pd/README.md](https://examples.k8s.io/mysql-cinder-pd/README.md) |
+| readOnly                                                                                               | boolean | readOnly defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts. More info: [https://examples.k8s.io/mysql-cinder-pd/README.md](https://examples.k8s.io/mysql-cinder-pd/README.md)                                                                                     |
+| [secretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cinder-secretref) | object  | secretRef is optional: points to a secret object containing parameters used to connect to OpenStack.                                                                                                                                                                                                          |
+| volumeID                                                                                               | string  | volumeID used to identify the volume in cinder. More info: [https://examples.k8s.io/mysql-cinder-pd/README.md](https://examples.k8s.io/mysql-cinder-pd/README.md)                                                                                                                                             |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-cinder-secretref"></a>
+
+### .spec.datacenter.racks[].volumes[].cinder.secretRef
+
+#### Description
+
+secretRef is optional: points to a secret object containing parameters used to connect to OpenStack.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-configmap"></a>
+
+### .spec.datacenter.racks[].volumes[].configMap
+
+#### Description
+
+configMap represents a configMap that should populate this volume
+
+#### Type
+
+object
+
+| Property                                                                                          | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|---------------------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| defaultMode                                                                                       | integer        | defaultMode is optional: mode bits used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.                      |
+| [items](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-configmap-items) | array (object) | items if unspecified, each key-value pair in the Data field of the referenced ConfigMap will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the ConfigMap, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the ‘..’ path or start with ‘..’. |
+| name                                                                                              | string         | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)                                                                                                                             |
+| optional                                                                                          | boolean        | optional specify whether the ConfigMap or its keys must be defined                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-configmap-items"></a>
+
+### .spec.datacenter.racks[].volumes[].configMap.items[]
+
+#### Description
+
+Maps a string key to a path within a volume.
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string  | key is the key to project.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| mode       | integer | mode is Optional: mode bits used to set permissions on this file. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| path       | string  | path is the relative path of the file to map the key to. May not be an absolute path. May not contain the path element ‘..’. May not start with the string ‘..’.                                                                                                                                                                                                                                                                     |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-csi"></a>
+
+### .spec.datacenter.racks[].volumes[].csi
+
+#### Description
+
+csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
+
+#### Type
+
+object
+
+| Property                                                                                                                  | Type    | Description                                                                                                                                                                                                                                                                                                                                        |
+|---------------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| driver                                                                                                                    | string  | driver is the name of the CSI driver that handles this volume. Consult with your admin for the correct name as registered in the cluster.                                                                                                                                                                                                          |
+| fsType                                                                                                                    | string  | fsType to mount. Ex. “ext4”, “xfs”, “ntfs”. If not provided, the empty value is passed to the associated CSI driver which will determine the default filesystem to apply.                                                                                                                                                                          |
+| [nodePublishSecretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-csi-nodepublishsecretref) | object  | nodePublishSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI NodePublishVolume and NodeUnpublishVolume calls. This field is optional, and  may be empty if no secret is required. If the secret object contains more than one secret, all secret references are passed. |
+| readOnly                                                                                                                  | boolean | readOnly specifies a read-only configuration for the volume. Defaults to false (read/write).                                                                                                                                                                                                                                                       |
+| [volumeAttributes](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-csi-volumeattributes)         | object  | volumeAttributes stores driver-specific properties that are passed to the CSI driver. Consult your driver’s documentation for supported values.                                                                                                                                                                                                    |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-csi-nodepublishsecretref"></a>
+
+### .spec.datacenter.racks[].volumes[].csi.nodePublishSecretRef
+
+#### Description
+
+nodePublishSecretRef is a reference to the secret object containing sensitive information to pass to the CSI driver to complete the CSI NodePublishVolume and NodeUnpublishVolume calls. This field is optional, and  may be empty if no secret is required. If the secret object contains more than one secret, all secret references are passed.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-csi-volumeattributes"></a>
+
+### .spec.datacenter.racks[].volumes[].csi.volumeAttributes
+
+#### Description
+
+volumeAttributes stores driver-specific properties that are passed to the CSI driver. Consult your driver’s documentation for supported values.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi"></a>
+
+### .spec.datacenter.racks[].volumes[].downwardAPI
+
+#### Description
+
+downwardAPI represents downward API about the pod that should populate this volume
+
+#### Type
+
+object
+
+| Property                                                                                            | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|-----------------------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| defaultMode                                                                                         | integer        | Optional: mode bits to use on created files by default. Must be a Optional: mode bits used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| [items](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi-items) | array (object) | Items is a list of downward API volume file                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi-items"></a>
+
+### .spec.datacenter.racks[].volumes[].downwardAPI.items[]
+
+#### Description
+
+DownwardAPIVolumeFile represents information to create the file containing the pod field
+
+#### Type
+
+object
+
+| Property                                                                                                                        | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|---------------------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [fieldRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi-items-fieldref)                 | object  | Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.                                                                                                                                                                                                                                                                                                                       |
+| mode                                                                                                                            | integer | Optional: mode bits used to set permissions on this file, must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| path                                                                                                                            | string  | Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the ‘..’ path. Must be utf-8 encoded. The first item of the relative path must not start with ‘..’                                                                                                                                                                                                                      |
+| [resourceFieldRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi-items-resourcefieldref) | object  | Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.                                                                                                                                                                                                                                                               |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi-items-fieldref"></a>
+
+### .spec.datacenter.racks[].volumes[].downwardAPI.items[].fieldRef
+
+#### Description
+
+Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                   |
+|------------|--------|-------------------------------------------------------------------------------|
+| apiVersion | string | Version of the schema the FieldPath is written in terms of, defaults to “v1”. |
+| fieldPath  | string | Path of the field to select in the specified API version.                     |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-downwardapi-items-resourcefieldref"></a>
+
+### .spec.datacenter.racks[].volumes[].downwardAPI.items[].resourceFieldRef
+
+#### Description
+
+Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.
+
+#### Type
+
+object
+
+| Property      | Type   | Description                                                           |
+|---------------|--------|-----------------------------------------------------------------------|
+| containerName | string | Container name: required for volumes, optional for env vars           |
+| divisor       |        | Specifies the output format of the exposed resources, defaults to “1” |
+| resource      | string | Required: resource to select                                          |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-emptydir"></a>
+
+### .spec.datacenter.racks[].volumes[].emptyDir
+
+#### Description
+
+emptyDir represents a temporary directory that shares a pod’s lifetime. More info: [https://kubernetes.io/docs/concepts/storage/volumes#emptydir](https://kubernetes.io/docs/concepts/storage/volumes#emptydir)
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| medium     | string | medium represents what type of storage medium should back this directory. The default is “” which means to use the node’s default medium. Must be an empty string (default) or Memory. More info: [https://kubernetes.io/docs/concepts/storage/volumes#emptydir](https://kubernetes.io/docs/concepts/storage/volumes#emptydir)                                                                                                                                                                                  |
+| sizeLimit  |        | sizeLimit is the total amount of local storage required for this EmptyDir volume. The size limit is also applicable for memory medium. The maximum usage on memory medium EmptyDir would be the minimum value between the SizeLimit specified here and the sum of memory limits of all containers in a pod. The default is nil which means that the limit is undefined. More info: [https://kubernetes.io/docs/concepts/storage/volumes#emptydir](https://kubernetes.io/docs/concepts/storage/volumes#emptydir) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral
+
+#### Description
+
+ephemeral represents a volume that is handled by a cluster storage driver. The volume’s lifecycle is tied to the pod that defines it - it will be created before the pod starts, and deleted when the pod is removed.  Use this if: a) the volume is only needed while the pod runs, b) features of normal volumes like restoring from snapshot or capacity    tracking are needed, c) the storage driver is specified through a storage class, and d) the storage driver supports dynamic volume provisioning through    a PersistentVolumeClaim (see EphemeralVolumeSource for more    information on the connection between this volume type    and PersistentVolumeClaim).  Use PersistentVolumeClaim or one of the vendor-specific APIs for volumes that persist for longer than the lifecycle of an individual pod.  Use CSI for light-weight local ephemeral volumes if the CSI driver is meant to be used that way - see the documentation of the driver for more information.  A pod can use both types of ephemeral volumes and persistent volumes at the same time.
+
+#### Type
+
+object
+
+| Property                                                                                                                      | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|-------------------------------------------------------------------------------------------------------------------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [volumeClaimTemplate](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate) | object | Will be used to create a stand-alone PVC to provision the volume. The pod in which this EphemeralVolumeSource is embedded will be the owner of the PVC, i.e. the PVC will be deleted together with the pod.  The name of the PVC will be <pod name>-<volume name> where <volume name> is the name from the PodSpec.Volumes array entry. Pod validation will reject the pod if the concatenated name is not valid for a PVC (for example, too long).  An existing PVC with that name that is not owned by the pod will *not* be used for the pod to avoid using an unrelated volume by mistake. Starting the pod is then blocked until the unrelated PVC is removed. If such a pre-created PVC is meant to be used by the pod, the PVC has to updated with an owner reference to the pod once the pod exists. Normally this should not be necessary, but it may be useful when manually reconstructing a broken cluster.  This field is read-only and no changes will be made by Kubernetes to the PVC after it has been created.  Required, must not be nil. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate
+
+#### Description
+
+Will be used to create a stand-alone PVC to provision the volume. The pod in which this EphemeralVolumeSource is embedded will be the owner of the PVC, i.e. the PVC will be deleted together with the pod.  The name of the PVC will be <pod name>-<volume name> where <volume name> is the name from the PodSpec.Volumes array entry. Pod validation will reject the pod if the concatenated name is not valid for a PVC (for example, too long).  An existing PVC with that name that is not owned by the pod will *not* be used for the pod to avoid using an unrelated volume by mistake. Starting the pod is then blocked until the unrelated PVC is removed. If such a pre-created PVC is meant to be used by the pod, the PVC has to updated with an owner reference to the pod once the pod exists. Normally this should not be necessary, but it may be useful when manually reconstructing a broken cluster.  This field is read-only and no changes will be made by Kubernetes to the PVC after it has been created.  Required, must not be nil.
+
+#### Type
+
+object
+
+| Property                                                                                                                    | Type   | Description                                                                                                                                                                                                   |
+|-----------------------------------------------------------------------------------------------------------------------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [metadata](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-metadata) | object | May contain labels and annotations that will be copied into the PVC when creating it. No other fields are allowed and will be rejected during validation.                                                     |
+| [spec](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec)         | object | The specification for the PersistentVolumeClaim. The entire content is copied unchanged into the PVC that gets created from this template. The same fields as in a PersistentVolumeClaim are also valid here. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-metadata"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.metadata
+
+#### Description
+
+May contain labels and annotations that will be copied into the PVC when creating it. No other fields are allowed and will be rejected during validation.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec
+
+#### Description
+
+The specification for the PersistentVolumeClaim. The entire content is copied unchanged into the PVC that gets created from this template. The same fields as in a PersistentVolumeClaim are also valid here.
+
+#### Type
+
+object
+
+| Property                                                                                                                                   | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+|--------------------------------------------------------------------------------------------------------------------------------------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| accessModes                                                                                                                                | array (string) | accessModes contains the desired access modes the volume should have. More info: [https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1](https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| [dataSource](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-datasource)       | object         | dataSource field can be used to specify either: \* An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) \* An existing PVC (PersistentVolumeClaim) If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source. When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified. If the namespace is specified, then dataSourceRef will not be copied to dataSource.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| [dataSourceRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-datasourceref) | object         | dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn’t specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn’t set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: \* While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. \* While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. \* While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled. |
+| [resources](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-resources)         | object         | resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: [https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources](https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| [selector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-selector)           | object         | selector is a label query over volumes to consider for binding.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| storageClassName                                                                                                                           | string         | storageClassName is the name of the StorageClass required by the claim. More info: [https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1](https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| volumeAttributesClassName                                                                                                                  | string         | volumeAttributesClassName may be used to set the VolumeAttributesClass used by this claim. If specified, the CSI driver will create or update the volume with the attributes defined in the corresponding VolumeAttributesClass. This has a different purpose than storageClassName, it can be changed after the claim is created. An empty string value means that no VolumeAttributesClass will be applied to the claim but it’s not allowed to reset this field to empty string once it is set. If unspecified and the PersistentVolumeClaim is unbound, the default VolumeAttributesClass will be set by the persistentvolume controller if it exists. If the resource referred to by volumeAttributesClass does not exist, this PersistentVolumeClaim will be set to a Pending state, as reflected by the modifyVolumeStatus field, until such as a resource exists. More info: [https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/](https://kubernetes.io/docs/concepts/storage/volume-attributes-classes/) (Beta) Using this field requires the VolumeAttributesClass feature gate to be enabled (off by default).                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| volumeMode                                                                                                                                 | string         | volumeMode defines what type of volume is required by the claim. Value of Filesystem is implied when not included in claim spec.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| volumeName                                                                                                                                 | string         | volumeName is the binding reference to the PersistentVolume backing this claim.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-datasource"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.dataSource
+
+#### Description
+
+dataSource field can be used to specify either: \* An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot) \* An existing PVC (PersistentVolumeClaim) If the provisioner or an external controller can support the specified data source, it will create a new volume based on the contents of the specified data source. When the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified. If the namespace is specified, then dataSourceRef will not be copied to dataSource.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                     |
+|------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| apiGroup   | string | APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required. |
+| kind       | string | Kind is the type of resource being referenced                                                                                                                                                   |
+| name       | string | Name is the name of resource being referenced                                                                                                                                                   |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-datasourceref"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.dataSourceRef
+
+#### Description
+
+dataSourceRef specifies the object from which to populate the volume with data, if a non-empty volume is desired. This may be any object from a non-empty API group (non core object) or a PersistentVolumeClaim object. When this field is specified, volume binding will only succeed if the type of the specified object matches some installed volume populator or dynamic provisioner. This field will replace the functionality of the dataSource field and as such if both fields are non-empty, they must have the same value. For backwards compatibility, when namespace isn’t specified in dataSourceRef, both fields (dataSource and dataSourceRef) will be set to the same value automatically if one of them is empty and the other is non-empty. When namespace is specified in dataSourceRef, dataSource isn’t set to the same value and must be empty. There are three important differences between dataSource and dataSourceRef: \* While dataSource only allows two specific types of objects, dataSourceRef   allows any non-core object, as well as PersistentVolumeClaim objects. \* While dataSource ignores disallowed values (dropping them), dataSourceRef   preserves all values, and generates an error if a disallowed value is   specified. \* While dataSource only allows local objects, dataSourceRef allows objects   in any namespaces. (Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled. (Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                    |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| apiGroup   | string | APIGroup is the group for the resource being referenced. If APIGroup is not specified, the specified Kind must be in the core API group. For any other third-party types, APIGroup is required.                                                                                                                                                                                                |
+| kind       | string | Kind is the type of resource being referenced                                                                                                                                                                                                                                                                                                                                                  |
+| name       | string | Name is the name of resource being referenced                                                                                                                                                                                                                                                                                                                                                  |
+| namespace  | string | Namespace is the namespace of resource being referenced Note that when a namespace is specified, a gateway.networking.k8s.io/ReferenceGrant object is required in the referent namespace to allow that namespace’s owner to accept the reference. See the ReferenceGrant documentation for details. (Alpha) This field requires the CrossNamespaceVolumeDataSource feature gate to be enabled. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-resources"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.resources
+
+#### Description
+
+resources represents the minimum resources the volume should have. If RecoverVolumeExpansionFailure feature is enabled users are allowed to specify resource requirements that are lower than previous value but must still be higher than capacity recorded in the status field of the claim. More info: [https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources](https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources)
+
+#### Type
+
+object
+
+| Property                                                                                                                                   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|--------------------------------------------------------------------------------------------------------------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [limits](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-resources-limits)     | object | Limits describes the maximum amount of compute resources allowed. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)                                                                                                                                                                                |
+| [requests](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-resources-requests) | object | Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-resources-limits"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.resources.limits
+
+#### Description
+
+Limits describes the maximum amount of compute resources allowed. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-resources-requests"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.resources.requests
+
+#### Description
+
+Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. Requests cannot exceed Limits. More info: [https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-selector"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.selector
+
+#### Description
+
+selector is a label query over volumes to consider for binding.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                  | Type           | Description                                                                                                                                                                                                                                                     |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-selector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-selector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-selector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.selector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-ephemeral-volumeclaimtemplate-spec-selector-matchlabels"></a>
+
+### .spec.datacenter.racks[].volumes[].ephemeral.volumeClaimTemplate.spec.selector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-fc"></a>
+
+### .spec.datacenter.racks[].volumes[].fc
+
+#### Description
+
+fc represents a Fibre Channel resource that is attached to a kubelet’s host machine and then exposed to the pod.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                           |
+|------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType     | string         | fsType is the filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. |
+| lun        | integer        | lun is Optional: FC target lun number                                                                                                                                                 |
+| readOnly   | boolean        | readOnly is Optional: Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.                                                                  |
+| targetWWNs | array (string) | targetWWNs is Optional: FC target worldwide names (WWNs)                                                                                                                              |
+| wwids      | array (string) | wwids Optional: FC volume world wide identifiers (wwids) Either wwids or combination of targetWWNs and lun must be set, but not both simultaneously.                                  |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flexvolume"></a>
+
+### .spec.datacenter.racks[].volumes[].flexVolume
+
+#### Description
+
+flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin. Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
+
+#### Type
+
+object
+
+| Property                                                                                                   | Type    | Description                                                                                                                                                                                                                                                                              |
+|------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| driver                                                                                                     | string  | driver is the name of the driver to use for this volume.                                                                                                                                                                                                                                 |
+| fsType                                                                                                     | string  | fsType is the filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”, “ntfs”. The default filesystem depends on FlexVolume script.                                                                                                |
+| [options](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flexvolume-options)     | object  | options is Optional: this field holds extra command options if any.                                                                                                                                                                                                                      |
+| readOnly                                                                                                   | boolean | readOnly is Optional: defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.                                                                                                                                                                     |
+| [secretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flexvolume-secretref) | object  | secretRef is Optional: secretRef is reference to the secret object containing sensitive information to pass to the plugin scripts. This may be empty if no secret object is specified. If the secret object contains more than one secret, all secrets are passed to the plugin scripts. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flexvolume-options"></a>
+
+### .spec.datacenter.racks[].volumes[].flexVolume.options
+
+#### Description
+
+options is Optional: this field holds extra command options if any.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flexvolume-secretref"></a>
+
+### .spec.datacenter.racks[].volumes[].flexVolume.secretRef
+
+#### Description
+
+secretRef is Optional: secretRef is reference to the secret object containing sensitive information to pass to the plugin scripts. This may be empty if no secret object is specified. If the secret object contains more than one secret, all secrets are passed to the plugin scripts.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-flocker"></a>
+
+### .spec.datacenter.racks[].volumes[].flocker
+
+#### Description
+
+flocker represents a Flocker volume attached to a kubelet’s host machine. This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
+
+#### Type
+
+object
+
+| Property    | Type   | Description                                                                                                                 |
+|-------------|--------|-----------------------------------------------------------------------------------------------------------------------------|
+| datasetName | string | datasetName is Name of the dataset stored as metadata -> name on the dataset for Flocker should be considered as deprecated |
+| datasetUUID | string | datasetUUID is the UUID of the dataset. This is unique identifier of a Flocker dataset                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-gcepersistentdisk"></a>
+
+### .spec.datacenter.racks[].volumes[].gcePersistentDisk
+
+#### Description
+
+gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet’s host machine and then exposed to the pod. Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: [https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk](https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk)
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+|------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType     | string  | fsType is filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. More info: [https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk](https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk)                                                 |
+| partition  | integer | partition is the partition in the volume that you want to mount. If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as “1”. Similarly, the volume partition for /dev/sda is “0” (or you can leave the property empty). More info: [https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk](https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk) |
+| pdName     | string  | pdName is unique name of the PD resource in GCE. Used to identify the disk in GCE. More info: [https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk](https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk)                                                                                                                                                                                                |
+| readOnly   | boolean | readOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: [https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk](https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk)                                                                                                                                                                                                 |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-gitrepo"></a>
+
+### .spec.datacenter.racks[].volumes[].gitRepo
+
+#### Description
+
+gitRepo represents a git repository at a particular revision. Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod’s container.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                      |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| directory  | string | directory is the target directory name. Must not contain or start with ‘..’.  If ‘.’ is supplied, the volume directory will be the git repository.  Otherwise, if specified, the volume will contain the git repository in the subdirectory with the given name. |
+| repository | string | repository is the URL                                                                                                                                                                                                                                            |
+| revision   | string | revision is the commit hash for the specified revision.                                                                                                                                                                                                          |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-glusterfs"></a>
+
+### .spec.datacenter.racks[].volumes[].glusterfs
+
+#### Description
+
+glusterfs represents a Glusterfs mount on the host that shares a pod’s lifetime. Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: [https://examples.k8s.io/volumes/glusterfs/README.md](https://examples.k8s.io/volumes/glusterfs/README.md)
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                |
+|------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| endpoints  | string  | endpoints is the endpoint name that details Glusterfs topology. More info: [https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod](https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod)                                            |
+| path       | string  | path is the Glusterfs volume path. More info: [https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod](https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod)                                                                         |
+| readOnly   | boolean | readOnly here will force the Glusterfs volume to be mounted with read-only permissions. Defaults to false. More info: [https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod](https://examples.k8s.io/volumes/glusterfs/README.md#create-a-pod) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-hostpath"></a>
+
+### .spec.datacenter.racks[].volumes[].hostPath
+
+#### Description
+
+hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container. This is generally used for system agents or other privileged things that are allowed to see the host machine. Most containers will NOT need this. More info: [https://kubernetes.io/docs/concepts/storage/volumes#hostpath](https://kubernetes.io/docs/concepts/storage/volumes#hostpath)
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                    |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| path       | string | path of the directory on the host. If the path is a symlink, it will follow the link to the real path. More info: [https://kubernetes.io/docs/concepts/storage/volumes#hostpath](https://kubernetes.io/docs/concepts/storage/volumes#hostpath) |
+| type       | string | type for HostPath Volume Defaults to “” More info: [https://kubernetes.io/docs/concepts/storage/volumes#hostpath](https://kubernetes.io/docs/concepts/storage/volumes#hostpath)                                                                |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-image"></a>
+
+### .spec.datacenter.racks[].volumes[].image
+
+#### Description
+
+image represents an OCI object (a container image or artifact) pulled and mounted on the kubelet’s host machine. The volume is resolved at pod startup depending on which PullPolicy value is provided:  - Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails. - Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn’t present. - IfNotPresent: the kubelet pulls if the reference isn’t already present on disk. Container creation will fail if the reference isn’t present and the pull fails.  The volume gets re-resolved if the pod gets deleted and recreated, which means that new remote content will become available on pod recreation. A failure to resolve or pull the image during pod startup will block containers from starting and may add significant latency. Failures will be retried using normal volume backoff and will be reported on the pod reason and message. The types of objects that may be mounted by this volume are defined by the container runtime implementation on a host machine and at minimum must include all valid types supported by the container image field. The OCI object gets mounted in a single directory (spec.containers[\*].volumeMounts.mountPath) by merging the manifest layers in the same way as for container images. The volume will be mounted read-only (ro) and non-executable files (noexec). Sub path mounts for containers are not supported (spec.containers[\*].volumeMounts.subpath) before 1.33. The field spec.securityContext.fsGroupChangePolicy has no effect on this volume type.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| pullPolicy | string | Policy for pulling OCI objects. Possible values are: Always: the kubelet always attempts to pull the reference. Container creation will fail If the pull fails. Never: the kubelet never pulls the reference and only uses a local image or artifact. Container creation will fail if the reference isn’t present. IfNotPresent: the kubelet pulls if the reference isn’t already present on disk. Container creation will fail if the reference isn’t present and the pull fails. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.             |
+| reference  | string | Required: Image or artifact reference to be used. Behaves in the same way as pod.spec.containers[\*].image. Pull secrets will be assembled in the same way as for the container image by looking up node credentials, SA image pull secrets, and pod spec image pull secrets. More info: [https://kubernetes.io/docs/concepts/containers/images](https://kubernetes.io/docs/concepts/containers/images) This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-iscsi"></a>
+
+### .spec.datacenter.racks[].volumes[].iscsi
+
+#### Description
+
+iscsi represents an ISCSI Disk resource that is attached to a kubelet’s host machine and then exposed to the pod. More info: [https://examples.k8s.io/volumes/iscsi/README.md](https://examples.k8s.io/volumes/iscsi/README.md)
+
+#### Type
+
+object
+
+| Property                                                                                              | Type           | Description                                                                                                                                                                                                                                                                                                                                                             |
+|-------------------------------------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| chapAuthDiscovery                                                                                     | boolean        | chapAuthDiscovery defines whether support iSCSI Discovery CHAP authentication                                                                                                                                                                                                                                                                                           |
+| chapAuthSession                                                                                       | boolean        | chapAuthSession defines whether support iSCSI Session CHAP authentication                                                                                                                                                                                                                                                                                               |
+| fsType                                                                                                | string         | fsType is the filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. More info: [https://kubernetes.io/docs/concepts/storage/volumes#iscsi](https://kubernetes.io/docs/concepts/storage/volumes#iscsi) |
+| initiatorName                                                                                         | string         | initiatorName is the custom iSCSI Initiator Name. If initiatorName is specified with iscsiInterface simultaneously, new iSCSI interface <target portal>:<volume name> will be created for the connection.                                                                                                                                                               |
+| iqn                                                                                                   | string         | iqn is the target iSCSI Qualified Name.                                                                                                                                                                                                                                                                                                                                 |
+| iscsiInterface                                                                                        | string         | iscsiInterface is the interface Name that uses an iSCSI transport. Defaults to ‘default’ (tcp).                                                                                                                                                                                                                                                                         |
+| lun                                                                                                   | integer        | lun represents iSCSI Target Lun number.                                                                                                                                                                                                                                                                                                                                 |
+| portals                                                                                               | array (string) | portals is the iSCSI Target Portal List. The portal is either an IP or ip_addr:port if the port is other than default (typically TCP ports 860 and 3260).                                                                                                                                                                                                               |
+| readOnly                                                                                              | boolean        | readOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false.                                                                                                                                                                                                                                                                                       |
+| [secretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-iscsi-secretref) | object         | secretRef is the CHAP Secret for iSCSI target and initiator authentication                                                                                                                                                                                                                                                                                              |
+| targetPortal                                                                                          | string         | targetPortal is iSCSI Target Portal. The Portal is either an IP or ip_addr:port if the port is other than default (typically TCP ports 860 and 3260).                                                                                                                                                                                                                   |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-iscsi-secretref"></a>
+
+### .spec.datacenter.racks[].volumes[].iscsi.secretRef
+
+#### Description
+
+secretRef is the CHAP Secret for iSCSI target and initiator authentication
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-nfs"></a>
+
+### .spec.datacenter.racks[].volumes[].nfs
+
+#### Description
+
+nfs represents an NFS mount on the host that shares a pod’s lifetime More info: [https://kubernetes.io/docs/concepts/storage/volumes#nfs](https://kubernetes.io/docs/concepts/storage/volumes#nfs)
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                        |
+|------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| path       | string  | path that is exported by the NFS server. More info: [https://kubernetes.io/docs/concepts/storage/volumes#nfs](https://kubernetes.io/docs/concepts/storage/volumes#nfs)                                                             |
+| readOnly   | boolean | readOnly here will force the NFS export to be mounted with read-only permissions. Defaults to false. More info: [https://kubernetes.io/docs/concepts/storage/volumes#nfs](https://kubernetes.io/docs/concepts/storage/volumes#nfs) |
+| server     | string  | server is the hostname or IP address of the NFS server. More info: [https://kubernetes.io/docs/concepts/storage/volumes#nfs](https://kubernetes.io/docs/concepts/storage/volumes#nfs)                                              |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-persistentvolumeclaim"></a>
+
+### .spec.datacenter.racks[].volumes[].persistentVolumeClaim
+
+#### Description
+
+persistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. More info: [https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims)
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                                                    |
+|------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| claimName  | string  | claimName is the name of a PersistentVolumeClaim in the same namespace as the pod using this volume. More info: [https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims](https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims) |
+| readOnly   | boolean | readOnly Will force the ReadOnly setting in VolumeMounts. Default false.                                                                                                                                                                                                                       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-photonpersistentdisk"></a>
+
+### .spec.datacenter.racks[].volumes[].photonPersistentDisk
+
+#### Description
+
+photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine. Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                           |
+|------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType     | string | fsType is the filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. |
+| pdID       | string | pdID is the ID that identifies Photon Controller persistent disk                                                                                                                      |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-portworxvolume"></a>
+
+### .spec.datacenter.racks[].volumes[].portworxVolume
+
+#### Description
+
+portworxVolume represents a portworx volume attached and mounted on kubelets host machine. Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                          |
+|------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType     | string  | fSType represents the filesystem type to mount Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”. Implicitly inferred to be “ext4” if unspecified. |
+| readOnly   | boolean | readOnly defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.                                                                              |
+| volumeID   | string  | volumeID uniquely identifies a Portworx volume                                                                                                                                       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected"></a>
+
+### .spec.datacenter.racks[].volumes[].projected
+
+#### Description
+
+projected items for all in one resources secrets, configmaps, and downward API
+
+#### Type
+
+object
+
+| Property                                                                                              | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|-------------------------------------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| defaultMode                                                                                           | integer        | defaultMode are the mode bits used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| [sources](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources) | array (object) | sources is the list of volume projections. Each entry in this list handles one source.                                                                                                                                                                                                                                                                                                                                                                       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[]
+
+#### Description
+
+Projection that may be projected along with other supported volume types. Exactly one of these fields must be set.
+
+#### Type
+
+object
+
+| Property                                                                                                                              | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|---------------------------------------------------------------------------------------------------------------------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [clusterTrustBundle](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle)   | object | ClusterTrustBundle allows a pod to access the .spec.trustBundle field of ClusterTrustBundle objects in an auto-updating file.  Alpha, gated by the ClusterTrustBundleProjection feature gate.  ClusterTrustBundle objects can either be selected by name, or by the combination of signer name and a label selector.  Kubelet performs aggressive normalization of the PEM contents written into the pod filesystem.  Esoteric PEM features such as inter-block comments and block headers are stripped.  Certificates are deduplicated. The ordering of certificates within the file is arbitrary, and Kubelet may change the order over time. |
+| [configMap](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-configmap)                     | object | configMap information about the configMap data to project                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| [downwardAPI](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi)                 | object | downwardAPI information about the downwardAPI data to project                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| [secret](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-secret)                           | object | secret information about the secret data to project                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| [serviceAccountToken](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-serviceaccounttoken) | object | serviceAccountToken is information about the serviceAccountToken data to project                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].clusterTrustBundle
+
+#### Description
+
+ClusterTrustBundle allows a pod to access the .spec.trustBundle field of ClusterTrustBundle objects in an auto-updating file.  Alpha, gated by the ClusterTrustBundleProjection feature gate.  ClusterTrustBundle objects can either be selected by name, or by the combination of signer name and a label selector.  Kubelet performs aggressive normalization of the PEM contents written into the pod filesystem.  Esoteric PEM features such as inter-block comments and block headers are stripped.  Certificates are deduplicated. The ordering of certificates within the file is arbitrary, and Kubelet may change the order over time.
+
+#### Type
+
+object
+
+| Property                                                                                                                                     | Type    | Description                                                                                                                                                                                                                                                                                    |
+|----------------------------------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [labelSelector](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle-labelselector) | object  | Select all ClusterTrustBundles that match this label selector.  Only has effect if signerName is set.  Mutually-exclusive with name.  If unset, interpreted as “match nothing”.  If set but empty, interpreted as “match everything”.                                                          |
+| name                                                                                                                                         | string  | Select a single ClusterTrustBundle by object name.  Mutually-exclusive with signerName and labelSelector.                                                                                                                                                                                      |
+| optional                                                                                                                                     | boolean | If true, don’t block pod startup if the referenced ClusterTrustBundle(s) aren’t available.  If using name, then the named ClusterTrustBundle is allowed not to exist.  If using signerName, then the combination of signerName and labelSelector is allowed to match zero ClusterTrustBundles. |
+| path                                                                                                                                         | string  | Relative path from the volume root to write the bundle.                                                                                                                                                                                                                                        |
+| signerName                                                                                                                                   | string  | Select all ClusterTrustBundles that match this signer name. Mutually-exclusive with name.  The contents of all selected ClusterTrustBundles will be unified and deduplicated.                                                                                                                  |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle-labelselector"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].clusterTrustBundle.labelSelector
+
+#### Description
+
+Select all ClusterTrustBundles that match this label selector.  Only has effect if signerName is set.  Mutually-exclusive with name.  If unset, interpreted as “match nothing”.  If set but empty, interpreted as “match everything”.
+
+#### Type
+
+object
+
+| Property                                                                                                                                                         | Type           | Description                                                                                                                                                                                                                                                     |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [matchExpressions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle-labelselector-matchexpressions) | array (object) | matchExpressions is a list of label selector requirements. The requirements are ANDed.                                                                                                                                                                          |
+| [matchLabels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle-labelselector-matchlabels)           | object         | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle-labelselector-matchexpressions"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].clusterTrustBundle.labelSelector.matchExpressions[]
+
+#### Description
+
+A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+
+#### Type
+
+object
+
+| Property   | Type           | Description                                                                                                                                                                                                                                |
+|------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string         | key is the label key that the selector applies to.                                                                                                                                                                                         |
+| operator   | string         | operator represents a key’s relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.                                                                                                                       |
+| values     | array (string) | values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-clustertrustbundle-labelselector-matchlabels"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].clusterTrustBundle.labelSelector.matchLabels
+
+#### Description
+
+matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is “key”, the operator is “In”, and the values array contains only “value”. The requirements are ANDed.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-configmap"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].configMap
+
+#### Description
+
+configMap information about the configMap data to project
+
+#### Type
+
+object
+
+| Property                                                                                                            | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|---------------------------------------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [items](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-configmap-items) | array (object) | items if unspecified, each key-value pair in the Data field of the referenced ConfigMap will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the ConfigMap, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the ‘..’ path or start with ‘..’. |
+| name                                                                                                                | string         | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)                                                                                                                             |
+| optional                                                                                                            | boolean        | optional specify whether the ConfigMap or its keys must be defined                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-configmap-items"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].configMap.items[]
+
+#### Description
+
+Maps a string key to a path within a volume.
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string  | key is the key to project.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| mode       | integer | mode is Optional: mode bits used to set permissions on this file. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| path       | string  | path is the relative path of the file to map the key to. May not be an absolute path. May not contain the path element ‘..’. May not start with the string ‘..’.                                                                                                                                                                                                                                                                     |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].downwardAPI
+
+#### Description
+
+downwardAPI information about the downwardAPI data to project
+
+#### Type
+
+object
+
+| Property                                                                                                              | Type           | Description                               |
+|-----------------------------------------------------------------------------------------------------------------------|----------------|-------------------------------------------|
+| [items](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi-items) | array (object) | Items is a list of DownwardAPIVolume file |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi-items"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].downwardAPI.items[]
+
+#### Description
+
+DownwardAPIVolumeFile represents information to create the file containing the pod field
+
+#### Type
+
+object
+
+| Property                                                                                                                                          | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|---------------------------------------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [fieldRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi-items-fieldref)                 | object  | Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.                                                                                                                                                                                                                                                                                                                       |
+| mode                                                                                                                                              | integer | Optional: mode bits used to set permissions on this file, must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| path                                                                                                                                              | string  | Required: Path is  the relative path name of the file to be created. Must not be absolute or contain the ‘..’ path. Must be utf-8 encoded. The first item of the relative path must not start with ‘..’                                                                                                                                                                                                                      |
+| [resourceFieldRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi-items-resourcefieldref) | object  | Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.                                                                                                                                                                                                                                                               |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi-items-fieldref"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].downwardAPI.items[].fieldRef
+
+#### Description
+
+Required: Selects a field of the pod: only annotations, labels, name, namespace and uid are supported.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                   |
+|------------|--------|-------------------------------------------------------------------------------|
+| apiVersion | string | Version of the schema the FieldPath is written in terms of, defaults to “v1”. |
+| fieldPath  | string | Path of the field to select in the specified API version.                     |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-downwardapi-items-resourcefieldref"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].downwardAPI.items[].resourceFieldRef
+
+#### Description
+
+Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.
+
+#### Type
+
+object
+
+| Property      | Type   | Description                                                           |
+|---------------|--------|-----------------------------------------------------------------------|
+| containerName | string | Container name: required for volumes, optional for env vars           |
+| divisor       |        | Specifies the output format of the exposed resources, defaults to “1” |
+| resource      | string | Required: resource to select                                          |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-secret"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].secret
+
+#### Description
+
+secret information about the secret data to project
+
+#### Type
+
+object
+
+| Property                                                                                                         | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+|------------------------------------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [items](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-secret-items) | array (object) | items if unspecified, each key-value pair in the Data field of the referenced Secret will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the Secret, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the ‘..’ path or start with ‘..’. |
+| name                                                                                                             | string         | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)                                                                                                                       |
+| optional                                                                                                         | boolean        | optional field specify whether the Secret or its key must be defined                                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-secret-items"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].secret.items[]
+
+#### Description
+
+Maps a string key to a path within a volume.
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string  | key is the key to project.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| mode       | integer | mode is Optional: mode bits used to set permissions on this file. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| path       | string  | path is the relative path of the file to map the key to. May not be an absolute path. May not contain the path element ‘..’. May not start with the string ‘..’.                                                                                                                                                                                                                                                                     |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-projected-sources-serviceaccounttoken"></a>
+
+### .spec.datacenter.racks[].volumes[].projected.sources[].serviceAccountToken
+
+#### Description
+
+serviceAccountToken is information about the serviceAccountToken data to project
+
+#### Type
+
+object
+
+| Property          | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                   |
+|-------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| audience          | string  | audience is the intended audience of the token. A recipient of a token must identify itself with an identifier specified in the audience of the token, and otherwise should reject the token. The audience defaults to the identifier of the apiserver.                                                                                                                                                       |
+| expirationSeconds | integer | expirationSeconds is the requested duration of validity of the service account token. As the token approaches expiration, the kubelet volume plugin will proactively rotate the service account token. The kubelet will start trying to rotate the token if the token is older than 80 percent of its time to live or if the token is older than 24 hours.Defaults to 1 hour and must be at least 10 minutes. |
+| path              | string  | path is the path relative to the mount point of the file to project the token into.                                                                                                                                                                                                                                                                                                                           |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-quobyte"></a>
+
+### .spec.datacenter.racks[].volumes[].quobyte
+
+#### Description
+
+quobyte represents a Quobyte mount on the host that shares a pod’s lifetime. Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                            |
+|------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| group      | string  | group to map volume access to Default is no group                                                                                                                                                      |
+| readOnly   | boolean | readOnly here will force the Quobyte volume to be mounted with read-only permissions. Defaults to false.                                                                                               |
+| registry   | string  | registry represents a single or multiple Quobyte Registry services specified as a string as host:port pair (multiple entries are separated with commas) which acts as the central registry for volumes |
+| tenant     | string  | tenant owning the given Quobyte volume in the Backend Used with dynamically provisioned Quobyte volumes, value is set by the plugin                                                                    |
+| user       | string  | user to map volume access to Defaults to serivceaccount user                                                                                                                                           |
+| volume     | string  | volume is a string that references an already created Quobyte volume by name.                                                                                                                          |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-rbd"></a>
+
+### .spec.datacenter.racks[].volumes[].rbd
+
+#### Description
+
+rbd represents a Rados Block Device mount on the host that shares a pod’s lifetime. Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: [https://examples.k8s.io/volumes/rbd/README.md](https://examples.k8s.io/volumes/rbd/README.md)
+
+#### Type
+
+object
+
+| Property                                                                                            | Type           | Description                                                                                                                                                                                                                                                                                                                                                         |
+|-----------------------------------------------------------------------------------------------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType                                                                                              | string         | fsType is the filesystem type of the volume that you want to mount. Tip: Ensure that the filesystem type is supported by the host operating system. Examples: “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. More info: [https://kubernetes.io/docs/concepts/storage/volumes#rbd](https://kubernetes.io/docs/concepts/storage/volumes#rbd) |
+| image                                                                                               | string         | image is the rados image name. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)                                                                                                                                                                                                |
+| keyring                                                                                             | string         | keyring is the path to key ring for RBDUser. Default is /etc/ceph/keyring. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)                                                                                                                                                    |
+| monitors                                                                                            | array (string) | monitors is a collection of Ceph monitors. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)                                                                                                                                                                                    |
+| pool                                                                                                | string         | pool is the rados pool name. Default is rbd. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)                                                                                                                                                                                  |
+| readOnly                                                                                            | boolean        | readOnly here will force the ReadOnly setting in VolumeMounts. Defaults to false. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)                                                                                                                                             |
+| [secretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-rbd-secretref) | object         | secretRef is name of the authentication secret for RBDUser. If provided overrides keyring. Default is nil. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)                                                                                                                    |
+| user                                                                                                | string         | user is the rados user name. Default is admin. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)                                                                                                                                                                                |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-rbd-secretref"></a>
+
+### .spec.datacenter.racks[].volumes[].rbd.secretRef
+
+#### Description
+
+secretRef is name of the authentication secret for RBDUser. If provided overrides keyring. Default is nil. More info: [https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it](https://examples.k8s.io/volumes/rbd/README.md#how-to-use-it)
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-scaleio"></a>
+
+### .spec.datacenter.racks[].volumes[].scaleIO
+
+#### Description
+
+scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes. Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
+
+#### Type
+
+object
+
+| Property                                                                                                | Type    | Description                                                                                                                                            |
+|---------------------------------------------------------------------------------------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType                                                                                                  | string  | fsType is the filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”, “ntfs”. Default is “xfs”. |
+| gateway                                                                                                 | string  | gateway is the host address of the ScaleIO API Gateway.                                                                                                |
+| protectionDomain                                                                                        | string  | protectionDomain is the name of the ScaleIO Protection Domain for the configured storage.                                                              |
+| readOnly                                                                                                | boolean | readOnly Defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.                                                |
+| [secretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-scaleio-secretref) | object  | secretRef references to the secret for ScaleIO user and other sensitive information. If this is not provided, Login operation will fail.               |
+| sslEnabled                                                                                              | boolean | sslEnabled Flag enable/disable SSL communication with Gateway, default false                                                                           |
+| storageMode                                                                                             | string  | storageMode indicates whether the storage for a volume should be ThickProvisioned or ThinProvisioned. Default is ThinProvisioned.                      |
+| storagePool                                                                                             | string  | storagePool is the ScaleIO Storage Pool associated with the protection domain.                                                                         |
+| system                                                                                                  | string  | system is the name of the storage system as configured in ScaleIO.                                                                                     |
+| volumeName                                                                                              | string  | volumeName is the name of a volume already created in the ScaleIO system that is associated with this volume source.                                   |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-scaleio-secretref"></a>
+
+### .spec.datacenter.racks[].volumes[].scaleIO.secretRef
+
+#### Description
+
+secretRef references to the secret for ScaleIO user and other sensitive information. If this is not provided, Login operation will fail.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-secret"></a>
+
+### .spec.datacenter.racks[].volumes[].secret
+
+#### Description
+
+secret represents a secret that should populate this volume. More info: [https://kubernetes.io/docs/concepts/storage/volumes#secret](https://kubernetes.io/docs/concepts/storage/volumes#secret)
+
+#### Type
+
+object
+
+| Property                                                                                       | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+|------------------------------------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| defaultMode                                                                                    | integer        | defaultMode is Optional: mode bits used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. Defaults to 0644. Directories within the path are not affected by this setting. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set.                |
+| [items](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-secret-items) | array (object) | items If unspecified, each key-value pair in the Data field of the referenced Secret will be projected into the volume as a file whose name is the key and content is the value. If specified, the listed keys will be projected into the specified paths, and unlisted keys will not be present. If a key is specified which is not present in the Secret, the volume setup will error unless it is marked optional. Paths must be relative and may not contain the ‘..’ path or start with ‘..’. |
+| optional                                                                                       | boolean        | optional field specify whether the Secret or its keys must be defined                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| secretName                                                                                     | string         | secretName is the name of the secret in the pod’s namespace to use. More info: [https://kubernetes.io/docs/concepts/storage/volumes#secret](https://kubernetes.io/docs/concepts/storage/volumes#secret)                                                                                                                                                                                                                                                                                            |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-secret-items"></a>
+
+### .spec.datacenter.racks[].volumes[].secret.items[]
+
+#### Description
+
+Maps a string key to a path within a volume.
+
+#### Type
+
+object
+
+| Property   | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| key        | string  | key is the key to project.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| mode       | integer | mode is Optional: mode bits used to set permissions on this file. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. YAML accepts both octal and decimal values, JSON requires decimal values for mode bits. If not specified, the volume defaultMode will be used. This might be in conflict with other options that affect the file mode, like fsGroup, and the result can be other mode bits set. |
+| path       | string  | path is the relative path of the file to map the key to. May not be an absolute path. May not contain the path element ‘..’. May not start with the string ‘..’.                                                                                                                                                                                                                                                                     |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-storageos"></a>
+
+### .spec.datacenter.racks[].volumes[].storageos
+
+#### Description
+
+storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes. Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
+
+#### Type
+
+object
+
+| Property                                                                                                  | Type    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|-----------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType                                                                                                    | string  | fsType is the filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified.                                                                                                                                                                                                                                                          |
+| readOnly                                                                                                  | boolean | readOnly defaults to false (read/write). ReadOnly here will force the ReadOnly setting in VolumeMounts.                                                                                                                                                                                                                                                                                                                                        |
+| [secretRef](#api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-storageos-secretref) | object  | secretRef specifies the secret to use for obtaining the StorageOS API credentials.  If not specified, default values will be attempted.                                                                                                                                                                                                                                                                                                        |
+| volumeName                                                                                                | string  | volumeName is the human-readable name of the StorageOS volume.  Volume names are only unique within a namespace.                                                                                                                                                                                                                                                                                                                               |
+| volumeNamespace                                                                                           | string  | volumeNamespace specifies the scope of the volume within StorageOS.  If no namespace is specified then the Pod’s namespace will be used.  This allows the Kubernetes name scoping to be mirrored within StorageOS for tighter integration. Set VolumeName to any name to override the default behaviour. Set to “default” if you are not using namespaces within StorageOS. Namespaces that do not pre-exist within StorageOS will be created. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-storageos-secretref"></a>
+
+### .spec.datacenter.racks[].volumes[].storageos.secretRef
+
+#### Description
+
+secretRef specifies the secret to use for obtaining the StorageOS API credentials.  If not specified, default values will be attempted.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-datacenter-racks-volumes-vspherevolume"></a>
+
+### .spec.datacenter.racks[].volumes[].vsphereVolume
+
+#### Description
+
+vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine. Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
+
+#### Type
+
+object
+
+| Property          | Type   | Description                                                                                                                                                                       |
+|-------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fsType            | string | fsType is filesystem type to mount. Must be a filesystem type supported by the host operating system. Ex. “ext4”, “xfs”, “ntfs”. Implicitly inferred to be “ext4” if unspecified. |
+| storagePolicyID   | string | storagePolicyID is the storage Policy Based Management (SPBM) profile ID associated with the StoragePolicyName.                                                                   |
+| storagePolicyName | string | storagePolicyName is the storage Policy Based Management (SPBM) profile name.                                                                                                     |
+| volumePath        | string | volumePath is the path that identifies vSphere volume vmdk                                                                                                                        |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions"></a>
+
+### .spec.exposeOptions
+
+#### Description
+
+exposeOptions specifies options for exposing ScyllaCluster services. This field is immutable. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+
+#### Type
+
+object
+
+| Property                                                                                           | Type   | Description                                                                                                                       |
+|----------------------------------------------------------------------------------------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------|
+| [broadcastOptions](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions) | object | BroadcastOptions defines how ScyllaDB node publishes its IP address to other nodes and clients.                                   |
+| [cql](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql)                           | object | cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field. |
+| [nodeService](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-nodeservice)           | object | nodeService controls properties of Service dedicated for each ScyllaCluster node.                                                 |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions"></a>
+
+### .spec.exposeOptions.broadcastOptions
+
+#### Description
+
+BroadcastOptions defines how ScyllaDB node publishes its IP address to other nodes and clients.
+
+#### Type
+
+object
+
+| Property                                                                                          | Type   | Description                                                                                                                                                                  |
+|---------------------------------------------------------------------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [clients](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-clients) | object | clients specifies options related to the address that is broadcasted for communication with clients. This field controls the broadcast_rpc_address value in ScyllaDB config. |
+| [nodes](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-nodes)     | object | nodes specifies options related to the address that is broadcasted for communication with other nodes. This field controls the broadcast_address value in ScyllaDB config.   |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-clients"></a>
+
+### .spec.exposeOptions.broadcastOptions.clients
+
+#### Description
+
+clients specifies options related to the address that is broadcasted for communication with clients. This field controls the broadcast_rpc_address value in ScyllaDB config.
+
+#### Type
+
+object
+
+| Property                                                                                              | Type   | Description                                    |
+|-------------------------------------------------------------------------------------------------------|--------|------------------------------------------------|
+| [podIP](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-clients-podip) | object | podIP holds options related to Pod IP address. |
+| type                                                                                                  | string | type of the address that is broadcasted.       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-clients-podip"></a>
+
+### .spec.exposeOptions.broadcastOptions.clients.podIP
+
+#### Description
+
+podIP holds options related to Pod IP address.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                |
+|------------|--------|--------------------------------------------|
+| source     | string | sourceType specifies source of the Pod IP. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-nodes"></a>
+
+### .spec.exposeOptions.broadcastOptions.nodes
+
+#### Description
+
+nodes specifies options related to the address that is broadcasted for communication with other nodes. This field controls the broadcast_address value in ScyllaDB config.
+
+#### Type
+
+object
+
+| Property                                                                                            | Type   | Description                                    |
+|-----------------------------------------------------------------------------------------------------|--------|------------------------------------------------|
+| [podIP](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-nodes-podip) | object | podIP holds options related to Pod IP address. |
+| type                                                                                                | string | type of the address that is broadcasted.       |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-broadcastoptions-nodes-podip"></a>
+
+### .spec.exposeOptions.broadcastOptions.nodes.podIP
+
+#### Description
+
+podIP holds options related to Pod IP address.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                |
+|------------|--------|--------------------------------------------|
+| source     | string | sourceType specifies source of the Pod IP. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql"></a>
+
+### .spec.exposeOptions.cql
+
+#### Description
+
+cql specifies expose options for CQL SSL backend. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+
+#### Type
+
+object
+
+| Property                                                                             | Type   | Description                                                                                                                  |
+|--------------------------------------------------------------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------|
+| [ingress](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql-ingress) | object | ingress is an Ingress configuration options. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql-ingress"></a>
+
+### .spec.exposeOptions.cql.ingress
+
+#### Description
+
+ingress is an Ingress configuration options. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+
+#### Type
+
+object
+
+| Property                                                                                             | Type    | Description                                                                                                                                                                                                           |
+|------------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [annotations](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql-ingress-annotations) | object  | annotations is a custom key value map that gets merged with managed object annotations.                                                                                                                               |
+| disabled                                                                                             | boolean | disabled controls if Ingress object creation is disabled. Unless disabled, there is an Ingress objects created for every Scylla node. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field. |
+| ingressClassName                                                                                     | string  | ingressClassName specifies Ingress class name. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.                                                                                        |
+| [labels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql-ingress-labels)           | object  | labels is a custom key value map that gets merged with managed object labels.                                                                                                                                         |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql-ingress-annotations"></a>
+
+### .spec.exposeOptions.cql.ingress.annotations
+
+#### Description
+
+annotations is a custom key value map that gets merged with managed object annotations.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-cql-ingress-labels"></a>
+
+### .spec.exposeOptions.cql.ingress.labels
+
+#### Description
+
+labels is a custom key value map that gets merged with managed object labels.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-nodeservice"></a>
+
+### .spec.exposeOptions.nodeService
+
+#### Description
+
+nodeService controls properties of Service dedicated for each ScyllaCluster node.
+
+#### Type
+
+object
+
+| Property                                                                                             | Type    | Description                                                                                                                                                                                  |
+|------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| allocateLoadBalancerNodePorts                                                                        | boolean | allocateLoadBalancerNodePorts controls value of service.spec.allocateLoadBalancerNodePorts of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field. |
+| [annotations](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-nodeservice-annotations) | object  | annotations is a custom key value map that gets merged with managed object annotations.                                                                                                      |
+| externalTrafficPolicy                                                                                | string  | externalTrafficPolicy controls value of service.spec.externalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.                 |
+| internalTrafficPolicy                                                                                | string  | internalTrafficPolicy controls value of service.spec.internalTrafficPolicy of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.                 |
+| [labels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-nodeservice-labels)           | object  | labels is a custom key value map that gets merged with managed object labels.                                                                                                                |
+| loadBalancerClass                                                                                    | string  | loadBalancerClass controls value of service.spec.loadBalancerClass of each node Service. Check Kubernetes corev1.Service documentation about semantic of this field.                         |
+| type                                                                                                 | string  | type is the Kubernetes Service type.                                                                                                                                                         |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-nodeservice-annotations"></a>
+
+### .spec.exposeOptions.nodeService.annotations
+
+#### Description
+
+annotations is a custom key value map that gets merged with managed object annotations.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-exposeoptions-nodeservice-labels"></a>
+
+### .spec.exposeOptions.nodeService.labels
+
+#### Description
+
+labels is a custom key value map that gets merged with managed object labels.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-genericupgrade"></a>
+
+### .spec.genericUpgrade
+
+#### Description
+
+genericUpgrade allows to configure behavior of generic upgrade logic.
+
+#### Type
+
+object
+
+| Property        | Type   | Description                                                                                                                                                                                                      |
+|-----------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| failureStrategy | string | failureStrategy specifies which logic is executed when upgrade failure happens. Currently only Retry is supported.                                                                                               |
+| pollInterval    | string | pollInterval specifies how often upgrade logic polls on state updates. Increasing this value should lower number of requests sent to apiserver, but it may affect overall time spent during upgrade. DEPRECATED. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-imagepullsecrets"></a>
+
+### .spec.imagePullSecrets[]
+
+#### Description
+
+LocalObjectReference contains enough information to let you locate the referenced object inside the same namespace.
+
+#### Type
+
+object
+
+| Property   | Type   | Description                                                                                                                                                                                                                                                                                                                                                                  |
+|------------|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name       | string | Name of the referent. This field is effectively required, but due to backwards compatibility is allowed to be empty. Instances of this type with an empty value here are almost certainly wrong. More info: [https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names) |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-network"></a>
+
+### .spec.network
+
+#### Description
+
+network holds the networking config.
+
+#### Type
+
+object
+
+| Property       | Type    | Description                                                                                                                                                                                                                                |
+|----------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| dnsPolicy      | string  | dnsPolicy defines how a pod’s DNS will be configured.                                                                                                                                                                                      |
+| hostNetworking | boolean | hostNetworking determines if scylla uses the host’s network namespace. Setting this option avoids going through Kubernetes SDN and exposes scylla on node’s IP. Deprecated: hostNetworking is deprecated and may be ignored in the future. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-podmetadata"></a>
+
+### .spec.podMetadata
+
+#### Description
+
+podMetadata controls shared metadata for all pods created based on this spec.
+
+#### Type
+
+object
+
+| Property                                                                               | Type   | Description                                                                             |
+|----------------------------------------------------------------------------------------|--------|-----------------------------------------------------------------------------------------|
+| [annotations](#api-scylla-scylladb-com-scyllaclusters-v1-spec-podmetadata-annotations) | object | annotations is a custom key value map that gets merged with managed object annotations. |
+| [labels](#api-scylla-scylladb-com-scyllaclusters-v1-spec-podmetadata-labels)           | object | labels is a custom key value map that gets merged with managed object labels.           |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-podmetadata-annotations"></a>
+
+### .spec.podMetadata.annotations
+
+#### Description
+
+annotations is a custom key value map that gets merged with managed object annotations.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-podmetadata-labels"></a>
+
+### .spec.podMetadata.labels
+
+#### Description
+
+labels is a custom key value map that gets merged with managed object labels.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-readinessgates"></a>
+
+### .spec.readinessGates[]
+
+#### Description
+
+PodReadinessGate contains the reference to a pod condition
+
+#### Type
+
+object
+
+| Property      | Type   | Description                                                                         |
+|---------------|--------|-------------------------------------------------------------------------------------|
+| conditionType | string | ConditionType refers to a condition in the pod’s condition list with matching type. |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-spec-repairs"></a>
+
+### .spec.repairs[]
+
+#### Description
+
+#### Type
+
+object
+
+| Property            | Type           | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|---------------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cron                | string         | cron specifies the task schedule as a cron expression. It supports an extended syntax including @monthly, @weekly, @daily, @midnight, @hourly, @every X[h|m|s].                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| dc                  | array (string) | dc is a list of datacenter glob patterns, e.g. ‘dc1’, ‘!otherdc\*’ used to specify the DCs to include or exclude from backup.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| failFast            | boolean        | failFast indicates if a repair should be stopped on first error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| host                | string         | host specifies a host to repair. If empty, all hosts are repaired.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ignoreDownHosts     | boolean        | ignoreDownHosts indicates that the nodes in down state should be ignored during repair.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| intensity           | string         | intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1. If you set it to 0 the number of token ranges is adjusted to the maximum supported by node (see max_repair_ranges_in_parallel in Scylla logs). Valid values are 0 and integers >= 1. Higher values will result in increased cluster load and slightly faster repairs. Changing the intensity impacts repair granularity if you need to resume it, the higher the value the more work on resume. For Scylla clusters that *do not support row-level repair*, intensity can be a decimal between (0,1). In that case it specifies percent of shards that can be repaired in parallel on a repair master node. For Scylla clusters that are row-level repair enabled, setting intensity below 1 has the same effect as setting intensity 1. |
+| interval            | string         | interval represents a task schedule interval e.g. 3d2h10m, valid units are d, h, m, s. Deprecated: please use cron instead.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| keyspace            | array (string) | keyspace is a list of keyspace/tables glob patterns, e.g. ‘keyspace,!keyspace.table_prefix_\*’ used to include or exclude keyspaces from repair.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| name                | string         | name specifies the name of a task.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| numRetries          | integer        | numRetries indicates how many times a scheduled task will be retried before failing.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| parallel            | integer        | parallel is the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas). Each node can take part in at most one repair at any given moment. By default the maximum possible parallelism is used. The effective parallelism depends on a keyspace replication factor (RF) and the number of nodes. The formula to calculate it is as follows: number of nodes / RF, ex. for 6 node cluster with RF=3 the maximum parallelism is 2.                                                                                                                                                                                                                                                                                                                                                                         |
+| smallTableThreshold | string         | smallTableThreshold enable small table optimization for tables of size lower than given threshold. Supported units [B, MiB, GiB, TiB].                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| startDate           | string         | startDate specifies the task start date expressed in the RFC3339 format or now[+duration], e.g. now+3d2h10m, valid units are d, h, m, s.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| timezone            | string         | timezone specifies the timezone of cron field.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status"></a>
+
+### .status
+
+#### Description
+
+status is the current status of this scylla cluster.
+
+#### Type
+
+object
+
+| Property                                                                   | Type           | Description                                                                                                                                                                         |
+|----------------------------------------------------------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| availableMembers                                                           | integer        | availableMembers is the number of ScyllaDB members in all racks that are available.                                                                                                 |
+| [backups](#api-scylla-scylladb-com-scyllaclusters-v1-status-backups)       | array (object) | backups reflects status of backup tasks.                                                                                                                                            |
+| [conditions](#api-scylla-scylladb-com-scyllaclusters-v1-status-conditions) | array (object) | conditions hold conditions describing ScyllaCluster state. To determine whether a cluster rollout is finished, look for Available=True,Progressing=False,Degraded=False.            |
+| managerId                                                                  | string         | managerId contains ID under which cluster was registered in Scylla Manager.                                                                                                         |
+| members                                                                    | integer        | members is the number of ScyllaDB members in all racks.                                                                                                                             |
+| observedGeneration                                                         | integer        | observedGeneration is the most recent generation observed for this ScyllaCluster. It corresponds to the ScyllaCluster’s generation, which is updated on mutation by the API Server. |
+| rackCount                                                                  | integer        | rackCount is the number of ScyllaDB racks in this cluster.                                                                                                                          |
+| [racks](#api-scylla-scylladb-com-scyllaclusters-v1-status-racks)           | object         | racks reflect status of cluster racks.                                                                                                                                              |
+| readyMembers                                                               | integer        | readyMembers is the number of ScyllaDB members in all racks that are ready.                                                                                                         |
+| [repairs](#api-scylla-scylladb-com-scyllaclusters-v1-status-repairs)       | array (object) | repairs reflects status of repair tasks.                                                                                                                                            |
+| [upgrade](#api-scylla-scylladb-com-scyllaclusters-v1-status-upgrade)       | object         | upgrade reflects state of ongoing upgrade procedure.                                                                                                                                |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status-backups"></a>
+
+### .status.backups[]
+
+#### Description
+
+#### Type
+
+object
+
+| Property                                                                   | Type           | Description                                                                                                                                            |
+|----------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cron                                                                       | string         | cron reflects the task schedule as a cron expression.                                                                                                  |
+| dc                                                                         | array (string) | dc reflects a list of datacenter glob patterns, e.g. ‘dc1,!otherdc\*’ used to specify the DCs to include or exclude from backup.                       |
+| error                                                                      | string         | error holds the task error, if any.                                                                                                                    |
+| id                                                                         | string         | id reflects identification number of the repair task.                                                                                                  |
+| interval                                                                   | string         | interval reflects a task schedule interval.                                                                                                            |
+| keyspace                                                                   | array (string) | keyspace reflects a list of keyspace/tables glob patterns, e.g. ‘keyspace,!keyspace.table_prefix_\*’ used to include or exclude keyspaces from repair. |
+| [labels](#api-scylla-scylladb-com-scyllaclusters-v1-status-backups-labels) | object         | labels reflects the labels of a task.                                                                                                                  |
+| location                                                                   | array (string) | location reflects a list of backup locations in the format [<dc>:]<provider>:<name> ex. s3:my-bucket.                                                  |
+| name                                                                       | string         | name reflects the name of a task.                                                                                                                      |
+| numRetries                                                                 | integer        | numRetries reflects how many times a scheduled task will be retried before failing.                                                                    |
+| rateLimit                                                                  | array (string) | rateLimit reflects a list of megabytes (MiB) per second rate limits expressed in the format [<dc>:]<limit>.                                            |
+| retention                                                                  | integer        | retention reflects the number of backups which are to be stored.                                                                                       |
+| snapshotParallel                                                           | array (string) | snapshotParallel reflects a list of snapshot parallelism limits in the format [<dc>:]<limit>.                                                          |
+| startDate                                                                  | string         | startDate reflects the task start date expressed in the RFC3339 format                                                                                 |
+| timezone                                                                   | string         | timezone reflects the timezone of cron field.                                                                                                          |
+| uploadParallel                                                             | array (string) | uploadParallel reflects a list of upload parallelism limits in the format [<dc>:]<limit>.                                                              |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status-backups-labels"></a>
+
+### .status.backups[].labels
+
+#### Description
+
+labels reflects the labels of a task.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status-conditions"></a>
+
+### .status.conditions[]
+
+#### Description
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+#### Type
+
+object
+
+| Property           | Type    | Description                                                                                                                                                                                                                                                                                                                     |
+|--------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| lastTransitionTime | string  | lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.                                                                                           |
+| message            | string  | message is a human readable message indicating details about the transition. This may be an empty string.                                                                                                                                                                                                                       |
+| observedGeneration | integer | observedGeneration represents the .metadata.generation that the condition was set based upon. For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date with respect to the current state of the instance.                                     |
+| reason             | string  | reason contains a programmatic identifier indicating the reason for the condition’s last transition. Producers of specific condition types may define expected values and meanings for this field, and whether the values are considered a guaranteed API. The value should be a CamelCase string. This field may not be empty. |
+| status             | string  | status of the condition, one of True, False, Unknown.                                                                                                                                                                                                                                                                           |
+| type               | string  | type of condition in CamelCase or in foo.example.com/CamelCase.                                                                                                                                                                                                                                                                 |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status-racks"></a>
+
+### .status.racks
+
+#### Description
+
+racks reflect status of cluster racks.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status-repairs"></a>
+
+### .status.repairs[]
+
+#### Description
+
+#### Type
+
+object
+
+| Property                                                                   | Type           | Description                                                                                                                                            |
+|----------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| cron                                                                       | string         | cron reflects the task schedule as a cron expression.                                                                                                  |
+| dc                                                                         | array (string) | dc reflects a list of datacenter glob patterns, e.g. ‘dc1’, ‘!otherdc\*’ used to specify the DCs to include or exclude from repair.                    |
+| error                                                                      | string         | error holds the task error, if any.                                                                                                                    |
+| failFast                                                                   | boolean        | failFast indicates if a repair should be stopped on first error.                                                                                       |
+| host                                                                       | string         | host reflects a host to repair.                                                                                                                        |
+| id                                                                         | string         | id reflects identification number of the repair task.                                                                                                  |
+| ignoreDownHosts                                                            | boolean        | ignoreDownHosts reflects whether the nodes in down state are ignored during repair.                                                                    |
+| intensity                                                                  | string         | intensity indicates how many token ranges (per shard) to repair in a single Scylla repair job. By default this is 1.                                   |
+| interval                                                                   | string         | interval reflects a task schedule interval.                                                                                                            |
+| keyspace                                                                   | array (string) | keyspace reflects a list of keyspace/tables glob patterns, e.g. ‘keyspace,!keyspace.table_prefix_\*’ used to include or exclude keyspaces from repair. |
+| [labels](#api-scylla-scylladb-com-scyllaclusters-v1-status-repairs-labels) | object         | labels reflects the labels of a task.                                                                                                                  |
+| name                                                                       | string         | name reflects the name of a task.                                                                                                                      |
+| numRetries                                                                 | integer        | numRetries reflects how many times a scheduled task will be retried before failing.                                                                    |
+| parallel                                                                   | integer        | parallel reflects the maximum number of Scylla repair jobs that can run at the same time (on different token ranges and replicas).                     |
+| smallTableThreshold                                                        | string         | smallTableThreshold reflects whether small table optimization for tables, of size lower than given threshold, are enabled.                             |
+| startDate                                                                  | string         | startDate reflects the task start date expressed in the RFC3339 format                                                                                 |
+| timezone                                                                   | string         | timezone reflects the timezone of cron field.                                                                                                          |
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status-repairs-labels"></a>
+
+### .status.repairs[].labels
+
+#### Description
+
+labels reflects the labels of a task.
+
+#### Type
+
+object
+
+<a id="api-scylla-scylladb-com-scyllaclusters-v1-status-upgrade"></a>
+
+### .status.upgrade
+
+#### Description
+
+upgrade reflects state of ongoing upgrade procedure.
+
+#### Type
+
+object
+
+| Property          | Type   | Description                                                              |
+|-------------------|--------|--------------------------------------------------------------------------|
+| currentNode       | string | currentNode node under upgrade. DEPRECATED.                              |
+| currentRack       | string | currentRack rack under upgrade. DEPRECATED.                              |
+| dataSnapshotTag   | string | dataSnapshotTag is the snapshot tag of data keyspaces.                   |
+| fromVersion       | string | fromVersion reflects from which version ScyllaCluster is being upgraded. |
+| state             | string | state reflects current upgrade state.                                    |
+| systemSnapshotTag | string | systemSnapshotTag is the snapshot tag of system keyspaces.               |
+| toVersion         | string | toVersion reflects to which version ScyllaCluster is being upgraded.     |

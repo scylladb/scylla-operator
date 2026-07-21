@@ -1,0 +1,1025 @@
+
+
+<!DOCTYPE html>
+<html class="no-js" lang="en" style="visibility: hidden;">
+    
+    
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title>
+             Configure nodes | ScyllaDB Docs 
+        </title>
+        <meta name="description" content="ScyllaDB is an Apache Cassandra-compatible NoSQL data store that can handle 1 million transactions per second on a single server." />
+        <link rel="icon" href="../../_static/img/favicon.ico" type="image/x-icon" />
+        <link rel="icon" href="../../_static/img/favicon-32x32.png" sizes="32x32" />
+        <link rel="icon" href="../../_static/img/favicon-228x228.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="../../_static/img/favicon-228x228.png" />
+        <meta name="msapplication-TileImage" href="../../_static/img/favicon-228x228.png" />
+
+        <script>
+            (function () {
+                if (window.location.hostname === 'previews.docs.scylladb.com') {
+                    var meta = document.createElement('meta');
+                    meta.name = 'robots';
+                    meta.content = 'noindex, nofollow';
+                    document.head.appendChild(meta);
+                }
+            })();
+        </script>
+
+        
+            
+            
+        
+
+        
+            
+            <link rel="canonical" href="https://operator.docs.scylladb.com/stable/deploy-scylladb/before-you-deploy/configure-nodes.html"/>
+        
+
+        <link rel="author" href="mailto:info@scylladb.com" />
+
+        
+            
+            
+            
+            
+                <link rel="alternate" type="text/markdown" href="https://operator.docs.scylladb.com/master/deploy-scylladb/before-you-deploy/configure-nodes.md" />
+            
+        
+
+        
+            
+        
+
+
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link rel="preload" as="style"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- async CSS -->
+        <link rel="stylesheet" media="print" onload="this.onload=null;this.removeAttribute('media');"
+              href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+
+        <!-- no-JS fallback -->
+        <noscript>
+            <link rel="stylesheet"
+                  href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+        </noscript>
+
+        
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.css">
+            <script type="module" src="https://cdn.jsdelivr.net/npm/biel-search@latest/dist/biel-search/biel-search.esm.js"></script>
+        
+
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/css/main.css?v=041c0933" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/sphinx_collapse.css?v=226d88b4" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+            
+        
+            
+                <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=714c36fc" />
+            
+        
+    
+        
+        
+            
+        <script type="text/javascript" src="../../_static/js/runtime.bundle.js"></script>
+        <script type="text/javascript" src="../../_static/js/main.bundle.js"></script>
+        
+            
+                <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+            
+        
+            
+                <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+            
+        
+            
+                <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+            
+        
+            
+                <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+            
+        
+            
+                <script src="../../_static/copybutton.js?v=f281be69"></script>
+            
+        
+            
+                <script src="../../_static/tabs.js?v=3030b3cb"></script>
+            
+        
+    
+            
+                <!-- Local meta tags -->
+            
+            
+                <!-- Google Tag Manager docs -->
+<script>
+    (function (w, d, s, l, i) {
+        var h = w.location.hostname;
+        if (h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h === '') return;
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-54NWVS4");
+</script>
+<!-- End Google Tag Manager -->
+
+<!-- Google Tag Manager global -->
+<script>
+    (function (w, d, s, l, i) {
+        var h = w.location.hostname;
+        if (h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || h === '') return;
+        w[l] = w[l] || [];
+        w[l].push({
+            "gtm.start": new Date().getTime(),
+            event: "gtm.js"
+        });
+        var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-T8P2JP");
+</script>
+<!-- End Google Tag Manager -->
+            
+        
+    </head>
+
+    <body class="brand-product">
+        <section class="promo-banner  promo-banner--hide" style="display: none;">
+    <div class="promo-banner-wrapper">
+        <div class="promo-banner__content">
+            
+            <div class="promo-banner__title">ScyllaDB University Live | Free Virtual Training Event</div>
+            <a class="promo-banner__button button button--reverse" href="#"
+               target="_blank" rel="noopener noreferrer">Learn more</a>
+        </div>
+        <button class="promo-banner__close">
+            <i class="icon-cancel"></i>
+        </button>
+    </div>
+</section>
+        <header class="header">
+    <div class="header-logo">
+        <a class="header-logo__img" href="https://scylladb.com/">
+            <img src="../../_static/img/scylladb-logo-horizontal.svg" alt="ScyllaDB Documentation Logo" />
+        </a>
+        <span class="header-logo__bar"></span>
+        <a class="header-logo__text" href="https://docs.scylladb.com/">
+            Documentation
+        </a>
+    </div>
+    <div class="header-navigation">
+        <ul class="dropdown menu scylla-dropdown scylla-dropdown--header" data-dropdown-menu>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Deployments <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/scylla-cloud/">
+                            <i class="icon-docs-cloud"></i>Cloud</a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/manual/">
+                            <i class="icon-server"></i>Server</a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Tools <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://manager.docs.scylladb.com/">
+                            <i class="icon-docs-manager"></i>ScyllaDB Manager</a>
+                    </li>
+                    <li>
+                        <a href="https://monitoring.docs.scylladb.com/">
+                            <i class="icon-docs-monitoring"></i>ScyllaDB
+                            Monitoring Stack</a>
+                    </li>
+                    <li>
+                        <a href="https://operator.docs.scylladb.com/">
+                            <i class="icon-docs-operator"></i>ScyllaDB Operator
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Drivers <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/cql-drivers">
+                            <i class="icon-docs-nsql-guides"></i>CQL Drivers
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/drivers/dynamo-drivers">
+                            <i class="icon-docs-alternator"></i>DynamoDB Drivers
+                        </a>
+
+                        <li>
+                            <a href="https://docs.scylladb.com/stable/versioning/driver-support">
+                                <i class="icon-docs-blog"></i>Supported Driver Versions
+                            </a>
+                        </li>
+                    </li>
+                </ul>
+            </li>
+            <li class="scylla-dropdown__item">
+                <a href="#" class="scylla-dropdown__title">Resources
+                    <i class="chevron icon-arrow-dropdown"></i></a>
+                <ul class="menu scylla-dropdown__content">
+                    <li>
+                        <a href="https://university.scylladb.com">
+                            <i class="icon-university"></i>
+                            ScyllaDB University
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://forum.scylladb.com">
+                            <i class="icon-docs-community"></i>
+                            Community Forum
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html">
+                            <i class="icon-docs-training"></i>
+                            Tutorials
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+        <div class="header-button">
+            <a href="https://docs.scylladb.com/manual/stable/getting-started/install-scylla/index.html" class="button"><i class="icon-download me-2"></i> Install</a>
+        </div>
+    </div>
+    <div class="header-search-box">
+        <i class="dark-theme-toggler icon-theme"></i>
+        
+            <biel-search-button
+                project="ddfdo8m94k"
+                button-style="rounded"
+                hide-filters="false"
+                header-title="ScyllaDB chatbot"
+                modal-position="top-center">
+                Search
+            </biel-search-button>
+            
+                <biel-button class="header-ask-ai" project="ddfdo8m94k"
+                             header-title="ScyllaDB chatbot"
+                             button-position="default"
+                             modal-position="sidebar-right"
+                             button-style="dark">
+                    Ask AI
+                </biel-button>
+            
+        
+    </div>
+    <div class="side-nav-toggle">
+    <i class="dark-theme-toggler icon-theme"></i>
+    <div class="side-nav-toggle__button" data-toggle="side-nav">
+        <i class="icon-menu"></i>
+    </div>
+</div>
+</header>
+        <div class="title"></div>
+        <section
+            class="layout  layout--sidebar layout--has-secondary-sidebar ">
+            <div class="content large-order-2">
+                
+                    <div class="pre-content">
+                        <div class="breadcrumbs">
+    <span class="bread__item">
+        <a href="https://docs.scylladb.com"
+           class="bread__highlight">
+            <i class="icon-home"></i> ScyllaDB Docs
+        </a>
+    </span>
+    <span class="bread__item">
+        <a href="../../index.html"
+           class="bread__highlight">
+            ScyllaDB Operator
+        </a>
+    </span>
+    
+        <span class="bread__item">
+            <a href="../index.html" class="bread__highlight">
+                Deploy ScyllaDB
+            </a>
+        </span>
+    
+        <span class="bread__item">
+            <a href="index.html" class="bread__highlight">
+                Before you deploy
+            </a>
+        </span>
+    
+    <span class="bread__item bread__item--last">Configure nodes</span>
+</div>
+                    </div>
+                
+                
+                    <div class="sidebar-right-layout">
+                        <div class="body-container">
+                
+
+                <div class="content-body"
+                     
+                         data-llms-txt-url="https://operator.docs.scylladb.com/master/llms.txt"
+                     
+                     
+                         data-view-source-url="https://github.com/scylladb/scylla-operator/blob/master/docs/source/deploy-scylladb/before-you-deploy/configure-nodes.md"
+                     >
+                    
+                        <div style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">
+                            For AI agents: a documentation index is available at <a href="https://operator.docs.scylladb.com/master/llms.txt">https://operator.docs.scylladb.com/master/llms.txt</a>. A Markdown version of this page is at <a href="https://operator.docs.scylladb.com/master/deploy-scylladb/before-you-deploy/configure-nodes.md">https://operator.docs.scylladb.com/master/deploy-scylladb/before-you-deploy/configure-nodes.md</a>.
+                        </div>
+                    
+                    
+                        
+    <div class="admonition caution">
+        <p class="admonition-title">Caution</p>
+        <p>
+            
+                You're viewing documentation for an unstable version of ScyllaDB Operator.
+            
+            <a href="../../../stable/deploy-scylladb/before-you-deploy/configure-nodes.html">Switch to the latest stable version.</a>
+        </p>
+    </div>
+
+                    
+
+                    <section id="configure-nodes">
+<h1>Configure nodes<a class="headerlink" href="#configure-nodes" title="Link to this heading">¶</a></h1>
+<p>ScyllaDB Operator uses the <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> custom resource to prepare dedicated nodes for ScyllaDB.
+<code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> handles local disk setup (RAID, filesystems, mounts) and kernel tuning (sysctls) automatically.</p>
+<section id="what-nodeconfig-does">
+<h2>What NodeConfig does<a class="headerlink" href="#what-nodeconfig-does" title="Link to this heading">¶</a></h2>
+<p>When you create a <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> resource, the operator deploys a <code class="docutils literal notranslate"><span class="pre">DaemonSet</span></code> on matching nodes that:</p>
+<ol class="arabic simple">
+<li><p><strong>Configures local disks</strong> — creates a RAID0 array from NVMe devices, formats it with XFS, and mounts it to a well-known path.</p></li>
+<li><p><strong>Tunes kernel parameters</strong> — sets sysctls for high-throughput I/O (<code class="docutils literal notranslate"><span class="pre">fs.aio-max-nr</span></code>, <code class="docutils literal notranslate"><span class="pre">fs.file-max</span></code>, <code class="docutils literal notranslate"><span class="pre">vm.swappiness</span></code>, etc.).</p></li>
+<li><p><strong>Runs performance tuning</strong> — executes <code class="docutils literal notranslate"><span class="pre">ContainerPerftune</span></code> Jobs for IRQ balancing and other low-latency optimizations.</p></li>
+</ol>
+</section>
+<section id="matching-placement">
+<h2>Matching placement<a class="headerlink" href="#matching-placement" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> targets nodes using <code class="docutils literal notranslate"><span class="pre">placement</span></code> (with <code class="docutils literal notranslate"><span class="pre">nodeSelector</span></code> and <code class="docutils literal notranslate"><span class="pre">tolerations</span></code>).
+These must match the same nodes where ScyllaDB Pods will run — if <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> and <code class="docutils literal notranslate"><span class="pre">ScyllaCluster</span></code> target different node sets, performance tuning and disk setup will not apply to ScyllaDB Pods.</p>
+<p>The recommended convention is label <code class="docutils literal notranslate"><span class="pre">scylla.scylladb.com/node-type:</span> <span class="pre">scylla</span></code> and taint <code class="docutils literal notranslate"><span class="pre">scylla-operator.scylladb.com/dedicated=scyllaclusters:NoSchedule</span></code>.
+Both <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> placement and <code class="docutils literal notranslate"><span class="pre">ScyllaCluster</span></code> rack placement must reference the same label and tolerate the same taint.</p>
+</section>
+<section id="apply-a-nodeconfig">
+<h2>Apply a NodeConfig<a class="headerlink" href="#apply-a-nodeconfig" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> manifests are platform-specific because disk device paths and naming conventions differ.</p>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" class="closeable" role="tablist"><button aria-controls="panel-0-0-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-0-0-0" name="0-0" role="tab" tabindex="0">GKE</button><button aria-controls="panel-0-0-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-1" name="0-1" role="tab" tabindex="-1">EKS</button><button aria-controls="panel-0-0-2" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-2" name="0-2" role="tab" tabindex="-1">OKE</button><button aria-controls="panel-0-0-3" aria-selected="false" class="sphinx-tabs-tab" id="tab-0-0-3" name="0-3" role="tab" tabindex="-1">OpenShift (ROSA)</button></div><div aria-labelledby="tab-0-0-0" class="sphinx-tabs-panel" id="panel-0-0-0" name="0-0" role="tabpanel" tabindex="0"><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl apply --server-side -f=https://raw.githubusercontent.com/scylladb/scylla-operator/master/examples/gke/nodeconfig-alpha.yaml</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-0-0-1" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-1" name="0-1" role="tabpanel" tabindex="0"><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl apply --server-side -f=https://raw.githubusercontent.com/scylladb/scylla-operator/master/examples/eks/nodeconfig-alpha.yaml</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-0-0-2" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-2" name="0-2" role="tabpanel" tabindex="0"><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl apply --server-side -f=https://raw.githubusercontent.com/scylladb/scylla-operator/master/examples/oke/nodeconfig.yaml</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-0-0-3" class="sphinx-tabs-panel" hidden="true" id="panel-0-0-3" name="0-3" role="tabpanel" tabindex="0"><div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl apply --server-side -f=https://raw.githubusercontent.com/scylladb/scylla-operator/master/examples/openshift/rosa/nodeconfig.yaml</span>
+</pre></div>
+</div>
+</div></div>
+<p>Wait for <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> to finish reconciling:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl wait --timeout=10m --for=&#39;condition=Progressing=False&#39; nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1</span>
+<span class="go">kubectl wait --timeout=10m --for=&#39;condition=Degraded=False&#39; nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1</span>
+<span class="go">kubectl wait --timeout=10m --for=&#39;condition=Available=True&#39; nodeconfigs.scylla.scylladb.com/scylladb-nodepool-1</span>
+</pre></div>
+</div>
+</section>
+<section id="disk-setup">
+<h2>Disk setup<a class="headerlink" href="#disk-setup" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> creates RAID arrays from local NVMe instance storage, formats them with XFS, and mounts them for the Local CSI Driver.</p>
+<p>The setup pipeline runs in order: loop devices (if configured) → RAID arrays → filesystems → mounts.
+After this, the Local CSI Driver can provision <code class="docutils literal notranslate"><span class="pre">PersistentVolumes</span></code> from directories on the mount point.</p>
+<section id="platform-differences">
+<h3>Platform differences<a class="headerlink" href="#platform-differences" title="Link to this heading">¶</a></h3>
+<div class="sphinx-tabs docutils container">
+<div aria-label="Tabbed content" class="closeable" role="tablist"><button aria-controls="panel-1-1-0" aria-selected="true" class="sphinx-tabs-tab" id="tab-1-1-0" name="1-0" role="tab" tabindex="0">GKE</button><button aria-controls="panel-1-1-1" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-1" name="1-1" role="tab" tabindex="-1">EKS</button><button aria-controls="panel-1-1-2" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-2" name="1-2" role="tab" tabindex="-1">OKE</button><button aria-controls="panel-1-1-3" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-3" name="1-3" role="tab" tabindex="-1">OpenShift (ROSA)</button><button aria-controls="panel-1-1-4" aria-selected="false" class="sphinx-tabs-tab" id="tab-1-1-4" name="1-4" role="tab" tabindex="-1">Loop device (development)</button></div><div aria-labelledby="tab-1-1-0" class="sphinx-tabs-panel" id="panel-1-1-0" name="1-0" role="tabpanel" tabindex="0"><p>Devices are matched by path only:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">raids</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvmes</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RAID0</span>
+<span class="w">  </span><span class="nt">RAID0</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">devices</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">nameRegex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">^/dev/nvme\d+n\d+$</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-1-1-1" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-1" name="1-1" role="tabpanel" tabindex="0"><p>EKS nodes may have an NVMe root volume alongside instance storage.
+Use <code class="docutils literal notranslate"><span class="pre">modelRegex</span></code> to select only instance storage devices:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">raids</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvmes</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RAID0</span>
+<span class="w">  </span><span class="nt">RAID0</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">devices</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">modelRegex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Amazon EC2 NVMe Instance Storage</span>
+<span class="w">      </span><span class="nt">nameRegex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">^/dev/nvme\d+n\d+$</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-1-1-2" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-2" name="1-2" role="tabpanel" tabindex="0"><p>OKE <code class="docutils literal notranslate"><span class="pre">DenseIO</span></code> shapes expose NVMe devices at <code class="docutils literal notranslate"><span class="pre">/dev/nvme*</span></code>.
+Devices are matched by path only (same as GKE):</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">raids</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvmes</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RAID0</span>
+<span class="w">  </span><span class="nt">RAID0</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">devices</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">nameRegex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">^/dev/nvme\d+n\d+$</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-1-1-3" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-3" name="1-3" role="tabpanel" tabindex="0"><p>ROSA on AWS uses the same instance families as EKS.
+Use <code class="docutils literal notranslate"><span class="pre">modelRegex</span></code> to select only instance storage devices:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">raids</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nvmes</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RAID0</span>
+<span class="w">  </span><span class="nt">RAID0</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">devices</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">modelRegex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Amazon EC2 NVMe Instance Storage</span>
+<span class="w">      </span><span class="nt">nameRegex</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">^/dev/nvme\d+n\d+$</span>
+</pre></div>
+</div>
+</div><div aria-labelledby="tab-1-1-4" class="sphinx-tabs-panel" hidden="true" id="panel-1-1-4" name="1-4" role="tabpanel" tabindex="0"><p>For environments without local NVMe storage, <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> can create a loop-backed device:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">localDiskSetup</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">loopDevices</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">persistent-volumes</span>
+<span class="w">    </span><span class="nt">imagePath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/lib/persistent-volumes.img</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80Gi</span>
+<span class="w">  </span><span class="nt">filesystems</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">device</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/loops/persistent-volumes</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">xfs</span>
+<span class="w">  </span><span class="nt">mounts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">device</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/loops/persistent-volumes</span>
+<span class="w">    </span><span class="nt">mountPoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/lib/persistent-volumes</span>
+<span class="w">    </span><span class="nt">unsupportedOptions</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prjquota</span>
+</pre></div>
+</div>
+</div></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">prjquota</span></code> mount option is <strong>required</strong> for the Local CSI Driver.
+It enables XFS project quotas, which the driver uses to enforce per-volume capacity limits.</p>
+</div>
+</section>
+<section id="xfs-online-discard">
+<h3>XFS online discard<a class="headerlink" href="#xfs-online-discard" title="Link to this heading">¶</a></h3>
+<p>On SSD-backed storage, enabling <code class="docutils literal notranslate"><span class="pre">discard</span></code> allows the filesystem to issue TRIM commands in real time, helping the SSD controller maintain write performance.
+This is preferred over periodic <code class="docutils literal notranslate"><span class="pre">fstrim</span></code> which can cause latency spikes on a busy ScyllaDB node.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">mounts</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">device</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dev/md/nvmes</span>
+<span class="w">  </span><span class="nt">mountPoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/lib/persistent-volumes</span>
+<span class="w">  </span><span class="nt">unsupportedOptions</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prjquota</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">discard</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="kernel-parameters">
+<h2>Kernel parameters<a class="headerlink" href="#kernel-parameters" title="Link to this heading">¶</a></h2>
+<p>Add the following to the <code class="docutils literal notranslate"><span class="pre">sysctls</span></code> field in your <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> manifest.
+These are the recommended values for ScyllaDB workloads:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">sysctls</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs.aio-max-nr</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;30000000&quot;</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs.file-max</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;9223372036854775807&quot;</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs.nr_open</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1073741816&quot;</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fs.inotify.max_user_instances</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1200&quot;</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vm.swappiness</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1&quot;</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">vm.vfs_cache_pressure</span>
+<span class="w">  </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2000&quot;</span>
+</pre></div>
+</div>
+<section id="fs-nr-open-and-rlimit-nofile">
+<h3>fs.nr_open and RLIMIT_NOFILE<a class="headerlink" href="#fs-nr-open-and-rlimit-nofile" title="Link to this heading">¶</a></h3>
+<p>ScyllaDB opens a large number of file descriptors — one per shard for each SSTable, plus connections and internal handles.
+The kernel parameter <code class="docutils literal notranslate"><span class="pre">fs.nr_open</span></code> sets the <strong>maximum value</strong> that <code class="docutils literal notranslate"><span class="pre">RLIMIT_NOFILE</span></code> (the per-process file descriptor limit) can be raised to.</p>
+<p>The Operator automatically raises <code class="docutils literal notranslate"><span class="pre">RLIMIT_NOFILE</span></code> on the ScyllaDB process to the value of <code class="docutils literal notranslate"><span class="pre">fs.nr_open</span></code>.
+If <code class="docutils literal notranslate"><span class="pre">fs.nr_open</span></code> is too low (the default is 1,048,576), ScyllaDB may fail to open files under heavy load.</p>
+</section>
+</section>
+<section id="verify-nodeconfig">
+<h2>Verify NodeConfig<a class="headerlink" href="#verify-nodeconfig" title="Link to this heading">¶</a></h2>
+<p>Check that the <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> reports healthy status:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl get nodeconfigs.scylla.scylladb.com</span>
+</pre></div>
+</div>
+<p>Expected output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">NAME</span>                  <span class="n">AVAILABLE</span>   <span class="n">PROGRESSING</span>   <span class="n">DEGRADED</span>   <span class="n">AGE</span>
+<span class="n">scylladb</span><span class="o">-</span><span class="n">nodepool</span><span class="o">-</span><span class="mi">1</span>   <span class="kc">True</span>        <span class="kc">False</span>         <span class="kc">False</span>      <span class="mi">5</span><span class="n">m</span>
+</pre></div>
+</div>
+<section id="verify-host-level-configuration">
+<h3>Verify host-level configuration<a class="headerlink" href="#verify-host-level-configuration" title="Link to this heading">¶</a></h3>
+<p>After <code class="docutils literal notranslate"><span class="pre">NodeConfig</span></code> is ready, confirm the disk setup and sysctls on a node-tuning Pod.</p>
+<p>Find the Pod name first:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl get pods -n scylla-operator-node-tuning</span>
+</pre></div>
+</div>
+<p>Then run the verification commands, replacing <code class="docutils literal notranslate"><span class="pre">&lt;node-tuning-pod&gt;</span></code> with an actual Pod name from the output above:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>Verify<span class="w"> </span>RAID<span class="w"> </span>array
+<span class="go">kubectl -n scylla-operator-node-tuning exec -it &lt;node-tuning-pod&gt; -- lsblk</span>
+
+<span class="gp"># </span>Verify<span class="w"> </span>XFS<span class="w"> </span>filesystem
+<span class="go">kubectl -n scylla-operator-node-tuning exec -it &lt;node-tuning-pod&gt; -- blkid /dev/md0</span>
+
+<span class="gp"># </span>Verify<span class="w"> </span>mount
+<span class="go">kubectl -n scylla-operator-node-tuning exec -it &lt;node-tuning-pod&gt; -- df -h /mnt/hostfs/mnt/raid-disks/</span>
+
+<span class="gp"># </span>Verify<span class="w"> </span>sysctls
+<span class="go">kubectl -n scylla-operator-node-tuning exec -it &lt;node-tuning-pod&gt; -- sysctl fs.nr_open</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="install-local-csi-driver">
+<h2>Install Local CSI Driver<a class="headerlink" href="#install-local-csi-driver" title="Link to this heading">¶</a></h2>
+<p>The Local CSI Driver is needed for provisioning <code class="docutils literal notranslate"><span class="pre">PersistentVolumes</span></code> for <code class="docutils literal notranslate"><span class="pre">ScyllaClusters</span></code> using the mounted storage:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n=local-csi-driver apply --server-side -f=https://raw.githubusercontent.com/scylladb/scylla-operator/master/examples/common/local-volume-provisioner/local-csi-driver/{00_clusterrole_def,00_clusterrole_def_openshift,00_clusterrole,00_namespace,00_scylladb-local-xfs.storageclass,10_csidriver,10_serviceaccount,20_clusterrolebinding,50_daemonset}.yaml</span>
+</pre></div>
+</div>
+<p>Wait for the driver to roll out:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">kubectl -n=local-csi-driver rollout status --timeout=10m daemonset.apps/local-csi-driver</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+                </div>
+                
+                    <div class="post-content">
+                        
+    <div class="feedback-container">
+        <p class="feedback-container__title">Was this page helpful?</p>
+        <span data-tooltip tabindex="1" title="Yes" data-position="top">
+            <button class="feedback-container__button" id="feedback-positive">
+                <i class="feedback-container__icon icon-docs-thumbs-up"></i>
+            </button>
+        </span>
+        <span data-tooltip tabindex="1" title="No" data-position="top">
+            <button class="feedback-container__button" id="feedback-negative">
+                <i class="feedback-container__icon icon-docs-thumbs-down"></i>
+            </button>
+        </span>
+        <div class="feedback-container__message" id="feedback-message"></div>
+    </div>
+
+    <script>
+        function resetFeedbackButtonActive() {
+            const feedbackButtons = document.getElementsByClassName('feedback-container__button');
+            for (let i = 0; i < feedbackButtons.length; i++) {
+                feedbackButtons[i].classList.remove('active');
+            }
+        }
+
+        function showMessage(liked) {
+            const feedbackMessage = document.getElementById('feedback-message');
+            const themeGithubRepository = true;
+            let message = 'Great! Thanks for your feedback.';
+            if (themeGithubRepository && !liked) {
+                message = "Thanks for your feedback! Please don't hesitate to <a href='https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Configure nodes&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/master/deploy-scylladb/before-you-deploy/configure-nodes%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation'>create an issue</a> if you have any suggestions on how we can improve.";
+            }
+            feedbackMessage.innerHTML = message;
+        }
+
+        function sendGaEvent(liked) {
+            const event_label = liked ? "positive" : "negative";
+            const event = "feedback_" + event_label;
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                'event': event,
+            });
+        }
+
+        const positiveFeebackButton = document.getElementById('feedback-positive');
+        const negativeFeedbackButton = document.getElementById('feedback-negative');
+
+        positiveFeebackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(true);
+            showMessage(true);
+            positiveFeebackButton.classList.add('active');
+        });
+
+        negativeFeedbackButton.addEventListener('click', function() {
+            resetFeedbackButtonActive();
+            sendGaEvent(false);
+            showMessage(false);
+            negativeFeedbackButton.classList.add('active');
+        });
+    </script>
+
+                        <div class="content-navigation">
+    <div class="navigation navigation--prev">
+        
+            <a class="navigation__link" href="configure-cpu-pinning.html">
+                <button class="navigation__button">
+                    <i class="icon-chevron-left"></i>
+                </button>
+                <div class="navigation__title">
+                    <span class="colored">PREVIOUS</span> <br />Configure CPU pinning
+                </div>
+            </a>
+        
+    </div>
+    <div class="navigation navigation--next">
+        
+            <a class="navigation__link" href="configure-operator.html">
+                <div class="navigation__title">
+                    <span class="colored">NEXT</span> <br />Configure ScyllaDB Operator
+                </div>
+                <button class="navigation__button">
+                    <i class="icon-chevron-right"></i>
+                </button>
+            </a>
+        
+    </div>
+</div>
+                        <!-- Post content text -->
+                    </div>
+                
+
+                
+                    </div>
+                    <div class="sidebar-right large-order-3">
+                        <div class="secondary-side-nav custom-scroll-bar">
+    
+    <ul class="contribute">
+        <li class="contribute__item">
+            <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/issues/new?title=docs:%20Issue on page Configure nodes&&body=I%20would%20like%20to%20report%20an%20issue%20on%20page%20https://operator.docs.scylladb.com/master/deploy-scylladb/before-you-deploy/configure-nodes%0A%0A%23%23%23%20Problem%0A%0A%23%23%23%20%20Suggest%20a%20fix&labels=documentation"
+               target="_blank">
+                <i class="icon-github" aria-hidden="true"></i>Create an issue
+            </a>
+        </li>
+        
+            <li class="contribute__item">
+                <a class="button button-sm" href="https://github.com/scylladb/scylla-operator/edit/master/docs/source/deploy-scylladb/before-you-deploy/configure-nodes.md"
+                   target="_blank">
+                    <i class="icon-edit" aria-hidden="true"></i>Edit this page
+                </a>
+            </li>
+        
+    </ul>
+
+    
+        <div class="secondary-side-nav__content">
+            <p class="topic-title">On this page</p>
+            <ul>
+<li><a class="reference internal" href="#">Configure nodes</a><ul>
+<li><a class="reference internal" href="#what-nodeconfig-does">What NodeConfig does</a></li>
+<li><a class="reference internal" href="#matching-placement">Matching placement</a></li>
+<li><a class="reference internal" href="#apply-a-nodeconfig">Apply a NodeConfig</a></li>
+<li><a class="reference internal" href="#disk-setup">Disk setup</a><ul>
+<li><a class="reference internal" href="#platform-differences">Platform differences</a></li>
+<li><a class="reference internal" href="#xfs-online-discard">XFS online discard</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#kernel-parameters">Kernel parameters</a><ul>
+<li><a class="reference internal" href="#fs-nr-open-and-rlimit-nofile">fs.nr_open and RLIMIT_NOFILE</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#verify-nodeconfig">Verify NodeConfig</a><ul>
+<li><a class="reference internal" href="#verify-host-level-configuration">Verify host-level configuration</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#install-local-csi-driver">Install Local CSI Driver</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+    
+</div>
+                    </div>
+                    </div>
+                
+            </div>
+            <div class="sidebar-left  large-order-1">
+                
+                    
+                        <div id="side-nav" class="side-nav custom-scroll-bar" data-closable data-toggler=".show">
+    <button class="collapsible-button">
+        <i class="icon-docs-menu-collapse"></i>
+    </button>
+    <div class="side-nav-content custom-scroll-bar">
+        <div class="side-nav__title">
+            <a href="../../index.html">ScyllaDB Operator</a>
+        </div>
+        <div class="side-nav__search">
+            
+                <biel-search-button
+                    project="ddfdo8m94k"
+                    button-style="rounded"
+                    hide-filters="false"
+                    hide-ctrl-k="true"
+                    header-title="ScyllaDB chatbot"
+                    modal-position="top-center">
+                    Search
+                </biel-search-button>
+                
+                    <biel-button class="side-nav__ask-ai" project="ddfdo8m94k"
+                                 header-title="ScyllaDB chatbot"
+                                 button-position="default"
+                                 modal-position="sidebar-right"
+                                 button-style="dark">
+                        Ask AI
+                    </biel-button>
+                
+            
+        </div>
+        <div class="side-nav__versions"><ul class="dropdown menu scylla-dropdown scylla-dropdown--versions" data-dropdown-menu>
+    <li class="scylla-dropdown__item">
+        <a class="scylla-dropdown__title" href="#">
+            
+                master
+            
+            <i class="chevron icon-docs-chevron-right"></i>
+        </a>
+        <ul class="menu scylla-dropdown__content">
+            
+                
+                    <li>
+                        <a href="configure-nodes.html">master</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../stable/deploy-scylladb/before-you-deploy/configure-nodes.html">v1.21</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../v1.20/index.html">v1.20</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../v1.19/index.html">v1.19</a>
+                    </li>
+                
+            
+                
+                    <li>
+                        <a href="../../../v1.18/index.html">v1.18</a>
+                    </li>
+                
+            
+            
+        </ul>
+    </li>
+</ul></div>
+        <div class="side-nav__content">
+            <ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../get-started/index.html">Get Started</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label for="toctree-checkbox-1"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/what-is-scylladb-operator.html">What Is ScyllaDB Operator?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../get-started/concepts-for-k8s-beginners.html">ScyllaDB Concepts on Kubernetes</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../install-operator/index.html">Install Operator</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label for="toctree-checkbox-2"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../install-operator/provision-infrastructure/index.html">Provision infrastructure</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label for="toctree-checkbox-3"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../install-operator/provision-infrastructure/set-up-gke-cluster.html">Set up a GKE cluster for ScyllaDB</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../install-operator/provision-infrastructure/set-up-eks-cluster.html">Set up an EKS cluster for ScyllaDB</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../install-operator/provision-infrastructure/set-up-oke-cluster.html">Set up an OKE cluster for ScyllaDB</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../install-operator/provision-infrastructure/set-up-openshift-cluster.html">Set up an OpenShift cluster for ScyllaDB</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../install-operator/install-with-gitops.html">Install with GitOps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../install-operator/install-with-helm.html">Install with Helm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../install-operator/install-on-openshift.html">Install on OpenShift</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Deploy ScyllaDB</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label for="toctree-checkbox-4"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Before you deploy</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label for="toctree-checkbox-5"><i class="icon-chevron-right"></i></label><div class="break"></div><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="set-up-dedicated-node-pools.html">Set up dedicated node pools</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configure-cpu-pinning.html">Configure CPU pinning</a></li>
+<li class="toctree-l3 current current-page"><a class="current reference internal" href="#">Configure nodes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configure-operator.html">Configure ScyllaDB Operator</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../deploy-your-first-cluster.html">Deploy your first cluster</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../reference-deployments/index.html">Reference deployments</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label for="toctree-checkbox-6"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../reference-deployments/reference-deployment-gke.html">Reference deployment: GKE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../reference-deployments/reference-deployment-eks.html">Reference deployment: EKS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../reference-deployments/reference-deployment-oke.html">Reference deployment: OKE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../reference-deployments/reference-deployment-openshift.html">Reference deployment: OpenShift</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../install-scylladb-manager.html">Install ScyllaDB Manager</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../set-up-networking/index.html">Set up networking</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label for="toctree-checkbox-7"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../set-up-networking/configure-external-access.html">Configure external access</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../set-up-networking/ipv6/index.html">IPv6 networking</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label for="toctree-checkbox-8"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../set-up-networking/ipv6/get-started.html">Getting started with IPv6 networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../set-up-networking/ipv6/configure-dual-stack.html">Configure dual-stack networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../set-up-networking/ipv6/configure-single-stack.html">Configure IPv6-only networking</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../set-up-networking/ipv6/migration.html">Migrate clusters to IPv6</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../set-up-networking/ipv6/troubleshooting.html">Troubleshoot IPv6 networking issues</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../set-up-networking/ipv6/ipv6-concepts.html">IPv6 networking concepts</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../set-up-monitoring/index.html">Set up monitoring</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label for="toctree-checkbox-9"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../set-up-monitoring/setup.html">Set up ScyllaDB Monitoring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../set-up-monitoring/external-prometheus-on-openshift.html">Set up ScyllaDB Monitoring on OpenShift</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../set-up-monitoring/exposing-grafana.html">Expose Grafana</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../production-checklist.html">Production checklist</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../connect-your-app/index.html">Connect Your App</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" type="checkbox"/><label for="toctree-checkbox-10"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../connect-your-app/connect-via-cql.html">Connect via CQL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../connect-your-app/alternator.html">Alternator (DynamoDB API)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../connect-your-app/discovery.html">Discovery endpoint</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../understand/index.html">Understand</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" type="checkbox"/><label for="toctree-checkbox-11"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/storage.html">Storage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/tuning.html">Tuning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/manager.html">ScyllaDB Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/networking.html">Networking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/monitoring.html">ScyllaDB Monitoring overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/bootstrap-sync.html">Bootstrap synchronisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/automatic-data-cleanup.html">Automatic data cleanup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/sidecar.html">Sidecar and pod anatomy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/ignition.html">Ignition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/pod-disruption-budgets.html">Pod disruption budgets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/security.html">Security</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../understand/statefulsets-and-racks.html">StatefulSets and racks</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../operate/index.html">Operate</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" type="checkbox"/><label for="toctree-checkbox-12"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/scale-add-remove-racks.html">Scale, add, remove racks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/replace-nodes.html">Replace nodes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/expand-storage-volumes.html">Expand storage volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/use-maintenance-mode.html">Use maintenance mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/back-up-and-restore.html">Back up and restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/restore-from-backup.html">Restore from backup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/perform-rolling-restart.html">Perform a rolling restart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/migrate-rack-to-new-node-pool.html">Migrate a rack to a new node pool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/pass-scylladb-arguments.html">Pass additional ScyllaDB arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../operate/configure-io-properties.html">Configure precomputed IO properties</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../upgrade/index.html">Upgrade</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" type="checkbox"/><label for="toctree-checkbox-13"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../upgrade/upgrade-operator.html">Upgrading ScyllaDB Operator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../upgrade/upgrade-scylladb.html">Upgrading ScyllaDB clusters</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../troubleshoot/index.html">Troubleshoot</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" type="checkbox"/><label for="toctree-checkbox-14"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshoot/investigate-restarts.html">Investigate pod restarts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshoot/change-log-level.html">Change log level on a live cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshoot/recover-from-failed-replace.html">Recover from a failed node replace</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshoot/troubleshoot-performance.html">Troubleshoot performance</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../troubleshoot/collect-debugging-information/index.html">Collect debugging information</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" type="checkbox"/><label for="toctree-checkbox-15"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshoot/collect-debugging-information/must-gather.html">Collect data with must-gather</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshoot/collect-debugging-information/must-gather-contents.html">must-gather contents</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../troubleshoot/collect-debugging-information/system-tables.html">Query system tables for debugging</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../troubleshoot/configure-coredumps.html">Collect core dumps</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../reference/index.html">Reference</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" type="checkbox"/><label for="toctree-checkbox-16"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../reference/api/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" type="checkbox"/><label for="toctree-checkbox-17"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com.html">scylla.scylladb.com</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" type="checkbox"/><label for="toctree-checkbox-18"><i class="icon-chevron-right"></i></label><div class="break"></div><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/nodeconfigs.html">NodeConfig (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.html">RemoteKubernetesCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/remoteowners.html">RemoteOwner (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scyllaclusters.html">ScyllaCluster (scylla.scylladb.com/v1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbclusters.html">ScyllaDBCluster (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.html">ScyllaDBDatacenterNodesStatusReport (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbdatacenters.html">ScyllaDBDatacenter (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.html">ScyllaDBManagerClusterRegistration (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.html">ScyllaDBManagerTask (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scylladbmonitorings.html">ScyllaDBMonitoring (scylla.scylladb.com/v1alpha1)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.html">ScyllaOperatorConfig (scylla.scylladb.com/v1alpha1)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../reference/feature-gates.html">Feature gates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../reference/ipv6-configuration.html">IPv6 configuration reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../reference/releases.html">Releases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../reference/known-issues.html">Known issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../reference/conditions.html">Conditions reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../reference/nodetool-alternatives.html">nodetool alternatives</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing to ScyllaDB Operator</a></li>
+</ul>
+
+        </div>
+    </div>
+</div>
+                    
+                
+            </div>
+
+        </section>
+
+        <footer class="footer">
+    <div class="footer-group">
+        <div class="footer-top">
+            <a class="footer-logo" href="https://www.scylladb.com"></a>
+            <div class="footer-links">
+                <a class="footer-links__link" href="https://docs.scylladb.com/" target="_blank">Docs</a>
+                <a class="footer-links__link" href="https://docs.scylladb.com/stable/get-started/develop-with-scylladb/tutorials-example-projects.html" target="_blank">Tutorials</a>
+                <a class="footer-links__link" href="https://university.scylladb.com/" target="_blank">University</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/contact-us/"
+                   target="_blank">Contact Us</a>
+                <a class="footer-links__link" href="https://www.scylladb.com/company/" target="_blank">About Us</a>
+            </div>
+            <div class="footer-actions">
+                <a class="footer-actions__link" href="http://slack.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="User Slack channel" data-position="bottom">
+                        <i class="icon-slack"></i>
+                    </span>
+                </a>
+                <a class="footer-actions__link" href="https://forum.scylladb.com/" target="_blank">
+                    <span data-tooltip tabindex="1" title="Community forum" data-position="bottom">
+                        <i class="icon-docs-community"></i>
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        
+            <div class="footer-copyright">
+                
+                    
+                        &#169; 2026, ScyllaDB. All rights reserved.
+                    
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/tos/" target="_blank">Terms of Service</a>
+                    | <a class="footer-copyright__link" href="https://www.scylladb.com/privacy/" target="_blank">Privacy Policy</a>
+                    | ScyllaDB, and ScyllaDB Cloud, are registered trademarks of ScyllaDB, Inc.
+                
+            </div>
+        
+
+
+        <div class="footer-bottom">
+            
+                <div class="footer-bottom__last-updated">
+                    
+                        Last updated on 21 July 2026.
+                    
+                </div>
+            
+            <div class="footer-bottom__version">
+                Powered by
+                <a class="footer-bottom__link" href="http://sphinx-doc.org/">Sphinx 9.1.0</a> &amp;
+                <a class="footer-bottom__link" href="https://sphinx-theme.scylladb.com/">ScyllaDB Theme 1.9.3</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+        <noscript>
+            <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-T8P2JP" height="0" width="0"
+                    style="display: none; visibility: hidden"></iframe>
+        </noscript>
+    </body>
+
+</html>

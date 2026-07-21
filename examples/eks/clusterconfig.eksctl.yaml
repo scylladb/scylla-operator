@@ -9,7 +9,7 @@ availabilityZones:
 - eu-central-1c
 nodeGroups:
 - name: scylla-pool
-  instanceType: i4i.2xlarge
+  instanceType: i7i.2xlarge
   desiredCapacity: 3
   amiFamily: AmazonLinux2023
   labels:
@@ -23,7 +23,7 @@ nodeGroups:
   - eu-central-1b
   - eu-central-1c
 - name: infra-pool
-  instanceType: i3.large
+  instanceType: m7i.large
   desiredCapacity: 1
   amiFamily: AmazonLinux2023
   labels:

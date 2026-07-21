@@ -33,8 +33,7 @@ See [GCE recommendations](https://docs.scylladb.com/manual/stable/getting-starte
 :::
 
 :::{tab} EKS
-Use storage-optimized instances from the `i` family (e.g., `i3en`, `i4i`, `i8g`).
-See [AWS recommendations](https://docs.scylladb.com/manual/stable/getting-started/cloud-instance-recommendations.html#amazon-web-services-aws).
+Use storage-optimized instances from the `i` family, as advised in the [AWS recommendations](https://docs.scylladb.com/manual/stable/getting-started/cloud-instance-recommendations.html#amazon-web-services-aws).
 :::
 
 :::{tab} OKE

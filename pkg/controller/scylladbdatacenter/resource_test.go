@@ -1451,7 +1451,7 @@ exec scylla-manager-agent \
 					},
 				},
 				ServiceName:         "basic-client",
-				PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+				PodManagementPolicy: appsv1.ParallelPodManagement,
 				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 					Type: appsv1.RollingUpdateStatefulSetStrategyType,
 					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{

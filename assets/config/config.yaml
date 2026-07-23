@@ -5,9 +5,9 @@ operator:
   # FIXME: switch to scylladb-node-exporter image once https://scylladb.atlassian.net/browse/RELENG-711 is completed.
   scyllaDBNodeExporterImage: "quay.io/prometheus/node-exporter:v1.11.1"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver
-  scyllaDBManagerVersion: "3.11.2@sha256:61ec1396d438945abf3db46db893d7e4d2324acb5523d143077f8fdfea05779d"
+  scyllaDBManagerVersion: "3.11.2@sha256:76828e1cef8d335ba78b0cb6367f09d0587f23f6531b1f6a96a31e0543ee5e58"
   # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
-  scyllaDBManagerAgentVersion: "3.11.2@sha256:9fd3ba869f1d610b5f3f635a958ecfd3083c7abb8c9cdb12d0d26c6add0b67d9"
+  scyllaDBManagerAgentVersion: "3.11.2@sha256:9747c7c2ba396e33fa3d97c9ef8f0738b603b2d97834c407828188b3b0f89c3b"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
   grafanaImage: "docker.io/grafana/grafana:12.4.5" # Generated from scylla-monitoring/versions.sh GRAFANA_VERSION.
   grafanaDefaultPlatformDashboard: "scylladb-2026.2/scylla-overview.2026.2.json"

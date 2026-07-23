@@ -4,6 +4,7 @@ package scyllacluster
 
 import (
 	"context"
+	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -17,7 +18,11 @@ import (
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 )
 
 var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
@@ -221,5 +226,91 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 
 		verification.VerifyCQLData(ctx, diRF3)
+	})
+})
+
+var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, func() {
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
+
+	g.It("should not lose more than one pod at time after smp change", func() {
+		testCtx, testCtxCancel := context.WithTimeout(context.Background(), testTimeout)
+		defer testCtxCancel()
+
+		sc := f.GetDefaultScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].Members = 3
+
+		framework.By("Creating a ScyllaCluster with 3 members")
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(testCtx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		initialRolloutCtx, initialRolloutCtxCancel := utils.ContextForRollout(testCtx, sc)
+		defer initialRolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(initialRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(testCtx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(testCtx, f.KubeClient().CoreV1(), sc)
+
+		framework.By("Setting up Pod observer to monitor rolling restart")
+		podSelector := labels.SelectorFromSet(naming.ScyllaDBNodePodsSelectorLabelsForScyllaCluster(sc))
+		lw := &cache.ListWatch{
+			ListFunc: helpers.UncachedListFunc(func(options metav1.ListOptions) (runtime.Object, error) {
+				options.LabelSelector = podSelector.String()
+				return f.KubeClient().CoreV1().Pods(f.Namespace()).List(testCtx, options)
+			}),
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				options.LabelSelector = podSelector.String()
+				return f.KubeClient().CoreV1().Pods(f.Namespace()).Watch(testCtx, options)
+			},
+		}
+		podObserver := utils.ObserveObjects[*corev1.Pod](lw)
+		err = podObserver.Start(testCtx)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Patching CPU limit from 1 to 2 to trigger SMP change and resharding")
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+			testCtx,
+			sc.Name,
+			types.JSONPatchType,
+			[]byte(`[{"op": "replace", "path": "/spec/datacenter/racks/0/resources/limits/cpu", "value": "2"}]`),
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		reshardingRolloutCtx, reshardingRolloutCtxCancel := utils.ContextForRollout(testCtx, sc)
+		defer reshardingRolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(reshardingRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Stopping Pod observer and verifying rolling restart constraint")
+		events, err := podObserver.Stop()
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		podReady := map[string]bool{}
+		for _, event := range events {
+			pod := event.Obj
+			switch event.Action {
+			case watch.Deleted:
+				podReady[pod.Name] = false
+			default:
+				podReady[pod.Name] = controllerhelpers.IsPodReady(pod)
+			}
+
+			notReadyCount := 0
+			for _, ready := range podReady {
+				if !ready {
+					notReadyCount++
+				}
+			}
+			o.Expect(notReadyCount).To(o.BeNumerically("<=", 1),
+				fmt.Sprintf("more than one pod was not-ready simultaneously during rollout, pod states: %v", podReady),
+			)
+		}
 	})
 })

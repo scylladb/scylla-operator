@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
@@ -392,66 +393,32 @@ func (sdcc *Controller) pruneStatefulSets(
 	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
 }
 
-// createMissingStatefulSets creates missing StatefulSets.
-// It return true if done and an error.
-func (sdcc *Controller) createMissingStatefulSets(
+// checkExistingStatefulSetsRolloutStatus returns progressing conditions for existing StatefulSets that haven't rolled out yet.
+func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 	ctx context.Context,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
-	services map[string]*corev1.Service,
 ) ([]metav1.Condition, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
+
 	for _, req := range requiredStatefulSets {
-		klog.V(4).InfoS("Processing required StatefulSet", "StatefulSet", klog.KObj(req))
-		// Check the adopted set.
-		sts, found := statefulSets[req.Name]
-		if !found {
-			klog.V(2).InfoS("Creating missing StatefulSet", "StatefulSet", klog.KObj(req))
-			var changed bool
-			var err error
-			sts, changed, err = resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, req, resourceapply.ApplyOptions{})
-			if err != nil {
-				errs = append(errs, fmt.Errorf("can't create missing statefulset: %w", err))
-				continue
-			}
-			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, req, "apply", sdc.Generation)
-
-				rackName, ok := sts.Labels[naming.RackNameLabel]
-				if !ok {
-					errs = append(errs, fmt.Errorf(
-						"can't determine rack name: statefulset %s is missing label %q",
-						naming.ObjRef(sts),
-						naming.RackNameLabel),
-					)
-					continue
-				}
-
-				updatedRackStatus := *sdcc.calculateRackStatus(sdc, rackName, sts)
-				_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
-					return rackStatus.Name == rackName
-				})
-				if ok {
-					status.Racks[idx] = updatedRackStatus
-				} else {
-					status.Racks = append(status.Racks, updatedRackStatus)
-				}
-			}
-		} else {
-			// When we decommission a member there is a pod left that's not ready until we scale.
-			if req.Spec.Replicas != nil && sts.Spec.Replicas != nil &&
-				*req.Spec.Replicas != *sts.Spec.Replicas {
-				continue
-			}
+		sts, ok := statefulSets[req.Name]
+		if !ok {
+			continue
 		}
 
-		// Wait for the StatefulSet to roll out. Racks can only bootstrap one by one.
+		// When we decommission a member there is a pod left that's not ready until we scale.
+		if req.Spec.Replicas != nil && sts.Spec.Replicas != nil &&
+			*req.Spec.Replicas != *sts.Spec.Replicas {
+			continue
+		}
+
 		rolledOut, err := controllerhelpers.IsStatefulSetRolledOut(sts)
 		if err != nil {
-			return progressingConditions, err
+			errs = append(errs, fmt.Errorf("can't verify statefulset %q rollout status: %w", naming.ObjRef(sts), err))
+			continue
 		}
 
 		if !rolledOut {
@@ -460,14 +427,84 @@ func (sdcc *Controller) createMissingStatefulSets(
 				Type:               statefulSetControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
 				Reason:             "WaitingForStatefulSetRollout",
-				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(req)),
+				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(sts)),
 				ObservedGeneration: sdc.Generation,
 			})
-			return progressingConditions, nil
 		}
 	}
 
 	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
+}
+
+// createMissingStatefulSets creates the missing StatefulSets from requiredStatefulSets.
+// Existing StatefulSets are skipped and at most one missing StatefulSet is created so racks bootstrap sequentially.
+// It returns the created StatefulSet and its progressing conditions, or an error if creation failed.
+func createMissingStatefulSets(
+	ctx context.Context,
+	applyStatefulSet func(context.Context, *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error),
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	requiredStatefulSets []*appsv1.StatefulSet,
+	statefulSets map[string]*appsv1.StatefulSet,
+) ([]*appsv1.StatefulSet, []metav1.Condition, error) {
+	for _, req := range requiredStatefulSets {
+		sts, found := statefulSets[req.Name]
+		if found {
+			continue
+		}
+
+		klog.V(2).InfoS("Creating missing StatefulSet", "StatefulSet", klog.KObj(req))
+		var changed bool
+		var err error
+		sts, changed, err = applyStatefulSet(ctx, req)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't create missing statefulset %q: %w", naming.ManualRef(sdc.Namespace, req.Name), err)
+		}
+		if !changed {
+			continue
+		}
+
+		var progressingConditions []metav1.Condition
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, req, "apply", sdc.Generation)
+
+		// StatefulSets must be created sequentially. Return early.
+		return []*appsv1.StatefulSet{sts}, progressingConditions, nil
+	}
+
+	return []*appsv1.StatefulSet{}, []metav1.Condition{}, nil
+}
+
+// ensureRackNamesInRackStatuses records statuses for newly created racks before informer caches catch up.
+func ensureRackNamesInRackStatuses(
+	podLister corev1listers.PodLister,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
+	statefulSets []*appsv1.StatefulSet,
+) error {
+	var errs []error
+
+	for _, sts := range statefulSets {
+		rackName, ok := sts.Labels[naming.RackNameLabel]
+		if !ok {
+			errs = append(errs, fmt.Errorf(
+				"can't determine rack name: statefulset %s is missing label %q",
+				naming.ObjRef(sts),
+				naming.RackNameLabel),
+			)
+			continue
+		}
+
+		updatedRackStatus := *calculateRackStatus(podLister, sdc, rackName, sts)
+		_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+			return rackStatus.Name == rackName
+		})
+		if ok {
+			status.Racks[idx] = updatedRackStatus
+		} else {
+			status.Racks = append(status.Racks, updatedRackStatus)
+		}
+	}
+
+	return apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (sdcc *Controller) syncStatefulSets(
@@ -551,17 +588,45 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, nil
 	}
 
+	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
+	}
+	// Wait for existing StatefulSets to roll out. Racks can only bootstrap one by one.
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
+	}
+
 	// Before any update, make sure all StatefulSets are present.
 	// Create any that are missing.
-	createProgressingConditions, err := sdcc.createMissingStatefulSets(ctx, sdc, status, requiredStatefulSets, statefulSets, services)
+	createdStatefulSets, createProgressingConditions, err := createMissingStatefulSets(
+		ctx,
+		func(ctx context.Context, required *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
+			return resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
+		},
+		sdc,
+		requiredStatefulSets,
+		statefulSets,
+	)
 	progressingConditions = append(progressingConditions, createProgressingConditions...)
+	defer func() {
+		if len(createProgressingConditions) > 0 {
+			// Wait for the informers to catch up.
+			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+			time.Sleep(sdcc.statefulSetCachePropagationDelay)
+		}
+	}()
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't create StatefulSet(s): %w", err)
 	}
-	if len(createProgressingConditions) > 0 {
-		// Wait for the informers to catch up.
-		// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-		time.Sleep(sdcc.statefulSetCachePropagationDelay)
+
+	err = ensureRackNamesInRackStatuses(sdcc.podLister, sdc, status, createdStatefulSets)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't update status with rack statuses: %w", err)
+	}
+
+	// Return to wait for created StatefulSets to roll out before proceeding.
+	if len(progressingConditions) > 0 {
 		return progressingConditions, nil
 	}
 
@@ -813,7 +878,7 @@ func (sdcc *Controller) syncStatefulSets(
 						continue
 					}
 
-					status.Racks[idx] = *sdcc.calculateRackStatus(sdc, rackName, updatedSts)
+					status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts)
 				}
 			}
 			if anyStsChanged {
@@ -1081,7 +1146,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc))
 			}
 
-			status.Racks[idx] = *sdcc.calculateRackStatus(sdc, rackName, updatedSts)
+			status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts)
 		}
 
 		// Wait for the StatefulSet to roll out.

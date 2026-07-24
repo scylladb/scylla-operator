@@ -69,5 +69,15 @@ export SO_E2E_TIMEOUT
 ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
 export ARTIFACTS
 
+SO_S3_CREDENTIALS_PATH="${repo_root}/hack/kind/minio/credentials"
+export SO_S3_CREDENTIALS_PATH
+
+SO_S3_AGENT_CONFIG_PATH="${repo_root}/hack/kind/minio/agent-config.yaml"
+export SO_S3_AGENT_CONFIG_PATH
+
+# Object storage bucket for backup/restore e2e tests, created in the MinIO instance deployed by cluster-setup.sh.
+SO_BUCKET_NAME="manager-backup-tests"
+kubectl -n minio exec deployment/minio -- mkdir -p "/data/${SO_BUCKET_NAME}"
+
 apply-e2e-workarounds
 run-e2e

@@ -561,7 +561,7 @@ func (sdcc *Controller) syncStatefulSets(
 	if len(createProgressingConditions) > 0 {
 		// Wait for the informers to catch up.
 		// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-		time.Sleep(artificialDelayForCachesToCatchUp)
+		time.Sleep(sdcc.statefulSetCachePropagationDelay)
 		return progressingConditions, nil
 	}
 
@@ -818,7 +818,7 @@ func (sdcc *Controller) syncStatefulSets(
 			}
 			if anyStsChanged {
 				// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-				time.Sleep(artificialDelayForCachesToCatchUp)
+				time.Sleep(sdcc.statefulSetCachePropagationDelay)
 			}
 			err = apimachineryutilerrors.NewAggregate(errs)
 			if err != nil {
@@ -996,7 +996,7 @@ func (sdcc *Controller) syncStatefulSets(
 	defer func() {
 		if anyStsChanged {
 			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(artificialDelayForCachesToCatchUp)
+			time.Sleep(sdcc.statefulSetCachePropagationDelay)
 		}
 	}()
 	for _, required := range requiredStatefulSets {

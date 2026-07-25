@@ -11,6 +11,11 @@ spec:
     filesystems:
     - device: /dev/loops/persistent-volumes
       type: xfs
+      flags:
+      - "-m"
+      - "rmapbt=0"
+      - "-m"
+      - "reflink=0"
     mounts:
     - device: /dev/loops/persistent-volumes
       mountPoint: /var/lib/persistent-volumes

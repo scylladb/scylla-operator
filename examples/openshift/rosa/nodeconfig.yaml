@@ -7,6 +7,11 @@ spec:
     filesystems:
     - device: /dev/md/nvmes
       type: xfs
+      flags:
+      - "-m"
+      - "rmapbt=0"
+      - "-m"
+      - "reflink=0"
     mounts:
     - device: /dev/md/nvmes
       mountPoint: /var/lib/persistent-volumes

@@ -70,6 +70,12 @@ spec:
                           description: device is a path to the device where the desired
                             filesystem should be created.
                           type: string
+                        flags:
+                          description: flags contains additional flags passed to the
+                            filesystem creation command.
+                          items:
+                            type: string
+                          type: array
                         type:
                           description: type is a desired filesystem type.
                           type: string

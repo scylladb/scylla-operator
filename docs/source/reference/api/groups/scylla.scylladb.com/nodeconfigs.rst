@@ -146,6 +146,9 @@ object
    * - device
      - string
      - device is a path to the device where the desired filesystem should be created.
+   * - flags
+     - array (string)
+     - flags contains additional flags passed to the filesystem creation command.
    * - type
      - string
      - type is a desired filesystem type.

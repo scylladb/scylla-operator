@@ -179,8 +179,15 @@ func isBootstrapPreconditionSatisfied(scyllaDBDatacenterNodesStatusReports []*sc
 				}
 
 				if node.HostID == nil {
-					klog.V(4).InfoS("A required node is missing a host ID, can't proceed with verifying the bootstrap precondition.", "RequiredNodeDatacenter", report.DatacenterName, "RequiredNodeRack", rack.Name, "RequiredNodeOrdinal", node.Ordinal)
-					return false
+					// TODO: this uses the fact that sidecar only sets the HostID annotation AFTER the node became part of the token ring. We should probably use a clearer signal. Otherwise changing the semantics of when the HostID annotation is set could affect parallel bootstrap.
+					// The node hasn't reported a host ID yet. This is expected for a node that's still bootstrapping/joining,
+					// but this check is inherently racy: the sidecar may simply be slow to propagate the HostID
+					// annotation for a node that has, in fact, already joined. Skipping it here means we don't require
+					// any peer to confirm it as UP before the barrier opens - a false positive (barrier proceeds despite an
+					// unconfirmed node) is possible. We accept that risk over failing closed on every node
+					// that hasn't reported a host ID yet, which would permanently stall the parallel bootstrap.
+					klog.V(4).InfoS("A node has no propagated host ID yet, skipping it in the bootstrap precondition check.", "NodeDatacenter", report.DatacenterName, "NodeRack", rack.Name, "NodeOrdinal", node.Ordinal)
+					continue
 				}
 
 				allHostIDs.Insert(*node.HostID)

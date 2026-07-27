@@ -2439,23 +2439,11 @@ func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec 
 		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rackSpec.Name, naming.ObjRef(sdc), err)
 	}
 
-	actualRackNodeCount := int32(0)
-	rackStatus, _, found := oslices.Find(sdc.Status.Racks, func(status scyllav1alpha1.RackStatus) bool {
-		return status.Name == rackSpec.Name
-	})
-	if found && rackStatus.CurrentNodes != nil {
-		actualRackNodeCount = *rackStatus.CurrentNodes
-	}
-
 	var nodeStatusReports []scyllav1alpha1.NodeStatusReport
 	for ord := int32(0); ord < *desiredRackNodeCount; ord++ {
-		isNodeExpectedInK8sState := ord < actualRackNodeCount
-		nodeStatusReport, ok, err := makeNodeStatusReport(sdc, rackSpec, int(ord), services, podLister, isNodeExpectedInK8sState)
+		nodeStatusReport, err := makeNodeStatusReport(sdc, rackSpec, int(ord), services, podLister)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't make node status report for node %d of rack %q of ScyllaDBDatacenter %q: %w", ord, rackSpec.Name, naming.ObjRef(sdc), err))
-			continue
-		}
-		if !ok {
 			continue
 		}
 
@@ -2474,62 +2462,56 @@ func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec 
 }
 
 // makeNodeStatusReport creates a NodeStatusReport for a specific node in a rack.
-// It returns an optional NodeStatusReport, a boolean indicating whether the NodeStatusReport is non-nil, and an error.
-func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, ordinal int, services map[string]*corev1.Service, podLister corev1listers.PodLister, isNodeExpectedInK8sState bool) (*scyllav1alpha1.NodeStatusReport, bool, error) {
-	var hostID string
-	svcName := naming.MemberServiceName(*rackSpec, sdc, ordinal)
-	svc, svcExists := services[svcName]
-	if svcExists {
-		hostID = svc.Annotations[naming.HostIDAnnotation]
-	}
-
-	if !isNodeExpectedInK8sState && len(hostID) == 0 {
-		// The node is not expected to be a part of the cluster in K8s state, and it has no known identity in ScyllaDB. Skip it.
-		klog.V(5).InfoS("Node is not expected to be part of the cluster in Kubernetes state and has no known identity in ScyllaDB, skipping", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName))
-		return nil, false, nil
-	}
-
+// It always returns a non-nil NodeStatusReport for the ordinal, unless an error occurs.
+// HostID is nil when the node has no durable ScyllaDB identity yet (e.g. still bootstrapping/joining).
+func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, ordinal int, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.NodeStatusReport, error) {
 	nodeStatusReport := &scyllav1alpha1.NodeStatusReport{
 		Ordinal: ordinal,
 	}
 
+	svcName := naming.MemberServiceName(*rackSpec, sdc, ordinal)
+	svc, ok := services[svcName]
+	if !ok {
+		klog.V(5).InfoS("Service is missing, reporting node with no known identity", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName))
+		return nodeStatusReport, nil
+	}
+
+	hostID := svc.Annotations[naming.HostIDAnnotation]
 	if len(hostID) == 0 {
-		// Host ID hasn't been propagated yet, report an empty status without a hostID.
-		klog.V(4).InfoS("HostID of an expected node has nod been propagated yet, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName))
-		return nodeStatusReport, true, nil
+		klog.V(5).InfoS("Node has no known identity in ScyllaDB, reporting node with no known identity", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc))
+		return nodeStatusReport, nil
 	}
 	nodeStatusReport.HostID = &hostID
 
-	// HostID is non-empty, we can now safely use the svc object.
 	podName := naming.PodNameFromService(svc)
 	pod, err := podLister.Pods(sdc.Namespace).Get(podName)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return nil, false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
+			return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
 		}
 
-		// Pod is missing, report an empty status.
-		klog.V(4).InfoS("Pod of an expected node is missing, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "Pod", klog.KRef(sdc.Namespace, podName))
-		return nodeStatusReport, true, nil
+		// Pod is missing for a node with a known identity in ScyllaDB, report no observed nodes.
+		klog.V(4).InfoS("Pod of a node with known identity in ScyllaDB is missing, reporting no observed nodes", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName), "Pod", klog.KRef(sdc.Namespace, podName))
+		return nodeStatusReport, nil
 	}
 
 	nodeStatusReportAnnotationValue, ok := pod.Annotations[naming.NodeStatusReportAnnotation]
 	if !ok {
-		// The node might not have reported its status yet, report an empty status.
-		klog.V(4).InfoS("Node status report annotation is missing on Pod of an expected node, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "Pod", klog.KObj(pod), "AnnotationKey", naming.NodeStatusReportAnnotation)
-		return nodeStatusReport, true, nil
+		// The node might not have reported its status yet, report no observed nodes.
+		klog.V(4).InfoS("Node status report annotation is missing on Pod of a node with known identity in ScyllaDB, reporting no observed nodes", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName), "Pod", klog.KObj(pod), "AnnotationKey", naming.NodeStatusReportAnnotation)
+		return nodeStatusReport, nil
 	}
 
 	var internalNodeStatusReport internalapi.NodeStatusReport
 	err = internalNodeStatusReport.Decode(strings.NewReader(nodeStatusReportAnnotationValue))
 	if err != nil {
-		return nil, false, fmt.Errorf("can't decode annotation %q of pod %q for ScyllaDBDatacenter %q: %w", naming.NodeStatusReportAnnotation, naming.ManualRef(sdc.Namespace, podName), naming.ObjRef(sdc), err)
+		return nil, fmt.Errorf("can't decode annotation %q of pod %q for ScyllaDBDatacenter %q: %w", naming.NodeStatusReportAnnotation, naming.ManualRef(sdc.Namespace, podName), naming.ObjRef(sdc), err)
 	}
 
 	if internalNodeStatusReport.Error != nil {
-		// The node reported an error, report an empty status.
-		klog.V(4).InfoS("Node reported an error in its status report, reporting an empty status", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "Pod", klog.KObj(pod), "Error", internalNodeStatusReport.Error)
-		return nodeStatusReport, true, nil
+		// The node reported an error, report no observed nodes.
+		klog.V(4).InfoS("Node reported an error in its status report, reporting no observed nodes", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName), "Pod", klog.KObj(pod), "Error", internalNodeStatusReport.Error)
+		return nodeStatusReport, nil
 	}
 
 	// Ordering by HostID guarantees stability of the entries and prevents unnecessary state changes that would result only from reshuffling.
@@ -2538,7 +2520,6 @@ func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyl
 	})
 
 	nodeStatusReport.ObservedNodes = internalNodeStatusReport.ObservedNodes
-
-	klog.V(5).InfoS("Successfully built a node status report for an expected node", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "Pod", klog.KObj(pod))
-	return nodeStatusReport, true, nil
+	klog.V(5).InfoS("Successfully built a node status report", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName), "Pod", klog.KObj(pod))
+	return nodeStatusReport, nil
 }

@@ -4,9 +4,11 @@ package scyllacluster
 
 import (
 	"context"
+	"fmt"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
@@ -223,3 +225,61 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		verification.VerifyCQLData(ctx, diRF3)
 	})
 })
+
+var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteKindFast, func() {
+	var f *framework.Framework
+
+	g.BeforeEach(func(ctx context.Context) {
+		f = framework.NewFramework(ctx, "scyllacluster")
+	})
+
+	g.It("should scale-up vertically after SMP change", func(testCtx context.Context) {
+		sc := f.GetDefaultScyllaCluster()
+		sc.Spec.Datacenter.Racks[0].Members = 3
+
+		framework.By("Creating a ScyllaCluster with 3 members")
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(testCtx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		initialRolloutCtx, initialRolloutCtxCancel := utils.ContextForRollout(testCtx, sc)
+		defer initialRolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(initialRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(testCtx, f.KubeClient(), f.ScyllaClient(), sc)
+		scyllaclusterverification.WaitForFullQuorum(testCtx, f.KubeClient().CoreV1(), sc)
+
+		framework.By("Verifying that all ScyllaDB pods are running with --smp=1")
+		assertPodsSMPEquals(testCtx, f, sc, 1)
+
+		framework.By("Patching CPU limit from 1 to 2 to trigger SMP change")
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
+			testCtx,
+			sc.Name,
+			types.JSONPatchType,
+			[]byte(`[{"op": "replace", "path": "/spec/datacenter/racks/0/resources/limits/cpu", "value": "2"}]`),
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		postUpdateRolloutCtx, postUpdateRolloutCtxCancel := utils.ContextForRollout(testCtx, sc)
+		defer postUpdateRolloutCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(postUpdateRolloutCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Verifying that all ScyllaDB pods are running with --smp=2")
+		assertPodsSMPEquals(testCtx, f, sc, 2)
+	})
+})
+
+func assertPodsSMPEquals(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster, expectedSMP int) {
+	stsName := naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc)
+	for i := int32(0); i < sc.Spec.Datacenter.Racks[0].Members; i++ {
+		podName := fmt.Sprintf("%s-%d", stsName, i)
+		entrypointCommand, err := utils.GetScyllaDBDockerEntrypointCommand(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), f.Namespace(), podName)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(entrypointCommand).To(o.ContainSubstring(fmt.Sprintf("--smp=%d", expectedSMP)), "pod %q should have --smp=%d in entrypoint command", podName, expectedSMP)
+	}
+}

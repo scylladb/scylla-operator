@@ -31,21 +31,9 @@ func IsIOTuneRequested(ctx context.Context, f *framework.Framework, podName stri
 	// process (it blocks on supervisord.wait(), so its args are readable for the whole container
 	// lifetime by execing into the container). --io-setup=0 and --io-properties-file are passed
 	// only when the cached IO properties file already exists, i.e. when iotune was skipped.
-	stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
-		Command:       []string{"/usr/bin/pgrep", "-af", "docker-entrypoint.py"},
-		Namespace:     f.Namespace(),
-		PodName:       podName,
-		ContainerName: naming.ScyllaContainerName,
-		CaptureStdout: true,
-		CaptureStderr: true,
-	})
+	entrypointCommand, err := utils.GetScyllaDBDockerEntrypointCommand(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), f.Namespace(), podName)
 	if err != nil {
-		return false, fmt.Errorf("can't read entrypoint process args from pod %q: %w (stderr: %q)", podName, err, stderr)
-	}
-
-	entrypointCommand := stdout
-	if !strings.Contains(entrypointCommand, "docker-entrypoint.py") {
-		return false, fmt.Errorf("can't find docker-entrypoint.py process in pod %q", podName)
+		return false, err
 	}
 
 	// In developer mode iotune is never run, so there's nothing to perform or skip.

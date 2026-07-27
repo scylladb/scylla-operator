@@ -1,3 +1,12 @@
+# v1.62.0 (2026-07-24)
+
+* **Feature**: Endpoint test standardizations
+
+# v1.61.0 (2026-07-21)
+
+* **Feature**: Add an option to clients to disable clock skew
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.60.1 (2026-07-13)
 
 * No change notes available for this release.

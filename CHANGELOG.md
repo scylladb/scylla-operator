@@ -8,6 +8,13 @@
 
 ## Unreleased
 
+### Bug fixes
+
+- Fixed `ScyllaDBDatacenter` rollouts getting stuck when a new rack was inserted before existing racks while an existing 
+  rack was still progressing. The controller now waits for all existing `StatefulSets` to roll out before a new
+  `StatefulSet` is created.
+  [#3513](https://github.com/scylladb/scylla-operator/pull/3513)
+
 ### Other changes
 
 - ScyllaDB Operator now runs `scylladb-node-exporter` as a dedicated sidecar container for ScyllaDB clusters running

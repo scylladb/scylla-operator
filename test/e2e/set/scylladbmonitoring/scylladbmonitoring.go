@@ -380,7 +380,7 @@ func verifyPrometheusTargetsAndRules(ctx context.Context, promClient promeheusap
 		//       (Maciek was looking into this, it seems to be a bug in prometheus operator.)
 		// o.Expect(targets.Dropped).To(o.HaveLen(0))
 
-		rulesResult, err := promClient.Rules(ctxTargets)
+		rulesResult, err := promClient.Rules(ctxTargets, nil)
 		framework.Infof("Listing Prometheus rules: err: %v, groupCount: %d", err, len(rulesResult.Groups))
 		eo.Expect(err).NotTo(o.HaveOccurred())
 

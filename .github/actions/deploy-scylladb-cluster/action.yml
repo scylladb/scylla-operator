@@ -1,0 +1,36 @@
+name: Deploy ScyllaDB cluster (Helm)
+description: >
+  Deploys a single-node devmode ScyllaDB cluster using the Helm chart.
+
+inputs:
+  namespace:
+    description: Namespace to deploy into.
+    required: false
+    default: scylla
+  cluster-name:
+    description: Helm release name and ScyllaCluster name.
+    required: false
+    default: scylla
+
+runs:
+  using: composite
+  steps:
+    - name: Deploy ScyllaDB cluster
+      shell: bash
+      run: |
+        helm install ${{ inputs.cluster-name }} helm/scylla \
+          --create-namespace \
+          --namespace ${{ inputs.namespace }} \
+          --set developerMode=true \
+          --set 'scyllaArgs=--reactor-backend=io_uring' \
+          --set exposeOptions.nodeService.type=Headless \
+          --set exposeOptions.broadcastOptions.nodes.type=PodIP \
+          --set exposeOptions.broadcastOptions.clients.type=PodIP \
+          --set 'racks[0].name=us-east-1a' \
+          --set 'racks[0].members=1' \
+          --set 'racks[0].storage.storageClassName=standard' \
+          --set 'racks[0].storage.capacity=1Gi' \
+          --set 'racks[0].resources.requests.cpu=10m' \
+          --set 'racks[0].resources.requests.memory=100Mi' \
+          --set 'racks[0].resources.limits.cpu=1' \
+          --set 'racks[0].resources.limits.memory=1Gi'

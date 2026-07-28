@@ -1,0 +1,27 @@
+name: Verify CQL connectivity
+description: >
+  Verifies that a ScyllaDB cluster is reachable via CQL.
+
+inputs:
+  namespace:
+    description: Namespace of the ScyllaCluster.
+    required: false
+    default: scylla
+  cluster-name:
+    description: Name of the ScyllaCluster (used as label selector value).
+    required: false
+    default: scylla
+
+runs:
+  using: composite
+  steps:
+    - name: Verify CQL connectivity
+      shell: bash
+      run: |
+        pod="$(kubectl -n ${{ inputs.namespace }} get pods -l "scylla/cluster=${{ inputs.cluster-name }}" -o jsonpath='{.items[0].metadata.name}')"
+        echo "Running CQL query against pod ${pod}..."
+
+        kubectl -n ${{ inputs.namespace }} exec "${pod}" -c scylla -- \
+          cqlsh localhost -e "SELECT key, cluster_name, data_center FROM system.local"
+
+        echo "CQL connectivity verified."

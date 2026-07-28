@@ -1,0 +1,32 @@
+name: Wait for ScyllaDB cluster
+description: >
+  Waits for a ScyllaCluster to become fully available.
+
+inputs:
+  namespace:
+    description: Namespace of the ScyllaCluster.
+    required: false
+    default: scylla
+  cluster-name:
+    description: Name of the ScyllaCluster resource.
+    required: false
+    default: scylla
+  timeout:
+    description: Timeout for each wait condition.
+    required: false
+    default: "10m"
+
+runs:
+  using: composite
+  steps:
+    - name: Wait for ScyllaCluster to be ready
+      shell: bash
+      run: |
+        echo "Waiting for ScyllaCluster to roll out..."
+        kubectl -n ${{ inputs.namespace }} wait --timeout=${{ inputs.timeout }} --for='condition=Progressing=False' \
+          scyllacluster/${{ inputs.cluster-name }}
+        kubectl -n ${{ inputs.namespace }} wait --timeout=${{ inputs.timeout }} --for='condition=Degraded=False' \
+          scyllacluster/${{ inputs.cluster-name }}
+        kubectl -n ${{ inputs.namespace }} wait --timeout=${{ inputs.timeout }} --for='condition=Available=True' \
+          scyllacluster/${{ inputs.cluster-name }}
+        echo "ScyllaCluster is available."

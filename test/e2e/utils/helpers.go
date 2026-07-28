@@ -39,6 +39,7 @@ import (
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 )
 
@@ -973,4 +974,26 @@ func GetContainerReadinessMap(pod *corev1.Pod) map[string]bool {
 	}
 
 	return res
+}
+
+// GetScyllaDBDockerEntrypointCommand returns the command line of the docker-entrypoint.py process running
+// in the ScyllaDB container of the given pod.
+func GetScyllaDBDockerEntrypointCommand(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, namespace, podName string) (string, error) {
+	stdout, stderr, err := ExecWithOptions(ctx, config, client, ExecOptions{
+		Command:       []string{"/usr/bin/pgrep", "-af", "docker-entrypoint.py"},
+		Namespace:     namespace,
+		PodName:       podName,
+		ContainerName: naming.ScyllaContainerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("can't read entrypoint process args from pod %q: %w (stderr: %q)", podName, err, stderr)
+	}
+
+	if !strings.Contains(stdout, "docker-entrypoint.py") {
+		return "", fmt.Errorf("can't find docker-entrypoint.py process in pod %q", podName)
+	}
+
+	return stdout, nil
 }

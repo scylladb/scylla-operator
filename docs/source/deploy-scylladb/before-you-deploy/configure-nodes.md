@@ -78,6 +78,30 @@ kubectl wait --timeout=10m --for='condition=Available=True' nodeconfigs.scylla.s
 The setup pipeline runs in order: loop devices (if configured) → RAID arrays → filesystems → mounts.
 After this, the Local CSI Driver can provision `PersistentVolumes` from directories on the mount point.
 
+### XFS metadata options
+
+For XFS filesystems, ScyllaDB recommends disabling `rmapbt` and `reflink`
+when formatting local disks for ScyllaDB data. These XFS features are not
+needed for ScyllaDB local data volumes and add filesystem metadata overhead.
+
+Configure these options with `spec.localDiskSetup.filesystems[].flags`. The
+Operator passes the configured flags to `mkfs` in the order listed.
+
+```yaml
+localDiskSetup:
+  filesystems:
+  - device: /dev/md0
+    type: xfs
+    flags:
+    - "-m"
+    - "rmapbt=0"
+    - "-m"
+    - "reflink=0"
+```
+
+The `-m` arguments are included explicitly because the Operator does not add
+filesystem-specific `mkfs` options implicitly.
+
 ### Platform differences
 
 ::::{tabs}

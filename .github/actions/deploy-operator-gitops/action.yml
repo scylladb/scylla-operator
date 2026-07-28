@@ -1,0 +1,46 @@
+name: Deploy operator (GitOps)
+description: >
+  Deploys the scylla-operator using raw manifests (GitOps style).
+
+inputs:
+  version:
+    description: >
+      Operator version to deploy. Use a release version (e.g. "1.21.0") to
+      fetch manifests from the corresponding GitHub release tag, or "latest"
+      to use the local deploy/operator.yaml from the working tree.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Apply operator manifests
+      shell: bash
+      run: |
+        if [[ "${{ inputs.version }}" == "latest" ]]; then
+          echo "Applying local operator manifests from deploy/operator.yaml"
+          kubectl -n=scylla-operator apply --server-side --force-conflicts -f deploy/operator.yaml
+        else
+          manifest_url="https://raw.githubusercontent.com/scylladb/scylla-operator/v${{ inputs.version }}/deploy/operator.yaml"
+          echo "Applying released operator manifests from ${manifest_url}"
+          kubectl -n=scylla-operator apply --server-side --force-conflicts -f "${manifest_url}"
+        fi
+
+    - name: Wait for CRDs
+      shell: bash
+      run: |
+        kubectl wait --for=create --timeout=60s \
+          crd/scyllaclusters.scylla.scylladb.com \
+          crd/nodeconfigs.scylla.scylladb.com \
+          crd/scyllaoperatorconfigs.scylla.scylladb.com \
+          crd/scylladbmonitorings.scylla.scylladb.com
+
+        kubectl wait --for=condition=established --timeout=60s \
+          crd/scyllaclusters.scylla.scylladb.com \
+          crd/nodeconfigs.scylla.scylladb.com \
+          crd/scyllaoperatorconfigs.scylla.scylladb.com \
+          crd/scylladbmonitorings.scylla.scylladb.com
+
+    - name: Wait for operator rollout
+      shell: bash
+      run: |
+        kubectl -n=scylla-operator rollout status --timeout=10m deployment.apps/{scylla-operator,webhook-server}

@@ -13,6 +13,8 @@ operator:
   grafanaDefaultPlatformDashboard: "scylladb-2026.2/scylla-overview.2026.2.json"
   prometheusVersion: "v3.12.0" # Generated from scylla-monitoring/versions.sh PROMETHEUS_VERSION.
 operatorTests:
+  # renovate: datasource=github-releases depName=scylla-operator packageName=scylladb/scylla-operator versioning=semver
+  operatorVersion: "1.21.0" # latest minor.patch release
   scyllaDBVersions:
     updateFrom: "2026.2.0" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
     upgradeFrom: "2026.1.8" # One minor lower than .operator.scyllaDBVersion

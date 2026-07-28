@@ -35,6 +35,7 @@ type ScyllaDBTestVersions struct {
 }
 
 type OperatorTestsConfig struct {
+	OperatorVersion          string               `json:"operatorVersion"`
 	ScyllaDBVersions         ScyllaDBTestVersions `json:"scyllaDBVersions"`
 	NodeSetupImage           string               `json:"nodeSetupImage"`
 	EnvTestKubernetesVersion string               `json:"envTestKubernetesVersion"`

@@ -1,0 +1,68 @@
+name: "E2E: KinD (Operator Upgrade)"
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind-upgrade-operator:
+    name: Upgrade operator from latest release to current
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Read released operator version
+        id: released-version
+        run: |
+          version=$(yq '.operatorTests.operatorVersion' assets/config/config.yaml)
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Setup KinD cluster
+        uses: ./.github/actions/setup-kind
+
+      - name: Deploy released operator (GitOps)
+        uses: ./.github/actions/deploy-operator-gitops
+        with:
+          version: ${{ steps.released-version.outputs.version }}
+
+      - name: Deploy ScyllaDB cluster (Helm)
+        uses: ./.github/actions/deploy-scylladb-cluster
+
+      - name: Wait for ScyllaCluster to be ready
+        uses: ./.github/actions/wait-scylladb-cluster
+
+      - name: Build current operator image
+        run: make image
+
+      - name: Load operator image into KinD
+        run: kind load docker-image docker.io/scylladb/scylla-operator:latest --name e2e
+
+      - name: Upgrade operator to current (GitOps)
+        uses: ./.github/actions/deploy-operator-gitops
+        with:
+          version: latest
+
+      - name: Trigger reconciliation by upgraded operator
+        run: |
+          kubectl -n scylla annotate scyllacluster/scylla \
+            test.scylladb.com/reconcile-trigger="$(date +%s)" --overwrite
+
+      - name: Wait for ScyllaCluster to stabilize after upgrade
+        uses: ./.github/actions/wait-scylladb-cluster
+
+      - name: Verify CQL connectivity
+        uses: ./.github/actions/verify-cql
+
+      - name: Collect must-gather evidence
+        if: failure()
+        uses: ./.github/actions/collect-must-gather

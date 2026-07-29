@@ -154,7 +154,7 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 						Status: *pvc.Status.DeepCopy(),
 					}
 					pvcClone.Spec.VolumeName = ""
-					pvcClone.Spec.StorageClassName = nil
+					pvcClone.Spec.StorageClassName = pointer.Ptr(framework.TestContext.ScyllaClusterOptions.StorageClassName)
 
 					framework.Infof("Creating clone PVC for %q", pvc.Name)
 					pvcClone, _, err := resourceapply.ApplyPersistentVolumeClaimWithControl(

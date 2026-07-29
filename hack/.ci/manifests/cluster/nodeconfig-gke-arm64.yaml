@@ -4,18 +4,27 @@ metadata:
   name: cluster
 spec:
   localDiskSetup:
-    loopDevices:
-    - name: persistent-volumes
-      imagePath: /var/lib/persistent-volumes.img
-      size: 80Gi
     filesystems:
-    - device: /dev/loops/persistent-volumes
+    - device: /dev/md/nvmes
       type: xfs
     mounts:
-    - device: /dev/loops/persistent-volumes
+    - device: /dev/md/nvmes
       mountPoint: /var/lib/persistent-volumes
       unsupportedOptions:
       - prjquota
+    raids:
+    - name: nvmes
+      type: RAID0
+      RAID0:
+        devices:
+          # On C4A instances every disk is attached over NVMe and each one gets
+          # its own controller, e.g. the boot Hyperdisk is /dev/nvme0n1 and the
+          # bundled Local SSDs are /dev/nvme1n1, /dev/nvme2n1, and so on.
+          # Ordering isn't guaranteed, so the devices are told apart by their
+          # model: the boot Hyperdisk reports "nvme_card-pd", while the Local
+          # SSDs report "nvme_card0", "nvme_card1", etc.
+          nameRegex: ^/dev/nvme\d+n\d+$
+          modelRegex: ^nvme_card\d+$
   sysctls:
   - name: fs.aio-max-nr
     value: "4294967295" # Allow for high parallelism in CI.

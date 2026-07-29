@@ -381,9 +381,12 @@ def setup_version_context_substitutions(app: Sphinx, config: Config) -> None:
     if not hasattr(config, 'myst_substitutions'):
         raise ExtensionError("myst_substitutions not found in config")
 
-    # Get the repository root directory from the original checkout (app.confdir).
-    # This is used for git operations that work across all versions (e.g., listing tags).
-    repo_root = os.path.abspath(os.path.join(app.confdir, '..', '..'))
+    # Repository root of the original checkout, used for git operations (e.g., listing tags).
+    # Recorded in the environment so child builds can inherit it: sphinx-llm's markdown
+    # sub-build runs from a temporary source export whose confdir is not a git checkout.
+    repo_root = os.environ.setdefault(
+        'SPHINX_VERSION_CONTEXT_REPO_ROOT',
+        os.path.abspath(os.path.join(app.confdir, '..', '..')))
     if not os.path.exists(os.path.join(repo_root, '.git')):
         raise ExtensionError(f"Not a git repository: {repo_root}")
 

@@ -18,9 +18,9 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.githubpages",
     "sphinx.ext.extlinks",
+    "sphinx_sitemap",
     "sphinx_scylladb_theme",
     "sphinx_multiversion",
-    "sphinx_sitemap",
     "myst_parser",
     "version_context_substitutions",
 ]

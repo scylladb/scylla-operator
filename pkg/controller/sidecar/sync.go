@@ -3,11 +3,13 @@ package sidecar
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os/exec"
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +19,9 @@ import (
 )
 
 const (
+	// requeueWaitDuration is the delay used when the sidecar polls ScyllaDB's local state and has to wait for it to
+	// advance. The happy path with tablets takes single-digit seconds. The value should keep the poll
+	// count low while staying well below the slow paths (30s ring delay, 60s CDC generation propagation).
 	requeueWaitDuration = 5 * time.Second
 )
 
@@ -118,15 +123,78 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 	}
 	defer scyllaClient.Close()
 
-	hostID, err := c.getHostID(ctx, scyllaClient, c.localhostAddress)
+	var errs []error
+	annotations, requeue, err := c.getRequiredServiceAnnotations(ctx, scyllaClient)
 	if err != nil {
-		return fmt.Errorf("can't get HostID: %w", err)
+		errs = append(errs, fmt.Errorf("can't get required service annotations: %w", err))
 	}
 
-	ipToHostIDMap, err := scyllaClient.GetIPToHostIDMap(ctx, c.localhostAddress)
-	if err != nil {
-		return fmt.Errorf("can't get host id to ip mapping: %w", err)
+	if requeue {
+		klog.V(4).InfoS("Requeuing to sync Service annotations later", "Service", klog.KObj(svc), "After", requeueWaitDuration.String())
+		c.queue.AddAfter(c.key, requeueWaitDuration)
 	}
+
+	err = c.updateServiceAnnotations(ctx, svc, annotations)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't update service annotations: %w", err))
+	}
+
+	return apimachineryutilerrors.NewAggregate(errs)
+}
+
+// getRequiredServiceAnnotations reads the ScyllaDB API and returns the annotations required on the member Service,
+// a boolean stating if it should be requeued, and an error. Explicit requeue is not requested on an error.
+// Annotations are produced on a best-effort basis: only those backed by a successful observation are returned, so
+// a non-nil error comes with whatever was produced before it and the caller should leave the rest untouched (keep existing).
+func (c *Controller) getRequiredServiceAnnotations(ctx context.Context, scyllaClient *scyllaclient.Client) (map[string]string, bool, error) {
+	annotations := map[string]string{}
+
+	hostID, err := c.getHostID(ctx, scyllaClient, c.localhostAddress)
+	if err != nil {
+		return nil, false, fmt.Errorf("can't get HostID: %w", err)
+	}
+
+	annotations[naming.HostIDAnnotation] = hostID
+
+	isMember, isKnown, err := nodeIsScyllaDBClusterMember(ctx, scyllaClient, c.localhostAddress, hostID)
+	if err != nil {
+		return annotations, false, fmt.Errorf("can't determine ScyllaDB cluster membership: %w", err)
+	}
+
+	if !isKnown {
+		klog.V(4).InfoS("Node hasn't joined the ScyllaDB cluster yet", "HostID", hostID)
+		return annotations, true, nil
+	}
+
+	if !isMember {
+		klog.V(4).InfoS("Node doesn't own any tokens yet", "HostID", hostID)
+		annotations[naming.NodeJoinedScyllaDBClusterAnnotation] = naming.LabelValueFalse
+		return annotations, true, nil
+	}
+
+	annotations[naming.NodeJoinedScyllaDBClusterAnnotation] = naming.LabelValueTrue
+
+	currentTokenRingHash, err := getTokenRingHash(ctx, scyllaClient, c.localhostAddress)
+	if err != nil {
+		return annotations, false, fmt.Errorf("can't get current token ring hash: %w", err)
+	}
+	annotations[naming.CurrentTokenRingHashAnnotation] = currentTokenRingHash
+
+	return annotations, false, nil
+}
+
+// nodeIsScyllaDBClusterMember reports whether the node is a member of the ScyllaDB cluster, i.e. whether it owns normal
+// tokens in the cluster's token metadata. Unlike the node's operation mode, this survives a restart: a bootstrapped node
+// has its token metadata restored from disk before gossip starts, so it never stops owning normal tokens while it boots.
+// A node that is bootstrapping holds only pending tokens and is not a member until the operation completes.
+// The second return value reports whether membership could be determined at all. When it is false, the caller must not act
+// on the first one.
+func nodeIsScyllaDBClusterMember(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string, hostID string) (bool, bool, error) {
+	ipToHostIDMap, err := scyllaClient.GetIPToHostIDMap(ctx, localhostAddr)
+	if err != nil {
+		return false, false, fmt.Errorf("can't get host id to ip mapping: %w", err)
+	}
+	klog.V(4).InfoS("Got IP to HostID mapping", "IPToHostIDMap", ipToHostIDMap)
 
 	var localIP string
 	for ip, id := range ipToHostIDMap {
@@ -137,42 +205,51 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 	}
 
 	if len(localIP) == 0 {
-		// It most likely means that the Scylla node the sidecar is running on has not joined the cluster yet. We need
-		// to requeue and try again later.
-		klog.V(2).InfoS("The node with the expected HostID has not joined the cluster yet, will retry in a bit", "HostID", hostID, "IPToHostIDMap", ipToHostIDMap)
-		c.queue.AddRateLimited(c.key)
+		// The node is not present in the cluster's token metadata, so its membership can't be determined.
+		return false, false, nil
+	}
+
+	// Only normal tokens are reported for the endpoint, pending tokens of a bootstrapping or replacing node are not.
+	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, localhostAddr, localIP)
+	if err != nil {
+		return false, false, fmt.Errorf("can't get node tokens: %w", err)
+	}
+
+	return len(nodeTokens) != 0, true, nil
+}
+
+func getTokenRingHash(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string) (string, error) {
+	tokenRing, err := scyllaClient.GetTokenRing(ctx, localhostAddr)
+	if err != nil {
+		return "", fmt.Errorf("can't get token ring: %w", err)
+	}
+
+	h, err := hash.HashObjects(tokenRing)
+	if err != nil {
+		return "", fmt.Errorf("can't hash token ring: %w", err)
+	}
+
+	return h, nil
+}
+
+func (c *Controller) updateServiceAnnotations(ctx context.Context, svc *corev1.Service, annotations map[string]string) error {
+	svcCopy := svc.DeepCopy()
+	if svcCopy.Annotations == nil {
+		svcCopy.Annotations = make(map[string]string)
+	}
+
+	maps.Insert(svcCopy.Annotations, maps.All(annotations))
+
+	if equality.Semantic.DeepEqual(svc, svcCopy) {
 		return nil
 	}
 
-	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, c.localhostAddress, localIP)
+	_, err := c.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
 	if err != nil {
-		return fmt.Errorf("can't get node tokens: %w", err)
+		return fmt.Errorf("can't update Service %q: %w", naming.ObjRef(svc), err)
 	}
 
-	svcCopy := svc.DeepCopy()
-	svcCopy.Annotations[naming.HostIDAnnotation] = hostID
-
-	var currentTokenRingHash string
-	if len(nodeTokens) == 0 {
-		klog.V(4).InfoS("Node doesn't have any tokens assigned, looks like it's still bootstrapping, requeueing")
-		c.queue.AddAfter(c.key, requeueWaitDuration)
-	} else {
-		currentTokenRingHash, err = c.getTokenRingHash(ctx, scyllaClient, c.localhostAddress)
-		if err != nil {
-			return fmt.Errorf("can't get token hash: %w", err)
-		}
-
-		svcCopy.Annotations[naming.CurrentTokenRingHashAnnotation] = currentTokenRingHash
-	}
-
-	if !equality.Semantic.DeepEqual(svc, svcCopy) {
-		_, err = c.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("can't update service %q: %w", naming.ObjRef(svc), err)
-		}
-
-		klog.V(2).InfoS("Successfully updated service annotations", "Service", klog.KObj(svc))
-	}
+	klog.V(2).InfoS("Successfully updated Service annotations", "Service", klog.KObj(svc))
 
 	return nil
 }

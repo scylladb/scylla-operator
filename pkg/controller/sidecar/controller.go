@@ -8,7 +8,6 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
-	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -306,18 +305,4 @@ func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.C
 	c.hostID.v = v
 
 	return v, nil
-}
-
-func (c *Controller) getTokenRingHash(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string) (string, error) {
-	tokenRing, err := scyllaClient.GetTokenRing(ctx, localhostAddr)
-	if err != nil {
-		return "", fmt.Errorf("can't get token ring: %w", err)
-	}
-
-	h, err := hash.HashObjects(tokenRing)
-	if err != nil {
-		return "", fmt.Errorf("can't hash token ring: %w", err)
-	}
-
-	return h, nil
 }

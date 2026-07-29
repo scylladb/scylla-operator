@@ -6,6 +6,9 @@
 
 shopt -s inherit_errexit
 
+KIND_REGISTRY_PORT="${KIND_REGISTRY_PORT:-5001}"
+KIND_REGISTRY_NAME='kind-registry'
+
 # build-and-push-operator-image builds the operator image and pushes it to the local registry if SO_IMAGE is not set.
 # It sets and exports SO_IMAGE with the built image reference.
 function build-and-push-operator-image {
@@ -18,7 +21,7 @@ function build-and-push-operator-image {
 
   # If SO_IMAGE is not set, build the image.
   if [ -z "${SO_IMAGE:-}" ]; then
-    SO_IMAGE="localhost:5001/scylladb/scylla-operator:e2e-$( date +%Y%m%d%H%M%S )"
+    SO_IMAGE="localhost:${KIND_REGISTRY_PORT}/scylladb/scylla-operator:e2e-$( date +%Y%m%d%H%M%S )"
     export SO_IMAGE
 
     echo "Building operator image: ${SO_IMAGE}"

@@ -105,7 +105,7 @@ var portFlagRe = regexp.MustCompile(`^(?:tcp://[^:]+:)?(\d+)$`)
 type portFlag int
 
 func (pf *portFlag) String() string {
-	return fmt.Sprintf("%d", pf)
+	return fmt.Sprintf("%d", *pf)
 }
 
 func (pf *portFlag) Set(v string) error {

@@ -17,7 +17,9 @@ import (
 )
 
 const (
-	EnvVarPrefix = "SCYLLA_OPERATOR_TESTS_"
+	EnvVarPrefix               = "SCYLLA_OPERATOR_TESTS_"
+	defaultParallelParallelism = 8
+	defaultSerialParallelism   = 1
 )
 
 // Suites is the canonical list of scylla-operator test suites.
@@ -28,7 +30,7 @@ var Suites = ginkgotest.TestSuites{
 		Description: templates.LongDesc(`
 		Runs all tests.`,
 		),
-		DefaultParallelism: 100,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
 		Name: "scylla-operator/conformance/parallel",
@@ -36,7 +38,7 @@ var Suites = ginkgotest.TestSuites{
 		Tests that can be run in parallel.
 		`),
 		LabelFilter:        framework.SuiteParallelLabelName,
-		DefaultParallelism: 70,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
 		Name: "scylla-operator/conformance/parallel/openshift",
@@ -44,7 +46,7 @@ var Suites = ginkgotest.TestSuites{
 		Tests that can be run in parallel on an OpenShift cluster.
 		`),
 		LabelFilter:        framework.SuiteParallelOpenShiftLabelName,
-		DefaultParallelism: 70,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
 		Name: "scylla-operator/conformance/serial",
@@ -52,7 +54,7 @@ var Suites = ginkgotest.TestSuites{
 		Tests that must be run serially.
 		`),
 		LabelFilter:        framework.SuiteSerialLabelName,
-		DefaultParallelism: 1,
+		DefaultParallelism: defaultSerialParallelism,
 	},
 	{
 		Name: "scylla-operator/conformance/multi-datacenter-parallel",
@@ -60,7 +62,7 @@ var Suites = ginkgotest.TestSuites{
 		Tests for multi-datacenter setups that can be run in parallel.
 		`),
 		LabelFilter:        framework.SuiteMultiDatacenterParallelLabelName,
-		DefaultParallelism: 10,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
 		Name: "scylla-operator/conformance/parallel-ipv6",
@@ -68,7 +70,7 @@ var Suites = ginkgotest.TestSuites{
 		Tests that ensure Scylla Operator is working properly with IPv6 and dual-stack networking.
 		`),
 		LabelFilter:        framework.SuiteParallelIPv6LabelName,
-		DefaultParallelism: 10,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
 		Name: "kind-fast",
@@ -76,7 +78,7 @@ var Suites = ginkgotest.TestSuites{
 		Relatively fast tests that can be run on kind clusters.
 		`),
 		LabelFilter:        framework.SuiteKindFastLabelName,
-		DefaultParallelism: 60,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
 		Name: "kind-scylladb-monitoring",
@@ -84,7 +86,7 @@ var Suites = ginkgotest.TestSuites{
 		Tests that verify ScyllaDBMonitoring functionality, possible to be run on kind clusters.
 		`),
 		LabelFilter:        framework.SuiteKindScyllaDBMonitoringLabelName,
-		DefaultParallelism: 8,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 }
 

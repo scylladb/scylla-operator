@@ -8,6 +8,7 @@
     "custom.regex",
     "gomod"
   ],
+  "ignorePaths": [],
   "schedule": [
     "before 5am on monday"
   ],
@@ -17,12 +18,9 @@
   ],
   "packageRules": [
     {
-      "description": "Image references in assets/config/config.yaml should be updated every weekday",
+      "description": "Container image references should be updated every weekday",
       "matchDatasources": [
         "docker"
-      ],
-      "matchFileNames": [
-        "assets/config/config.yaml"
       ],
       "schedule": [
         "before 5am every weekday"
@@ -127,18 +125,6 @@
       ]
     },
     {
-      "description": "Dockerfile base images should be updated every weekday",
-      "matchDatasources": [
-        "docker"
-      ],
-      "matchFileNames": [
-        "Dockerfile"
-      ],
-      "schedule": [
-        "before 5am every weekday"
-      ]
-    },
-    {
       "description": "ScyllaDB dependency bump in config.yaml requires manual action",
       "matchDepNames": [
         "scylladb"
@@ -220,6 +206,17 @@
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\nFROM\\s+\\S+:(?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "description": "Custom manager for local-csi-driver image references in Kubernetes manifests with Renovate annotations matching the regex.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^examples/common/local-volume-provisioner/local-csi-driver/50_daemonset\\.yaml$/",
+        "/^hack/\\.ci/manifests/namespaces/local-csi-driver/50_daemonset\\.yaml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*image:\\s*[^\\s:]+:(?<currentValue>[^@\"\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
       ]
     },
     {

@@ -544,7 +544,7 @@ type RackSpec struct {
 	// Scylla config map name to customize scylla.yaml
 	ScyllaConfig string `json:"scyllaConfig"`
 
-	// Scylla config map name to customize scylla manager agent
+	// ScyllaAgentConfig specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
 	ScyllaAgentConfig string `json:"scyllaAgentConfig"`
 
 	// exposeOptions specifies rack-specific parameters related to exposing ScyllaDBDatacenter backends.

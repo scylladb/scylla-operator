@@ -31,6 +31,15 @@ if ! podman network inspect kind >/dev/null 2>&1; then
   podman network create kind
 fi
 
+# Source shared constants and generate containerd registry configuration.
+source "${repo_root}/hack/kind/lib.sh"
+internal_reg_port=5000
+containerd_reg_dir="${repo_root}/hack/kind/containerd-registries/localhost:${KIND_REGISTRY_PORT}"
+mkdir -p "${containerd_reg_dir}"
+cat > "${containerd_reg_dir}/hosts.toml" <<EOF
+[host."http://${KIND_REGISTRY_NAME}:${internal_reg_port}"]
+EOF
+
 # Ensure KinD cluster exists.
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
     KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${repo_root}/hack/kind/cluster-config.yaml" --retain)
@@ -53,17 +62,15 @@ else
 fi
 
 # Set up a local registry for the KinD cluster following https://kind.sigs.k8s.io/docs/user/local-registry/.
-reg_name='kind-registry'
-reg_port='5001'
-if [ "$(podman inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)" != 'true' ]; then
+if [ "$(podman inspect -f '{{.State.Running}}' "${KIND_REGISTRY_NAME}" 2>/dev/null || true)" != 'true' ]; then
   podman run \
-    -d --restart=always -p "127.0.0.1:${reg_port}:5000" --replace --network bridge --name "${reg_name}" \
+    -d --restart=always -p "127.0.0.1:${KIND_REGISTRY_PORT}:${internal_reg_port}" --replace --network bridge --name "${KIND_REGISTRY_NAME}" \
     registry:2
 fi
 
 # Connect registry to KinD network.
-if [ "$(podman inspect -f='{{json .NetworkSettings.Networks.kind}}' "${reg_name}")" = 'null' ]; then
-  podman network connect "kind" "${reg_name}"
+if [ "$(podman inspect -f='{{json .NetworkSettings.Networks.kind}}' "${KIND_REGISTRY_NAME}")" = 'null' ]; then
+  podman network connect "kind" "${KIND_REGISTRY_NAME}"
 fi
 
 # Inform KinD cluster about the local registry.
@@ -77,7 +84,7 @@ metadata:
   namespace: kube-public
 data:
   localRegistryHosting.v1: |
-    host: "localhost:${reg_port}"
+    host: "localhost:${KIND_REGISTRY_PORT}"
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
 rm "${temp_kubeconfig}"
@@ -97,7 +104,6 @@ SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-standa
 export SO_SCYLLACLUSTER_STORAGECLASS_NAME
 
 source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
-source "${repo_root}/hack/kind/lib.sh"
 
 # Build and push operator image to the local registry (skips if SO_IMAGE is already set).
 build-and-push-operator-image "${repo_root}"

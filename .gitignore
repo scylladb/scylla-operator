@@ -19,3 +19,6 @@ examples/common/grafana/values.yaml
 docs/_build
 source/.doctrees
 docs/**/*.pyc
+
+# Generated containerd registry config for KinD
+hack/kind/containerd-registries/

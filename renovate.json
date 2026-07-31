@@ -185,6 +185,33 @@
         "   ```",
         "3. Remove the `do-not-merge/hold` label."
       ]
+    },
+    {
+      "description": "local-csi-driver dependency bump in config.yaml requires manual action",
+      "matchDepNames": [
+        "local-csi-driver"
+      ],
+      "matchFileNames": [
+        "assets/config/config.yaml"
+      ],
+      "addLabels": [
+        "do-not-merge/hold"
+      ],
+      "prBodyNotes": [
+        "### ⚠️ Manual Action Required",
+        "Renovate has bumped the local-csi-driver dependency, but cannot automatically regenerate the manifests.",
+        "",
+        "**Please complete the following steps before merging:**",
+        "1. Check out this branch locally.",
+        "2. Propagate changes by running:",
+        "   ```bash",
+        "   make update",
+        "   git add examples/common/local-volume-provisioner/local-csi-driver hack/.ci/manifests/namespaces/local-csi-driver",
+        "   git commit -m \"chore(deps): update generated files\" && git push --force",
+        "   ```",
+        "3. Review the regenerated manifests. A driver release may change the sidecar images, the provisioner flags or the RBAC rules, and those changes land in this PR.",
+        "4. Remove the `do-not-merge/hold` label."
+      ]
     }
   ],
   "customManagers": [
@@ -206,17 +233,6 @@
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\nFROM\\s+\\S+:(?<currentValue>\\S+)"
-      ]
-    },
-    {
-      "description": "Custom manager for local-csi-driver image references in Kubernetes manifests with Renovate annotations matching the regex.",
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^examples/common/local-volume-provisioner/local-csi-driver/50_daemonset\\.yaml$/",
-        "/^hack/\\.ci/manifests/namespaces/local-csi-driver/50_daemonset\\.yaml$/"
-      ],
-      "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+packageName=(?<packageName>\\S+))?(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?\\s*\\n\\s*image:\\s*[^\\s:]+:(?<currentValue>[^@\"\\s]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
       ]
     },
     {

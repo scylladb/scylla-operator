@@ -30,6 +30,15 @@ type BackupTarget struct {
 	// location
 	Location []string `json:"location"`
 
+	// method
+	Method string `json:"method,omitempty"`
+
+	// override retention lock
+	OverrideRetentionLock bool `json:"override_retention_lock,omitempty"`
+
+	// purge only
+	PurgeOnly bool `json:"purge_only,omitempty"`
+
 	// rate limit
 	RateLimit []string `json:"rate_limit"`
 
@@ -39,11 +48,20 @@ type BackupTarget struct {
 	// retention days
 	RetentionDays int64 `json:"retention_days,omitempty"`
 
+	// retention lock mode
+	RetentionLockMode string `json:"retention_lock_mode,omitempty"`
+
 	// size
 	Size int64 `json:"size,omitempty"`
 
+	// skip schema
+	SkipSchema bool `json:"skip_schema,omitempty"`
+
 	// snapshot parallel
 	SnapshotParallel []string `json:"snapshot_parallel"`
+
+	// transfers
+	Transfers int64 `json:"transfers,omitempty"`
 
 	// units
 	Units []*BackupUnit `json:"units"`

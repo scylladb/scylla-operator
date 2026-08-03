@@ -1975,7 +1975,7 @@
             "id": 17,
             "panels": [],
             "repeat": "index",
-            "title": "$ks:$index",
+            "title": "Index $ks:$index",
             "type": "row"
         },
         {
@@ -2308,186 +2308,6 @@
             "type": "timeseries"
         },
         {
-            "class": "heatmap_panel",
-            "datasource": "prometheus",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "scaleDistribution": {
-                            "type": "linear"
-                        }
-                    }
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 13,
-                "w": 24,
-                "x": 0,
-                "y": 48
-            },
-            "id": 22,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "barRadius": 0,
-                "barWidth": 0.89,
-                "calculate": false,
-                "cellGap": 1,
-                "color": {
-                    "exponent": 0.5,
-                    "fill": "dark-orange",
-                    "min": 0,
-                    "mode": "scheme",
-                    "reverse": false,
-                    "scale": "exponential",
-                    "scheme": "Oranges",
-                    "steps": 64
-                },
-                "exemplars": {
-                    "color": "rgba(255,0,255,0.7)"
-                },
-                "filterValues": {
-                    "le": 1e-09
-                },
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "show": true,
-                    "showLegend": false
-                },
-                "orientation": "auto",
-                "rowsFrame": {
-                    "layout": "auto"
-                },
-                "showValue": "always",
-                "stacking": "none",
-                "tooltip": {
-                    "mode": "single",
-                    "showColorScale": false,
-                    "sort": "none",
-                    "yHistogram": false
-                },
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0,
-                "yAxis": {
-                    "axisPlacement": "left",
-                    "reverse": false
-                }
-            },
-            "span": 5,
-            "targets": [
-                {
-                    "expr": "sum(scylla_column_family_tablet_count{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}) by([[by]])",
-                    "format": "time_series",
-                    "instant": false,
-                    "legendFormat": "{{dc}} {{instance}}",
-                    "range": false,
-                    "refId": "A"
-                }
-            ],
-            "title": "Tablets over time per [[by]]",
-            "type": "heatmap"
-        },
-        {
-            "class": "barchart_panel",
-            "datasource": "prometheus",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "palette-classic"
-                    },
-                    "custom": {
-                        "axisBorderShow": false,
-                        "axisCenteredZero": false,
-                        "axisColorMode": "text",
-                        "axisLabel": "",
-                        "axisPlacement": "auto",
-                        "fillOpacity": 80,
-                        "gradientMode": "none",
-                        "hideFrom": {
-                            "legend": false,
-                            "tooltip": false,
-                            "viz": false
-                        },
-                        "lineWidth": 1,
-                        "scaleDistribution": {
-                            "type": "linear"
-                        },
-                        "thresholdsStyle": {
-                            "mode": "off"
-                        }
-                    },
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "gridPos": {
-                "h": 6,
-                "w": 24,
-                "x": 0,
-                "y": 61
-            },
-            "id": 23,
-            "isNew": true,
-            "links": [],
-            "options": {
-                "barRadius": 0,
-                "barWidth": 0.89,
-                "fullHighlight": false,
-                "groupWidth": 0.7,
-                "legend": {
-                    "calcs": [],
-                    "displayMode": "list",
-                    "placement": "bottom",
-                    "showLegend": false
-                },
-                "orientation": "auto",
-                "showValue": "always",
-                "stacking": "none",
-                "tooltip": {
-                    "mode": "single",
-                    "sort": "none"
-                },
-                "xTickLabelRotation": 0,
-                "xTickLabelSpacing": 0
-            },
-            "span": 12,
-            "targets": [
-                {
-                    "expr": "sum(scylla_column_family_tablet_count{ks=\"$ks\", cf=\"$table\",instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}) by([[by]])",
-                    "format": "table",
-                    "instant": true,
-                    "legendFormat": "__auto",
-                    "range": false,
-                    "refId": "A"
-                }
-            ],
-            "title": "Tablets $func by [[by]]",
-            "type": "barchart"
-        },
-        {
             "class": "collapsible_row_panel",
             "collapsed": false,
             "datasource": null,
@@ -2495,9 +2315,9 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 67
+                "y": 48
             },
-            "id": 24,
+            "id": 22,
             "panels": [],
             "repeat": "",
             "title": "",
@@ -2518,9 +2338,9 @@
                 "h": 2,
                 "w": 24,
                 "x": 0,
-                "y": 68
+                "y": 49
             },
-            "id": 25,
+            "id": 23,
             "isNew": true,
             "links": [],
             "mode": "html",
@@ -2585,9 +2405,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 70
+                "y": 51
             },
-            "id": 26,
+            "id": 24,
             "isNew": true,
             "links": [],
             "options": {
@@ -2660,9 +2480,9 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 70
+                "y": 51
             },
-            "id": 27,
+            "id": 25,
             "isNew": true,
             "links": [],
             "options": {
@@ -2700,14 +2520,14 @@
                 "h": 3,
                 "w": 24,
                 "x": 0,
-                "y": 76
+                "y": 57
             },
-            "id": 28,
+            "id": 26,
             "isNew": true,
             "links": [],
             "mode": "html",
             "options": {
-                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.15.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.15.2</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"/render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                 "mode": "html"
             },
             "span": 12,
@@ -3027,8 +2847,8 @@
                 "allValue": null,
                 "class": "monitor_version_var",
                 "current": {
-                    "text": "4.15.1",
-                    "value": "4.15.1"
+                    "text": "4.15.2",
+                    "value": "4.15.2"
                 },
                 "error": null,
                 "hide": 2,
@@ -3039,11 +2859,11 @@
                 "options": [
                     {
                         "selected": true,
-                        "text": "4.15.1",
-                        "value": "4.15.1"
+                        "text": "4.15.2",
+                        "value": "4.15.2"
                     }
                 ],
-                "query": "4.15.1",
+                "query": "4.15.2",
                 "skipUrlSync": false,
                 "type": "custom"
             }

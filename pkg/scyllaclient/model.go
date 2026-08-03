@@ -87,7 +87,7 @@ func (o OperationalMode) IsDecommissioned() bool {
 }
 
 func (o OperationalMode) IsDecommissioning() bool {
-	return o == OperationalModeDecommissioned
+	return o == OperationalModeDecommissioning
 }
 
 func (o OperationalMode) IsLeaving() bool {

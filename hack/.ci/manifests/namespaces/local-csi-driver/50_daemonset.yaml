@@ -25,7 +25,7 @@ spec:
         securityContext:
           privileged: true
         # renovate: datasource=docker depName=local-csi-driver packageName=docker.io/scylladb/local-csi-driver versioning=semver
-        image: docker.io/scylladb/local-csi-driver:0.5.0@sha256:46c1d2e9be8edf076d8dea7e82a3bb763d4bdda5adf43c794f617e9c94251079
+        image: docker.io/scylladb/local-csi-driver:1.0.0@sha256:a80212705a6cfbc2e7115b276d0ace1bfe88bcdc56b1e20732a64a4e6c1af4ff
         imagePullPolicy: IfNotPresent
         args:
         - --listen=/csi/csi.sock

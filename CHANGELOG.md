@@ -14,6 +14,10 @@
   rack was still progressing. The controller now waits for all existing `StatefulSets` to roll out before a new
   `StatefulSet` is created.
   [#3513](https://github.com/scylladb/scylla-operator/pull/3513)
+- Fixed the sidecar returning spurious errors during node decommission. `IsDecommissioning()` in the ScyllaDB API
+  wrapper incorrectly compared against `OperationalModeDecommissioned` instead of `OperationalModeDecommissioning`,
+  which resulted in an unhandled error being logged.
+  [#3538](https://github.com/scylladb/scylla-operator/pull/3538)
 
 ### Other changes
 

@@ -37,9 +37,6 @@ type ClientService interface {
 
 	DeleteFolder(params *DeleteFolderParams, opts ...ClientOption) (*DeleteFolderOK, error)
 
-	GetFolderByID(folderID int64, opts ...ClientOption) (*GetFolderByIDOK, error)
-	GetFolderByIDWithParams(params *GetFolderByIDParams, opts ...ClientOption) (*GetFolderByIDOK, error)
-
 	GetFolderByUID(folderUID string, opts ...ClientOption) (*GetFolderByUIDOK, error)
 	GetFolderByUIDWithParams(params *GetFolderByUIDParams, opts ...ClientOption) (*GetFolderByUIDOK, error)
 
@@ -67,6 +64,8 @@ type ClientService interface {
 CreateFolder creates folder
 
 If nested folders are enabled then it additionally expects the parent folder UID.
+
+Use: /apis/folder.grafana.app/v1/namespaces/{ns}/folders/{folder_uid}
 */
 func (a *Client) CreateFolder(body *models.CreateFolderCommand, opts ...ClientOption) (*CreateFolderOK, error) {
 	params := NewCreateFolderParams().WithBody(body)
@@ -114,6 +113,8 @@ DeleteFolder deletes folder
 
 Deletes an existing folder identified by UID along with all dashboards (and their alerts) stored in the folder. This operation cannot be reverted.
 If nested folders are enabled then it also deletes all the subfolders.
+
+Use: /apis/folder.grafana.app/v1/namespaces/{ns}/folders/{folder_uid}
 */
 
 func (a *Client) DeleteFolder(params *DeleteFolderParams, opts ...ClientOption) (*DeleteFolderOK, error) {
@@ -153,54 +154,9 @@ func (a *Client) DeleteFolder(params *DeleteFolderParams, opts ...ClientOption) 
 }
 
 /*
-GetFolderByID gets folder by id
-
-Returns the folder identified by id. This is deprecated.
-Please refer to [updated API](#/folders/getFolderByUID) instead
-*/
-func (a *Client) GetFolderByID(folderID int64, opts ...ClientOption) (*GetFolderByIDOK, error) {
-	params := NewGetFolderByIDParams().WithFolderID(folderID)
-	return a.GetFolderByIDWithParams(params, opts...)
-}
-
-func (a *Client) GetFolderByIDWithParams(params *GetFolderByIDParams, opts ...ClientOption) (*GetFolderByIDOK, error) {
-	if params == nil {
-		params = NewGetFolderByIDParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "getFolderByID",
-		Method:             "GET",
-		PathPattern:        "/folders/id/{folder_id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &GetFolderByIDReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*GetFolderByIDOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for getFolderByID: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
 GetFolderByUID gets folder by uid
+
+Use: /apis/folder.grafana.app/v1/namespaces/{ns}/folders/{folder_uid}
 */
 func (a *Client) GetFolderByUID(folderUID string, opts ...ClientOption) (*GetFolderByUIDOK, error) {
 	params := NewGetFolderByUIDParams().WithFolderUID(folderUID)
@@ -245,6 +201,8 @@ func (a *Client) GetFolderByUIDWithParams(params *GetFolderByUIDParams, opts ...
 
 /*
 GetFolderDescendantCounts gets the count of each descendant of a folder by kind the folder is identified by UID
+
+Use: /apis/folder.grafana.app/v1/namespaces/{ns}/folders/{folder_uid}
 */
 func (a *Client) GetFolderDescendantCounts(folderUID string, opts ...ClientOption) (*GetFolderDescendantCountsOK, error) {
 	params := NewGetFolderDescendantCountsParams().WithFolderUID(folderUID)
@@ -339,6 +297,8 @@ If nested folders are enabled, it expects an additional query parameter with the
 and returns the immediate subfolders that the authenticated user has permission to view.
 If the parameter is not supplied then it returns immediate subfolders under the root
 that the authenticated user has permission to view.
+
+Use: /apis/folder.grafana.app/v1/namespaces/{ns}/folders
 */
 
 func (a *Client) GetFolders(params *GetFoldersParams, opts ...ClientOption) (*GetFoldersOK, error) {
@@ -379,6 +339,9 @@ func (a *Client) GetFolders(params *GetFoldersParams, opts ...ClientOption) (*Ge
 
 /*
 MoveFolder moves folder
+
+Use: /apis/folder.grafana.app/v1/namespaces/{ns}/folders/{folder_uid},
+Changing the parent folder annotation
 */
 func (a *Client) MoveFolder(folderUID string, body *models.MoveFolderCommand, opts ...ClientOption) (*MoveFolderOK, error) {
 	params := NewMoveFolderParams().WithBody(body).WithFolderUID(folderUID)
@@ -423,6 +386,8 @@ func (a *Client) MoveFolderWithParams(params *MoveFolderParams, opts ...ClientOp
 
 /*
 UpdateFolder updates folder
+
+Use: /apis/folder.grafana.app/v1/namespaces/{ns}/folders/{folder_uid}
 */
 func (a *Client) UpdateFolder(folderUID string, body *models.UpdateFolderCommand, opts ...ClientOption) (*UpdateFolderOK, error) {
 	params := NewUpdateFolderParams().WithBody(body).WithFolderUID(folderUID)

@@ -36,6 +36,12 @@ func (o *PostAlertRuleReader) ReadResponse(response runtime.ClientResponse, cons
 			return nil, err
 		}
 		return nil, result
+	case 403:
+		result := NewPostAlertRuleForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[POST /v1/provisioning/alert-rules] PostAlertRule", response, response.Code())
 	}
@@ -172,6 +178,76 @@ func (o *PostAlertRuleBadRequest) GetPayload() *models.ValidationError {
 func (o *PostAlertRuleBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ValidationError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPostAlertRuleForbidden creates a PostAlertRuleForbidden with default headers values
+func NewPostAlertRuleForbidden() *PostAlertRuleForbidden {
+	return &PostAlertRuleForbidden{}
+}
+
+/*
+PostAlertRuleForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type PostAlertRuleForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this post alert rule forbidden response has a 2xx status code
+func (o *PostAlertRuleForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this post alert rule forbidden response has a 3xx status code
+func (o *PostAlertRuleForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this post alert rule forbidden response has a 4xx status code
+func (o *PostAlertRuleForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this post alert rule forbidden response has a 5xx status code
+func (o *PostAlertRuleForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this post alert rule forbidden response a status code equal to that given
+func (o *PostAlertRuleForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the post alert rule forbidden response
+func (o *PostAlertRuleForbidden) Code() int {
+	return 403
+}
+
+func (o *PostAlertRuleForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/alert-rules][%d] postAlertRuleForbidden %s", 403, payload)
+}
+
+func (o *PostAlertRuleForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/alert-rules][%d] postAlertRuleForbidden %s", 403, payload)
+}
+
+func (o *PostAlertRuleForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *PostAlertRuleForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

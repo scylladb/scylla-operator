@@ -36,6 +36,12 @@ func (o *PutTemplateReader) ReadResponse(response runtime.ClientResponse, consum
 			return nil, err
 		}
 		return nil, result
+	case 403:
+		result := NewPutTemplateForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 409:
 		result := NewPutTemplateConflict()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -178,6 +184,76 @@ func (o *PutTemplateBadRequest) GetPayload() *models.PublicError {
 func (o *PutTemplateBadRequest) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.PublicError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPutTemplateForbidden creates a PutTemplateForbidden with default headers values
+func NewPutTemplateForbidden() *PutTemplateForbidden {
+	return &PutTemplateForbidden{}
+}
+
+/*
+PutTemplateForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type PutTemplateForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this put template forbidden response has a 2xx status code
+func (o *PutTemplateForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this put template forbidden response has a 3xx status code
+func (o *PutTemplateForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this put template forbidden response has a 4xx status code
+func (o *PutTemplateForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this put template forbidden response has a 5xx status code
+func (o *PutTemplateForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this put template forbidden response a status code equal to that given
+func (o *PutTemplateForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the put template forbidden response
+func (o *PutTemplateForbidden) Code() int {
+	return 403
+}
+
+func (o *PutTemplateForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/templates/{name}][%d] putTemplateForbidden %s", 403, payload)
+}
+
+func (o *PutTemplateForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/templates/{name}][%d] putTemplateForbidden %s", 403, payload)
+}
+
+func (o *PutTemplateForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *PutTemplateForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

@@ -20,7 +20,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/hbollon/go-edlib"
 	"github.com/pkg/errors"
-	"github.com/scylladb/scylla-manager/v3/pkg/util/pointer"
 	"github.com/scylladb/scylla-manager/v3/pkg/util/uuid"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/client/operations"
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
@@ -393,7 +392,7 @@ func (c *Client) uniqueTaskID(ctx context.Context, clusterID, taskType string) (
 		Context:   ctx,
 		ClusterID: clusterID,
 		Type:      &taskType,
-		Short:     pointer.BoolPtr(true),
+		Short:     new(true),
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -415,8 +414,8 @@ func (c *Client) taskByName(ctx context.Context, clusterID, taskType, taskName s
 		Context:   ctx,
 		ClusterID: clusterID,
 		Type:      &taskType,
-		Short:     pointer.BoolPtr(true),
-		All:       pointer.BoolPtr(true),
+		Short:     new(true),
+		All:       new(true),
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -618,10 +617,10 @@ func (c *Client) ListBackups(ctx context.Context, clusterID string,
 		p.QueryClusterID = &clusterID
 	}
 	if !minDate.IsZero() {
-		p.MinDate = (*strfmt.DateTime)(pointer.TimePtr(minDate))
+		p.MinDate = (*strfmt.DateTime)(new(minDate))
 	}
 	if !maxDate.IsZero() {
-		p.MaxDate = (*strfmt.DateTime)(pointer.TimePtr(maxDate))
+		p.MaxDate = (*strfmt.DateTime)(new(maxDate))
 	}
 
 	resp, err := c.operations.GetClusterClusterIDBackups(p)

@@ -30,6 +30,12 @@ func (o *GetMuteTimingsReader) ReadResponse(response runtime.ClientResponse, con
 			return nil, err
 		}
 		return result, nil
+	case 403:
+		result := NewGetMuteTimingsForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[GET /v1/provisioning/mute-timings] GetMuteTimings", response, response.Code())
 	}
@@ -97,6 +103,76 @@ func (o *GetMuteTimingsOK) readResponse(response runtime.ClientResponse, consume
 
 	// response payload
 	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewGetMuteTimingsForbidden creates a GetMuteTimingsForbidden with default headers values
+func NewGetMuteTimingsForbidden() *GetMuteTimingsForbidden {
+	return &GetMuteTimingsForbidden{}
+}
+
+/*
+GetMuteTimingsForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type GetMuteTimingsForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this get mute timings forbidden response has a 2xx status code
+func (o *GetMuteTimingsForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this get mute timings forbidden response has a 3xx status code
+func (o *GetMuteTimingsForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this get mute timings forbidden response has a 4xx status code
+func (o *GetMuteTimingsForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this get mute timings forbidden response has a 5xx status code
+func (o *GetMuteTimingsForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this get mute timings forbidden response a status code equal to that given
+func (o *GetMuteTimingsForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the get mute timings forbidden response
+func (o *GetMuteTimingsForbidden) Code() int {
+	return 403
+}
+
+func (o *GetMuteTimingsForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/mute-timings][%d] getMuteTimingsForbidden %s", 403, payload)
+}
+
+func (o *GetMuteTimingsForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/mute-timings][%d] getMuteTimingsForbidden %s", 403, payload)
+}
+
+func (o *GetMuteTimingsForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *GetMuteTimingsForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
 		return err
 	}
 

@@ -24,7 +24,6 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/pkg/transport"
 
 	"github.com/grafana/grafana-openapi-client-go/client/access_control"
-	"github.com/grafana/grafana-openapi-client-go/client/access_control_provisioning"
 	"github.com/grafana/grafana-openapi-client-go/client/admin"
 	"github.com/grafana/grafana-openapi-client-go/client/admin_ldap"
 	"github.com/grafana/grafana-openapi-client-go/client/admin_provisioning"
@@ -38,7 +37,6 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/client/folders"
 	"github.com/grafana/grafana-openapi-client-go/client/group_attribute_sync"
 	"github.com/grafana/grafana-openapi-client-go/client/health"
-	"github.com/grafana/grafana-openapi-client-go/client/ldap_debug"
 	"github.com/grafana/grafana-openapi-client-go/client/library_elements"
 	"github.com/grafana/grafana-openapi-client-go/client/licensing"
 	"github.com/grafana/grafana-openapi-client-go/client/migrations"
@@ -111,7 +109,6 @@ func New(transport runtime.ClientTransport, cfg *TransportConfig, formats strfmt
 	cli.Transport = transport
 	cli.formats = formats
 	cli.AccessControl = access_control.New(transport, formats)
-	cli.AccessControlProvisioning = access_control_provisioning.New(transport, formats)
 	cli.Admin = admin.New(transport, formats)
 	cli.AdminLDAP = admin_ldap.New(transport, formats)
 	cli.AdminProvisioning = admin_provisioning.New(transport, formats)
@@ -125,7 +122,6 @@ func New(transport runtime.ClientTransport, cfg *TransportConfig, formats strfmt
 	cli.Folders = folders.New(transport, formats)
 	cli.GroupAttributeSync = group_attribute_sync.New(transport, formats)
 	cli.Health = health.New(transport, formats)
-	cli.LDAPDebug = ldap_debug.New(transport, formats)
 	cli.LibraryElements = library_elements.New(transport, formats)
 	cli.Licensing = licensing.New(transport, formats)
 	cli.Migrations = migrations.New(transport, formats)
@@ -226,8 +222,6 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 type GrafanaHTTPAPI struct {
 	AccessControl access_control.ClientService
 
-	AccessControlProvisioning access_control_provisioning.ClientService
-
 	Admin admin.ClientService
 
 	AdminLDAP admin_ldap.ClientService
@@ -253,8 +247,6 @@ type GrafanaHTTPAPI struct {
 	GroupAttributeSync group_attribute_sync.ClientService
 
 	Health health.ClientService
-
-	LDAPDebug ldap_debug.ClientService
 
 	LibraryElements library_elements.ClientService
 
@@ -310,7 +302,6 @@ type GrafanaHTTPAPI struct {
 func (c *GrafanaHTTPAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
 	c.AccessControl.SetTransport(transport)
-	c.AccessControlProvisioning.SetTransport(transport)
 	c.Admin.SetTransport(transport)
 	c.AdminLDAP.SetTransport(transport)
 	c.AdminProvisioning.SetTransport(transport)
@@ -324,7 +315,6 @@ func (c *GrafanaHTTPAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Folders.SetTransport(transport)
 	c.GroupAttributeSync.SetTransport(transport)
 	c.Health.SetTransport(transport)
-	c.LDAPDebug.SetTransport(transport)
 	c.LibraryElements.SetTransport(transport)
 	c.Licensing.SetTransport(transport)
 	c.Migrations.SetTransport(transport)
@@ -354,11 +344,13 @@ func (c *GrafanaHTTPAPI) OrgID() int64 {
 	return c.cfg.OrgID
 }
 
-// WithOrgID sets the organization ID and returns the client
+// WithOrgID returns a new client with the given organization ID set.
+// The original client is not modified, making this safe for concurrent use.
 func (c *GrafanaHTTPAPI) WithOrgID(orgID int64) *GrafanaHTTPAPI {
-	c.cfg.OrgID = orgID
-	c.SetTransport(newTransportWithConfig(c.cfg))
-	return c
+	clone := c.Clone()
+	clone.cfg.OrgID = orgID
+	clone.SetTransport(newTransportWithConfig(clone.cfg))
+	return clone
 }
 
 // WithRetries sets retry parameters and returns the client
@@ -378,7 +370,9 @@ func (c *GrafanaHTTPAPI) WithHTTPClient(client *http.Client) *GrafanaHTTPAPI {
 }
 
 func newTransportWithConfig(cfg *TransportConfig) *httptransport.Runtime {
-	httpTransport := http.DefaultTransport.(*http.Transport)
+	// Clone http.DefaultTransport rather than mutating it — it is a package-level
+	// global and writing to it concurrently causes a data race.
+	httpTransport := http.DefaultTransport.(*http.Transport).Clone()
 	httpTransport.TLSClientConfig = cfg.TLSConfig
 
 	retryableTransport := &transport.RetryableTransport{

@@ -70,7 +70,7 @@ InterpolateDashboardOK describes a response with status code 200, with default h
 (empty)
 */
 type InterpolateDashboardOK struct {
-	Payload interface{}
+	Payload any
 }
 
 // IsSuccess returns true when this interpolate dashboard Ok response has a 2xx status code
@@ -113,7 +113,7 @@ func (o *InterpolateDashboardOK) String() string {
 	return fmt.Sprintf("[POST /dashboards/interpolate][%d] interpolateDashboardOk %s", 200, payload)
 }
 
-func (o *InterpolateDashboardOK) GetPayload() interface{} {
+func (o *InterpolateDashboardOK) GetPayload() any {
 	return o.Payload
 }
 

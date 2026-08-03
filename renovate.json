@@ -180,7 +180,7 @@
         "   git add submodules/github.com/scylladb/scylla-monitoring",
         "   git commit --amend",
         "   make update",
-        "   git add .",
+        "   git add assets/config/config.yaml assets/monitoring/",
         "   git commit -m \"chore(deps): update generated files\" && git push --force",
         "   ```",
         "3. Remove the `do-not-merge/hold` label."

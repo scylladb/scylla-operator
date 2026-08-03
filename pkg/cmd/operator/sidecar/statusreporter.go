@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controller/statusreport"
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -54,16 +52,12 @@ func NewStatusReporter(
 	namespace string,
 	podName string,
 	interval time.Duration,
-	ipFamily corev1.IPFamily,
 	kubeClient kubernetes.Interface,
 	podInformer corev1informers.PodInformer,
+	newScyllaClient func() (*scyllaclient.Client, error),
 ) (*StatusReporter, error) {
 	sr := &StatusReporter{
 		interval: interval,
-	}
-
-	newScyllaClient := func() (*scyllaclient.Client, error) {
-		return controllerhelpers.NewScyllaClientForLocalhost(ipFamily)
 	}
 
 	c, err := statusreport.NewController(

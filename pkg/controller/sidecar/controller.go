@@ -51,6 +51,8 @@ type Controller struct {
 	kubeClient          kubernetes.Interface
 	singleServiceLister corev1listers.ServiceLister
 
+	newScyllaClient func() (*scyllaclient.Client, error)
+
 	cachesToSync []cache.InformerSynced
 
 	eventRecorder record.EventRecorder
@@ -67,6 +69,7 @@ func NewController(
 	localhostAddress string,
 	kubeClient kubernetes.Interface,
 	singleServiceInformer corev1informers.ServiceInformer,
+	newScyllaClient func() (*scyllaclient.Client, error),
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -100,6 +103,8 @@ func NewController(
 
 		kubeClient:          kubeClient,
 		singleServiceLister: singleServiceInformer.Lister(),
+
+		newScyllaClient: newScyllaClient,
 
 		cachesToSync: []cache.InformerSynced{
 			singleServiceInformer.Informer().HasSynced,

@@ -6,8 +6,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/api/core/v1"
@@ -23,15 +21,9 @@ const (
 )
 
 func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) error {
-	parsedIP, err := helpers.ParseIP(c.localhostAddress)
+	scyllaClient, err := c.newScyllaClient()
 	if err != nil {
-		return fmt.Errorf("can't parse localhost address %q: %w", c.localhostAddress, err)
-	}
-	ipFamily := helpers.GetIPFamily(parsedIP)
-
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost(ipFamily)
-	if err != nil {
-		return err
+		return fmt.Errorf("can't create a new ScyllaClient: %w", err)
 	}
 	defer scyllaClient.Close()
 
@@ -120,15 +112,9 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 		klog.V(4).InfoS("Finished syncing Service annotation", "Service", klog.KObj(svc), "duration", time.Since(startTime))
 	}()
 
-	parsedIP, err := helpers.ParseIP(c.localhostAddress)
+	scyllaClient, err := c.newScyllaClient()
 	if err != nil {
-		return fmt.Errorf("can't parse localhost address %q: %w", c.localhostAddress, err)
-	}
-	ipFamily := helpers.GetIPFamily(parsedIP)
-
-	scyllaClient, err := controllerhelpers.NewScyllaClientForLocalhost(ipFamily)
-	if err != nil {
-		return fmt.Errorf("can't create a new ScyllaClient for localhost: %w", err)
+		return fmt.Errorf("can't create a new ScyllaClient: %w", err)
 	}
 	defer scyllaClient.Close()
 

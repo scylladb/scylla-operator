@@ -13,8 +13,10 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/config"
 	"github.com/scylladb/scylla-operator/pkg/sidecar/identity"
 	"github.com/scylladb/scylla-operator/pkg/signals"
@@ -211,12 +213,17 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 
 	singleServiceInformer := identityKubeInformers.Core().V1().Services()
 
+	newScyllaClient := func() (*scyllaclient.Client, error) {
+		return controllerhelpers.NewScyllaClientForLocalhost(o.ipFamily)
+	}
+
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
 		o.ServiceName,
 		o.scyllaLocalhostAddress,
 		o.kubeClient,
 		singleServiceInformer,
+		newScyllaClient,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create sidecar controller: %w", err)
@@ -226,9 +233,9 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		o.Namespace,
 		o.ServiceName,
 		o.statusReportInterval,
-		o.ipFamily,
 		o.kubeClient,
 		identityKubeInformers.Core().V1().Pods(),
+		newScyllaClient,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create status reporter: %w", err)

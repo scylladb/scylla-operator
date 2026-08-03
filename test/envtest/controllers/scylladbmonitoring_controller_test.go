@@ -294,7 +294,6 @@ func createScyllaOperatorConfig(ctx context.Context, e *envtest.Environment) *sc
 	socCopy.Status.GrafanaImage = pointer.Ptr("docker.io/grafana/grafana:10.0.0")
 	socCopy.Status.BashToolsImage = pointer.Ptr("docker.io/scylladb/scylla-operator-bash-tools:latest")
 	socCopy.Status.PrometheusVersion = pointer.Ptr("2.48.0")
-	socCopy.Status.ScyllaDBNodeExporterImage = pointer.Ptr("docker.io/scylladb/scylla-operator-node-exporter:latest")
 	soc, err = e.ScyllaClient().ScyllaV1alpha1().ScyllaOperatorConfigs().UpdateStatus(ctx, socCopy, metav1.UpdateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to update ScyllaOperatorConfig status")
 

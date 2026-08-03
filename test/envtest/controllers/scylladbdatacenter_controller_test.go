@@ -22,7 +22,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scylla"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
@@ -59,9 +58,6 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.By("Running ScyllaDBDatacenter controller")
 		runScyllaDBDatacenterController(ctx, env)
 
-		g.By("Creating ScyllaOperatorConfig singleton")
-		createScyllaOperatorConfig(ctx, env)
-
 		g.By("Creating a ScyllaDBDatacenter with two racks")
 		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b"})
 		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
@@ -89,9 +85,6 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		func(ctx g.SpecContext, initialRacks, updatedRacks []string, existingRack, newRack string) {
 			g.By("Running ScyllaDBDatacenter controller")
 			runScyllaDBDatacenterController(ctx, env)
-
-			g.By("Creating ScyllaOperatorConfig singleton")
-			createScyllaOperatorConfig(ctx, env)
 
 			g.By("Creating a ScyllaDBDatacenter")
 			sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), initialRacks)
@@ -252,11 +245,6 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 		scyllaDBDatacenterControllerResyncPeriod,
 		scyllainformers.WithNamespace(e.Namespace()),
 	)
-	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		scyllaClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(corev1.NamespaceAll),
-	)
 	keyGenerator := newStaticKeyGenerator()
 
 	options := []scylladbdatacenter.ControllerOption{
@@ -279,7 +267,6 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 		kubeInformers.Batch().V1().Jobs(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
-		scyllaGlobalInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
 		"scylla/operator:envtest",
 		scylla.DefaultNativeTransportPort,
 		keyGenerator,
@@ -289,7 +276,6 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 
 	kubeInformers.Start(ctx.Done())
 	scyllaInformers.Start(ctx.Done())
-	scyllaGlobalInformers.Start(ctx.Done())
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -301,7 +287,6 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	g.DeferCleanup(func() {
 		kubeInformers.Shutdown()
 		scyllaInformers.Shutdown()
-		scyllaGlobalInformers.Shutdown()
 		wg.Wait()
 	})
 }

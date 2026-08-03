@@ -25,6 +25,12 @@
   version 2026.3 or later, since these versions no longer bundle node-exporter. The node-exporter container image is configurable via
   `ScyllaOperatorConfig.spec.scyllaDBNodeExporterImage`.
   [#3482](https://github.com/scylladb/scylla-operator/pull/3482)
+- The bootstrap barrier now only takes into account nodes that have already joined the ScyllaDB cluster and own tokens
+  in it. `ScyllaDBDatacenterNodesStatusReport` reflects the same: a node appears in it only once it's a member of the
+  ScyllaDB cluster, so the absence of an entry no longer implies the corresponding node is missing or unhealthy.
+  Previously every node expected to exist in the Kubernetes state was required to be reported and UP, including nodes
+  that hadn't joined yet and couldn't report their status.
+  [#3530](https://github.com/scylladb/scylla-operator/pull/3530)
 
 ## [1.21.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.0)
 

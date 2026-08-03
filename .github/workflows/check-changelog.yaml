@@ -1,0 +1,17 @@
+name: "Check: Changelog entry"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  check-changelog:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
+    name: Verify changelog entry exists
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - run: ./hack/check-changelog-entry.sh "${{ github.repository }}" "${{ github.event.pull_request.number }}"

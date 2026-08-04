@@ -1,11 +1,8 @@
 ---
-description: Investigates failed e2e tests from must-gather artifacts, analyzing logs, events, and resource states to identify root causes and produce bug reports.
-mode: primary
+name: must-gather-investigator
+description: Investigates failed e2e tests from must-gather artifacts, analyzing logs, events, and resource states to identify root causes and produce bug reports. Read-only — does not modify code or run tests.
 temperature: 0.3
-tools:
-  write: false
-  edit: false
-  bash: true
+tools: Read, Bash, Grep, Glob
 ---
 
 # Must-Gather Investigator Agent

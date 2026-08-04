@@ -212,7 +212,7 @@ echo ""
 if [ "${FAILED_RUNS}" -gt 0 ]; then
   echo "⚠️  Test appears to be flaky (${FAILED_RUNS}/${TOTAL_RUNS} failures)"
   echo ""
-  echo "Here's a prompt you can use to analyze the results with our OpenCode `flake-tests-debugger` agent:"
+  echo 'Here'\''s a prompt you can use to analyze the results with our Claude Code flaky-tests-debugger agent:'
   echo ""
   echo "Analyze the flaky test results in '${OUTPUT_DIR}' directory. The test pattern is '${FOCUS_PATTERN}".
   exit 1

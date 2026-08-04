@@ -169,6 +169,11 @@ func isBootstrapPreconditionSatisfied(scyllaDBDatacenterNodesStatusReports []*sc
 	// reportingHostIDToObservedNodeStatusesMap maps a reporting node's host ID to a map of observed nodes' host IDs to their statuses as observed by the reporting node.
 	reportingHostIDToObservedNodeStatusesMap := map[string]map[string]scyllav1alpha1.NodeStatus{}
 
+	// The reports only contain nodes that have already joined the ScyllaDB cluster, so nodes that are still bootstrapping
+	// are absent from rack.Nodes by construction. They can still enter allHostIDs through other nodes' ObservedNodes.
+	// A host ID that appears there without a corresponding report entry fails the precondition below,
+	// so a node joining concurrently may hold up other nodes' bootstrap.
+	// That's the conservative direction: nodes that joined but haven't had their own entries included yet don't drop out of the required set.
 	for _, report := range scyllaDBDatacenterNodesStatusReports {
 		for _, rack := range report.Racks {
 			for _, node := range rack.Nodes {

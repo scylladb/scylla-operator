@@ -5510,8 +5510,9 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				Name:      name,
 				Namespace: "default",
 				Annotations: map[string]string{
-					"default-sc-annotation":                         "bar",
-					"internal.scylla-operator.scylladb.com/host-id": hostID,
+					"default-sc-annotation":                                              "bar",
+					"internal.scylla-operator.scylladb.com/host-id":                      hostID,
+					"internal.scylla-operator.scylladb.com/node-joined-scylladb-cluster": "true",
 				},
 				Labels: map[string]string{
 					"default-sc-label": "foo",
@@ -5721,12 +5722,8 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				DatacenterName: "dc",
 				Racks: []scyllav1alpha1.RackNodesStatusReport{
 					{
-						Name: "a",
-						Nodes: []scyllav1alpha1.NodeStatusReport{
-							{
-								Ordinal: 0,
-							},
-						},
+						Name:  "a",
+						Nodes: []scyllav1alpha1.NodeStatusReport{},
 					},
 				},
 			},
@@ -5784,12 +5781,8 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				DatacenterName: "dc",
 				Racks: []scyllav1alpha1.RackNodesStatusReport{
 					{
-						Name: "a",
-						Nodes: []scyllav1alpha1.NodeStatusReport{
-							{
-								Ordinal: 0,
-							},
-						},
+						Name:  "a",
+						Nodes: []scyllav1alpha1.NodeStatusReport{},
 					},
 				},
 			},
@@ -6122,7 +6115,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name: "status with one current node, service without host ID and pod with status report",
+			name: "status with one current node, service included in status report but without host ID",
 			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := basicScyllaDBDatacenter()
 
@@ -6143,6 +6136,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 						Namespace: "default",
 						Annotations: map[string]string{
 							"default-sc-annotation": "bar",
+							"internal.scylla-operator.scylladb.com/node-joined-scylladb-cluster": "true",
 						},
 						Labels: map[string]string{
 							"default-sc-label": "foo",
@@ -6269,9 +6263,6 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 										Status: scyllav1alpha1.NodeStatusUp,
 									},
 								},
-							},
-							{
-								Ordinal: 1,
 							},
 						},
 					},

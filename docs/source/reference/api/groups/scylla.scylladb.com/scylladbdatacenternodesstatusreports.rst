@@ -14,6 +14,7 @@ Description
 -----------
 ScyllaDBDatacenterNodesStatusReport serves as an internal interface for propagating and aggregating node statuses observed by nodes in a ScyllaDB datacenter.
 It is used by ScyllaDB Operator for coordinating operations such as topology changes and is not intended for direct user interaction.
+The report only covers nodes that have joined the ScyllaDB cluster, which is distinct from the set of Kubernetes objects that represent them.
 
 Specification
 -------------
@@ -81,7 +82,7 @@ object
      - Name is the name of the rack.
    * - :ref:`nodes<api-scylla.scylladb.com-scylladbdatacenternodesstatusreports-v1alpha1-.racks[].nodes[]>`
      - array (object)
-     - Nodes holds the list of node status reports collected from nodes from this rack.
+     - Nodes holds the list of node status reports collected from nodes from this rack. Entries correspond to ScyllaDB nodes, not to the Kubernetes objects representing them: a node is reported only once its ScyllaDB instance has joined the cluster and owns tokens in it. The absence of an entry doesn't imply the node is missing or unhealthy.
 
 .. _api-scylla.scylladb.com-scylladbdatacenternodesstatusreports-v1alpha1-.racks[].nodes[]:
 

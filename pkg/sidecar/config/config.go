@@ -193,7 +193,7 @@ func (s *ScyllaConfig) setupEntrypoint(ctx context.Context) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't get seeds: %w", err)
 	}
-
+	klog.InfoS("Setting up ScyllaDB entrypoint with resolved seeds", "Seeds", seeds)
 	overprovisioned := "0"
 	if m.Overprovisioned {
 		overprovisioned = "1"

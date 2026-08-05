@@ -31,6 +31,11 @@
   Previously every node expected to exist in the Kubernetes state was required to be reported and UP, including nodes
   that hadn't joined yet and couldn't report their status.
   [#3530](https://github.com/scylladb/scylla-operator/pull/3530)
+- Corrected the API reference for `ScyllaCluster.spec.datacenter.racks[].scyllaAgentConfig`. Its description
+  previously referred to a ConfigMap, but the operator has always resolved this field to a Secret, since the
+  Scylla Manager Agent config may contain a sensitive auth token. Only the field description and generated
+  reference were updated — the expected resource type and runtime behavior are unchanged.
+  [#3534](https://github.com/scylladb/scylla-operator/pull/3534)
 
 ## [1.21.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.0)
 

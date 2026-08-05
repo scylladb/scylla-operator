@@ -29,4 +29,4 @@ thirdParty:
     namespace: "prometheus-operator"
   localCSIDriver:
     # renovate: datasource=docker depName=local-csi-driver packageName=docker.io/scylladb/local-csi-driver versioning=semver
-    version: "1.0.0@sha256:a80212705a6cfbc2e7115b276d0ace1bfe88bcdc56b1e20732a64a4e6c1af4ff"
+    version: "1.0.1@sha256:c3ee65874cec392c165578613e0bd2406704736811c0a738a5b353a50ba6f637"

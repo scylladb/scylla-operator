@@ -26,7 +26,7 @@ type RepairProgress struct {
 	// dcs
 	Dcs []string `json:"dcs"`
 
-	// duration ms
+	// Wall-clock duration in milliseconds for the current task run.
 	DurationMs int64 `json:"duration_ms,omitempty"`
 
 	// error

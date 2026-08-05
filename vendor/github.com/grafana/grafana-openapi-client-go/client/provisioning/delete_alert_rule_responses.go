@@ -6,10 +6,14 @@ package provisioning
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/grafana/grafana-openapi-client-go/models"
 )
 
 // DeleteAlertRuleReader is a Reader for the DeleteAlertRule structure.
@@ -26,6 +30,12 @@ func (o *DeleteAlertRuleReader) ReadResponse(response runtime.ClientResponse, co
 			return nil, err
 		}
 		return result, nil
+	case 403:
+		result := NewDeleteAlertRuleForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[DELETE /v1/provisioning/alert-rules/{UID}] DeleteAlertRule", response, response.Code())
 	}
@@ -83,6 +93,76 @@ func (o *DeleteAlertRuleNoContent) String() string {
 }
 
 func (o *DeleteAlertRuleNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	return nil
+}
+
+// NewDeleteAlertRuleForbidden creates a DeleteAlertRuleForbidden with default headers values
+func NewDeleteAlertRuleForbidden() *DeleteAlertRuleForbidden {
+	return &DeleteAlertRuleForbidden{}
+}
+
+/*
+DeleteAlertRuleForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type DeleteAlertRuleForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this delete alert rule forbidden response has a 2xx status code
+func (o *DeleteAlertRuleForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this delete alert rule forbidden response has a 3xx status code
+func (o *DeleteAlertRuleForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete alert rule forbidden response has a 4xx status code
+func (o *DeleteAlertRuleForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete alert rule forbidden response has a 5xx status code
+func (o *DeleteAlertRuleForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete alert rule forbidden response a status code equal to that given
+func (o *DeleteAlertRuleForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the delete alert rule forbidden response
+func (o *DeleteAlertRuleForbidden) Code() int {
+	return 403
+}
+
+func (o *DeleteAlertRuleForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/alert-rules/{UID}][%d] deleteAlertRuleForbidden %s", 403, payload)
+}
+
+func (o *DeleteAlertRuleForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/alert-rules/{UID}][%d] deleteAlertRuleForbidden %s", 403, payload)
+}
+
+func (o *DeleteAlertRuleForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *DeleteAlertRuleForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
 
 	return nil
 }

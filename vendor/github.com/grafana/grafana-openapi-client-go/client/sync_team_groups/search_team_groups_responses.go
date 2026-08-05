@@ -70,7 +70,7 @@ SearchTeamGroupsOK describes a response with status code 200, with default heade
 (empty)
 */
 type SearchTeamGroupsOK struct {
-	Payload *models.SearchTeamGroupsQueryResult
+	Payload []*models.SearchTeamGroupsQueryResult
 }
 
 // IsSuccess returns true when this search team groups Ok response has a 2xx status code
@@ -113,16 +113,14 @@ func (o *SearchTeamGroupsOK) String() string {
 	return fmt.Sprintf("[GET /teams/{teamId}/groups/search][%d] searchTeamGroupsOk %s", 200, payload)
 }
 
-func (o *SearchTeamGroupsOK) GetPayload() *models.SearchTeamGroupsQueryResult {
+func (o *SearchTeamGroupsOK) GetPayload() []*models.SearchTeamGroupsQueryResult {
 	return o.Payload
 }
 
 func (o *SearchTeamGroupsOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.SearchTeamGroupsQueryResult)
-
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
 		return err
 	}
 

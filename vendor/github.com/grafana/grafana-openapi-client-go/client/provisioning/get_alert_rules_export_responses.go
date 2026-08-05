@@ -30,6 +30,12 @@ func (o *GetAlertRulesExportReader) ReadResponse(response runtime.ClientResponse
 			return nil, err
 		}
 		return result, nil
+	case 403:
+		result := NewGetAlertRulesExportForbidden()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	case 404:
 		result := NewGetAlertRulesExportNotFound()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -102,6 +108,76 @@ func (o *GetAlertRulesExportOK) GetPayload() *models.AlertingFileExport {
 func (o *GetAlertRulesExportOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.AlertingFileExport)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewGetAlertRulesExportForbidden creates a GetAlertRulesExportForbidden with default headers values
+func NewGetAlertRulesExportForbidden() *GetAlertRulesExportForbidden {
+	return &GetAlertRulesExportForbidden{}
+}
+
+/*
+GetAlertRulesExportForbidden describes a response with status code 403, with default header values.
+
+ForbiddenError
+*/
+type GetAlertRulesExportForbidden struct {
+	Payload *models.ForbiddenError
+}
+
+// IsSuccess returns true when this get alert rules export forbidden response has a 2xx status code
+func (o *GetAlertRulesExportForbidden) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this get alert rules export forbidden response has a 3xx status code
+func (o *GetAlertRulesExportForbidden) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this get alert rules export forbidden response has a 4xx status code
+func (o *GetAlertRulesExportForbidden) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this get alert rules export forbidden response has a 5xx status code
+func (o *GetAlertRulesExportForbidden) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this get alert rules export forbidden response a status code equal to that given
+func (o *GetAlertRulesExportForbidden) IsCode(code int) bool {
+	return code == 403
+}
+
+// Code gets the status code for the get alert rules export forbidden response
+func (o *GetAlertRulesExportForbidden) Code() int {
+	return 403
+}
+
+func (o *GetAlertRulesExportForbidden) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/alert-rules/export][%d] getAlertRulesExportForbidden %s", 403, payload)
+}
+
+func (o *GetAlertRulesExportForbidden) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /v1/provisioning/alert-rules/export][%d] getAlertRulesExportForbidden %s", 403, payload)
+}
+
+func (o *GetAlertRulesExportForbidden) GetPayload() *models.ForbiddenError {
+	return o.Payload
+}
+
+func (o *GetAlertRulesExportForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ForbiddenError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

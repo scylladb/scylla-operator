@@ -1364,7 +1364,7 @@ spec:
                                 type: object
                             type: object
                           scyllaAgentConfig:
-                            description: Scylla config map name to customize scylla manager agent
+                            description: ScyllaAgentConfig specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
                             type: string
                           scyllaConfig:
                             description: Scylla config map name to customize scylla.yaml

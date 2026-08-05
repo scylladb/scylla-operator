@@ -405,7 +405,7 @@ object
      - resources the Scylla container will use.
    * - scyllaAgentConfig
      - string
-     - Scylla config map name to customize scylla manager agent
+     - ScyllaAgentConfig specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
    * - scyllaConfig
      - string
      - Scylla config map name to customize scylla.yaml

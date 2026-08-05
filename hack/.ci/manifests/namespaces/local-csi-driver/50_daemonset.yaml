@@ -1,8 +1,8 @@
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  namespace: local-csi-driver
   name: local-csi-driver
+  namespace: local-csi-driver
   labels:
     app.kubernetes.io/name: local-csi-driver
 spec:
@@ -19,108 +19,106 @@ spec:
         scylla.scylladb.com/node-type: scylla
       serviceAccountName: local-csi-driver
       tolerations:
-      - operator: Exists
+        - operator: Exists
       containers:
-      - name: local-csi-driver
-        securityContext:
-          privileged: true
-        # renovate: datasource=docker depName=local-csi-driver packageName=docker.io/scylladb/local-csi-driver versioning=semver
-        image: docker.io/scylladb/local-csi-driver:1.0.0@sha256:a80212705a6cfbc2e7115b276d0ace1bfe88bcdc56b1e20732a64a4e6c1af4ff
-        imagePullPolicy: IfNotPresent
-        args:
-        - --listen=/csi/csi.sock
-        - --node-name=$(NODE_NAME)
-        - --volumes-dir=/var/lib/persistent-volumes
-        - --v=2
-        env:
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        volumeMounts:
-        - name: kubelet-dir
-          mountPath: /var/lib/kubelet
-          mountPropagation: "Bidirectional"
-        - name: plugin-dir
-          mountPath: /csi
-        - name: volumes-dir
-          mountPath: /var/lib/persistent-volumes
-        ports:
-        - name: healthz
-          containerPort: 9809
-          protocol: TCP
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: healthz
-          initialDelaySeconds: 10
-          timeoutSeconds: 3
-          periodSeconds: 2
-          failureThreshold: 5
-      - name: csi-driver-registrar
-        image: registry.k8s.io/sig-storage/csi-node-driver-registrar@sha256:fdff3ee285341bc58033b6b2458a5d45fd90ec6922a8ba6ebdd49b0c41e2cd34
-        imagePullPolicy: Always
-        args:
-        - --csi-address=/csi/csi.sock
-        - --kubelet-registration-path=/var/lib/kubelet/plugins/local.csi.scylladb.com/csi.sock
-        volumeMounts:
-        - name: plugin-dir
-          mountPath: /csi
-        - name: registration-dir
-          mountPath: /registration
-      - name: liveness-probe
-        image: registry.k8s.io/sig-storage/livenessprobe@sha256:cacee2b5c36dd59d4c7e8469c05c9e4ef53ecb2df9025fa8c10cdaf61bce62f0
-        imagePullPolicy: Always
-        args:
-        - --csi-address=/csi/csi.sock
-        - --health-port=9809
-        - --v=2
-        volumeMounts:
-        - name: plugin-dir
-          mountPath: /csi
-      - name: csi-provisioner
-        image: registry.k8s.io/sig-storage/csi-provisioner@sha256:ee3b525d5b89db99da3b8eb521d9cd90cb6e9ef0fbb651e98bb37be78d36b5b8
-        imagePullPolicy: Always
-        args:
-        - --csi-address=/csi/csi.sock
-        - --v=2
-        - --node-deployment
-        - --feature-gates=Topology=true
-        - --immediate-topology=false
-        - --enable-capacity
-        - --capacity-ownerref-level=0
-        - --capacity-poll-interval=30s
-        - --default-fstype=xfs
-        env:
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        volumeMounts:
-        - name: plugin-dir
-          mountPath: /csi
+        - name: local-csi-driver
+          securityContext:
+            privileged: true
+          image: docker.io/scylladb/local-csi-driver:1.0.0@sha256:a80212705a6cfbc2e7115b276d0ace1bfe88bcdc56b1e20732a64a4e6c1af4ff
+          imagePullPolicy: IfNotPresent
+          args:
+            - --listen=/csi/csi.sock
+            - --node-name=$(NODE_NAME)
+            - --volumes-dir=/var/lib/persistent-volumes
+            - --v=2
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: kubelet-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
+            - name: plugin-dir
+              mountPath: /csi
+            - name: volumes-dir
+              mountPath: /var/lib/persistent-volumes
+          ports:
+            - name: healthz
+              containerPort: 9809
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+            periodSeconds: 2
+            failureThreshold: 5
+        - name: csi-driver-registrar
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.17.0@sha256:f9de845b170155199f2a2a3f9531cf13d78e31235e9db6b6582a8b0db0a50dad
+          imagePullPolicy: IfNotPresent
+          args:
+            - --csi-address=/csi/csi.sock
+            - --kubelet-registration-path=/var/lib/kubelet/plugins/local.csi.scylladb.com/csi.sock
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: registration-dir
+              mountPath: /registration
+        - name: liveness-probe
+          image: registry.k8s.io/sig-storage/livenessprobe:v2.19.0@sha256:06da0d5b8908072f2e4522692aee8dc119fba7247a9658497e1153992cd777e9
+          imagePullPolicy: IfNotPresent
+          args:
+            - --csi-address=/csi/csi.sock
+            - --health-port=9809
+            - --v=2
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+        - name: csi-provisioner
+          image: registry.k8s.io/sig-storage/csi-provisioner:v5.3.0@sha256:bb057f866177d5f4139a1527e594499cbe0feeb67b63aaca8679dfdf0a6016f9
+          imagePullPolicy: IfNotPresent
+          args:
+            - --csi-address=/csi/csi.sock
+            - --v=2
+            - --node-deployment
+            - --immediate-topology=false
+            - --enable-capacity
+            - --capacity-ownerref-level=0
+            - --capacity-poll-interval=30s
+            - --default-fstype=xfs
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
       volumes:
-      - name: kubelet-dir
-        hostPath:
-          path: /var/lib/kubelet
-          type: Directory
-      - name: plugin-dir
-        hostPath:
-          path: /var/lib/kubelet/plugins/local.csi.scylladb.com/
-          type: DirectoryOrCreate
-      - name: registration-dir
-        hostPath:
-          path: /var/lib/kubelet/plugins_registry/
-          type: Directory
-      - name: volumes-dir
-        hostPath:
-          path: /var/lib/persistent-volumes
-          type: Directory
+        - name: kubelet-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/local.csi.scylladb.com/
+            type: DirectoryOrCreate
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+        - name: volumes-dir
+          hostPath:
+            path: /var/lib/persistent-volumes
+            type: Directory

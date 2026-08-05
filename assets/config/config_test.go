@@ -222,6 +222,14 @@ func TestProjectConfig(t *testing.T) {
 			configField: Project.ThirdParty.PrometheusOperatorConfig.Namespace,
 			testFn:      validateRequired,
 		},
+		{
+			name:        "thirdParty.localCSIDriver.version",
+			configField: Project.ThirdParty.LocalCSIDriver.Version,
+			testFn: composeValidators(
+				validateRequired,
+				validateMultiPlatformVersionWithRepo(ctx, LocalCSIDriverImageRepository),
+			),
+		},
 	}
 
 	for _, tc := range testCases {

@@ -49,9 +49,14 @@ type PrometheusOperatorConfig struct {
 	Namespace string `json:"namespace"`
 }
 
+type LocalCSIDriverConfig struct {
+	Version string `json:"version"`
+}
+
 type ThirdPartyConfig struct {
 	CertManager              CertManagerConfig        `json:"certManager"`
 	PrometheusOperatorConfig PrometheusOperatorConfig `json:"prometheusOperator"`
+	LocalCSIDriver           LocalCSIDriverConfig     `json:"localCSIDriver"`
 }
 
 type ProjectConfig struct {

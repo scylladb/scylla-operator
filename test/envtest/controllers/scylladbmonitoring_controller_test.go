@@ -273,7 +273,7 @@ var _ = g.Describe("ScyllaDBMonitoringController", func() {
 })
 
 // createScyllaOperatorConfig creates a ScyllaOperatorConfig singleton (name="cluster") with
-// the minimal status fields required by the ScyllaDBMonitoring controller.
+// the minimal status fields required by envtest controllers.
 func createScyllaOperatorConfig(ctx context.Context, e *envtest.Environment) *scyllav1alpha1.ScyllaOperatorConfig {
 	g.GinkgoHelper()
 

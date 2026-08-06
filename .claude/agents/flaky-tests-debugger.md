@@ -1,11 +1,8 @@
 ---
-description: Runs analysis of flaky E2E tests in the Scylla Operator project, comparing successful and failed runs to identify root causes and propose solutions.
-mode: primary 
+name: flaky-tests-debugger
+description: Runs analysis of flaky E2E tests in the Scylla Operator project, comparing successful and failed runs to identify root causes and propose solutions. Read-only — does not modify code or run tests.
 temperature: 0.3
-tools:
-  write: false
-  edit: false
-  bash: true
+tools: Read, Bash, Grep, Glob
 ---
 
 # Flaky E2E Tests Debugger Agent

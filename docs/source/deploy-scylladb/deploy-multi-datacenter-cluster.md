@@ -18,8 +18,8 @@ Let's assume two interconnected Kubernetes clusters, capable of communicating wi
 - running a storage provisioner capable of provisioning XFS volumes of StorageClass `scylladb-local-xfs` in each of the nodes dedicated to ScyllaDB instances
 
 You can refer to one of our guides describing the process of preparing such infrastructure:
-- [Build multiple Amazon EKS clusters with Inter-Kubernetes networking](../install-operator/provision-infrastructure/set-up-multi-dc-eks-clusters.md)
-- [Build multiple GKE clusters with Inter-Kubernetes networking](../install-operator/provision-infrastructure/set-up-multi-dc-gke-clusters.md)
+- [Build multiple Amazon EKS clusters with Inter-Kubernetes networking](../install-operator/provision-infrastructure/multi-dc/set-up-multi-dc-eks-clusters.md)
+- [Build multiple GKE clusters with Inter-Kubernetes networking](../install-operator/provision-infrastructure/multi-dc/set-up-multi-dc-gke-clusters.md)
 
 Additionally, to follow the below guide, you need to install and configure the following tools that you will need to manage Kubernetes resources:
 - kubectl – A command line tool for working with Kubernetes clusters.

@@ -2169,6 +2169,11 @@ func (in *ScyllaDBDatacenterSpec) DeepCopyInto(out *ScyllaDBDatacenterSpec) {
 		*out = make([]v1.PodReadinessGate, len(*in))
 		copy(*out, *in)
 	}
+	if in.BootstrapPolicy != nil {
+		in, out := &in.BootstrapPolicy, &out.BootstrapPolicy
+		*out = new(BootstrapPolicy)
+		**out = **in
+	}
 	return
 }
 

@@ -365,8 +365,8 @@ metadata:
   name: scylla-cluster
   namespace: scylla
 spec:
-  agentVersion: {{ agentVersion }}
-  version: {{ scyllaDBImageTag }}
+  agentVersion: {{agentVersion}}
+  version: {{scyllaDBImageTag}}
   cpuset: true
   automaticOrphanedNodeCleanup: true
   exposeOptions:

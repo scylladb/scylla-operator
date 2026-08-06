@@ -4,11 +4,6 @@ This document describes the process of deploying a Multi Datacenter ScyllaDB clu
 
 This guide will walk you through the example procedure of deploying two datacenters in distinct regions of a selected cloud provider.
 
-:::{note}
-This guide is dedicated to deploying multi-datacenter ScyllaDB clusters and does not discuss unrelated configuration options.
-For details of ScyllaDB cluster deployments and their configuration, see the [ScyllaCluster resource documentation](deploy-your-first-cluster.md).
-:::
-
 ## Prerequisites
 
 As this document describes the procedure of deploying a Multi Datacenter ScyllaDB cluster, you are expected to have the required infrastructure prepared.

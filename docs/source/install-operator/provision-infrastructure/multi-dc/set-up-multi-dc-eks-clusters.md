@@ -1,7 +1,7 @@
 # Set up multiple EKS clusters with inter-Kubernetes networking
 
 This document describes the process of creating multiple Amazon EKS clusters in different regions, using separate VPCs, and explains the steps necessary for configuring inter-Kubernetes networking between the clusters.
-The interconnected clusters can serve as a platform for [deploying a multi-datacenter ScyllaDB cluster](../../deploy-scylladb/deploy-multi-datacenter-cluster.md).
+The interconnected clusters can serve as a platform for [deploying a multi-datacenter ScyllaDB cluster](../../../deploy-scylladb/deploy-multi-datacenter-cluster.md).
 
 This guide will walk you through the process of creating and configuring EKS clusters in two distinct regions. Although it is only an example setup, it can easily be built upon to create infrastructure tailored to your specific needs.
 For simplicity, several predefined values are used throughout the document. The values are only exemplary and can be adjusted to your preference.
@@ -41,7 +41,7 @@ nodeGroups:
 ```
 
 Specify the first cluster's configuration file and save it as `cluster-us-east-1.yaml`.
-Refer to [Creating an EKS cluster](set-up-eks-cluster.md#create-the-eksctl-cluster-configuration) section of ScyllaDB Operator documentation for the reference of the configuration of node groups.
+Refer to [Creating an EKS cluster](../set-up-eks-cluster.md#create-the-eksctl-cluster-configuration) section of ScyllaDB Operator documentation for the reference of the configuration of node groups.
 
 To deploy the first cluster, use the below command:
 ```shell
@@ -62,7 +62,7 @@ For any `kubectl` commands that you will want to run against this cluster, use t
 
 #### Deploy ScyllaDB Operator
 
-To deploy ScyllaDB Operator follow the [installation guide](../index.md).
+To deploy ScyllaDB Operator follow the [installation guide](../../index.md).
 
 ### Create the second EKS cluster
 
@@ -161,4 +161,4 @@ The names of the shared security groups of your VPCs should be similar to the on
 ---
 
 Having followed the above steps, you should now have a platform prepared for deploying a multi-datacenter ScyllaDB cluster.
-Refer to [Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters](../../deploy-scylladb/deploy-multi-datacenter-cluster.md) in ScyllaDB Operator documentation for guidance.
+Refer to [Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters](../../../deploy-scylladb/deploy-multi-datacenter-cluster.md) in ScyllaDB Operator documentation for guidance.

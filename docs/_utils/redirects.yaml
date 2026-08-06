@@ -141,16 +141,16 @@
 /stable/resources/remotekubernetesclusters.html: /stable/deploy-scylladb/deploy-your-first-cluster.html
 /stable/resources/scyllaoperatorconfigs.html: /stable/deploy-scylladb/before-you-deploy/configure-operator.html
 /stable/resources/common/exposing.html: /stable/deploy-scylladb/set-up-networking/configure-external-access.html
-/stable/resources/common/multidc/gke.html: /stable/install-operator/provision-infrastructure/set-up-multi-dc-gke-clusters.html
-/stable/resources/common/multidc/eks.html: /stable/install-operator/provision-infrastructure/set-up-multi-dc-eks-clusters.html
+/stable/resources/common/multidc/gke.html: /stable/install-operator/provision-infrastructure/multi-dc/set-up-multi-dc-gke-clusters.html
+/stable/resources/common/multidc/eks.html: /stable/install-operator/provision-infrastructure/multi-dc/set-up-multi-dc-eks-clusters.html
 /master/resources/index.html: /master/deploy-scylladb/index.html
 /master/resources/overview.html: /master/deploy-scylladb/index.html
 /master/resources/nodeconfigs.html: /master/deploy-scylladb/before-you-deploy/configure-nodes.html
 /master/resources/remotekubernetesclusters.html: /master/deploy-scylladb/deploy-your-first-cluster.html
 /master/resources/scyllaoperatorconfigs.html: /master/deploy-scylladb/before-you-deploy/configure-operator.html
 /master/resources/common/exposing.html: /master/deploy-scylladb/set-up-networking/configure-external-access.html
-/master/resources/common/multidc/gke.html: /master/install-operator/provision-infrastructure/set-up-multi-dc-gke-clusters.html
-/master/resources/common/multidc/eks.html: /master/install-operator/provision-infrastructure/set-up-multi-dc-eks-clusters.html
+/master/resources/common/multidc/gke.html: /master/install-operator/provision-infrastructure/multi-dc/set-up-multi-dc-gke-clusters.html
+/master/resources/common/multidc/eks.html: /master/install-operator/provision-infrastructure/multi-dc/set-up-multi-dc-eks-clusters.html
 
 # resources/scyllaclusters/ -> various
 /stable/resources/scyllaclusters/index.html: /stable/deploy-scylladb/deploy-your-first-cluster.html

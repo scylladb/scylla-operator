@@ -4,6 +4,7 @@ package e2e
 
 import (
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/nodeconfig"
+	_ "github.com/scylladb/scylla-operator/test/e2e/set/operatorupgrade"
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/remotekubernetescluster"
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/scyllacluster"
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/scyllacluster/multidatacenter"

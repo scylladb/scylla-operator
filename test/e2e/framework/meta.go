@@ -16,6 +16,7 @@ const (
 	SupportedOnlyOnOpenShiftLabelName = "SupportedOnlyOnOpenShift"
 	NotSupportedOnKindLabelName       = "NotSupportedOnKind"
 	LongRunningLabelName              = "LongRunning"
+	SuiteOperatorUpgradeLabelName     = "SuiteOperatorUpgrade"
 )
 
 var (
@@ -35,4 +36,8 @@ var (
 
 	// LongRunning is a label for tests that are long-running (over ~20 minutes).
 	LongRunning = g.Label(LongRunningLabelName)
+
+	// SuiteOperatorUpgrade is a label for the operator upgrade suite, which requires a dedicated cluster with no
+	// operator deployed and must not be picked up by any other suite.
+	SuiteOperatorUpgrade = g.Label(SuiteOperatorUpgradeLabelName)
 )

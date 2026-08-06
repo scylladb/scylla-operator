@@ -36,11 +36,12 @@ var Suites = ginkgotest.TestSuites{
 		Tests that can be run in parallel.
 		`),
 		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s && !%s",
+			"!%s && !%s && !%s && !%s && !%s",
 			framework.SerialLabelName,
 			framework.MultiDatacenterLabelName,
 			framework.SupportedOnlyOnOpenShiftLabelName,
 			framework.IPv6LabelName,
+			framework.SuiteOperatorUpgradeLabelName,
 		),
 		DefaultParallelism: defaultParallelParallelism,
 	},
@@ -50,11 +51,12 @@ var Suites = ginkgotest.TestSuites{
 		Tests that can be run in parallel on an OpenShift cluster.
 		`),
 		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s && !%s",
+			"!%s && !%s && !%s && !%s && !%s",
 			framework.SerialLabelName,
 			framework.MultiDatacenterLabelName,
 			framework.NotSupportedOnOpenShiftLabelName,
 			framework.IPv6LabelName,
+			framework.SuiteOperatorUpgradeLabelName,
 		),
 		DefaultParallelism: defaultParallelParallelism,
 	},
@@ -96,7 +98,7 @@ var Suites = ginkgotest.TestSuites{
 		Relatively fast tests that can be run on kind clusters.
 		`),
 		LabelFilter: fmt.Sprintf(
-			"!%s && !%s && !%s && !%s && !%s && !%s && !%s",
+			"!%s && !%s && !%s && !%s && !%s && !%s && !%s && !%s",
 			framework.NotSupportedOnKindLabelName,
 			framework.LongRunningLabelName,
 			framework.RequiresObjectStorageLabelName,
@@ -104,8 +106,19 @@ var Suites = ginkgotest.TestSuites{
 			framework.SerialLabelName,
 			framework.SupportedOnlyOnOpenShiftLabelName,
 			framework.IPv6LabelName,
+			framework.SuiteOperatorUpgradeLabelName,
 		),
 		DefaultParallelism: defaultParallelParallelism,
+	},
+	{
+		Name: "kind-operator-upgrade",
+		Description: templates.LongDesc(`
+		Tests that verify operator upgrade from a released version to the current one. Runs in CI outside of k8s
+		(requires kubectl, kubeconfig - scylla-operator docker image does not have kubectl).
+		Must be run from the repository root, as it invokes hack/ci-deploy.sh via a relative path.
+		`),
+		LabelFilter:        framework.SuiteOperatorUpgradeLabelName,
+		DefaultParallelism: 1,
 	},
 }
 

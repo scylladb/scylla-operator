@@ -26,7 +26,8 @@ var (
 	// ScyllaDBVersionWithoutNodeExporter is "2026.3.0-0", not "2026.3.0": per semver precedence a pre-release
 	// version is always lower than the same version without one, so a plain "2026.3.0" threshold would reject
 	// pre-GA nightly builds that already ship without node-exporter.
-	ScyllaDBVersionWithoutNodeExporter = semver.MustParse("2026.3.0-0")
+	ScyllaDBVersionWithoutNodeExporter          = semver.MustParse("2026.3.0-0")
+	ScyllaDBVersionRequiredForParallelBootstrap = semver.MustParse("2026.2.0")
 )
 
 // ScyllaVersion contains the version of a cluster with unkown version support

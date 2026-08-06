@@ -19,6 +19,11 @@
   which resulted in an unhandled error being logged.
   [#3538](https://github.com/scylladb/scylla-operator/pull/3538)
 
+### Features & Enhancements
+- Added an optional `bootstrapPolicy` field to `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec`, accepting `Sequential`
+  or `Parallel`. `Parallel` requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
+  [#3568](https://github.com/scylladb/scylla-operator/pull/3568)
+
 ### Other changes
 
 - ScyllaDB Operator now runs `scylladb-node-exporter` as a dedicated sidecar container for ScyllaDB clusters running

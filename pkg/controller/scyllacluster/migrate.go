@@ -275,6 +275,18 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 		MinTerminationGracePeriodSeconds:        scSpec.MinTerminationGracePeriodSeconds,
 		MinReadySeconds:                         scSpec.MinReadySeconds,
 		ReadinessGates:                          scSpec.ReadinessGates,
+		BootstrapPolicy: func() *scyllav1alpha1.BootstrapPolicy {
+			// A managed ScyllaDBDatacenter always carries an explicit bootstrapPolicy.
+			// An unset bootstrapPolicy in the parent ScyllaCluster means it was created before the field was defaulted on
+			// creation, hence it must keep bootstrapping its nodes sequentially. This resolution is permanently frozen and
+			// must not be changed when the create-time default becomes Parallel, as that would silently parallelize
+			// bootstrap of pre-existing clusters.
+			if scSpec.BootstrapPolicy == nil {
+				return pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential)
+			}
+
+			return pointer.Ptr(scyllav1alpha1.BootstrapPolicy(*scSpec.BootstrapPolicy))
+		}(),
 	}, apimachineryutilerrors.NewAggregate(migrateErrs)
 }
 

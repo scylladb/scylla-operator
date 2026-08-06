@@ -294,6 +294,10 @@ func MakeRemoteScyllaDBDatacenters(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyll
 			MinTerminationGracePeriodSeconds:        sc.Spec.MinTerminationGracePeriodSeconds,
 			MinReadySeconds:                         sc.Spec.MinReadySeconds,
 			ReadinessGates:                          sc.Spec.ReadinessGates,
+			// A managed ScyllaDBDatacenter always carries an explicit bootstrapPolicy.
+			// ScyllaDBCluster has no equivalent field, as bootstrapping nodes in parallel is not supported in automated
+			// multi-datacenter deployments, hence it's always resolved to Sequential.
+			BootstrapPolicy: pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential),
 			// TODO: not supported yet
 			// Ref: https://github.com/scylladb/scylla-operator/issues/2262
 			ImagePullSecrets: nil,

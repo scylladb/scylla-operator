@@ -1,4 +1,4 @@
-# Deploy a multi-datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters
+# Deploy a multi-datacenter ScyllaDB cluster
 
 This document describes the process of deploying a Multi Datacenter ScyllaDB cluster in multiple interconnected Kubernetes clusters.
 

@@ -1,4 +1,4 @@
-# Build multiple GKE clusters with inter-Kubernetes networking
+# Set up multiple GKE clusters with inter-Kubernetes networking
 
 This document describes the process of creating multiple GKE clusters in a shared VPC and explains the steps necessary for configuring inter-Kubernetes networking between clusters in different regions.
 The interconnected clusters can serve as a platform for [deploying a Multi Datacenter ScyllaDB cluster](../../scyllaclusters/multidc/multidc.md).

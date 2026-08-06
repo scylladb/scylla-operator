@@ -87,6 +87,7 @@ GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/build) 
 RENOVATE_CONFIG ?=./renovate.json
 
 KIND_CLUSTER_NAME=scylla-operator-e2e
+KIND_OPERATOR_UPGRADE_CLUSTER_NAME=kind-operator-upgrade
 
 # TODO: look into how to make these local to the targets
 export DOCKER_BUILDKIT :=1
@@ -877,3 +878,8 @@ kind-teardown:
 test-e2e-kind: kind-setup
 	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/run-e2e-tests.sh
 .PHONY: test-e2e-kind
+
+# This target runs a modified kind-setup on its own (no auto deployment)
+test-e2e-kind-operator-upgrade:
+	CLUSTER_NAME=$(KIND_OPERATOR_UPGRADE_CLUSTER_NAME) ./hack/kind/run-e2e-operator-upgrade.sh
+.PHONY: test-e2e-kind-operator-upgrade

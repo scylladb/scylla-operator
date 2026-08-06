@@ -31,6 +31,10 @@
   Previously every node expected to exist in the Kubernetes state was required to be reported and UP, including nodes
   that hadn't joined yet and couldn't report their status.
   [#3530](https://github.com/scylladb/scylla-operator/pull/3530)
+- Restored the multi-datacenter documentation, which was dropped by the docs restructuring in 1.21. The guide for
+  deploying a multi-datacenter ScyllaDB cluster, and the guides for preparing interconnected EKS and GKE clusters to
+  run it on, are available again under Deploy ScyllaDB and Provision infrastructure respectively.
+  [#3564](https://github.com/scylladb/scylla-operator/pull/3564)
 - Corrected the API reference for `ScyllaCluster.spec.datacenter.racks[].scyllaAgentConfig`. Its description
   previously referred to a ConfigMap, but the operator has always resolved this field to a Secret, since the
   Scylla Manager Agent config may contain a sensitive auth token. Only the field description and generated

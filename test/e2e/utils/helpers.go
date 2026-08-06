@@ -19,6 +19,7 @@ import (
 	"github.com/scylladb/scylla-manager/v3/pkg/managerclient"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	scyllav1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1"
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
@@ -96,6 +97,17 @@ func GetMemberCount(sc *scyllav1.ScyllaCluster) int32 {
 	}
 
 	return members
+}
+
+// PatchScyllaClusterForceRedeploymentReason sets spec.forceRedeploymentReason to trigger a rolling restart.
+func PatchScyllaClusterForceRedeploymentReason(ctx context.Context, client scyllav1client.ScyllaClusterInterface, name, reason string) (*scyllav1.ScyllaCluster, error) {
+	return client.Patch(
+		ctx,
+		name,
+		types.MergePatchType,
+		[]byte(fmt.Sprintf(`{"spec":{"forceRedeploymentReason":%q}}`, reason)),
+		metav1.PatchOptions{},
+	)
 }
 
 func ContextForRollout(parent context.Context, sc *scyllav1.ScyllaCluster) (context.Context, context.CancelFunc) {

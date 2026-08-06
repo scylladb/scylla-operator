@@ -6,7 +6,7 @@ This guide will walk you through the example procedure of deploying two datacent
 
 :::{note}
 This guide is dedicated to deploying multi-datacenter ScyllaDB clusters and does not discuss unrelated configuration options.
-For details of ScyllaDB cluster deployments and their configuration, see the [ScyllaCluster resource documentation](../../scyllaclusters/basics.md).
+For details of ScyllaDB cluster deployments and their configuration, see the [ScyllaCluster resource documentation](deploy-your-first-cluster.md).
 :::
 
 ## Prerequisites
@@ -18,8 +18,8 @@ Let's assume two interconnected Kubernetes clusters, capable of communicating wi
 - running a storage provisioner capable of provisioning XFS volumes of StorageClass `scylladb-local-xfs` in each of the nodes dedicated to ScyllaDB instances
 
 You can refer to one of our guides describing the process of preparing such infrastructure:
-- [Build multiple Amazon EKS clusters with Inter-Kubernetes networking](../../common/multidc/eks.md)
-- [Build multiple GKE clusters with Inter-Kubernetes networking](../../common/multidc/gke.md)
+- [Build multiple Amazon EKS clusters with Inter-Kubernetes networking](../install-operator/provision-infrastructure/set-up-multi-dc-eks-clusters.md)
+- [Build multiple GKE clusters with Inter-Kubernetes networking](../install-operator/provision-infrastructure/set-up-multi-dc-gke-clusters.md)
 
 Additionally, to follow the below guide, you need to install and configure the following tools that you will need to manage Kubernetes resources:
 - kubectl – A command line tool for working with Kubernetes clusters.
@@ -69,7 +69,7 @@ spec:
         type: PodIP
 ```
 
-However, other configuration options allow for the manual deployment of multi-datacenter ScyllaDB clusters in different network setups. For details, refer to [Exposing ScyllaClusters](../../common/exposing.md) in ScyllaDB Operator documentation.
+However, other configuration options allow for the manual deployment of multi-datacenter ScyllaDB clusters in different network setups. For details, refer to [Exposing ScyllaClusters](set-up-networking/configure-external-access.md) in ScyllaDB Operator documentation.
 
 #### Deploy a multi-datacenter ScyllaDB Cluster
 
@@ -573,7 +573,7 @@ UN  172.16.87.27   503 KB     256          ?       c19c89cb-e24c-4062-9df4-2aa90
 To integrate a multi-datacenter ScyllaDB cluster with ScyllaDB Manager, you must deploy the ScyllaDB Manager in only one datacenter.
 
 In this example, let's choose the Kubernetes cluster deployed in the first datacenter to host it.
-To deploy ScyllaDB Manager, follow the steps described in [Deploying ScyllaDB Manager on a Kubernetes Cluster](../../../architecture/manager.md)
+To deploy ScyllaDB Manager, follow the steps described in [Deploying ScyllaDB Manager on a Kubernetes Cluster](install-scylladb-manager.md)
 in ScyllaDB Operator documentation. 
 
 In order to define the ScyllaDB Manager tasks, add them to the ScyllaCluster object deployed in the same Kubernetes cluster 
@@ -604,4 +604,4 @@ kubectl --context="${CONTEXT_DC2}" -n=scylla patch scyllacluster/scylla-cluster 
 ## ScyllaDBMonitoring
 
 To monitor your cluster, deploy ScyllaDBMonitoring in every datacenter independently.
-To deploy ScyllaDB Monitoring, follow the steps described in [ScyllaDB Monitoring setup](../../../management/monitoring/setup.md) in ScyllaDB Operator documentation.
+To deploy ScyllaDB Monitoring, follow the steps described in [ScyllaDB Monitoring setup](set-up-monitoring/setup.md) in ScyllaDB Operator documentation.

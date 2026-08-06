@@ -1,4 +1,4 @@
-# Set up multiple EKS clusters with inter-Kubernetes networking
+# Set up multiple EKS clusters
 
 This document describes the process of creating multiple Amazon EKS clusters in different regions, using separate VPCs, and explains the steps necessary for configuring inter-Kubernetes networking between the clusters.
 The interconnected clusters can serve as a platform for [deploying a multi-datacenter ScyllaDB cluster](../../../deploy-scylladb/deploy-multi-datacenter-cluster.md).

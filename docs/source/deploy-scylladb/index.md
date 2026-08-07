@@ -17,6 +17,11 @@ If you want a quick development cluster on any Kubernetes distribution, use [Dep
 This guide deploys a minimal ScyllaDB cluster and is not intended for production use.
 For production, complete the [Before you deploy](before-you-deploy/index.md) steps first.
 
+### Multi-datacenter cluster
+
+To span a ScyllaDB cluster across several datacenters, follow [Deploy a multi-datacenter ScyllaDB cluster](deploy-multi-datacenter-cluster.md).
+This requires multiple interconnected Kubernetes clusters — see [Provision infrastructure](../install-operator/provision-infrastructure/index.md) for guides on preparing them.
+
 ## Further configuration
 
 After your cluster is running, see these guides for additional setup:
@@ -32,6 +37,7 @@ After your cluster is running, see these guides for additional setup:
 before-you-deploy/index
 deploy-your-first-cluster
 reference-deployments/index
+deploy-multi-datacenter-cluster
 install-scylladb-manager
 set-up-networking/index
 set-up-monitoring/index

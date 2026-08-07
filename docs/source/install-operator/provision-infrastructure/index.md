@@ -14,6 +14,8 @@ If you do not have a cluster yet, follow one of the platform-specific guides:
 - [Set up an OKE cluster](set-up-oke-cluster.md) — Oracle Container Engine for Kubernetes.
 - [Set up an OpenShift cluster](set-up-openshift-cluster.md) — Red Hat OpenShift.
 
+For a multi-datacenter ScyllaDB cluster, you need several interconnected Kubernetes clusters — see [Multi-DC](multi-dc/index.md).
+
 :::{toctree}
 :hidden:
 
@@ -21,4 +23,5 @@ set-up-gke-cluster
 set-up-eks-cluster
 set-up-oke-cluster
 set-up-openshift-cluster
+multi-dc/index
 :::

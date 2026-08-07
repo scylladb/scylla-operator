@@ -42,6 +42,8 @@ const (
 	CurrentTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/current-token-ring-hash"
 
 	// LastCleanedUpTokenRingHashAnnotation reflects the last cleaned up hash of token ring of the scylla node.
+	// An empty value means the node has never been cleaned up and is distinct from the annotation being absent,
+	// which means the operator hasn't seeded it yet and the node's cleanup state is not yet known.
 	LastCleanedUpTokenRingHashAnnotation = "internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"
 
 	// CleanupJobTokenRingHashAnnotation reflects which version of token ring cleanup Job is cleaning.

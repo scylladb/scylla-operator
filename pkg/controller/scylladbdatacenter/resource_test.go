@@ -186,9 +186,13 @@ func TestMemberService(t *testing.T) {
 			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            basicSVCName,
-					Labels:          basicSVCLabels(),
-					Annotations:     basicSVCAnnotations(),
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: func() map[string]string {
+						res := basicSVCAnnotations()
+						res["internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"] = ""
+						return res
+					}(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -214,9 +218,13 @@ func TestMemberService(t *testing.T) {
 			jobs: nil,
 			expectedService: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            basicSVCName,
-					Labels:          basicSVCLabels(),
-					Annotations:     basicSVCAnnotations(),
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: func() map[string]string {
+						res := basicSVCAnnotations()
+						res["internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"] = ""
+						return res
+					}(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -228,7 +236,7 @@ func TestMemberService(t *testing.T) {
 			},
 		},
 		{
-			name:               "last cleaned up annotation is rewritten from current one when it's missing in existing service",
+			name:               "last cleaned up annotation is seeded empty when it's missing in existing service",
 			scyllaDBDatacenter: basicSC,
 			rackName:           basicRackName,
 			svcName:            basicSVCName,
@@ -245,9 +253,66 @@ func TestMemberService(t *testing.T) {
 					Labels: basicSVCLabels(),
 					Annotations: func() map[string]string {
 						res := basicSVCAnnotations()
-						res["internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"] = "abc"
+						res["internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"] = ""
 						return res
 					}(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name:               "last cleaned up annotation is seeded empty when existing service has no token ring hash annotations",
+			scyllaDBDatacenter: basicSC,
+			rackName:           basicRackName,
+			svcName:            basicSVCName,
+			oldService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			}, jobs: nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   basicSVCName,
+					Labels: basicSVCLabels(),
+					Annotations: func() map[string]string {
+						res := basicSVCAnnotations()
+						res["internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash"] = ""
+						return res
+					}(),
+					OwnerReferences: basicSCOwnerRefs,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:                     corev1.ServiceTypeClusterIP,
+					Selector:                 basicSVCSelector,
+					PublishNotReadyAddresses: true,
+					Ports:                    basicPorts,
+				},
+			},
+		},
+		{
+			name:               "existing last cleaned up annotation is not overwritten by the seed",
+			scyllaDBDatacenter: basicSC,
+			rackName:           basicRackName,
+			svcName:            basicSVCName,
+			oldService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"internal.scylla-operator.scylladb.com/current-token-ring-hash":         "abc",
+						"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "def",
+					},
+				},
+			}, jobs: nil,
+			expectedService: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            basicSVCName,
+					Labels:          basicSVCLabels(),
+					Annotations:     basicSVCAnnotations(),
 					OwnerReferences: basicSCOwnerRefs,
 				},
 				Spec: corev1.ServiceSpec{
@@ -3070,7 +3135,7 @@ func TestMakeJobs(t *testing.T) {
 			},
 		},
 		{
-			name:               "progressing condition when member service last cleaned up token ring hash annotation is empty",
+			name:               "cleanup job when member service last cleaned up token ring hash annotation is empty",
 			scyllaDBDatacenter: basicScyllaDBDatacenter(),
 			services: map[string]*corev1.Service{
 				"basic-dc-rack-0": newMemberService("basic-dc-rack-0", map[string]string{
@@ -3078,15 +3143,90 @@ func TestMakeJobs(t *testing.T) {
 					"internal.scylla-operator.scylladb.com/last-cleaned-up-token-ring-hash": "",
 				}, "1.1.1.1"),
 			},
-			expectedJobs: nil,
-			expectedConditions: []metav1.Condition{
+			pods: []*corev1.Pod{
+				newPod("basic-dc-rack-0", "2.2.2.2"),
+			},
+			expectedJobs: []*batchv1.Job{
 				{
-					Type:    "JobControllerProgressing",
-					Status:  "True",
-					Reason:  "UnexpectedServiceState",
-					Message: `Service "basic-dc-rack-0" has unexpected empty last cleaned up token ring hash annotation, can't create cleanup Job`,
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cleanup-basic-dc-rack-0",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"default-sc-annotation": "bar",
+							"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+						},
+						Labels: map[string]string{
+							"default-sc-label":                           "foo",
+							"scylla/cluster":                             "basic",
+							"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+							"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								APIVersion:         "scylla.scylladb.com/v1alpha1",
+								Kind:               "ScyllaDBDatacenter",
+								Name:               "basic",
+								UID:                "the-uid",
+								Controller:         pointer.Ptr(true),
+								BlockOwnerDeletion: pointer.Ptr(true),
+							},
+						},
+					},
+					Spec: batchv1.JobSpec{
+						Selector:       nil,
+						ManualSelector: pointer.Ptr(false),
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Annotations: map[string]string{
+									"default-sc-annotation": "bar",
+									"internal.scylla-operator.scylladb.com/cleanup-token-ring-hash": "abc",
+								},
+								Labels: map[string]string{
+									"default-sc-label":                           "foo",
+									"scylla/cluster":                             "basic",
+									"scylla-operator.scylladb.com/node-job":      "basic-dc-rack-0",
+									"scylla-operator.scylladb.com/node-job-type": "Cleanup",
+									"scylla-operator.scylladb.com/pod-type":      "cleanup-job",
+								},
+							},
+							Spec: corev1.PodSpec{
+								RestartPolicy: corev1.RestartPolicyOnFailure,
+								Containers: []corev1.Container{
+									{
+										Name:            naming.CleanupContainerName,
+										Image:           unit.ScyllaDBOperatorImage,
+										ImagePullPolicy: corev1.PullIfNotPresent,
+										Args: []string{
+											"cleanup-job",
+											"--manager-auth-config-path=/etc/scylla-cleanup-job/auth-token.yaml",
+											"--node-address=1.1.1.1",
+										},
+										VolumeMounts: []corev1.VolumeMount{
+											{
+												Name:      "scylla-manager-agent-token",
+												ReadOnly:  true,
+												MountPath: "/etc/scylla-cleanup-job/auth-token.yaml",
+												SubPath:   "auth-token.yaml",
+											},
+										},
+									},
+								},
+								Volumes: []corev1.Volume{
+									{
+										Name: "scylla-manager-agent-token",
+										VolumeSource: corev1.VolumeSource{
+											Secret: &corev1.SecretVolumeSource{
+												SecretName: "basic-auth-token",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
+			expectedConditions: nil,
 		},
 		{
 			name:               "no cleanup jobs when member service token ring hash annotations are equal",

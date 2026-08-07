@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/containers/image/v5/docker/reference"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
@@ -60,19 +61,23 @@ type TestFrameworkOptions struct {
 	genericclioptions.MultiDatacenterClientConfig
 	ObjectStorageOptions
 
-	ArtifactsDir                string
-	CleanupPolicyUntyped        string
-	CleanupPolicy               framework.CleanupPolicyType
-	IngressController           *IngressControllerOptions
-	ScyllaClusterOptionsUntyped *ScyllaClusterOptions
-	scyllaClusterOptions        *framework.ScyllaClusterOptions
-	ScyllaDBVersion             string
-	ScyllaDBImageRef            string
-	ScyllaDBManagerVersion      string
-	ScyllaDBManagerAgentVersion string
-	ScyllaDBUpdateFrom          string
-	ScyllaDBUpgradeFrom         string
-	DryRun                      bool
+	ArtifactsDir                 string
+	CleanupPolicyUntyped         string
+	CleanupPolicy                framework.CleanupPolicyType
+	IngressController            *IngressControllerOptions
+	ScyllaClusterOptionsUntyped  *ScyllaClusterOptions
+	scyllaClusterOptions         *framework.ScyllaClusterOptions
+	ScyllaDBVersion              string
+	ScyllaDBImageRef             string
+	ScyllaDBManagerVersion       string
+	ScyllaDBManagerAgentVersion  string
+	ScyllaDBUpdateFrom           string
+	ScyllaDBUpgradeFrom          string
+	OperatorUpgradeFrom          string
+	OperatorUpgradeTo            string
+	OperatorUpgradeFromDeployDir string
+	OperatorUpgradeToDeployDir   string
+	DryRun                       bool
 }
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
@@ -94,6 +99,8 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 		ScyllaDBManagerAgentVersion: configassets.Project.Operator.ScyllaDBManagerAgentVersion,
 		ScyllaDBUpdateFrom:          configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
 		ScyllaDBUpgradeFrom:         configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
+		OperatorUpgradeFrom:         configassets.Project.OperatorTests.OperatorVersions.UpgradeFrom,
+		OperatorUpgradeTo:           configassets.Project.OperatorTests.OperatorVersions.UpgradeTo,
 	}
 }
 
@@ -142,6 +149,10 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFrom, "scylladb-update-from-version", "", o.ScyllaDBUpdateFrom, "Version of ScyllaDB to update from.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
+	cmd.PersistentFlags().StringVarP(&o.OperatorUpgradeFrom, "operator-upgrade-from-version", "", o.OperatorUpgradeFrom, "Version of the operator to upgrade from during operator upgrade tests. Either a released version or a full image reference.")
+	cmd.PersistentFlags().StringVarP(&o.OperatorUpgradeTo, "operator-upgrade-to-version", "", o.OperatorUpgradeTo, "Version of the operator to upgrade to during operator upgrade tests. Either a released version or a full image reference, e.g. of a locally built image.")
+	cmd.PersistentFlags().StringVarP(&o.OperatorUpgradeFromDeployDir, "operator-upgrade-from-deploy-dir", "", o.OperatorUpgradeFromDeployDir, "Repository tree to run the deploy script from when deploying the version being upgraded from during operator upgrade tests. Defaults to the current directory.")
+	cmd.PersistentFlags().StringVarP(&o.OperatorUpgradeToDeployDir, "operator-upgrade-to-deploy-dir", "", o.OperatorUpgradeToDeployDir, "Repository tree to run the deploy script from when deploying the version being upgraded to during operator upgrade tests. Defaults to the current directory.")
 }
 
 func (o *TestFrameworkOptions) Validate(args []string) error {
@@ -207,6 +218,23 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		))
 	}
 
+	// The operator upgrade versions are either a bare version (a tag) or a full image reference (with a repository).
+	for flagName, value := range map[string]string{
+		"operator-upgrade-from-version": o.OperatorUpgradeFrom,
+		"operator-upgrade-to-version":   o.OperatorUpgradeTo,
+	} {
+		if strings.Contains(value, "/") {
+			if _, err := reference.ParseAnyReference(value); err != nil {
+				errors = append(errors, fmt.Errorf("invalid %s image reference %q: %w", flagName, value, err))
+			}
+		} else if !tagWithOptionalDigestRegexp.MatchString(value) {
+			errors = append(errors, fmt.Errorf(
+				"invalid %s format: %q. Expected format: <tag>[@<digest>] or a full image reference",
+				flagName, value,
+			))
+		}
+	}
+
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerVersion) {
 		errors = append(errors, fmt.Errorf(
 			"invalid scylladb-manager-version format: %q. Expected format: <tag>[@<digest>]",
@@ -219,6 +247,17 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>[@<digest>]",
 			o.ScyllaDBManagerAgentVersion,
 		))
+	}
+
+	for flagName, dir := range map[string]string{
+		"operator-upgrade-from-deploy-dir": o.OperatorUpgradeFromDeployDir,
+		"operator-upgrade-to-deploy-dir":   o.OperatorUpgradeToDeployDir,
+	} {
+		if len(dir) > 0 {
+			if _, err := os.Stat(dir); err != nil {
+				errors = append(errors, fmt.Errorf("can't stat %s %q: %w", flagName, dir, err))
+			}
+		}
 	}
 
 	if len(o.ArtifactsDir) > 0 {
@@ -286,6 +325,10 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		ScyllaDBManagerAgentVersion:        o.ScyllaDBManagerAgentVersion,
 		ScyllaDBUpdateFrom:                 o.ScyllaDBUpdateFrom,
 		ScyllaDBUpgradeFrom:                o.ScyllaDBUpgradeFrom,
+		OperatorUpgradeFrom:                o.OperatorUpgradeFrom,
+		OperatorUpgradeTo:                  o.OperatorUpgradeTo,
+		OperatorUpgradeFromDeployDir:       o.OperatorUpgradeFromDeployDir,
+		OperatorUpgradeToDeployDir:         o.OperatorUpgradeToDeployDir,
 		ClusterObjectStorageSettings:       o.ClusterObjectStorageSettings,
 		WorkerClusterObjectStorageSettings: o.WorkerClusterObjectStorageSettings,
 	}

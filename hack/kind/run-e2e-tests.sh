@@ -40,7 +40,7 @@ source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
 trap 'gather-artifacts-on-exit; rm -f "${KUBECONFIG}" "${IN_CLUSTER_KUBECONFIG}"' EXIT
 trap gracefully-shutdown-e2es INT
 
-build-and-push-operator-image "${repo_root}"
+build-and-push-operator-image "${repo_root}" SO_IMAGE
 
 # Use 'standard' storage class that comes with KinD by default.
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="standard"

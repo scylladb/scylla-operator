@@ -16,6 +16,7 @@ const (
 	SuiteParallelIPv6LabelName            = "SuiteParallelIPv6"
 	SuiteKindFastLabelName                = "SuiteKindFast"
 	SuiteKindScyllaDBMonitoringLabelName  = "SuiteKindScyllaDBMonitoring"
+	SuiteOperatorUpgradeLabelName         = "SuiteOperatorUpgrade"
 )
 
 var (
@@ -25,6 +26,7 @@ var (
 	SuiteParallelIPv6            = g.Label(SuiteParallelIPv6LabelName)
 	SuiteKindFast                = g.Label(SuiteKindFastLabelName)
 	SuiteKindScyllaDBMonitoring  = g.Label(SuiteKindScyllaDBMonitoringLabelName)
+	SuiteOperatorUpgrade         = g.Label(SuiteOperatorUpgradeLabelName)
 
 	// SuiteSerial bundles the Ginkgo serial-execution decorator with the
 	// suite label, so a single value is enough to mark a spec as part of the

@@ -11,6 +11,8 @@ shopt -s inherit_errexit
 
 readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
 
+source "${repo_root}/hack/kind/lib.sh"
+
 # Ensure all kind calls use podman.
 export KIND_EXPERIMENTAL_PROVIDER=podman
 
@@ -31,8 +33,7 @@ if ! podman network inspect kind >/dev/null 2>&1; then
   podman network create kind
 fi
 
-# Source shared constants and generate containerd registry configuration.
-source "${repo_root}/hack/kind/lib.sh"
+# Generate containerd registry configuration (mounted into KinD nodes via cluster-config.yaml).
 internal_reg_port=5000
 containerd_reg_dir="${repo_root}/hack/kind/containerd-registries/localhost:${KIND_REGISTRY_PORT}"
 mkdir -p "${containerd_reg_dir}"
@@ -84,7 +85,7 @@ metadata:
   namespace: kube-public
 data:
   localRegistryHosting.v1: |
-    host: "localhost:${KIND_REGISTRY_PORT}"
+    host: "${KIND_REGISTRY_HOST}:${KIND_REGISTRY_PORT}"
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
 rm "${temp_kubeconfig}"
@@ -105,12 +106,17 @@ export SO_SCYLLACLUSTER_STORAGECLASS_NAME
 
 source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
 
-# Build and push operator image to the local registry (skips if SO_IMAGE is already set).
-build-and-push-operator-image "${repo_root}"
+# Deploy the operator stack unless the caller opts out (e.g. operator-upgrade tests deploy it themselves).
+if [ "${SO_SKIP_DEPLOYMENT:-false}" == "true" ]; then
+  echo "Skipping operator stack deployment (SO_SKIP_DEPLOYMENT=true)."
+else
+  # Build and push operator image to the local registry (skips if SO_IMAGE is already set).
+  build-and-push-operator-image "${repo_root}" SO_IMAGE
 
-# Set up ARTIFACTS directory to store manifests that are used to deploy the operator stack for inspection.
-ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
-export ARTIFACTS
+  # Set up ARTIFACTS directory to store manifests that are used to deploy the operator stack for inspection.
+  ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
+  export ARTIFACTS
 
-# Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
-"${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
+  # Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
+  "${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
+fi

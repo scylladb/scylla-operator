@@ -234,32 +234,6 @@ NAME                  AVAILABLE   PROGRESSING   DEGRADED   AGE
 scylladb-nodepool-1   True        False         False      5m
 :::
 
-### Verify host-level configuration
-
-After `NodeConfig` is ready, confirm the disk setup and sysctls on a node-tuning Pod.
-
-Find the Pod name first:
-
-:::{code-block} console
-kubectl get pods -n scylla-operator-node-tuning
-:::
-
-Then run the verification commands, replacing `<node-tuning-pod>` with an actual Pod name from the output above:
-
-:::{code-block} console
-# Verify RAID array
-kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- lsblk
-
-# Verify XFS filesystem
-kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- blkid /dev/md0
-
-# Verify mount
-kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- df -h /mnt/hostfs/mnt/raid-disks/
-
-# Verify sysctls
-kubectl -n scylla-operator-node-tuning exec -it <node-tuning-pod> -- sysctl fs.nr_open
-:::
-
 ## Install Local CSI Driver
 
 The Local CSI Driver is needed for provisioning `PersistentVolumes` for `ScyllaClusters` using the mounted storage:

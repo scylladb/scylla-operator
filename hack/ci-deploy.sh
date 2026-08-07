@@ -110,6 +110,10 @@ else
     yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
   fi
 
+  if [[ -n "${SO_SCYLLACLUSTER_REACTOR_BACKEND:-}" ]]; then
+    yq e --inplace '.spec.scyllaArgs = "--reactor-backend=" + strenv(SO_SCYLLACLUSTER_REACTOR_BACKEND)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
   kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/manager
 
   kubectl -n=scylla-manager wait --timeout=10m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

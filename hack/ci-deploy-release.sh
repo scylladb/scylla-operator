@@ -174,6 +174,21 @@ EOF
 EOF
   fi
 
+  if [[ -n "${SO_SCYLLACLUSTER_REACTOR_BACKEND:-}" ]]; then
+    cat << EOF | \
+    yq eval-all --inplace 'select(fileIndex == 0) as $f | select(fileIndex == 1) as $p | with( $f.patches; . += $p | ... style="") | $f' "${ARTIFACTS_DEPLOY_DIR}/manager/kustomization.yaml" -
+- patch: |-
+    - op: add
+      path: /spec/scyllaArgs
+      value: "--reactor-backend=${SO_SCYLLACLUSTER_REACTOR_BACKEND}"
+  target:
+    group: scylla.scylladb.com
+    version: v1
+    kind: ScyllaCluster
+    name: scylla-manager-cluster
+EOF
+  fi
+
   kubectl kustomize "${ARTIFACTS_DEPLOY_DIR}/manager" | kubectl_create -n=scylla-manager -f=-
 
   kubectl -n=scylla-manager wait --timeout=5m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster

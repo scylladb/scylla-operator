@@ -31,13 +31,17 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		f = framework.NewFramework(ctx, "scyllacluster")
 	})
 
-	g.It("nodes are cleaned up after horizontal scaling", func(ctx g.SpecContext) {
+	type horizontalScalingEntry struct {
+		initialMembers int32
+		targetMembers  int32
+	}
+	g.DescribeTable("nodes are cleaned up", func(ctx g.SpecContext, e *horizontalScalingEntry) {
 		jobListWatcher := createJobListWatcher(ctx, f)
 		jobObserver := utils.ObserveObjects[*batchv1.Job](jobListWatcher)
 		err := jobObserver.Start(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc, err := createClusterAndWaitForRollout(ctx, f, 1)
+		sc, err := createClusterAndWaitForRollout(ctx, f, e.initialMembers)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver)
@@ -49,26 +53,23 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		err = jobObserver.Start(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc, err = scaleClusterAndWaitForRollout(ctx, f, sc, 3)
+		sc, err = scaleClusterAndWaitForRollout(ctx, f, sc, e.targetMembers)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver)
 
 		_, err = jobObserver.Stop()
 		o.Expect(err).NotTo(o.HaveOccurred())
-
-		jobObserver = utils.ObserveObjects[*batchv1.Job](jobListWatcher)
-		err = jobObserver.Start(ctx)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		sc, err = scaleClusterAndWaitForRollout(ctx, f, sc, 2)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver)
-
-		_, err = jobObserver.Stop()
-		o.Expect(err).NotTo(o.HaveOccurred())
-	})
+	},
+		g.Entry("after scaling the cluster out", &horizontalScalingEntry{
+			initialMembers: 1,
+			targetMembers:  3,
+		}),
+		g.Entry("after scaling the cluster in", &horizontalScalingEntry{
+			initialMembers: 3,
+			targetMembers:  1,
+		}),
+	)
 
 	g.It("multi-node cluster nodes are cleaned up right after provisioning", func(ctx g.SpecContext) {
 		jobListWatcher := createJobListWatcher(ctx, f)

@@ -5,7 +5,8 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
-readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
+# Absolute, so it stays valid when the test is run from the build root below.
+readonly repo_root="$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../.." )"
 
 # Ensure all kind calls use podman.
 export KIND_EXPERIMENTAL_PROVIDER=podman
@@ -17,6 +18,9 @@ fi
 
 REENTRANT="${REENTRANT:-true}"
 export REENTRANT
+
+# Release branch worktrees created by resolve-operator-version below; removed by cleanup.
+worktrees=()
 
 # cleanup collects artifacts (best-effort, before teardown as it needs the cluster) and always tears the cluster
 # down, preserving the original exit code. Unlike other kind e2e tests, this one dirties the environment (deploys
@@ -30,6 +34,9 @@ function cleanup {
     must_gather_image="docker.io/scylladb/scylla-operator:${must_gather_image}"
   fi
   ( gather-artifacts-on-exit "${must_gather_image}" ) || true
+  for worktree in "${worktrees[@]}"; do
+    git -C "${repo_root}" worktree remove --force "${worktree}" || true
+  done
   "${repo_root}/hack/kind/cluster-teardown.sh" || true
   rm -f "${KUBECONFIG:-}" || true
   exit "${exit_code}"
@@ -70,16 +77,44 @@ ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}/upgrade-operator"
 mkdir -p "${ARTIFACTS}"
 export ARTIFACTS
 
-# Optional upgrade target override (e.g. parsed from the triggering CI comment). A value other than "latest"
-# (a released version or a full image ref) is used directly as the upgrade target; unset or "latest" builds the
-# current tree and pushes it to the local registry. Env name matches run-e2e in hack/.ci/lib/e2e.sh.
-if [ "${OPERATOR_UPGRADE_TO_VERSION:-latest}" == "latest" ]; then
-  OPERATOR_UPGRADE_TO_VERSION=""
-fi
-build-and-push-operator-image "${repo_root}" OPERATOR_UPGRADE_TO_VERSION
-
-# Version to upgrade from; env-overridable, defaulting from the config assets like run-e2e in hack/.ci/lib/e2e.sh.
+# Versions to upgrade between; env-overridable (e.g. parsed from the triggering CI comment), defaulting from the
+# config assets like run-e2e in hack/.ci/lib/e2e.sh. Each accepts a released version, a full image ref, "latest"
+# (build the current tree) or "<major.minor>-latest" (e.g. "1.21-latest": build the tip of the corresponding
+# release branch, v1.21); the "-latest" forms are kind-runner-only, as they require building an image.
 OPERATOR_UPGRADE_FROM_VERSION="${OPERATOR_UPGRADE_FROM_VERSION:-$( yq '.operatorTests.operatorVersions.upgradeFrom' "${repo_root}/assets/config/config.yaml" )}"
+OPERATOR_UPGRADE_TO_VERSION="${OPERATOR_UPGRADE_TO_VERSION:-$( yq '.operatorTests.operatorVersions.upgradeTo' "${repo_root}/assets/config/config.yaml" )}"
+
+# resolve-operator-version resolves the "latest"/"<major.minor>-latest" forms in the version variable named by $1:
+# it builds the image from the corresponding tree (the current one, or a temporary release branch worktree) and
+# replaces the value with the SHA-pinned image ref. The tree is stored in the variable named by $2 — the test runs
+# that version's deploy script from it, so the deployed manifests match the tree the image was built from.
+# Released versions and full image refs are left as-is; a released version deploys via hack/ci-deploy-release.sh,
+# which resolves the manifests from the image's OCI source/revision labels — the release's exact git SHA.
+function resolve-operator-version {
+  local -n version="${1:?Missing version variable name}"
+  local -n deploy_dir="${2:?Missing deploy dir variable name}"
+
+  deploy_dir="${repo_root}"
+  if [[ "${version}" =~ ^([0-9]+\.[0-9]+)-latest$ ]]; then
+    local release_branch="v${BASH_REMATCH[1]}"
+    deploy_dir="$( mktemp -d )"
+    worktrees+=( "${deploy_dir}" )
+    # Fetch by URL: CI checkouts (Prow clonerefs) have no "origin" remote, and a local clone's
+    # "origin" may be a fork without the release branches.
+    git -C "${repo_root}" fetch https://github.com/scylladb/scylla-operator.git "${release_branch}"
+    git -C "${repo_root}" worktree add --detach "${deploy_dir}" FETCH_HEAD
+    version=""
+  elif [ "${version}" == "latest" ]; then
+    version=""
+  else
+    # A released version or a full image ref needs no build.
+    return 0
+  fi
+  build-and-push-operator-image "${deploy_dir}" "${1}"
+}
+
+resolve-operator-version OPERATOR_UPGRADE_FROM_VERSION operator_upgrade_from_deploy_dir
+resolve-operator-version OPERATOR_UPGRADE_TO_VERSION operator_upgrade_to_deploy_dir
 
 apply-e2e-workarounds
 
@@ -96,4 +131,6 @@ go run "${repo_root}/cmd/scylla-operator-tests" run kind-operator-upgrade \
   --scyllacluster-storageclass-name=standard \
   --scyllacluster-reactor-backend=io_uring \
   --operator-upgrade-from-version="${OPERATOR_UPGRADE_FROM_VERSION}" \
-  --operator-upgrade-to-version="${OPERATOR_UPGRADE_TO_VERSION}"
+  --operator-upgrade-from-deploy-dir="${operator_upgrade_from_deploy_dir}" \
+  --operator-upgrade-to-version="${OPERATOR_UPGRADE_TO_VERSION}" \
+  --operator-upgrade-to-deploy-dir="${operator_upgrade_to_deploy_dir}"

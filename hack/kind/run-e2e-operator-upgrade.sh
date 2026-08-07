@@ -82,7 +82,7 @@ export ARTIFACTS
 # (build the current tree) or "<major.minor>-latest" (e.g. "1.21-latest": build the tip of the corresponding
 # release branch, v1.21); the "-latest" forms are kind-runner-only, as they require building an image.
 OPERATOR_UPGRADE_FROM_VERSION="${OPERATOR_UPGRADE_FROM_VERSION:-$( yq '.operatorTests.operatorVersions.upgradeFrom' "${repo_root}/assets/config/config.yaml" )}"
-OPERATOR_UPGRADE_TO_VERSION="${OPERATOR_UPGRADE_TO_VERSION:-latest}"
+OPERATOR_UPGRADE_TO_VERSION="${OPERATOR_UPGRADE_TO_VERSION:-$( yq '.operatorTests.operatorVersions.upgradeTo' "${repo_root}/assets/config/config.yaml" )}"
 
 # resolve-operator-version resolves the "latest"/"<major.minor>-latest" forms in the version variable named by $1:
 # it builds the image from the corresponding tree (the current one, or a temporary release branch worktree) and

@@ -446,6 +446,9 @@ func createMissingStatefulSets(
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
 ) ([]*appsv1.StatefulSet, []metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+	var createdStatefulSets []*appsv1.StatefulSet
+
 	for _, req := range requiredStatefulSets {
 		sts, found := statefulSets[req.Name]
 		if found {
@@ -463,14 +466,11 @@ func createMissingStatefulSets(
 			continue
 		}
 
-		var progressingConditions []metav1.Condition
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, req, "apply", sdc.Generation)
-
-		// StatefulSets must be created sequentially. Return early.
-		return []*appsv1.StatefulSet{sts}, progressingConditions, nil
+		createdStatefulSets = append(createdStatefulSets, sts)
 	}
 
-	return []*appsv1.StatefulSet{}, []metav1.Condition{}, nil
+	return createdStatefulSets, progressingConditions, nil
 }
 
 // ensureRackNamesInRackStatuses records statuses for newly created racks before informer caches catch up.
@@ -592,7 +592,8 @@ func (sdcc *Controller) syncStatefulSets(
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
 	}
-	// Wait for existing StatefulSets to roll out. Racks can only bootstrap one by one.
+	// Wait for existing StatefulSets to roll out.
+	// Creating new StatefulSets during an active rollout could lead to nodes being banned from joining the cluster.
 	if len(progressingConditions) > 0 {
 		return progressingConditions, nil
 	}

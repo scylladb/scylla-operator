@@ -10,6 +10,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,6 +107,101 @@ func Test_createMissingStatefulSets(t *testing.T) {
 			expectedCreated:     nil,
 			expectedConditions:  nil,
 			expectedErrorString: `can't create missing statefulset "default/foo": apply failed`,
+		},
+		{
+			name: "creates all missing StatefulSets with parallel bootstrap policy",
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenter()
+				sdc.Generation = 3
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				return sdc
+			}(),
+			required: []*appsv1.StatefulSet{
+				newStatefulSet("foo"),
+				newStatefulSet("bar"),
+			},
+			existing: map[string]*appsv1.StatefulSet{},
+			applyStatefulSet: func(_ context.Context, required *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
+				return newStatefulSet(required.Name), true, nil
+			},
+			expectedCreated: []*appsv1.StatefulSet{
+				newStatefulSet("foo"),
+				newStatefulSet("bar"),
+			},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             internalapi.ProgressingReason,
+					Message:            `Progressing: Running "apply" on "apps/v1, Kind=StatefulSet"`,
+					ObservedGeneration: 3,
+				},
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             internalapi.ProgressingReason,
+					Message:            `Progressing: Running "apply" on "apps/v1, Kind=StatefulSet"`,
+					ObservedGeneration: 3,
+				},
+			},
+			expectedErrorString: "",
+		},
+		{
+			name: "creates only the missing StatefulSets with parallel bootstrap policy",
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenter()
+				sdc.Generation = 3
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				return sdc
+			}(),
+			required: []*appsv1.StatefulSet{
+				newStatefulSet("foo"),
+				newStatefulSet("bar"),
+			},
+			existing: map[string]*appsv1.StatefulSet{
+				"foo": newStatefulSet("foo"),
+			},
+			applyStatefulSet: func(_ context.Context, required *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
+				if required.Name != "bar" {
+					t.Fatalf("applyStatefulSet called for an existing StatefulSet %q", required.Name)
+				}
+				return newStatefulSet(required.Name), true, nil
+			},
+			expectedCreated: []*appsv1.StatefulSet{
+				newStatefulSet("bar"),
+			},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             internalapi.ProgressingReason,
+					Message:            `Progressing: Running "apply" on "apps/v1, Kind=StatefulSet"`,
+					ObservedGeneration: 3,
+				},
+			},
+			expectedErrorString: "",
+		},
+		{
+			name: "returns an error with parallel bootstrap policy and an unsupported ScyllaDB version",
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageBelowParallelBootstrapThreshold
+				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				return sdc
+			}(),
+			required: []*appsv1.StatefulSet{
+				newStatefulSet("foo"),
+			},
+			existing: map[string]*appsv1.StatefulSet{},
+			applyStatefulSet: func(context.Context, *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
+				t.Fatal("applyStatefulSet called with an unsupported ScyllaDB version")
+				return nil, false, nil
+			},
+			expectedCreated:     nil,
+			expectedConditions:  nil,
+			expectedErrorString: `can't get effective bootstrap policy: bootstrap policy "Parallel" requires a semver-parseable ScyllaDB version >= 2026.2, got "2026.1.0"`,
 		},
 	}
 

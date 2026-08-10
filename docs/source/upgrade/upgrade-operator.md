@@ -13,6 +13,10 @@ If any additional steps are required for a specific version upgrade, they will b
 ## Upgrade via GitOps (kubectl)
 
 A typical upgrade flow using GitOps (kubectl) requires re-applying the manifests using ones from the release you want to upgrade to.
+
+If ScyllaDB Manager is installed, you need to upgrade it manually by re-applying its manifests using ones from the release you want to upgrade to.
+Please refer to the [ScyllaDB Manager installation instructions](./../deploy-scylladb/install-scylladb-manager.md) for details.
+
 Note that ScyllaDB Operator's dependencies also need to be updated to the versions compatible with the target ScyllaDB Operator version.
 
 Please refer to the [GitOps installation instructions](./../install-operator/install-with-gitops.md) for details.

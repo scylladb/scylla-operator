@@ -19,4 +19,10 @@ const (
 
 	ScyllaDBImageAboveNodeExporterThresholdTag = "2026.3.0"
 	ScyllaDBImageAboveNodeExporterThreshold    = ScyllaDBImageRepository + ":" + ScyllaDBImageAboveNodeExporterThresholdTag
+
+	ScyllaDBImageBelowParallelBootstrapThresholdTag = "2026.1.0"
+	ScyllaDBImageBelowParallelBootstrapThreshold    = ScyllaDBImageRepository + ":" + ScyllaDBImageBelowParallelBootstrapThresholdTag
+
+	ScyllaDBImageAtParallelBootstrapThresholdTag = "2026.2.0"
+	ScyllaDBImageAtParallelBootstrapThreshold    = ScyllaDBImageRepository + ":" + ScyllaDBImageAtParallelBootstrapThresholdTag
 )

@@ -343,6 +343,9 @@ func ApplyGenericWithHandlers[T kubeinterfaces.ObjectInterface](
 		}
 
 		resourcemerge.SanitizeObject(requiredCopy)
+		// Required objects may carry the resourceVersion of the object they are based on to enforce optimistic
+		// concurrency on update. The object is being created anew, so it has to be cleared.
+		requiredCopy.SetResourceVersion("")
 		created, err := control.Create(ctx, requiredCopy, createOptions)
 		ReportCreateEvent(recorder, requiredCopy, err)
 		if err != nil {

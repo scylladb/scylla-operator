@@ -546,6 +546,8 @@ func TestApplyStatefulSet(t *testing.T) {
 					},
 				}
 				apimachineryutilruntime.Must(SetHashAnnotation(sts))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				sts.ResourceVersion = ""
 				return sts
 			}(),
 			expectedChanged: true,
@@ -608,6 +610,8 @@ func TestApplyStatefulSet(t *testing.T) {
 				sts := newSts()
 				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
 				apimachineryutilruntime.Must(SetHashAnnotation(sts))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				sts.ResourceVersion = ""
 				return sts
 			}(),
 			expectedChanged: true,
@@ -635,6 +639,8 @@ func TestApplyStatefulSet(t *testing.T) {
 				sts := newSts()
 				sts.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
 				apimachineryutilruntime.Must(SetHashAnnotation(sts))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				sts.ResourceVersion = ""
 				return sts
 			}(),
 			expectedChanged: true,

@@ -247,18 +247,31 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 						pv, err := f.KubeAdminClient().CoreV1().PersistentVolumes().Get(ctx, pvc.Spec.VolumeName, metav1.GetOptions{})
 						o.Expect(err).NotTo(o.HaveOccurred())
 
+						realPVCName := strings.TrimPrefix(pvc.Name, "clone-")
+
 						pvClone := &corev1.PersistentVolume{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:   fmt.Sprintf("clone-%s", pv.Name),
 								Labels: f.CommonLabels(),
 							},
-							Spec:   *pv.Spec.DeepCopy(),
-							Status: *pv.Status.DeepCopy(),
+							Spec: *pv.Spec.DeepCopy(),
 						}
 						pvClone.Labels[cloneLabelKey] = f.Namespace()
 						pvClone.Spec.StorageClassName = testStorageClassName
 						pvClone.Spec.NodeAffinity = nil
-						pvClone.Spec.ClaimRef = nil
+						// Reserve the clone PV for the PVC that it's meant for. A PVC's spec.volumeName is only a request,
+						// while the PV's spec.claimRef is what reserves it, so an unclaimed PV can be bound by the PV
+						// controller to any other unbound PVC of the same StorageClass.
+						// UID is deliberately left unset. This test replaces the PVC, and a claimRef holding only a
+						// namespace and a name keeps matching it across the replacement.
+						pvClone.Spec.ClaimRef = &corev1.ObjectReference{
+							Namespace: f.Namespace(),
+							Name:      realPVCName,
+						}
+						// The clone PV is a fabricated object with no lifecycle of its own, and it shares the backing volume
+						// with the clone PVC's PV. Reclaiming it would make the provisioner delete storage which is still in
+						// use, so it's retained and deleted explicitly on cleanup.
+						pvClone.Spec.PersistentVolumeReclaimPolicy = corev1.PersistentVolumeReclaimRetain
 						if pvClone.Spec.PersistentVolumeSource.Local != nil {
 							pvClone.Spec.PersistentVolumeSource.HostPath = &corev1.HostPathVolumeSource{
 								Path: pvClone.Spec.PersistentVolumeSource.Local.Path,
@@ -285,7 +298,6 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 						)
 						o.Expect(err).NotTo(o.HaveOccurred())
 
-						realPVCName := strings.TrimPrefix(pvc.Name, "clone-")
 						err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 							realPvc, err := f.KubeClient().CoreV1().PersistentVolumeClaims(f.Namespace()).Get(ctx, realPVCName, metav1.GetOptions{})
 							if err != nil {

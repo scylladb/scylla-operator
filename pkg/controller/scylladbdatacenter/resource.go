@@ -156,16 +156,19 @@ func MemberService(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName, name string
 		maps.Copy(annotations, sdcAnnotations)
 	}
 
+	// Seed the annotation with a value meaning the node has never been cleaned up. Seeding it with the currently
+	// observed token ring hash would exempt the node from a cleanup of the ring state it happens to observe first,
+	// which depends on when its sidecar samples the ring.
+	// Only a completed cleanup Job may set it to a real hash.
+	lastCleanedUpTokenRingHash := naming.LastCleanedUpTokenRingHashAnnotationValueNeverCleanedUp
 	if oldService != nil {
-		_, hasLastCleanedUpRingHash := oldService.Annotations[naming.LastCleanedUpTokenRingHashAnnotation]
-		currentTokenRingHash, hasCurrentRingHash := oldService.Annotations[naming.CurrentTokenRingHashAnnotation]
-		if !hasLastCleanedUpRingHash && hasCurrentRingHash {
-			annotations[naming.LastCleanedUpTokenRingHashAnnotation] = currentTokenRingHash
+		if v, ok := oldService.Annotations[naming.LastCleanedUpTokenRingHashAnnotation]; ok {
+			lastCleanedUpTokenRingHash = v
 		}
 	}
+	annotations[naming.LastCleanedUpTokenRingHashAnnotation] = lastCleanedUpTokenRingHash
 
-	cleanupJob, ok := jobs[naming.CleanupJobForService(name)]
-	if ok {
+	if cleanupJob, ok := jobs[naming.CleanupJobForService(name)]; ok {
 		if len(cleanupJob.Annotations[naming.CleanupJobTokenRingHashAnnotation]) != 0 && cleanupJob.Status.CompletionTime != nil {
 			annotations[naming.LastCleanedUpTokenRingHashAnnotation] = cleanupJob.Annotations[naming.CleanupJobTokenRingHashAnnotation]
 		}
@@ -1830,18 +1833,6 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 					Message:            fmt.Sprintf("Service %q is missing last cleaned up token ring hash annotation", naming.ObjRef(svc)),
 					ObservedGeneration: sdc.Generation,
 				})
-				continue
-			}
-
-			if len(lastCleanedUpTokenRingHash) == 0 {
-				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               jobControllerProgressingCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "UnexpectedServiceState",
-					Message:            fmt.Sprintf("Service %q has unexpected empty last cleaned up token ring hash annotation, can't create cleanup Job", naming.ObjRef(svc)),
-					ObservedGeneration: sdc.Generation,
-				})
-				klog.Warningf("Can't create cleanup Job for Service %s because it has unexpected empty last cleaned up token ring hash annotation", klog.KObj(svc))
 				continue
 			}
 

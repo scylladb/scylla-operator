@@ -18,6 +18,12 @@
   wrapper incorrectly compared against `OperationalModeDecommissioned` instead of `OperationalModeDecommissioning`,
   which resulted in an unhandled error being logged.
   [#3538](https://github.com/scylladb/scylla-operator/pull/3538)
+- Fixed nodes being skipped by cleanup after the token ring changed. The operator seeded a node's last cleaned up token
+  ring hash with whatever ring state its sidecar sampled first, which exempted that node from cleanup of the ring it
+  first observed. Which nodes ended up exempt depended on the race between node joins and the time for sidecar to propagate the token ring hash.
+  Every node is now cleaned up once the ring changes. Note that this increases the number of cleanup jobs created at once,
+  from N-1 to N for an N node cluster.
+  [#3574](https://github.com/scylladb/scylla-operator/pull/3574)
 
 ### Features & Enhancements
 - Added an optional `bootstrapPolicy` field to `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec`, accepting `Sequential`

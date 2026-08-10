@@ -14,12 +14,14 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scylla"
+	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -55,7 +57,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		env = envtest.Setup(ctx)
 	})
 
-	g.It("should create rack StatefulSets sequentially", func(ctx g.SpecContext) {
+	g.It("should create rack StatefulSets sequentially with Sequential bootstrap policy", func(ctx g.SpecContext) {
 		g.By("Running ScyllaDBDatacenter controller")
 		runScyllaDBDatacenterController(ctx, env)
 
@@ -63,7 +65,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		createScyllaOperatorConfig(ctx, env)
 
 		g.By("Creating a ScyllaDBDatacenter with two racks")
-		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b"})
+		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b"}, withBootstrapPolicy(scyllav1alpha1.BootstrapPolicySequential))
 		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -85,52 +87,80 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		waitForStatefulSet(ctx, env, secondRackStatefulSetName, scyllaDBDatacenterControllerDefaultEventuallyTimeout)
 	})
 
-	g.DescribeTable("should not create a StatefulSet for a new rack while an existing rack is not rolled out",
-		func(ctx g.SpecContext, initialRacks, updatedRacks []string, existingRack, newRack string) {
-			g.By("Running ScyllaDBDatacenter controller")
-			runScyllaDBDatacenterController(ctx, env)
+	g.It("should create rack StatefulSets in parallel with Parallel bootstrap policy", func(ctx g.SpecContext) {
+		g.By("Running ScyllaDBDatacenter controller")
+		runScyllaDBDatacenterController(ctx, env)
 
-			g.By("Creating ScyllaOperatorConfig singleton")
-			createScyllaOperatorConfig(ctx, env)
+		g.By("Creating ScyllaOperatorConfig singleton")
+		createScyllaOperatorConfig(ctx, env)
 
-			g.By("Creating a ScyllaDBDatacenter")
-			sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), initialRacks)
-			sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
-			o.Expect(err).NotTo(o.HaveOccurred())
+		g.By("Creating a ScyllaDBDatacenter with three racks and the Parallel bootstrap policy")
+		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b", "rack-c"}, withBootstrapPolicy(scyllav1alpha1.BootstrapPolicyParallel))
+		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
 
-			g.By("Waiting for the first StatefulSet to be created")
-			existingRackStatefulSetName := naming.StatefulSetNameForRack(makeRackSpec(existingRack), sdc)
-			waitForStatefulSet(ctx, env, existingRackStatefulSetName, scyllaDBDatacenterControllerDefaultEventuallyTimeout)
+		g.By("Waiting for all rack StatefulSets to be created without any of them rolling out")
+		for _, rack := range sdc.Spec.Racks {
+			statefulSet := waitForStatefulSet(ctx, env, naming.StatefulSetNameForRack(rack, sdc), scyllaDBDatacenterControllerDefaultEventuallyTimeout)
+			o.Expect(statefulSet.Spec.PodManagementPolicy).To(o.Equal(appsv1.ParallelPodManagement))
+		}
+	})
 
-			g.By("Marking the first rack StatefulSet as not rolled out")
-			markStatefulSetAsNotRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), existingRackStatefulSetName)
+	g.DescribeTableSubtree("with bootstrap policy",
+		func(bootstrapPolicy scyllav1alpha1.BootstrapPolicy) {
+			g.DescribeTable("should not create a StatefulSet for a new rack while an existing rack is not rolled out",
+				func(ctx g.SpecContext, initialRacks, updatedRacks []string, existingRack, newRack string) {
+					g.By("Running ScyllaDBDatacenter controller")
+					runScyllaDBDatacenterController(ctx, env)
 
-			g.By("Adding a new rack")
-			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				sdc, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
-				if err != nil {
-					return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(env.Namespace(), sdc.Name), err)
-				}
+					g.By("Creating ScyllaOperatorConfig singleton")
+					createScyllaOperatorConfig(ctx, env)
 
-				sdc.Spec.Racks = makeRackSpecs(updatedRacks...)
-				_, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Update(ctx, sdc, metav1.UpdateOptions{})
-				if err != nil {
-					return fmt.Errorf("can't update ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
-				}
+					g.By("Creating a ScyllaDBDatacenter")
+					sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), initialRacks, withBootstrapPolicy(bootstrapPolicy))
+					sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
+					o.Expect(err).NotTo(o.HaveOccurred())
 
-				return nil
-			})
-			o.Expect(err).NotTo(o.HaveOccurred())
+					g.By("Waiting for the first StatefulSet to be created")
+					existingRackStatefulSetName := naming.StatefulSetNameForRack(makeRackSpec(existingRack), sdc)
+					waitForStatefulSet(ctx, env, existingRackStatefulSetName, scyllaDBDatacenterControllerDefaultEventuallyTimeout)
 
-			g.By("Verifying the new rack StatefulSet is not created")
-			newRackStatefulSetName := naming.StatefulSetNameForRack(makeRackSpec(newRack), sdc)
-			o.Consistently(func(co o.Gomega, ctx context.Context) {
-				_, err := env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()).Get(ctx, newRackStatefulSetName, metav1.GetOptions{})
-				co.Expect(apierrors.IsNotFound(err)).To(o.BeTrue())
-			}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultConsistentlyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+					g.By("Marking the first rack StatefulSet as not rolled out")
+					markStatefulSetAsNotRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), existingRackStatefulSetName)
+
+					g.By("Adding a new rack")
+					err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						sdc, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
+						if err != nil {
+							return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(env.Namespace(), sdc.Name), err)
+						}
+
+						sdc.Spec.Racks = makeRackSpecs(updatedRacks...)
+						_, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Update(ctx, sdc, metav1.UpdateOptions{})
+						if err != nil {
+							return fmt.Errorf("can't update ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+						}
+
+						return nil
+					})
+					o.Expect(err).NotTo(o.HaveOccurred())
+
+					g.By("Verifying the new rack StatefulSet is not created")
+					newRackStatefulSetName := naming.StatefulSetNameForRack(makeRackSpec(newRack), sdc)
+					o.Consistently(func(co o.Gomega, ctx context.Context) {
+						_, err := env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()).Get(ctx, newRackStatefulSetName, metav1.GetOptions{})
+						co.Expect(apierrors.IsNotFound(err)).To(o.BeTrue())
+					}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultConsistentlyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+				},
+				g.Entry("when new rack is prepended", []string{"rack-b"}, []string{"rack-a", "rack-b"}, "rack-b", "rack-a"),
+				g.Entry("when new rack is appended", []string{"rack-a"}, []string{"rack-a", "rack-b"}, "rack-a", "rack-b"),
+			)
 		},
-		g.Entry("when new rack is prepended", []string{"rack-b"}, []string{"rack-a", "rack-b"}, "rack-b", "rack-a"),
-		g.Entry("when new rack is appended", []string{"rack-a"}, []string{"rack-a", "rack-b"}, "rack-a", "rack-b"),
+		g.Entry("Sequential", scyllav1alpha1.BootstrapPolicySequential),
+		// The Parallel bootstrap policy only relaxes the initial creation of missing StatefulSets. Adding a rack to an
+		// existing datacenter still waits for the existing racks to roll out, so that racks aren't added while another one
+		// is scaling or updating, regardless of the bootstrap policy.
+		g.Entry("Parallel", scyllav1alpha1.BootstrapPolicyParallel),
 	)
 })
 
@@ -147,7 +177,7 @@ func waitForStatefulSet(ctx context.Context, e *envtest.Environment, name string
 	return statefulSet
 }
 
-func makeEnvtestScyllaDBDatacenter(namespace string, racks []string) *scyllav1alpha1.ScyllaDBDatacenter {
+func makeEnvtestScyllaDBDatacenter(namespace string, racks []string, mutators ...func(*scyllav1alpha1.ScyllaDBDatacenter)) *scyllav1alpha1.ScyllaDBDatacenter {
 	sdc := &scyllav1alpha1.ScyllaDBDatacenter{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "envtest-sdc",
@@ -157,7 +187,7 @@ func makeEnvtestScyllaDBDatacenter(namespace string, racks []string) *scyllav1al
 			ClusterName: "envtest-cluster",
 			DNSDomains:  []string{"envtest.local"},
 			ScyllaDB: scyllav1alpha1.ScyllaDB{
-				Image:               "scylladb/scylla:envtest",
+				Image:               unit.ScyllaDBImageRepository + ":" + configassets.Project.Operator.ScyllaDBVersion,
 				EnableDeveloperMode: new(true),
 			},
 			RackTemplate: &scyllav1alpha1.RackTemplate{
@@ -173,7 +203,17 @@ func makeEnvtestScyllaDBDatacenter(namespace string, racks []string) *scyllav1al
 
 	sdc.Spec.Racks = makeRackSpecs(racks...)
 
+	for _, mutator := range mutators {
+		mutator(sdc)
+	}
+
 	return sdc
+}
+
+func withBootstrapPolicy(bootstrapPolicy scyllav1alpha1.BootstrapPolicy) func(*scyllav1alpha1.ScyllaDBDatacenter) {
+	return func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+		sdc.Spec.BootstrapPolicy = new(bootstrapPolicy)
+	}
 }
 
 func makeRackSpecs(names ...string) []scyllav1alpha1.RackSpec {

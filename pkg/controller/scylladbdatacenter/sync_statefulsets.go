@@ -437,8 +437,10 @@ func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 }
 
 // createMissingStatefulSets creates the missing StatefulSets from requiredStatefulSets.
-// Existing StatefulSets are skipped and at most one missing StatefulSet is created so racks bootstrap sequentially.
-// It returns the created StatefulSet and its progressing conditions, or an error if creation failed.
+// Existing StatefulSets are skipped. With the Sequential bootstrap policy at most one missing StatefulSet is created so
+// that racks bootstrap one by one, while with the Parallel one all of them are created at once.
+// It returns the StatefulSets created so far and their progressing conditions, together with an error if a creation
+// failed.
 func createMissingStatefulSets(
 	ctx context.Context,
 	applyStatefulSet func(context.Context, *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error),
@@ -446,6 +448,13 @@ func createMissingStatefulSets(
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
 ) ([]*appsv1.StatefulSet, []metav1.Condition, error) {
+	bootstrapPolicy, err := effectiveBootstrapPolicy(sdc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't get effective bootstrap policy: %w", err)
+	}
+
+	createdStatefulSets := make([]*appsv1.StatefulSet, 0)
+	progressingConditions := make([]metav1.Condition, 0)
 	for _, req := range requiredStatefulSets {
 		sts, found := statefulSets[req.Name]
 		if found {
@@ -457,20 +466,22 @@ func createMissingStatefulSets(
 		var err error
 		sts, changed, err = applyStatefulSet(ctx, req)
 		if err != nil {
-			return nil, nil, fmt.Errorf("can't create missing statefulset %q: %w", naming.ManualRef(sdc.Namespace, req.Name), err)
+			return createdStatefulSets, progressingConditions, fmt.Errorf("can't create missing statefulset %q: %w", naming.ManualRef(sdc.Namespace, req.Name), err)
 		}
 		if !changed {
 			continue
 		}
 
-		var progressingConditions []metav1.Condition
+		createdStatefulSets = append(createdStatefulSets, sts)
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, req, "apply", sdc.Generation)
 
-		// StatefulSets must be created sequentially. Return early.
-		return []*appsv1.StatefulSet{sts}, progressingConditions, nil
+		if bootstrapPolicy != scyllav1alpha1.BootstrapPolicyParallel {
+			// StatefulSets must be created sequentially. Return early.
+			return createdStatefulSets, progressingConditions, nil
+		}
 	}
 
-	return []*appsv1.StatefulSet{}, []metav1.Condition{}, nil
+	return createdStatefulSets, progressingConditions, nil
 }
 
 // ensureRackNamesInRackStatuses records statuses for newly created racks before informer caches catch up.
@@ -617,13 +628,19 @@ func (sdcc *Controller) syncStatefulSets(
 			time.Sleep(sdcc.statefulSetCachePropagationDelay)
 		}
 	}()
+	var createErrs []error
 	if err != nil {
-		return progressingConditions, fmt.Errorf("can't create StatefulSet(s): %w", err)
+		createErrs = append(createErrs, fmt.Errorf("can't create StatefulSet(s): %w", err))
 	}
 
+	// Record the statuses of the StatefulSets that were created, even if creating another one failed.
 	err = ensureRackNamesInRackStatuses(sdcc.podLister, sdc, status, createdStatefulSets)
 	if err != nil {
-		return progressingConditions, fmt.Errorf("can't update status with rack statuses: %w", err)
+		createErrs = append(createErrs, fmt.Errorf("can't update status with rack statuses: %w", err))
+	}
+
+	if len(createErrs) > 0 {
+		return progressingConditions, apimachineryutilerrors.NewAggregate(createErrs)
 	}
 
 	// Return to wait for created StatefulSets to roll out before proceeding.

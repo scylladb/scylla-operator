@@ -654,6 +654,8 @@ func TestApplyClusterRoleBinding(t *testing.T) {
 					Name:     "different-name",
 				}
 				apimachineryutilruntime.Must(SetHashAnnotation(crb))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				crb.ResourceVersion = ""
 				return crb
 			}(),
 			expectedChanged: true,
@@ -1127,6 +1129,8 @@ func TestApplyRoleBinding(t *testing.T) {
 				rb := newRB()
 				rb.RoleRef.Name = "changed"
 				apimachineryutilruntime.Must(SetHashAnnotation(rb))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				rb.ResourceVersion = ""
 				return rb
 			}(),
 			expectedChanged: true,

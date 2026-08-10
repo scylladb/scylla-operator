@@ -53,6 +53,15 @@ spec:
           spec:
             description: spec defines the desired state of this ScyllaDBDatacenter.
             properties:
+              bootstrapPolicy:
+                description: |-
+                  bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in
+                  parallel (Parallel). Parallel requires ScyllaDB 2026.2 or later.
+                  If not provided, it's treated as Sequential.
+                enum:
+                - Sequential
+                - Parallel
+                type: string
               clusterName:
                 description: |-
                   clusterName specifies the name of the ScyllaDB cluster.

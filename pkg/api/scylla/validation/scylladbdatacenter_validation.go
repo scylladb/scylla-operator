@@ -12,7 +12,9 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/semver"
 	corevalidation "github.com/scylladb/scylla-operator/pkg/thirdparty/k8s.io/kubernetes/pkg/apis/core/validation"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -49,6 +51,11 @@ var (
 		scyllav1alpha1.NodeServiceTypeHeadless,
 		scyllav1alpha1.NodeServiceTypeClusterIP,
 		scyllav1alpha1.NodeServiceTypeLoadBalancer,
+	}
+
+	SupportedScyllaV1Alpha1BootstrapPolicies = []scyllav1alpha1.BootstrapPolicy{
+		scyllav1alpha1.BootstrapPolicySequential,
+		scyllav1alpha1.BootstrapPolicyParallel,
 	}
 )
 
@@ -98,6 +105,17 @@ func ValidateScyllaDBDatacenterSpec(spec scyllav1alpha1.ScyllaDBDatacenterSpec, 
 
 	if spec.MinReadySeconds != nil && *spec.MinReadySeconds < 0 {
 		allErrs = append(allErrs, apimachineryvalidation.ValidateNonnegativeField(int64(*spec.MinReadySeconds), fldPath.Child("minReadySeconds"))...)
+	}
+
+	if spec.BootstrapPolicy != nil {
+		allErrs = append(allErrs, validateEnum(*spec.BootstrapPolicy, SupportedScyllaV1Alpha1BootstrapPolicies, fldPath.Child("bootstrapPolicy"))...)
+
+		if *spec.BootstrapPolicy == scyllav1alpha1.BootstrapPolicyParallel {
+			// An image whose version can't be determined, e.g. one pinned by a digest, is deliberately treated as not
+			// supporting parallel bootstrap.
+			scyllaDBVersion, _ := naming.ImageToVersion(spec.ScyllaDB.Image)
+			allErrs = append(allErrs, validateParallelBootstrapPolicyScyllaDBVersion(*spec.BootstrapPolicy, scyllaDBVersion, fldPath.Child("bootstrapPolicy"))...)
+		}
 	}
 
 	return allErrs
@@ -578,6 +596,23 @@ func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.
 
 	if !oslices.ContainsItem(supported, value) {
 		allErrs = append(allErrs, field.NotSupported(fldPath, value, oslices.ConvertSlice(supported, oslices.ToString[E])))
+	}
+
+	return allErrs
+}
+
+// validateParallelBootstrapPolicyScyllaDBVersion validates that the given ScyllaDB version supports bootstrapping nodes
+// in parallel. A version which can't be parsed is deliberately treated as not supporting it, so that parallel bootstrap
+// can only be enabled for versions known to support it.
+func validateParallelBootstrapPolicyScyllaDBVersion[P ~string](bootstrapPolicy P, scyllaDBVersion string, fldPath *field.Path) field.ErrorList {
+	var allErrs field.ErrorList
+
+	if !semver.NewScyllaVersion(scyllaDBVersion).SupportFeatureSafe(semver.ScyllaDBVersionRequiredForParallelBootstrap) {
+		allErrs = append(allErrs, field.Invalid(fldPath, bootstrapPolicy, fmt.Sprintf(
+			"requires a semver-parseable ScyllaDB version >= %d.%d",
+			semver.ScyllaDBVersionRequiredForParallelBootstrap.Major,
+			semver.ScyllaDBVersionRequiredForParallelBootstrap.Minor,
+		)))
 	}
 
 	return allErrs

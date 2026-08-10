@@ -101,7 +101,26 @@ type ScyllaDBDatacenterSpec struct {
 	// about readiness gates.
 	// +optional
 	ReadinessGates []corev1.PodReadinessGate `json:"readinessGates,omitempty"`
+
+	// bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in
+	// parallel (Parallel). Parallel requires ScyllaDB 2026.2 or later.
+	// If not provided, it's treated as Sequential.
+	// TODO(https://scylladb.atlassian.net/browse/OPERATOR-290): Update the description above when this field starts being defaulted on creation.
+	// +kubebuilder:validation:Enum=Sequential;Parallel
+	// +optional
+	BootstrapPolicy *BootstrapPolicy `json:"bootstrapPolicy,omitempty"`
 }
+
+// BootstrapPolicy describes the ordering of ScyllaDB nodes bootstrap.
+type BootstrapPolicy string
+
+const (
+	// BootstrapPolicySequential specifies that ScyllaDB nodes are bootstrapped one at a time.
+	BootstrapPolicySequential BootstrapPolicy = "Sequential"
+
+	// BootstrapPolicyParallel specifies that ScyllaDB nodes are started in parallel.
+	BootstrapPolicyParallel BootstrapPolicy = "Parallel"
+)
 
 type ObjectTemplateMetadata struct {
 	// labels specify a custom key value map that gets merged with managed object labels.

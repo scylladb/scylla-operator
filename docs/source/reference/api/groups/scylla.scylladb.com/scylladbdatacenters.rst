@@ -75,6 +75,9 @@ object
    * - Property
      - Type
      - Description
+   * - bootstrapPolicy
+     - string
+     - bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in parallel (Parallel). Parallel requires ScyllaDB 2026.2 or later. If not provided, it's treated as Sequential.
    * - clusterName
      - string
      - clusterName specifies the name of the ScyllaDB cluster. When joining two DCs, their cluster name must match. This field is immutable.

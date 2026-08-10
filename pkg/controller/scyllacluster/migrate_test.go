@@ -309,6 +309,45 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 			},
 		},
 		{
+			name: "unset bootstrapPolicy is migrated into Sequential",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.BootstrapPolicy = nil
+				return sc
+			}(),
+			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sd := newBasicScyllaDBDatacenterWithNoStatus()
+				sd.Spec.BootstrapPolicy = pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential)
+				return sd
+			}(),
+		},
+		{
+			name: "explicit Sequential bootstrapPolicy is migrated verbatim",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicySequential)
+				return sc
+			}(),
+			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sd := newBasicScyllaDBDatacenterWithNoStatus()
+				sd.Spec.BootstrapPolicy = pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential)
+				return sd
+			}(),
+		},
+		{
+			name: "explicit Parallel bootstrapPolicy is migrated verbatim",
+			scyllaCluster: func() *scyllav1.ScyllaCluster {
+				sc := newBasicScyllaCluster()
+				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				return sc
+			}(),
+			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sd := newBasicScyllaDBDatacenterWithNoStatus()
+				sd.Spec.BootstrapPolicy = pointer.Ptr(scyllav1alpha1.BootstrapPolicyParallel)
+				return sd
+			}(),
+		},
+		{
 			name: "global manager integration disabled with the annotation",
 			scyllaCluster: func() *scyllav1.ScyllaCluster {
 				sc := newBasicScyllaCluster()
@@ -705,6 +744,7 @@ func newBasicScyllaDBDatacenterWithStatus() *scyllav1alpha1.ScyllaDBDatacenter {
 					Name:         "a",
 				},
 			},
+			BootstrapPolicy: pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential),
 		},
 		Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
 			ObservedGeneration: pointer.Ptr[int64](123),

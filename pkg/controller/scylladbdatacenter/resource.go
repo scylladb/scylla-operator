@@ -338,6 +338,57 @@ func getServicePorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ServicePo
 	return ports, nil
 }
 
+// getPodManagementPolicy resolves the PodManagementPolicyType for StatefulSets of a given ScyllaDBDatacenter.
+func getPodManagementPolicy(sdc *scyllav1alpha1.ScyllaDBDatacenter) (appsv1.PodManagementPolicyType, error) {
+	bootstrapPolicy, err := effectiveBootstrapPolicy(sdc)
+	if err != nil {
+		return "", fmt.Errorf("can't get effective bootstrap policy: %w", err)
+	}
+
+	if bootstrapPolicy == scyllav1alpha1.BootstrapPolicyParallel {
+		return appsv1.ParallelPodManagement, nil
+	}
+
+	return appsv1.OrderedReadyPodManagement, nil
+}
+
+// effectiveBootstrapPolicy resolves the bootstrap policy of the given ScyllaDBDatacenter.
+func effectiveBootstrapPolicy(sdc *scyllav1alpha1.ScyllaDBDatacenter) (scyllav1alpha1.BootstrapPolicy, error) {
+	if sdc.Spec.BootstrapPolicy == nil {
+		return scyllav1alpha1.BootstrapPolicySequential, nil
+	}
+
+	switch *sdc.Spec.BootstrapPolicy {
+	case scyllav1alpha1.BootstrapPolicySequential:
+		return scyllav1alpha1.BootstrapPolicySequential, nil
+
+	case scyllav1alpha1.BootstrapPolicyParallel:
+		scyllaDBVersion, err := naming.ImageToVersion(sdc.Spec.ScyllaDB.Image)
+		if err != nil {
+			return "", fmt.Errorf("can't get version of image %q: %w", sdc.Spec.ScyllaDB.Image, err)
+		}
+
+		// A ScyllaDB version lower than the one required for parallel bootstrap shouldn't get past admission, which
+		// rejects it on both create and update. This is only a sanity check guarding against version skew, e.g. a
+		// bypassed or failing webhook. A version which can't be parsed is deliberately treated as not supporting
+		// parallel bootstrap.
+		if !semver.NewScyllaVersion(scyllaDBVersion).SupportFeatureSafe(semver.ScyllaDBVersionRequiredForParallelBootstrap) {
+			return "", fmt.Errorf(
+				"bootstrap policy %q requires a semver-parseable ScyllaDB version >= %d.%d, got %q",
+				scyllav1alpha1.BootstrapPolicyParallel,
+				semver.ScyllaDBVersionRequiredForParallelBootstrap.Major,
+				semver.ScyllaDBVersionRequiredForParallelBootstrap.Minor,
+				scyllaDBVersion,
+			)
+		}
+
+		return scyllav1alpha1.BootstrapPolicyParallel, nil
+
+	default:
+		return "", fmt.Errorf("unsupported bootstrap policy %q", *sdc.Spec.BootstrapPolicy)
+	}
+}
+
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
 func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, existingSts *appsv1.StatefulSet, sidecarImage string, nodeExporterImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
@@ -491,6 +542,11 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		return nil, fmt.Errorf("can't make init containers: %w", err)
 	}
 
+	podManagementPolicy, err := getPodManagementPolicy(sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get pod management policy: %w", err)
+	}
+
 	sts := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        naming.StatefulSetNameForRack(rack, sdc),
@@ -508,7 +564,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 			Selector: &metav1.LabelSelector{
 				MatchLabels: selectorLabels,
 			},
-			PodManagementPolicy: appsv1.OrderedReadyPodManagement,
+			PodManagementPolicy: podManagementPolicy,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{

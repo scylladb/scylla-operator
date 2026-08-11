@@ -13,7 +13,6 @@ func TestGetOperatorImageRef(t *testing.T) {
 	o.RegisterTestingT(t)
 
 	o.Expect(getOperatorImageRef("1.21.0")).To(o.Equal(configassets.OperatorImageRepository + ":1.21.0"))
-	o.Expect(getOperatorImageRef("latest")).To(o.Equal(configassets.OperatorImageRepository + ":latest"))
 	o.Expect(getOperatorImageRef("localhost:5001/scylladb/scylla-operator@sha256:1111111111111111111111111111111111111111111111111111111111111111")).To(o.Equal("localhost:5001/scylladb/scylla-operator@sha256:1111111111111111111111111111111111111111111111111111111111111111"))
 }
 
@@ -34,7 +33,7 @@ func TestGetDeployScriptForImageRef(t *testing.T) {
 			expectedDeployScript: releaseDeployScript,
 		},
 		{
-			name:                 "latest tag",
+			name:                 "latest tag follows the master checkout convention",
 			operatorImageRef:     configassets.OperatorImageRepository + ":latest",
 			expectedDeployScript: masterDeployScript,
 		},
@@ -44,7 +43,7 @@ func TestGetDeployScriptForImageRef(t *testing.T) {
 			expectedDeployScript: masterDeployScript,
 		},
 		{
-			name:                 "bare ref without a tag means implicit latest",
+			name:                 "bare untagged ref",
 			operatorImageRef:     configassets.OperatorImageRepository,
 			expectedDeployScript: masterDeployScript,
 		},

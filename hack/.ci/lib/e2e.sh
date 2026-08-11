@@ -276,8 +276,6 @@ function run-e2e {
   SCYLLADB_MANAGER_AGENT_VERSION="${SCYLLADB_MANAGER_AGENT_VERSION:-$(yq '.operator.scyllaDBManagerAgentVersion' "$config_file")}"
   SCYLLADB_UPDATE_FROM_VERSION="${SCYLLADB_UPDATE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.updateFrom' "$config_file")}"
   SCYLLADB_UPGRADE_FROM_VERSION="${SCYLLADB_UPGRADE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.upgradeFrom' "$config_file")}"
-  OPERATOR_UPGRADE_FROM_VERSION="${OPERATOR_UPGRADE_FROM_VERSION:-$(yq '.operatorTests.operatorVersions.upgradeFrom' "$config_file")}"
-  OPERATOR_UPGRADE_TO_VERSION="${OPERATOR_UPGRADE_TO_VERSION:-$(yq '.operatorTests.operatorVersions.upgradeTo' "$config_file")}"
 
   kubectl create namespace e2e --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o=yaml | kubectl_create -f=-
@@ -399,8 +397,6 @@ function run-e2e {
     "--scylladb-manager-agent-version=${SCYLLADB_MANAGER_AGENT_VERSION}"
     "--scylladb-update-from-version=${SCYLLADB_UPDATE_FROM_VERSION}"
     "--scylladb-upgrade-from-version=${SCYLLADB_UPGRADE_FROM_VERSION}"
-    "--operator-upgrade-from-version=${OPERATOR_UPGRADE_FROM_VERSION}"
-    "--operator-upgrade-to-version=${OPERATOR_UPGRADE_TO_VERSION}"
   )
 
   if [[ -n "${worker_kubeconfigs_in_container_paths}" ]]; then

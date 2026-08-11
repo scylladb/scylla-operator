@@ -99,8 +99,8 @@ var Suites = ginkgotest.TestSuites{
 	{
 		Name: "kind-operator-upgrade",
 		Description: templates.LongDesc(`
-		Tests that verify operator upgrade from a released version to the current one. Runs in CI outside of k8s
-		(requires kubectl, kubeconfig - scylla-operator docker image does not have kubectl).
+		Tests that verify operator upgrade between two configured refs (released or built from source). Runs in
+		CI outside of k8s (requires kubectl, kubeconfig - scylla-operator docker image does not have kubectl).
 		Must be run from the repository root, as it invokes hack/ci-deploy.sh via a relative path.
 		`),
 		LabelFilter:        framework.SuiteOperatorUpgradeLabelName,

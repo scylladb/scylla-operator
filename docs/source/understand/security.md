@@ -8,11 +8,11 @@ ScyllaDB Operator manages TLS certificates at two levels: for the **operator inf
 
 ### Operator webhook TLS
 
-The operator's validating webhook server requires a TLS certificate so that the Kubernetes API server can securely call it. This certificate is provisioned by [cert-manager](https://cert-manager.io/):
+The operator's webhook server requires a TLS certificate so that the Kubernetes API server can securely call it. This certificate is provisioned by [cert-manager](https://cert-manager.io/):
 
 1. A **self-signed Issuer** (`scylla-operator-selfsigned-issuer`) is created in the `scylla-operator` namespace.
 2. A **Certificate** (`scylla-operator-serving-cert`) is issued for the DNS name `scylla-operator-webhook.scylla-operator.svc`, stored in a Secret of the same name.
-3. The `ValidatingWebhookConfiguration` has the annotation `cert-manager.io/inject-ca-from: scylla-operator/scylla-operator-serving-cert`, which tells cert-manager to inject the CA bundle into the webhook configuration so the Kubernetes API server trusts the webhook's certificate.
+3. The `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` have the annotation `cert-manager.io/inject-ca-from: scylla-operator/scylla-operator-serving-cert`, which tells cert-manager to inject the CA bundle into the webhook configurations so the Kubernetes API server trusts the webhook's certificate.
 
 cert-manager is a hard dependency of the operator unless it is deployed via OLM on OpenShift, which handles webhook certificate provisioning natively.
 
@@ -181,11 +181,11 @@ ScyllaDB Manager is deployed in the `scylla-manager` namespace. It needs network
 The Agent authentication token is a bearer token. Anyone with read access to the token Secret can impersonate ScyllaDB Manager and issue commands to the Agent (backups, repairs, host operations). Restrict Secret read access in the ScyllaDB namespace to trusted operators.
 :::
 
-## Webhook validation
+## Admission webhooks
 
-The operator runs a dedicated webhook server (separate Deployment from the operator controller) that validates ScyllaDB CRDs upon creation or modification.
+The operator runs a dedicated webhook server (separate Deployment from the operator controller) that serves two admission webhooks: a validating webhook that validates ScyllaDB CRDs upon creation or modification, and a mutating webhook that sets defaults on selected ScyllaDB CRDs upon creation.
 
-The webhook is configured with `failurePolicy: Fail`, meaning that if the webhook server is unreachable, the Kubernetes API server rejects the request. This prevents invalid configurations from being applied when the webhook is down, but it also means the webhook server must be available for any ScyllaDB resource mutation.
+Both webhooks are configured with `failurePolicy: Fail`, meaning that if the webhook server is unreachable, the Kubernetes API server rejects the request. This prevents invalid configurations from being applied when the webhook is down, but it also means the webhook server must be available for any ScyllaDB resource mutation.
 
 ## Network policies
 

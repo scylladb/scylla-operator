@@ -1,0 +1,62 @@
+name: "E2E: KinD (operator upgrade)"
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'enhancements/**'
+      - '**.md'
+      - 'renovate.json'
+  workflow_dispatch:
+    inputs:
+      upgrade-from:
+        description: >-
+          Ref to upgrade from: a tag of docker.io/scylladb/scylla-operator (e.g. a released version "1.20.2" or
+          a CI build "1.21-<git-commit-hash>") or a full image ref. Empty: the highest released patch of the
+          minor preceding the dispatched ref (on master, the highest released version).
+        required: false
+        type: string
+      upgrade-to:
+        description: >-
+          Ref to upgrade to; same forms as upgrade-from. Empty: an image built from the dispatched ref's
+          checkout.
+        required: false
+        type: string
+
+# Superseded pushes to a PR cancel its in-flight run; dispatches each get their own group (run_id) and never
+# cancel each other, so concurrent runs on the same ref (e.g. a re-dispatch after a backport) can coexist.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind-operator-upgrade:
+    name: Upgrade the operator on KinD
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      # Outside the workspace, so checkout cleaning can't touch it.
+      ARTIFACTS: ${{ github.workspace }}/../artifacts
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Run the operator upgrade test
+        # Empty values (pull requests, dispatches without inputs) fall through to the runner script's defaults.
+        env:
+          OPERATOR_UPGRADE_FROM_REF: ${{ inputs.upgrade-from }}
+          OPERATOR_UPGRADE_TO_REF: ${{ inputs.upgrade-to }}
+        run: make test-e2e-kind-operator-upgrade
+
+      - name: Upload artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-kind-operator-upgrade-artifacts
+          path: ${{ env.ARTIFACTS }}
+          if-no-files-found: ignore

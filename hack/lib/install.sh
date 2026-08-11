@@ -88,6 +88,11 @@ function _install-operator-manifests() {
       kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${d}"
   done
   wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
+  # Rollouts and the CA secret existing don't yet mean the webhook is callable: cainjector
+  # still has to sync the CA into the webhook's caBundle. Probe the real apiserver->webhook
+  # path with a server-side dry-run until it works, so the first actual object can't hit
+  # "x509: certificate signed by unknown authority".
+  timeout 5m bash -c "until kubectl create --dry-run=server -f=- <<< '{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Issuer\",\"metadata\":{\"name\":\"webhook-probe\",\"namespace\":\"cert-manager\"},\"spec\":{\"selfSigned\":{}}}'; do sleep 1; done"
 
   mkdir -p "${ARTIFACTS_DEPLOY_DIR}"/operator
   cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF

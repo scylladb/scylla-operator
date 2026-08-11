@@ -410,6 +410,7 @@ define generate-operator-manifests
 	mv '$(3)'/scylla-operator/templates/issuer.yaml '$(2)'/10_issuer.yaml
 	mv '$(3)'/scylla-operator/templates/certificate.yaml '$(2)'/10_certificate.yaml
 	mv '$(3)'/scylla-operator/templates/validatingwebhook.yaml '$(2)'/10_validatingwebhook.yaml
+	mv '$(3)'/scylla-operator/templates/mutatingwebhook.yaml '$(2)'/10_mutatingwebhook.yaml
 	mv '$(3)'/scylla-operator/templates/webhookserver.service.yaml '$(2)'/10_webhookserver.service.yaml
 	mv '$(3)'/scylla-operator/templates/webhookserver.serviceaccount.yaml '$(2)'/10_webhookserver.serviceaccount.yaml
 	mv '$(3)'/scylla-operator/templates/operator.serviceaccount.yaml '$(2)'/10_operator.serviceaccount.yaml

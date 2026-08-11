@@ -31,6 +31,9 @@
 - Added an optional `bootstrapPolicy` field to `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec`, accepting `Sequential`
   or `Parallel`. `Parallel` requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
   [#3568](https://github.com/scylladb/scylla-operator/pull/3568)
+- The webhook server now serves a mutating admission webhook that applies API defaults to `ScyllaClusters` and
+  `ScyllaDBDatacenters` on creation. Matching `MutatingWebhookConfiguration` is added to the operator's manifests.
+  [#3579](https://github.com/scylladb/scylla-operator/pull/3579)
 
 ### Other changes
 

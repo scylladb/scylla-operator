@@ -19,6 +19,7 @@ import (
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	"github.com/scylladb/scylla-operator/pkg/admissionreview"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
+	operatorcmd "github.com/scylladb/scylla-operator/pkg/cmd/operator"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var repoRoot = filepath.Join("..", "..", "..")
@@ -44,12 +46,14 @@ type Environment struct {
 
 // SetupOptions configures the envtest environment.
 type SetupOptions struct {
-	InstallMonitoringCRDs bool
+	InstallMonitoringCRDs  bool
+	InstallMutatingWebhook bool
 }
 
 func defaultSetupOptions() SetupOptions {
 	return SetupOptions{
-		InstallMonitoringCRDs: true,
+		InstallMonitoringCRDs:  true,
+		InstallMutatingWebhook: true,
 	}
 }
 
@@ -64,9 +68,20 @@ func WithoutMonitoringCRDs() SetupOption {
 	}
 }
 
+// WithoutMutatingWebhook configures the envtest environment to not install the mutating admission webhook shipped
+// in deploy/operator/. Use it only for specs that need to observe objects as they were submitted, or that install
+// the webhook themselves, e.g. to exercise the behavior from before it was installed.
+func WithoutMutatingWebhook() SetupOption {
+	return func(o *SetupOptions) {
+		o.InstallMutatingWebhook = false
+	}
+}
+
 // Setup sets up an envtest environment with the ScyllaDB CRDs installed. It will be cleaned up automatically when the test ends.
 // It returns an Environment struct that provides access to the Kubernetes and ScyllaDB clients, as well as the test namespace
 // for convenience.
+// The mutating admission webhook shipped in deploy/operator/ is installed and served by default, so that objects created by
+// any spec go through the same defaulting as in a real deployment. Opt out with WithoutMutatingWebhook.
 func Setup(ctx context.Context, opts ...SetupOption) *Environment {
 	g.GinkgoHelper()
 
@@ -135,7 +150,7 @@ func Setup(ctx context.Context, opts ...SetupOption) *Environment {
 	}, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create test namespace")
 
-	return &Environment{
+	env := &Environment{
 		kubeClient:       kubeClient,
 		scyllaClient:     scyllaClient,
 		monitoringClient: monitoringClient,
@@ -143,6 +158,12 @@ func Setup(ctx context.Context, opts ...SetupOption) *Environment {
 		namespace:        ns.Name,
 		config:           testEnv.Config,
 	}
+
+	if options.InstallMutatingWebhook {
+		SetupOperatorMutatingWebhook(ctx, env, operatorcmd.NewMutatingWebhookHandler(operatorcmd.DefaultDefaulters))
+	}
+
+	return env
 }
 
 func (e *Environment) TypedKubeClient() *kubernetes.Clientset {
@@ -221,8 +242,33 @@ func SetupMockValidatingWebhook(ctx context.Context, e *Environment, handleFunc 
 		},
 	}
 
-	err := webhookOpts.Install(e.Config())
-	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to install validating webhook")
+	setupMockWebhook(ctx, e, webhookOpts, webhookPath, admissionreview.NewHandler(handleFunc))
+}
+
+// SetupOperatorMutatingWebhook installs the MutatingWebhookConfiguration shipped in deploy/operator/ and dispatches
+// the intercepted admission requests to handler, so the shipped rules and path are exercised.
+// The webhook server is started automatically and cleaned up when the test ends.
+// NOTE: envtest rewrites the manifest's client config to point at a test-local webhook server, not the webhook
+// server shipped with the Operator.
+func SetupOperatorMutatingWebhook(ctx context.Context, e *Environment, handler admission.Handler) {
+	g.GinkgoHelper()
+
+	webhookOpts := envtest.WebhookInstallOptions{
+		Paths: []string{filepath.Join(repoRoot, "deploy", "operator", "10_mutatingwebhook.yaml")},
+	}
+
+	setupMockWebhook(ctx, e, webhookOpts, "/mutate", &admission.Webhook{
+		Handler: handler,
+	})
+}
+
+func setupMockWebhook(ctx context.Context, e *Environment, webhookOpts envtest.WebhookInstallOptions, webhookPath string, handler http.Handler) {
+	g.GinkgoHelper()
+
+	// Allocate the serving certificates and the address the webhook definitions are rewritten to point at, without
+	// registering them in the API server yet.
+	err := webhookOpts.PrepWithoutInstalling()
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to prepare webhook install options")
 
 	g.DeferCleanup(func() {
 		err := webhookOpts.Cleanup()
@@ -236,7 +282,7 @@ func SetupMockValidatingWebhook(ctx context.Context, e *Environment, handleFunc 
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to load webhook TLS keypair")
 
 	mux := http.NewServeMux()
-	mux.Handle(webhookPath, admissionreview.NewHandler(handleFunc))
+	mux.Handle(webhookPath, handler)
 
 	listenAddr := fmt.Sprintf("%s:%d", webhookOpts.LocalServingHost, webhookOpts.LocalServingPort)
 	listener, err := net.Listen("tcp", listenAddr)
@@ -259,4 +305,20 @@ func SetupMockValidatingWebhook(ctx context.Context, e *Environment, handleFunc 
 		err := server.Shutdown(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to shut down webhook server")
 	})
+
+	// The webhook configurations are installed with failurePolicy: Fail, so anything their rules match is rejected
+	// while they are registered but not served yet. Wait for the server, then register them, so that no operation
+	// can hit a registered but dead webhook.
+	o.Eventually(func(eo o.Gomega) {
+		conn, err := tls.Dial("tcp", listenAddr, &tls.Config{
+			InsecureSkipVerify: true,
+		})
+		eo.Expect(err).NotTo(o.HaveOccurred())
+
+		eo.Expect(conn.Close()).NotTo(o.HaveOccurred())
+	}).WithTimeout(30*time.Second).WithPolling(100*time.Millisecond).Should(o.Succeed(), "Webhook server didn't start serving")
+
+	// Install doesn't repeat the preparation above, as it's already been done.
+	err = webhookOpts.Install(e.Config())
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to install webhook configuration")
 }

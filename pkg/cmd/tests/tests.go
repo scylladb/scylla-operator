@@ -89,6 +89,14 @@ var Suites = ginkgotest.TestSuites{
 		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
+		Name: "kind-cluster-topology",
+		Description: templates.LongDesc(`
+		Tests related to single-DC cluster topology operations, possible to be run on kind clusters.
+		`),
+		LabelFilter:        framework.SuiteKindClusterTopologyLabelName,
+		DefaultParallelism: defaultParallelParallelism,
+	},
+	{
 		Name: "kind-operator-upgrade",
 		Description: templates.LongDesc(`
 		Tests that verify operator upgrade from a released version to the current one. Runs in CI outside of k8s

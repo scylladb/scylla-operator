@@ -35,7 +35,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		initialMembers int32
 		targetMembers  int32
 	}
-	g.DescribeTable("nodes are cleaned up", func(ctx g.SpecContext, e *horizontalScalingEntry) {
+	g.DescribeTable("nodes are cleaned up", framework.SuiteKindClusterTopology, func(ctx g.SpecContext, e *horizontalScalingEntry) {
 		jobListWatcher := createJobListWatcher(ctx, f)
 		jobObserver := utils.ObserveObjects[*batchv1.Job](jobListWatcher)
 		err := jobObserver.Start(ctx)

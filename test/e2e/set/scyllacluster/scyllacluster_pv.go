@@ -39,7 +39,7 @@ import (
 	"k8s.io/component-helpers/storage/volume"
 )
 
-var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
+var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, framework.SuiteKindClusterTopology, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

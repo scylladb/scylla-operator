@@ -27,6 +27,7 @@ type ScyllaClusterOptions struct {
 	ExposeOptions    ExposeOptions
 	StorageClassName string
 	ReactorBackend   string
+	BootstrapPolicy  string
 }
 
 func (o *ScyllaClusterOptions) ScyllaArgs() []string {

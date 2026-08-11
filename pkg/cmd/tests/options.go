@@ -40,6 +40,7 @@ type ScyllaClusterOptions struct {
 	ClientsBroadcastAddressType string
 	StorageClassName            string
 	ReactorBackend              string
+	BootstrapPolicy             string
 }
 
 var supportedNodeServiceTypes = []scyllav1.NodeServiceType{
@@ -55,6 +56,11 @@ var supportedBroadcastAddressTypes = []scyllav1.BroadcastAddressType{
 var supportedReactorBackends = []string{
 	"io_uring",
 	"linux-aio",
+}
+
+var supportedBootstrapPolicies = []scyllav1.BootstrapPolicy{
+	scyllav1.BootstrapPolicySequential,
+	scyllav1.BootstrapPolicyParallel,
 }
 
 type TestFrameworkOptions struct {
@@ -92,6 +98,7 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
 			StorageClassName:            "",
 			ReactorBackend:              "", // Leaving empty to rely on ScyllaDB default.
+			BootstrapPolicy:             "", // Leaving empty to rely on the operator's default.
 		},
 		ObjectStorageOptions:        NewObjectStorageOptions(),
 		ScyllaDBVersion:             configassets.Project.Operator.ScyllaDBVersion,
@@ -143,6 +150,10 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.ReactorBackend, "scyllacluster-reactor-backend", "", o.ScyllaClusterOptionsUntyped.ReactorBackend, fmt.Sprintf("Name of the reactor backend to use for ScyllaCluster."))
+	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.BootstrapPolicy, "scyllacluster-bootstrap-policy", "", o.ScyllaClusterOptionsUntyped.BootstrapPolicy, fmt.Sprintf("Bootstrap policy to set on ScyllaClusters and ScyllaDBDatacenters created by tests. Leave empty to rely on the operator's defaulting. Allowed values are [%s].", strings.Join(
+		oslices.ConvertSlice(supportedBootstrapPolicies, oslices.ToString[scyllav1.BootstrapPolicy]),
+		", ",
+	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBVersion, "scylladb-version", "", o.ScyllaDBVersion, "Version of ScyllaDB to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBImageRef, "scylladb-image-ref", "", o.ScyllaDBImageRef, "Optional full image reference of ScyllaDB to use instead of --scylladb-version, e.g. docker.io/scylladb/scylla:2026.1.0.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerVersion, "scylladb-manager-version", "", o.ScyllaDBManagerVersion, "Version of Scylla Manager to use.")
@@ -189,6 +200,10 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 
 	if backend := o.ScyllaClusterOptionsUntyped.ReactorBackend; backend != "" && !oslices.ContainsItem(supportedReactorBackends, backend) {
 		errors = append(errors, fmt.Errorf("invalid scyllacluster-reactor-backend: %q", o.ScyllaClusterOptionsUntyped.ReactorBackend))
+	}
+
+	if bootstrapPolicy := o.ScyllaClusterOptionsUntyped.BootstrapPolicy; bootstrapPolicy != "" && !oslices.ContainsItem(supportedBootstrapPolicies, scyllav1.BootstrapPolicy(bootstrapPolicy)) {
+		errors = append(errors, fmt.Errorf("invalid scyllacluster-bootstrap-policy: %q", o.ScyllaClusterOptionsUntyped.BootstrapPolicy))
 	}
 
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBVersion) {
@@ -300,6 +315,7 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		},
 		StorageClassName: o.ScyllaClusterOptionsUntyped.StorageClassName,
 		ReactorBackend:   o.ScyllaClusterOptionsUntyped.ReactorBackend,
+		BootstrapPolicy:  o.ScyllaClusterOptionsUntyped.BootstrapPolicy,
 	}
 
 	workerRestConfigs := make(map[string]*rest.Config, len(o.WorkerClientConfigs))

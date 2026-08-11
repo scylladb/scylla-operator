@@ -224,6 +224,7 @@ func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
 		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
 		"scyllaArgs":                  TestContext.ScyllaClusterOptions.ScyllaArgs(),
+		"bootstrapPolicy":             TestContext.ScyllaClusterOptions.BootstrapPolicy,
 	}
 
 	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
@@ -254,6 +255,7 @@ func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.Scyll
 		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
 		"scyllaArgs":                  TestContext.ScyllaClusterOptions.ScyllaArgs(),
 		"rackNames":                   []string{"a", "b", "c"},
+		"bootstrapPolicy":             TestContext.ScyllaClusterOptions.BootstrapPolicy,
 	}
 
 	sc, _, err := scyllafixture.ZonalScyllaClusterTemplate.RenderObject(renderArgs)
@@ -272,6 +274,7 @@ func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatac
 		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
 		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
 		"scyllaDBManagerAgentRepository": configassets.ScyllaDBManagerAgentImageRepository,
+		"bootstrapPolicy":                TestContext.ScyllaClusterOptions.BootstrapPolicy,
 	}
 
 	sdc, _, err := scyllafixture.ScyllaDBDatacenterTemplate.RenderObject(renderArgs)

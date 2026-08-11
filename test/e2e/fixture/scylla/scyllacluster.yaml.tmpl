@@ -8,6 +8,9 @@ metadata:
    bar: foo
 spec:
   agentVersion: "{{ .scyllaDBManagerVersion }}"
+  {{- if .bootstrapPolicy }}
+  bootstrapPolicy: {{ .bootstrapPolicy }}
+  {{- end }}
   repository: "{{ .scyllaDBRepository }}"
   version: "{{ .scyllaDBVersion }}"
   developerMode: true

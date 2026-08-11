@@ -29,7 +29,7 @@ thirdParty:
     version: "1.21.0"
   prometheusOperator:
     # renovate: datasource=github-releases depName=prometheus-operator packageName=prometheus-operator/prometheus-operator versioning=semver
-    version: "0.93.0" # Latest compatible with .operator.prometheusVersion (https://prometheus-operator.dev/docs/getting-started/compatibility/)
+    version: "0.93.1" # Latest compatible with .operator.prometheusVersion (https://prometheus-operator.dev/docs/getting-started/compatibility/)
     namespace: "prometheus-operator"
   localCSIDriver:
     # renovate: datasource=docker depName=local-csi-driver packageName=docker.io/scylladb/local-csi-driver versioning=semver

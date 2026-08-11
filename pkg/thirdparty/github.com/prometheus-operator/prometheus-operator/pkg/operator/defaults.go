@@ -16,7 +16,7 @@
 
 package operator
 
-// Extracted from https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.93.0/pkg/operator/defaults.go.
+// Extracted from https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.93.1/pkg/operator/defaults.go.
 // PrometheusCompatibilityMatrix is a slice of Prometheus versions that Prometheus Operator is compatible with.
 var PrometheusCompatibilityMatrix = []string{
 	"v2.45.0",

@@ -16,6 +16,7 @@ const (
 	SuiteParallelIPv6LabelName            = "SuiteParallelIPv6"
 	SuiteKindFastLabelName                = "SuiteKindFast"
 	SuiteKindScyllaDBMonitoringLabelName  = "SuiteKindScyllaDBMonitoring"
+	SuiteKindClusterTopologyLabelName     = "SuiteKindClusterTopology"
 	SuiteOperatorUpgradeLabelName         = "SuiteOperatorUpgrade"
 )
 
@@ -26,6 +27,7 @@ var (
 	SuiteParallelIPv6            = g.Label(SuiteParallelIPv6LabelName)
 	SuiteKindFast                = g.Label(SuiteKindFastLabelName)
 	SuiteKindScyllaDBMonitoring  = g.Label(SuiteKindScyllaDBMonitoringLabelName)
+	SuiteKindClusterTopology     = g.Label(SuiteKindClusterTopologyLabelName)
 	SuiteOperatorUpgrade         = g.Label(SuiteOperatorUpgradeLabelName)
 
 	// SuiteSerial bundles the Ginkgo serial-execution decorator with the

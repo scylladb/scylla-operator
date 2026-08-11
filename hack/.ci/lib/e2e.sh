@@ -267,6 +267,7 @@ function run-e2e {
   SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
   SO_WAIT_FOR_E2E_POD_DELETE="${SO_WAIT_FOR_E2E_POD_DELETE:-false}"
   SCYLLADB_IMAGE_REF="${SCYLLADB_IMAGE_REF:-}"
+  SO_SCYLLACLUSTER_BOOTSTRAP_POLICY="${SO_SCYLLACLUSTER_BOOTSTRAP_POLICY:-Parallel}"
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
   SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
@@ -379,7 +380,7 @@ function run-e2e {
     "--scyllacluster-clients-broadcast-address-type=${SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE}"
     "--scyllacluster-storageclass-name=${SO_SCYLLACLUSTER_STORAGECLASS_NAME}"
     "--scyllacluster-reactor-backend=${SO_SCYLLACLUSTER_REACTOR_BACKEND:-}"
-    "--scyllacluster-bootstrap-policy=${SO_SCYLLACLUSTER_BOOTSTRAP_POLICY:-}"
+    "--scyllacluster-bootstrap-policy=${SO_SCYLLACLUSTER_BOOTSTRAP_POLICY}"
     "--object-storage-bucket=${SO_BUCKET_NAME}"
     "--gcs-service-account-key-path=${gcs_sa_in_container_path}"
     "--s3-credentials-file-path=${s3_credentials_in_container_path}"

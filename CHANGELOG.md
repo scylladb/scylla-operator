@@ -46,7 +46,7 @@
   existing ones stay on `Sequential` and can opt in. The policy can be changed on a running cluster without disruptions
   to existing nodes. Parallel bootstrap isn't available for datacenters managed by `ScyllaDBCluster`, which always
   bootstraps sequentially.
-  [#3578](https://github.com/scylladb/scylla-operator/pull/3578)
+  [#3578](https://github.com/scylladb/scylla-operator/pull/3578), [#3588](https://github.com/scylladb/scylla-operator/pull/3588)
 
 ### Other changes
 

@@ -35,6 +35,8 @@ import (
 	"k8s.io/apiserver/pkg/server/dynamiccertificates"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var (
@@ -133,6 +135,7 @@ type WebhookOptions struct {
 	InsecureGenerateLocalhostCerts bool
 
 	Validators map[schema.GroupVersionResource]Validator
+	Defaulters map[schema.GroupVersionResource]Defaulter
 
 	TLSConfig                 *tls.Config
 	dynamicCertKeyPairContent *dynamiccertificates.DynamicCertKeyPairContent
@@ -141,20 +144,25 @@ type WebhookOptions struct {
 	resolvedListenAddrCh chan struct{}
 }
 
-func NewWebhookOptions(streams genericclioptions.IOStreams, validators map[schema.GroupVersionResource]Validator) *WebhookOptions {
+func NewWebhookOptions(streams genericclioptions.IOStreams, validators map[schema.GroupVersionResource]Validator, defaulters map[schema.GroupVersionResource]Defaulter) *WebhookOptions {
 	if len(validators) == 0 {
 		panic(fmt.Errorf("validators must not be empty"))
+	}
+
+	if len(defaulters) == 0 {
+		panic(fmt.Errorf("defaulters must not be empty"))
 	}
 
 	return &WebhookOptions{
 		Port:                 5000,
 		Validators:           validators,
+		Defaulters:           defaulters,
 		resolvedListenAddrCh: make(chan struct{}),
 	}
 }
 
-func NewWebhookCmd(streams genericclioptions.IOStreams, validators map[schema.GroupVersionResource]Validator) *cobra.Command {
-	o := NewWebhookOptions(streams, validators)
+func NewWebhookCmd(streams genericclioptions.IOStreams, validators map[schema.GroupVersionResource]Validator, defaulters map[schema.GroupVersionResource]Defaulter) *cobra.Command {
+	o := NewWebhookOptions(streams, validators, defaulters)
 
 	cmd := &cobra.Command{
 		Use:   "run-webhook-server",
@@ -292,6 +300,10 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// The mutating webhook is served by controller-runtime's admission webhook, which logs through
+	// controller-runtime's logger. Route it to klog, or it complains about never having been set up.
+	ctrllog.SetLogger(klog.Background())
+
 	handler := http.NewServeMux()
 	handler.HandleFunc("/readyz", func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -303,6 +315,9 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 	handler.Handle("/validate", admissionreview.NewHandler(func(review *admissionv1.AdmissionReview) ([]string, error) {
 		return validate(review, o.Validators)
 	}))
+	handler.Handle("/mutate", &admission.Webhook{
+		Handler: NewMutatingWebhookHandler(o.Defaulters),
+	})
 
 	server := http.Server{
 		Handler:   handler,

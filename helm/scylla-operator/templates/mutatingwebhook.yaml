@@ -1,0 +1,34 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: scylla-operator/{{ include "scylla-operator.certificateName" . }}
+  name: scylla-operator
+webhooks:
+- name: mutating.webhook.scylla.scylladb.com
+  clientConfig:
+    service:
+      name: {{ include "scylla-operator.webhookServiceName" . }}
+      namespace: scylla-operator
+      path: /mutate
+  admissionReviewVersions:
+  - v1
+  sideEffects: None
+  failurePolicy: Fail
+  rules:
+  - apiGroups:
+    - scylla.scylladb.com
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - scyllaclusters
+  - apiGroups:
+    - scylla.scylladb.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    resources:
+    - scylladbdatacenters

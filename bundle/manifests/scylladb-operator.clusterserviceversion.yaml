@@ -532,6 +532,33 @@ spec:
       containerPort: 443
       deploymentName: webhook-server
       failurePolicy: Fail
+      generateName: mutating.webhook.scylla.scylladb.com
+      rules:
+        - apiGroups:
+            - scylla.scylladb.com
+          apiVersions:
+            - v1
+          operations:
+            - CREATE
+          resources:
+            - scyllaclusters
+        - apiGroups:
+            - scylla.scylladb.com
+          apiVersions:
+            - v1alpha1
+          operations:
+            - CREATE
+          resources:
+            - scylladbdatacenters
+      sideEffects: None
+      targetPort: 5000
+      type: MutatingAdmissionWebhook
+      webhookPath: /mutate
+    - admissionReviewVersions:
+        - v1
+      containerPort: 443
+      deploymentName: webhook-server
+      failurePolicy: Fail
       generateName: webhook.scylla.scylladb.com
       rules:
         - apiGroups:

@@ -59,7 +59,7 @@ func TestWebhookOptionsRun(t *testing.T) {
 		{
 			Name: "valid webhook options",
 			WebhookOptions: func() *WebhookOptions {
-				wo := NewWebhookOptions(genericclioptions.IOStreams{}, DefaultValidators)
+				wo := NewWebhookOptions(genericclioptions.IOStreams{}, DefaultValidators, DefaultDefaulters)
 				wo.Port = 65535
 				wo.InsecureGenerateLocalhostCerts = true
 
@@ -70,7 +70,7 @@ func TestWebhookOptionsRun(t *testing.T) {
 		{
 			Name: "invalid port",
 			WebhookOptions: func() *WebhookOptions {
-				wo := NewWebhookOptions(genericclioptions.IOStreams{}, DefaultValidators)
+				wo := NewWebhookOptions(genericclioptions.IOStreams{}, DefaultValidators, DefaultDefaulters)
 				wo.Port = 65536
 				wo.InsecureGenerateLocalhostCerts = true
 
@@ -139,7 +139,7 @@ func TestWebhookOptionsRunWithReload(t *testing.T) {
 		t.Fatalf("can't create a file: %v", err)
 	}
 
-	wo := NewWebhookOptions(genericclioptions.IOStreams{}, DefaultValidators)
+	wo := NewWebhookOptions(genericclioptions.IOStreams{}, DefaultValidators, DefaultDefaulters)
 	wo.TLSCertFile = tlsCertFile
 	wo.TLSKeyFile = tlsKeyFile
 	wo.Port = 0

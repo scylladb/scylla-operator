@@ -6,12 +6,15 @@ package controllers
 
 import (
 	"context"
+	"maps"
 	"sync/atomic"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	operatorcmd "github.com/scylladb/scylla-operator/pkg/cmd/operator"
+	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +38,9 @@ var _ = g.Describe("Mutating admission webhook", func() {
 		expectedIntercepted bool
 		// newObject returns an object of the tested kind, valid enough to be created against the installed CRDs.
 		newObject func(name, namespace string) client.Object
+		// expectedDefaultedSpecFields are the spec fields the defaulters are expected to stamp on the created object,
+		// on top of the spec it was submitted with. An empty map asserts the object is admitted unchanged.
+		expectedDefaultedSpecFields map[string]any
 	}
 
 	g.DescribeTable("with the shipped MutatingWebhookConfiguration installed", func(ctx g.SpecContext, e *entry) {
@@ -77,38 +83,105 @@ var _ = g.Describe("Mutating admission webhook", func() {
 		}
 
 		o.Expect(resourceInvocations.Load()).To(o.BeNumerically(">=", 1), "the mutating webhook should have been invoked on CREATE")
-		o.Expect(getUnstructuredSpec(obj)).To(o.Equal(getUnstructuredSpec(baseline)), "the spec should be admitted unchanged")
+
+		// The baseline was created before the webhook was installed, so its spec is the submitted one. Anything the
+		// defaulters didn't stamp has to match it verbatim.
+		expectedSpec := getUnstructuredSpec(baseline).(map[string]any)
+		maps.Copy(expectedSpec, e.expectedDefaultedSpecFields)
+		o.Expect(getUnstructuredSpec(obj)).To(o.Equal(expectedSpec), "only the defaulted fields should differ from the submitted spec")
 		o.Expect(obj.GetLabels()).To(o.Equal(baseline.GetLabels()), "the labels should be admitted unchanged")
 		o.Expect(obj.GetAnnotations()).To(o.Equal(baseline.GetAnnotations()), "the annotations should be admitted unchanged")
 
 		g.By("Updating the object and expecting the mutating webhook not to be invoked")
 		resourceInvocationsBeforeUpdate := resourceInvocations.Load()
-		labels := obj.GetLabels()
-		if labels == nil {
-			labels = map[string]string{}
-		}
-		labels["update-trigger"] = "true"
-		obj.SetLabels(labels)
+		setUpdateTriggerLabel(obj)
 		err = env.KubeClient().Update(ctx, obj)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		o.Expect(resourceInvocations.Load()).To(o.Equal(resourceInvocationsBeforeUpdate), "the shipped rules should be CREATE-only")
+
+		// An object created before the defaulters existed keeps its fields unset forever: the value is a statement
+		// about the era the object was created in, so an unrelated update must not backfill it.
+		g.By("Updating the baseline object and expecting the defaulted fields to stay unset")
+		setUpdateTriggerLabel(baseline)
+		err = env.KubeClient().Update(ctx, baseline)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		updatedBaselineSpec := getUnstructuredSpec(baseline).(map[string]any)
+		for field := range e.expectedDefaultedSpecFields {
+			o.Expect(updatedBaselineSpec).NotTo(o.HaveKey(field), "the defaulters must never stamp %q on an already existing object", field)
+		}
 	},
-		g.Entry("admits a ScyllaCluster unchanged", &entry{
+		// Sequential is never stamped: an unset bootstrapPolicy is left unset, so that objects whose owners never
+		// made a choice keep resolving it rather than being pinned to today's resolution.
+		g.Entry("admits a ScyllaCluster with a version not supporting parallel bootstrap unchanged", &entry{
 			resource:            "scyllaclusters",
 			expectedIntercepted: true,
 			newObject: func(name, namespace string) client.Object {
-				return newBasicScyllaCluster(name, namespace)
+				sc := newBasicScyllaCluster(name, namespace)
+				sc.Spec.Version = unit.ScyllaDBImageBelowParallelBootstrapThresholdTag
+				return sc
+			},
+			expectedDefaultedSpecFields: nil,
+		}),
+		g.Entry("stamps a Parallel bootstrapPolicy on a ScyllaCluster with a version supporting parallel bootstrap", &entry{
+			resource:            "scyllaclusters",
+			expectedIntercepted: true,
+			newObject: func(name, namespace string) client.Object {
+				sc := newBasicScyllaCluster(name, namespace)
+				sc.Spec.Version = unit.ScyllaDBImageAtParallelBootstrapThresholdTag
+				return sc
+			},
+			expectedDefaultedSpecFields: map[string]any{
+				"bootstrapPolicy": string(scyllav1.BootstrapPolicyParallel),
 			},
 		}),
-		g.Entry("admits a ScyllaDBDatacenter unchanged", &entry{
+		g.Entry("admits a ScyllaCluster with an explicit bootstrapPolicy unchanged", &entry{
+			resource:            "scyllaclusters",
+			expectedIntercepted: true,
+			newObject: func(name, namespace string) client.Object {
+				sc := newBasicScyllaCluster(name, namespace)
+				sc.Spec.Version = unit.ScyllaDBImageAtParallelBootstrapThresholdTag
+				sc.Spec.BootstrapPolicy = new(scyllav1.BootstrapPolicySequential)
+				return sc
+			},
+			expectedDefaultedSpecFields: nil,
+		}),
+		g.Entry("admits a ScyllaDBDatacenter with an image not supporting parallel bootstrap unchanged", &entry{
 			resource:            "scylladbdatacenters",
 			expectedIntercepted: true,
 			newObject: func(name, namespace string) client.Object {
 				sdc := makeEnvtestScyllaDBDatacenter(namespace, []string{"rack1"})
 				sdc.Name = name
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageBelowParallelBootstrapThreshold
 				return sdc
 			},
+			expectedDefaultedSpecFields: nil,
+		}),
+		g.Entry("stamps a Parallel bootstrapPolicy on a ScyllaDBDatacenter with an image supporting parallel bootstrap", &entry{
+			resource:            "scylladbdatacenters",
+			expectedIntercepted: true,
+			newObject: func(name, namespace string) client.Object {
+				sdc := makeEnvtestScyllaDBDatacenter(namespace, []string{"rack1"})
+				sdc.Name = name
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				return sdc
+			},
+			expectedDefaultedSpecFields: map[string]any{
+				"bootstrapPolicy": string(scyllav1alpha1.BootstrapPolicyParallel),
+			},
+		}),
+		g.Entry("admits a ScyllaDBDatacenter with an explicit bootstrapPolicy unchanged", &entry{
+			resource:            "scylladbdatacenters",
+			expectedIntercepted: true,
+			newObject: func(name, namespace string) client.Object {
+				sdc := makeEnvtestScyllaDBDatacenter(namespace, []string{"rack1"})
+				sdc.Name = name
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicySequential)
+				return sdc
+			},
+			expectedDefaultedSpecFields: nil,
 		}),
 		// ScyllaDBClusters are deliberately left out of the shipped rules, as parallel bootstrap is not
 		// supported in automated multi-datacenter setups.
@@ -159,4 +232,14 @@ func getUnstructuredSpec(obj client.Object) any {
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to convert object to unstructured")
 
 	return u["spec"]
+}
+
+// setUpdateTriggerLabel labels obj so that updating it is a no-op for everything but the resource version.
+func setUpdateTriggerLabel(obj client.Object) {
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels["update-trigger"] = "true"
+	obj.SetLabels(labels)
 }

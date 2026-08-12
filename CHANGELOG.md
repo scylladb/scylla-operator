@@ -1,5 +1,7 @@
 # Table of Contents
 
+- [1.21.1](#1211)
+- [1.20.3](#1203)
 - [1.21.0](#1210)
 - [1.20.2](#1202)
 - [1.20.1](#1201)
@@ -51,6 +53,130 @@
   Scylla Manager Agent config may contain a sensitive auth token. Only the field description and generated
   reference were updated — the expected resource type and runtime behavior are unchanged.
   [#3534](https://github.com/scylladb/scylla-operator/pull/3534)
+
+## [1.21.1](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.1)
+
+Release date: 2026-08-11
+
+### Highlights
+
+- 🐛 Fixed `ScyllaDBDatacenter` rollouts getting stuck when a new rack was inserted before existing racks while an existing rack was still progressing.
+- 🐛 Fixed the sidecar returning spurious errors during node decommission.
+
+### Bug Fixes
+
+- Fixed `ScyllaDBDatacenter` rollouts getting stuck when a new rack was inserted before existing racks while an existing
+  rack was still progressing. The controller now waits for all existing `StatefulSets` to roll out before a new
+  `StatefulSet` is created.
+  [#3549](https://github.com/scylladb/scylla-operator/pull/3549)
+- Fixed the sidecar returning spurious errors during node decommission. `IsDecommissioning()` in the ScyllaDB API
+  wrapper incorrectly compared against `OperationalModeDecommissioned` instead of `OperationalModeDecommissioning`,
+  which resulted in an unhandled error being logged.
+  [#3548](https://github.com/scylladb/scylla-operator/pull/3548)
+
+### Dependencies
+
+- Updated `k8s.io/*` modules from `v0.36.1` to `v0.36.3`, picking up the latest patch fixes of the Kubernetes 1.36 client
+  libraries the Operator uses to talk to the Kubernetes API.
+  [#3551](https://github.com/scylladb/scylla-operator/pull/3551)
+- Updated `github.com/prometheus-operator/prometheus-operator/pkg/client` from `v0.86.2` to `v0.93.0` and
+  `github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring` from `v0.91.0` to `v0.93.0`, realigning the two
+  modules on a single Prometheus Operator version. These define and access the `Prometheus` and `ServiceMonitor` resources
+  that the `ScyllaDBMonitoring` controller manages.
+  [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- Updated the ScyllaDB Manager client modules (`github.com/scylladb/scylla-manager/v3/*`), used to communicate with
+  ScyllaDB Manager, to their `2026-08-06` revision.
+  [#3551](https://github.com/scylladb/scylla-operator/pull/3551), [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- Updated `github.com/prometheus/client_golang` from `v1.23.2` to `v1.24.1`, the library exposing the Operator's own metrics.
+  [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- Updated `github.com/grafana/grafana-openapi-client-go`, used by the `ScyllaDBMonitoring` controller to configure Grafana,
+  to its `2026-07-24` revision.
+  [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+
+<details><summary>Other dependencies updates</summary>
+
+- `github.com/aws/aws-sdk-go-v2` from `v1.41.7` to `v1.43.4`, along with the rest of the AWS SDK modules and
+  `github.com/aws/smithy-go` from `v1.25.1` to `v1.27.6`.
+  [#3551](https://github.com/scylladb/scylla-operator/pull/3551), [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- `google.golang.org/grpc` from `v1.81.1` to `v1.83.0`.
+  [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- `golang.org/x/sys` from `v0.44.0` to `v0.47.0`.
+  [#3551](https://github.com/scylladb/scylla-operator/pull/3551)
+- `github.com/go-openapi/runtime` from `v0.31.0` to `v0.33.0` and `github.com/go-openapi/strfmt` from `v0.26.2` to `v0.27.0`.
+  [#3551](https://github.com/scylladb/scylla-operator/pull/3551), [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- `github.com/magiconair/properties` from `v1.8.10` to `v1.18.11`.
+  [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- `github.com/onsi/ginkgo/v2` from `v2.29.0` to `v2.32.0` and `github.com/onsi/gomega` from `v1.41.0` to `v1.42.1`.
+  [#3566](https://github.com/scylladb/scylla-operator/pull/3566)
+- `go` directive in `go.mod` from `1.26.0` to `1.26.3`.
+  [#3551](https://github.com/scylladb/scylla-operator/pull/3551)
+
+</details>
+
+## [1.20.3](https://github.com/scylladb/scylla-operator/releases/tag/v1.20.3)
+
+Release date: 2026-08-11
+
+### Highlights
+
+- 🐛 Fixed the sidecar returning spurious errors during node decommission.
+- ⬆️ Updated the Kubernetes client libraries from `v0.35.3` to `v0.36.3` (Kubernetes 1.36).
+
+### Bug Fixes
+
+- Fixed the sidecar returning spurious errors during node decommission. `IsDecommissioning()` in the ScyllaDB API
+  wrapper incorrectly compared against `OperationalModeDecommissioned` instead of `OperationalModeDecommissioning`,
+  which resulted in an unhandled error being logged.
+  [#3547](https://github.com/scylladb/scylla-operator/pull/3547)
+- Fixed a garbled generation number in the error reported by the `NodeConfig` controller when a node condition is missing
+  for the observed generation. The generation was formatted with `%q` instead of `%d`, rendering it as
+  `%!q(int64=...)`.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550)
+
+### Dependencies
+
+- Updated `k8s.io/*` modules from `v0.35.3` to `v0.36.3`, moving the Kubernetes client libraries the Operator uses to talk
+  to the Kubernetes API from Kubernetes 1.35 to 1.36.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550), [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- Updated `github.com/prometheus-operator/prometheus-operator/pkg/client` and
+  `github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring` from `v0.89.0` to `v0.93.0`. These define and
+  access the `Prometheus` and `ServiceMonitor` resources that the `ScyllaDBMonitoring` controller manages.
+  [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- Updated the ScyllaDB Manager client modules (`github.com/scylladb/scylla-manager/v3/*`), used to communicate with
+  ScyllaDB Manager, to their `2026-08-06` revision.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550), [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- Updated `github.com/prometheus/client_golang` from `v1.23.2` to `v1.24.1`, the library exposing the Operator's own metrics.
+  [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- Updated `github.com/grafana/grafana-openapi-client-go`, used by the `ScyllaDBMonitoring` controller to configure Grafana,
+  to its `2026-07-24` revision.
+  [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- Raised the `go` directive in `go.mod` from `1.25.1` to `1.26.3`. Building the Operator from source, or importing its Go
+  modules, now requires a Go 1.26 toolchain. The builder image has been on `golang-1.26` since 1.20.1.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550)
+
+<details><summary>Other dependencies updates</summary>
+
+- `github.com/aws/aws-sdk-go-v2` from `v1.41.4` to `v1.43.4`, along with the rest of the AWS SDK modules and
+  `github.com/aws/smithy-go` from `v1.24.2` to `v1.27.6`.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550), [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- `google.golang.org/grpc` from `v1.79.3` to `v1.83.0`.
+  [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- `golang.org/x/sys` from `v0.42.0` to `v0.47.0`.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550)
+- `github.com/go-git/go-git/v5` from `v5.17.0` to `v5.19.2`.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550), [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- `github.com/go-openapi/runtime` from `v0.29.3` to `v0.33.0` and `github.com/go-openapi/strfmt` from `v0.26.1` to `v0.27.0`.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550), [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- `github.com/magiconair/properties` from `v1.8.10` to `v1.18.11`.
+  [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- `go.uber.org/config` from `v1.4.0` to `v1.4.1`.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550)
+- `github.com/onsi/ginkgo/v2` from `v2.28.1` to `v2.32.0` and `github.com/onsi/gomega` from `v1.39.1` to `v1.42.1`.
+  [#3550](https://github.com/scylladb/scylla-operator/pull/3550), [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+- `sigs.k8s.io/controller-runtime` from `v0.23.3` to `v0.24.1`.
+  [#3565](https://github.com/scylladb/scylla-operator/pull/3565)
+
+</details>
 
 ## [1.21.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.0)
 

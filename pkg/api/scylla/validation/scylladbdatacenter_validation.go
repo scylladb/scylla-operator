@@ -607,7 +607,7 @@ func validateEnum[E ~string](value E, supported []E, fldPath *field.Path) field.
 func validateParallelBootstrapPolicyScyllaDBVersion[P ~string](bootstrapPolicy P, scyllaDBVersion string, fldPath *field.Path) field.ErrorList {
 	var allErrs field.ErrorList
 
-	if !semver.NewScyllaVersion(scyllaDBVersion).SupportFeatureSafe(semver.ScyllaDBVersionRequiredForParallelBootstrap) {
+	if !semver.SupportsParallelBootstrap(scyllaDBVersion) {
 		allErrs = append(allErrs, field.Invalid(fldPath, bootstrapPolicy, fmt.Sprintf(
 			"requires a semver-parseable ScyllaDB version >= %d.%d",
 			semver.ScyllaDBVersionRequiredForParallelBootstrap.Major,

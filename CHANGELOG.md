@@ -26,6 +26,11 @@
   Every node is now cleaned up once the ring changes. Note that this increases the number of cleanup jobs created at once,
   from N-1 to N for an N node cluster.
   [#3574](https://github.com/scylladb/scylla-operator/pull/3574)
+- Fixed the `ScyllaDBDatacenter` controller discarding failures to sync `ScyllaDBDatacenterNodesStatusReport` objects.
+  The error was dropped instead of being aggregated into the error returned by the reconciliation, so a failed sync was
+  reported as successful and the key was forgotten rather than requeued, losing the retry with backoff. The degraded
+  condition was reported correctly, so this was not visible in the resource status.
+  [#3587](https://github.com/scylladb/scylla-operator/pull/3587)
 
 ### Features & Enhancements
 - Added an optional `bootstrapPolicy` field to `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec`, accepting `Sequential`

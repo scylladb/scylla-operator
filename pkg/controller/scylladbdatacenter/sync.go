@@ -293,6 +293,9 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 			return sdcc.syncScyllaDBDatacenterNodesStatusReports(ctx, sdc, serviceMap, scyllaDBDatacenterNodesStatusReportMap)
 		},
 	)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't sync ScyllaDBDatacenter nodes status reports: %w", err))
+	}
 
 	err = controllerhelpers.RunSync(
 		&status.Conditions,

@@ -546,6 +546,8 @@ func TestApplyStatefulSet(t *testing.T) {
 					},
 				}
 				apimachineryutilruntime.Must(SetHashAnnotation(sts))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				sts.ResourceVersion = ""
 				return sts
 			}(),
 			expectedChanged: true,
@@ -588,6 +590,89 @@ func TestApplyStatefulSet(t *testing.T) {
 			expectedSts:     nil,
 			expectedChanged: false,
 			expectedErr:     fmt.Errorf("can't get recreate reason: %w", fmt.Errorf(`required StatefulSet selector "bar=foo,foo=bar" doesn't match existing Pod Labels set map[foo:bar]`)),
+			expectedEvents:  nil,
+		},
+		{
+			name: "deletes and creates the StatefulSet when podManagementPolicy is changed",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				sts.ResourceVersion = ""
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "deletes and creates the StatefulSet when podManagementPolicy is changed back",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
+				// The object is recreated, so the resourceVersion of the object it was based on is cleared.
+				sts.ResourceVersion = ""
+				return sts
+			}(),
+			expectedChanged: true,
+			expectedErr:     nil,
+			expectedEvents: []string{
+				"Normal StatefulSetDeleted StatefulSet default/test deleted",
+				"Normal StatefulSetCreated StatefulSet default/test created",
+			},
+		},
+		{
+			name: "does nothing when podManagementPolicy matches",
+			existing: []runtime.Object{
+				func() *appsv1.StatefulSet {
+					sts := newSts()
+					sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+					apimachineryutilruntime.Must(SetHashAnnotation(sts))
+					return sts
+				}(),
+			},
+			required: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+				return sts
+			}(),
+			expectedSts: func() *appsv1.StatefulSet {
+				sts := newSts()
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+				apimachineryutilruntime.Must(SetHashAnnotation(sts))
+				return sts
+			}(),
+			expectedChanged: false,
+			expectedErr:     nil,
 			expectedEvents:  nil,
 		},
 	}

@@ -2184,6 +2184,73 @@ exec scylla-manager-agent \
 			}(),
 			expectedError: nil,
 		},
+		{
+			name: "new StatefulSet with sequential bootstrap policy uses OrderedReady pod management",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicySequential)
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Labels["scylla/scylla-version"] = unit.ScyllaDBImageAtParallelBootstrapThresholdTag
+				sts.Spec.Template.Labels["scylla/scylla-version"] = unit.ScyllaDBImageAtParallelBootstrapThresholdTag
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+
+				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+					sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				}
+
+				sts.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with parallel bootstrap policy uses Parallel pod management",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+
+				sts.Labels["scylla/scylla-version"] = unit.ScyllaDBImageAtParallelBootstrapThresholdTag
+				sts.Spec.Template.Labels["scylla/scylla-version"] = unit.ScyllaDBImageAtParallelBootstrapThresholdTag
+				sts.Spec.Template.Spec.Containers[scyllaContainerIndex].Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+
+				if utilfeature.DefaultMutableFeatureGate.Enabled(features.BootstrapSynchronisation) {
+					sts.Spec.Template.Spec.InitContainers[runBootstrapBarrierInitContainerIndex].Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+				}
+
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "parallel bootstrap policy with an unsupported ScyllaDB version errors out",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageBelowParallelBootstrapThreshold
+				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: nil,
+			expectedError:       fmt.Errorf(`can't get pod management policy: %w`, fmt.Errorf(`can't get effective bootstrap policy: %w`, fmt.Errorf(`bootstrap policy "Parallel" requires a semver-parseable ScyllaDB version >= 2026.2, got "2026.1.0"`))),
+		},
 	}
 
 	for _, tc := range tt {
@@ -2220,6 +2287,101 @@ func TestStatefulSetForRack(t *testing.T) {
 				runTestStatefulSetForRack(t)
 			})
 		}
+	}
+}
+
+func Test_effectiveBootstrapPolicy(t *testing.T) {
+	t.Parallel()
+
+	newSDC := func(bootstrapPolicy *scyllav1alpha1.BootstrapPolicy, image string) *scyllav1alpha1.ScyllaDBDatacenter {
+		return &scyllav1alpha1.ScyllaDBDatacenter{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "basic",
+			},
+			Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
+				ClusterName: "basic",
+				ScyllaDB: scyllav1alpha1.ScyllaDB{
+					Image: image,
+				},
+				BootstrapPolicy: bootstrapPolicy,
+			},
+		}
+	}
+
+	tt := []struct {
+		name                    string
+		scyllaDBDatacenter      *scyllav1alpha1.ScyllaDBDatacenter
+		expectedBootstrapPolicy scyllav1alpha1.BootstrapPolicy
+		expectedErrorString     string
+	}{
+		{
+			name:                    "unset policy is sequential",
+			scyllaDBDatacenter:      newSDC(nil, unit.ScyllaDBImageAtParallelBootstrapThreshold),
+			expectedBootstrapPolicy: scyllav1alpha1.BootstrapPolicySequential,
+			expectedErrorString:     "",
+		},
+		{
+			name:                    "sequential policy is sequential",
+			scyllaDBDatacenter:      newSDC(new(scyllav1alpha1.BootstrapPolicySequential), unit.ScyllaDBImageAtParallelBootstrapThreshold),
+			expectedBootstrapPolicy: scyllav1alpha1.BootstrapPolicySequential,
+			expectedErrorString:     "",
+		},
+		{
+			name:                    "sequential policy is sequential regardless of an unparseable version",
+			scyllaDBDatacenter:      newSDC(new(scyllav1alpha1.BootstrapPolicySequential), unit.ScyllaDBImage),
+			expectedBootstrapPolicy: scyllav1alpha1.BootstrapPolicySequential,
+			expectedErrorString:     "",
+		},
+		{
+			name:                    "parallel policy is parallel at the required version",
+			scyllaDBDatacenter:      newSDC(new(scyllav1alpha1.BootstrapPolicyParallel), unit.ScyllaDBImageAtParallelBootstrapThreshold),
+			expectedBootstrapPolicy: scyllav1alpha1.BootstrapPolicyParallel,
+			expectedErrorString:     "",
+		},
+		{
+			name:                    "parallel policy is parallel above the required version",
+			scyllaDBDatacenter:      newSDC(new(scyllav1alpha1.BootstrapPolicyParallel), unit.ScyllaDBImageAboveNodeExporterThreshold),
+			expectedBootstrapPolicy: scyllav1alpha1.BootstrapPolicyParallel,
+			expectedErrorString:     "",
+		},
+		{
+			name:                    "parallel policy errors out below the required version",
+			scyllaDBDatacenter:      newSDC(new(scyllav1alpha1.BootstrapPolicyParallel), unit.ScyllaDBImageBelowParallelBootstrapThreshold),
+			expectedBootstrapPolicy: "",
+			expectedErrorString:     `bootstrap policy "Parallel" requires a semver-parseable ScyllaDB version >= 2026.2, got "2026.1.0"`,
+		},
+		{
+			name:                    "parallel policy errors out with an unparseable version",
+			scyllaDBDatacenter:      newSDC(new(scyllav1alpha1.BootstrapPolicyParallel), unit.ScyllaDBImage),
+			expectedBootstrapPolicy: "",
+			expectedErrorString:     `bootstrap policy "Parallel" requires a semver-parseable ScyllaDB version >= 2026.2, got "latest"`,
+		},
+		{
+			name:                    "unsupported policy errors out",
+			scyllaDBDatacenter:      newSDC(new(scyllav1alpha1.BootstrapPolicy("Unsupported")), unit.ScyllaDBImageAtParallelBootstrapThreshold),
+			expectedBootstrapPolicy: "",
+			expectedErrorString:     `unsupported bootstrap policy "Unsupported"`,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := effectiveBootstrapPolicy(tc.scyllaDBDatacenter)
+
+			errString := ""
+			if err != nil {
+				errString = err.Error()
+			}
+			if !cmp.Equal(errString, tc.expectedErrorString) {
+				t.Fatalf("expected and got error strings differ: %s", cmp.Diff(tc.expectedErrorString, errString))
+			}
+
+			if got != tc.expectedBootstrapPolicy {
+				t.Errorf("expected bootstrap policy %q, got %q", tc.expectedBootstrapPolicy, got)
+			}
+		})
 	}
 }
 

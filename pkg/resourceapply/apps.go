@@ -43,6 +43,12 @@ func ApplyStatefulSetWithControl(
 				return "spec.selector is immutable", pointer.Ptr(metav1.DeletePropagationOrphan), nil
 			}
 
+			if existing.Spec.PodManagementPolicy != required.Spec.PodManagementPolicy {
+				// Orphan the Pods so that toggling the policy doesn't disrupt running nodes. They are adopted back by
+				// the recreated StatefulSet.
+				return "spec.podManagementPolicy is immutable", pointer.Ptr(metav1.DeletePropagationOrphan), nil
+			}
+
 			return "", nil, nil
 		},
 	)

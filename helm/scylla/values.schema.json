@@ -174,7 +174,7 @@
       "type": "array"
     },
     "bootstrapPolicy": {
-      "description": "bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in\nparallel (Parallel). Parallel requires ScyllaDB 2026.2 or later.\nIf not provided, it's treated as Sequential.",
+      "description": "bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in\nparallel (Parallel). Parallel requires ScyllaDB 2026.2 or later.\nIf not provided, it's treated as Sequential.\nOn creation, it's set to Parallel when spec.version is a semver-parseable version supporting parallel\nbootstrap. The set value is persisted, so it stays in effect across ScyllaDB version changes until it's\nexplicitly changed. It's otherwise left unset, and never set on an already existing object.",
       "enum": [
         "Sequential",
         "Parallel"

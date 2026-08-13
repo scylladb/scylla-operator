@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -160,33 +161,90 @@ func Test_mutate(t *testing.T) {
 }
 
 // Test_mutate_withDefaultDefaulters covers mutate against DefaultDefaulters, the registry served by the webhook
-// server, asserting which resources it defaults and that the registered defaulters are no-ops.
-// The dispatcher machinery itself is covered by Test_mutate.
+// server, asserting which resources it defaults and what the registered defaulters stamp.
+// The defaulters themselves are covered by the defaulting package's tests, the dispatcher machinery by Test_mutate.
 func Test_mutate_withDefaultDefaulters(t *testing.T) {
 	t.Parallel()
 
 	tt := []struct {
-		name          string
-		req           *admissionv1.AdmissionRequest
-		expectedError error
+		name            string
+		req             *admissionv1.AdmissionRequest
+		expectedPatches []jsonpatch.Operation
+		expectedError   error
 	}{
 		{
-			name: "a ScyllaCluster passes through unchanged",
+			// Sequential is never stamped: an unset bootstrapPolicy is left unset, so that objects whose owners
+			// never made a choice keep resolving it rather than being pinned to today's resolution.
+			name: "a ScyllaCluster with a version not supporting parallel bootstrap is admitted unchanged",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
 				Group:    "scylla.scylladb.com",
 				Version:  "v1",
 				Resource: "scyllaclusters",
-			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1","kind":"ScyllaCluster","metadata":{"name":"basic","namespace":"test"},"spec":{"version":"6.2.0","agentVersion":"3.4.0","datacenter":{"name":"dc1","racks":[{"name":"rack1","members":3,"storage":{"capacity":"1Gi"}}]}}}`)),
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1","kind":"ScyllaCluster","metadata":{"name":"basic","namespace":"test"},"spec":{"version":"2026.1.0","agentVersion":"3.4.0","datacenter":{"name":"dc1","racks":[{"name":"rack1","members":3,"storage":{"capacity":"1Gi"}}]}}}`)),
+			expectedPatches: nil,
+			expectedError:   nil,
+		},
+		{
+			name: "a ScyllaCluster with a version supporting parallel bootstrap is stamped with a Parallel bootstrapPolicy",
+			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
+				Group:    "scylla.scylladb.com",
+				Version:  "v1",
+				Resource: "scyllaclusters",
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1","kind":"ScyllaCluster","metadata":{"name":"basic","namespace":"test"},"spec":{"version":"2026.2.0","agentVersion":"3.4.0","datacenter":{"name":"dc1","racks":[{"name":"rack1","members":3,"storage":{"capacity":"1Gi"}}]}}}`)),
+			expectedPatches: []jsonpatch.Operation{
+				{
+					Operation: "add",
+					Path:      "/spec/bootstrapPolicy",
+					Value:     string(scyllav1.BootstrapPolicyParallel),
+				},
+			},
 			expectedError: nil,
 		},
 		{
-			name: "a ScyllaDBDatacenter passes through unchanged",
+			name: "a ScyllaCluster with an explicit bootstrapPolicy passes through unchanged",
+			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
+				Group:    "scylla.scylladb.com",
+				Version:  "v1",
+				Resource: "scyllaclusters",
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1","kind":"ScyllaCluster","metadata":{"name":"basic","namespace":"test"},"spec":{"version":"2026.2.0","agentVersion":"3.4.0","bootstrapPolicy":"Sequential","datacenter":{"name":"dc1","racks":[{"name":"rack1","members":3,"storage":{"capacity":"1Gi"}}]}}}`)),
+			expectedPatches: nil,
+			expectedError:   nil,
+		},
+		{
+			name: "a ScyllaDBDatacenter with an image not supporting parallel bootstrap is admitted unchanged",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
 				Group:    "scylla.scylladb.com",
 				Version:  "v1alpha1",
 				Resource: "scylladbdatacenters",
-			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBDatacenter","metadata":{"name":"basic","namespace":"test"},"spec":{"clusterName":"basic","scyllaDB":{"image":"docker.io/scylladb/scylla:6.2.0"},"racks":[{"name":"rack1"}]}}`)),
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBDatacenter","metadata":{"name":"basic","namespace":"test"},"spec":{"clusterName":"basic","scyllaDB":{"image":"docker.io/scylladb/scylla:2026.1.0"},"racks":[{"name":"rack1"}]}}`)),
+			expectedPatches: nil,
+			expectedError:   nil,
+		},
+		{
+			name: "a ScyllaDBDatacenter with an image supporting parallel bootstrap is stamped with a Parallel bootstrapPolicy",
+			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
+				Group:    "scylla.scylladb.com",
+				Version:  "v1alpha1",
+				Resource: "scylladbdatacenters",
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBDatacenter","metadata":{"name":"basic","namespace":"test"},"spec":{"clusterName":"basic","scyllaDB":{"image":"docker.io/scylladb/scylla:2026.2.0"},"racks":[{"name":"rack1"}]}}`)),
+			expectedPatches: []jsonpatch.Operation{
+				{
+					Operation: "add",
+					Path:      "/spec/bootstrapPolicy",
+					Value:     string(scyllav1alpha1.BootstrapPolicyParallel),
+				},
+			},
 			expectedError: nil,
+		},
+		{
+			name: "a ScyllaDBDatacenter with an explicit bootstrapPolicy passes through unchanged",
+			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
+				Group:    "scylla.scylladb.com",
+				Version:  "v1alpha1",
+				Resource: "scylladbdatacenters",
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBDatacenter","metadata":{"name":"basic","namespace":"test"},"spec":{"clusterName":"basic","scyllaDB":{"image":"docker.io/scylladb/scylla:2026.2.0"},"bootstrapPolicy":"Sequential","racks":[{"name":"rack1"}]}}`)),
+			expectedPatches: nil,
+			expectedError:   nil,
 		},
 		{
 			// ScyllaDBClusters are deliberately not registered, as parallel bootstrap is not supported in
@@ -197,7 +255,8 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 				Version:  "v1alpha1",
 				Resource: "scylladbclusters",
 			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBCluster","metadata":{"name":"basic","namespace":"test"}}`)),
-			expectedError: fmt.Errorf(`unsupported GVR "scylla.scylladb.com/v1alpha1, Resource=scylladbclusters"`),
+			expectedPatches: nil,
+			expectedError:   fmt.Errorf(`unsupported GVR "scylla.scylladb.com/v1alpha1, Resource=scylladbclusters"`),
 		},
 		{
 			name: "a resource outside of the ScyllaDB API group is rejected as an unsupported GVR",
@@ -206,7 +265,8 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 				Version:  "v1",
 				Resource: "pods",
 			}, admissionv1.Create, []byte(`{"apiVersion":"v1","kind":"Pod","metadata":{"name":"pod","namespace":"test"},"spec":{"containers":null}}`)),
-			expectedError: fmt.Errorf(`unsupported GVR "/v1, Resource=pods"`),
+			expectedPatches: nil,
+			expectedError:   fmt.Errorf(`unsupported GVR "/v1, Resource=pods"`),
 		},
 	}
 
@@ -219,8 +279,8 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 				t.Fatalf("expected and actual errors differ: %s", cmp.Diff(tc.expectedError, err, cmpopts.EquateErrors()))
 			}
 
-			if patches != nil {
-				t.Errorf("expected no patches, got %v: the registered defaulters must be no-ops", patches)
+			if !reflect.DeepEqual(tc.expectedPatches, patches) {
+				t.Errorf("expected and actual patches differ: %s", cmp.Diff(tc.expectedPatches, patches))
 			}
 		})
 	}

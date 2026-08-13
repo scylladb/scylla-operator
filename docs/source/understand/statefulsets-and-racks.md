@@ -30,7 +30,11 @@ StatefulSets provide two guarantees that are essential for running ScyllaDB:
 
 2. **Stable persistent storage** — each pod's PersistentVolumeClaim (PVC) is named deterministically (`data-<pod-name>`) and is **not** deleted when the pod is deleted or the StatefulSet is scaled down. When a pod comes back (restart or scale-up), it reattaches to the same PVC and recovers its data.
 
-The Operator uses `OrderedReady` pod management policy. This means pods are created in order (0, 1, 2, …) and each pod must become Ready before the next one is created. On shutdown, pods are terminated in reverse order.
+The pod management policy of the StatefulSet follows the cluster's bootstrap policy. 
+With the `Sequential` bootstrap policy, the Operator uses `OrderedReady`: pods are created in order (0, 1, 2, …) and each pod must become Ready before the next one is created. 
+With `Parallel`, the Operator uses the `Parallel` pod management policy and pods are created without waiting for the previous ordinal to become Ready. 
+On shutdown, pods are terminated in reverse order under both policies.
+Please refer to [sequential and parallel node provisioning](../operate/scale-add-remove-racks.md#sequential-and-parallel-node-provisioning) for details.
 
 ## Scaling
 

@@ -92,7 +92,7 @@ object
      - backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
    * - bootstrapPolicy
      - string
-     - bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in parallel (Parallel). Parallel requires ScyllaDB 2026.2 or later. If not provided, it's treated as Sequential.
+     - bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in parallel (Parallel). Parallel requires ScyllaDB 2026.2 or later. If not provided, it's treated as Sequential. On creation, it's set to Parallel when spec.version is a semver-parseable version supporting parallel bootstrap. The set value is persisted, so it stays in effect across ScyllaDB version changes until it's explicitly changed. It's otherwise left unset, and never set on an already existing object.
    * - cpuset
      - boolean
      - cpuset determines if the cluster will use cpu-pinning. Deprecated: `cpuset` is deprecated. It is now treated as if it is always set to true regardless of its value.

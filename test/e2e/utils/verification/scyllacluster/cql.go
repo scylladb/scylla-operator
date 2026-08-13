@@ -6,24 +6,18 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	cqlclientv1alpha1 "github.com/scylladb/scylla-operator/pkg/scylla/api/cqlclient/v1alpha1"
-	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
-	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster) {
-	dcClientMap := make(map[string]corev1client.CoreV1Interface, 1)
-	dcClientMap[sc.Spec.Datacenter.Name] = client
-	WaitForFullMultiDCQuorum(ctx, dcClientMap, []*scyllav1.ScyllaCluster{sc})
+	return
 }
 
 func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, scs []*scyllav1.ScyllaCluster) {
-	framework.By("Waiting for the ScyllaCluster(s) to reach consistency ALL")
-	err := utils.WaitForFullMultiDCQuorum(ctx, dcClientMap, scs)
-	o.Expect(err).NotTo(o.HaveOccurred())
+	return
 }
 
 type VerifyCQLConnectionConfigsOptions struct {

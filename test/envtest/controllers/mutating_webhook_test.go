@@ -194,6 +194,14 @@ var _ = g.Describe("Mutating admission webhook", func() {
 						Name:      name,
 						Namespace: namespace,
 					},
+					Spec: scyllav1alpha1.ScyllaDBClusterSpec{
+						ScyllaDB: scyllav1alpha1.ScyllaDB{
+							Image: envtestScyllaDBImage,
+						},
+						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
+							Image: new(envtestScyllaDBManagerAgentImage),
+						},
+					},
 				}
 			},
 		}),

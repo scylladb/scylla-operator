@@ -80,8 +80,9 @@ func WithoutMutatingWebhook() SetupOption {
 // Setup sets up an envtest environment with the ScyllaDB CRDs installed. It will be cleaned up automatically when the test ends.
 // It returns an Environment struct that provides access to the Kubernetes and ScyllaDB clients, as well as the test namespace
 // for convenience.
-// The mutating admission webhook shipped in deploy/operator/ is installed and served by default, so that objects created by
-// any spec go through the same defaulting as in a real deployment. Opt out with WithoutMutatingWebhook.
+// The mutating and validating admission webhooks shipped in deploy/operator/ are installed and served, so that objects
+// created by any spec go through the same defaulting and validation as in a real deployment. The mutating one can be
+// opted out of with WithoutMutatingWebhook.
 func Setup(ctx context.Context, opts ...SetupOption) *Environment {
 	g.GinkgoHelper()
 
@@ -163,6 +164,8 @@ func Setup(ctx context.Context, opts ...SetupOption) *Environment {
 		SetupOperatorMutatingWebhook(ctx, env, operatorcmd.NewMutatingWebhookHandler(operatorcmd.DefaultDefaulters))
 	}
 
+	setupOperatorValidatingWebhook(ctx, env, operatorcmd.NewValidatingWebhookHandleFunc(operatorcmd.DefaultValidators))
+
 	return env
 }
 
@@ -194,6 +197,8 @@ func (e *Environment) Config() *rest.Config {
 // under the scylla.scylladb.com API group (v1 and v1alpha1) and dispatches them to handleFunc.
 // The webhook server is started automatically and cleaned up when the test ends.
 // NOTE: this function starts a test-only mock webhook server, not the validating webhook shipped with the Operator.
+// The shipped one is installed by Setup and decides on admission as well, on its own server, so an object has to
+// satisfy the Operator's validation on top of what handleFunc admits.
 func SetupMockValidatingWebhook(ctx context.Context, e *Environment, handleFunc admissionreview.HandleFunc) {
 	g.GinkgoHelper()
 
@@ -260,6 +265,21 @@ func SetupOperatorMutatingWebhook(ctx context.Context, e *Environment, handler a
 	setupMockWebhook(ctx, e, webhookOpts, "/mutate", &admission.Webhook{
 		Handler: handler,
 	})
+}
+
+// setupOperatorValidatingWebhook installs the ValidatingWebhookConfiguration shipped in deploy/operator/ and dispatches
+// the intercepted admission requests to handleFunc, so the shipped rules and path are exercised.
+// The webhook server is started automatically and cleaned up when the test ends.
+// NOTE: envtest rewrites the manifest's client config to point at a test-local webhook server, not the webhook
+// server shipped with the Operator.
+func setupOperatorValidatingWebhook(ctx context.Context, e *Environment, handleFunc admissionreview.HandleFunc) {
+	g.GinkgoHelper()
+
+	webhookOpts := envtest.WebhookInstallOptions{
+		Paths: []string{filepath.Join(repoRoot, "deploy", "operator", "10_validatingwebhook.yaml")},
+	}
+
+	setupMockWebhook(ctx, e, webhookOpts, "/validate", admissionreview.NewHandler(handleFunc))
 }
 
 func setupMockWebhook(ctx context.Context, e *Environment, webhookOpts envtest.WebhookInstallOptions, webhookPath string, handler http.Handler) {

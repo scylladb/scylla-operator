@@ -443,6 +443,14 @@ func newBasicScyllaDBMonitoring(name, namespace string) *scyllav1alpha1.ScyllaDB
 					Authentication: scyllav1alpha1.GrafanaAuthentication{
 						InsecureEnableAnonymousAccess: true,
 					},
+					Datasources: []scyllav1alpha1.GrafanaDatasourceSpec{
+						{
+							Name:              "prometheus",
+							Type:              scyllav1alpha1.GrafanaDatasourceTypePrometheus,
+							URL:               "https://prometheus.example:9090",
+							PrometheusOptions: &scyllav1alpha1.GrafanaPrometheusDatasourceOptions{},
+						},
+					},
 				},
 			},
 		},

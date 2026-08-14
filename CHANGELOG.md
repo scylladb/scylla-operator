@@ -74,6 +74,11 @@
   reference were updated — the expected resource type and runtime behavior are unchanged.
   [#3534](https://github.com/scylladb/scylla-operator/pull/3534)
 
+### Dependencies
+
+- Updated default ScyllaDB Manager version from `3.11.2` to `3.12.0`.
+  [#3520](https://github.com/scylladb/scylla-operator/pull/3520)
+
 ## [1.21.1](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.1)
 
 Release date: 2026-08-11

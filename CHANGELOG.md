@@ -20,6 +20,9 @@
   wrapper incorrectly compared against `OperationalModeDecommissioned` instead of `OperationalModeDecommissioning`,
   which resulted in an unhandled error being logged.
   [#3538](https://github.com/scylladb/scylla-operator/pull/3538)
+- Fixed sidecar annotation sync to check the local ScyllaDB node operation mode before fetching the IP-to-HostID map.
+  Nodes that are not yet in `NORMAL` mode are requeued, while a missing HostID for a `NORMAL` node is surfaced as an error.
+  [#3535](https://github.com/scylladb/scylla-operator/pull/3535)
 - Fixed nodes being skipped by cleanup after the token ring changed. The operator seeded a node's last cleaned up token
   ring hash with whatever ring state its sidecar sampled first, which exempted that node from cleanup of the ring it
   first observed. Which nodes ended up exempt depended on the race between node joins and the time for sidecar to propagate the token ring hash.

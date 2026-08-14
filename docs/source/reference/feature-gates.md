@@ -64,8 +64,8 @@ additionalArgs:
   - `true`
   - v1.11
 * - `BootstrapSynchronisation`
-  - `false`
-  - v1.19
+  - `true`
+  - v1.22
 :::
 
 - **Default** — whether the feature is enabled when you don't set it explicitly.

@@ -60,6 +60,10 @@
   Previously every node expected to exist in the Kubernetes state was required to be reported and UP, including nodes
   that hadn't joined yet and couldn't report their status.
   [#3530](https://github.com/scylladb/scylla-operator/pull/3530)
+- The `BootstrapSynchronisation` feature gate is now enabled by default, making the bootstrap barrier opt-out. It
+  remains a no-op below ScyllaDB 2025.2.0, where the operator does not inject the `scylladb-bootstrap-barrier` init
+  container regardless of the gate.
+  [#3590](https://github.com/scylladb/scylla-operator/pull/3590)
 - Restored the multi-datacenter documentation, which was dropped by the docs restructuring in 1.21. The guide for
   deploying a multi-datacenter ScyllaDB cluster, and the guides for preparing interconnected EKS and GKE clusters to
   run it on, are available again under Deploy ScyllaDB and Provision infrastructure respectively.

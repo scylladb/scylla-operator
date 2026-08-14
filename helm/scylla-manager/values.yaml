@@ -6,7 +6,7 @@ fullnameOverride: ""
 image:
   repository: scylladb
   pullPolicy: IfNotPresent
-  tag: 3.11.2@sha256:61ec1396d438945abf3db46db893d7e4d2324acb5523d143077f8fdfea05779d
+  tag: 3.12.0-0.20260813.355c56749
 # Scylla Manager log level, allowed values are: error, warn, info, debug, trace
 logLevel: info
 # Resources allocated to Scylla Manager pods
@@ -38,7 +38,7 @@ scylla:
   scyllaImage:
     tag: 2026.2.2
   agentImage:
-    tag: 3.11.2@sha256:9fd3ba869f1d610b5f3f635a958ecfd3083c7abb8c9cdb12d0d26c6add0b67d9
+    tag: 3.12.0-0.20260813.355c56749
   datacenter: manager-dc
   racks:
     - name: manager-rack

@@ -61,13 +61,14 @@ func TestNodeIsScyllaDBClusterMember(t *testing.T) {
 			expectedErr:    false,
 		},
 		{
-			name: "node not in normal operation mode is undeterminable",
+			name: "node absent from the host ID map is undeterminable when node is not in normal operation mode",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
+				case "/storage_service/host_id":
+					w.Write([]byte(`[{"key":"10.0.0.2","value":"different-host-id"}]`))
 				case "/storage_service/operation_mode":
 					w.Write([]byte(`"JOINING"`))
 				default:
-					// The IP-to-HostID map must not be fetched until the node is in NORMAL operation mode.
 					t.Errorf("unexpected request to %q", r.URL.Path)
 				}
 			},

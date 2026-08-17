@@ -15,7 +15,7 @@ operator:
 operatorTests:
   operatorVersions:
     # renovate: datasource=github-releases depName=scylla-operator packageName=scylladb/scylla-operator versioning=semver
-    upgradeFrom: "1.21.0" # latest released minor.patch, the version operator-upgrade tests upgrade from
+    upgradeFrom: "1.21.1" # latest released minor.patch, the version operator-upgrade tests upgrade from
     upgradeTo: "latest" # the version operator-upgrade tests upgrade to
   scyllaDBVersions:
     updateFrom: "2026.2.1" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)

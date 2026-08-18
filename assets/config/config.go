@@ -33,7 +33,13 @@ type ScyllaDBTestVersions struct {
 	UpgradeFrom string `json:"upgradeFrom"`
 }
 
+type OperatorTestVersions struct {
+	UpgradeFrom string `json:"upgradeFrom"`
+	UpgradeTo   string `json:"upgradeTo"`
+}
+
 type OperatorTestsConfig struct {
+	OperatorVersions         OperatorTestVersions `json:"operatorVersions"`
 	ScyllaDBVersions         ScyllaDBTestVersions `json:"scyllaDBVersions"`
 	NodeSetupImage           string               `json:"nodeSetupImage"`
 	EnvTestKubernetesVersion string               `json:"envTestKubernetesVersion"`

@@ -108,13 +108,7 @@ var _ = g.Describe("ScyllaCluster authentication", framework.SuiteParallel, fram
 		// TODO: restart should be triggered by the Operator
 		framework.By("Initiating a rolling restart")
 
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sc.Name,
-			types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"spec": {"forceRedeploymentReason": "%s"}}`, "scyllaAgenConfig was updated to contain a token")),
-			metav1.PatchOptions{},
-		)
+		_, err = utils.PatchScyllaClusterForceRedeploymentReason(ctx, f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()), sc.Name, "scyllaAgenConfig was updated to contain a token")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to pick up token change")
@@ -151,13 +145,7 @@ var _ = g.Describe("ScyllaCluster authentication", framework.SuiteParallel, fram
 
 		framework.By("Initiating a rolling restart")
 
-		_, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sc.Name,
-			types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"spec": {"forceRedeploymentReason": "%s"}}`, "scyllaAgenConfig token was changed")),
-			metav1.PatchOptions{},
-		)
+		_, err = utils.PatchScyllaClusterForceRedeploymentReason(ctx, f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()), sc.Name, "scyllaAgenConfig token was changed")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to pick up token change")

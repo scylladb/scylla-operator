@@ -11,6 +11,8 @@ shopt -s inherit_errexit
 
 readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
 
+source "${repo_root}/hack/kind/lib.sh"
+
 # Ensure all kind calls use podman.
 export KIND_EXPERIMENTAL_PROVIDER=podman
 
@@ -30,6 +32,14 @@ if ! podman network inspect kind >/dev/null 2>&1; then
   echo "Creating kind IPv4-only network..."
   podman network create kind
 fi
+
+# Generate containerd registry configuration (mounted into KinD nodes via cluster-config.yaml).
+internal_reg_port=5000
+containerd_reg_dir="${repo_root}/hack/kind/containerd-registries/localhost:${KIND_REGISTRY_PORT}"
+mkdir -p "${containerd_reg_dir}"
+cat > "${containerd_reg_dir}/hosts.toml" <<EOF
+[host."http://${KIND_REGISTRY_NAME}:${internal_reg_port}"]
+EOF
 
 # Ensure KinD cluster exists.
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
@@ -53,17 +63,15 @@ else
 fi
 
 # Set up a local registry for the KinD cluster following https://kind.sigs.k8s.io/docs/user/local-registry/.
-reg_name='kind-registry'
-reg_port='5001'
-if [ "$(podman inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)" != 'true' ]; then
+if [ "$(podman inspect -f '{{.State.Running}}' "${KIND_REGISTRY_NAME}" 2>/dev/null || true)" != 'true' ]; then
   podman run \
-    -d --restart=always -p "127.0.0.1:${reg_port}:5000" --replace --network bridge --name "${reg_name}" \
+    -d --restart=always -p "127.0.0.1:${KIND_REGISTRY_PORT}:${internal_reg_port}" --replace --network bridge --name "${KIND_REGISTRY_NAME}" \
     registry:2
 fi
 
 # Connect registry to KinD network.
-if [ "$(podman inspect -f='{{json .NetworkSettings.Networks.kind}}' "${reg_name}")" = 'null' ]; then
-  podman network connect "kind" "${reg_name}"
+if [ "$(podman inspect -f='{{json .NetworkSettings.Networks.kind}}' "${KIND_REGISTRY_NAME}")" = 'null' ]; then
+  podman network connect "kind" "${KIND_REGISTRY_NAME}"
 fi
 
 # Inform KinD cluster about the local registry.
@@ -77,7 +85,7 @@ metadata:
   namespace: kube-public
 data:
   localRegistryHosting.v1: |
-    host: "localhost:${reg_port}"
+    host: "${KIND_REGISTRY_HOST}:${KIND_REGISTRY_PORT}"
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
 rm "${temp_kubeconfig}"
@@ -97,14 +105,18 @@ SO_SCYLLACLUSTER_STORAGECLASS_NAME="${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-standa
 export SO_SCYLLACLUSTER_STORAGECLASS_NAME
 
 source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
-source "${repo_root}/hack/kind/lib.sh"
 
-# Build and push operator image to the local registry (skips if SO_IMAGE is already set).
-build-and-push-operator-image "${repo_root}"
+# Deploy the operator stack unless the caller opts out (e.g. operator-upgrade tests deploy it themselves).
+if [ "${SO_SKIP_DEPLOYMENT:-false}" == "true" ]; then
+  echo "Skipping operator stack deployment (SO_SKIP_DEPLOYMENT=true)."
+else
+  # Build and push operator image to the local registry (skips if SO_IMAGE is already set).
+  build-and-push-operator-image "${repo_root}" SO_IMAGE
 
-# Set up ARTIFACTS directory to store manifests that are used to deploy the operator stack for inspection.
-ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
-export ARTIFACTS
+  # Set up ARTIFACTS directory to store manifests that are used to deploy the operator stack for inspection.
+  ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
+  export ARTIFACTS
 
-# Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
-"${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
+  # Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
+  "${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
+fi

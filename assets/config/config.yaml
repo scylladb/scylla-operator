@@ -11,6 +11,10 @@ operator:
   grafanaDefaultPlatformDashboard: "scylladb-2026.1/scylla-overview.2026.1.json"
   prometheusVersion: "v3.9.1" # Generated from scylla-monitoring/versions.sh PROMETHEUS_VERSION.
 operatorTests:
+  operatorVersions:
+    # renovate: datasource=github-releases depName=scylla-operator packageName=scylladb/scylla-operator versioning=regex:^(?<major>1)\.(?<minor>20)\.(?<patch>\d+)$
+    upgradeFrom: "1.20.2" # latest released 1.20 patch, the version operator-upgrade tests upgrade from
+    upgradeTo: "1.21-latest" # the version operator-upgrade tests upgrade to (tip of the v1.21 release branch)
   scyllaDBVersions:
     updateFrom: "2026.1.2" # One patch lower than .operator.scyllaDBVersion (if no patches yet for this minor, use a release candidate)
     upgradeFrom: "2025.4.5" # One minor lower than .operator.scyllaDBVersion

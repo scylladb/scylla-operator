@@ -66,13 +66,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		initialPodUID := pod.UID
 		framework.Infof("Initial pod %q UID is %q", pod.Name, initialPodUID)
 
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sc.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op": "replace", "path": "/spec/forceRedeploymentReason", "value": "foo"}]`),
-			metav1.PatchOptions{},
-		)
+		sc, err = utils.PatchScyllaClusterForceRedeploymentReason(ctx, f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()), sc.Name, "foo")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the ScyllaCluster to redeploy")

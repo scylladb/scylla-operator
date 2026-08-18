@@ -137,6 +137,9 @@ type RestoreStrategy string
 const (
 	RestoreStrategyRecreate RestoreStrategy = "Recreate"
 	RestoreStrategyUpdate   RestoreStrategy = "Update"
+	// RestoreStrategyUpdateIfExists is like RestoreStrategyUpdate, except that it doesn't recreate the object if it no
+	// longer exists. Use it for objects whose deletion is an expected outcome of the test.
+	RestoreStrategyUpdateIfExists RestoreStrategy = "UpdateIfExists"
 )
 
 type RestoringCleaner struct {
@@ -272,6 +275,28 @@ func (rc *RestoringCleaner) replaceObject(ctx context.Context) {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+func (rc *RestoringCleaner) replaceObjectIfExists(ctx context.Context) {
+	o.Expect(rc.object.GetUID()).NotTo(o.BeEmpty())
+
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		freshObj, err := rc.dynamicClient.Resource(rc.resourceInfo.Resource).Namespace(rc.object.GetNamespace()).Get(ctx, rc.object.GetName(), metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			klog.V(2).InfoS("Skipping object restoration because it no longer exists", "GVR", rc.resourceInfo.Resource, "Instance", naming.ObjRef(rc.object))
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		obj := rc.getCleansedObject()
+		obj.SetResourceVersion(freshObj.GetResourceVersion())
+
+		_, err = rc.dynamicClient.Resource(rc.resourceInfo.Resource).Namespace(obj.GetNamespace()).Update(ctx, obj, metav1.UpdateOptions{})
+		return err
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func (rc *RestoringCleaner) restoreObject(ctx context.Context) {
 	By("Restoring original object %s %q.", rc.resourceInfo.Resource, naming.ObjRef(rc.object))
 	switch rc.strategy {
@@ -279,6 +304,8 @@ func (rc *RestoringCleaner) restoreObject(ctx context.Context) {
 		rc.recreateObject(ctx)
 	case RestoreStrategyUpdate:
 		rc.replaceObject(ctx)
+	case RestoreStrategyUpdateIfExists:
+		rc.replaceObjectIfExists(ctx)
 	default:
 		g.Fail(fmt.Sprintf("unexpected strategy %q", rc.strategy))
 	}

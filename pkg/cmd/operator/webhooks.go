@@ -312,9 +312,7 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 			klog.Error(err)
 		}
 	})
-	handler.Handle("/validate", admissionreview.NewHandler(func(review *admissionv1.AdmissionReview) ([]string, error) {
-		return validate(review, o.Validators)
-	}))
+	handler.Handle("/validate", admissionreview.NewHandler(NewValidatingWebhookHandleFunc(o.Validators)))
 	handler.Handle("/mutate", &admission.Webhook{
 		Handler: NewMutatingWebhookHandler(o.Defaulters),
 	})
@@ -361,6 +359,13 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 	}
 
 	return nil
+}
+
+// NewValidatingWebhookHandleFunc returns a function handling admission reviews with the given validators.
+func NewValidatingWebhookHandleFunc(validators map[schema.GroupVersionResource]Validator) admissionreview.HandleFunc {
+	return func(review *admissionv1.AdmissionReview) ([]string, error) {
+		return validate(review, validators)
+	}
 }
 
 type ValidatableObject interface {

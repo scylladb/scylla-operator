@@ -87,6 +87,9 @@ var _ = g.Describe("OrphanedPVController", func() {
 				ScyllaDB: scyllav1alpha1.ScyllaDB{
 					Image: unit.ScyllaDBImage,
 				},
+				ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
+					Image: pointer.Ptr(envtestScyllaDBManagerAgentImage),
+				},
 				Racks: []scyllav1alpha1.RackSpec{
 					{
 						RackTemplate: scyllav1alpha1.RackTemplate{

@@ -185,10 +185,13 @@ func makeEnvtestScyllaDBDatacenter(namespace string, racks []string, mutators ..
 		},
 		Spec: scyllav1alpha1.ScyllaDBDatacenterSpec{
 			ClusterName: "envtest-cluster",
-			DNSDomains:  []string{"envtest.local"},
+			DNSDomains:  []string{"envtest.scylladb.local"},
 			ScyllaDB: scyllav1alpha1.ScyllaDB{
 				Image:               unit.ScyllaDBImageRepository + ":" + configassets.Project.Operator.ScyllaDBVersion,
 				EnableDeveloperMode: new(true),
+			},
+			ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
+				Image: new(envtestScyllaDBManagerAgentImage),
 			},
 			RackTemplate: &scyllav1alpha1.RackTemplate{
 				Nodes: new(int32(1)),

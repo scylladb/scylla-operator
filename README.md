@@ -33,7 +33,7 @@ To find out more about our releases and support matrix there is a [dedicated doc
 
 If you find a bug please file an [issue](https://github.com/scylladb/scylla-operator/issues) for us.
 
-We are also available on `#scylla-operator` channel on [Slack](https://scylladb-users.slack.com) if you have questions.
+We are also available on `#scylla-operator` channel on [Slack](https://slack.scylladb.com) if you have questions.
 
 ## Contributing
-We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Have a look at the [Contributing Guide](CONTRIBUTING.md) or reach out to us on `#scylla-operator` channel on [Slack](https://scylladb-users.slack.com/) if you have questions.
+We would **love** you to contribute to Scylla Operator, help make it even better and learn together! Have a look at the [Contributing Guide](CONTRIBUTING.md) or reach out to us on `#scylla-operator` channel on [Slack](https://slack.scylladb.com/) if you have questions.

@@ -111,7 +111,7 @@ If you need assistance:
 
 1. **Check documentation**: Review the troubleshooting guide and concepts
 2. **Search issues**: Look for similar problems in [GitHub issues](https://github.com/scylladb/scylla-operator/issues)
-3. **Ask the community**: Join [ScyllaDB Slack](https://scylladb-users.slack.com/)
+3. **Ask the community**: Join [ScyllaDB Slack](https://slack.scylladb.com/)
 4. **Open an issue**: Report bugs or request features on [GitHub](https://github.com/scylladb/scylla-operator/issues/new)
 
 ## Related documentation

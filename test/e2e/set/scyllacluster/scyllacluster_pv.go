@@ -336,6 +336,9 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 					o.Expect(err).To(framework.NotHaveOccurredExceptNotFound())
 
 					err = framework.WaitForObjectDeletion(ctx, f.DynamicAdminClient(), corev1.SchemeGroupVersion.WithResource("persistentvolumeclaims"), f.Namespace(), clonePVC.Name, &clonePVC.UID)
+					if err != nil {
+						return false, fmt.Errorf("couldn't wait for clone PVC %q to be deleted: %v", naming.ManualRef(f.Namespace(), clonePVCName), err)
+					}
 				}
 				return false, nil
 			})

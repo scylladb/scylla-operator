@@ -21,6 +21,7 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -96,6 +97,15 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 		if sc.Spec.Datacenter.Racks[0].Placement.PodAffinity == nil {
 			sc.Spec.Datacenter.Racks[0].Placement.PodAffinity = &corev1.PodAffinity{}
 		}
+		// Every ScyllaDB Pod has to be scheduled onto the Node serving the consumer Pod of its own PVC clone, because
+		// that's the only Node holding its data. The clone PVs carry no NodeAffinity - it's immutable once set, and the
+		// test needs to set it later to simulate the orphan - so this PodAffinity is what ties a Pod to its data.
+		//
+		// The term has to resolve per ordinal, while rack placement is shared by the whole rack. MatchLabelKeys provides
+		// that: the scheduler looks the listed keys up in the incoming Pod's own labels and merges them into the selector
+		// as `key in (value)`. ScyllaDB Pods get apps.kubernetes.io/pod-index from the StatefulSet controller, and the
+		// consumer Pods below are labeled with the ordinal of the PVC they back, so each ScyllaDB Pod only matches its
+		// own consumer Pod.
 		sc.Spec.Datacenter.Racks[0].Placement.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution = append(
 			sc.Spec.Datacenter.Racks[0].Placement.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
 			corev1.PodAffinityTerm{
@@ -104,7 +114,8 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 						cloneLabelKey: f.Namespace(),
 					},
 				},
-				TopologyKey: corev1.LabelHostname,
+				MatchLabelKeys: []string{appsv1.PodIndexLabel},
+				TopologyKey:    corev1.LabelHostname,
 			},
 		)
 
@@ -169,13 +180,20 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 					)
 					o.Expect(err).NotTo(o.HaveOccurred())
 
+					// The consumer Pod is labelled with the ordinal of the ScyllaDB Pod whose PVC it clones, so that the
+					// rack's PodAffinity term can pair the two through MatchLabelKeys. The ordinal comes from the PVC
+					// name, which the StatefulSet derives from its Pod's name.
+					ordinal, err := naming.IndexFromName(pvc.Name)
+					o.Expect(err).NotTo(o.HaveOccurred())
+
 					framework.Infof("Creating PVC clone consumer Pod")
 					consumerPodName := fmt.Sprintf("consumer-%s", pvcClone.Name)
 					consumerPod := &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: consumerPodName,
 							Labels: map[string]string{
-								cloneLabelKey: f.Namespace(),
+								cloneLabelKey:        f.Namespace(),
+								appsv1.PodIndexLabel: fmt.Sprintf("%d", ordinal),
 							},
 						},
 						Spec: corev1.PodSpec{
@@ -361,6 +379,14 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
+		// Assert that every ScyllaDB Pod actually landed on the Node serving the consumer Pod of its own PVC clone.
+		// The pairing relies on MatchLabelKeys, which is silently ignored when the corresponding feature gate is
+		// disabled, and on apps.kubernetes.io/pod-index being stamped on StatefulSet Pods. Both would degrade the
+		// PodAffinity term into one satisfied by any consumer Pod, without failing anything, so verify the placement
+		// rather than trusting the term was honoured.
+		framework.By("Verifying that ScyllaDB Pods are co-located with the consumer Pods of their PVC clones")
+		verifyScyllaDBPodsColocatedWithConsumerPods(ctx, f, sc)
+
 		hosts, _, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(3))
@@ -449,3 +475,27 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteParall
 		wg.Wait()
 	})
 })
+
+// verifyScyllaDBPodsColocatedWithConsumerPods asserts that every ScyllaDB Pod of the first rack runs on the same Node as
+// the consumer Pod holding the clone PV bound to that Pod's own PVC.
+func verifyScyllaDBPodsColocatedWithConsumerPods(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster) {
+	g.GinkgoHelper()
+
+	for i := int32(0); i < sc.Spec.Datacenter.Racks[0].Members; i++ {
+		podName := naming.PodNameForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc, int(i))
+		pod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(ctx, podName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(pod.Spec.NodeName).NotTo(o.BeEmpty())
+
+		consumerPodName := fmt.Sprintf("consumer-clone-%s", naming.PVCNameForPod(podName))
+		consumerPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(ctx, consumerPodName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(consumerPod.Spec.NodeName).NotTo(o.BeEmpty())
+
+		o.Expect(pod.Spec.NodeName).To(
+			o.Equal(consumerPod.Spec.NodeName),
+			"ScyllaDB Pod %q runs on Node %q, but the consumer Pod %q holding its data runs on Node %q",
+			podName, pod.Spec.NodeName, consumerPodName, consumerPod.Spec.NodeName,
+		)
+	}
+}

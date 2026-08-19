@@ -19,8 +19,6 @@ package gocql
 import (
 	"sync"
 	"sync/atomic"
-
-	frm "github.com/gocql/gocql/internal/frame"
 )
 
 // framerPool owns one sync.Pool plus the adaptive buffer-sizing state for one
@@ -47,6 +45,7 @@ type framerConfig struct {
 	proto                 byte
 	flags                 byte
 	tabletsRoutingV1      bool
+	scyllaUseMetadataID   bool
 }
 
 // framerBufEWMAWeight controls how quickly the exponential weighted moving average
@@ -80,12 +79,7 @@ func (cf *connFramers) initCache(c *Conn) {
 	cfg := framerConfig{
 		compressor: c.compressor,
 		proto:      c.version & protoVersionMask,
-	}
-	if c.compressor != nil {
-		cfg.flags |= frm.FlagCompress
-	}
-	if c.version == protoVersion5 {
-		cfg.flags |= frm.FlagBetaProtocol
+		flags:      defaultFramerFlags(c.compressor, c.version),
 	}
 	if lwtExt := findCQLProtoExtByName(c.cqlProtoExts, lwtAddMetadataMarkKey); lwtExt != nil {
 		if castedExt, ok := lwtExt.(*lwtAddMetadataMarkExt); ok {
@@ -106,6 +100,13 @@ func (cf *connFramers) initCache(c *Conn) {
 			cfg.tabletsRoutingV1 = true
 		} else {
 			c.logger.Printf("gocql: failed to cast CQL protocol extension %s to %T", tabletsRoutingV1, tabletsRoutingV1Ext{})
+		}
+	}
+	if metadataIDExt := findCQLProtoExtByName(c.cqlProtoExts, scyllaUseMetadataID); metadataIDExt != nil {
+		if _, ok := metadataIDExt.(*scyllaUseMetadataIDExt); ok {
+			cfg.scyllaUseMetadataID = true
+		} else {
+			c.logger.Printf("gocql: failed to cast CQL protocol extension %s to %T", scyllaUseMetadataID, scyllaUseMetadataIDExt{})
 		}
 	}
 	cf.defaults = cfg
@@ -138,6 +139,10 @@ func (c *Conn) getWriteFramer() *framer {
 func (cf *connFramers) getWrite(c *Conn) *framer {
 	f := cf.writePool.get(c)
 	f.released.Store(false)
+	// Before initCache runs, cf.defaults is still zero, so handshake framers get
+	// no flags at all. That is what the handshake needs: the compressor is not yet
+	// negotiated (so FlagCompress must not be set on OPTIONS/STARTUP), and no
+	// version-derived flag exists to seed — see defaultFramerFlags.
 	f.flags = cf.defaults.flags
 	return f
 }
@@ -218,6 +223,7 @@ func (fp *framerPool) init(defaults framerConfig, release func(*framer)) {
 				flagLWT:               defaults.flagLWT,
 				rateLimitingErrorCode: defaults.rateLimitingErrorCode,
 				tabletsRoutingV1:      defaults.tabletsRoutingV1,
+				scyllaUseMetadataID:   defaults.scyllaUseMetadataID,
 			}
 			f.release = func() { release(f) }
 			return f
@@ -291,6 +297,10 @@ func (fp *framerPool) resetAndPut(f *framer, alignBufWithReadBuffer bool, shrink
 		buf := make([]byte, shrinkSize)
 		f.readBuffer = buf
 		f.buf = buf[:0]
+		// The v5 wire buffer (prepareModernLayout) is sized after the frame it
+		// segmented, so it has to be dropped along with an oversized f.buf,
+		// otherwise a single large request keeps bloating this pooled framer.
+		f.wireBuf = nil
 		fp.put(f)
 		return
 	}

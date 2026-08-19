@@ -27,9 +27,11 @@ package gocql
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"maps"
+	mrand "math/rand/v2"
 	"net"
 	"slices"
 	"strings"
@@ -57,31 +59,36 @@ import (
 // and automatically sets a default consistency level on all operations
 // that do not have a consistency level set.
 type Session struct {
-	warningHandler            WarningHandler
-	queryObserver             QueryObserver
-	control                   controlConnection
-	ctx                       context.Context
-	logger                    StdLogger
-	trace                     Tracer
-	policy                    HostSelectionPolicy
-	batchObserver             BatchObserver
-	connectObserver           ConnectObserver
-	frameObserver             FrameHeaderObserver
-	streamObserver            StreamObserver
-	initErr                   error
-	nodeEvents                *eventDebouncer
-	stmtsLRU                  *preparedLRU
-	hostSource                *ringDescriber
-	pool                      *policyConnPool
-	ringRefresher             *debounce.RefreshDebouncer
-	readyCh                   chan struct{}
-	executor                  *queryExecutor
-	cancel                    context.CancelFunc
-	schemaEvents              *eventDebouncer
-	metadataDescriber         *metadataDescriber
-	eventBus                  *eventbus.EventBus[events.Event]
-	connCfg                   *ConnConfig
-	clientRoutesHandler       *ClientRoutesHandler
+	warningHandler       WarningHandler
+	queryObserver        QueryObserver
+	control              controlConnection
+	ctx                  context.Context
+	logger               StdLogger
+	trace                Tracer
+	policy               HostSelectionPolicy
+	batchObserver        BatchObserver
+	connectObserver      ConnectObserver
+	frameObserver        FrameHeaderObserver
+	streamObserver       StreamObserver
+	initErr              error
+	nodeEvents           *eventDebouncer
+	stmtsLRU             *preparedLRU
+	hostSource           *ringDescriber
+	pool                 *policyConnPool
+	ringRefresher        *debounce.RefreshDebouncer
+	readyCh              chan struct{}
+	executor             *queryExecutor
+	cancel               context.CancelFunc
+	schemaEvents         *eventDebouncer
+	metadataDescriber    *metadataDescriber
+	eventBus             *eventbus.EventBus[events.Event]
+	connCfg              *ConnConfig
+	clientRoutesHandler  *ClientRoutesHandler
+	driverConfigReporter *driverConfigReporter
+	// id is a globally unique identifier for this session, reported to
+	// the cluster via the SESSION_ID STARTUP option so that all connections
+	// belonging to the same session can be correlated in system.clients.
+	id                        string
 	routingKeyInfoCache       routingKeyInfoLRU
 	addressTranslator         AddressTranslator
 	cfg                       ClusterConfig
@@ -100,11 +107,13 @@ type Session struct {
 
 var queryPool = &sync.Pool{
 	New: func() any {
-		return &Query{
+		q := &Query{
 			routingInfo: &queryRoutingInfo{},
-			metrics:     &queryMetrics{m: make(map[UUID]*hostMetrics)},
+			metrics:     newQueryMetrics(),
 			refCount:    1,
 		}
+		q.metricsOwner.self = &q.metricsOwner
+		return q
 	},
 }
 
@@ -154,6 +163,11 @@ func newSessionCommon(cfg ClusterConfig) (*Session, error) {
 		s.addressTranslator = s.clientRoutesHandler
 	}
 
+	if !cfg.DisableDriverConfigReporting {
+		s.driverConfigReporter = newDriverConfigReporter(s)
+	}
+	s.id = newSessionID(s.logger)
+
 	// Close created resources on error otherwise they'll leak
 	var err error
 	defer func() {
@@ -172,7 +186,7 @@ func newSessionCommon(cfg ClusterConfig) (*Session, error) {
 	s.nodeEvents = newEventDebouncer("NodeEvents", s.handleNodeEvent, s.logger)
 	s.schemaEvents = newEventDebouncer("SchemaEvents", s.handleSchemaEvent, s.logger)
 
-	s.routingKeyInfoCache.lru = lru.New[string](cfg.MaxRoutingKeyInfo)
+	s.routingKeyInfoCache.lru = lru.New[routingKeyInfoCacheKey](cfg.MaxRoutingKeyInfo)
 
 	s.hostSource = &ringDescriber{cfg: &s.cfg, logger: s.logger}
 	s.ringRefresher = debounce.NewRefreshDebouncer(debounce.RingRefreshDebounceTime, func() error {
@@ -209,6 +223,60 @@ func newSessionCommon(cfg ClusterConfig) (*Session, error) {
 		s.warningHandler = cfg.WarningsHandlerBuilder(s)
 	}
 	return s, nil
+}
+
+// sessionIDStartupKey is the STARTUP option correlating the connections that
+// belong to one session in system.clients. Unlike driverConfigStartupKey it is
+// sent on every connection, since correlating them is the whole point.
+const sessionIDStartupKey = "SESSION_ID"
+
+// newSessionID generates a globally unique identifier for a session.
+//
+// Every connection reports one, so this always returns an id rather than
+// propagating a failure to generate it.
+//
+// The fallback is defensive rather than reachable: RandomUUID reads from
+// crypto/rand, which since Go 1.24 terminates the process instead of
+// returning an error when the system entropy source fails
+// (golang/go#66821). Since RandomUUID's signature still admits an error,
+// handling it costs little and keeps the id unconditional whatever a future
+// implementation does.
+func newSessionID(logger StdLogger) string {
+	id, err := RandomUUID()
+	if err != nil {
+		logger.Printf("gocql: unable to generate a random session id, falling back to a pseudo-random one: %v", err)
+		id = pseudoRandomUUID()
+	}
+	return id.String()
+}
+
+// pseudoRandomUUID builds a version 4 UUID from the runtime's pseudo-random
+// source, for the case where crypto/rand reports a failure instead of
+// aborting the process. A session id merely correlates the connections of one
+// session in system.clients and is never a security token, so a weaker source
+// of randomness is preferable to no id at all.
+func pseudoRandomUUID() UUID {
+	var u UUID
+	binary.BigEndian.PutUint64(u[:8], mrand.Uint64())
+	binary.BigEndian.PutUint64(u[8:], mrand.Uint64())
+	u[6] = u[6]&0x0F | 0x40 // set version to 4 (random uuid)
+	u[8] = u[8]&0x3F | 0x80 // set to IETF variant
+	return u
+}
+
+// ID returns the globally unique identifier of this session.
+//
+// Every connection the session opens reports this value to the cluster as the
+// SESSION_ID startup option, where it appears in the
+// system.clients.client_options column. Logging it, recording it in a support
+// bundle or attaching it as a metric label is what allows client-side
+// observations to be matched against those rows, instead of correlating by
+// address and port.
+//
+// The id is assigned when the session is created and never changes, so it is
+// safe to call concurrently and safe to read after the session is closed.
+func (s *Session) ID() string {
+	return s.id
 }
 
 // NewSession wraps an existing Node.
@@ -669,7 +737,7 @@ func (s *Session) WaitUntilReady() error {
 	return s.initErr
 }
 
-func (s *Session) executeQuery(qry *Query) (it *Iter) {
+func (s *Session) executeQueryWithMetrics(qry *Query, metrics *queryMetrics) (it *Iter) {
 	if s.Closed() {
 		return &Iter{err: ErrSessionClosed}
 	}
@@ -677,7 +745,7 @@ func (s *Session) executeQuery(qry *Query) (it *Iter) {
 		return &Iter{err: err}
 	}
 
-	iter, err := s.executor.executeQuery(qry)
+	iter, err := s.executor.executeQuery(qry, metrics)
 	if err != nil {
 		return &Iter{err: err}
 	}
@@ -690,9 +758,8 @@ func (s *Session) executeQuery(qry *Query) (it *Iter) {
 
 func (s *Session) removeHost(h *HostInfo) {
 	s.policy.RemoveHost(h)
-	hostID := h.HostID()
-	s.pool.removeHost(hostID)
-	s.hostSource.removeHost(hostID)
+	s.pool.removeHost(h.hostUUID())
+	s.hostSource.removeHost(h.HostID())
 }
 
 // KeyspaceMetadata returns the schema metadata for the keyspace specified. Returns an error if the keyspace does not exist.
@@ -809,11 +876,52 @@ func (s *Session) findTabletReplicasUnsafeForToken(keyspace, table string, token
 	return md.metadata.tabletsMetadata.FindReplicasUnsafeForToken(keyspace, table, token)
 }
 
-// returns routing key indexes and type info
-func (s *Session) routingKeyInfo(ctx context.Context, stmt string, requestTimeout time.Duration) (*routingKeyInfo, error) {
+// resolveRoutingKeyspaceTable determines which keyspace and table a prepared
+// statement actually targets, for the purpose of picking a partitioner and
+// reading table metadata.
+//
+// The order matters. The prepared metadata's global table spec is authoritative.
+// When FlagGlobalTableSpec is not set the server carries the keyspace/table per
+// column instead, so the first column is the next best source. def (the
+// statement's SetKeyspace override, or else Cluster.Keyspace) is only a last
+// resort: letting it take precedence over the per-column metadata would route a
+// statement that targets another keyspace's table using the session keyspace,
+// yielding the wrong partitioner or a metadata lookup failure.
+//
+// table has no def fallback — there is no session-level default table.
+func resolveRoutingKeyspaceTable(meta *preparedMetadata, def string) (keyspace, table string) {
+	keyspace, table = meta.keyspace, meta.table
+
+	if len(meta.columns) > 0 {
+		if keyspace == "" {
+			keyspace = meta.columns[0].Keyspace
+		}
+		if table == "" {
+			table = meta.columns[0].Table
+		}
+	}
+
+	if keyspace == "" {
+		keyspace = def
+	}
+
+	return keyspace, table
+}
+
+// Returns routing key indexes and type info.
+// If keyspace == "" it uses the keyspace which is specified in Cluster.Keyspace
+func (s *Session) routingKeyInfo(ctx context.Context, stmt string, keyspace string, requestTimeout time.Duration) (*routingKeyInfo, error) {
+	if keyspace == "" {
+		keyspace = s.cfg.Keyspace
+	}
+
+	cacheKey := routingKeyInfoCacheKey{keyspace: keyspace, stmt: stmt}
+
 	s.routingKeyInfoCache.mu.Lock()
 
-	entry, cached := s.routingKeyInfoCache.lru.Get(stmt)
+	// Using here keyspace + stmt as a cache key because
+	// the query keyspace could be overridden via SetKeyspace
+	entry, cached := s.routingKeyInfoCache.lru.Get(cacheKey)
 	if cached {
 		// done accessing the cache
 		s.routingKeyInfoCache.mu.Unlock()
@@ -837,7 +945,7 @@ func (s *Session) routingKeyInfo(ctx context.Context, stmt string, requestTimeou
 	inflight := new(inflightCachedEntry)
 	inflight.wg.Add(1)
 	defer inflight.wg.Done()
-	s.routingKeyInfoCache.lru.Add(stmt, inflight)
+	s.routingKeyInfoCache.lru.Add(cacheKey, inflight)
 	s.routingKeyInfoCache.mu.Unlock()
 
 	var (
@@ -853,10 +961,10 @@ func (s *Session) routingKeyInfo(ctx context.Context, stmt string, requestTimeou
 	}
 
 	// get the query info for the statement
-	info, inflight.err = conn.prepareStatement(ctx, stmt, nil, requestTimeout)
+	info, inflight.err = conn.prepareStatement(ctx, stmt, nil, keyspace, requestTimeout)
 	if inflight.err != nil {
 		// don't cache this error
-		s.routingKeyInfoCache.Remove(stmt)
+		s.routingKeyInfoCache.Remove(cacheKey)
 		return nil, inflight.err
 	}
 
@@ -868,23 +976,17 @@ func (s *Session) routingKeyInfo(ctx context.Context, stmt string, requestTimeou
 		return nil, nil
 	}
 
-	table := info.request.table
-	keyspace := info.request.keyspace
-
-	// Fall back to per-column metadata when FlagGlobalTableSpec is not set.
-	if keyspace == "" && len(info.request.columns) > 0 {
-		keyspace = info.request.columns[0].Keyspace
-	}
-	if table == "" && len(info.request.columns) > 0 {
-		table = info.request.columns[0].Table
-	}
+	// Resolve the statement's real target from the prepared metadata. Note this
+	// reassigns keyspace: cacheKey was already built from the requested
+	// keyspace above and is unaffected.
+	keyspace, table := resolveRoutingKeyspaceTable(&info.request, keyspace)
 
 	partitioner, err := scyllaGetTablePartitioner(s, keyspace, table)
 	if err != nil {
 		// don't cache this error, but make sure all waiters see the same failure.
 		inflight.err = err
-		s.routingKeyInfoCache.Remove(stmt)
-		return nil, err
+		s.routingKeyInfoCache.Remove(cacheKey)
+		return nil, inflight.err
 	}
 
 	if len(info.request.pkeyColumns) > 0 {
@@ -912,7 +1014,7 @@ func (s *Session) routingKeyInfo(ctx context.Context, stmt string, requestTimeou
 	tableMetadata, inflight.err = s.TableMetadata(keyspace, table)
 	if inflight.err != nil {
 		// don't cache this error
-		s.routingKeyInfoCache.Remove(stmt)
+		s.routingKeyInfoCache.Remove(cacheKey)
 		return nil, inflight.err
 	}
 
@@ -955,7 +1057,7 @@ func (s *Session) routingKeyInfo(ctx context.Context, stmt string, requestTimeou
 	return routingKeyInfo, nil
 }
 
-func (b *Batch) execute(ctx context.Context, conn *Conn) *Iter {
+func (b *Batch) execute(ctx context.Context, conn *Conn, _ *queryMetrics) *Iter {
 	return conn.executeBatch(ctx, b)
 }
 
@@ -975,8 +1077,10 @@ func (s *Session) executeBatch(batch *Batch) *Iter {
 		return &Iter{err: err}
 	}
 
-	// Drop metrics from prior query executions
-	batch.metrics.reset()
+	// Start one metrics run for this batch execution. If a speculative loser
+	// still owns the old run, prepareQueryMetrics detaches instead of resetting
+	// storage that the loser can still update.
+	metrics := prepareQueryMetrics(&batch.metrics, &batch.metricsOwner)
 
 	// Prevent the execution of the batch if greater than the limit
 	// Currently batches have a limit of 65536 queries.
@@ -985,7 +1089,7 @@ func (s *Session) executeBatch(batch *Batch) *Iter {
 		return &Iter{err: ErrTooManyStmts}
 	}
 
-	iter, err := s.executor.executeQuery(batch)
+	iter, err := s.executor.executeQuery(batch, metrics)
 	if err != nil {
 		return &Iter{err: err}
 	}
@@ -1083,113 +1187,611 @@ func translateAddressPort(addressTranslator AddressTranslator, host *HostInfo, a
 }
 
 type hostMetrics struct {
-	// Attempts is count of how many times this query has been attempted for this host.
-	// An attempt is either a retry or fetching next page of results.
+	// Attempts is the number of attempts recorded for this host. Driver-recorded
+	// attempts include initial attempts, retries, speculative executions, and
+	// fetching subsequent pages of results.
+	//
+	// Deprecated: implement QueryObserverWithAttemptMetrics or
+	// BatchObserverWithAttemptMetrics. Aggregate AttemptMetrics entries by Host
+	// for observed-attempt per-host totals. Explicit AddAttempts and AddLatency
+	// adjustments are not included in AttemptMetrics.
 	Attempts int
 
 	// TotalLatency is the sum of attempt latencies for this host in nanoseconds.
+	//
+	// Deprecated: implement QueryObserverWithAttemptMetrics or
+	// BatchObserverWithAttemptMetrics. Aggregate AttemptMetrics entries by Host
+	// for observed-attempt per-host totals. Explicit AddAttempts and AddLatency
+	// adjustments are not included in AttemptMetrics.
 	TotalLatency int64
 }
 
-type queryMetrics struct {
-	m map[UUID]*hostMetrics
-	// totalAttempts is total number of attempts.
-	// Equal to sum of all hostMetrics' Attempts
-	totalAttempts int
-	l             sync.RWMutex
+// AttemptMetric is the metrics for one observed driver query or batch attempt.
+type AttemptMetric struct {
+	// Prevent external positional literals so this new API can grow without
+	// repeating the compatibility constraint of ObservedQuery and ObservedBatch.
+	noUnkeyedLiterals struct{}
+
+	// Host is the host where the attempt was executed.
+	Host *HostInfo
+
+	// Attempt is the launch-order index of this attempt.
+	Attempt int
+
+	// Latency is the attempt latency in nanoseconds.
+	Latency int64
 }
+
+// AttemptMetrics is a snapshot of observed query or batch attempts.
+//
+// Its zero value is empty. Snapshot history is not capped: retained storage
+// grows with the number of completed attempts it contains, and retaining a
+// snapshot also retains the persistent storage for that history. The concrete
+// storage is intentionally hidden so the metrics representation can change
+// without affecting observer implementations.
+type AttemptMetrics struct {
+	noCompare    [0]func()
+	root         *attemptMetricNode
+	attempt      AttemptMetric
+	count        int
+	totalLatency int64
+}
+
+func newAttemptMetrics(attempt AttemptMetric) AttemptMetrics {
+	return AttemptMetrics{
+		attempt:      attempt,
+		count:        1,
+		totalLatency: attempt.Latency,
+	}
+}
+
+type attemptMetricNode struct {
+	left    *attemptMetricNode
+	right   *attemptMetricNode
+	attempt AttemptMetric
+	height  int
+}
+
+func newAttemptMetricNode(attempt AttemptMetric, left, right *attemptMetricNode) *attemptMetricNode {
+	height := attemptMetricNodeHeight(left)
+	if rightHeight := attemptMetricNodeHeight(right); rightHeight > height {
+		height = rightHeight
+	}
+	return &attemptMetricNode{
+		attempt: attempt,
+		left:    left,
+		right:   right,
+		height:  height + 1,
+	}
+}
+
+func attemptMetricNodeHeight(node *attemptMetricNode) int {
+	if node == nil {
+		return 0
+	}
+	return node.height
+}
+
+func rotateAttemptMetricNodeLeft(node *attemptMetricNode) *attemptMetricNode {
+	right := node.right
+	newLeft := newAttemptMetricNode(node.attempt, node.left, right.left)
+	return newAttemptMetricNode(right.attempt, newLeft, right.right)
+}
+
+func rotateAttemptMetricNodeRight(node *attemptMetricNode) *attemptMetricNode {
+	left := node.left
+	newRight := newAttemptMetricNode(node.attempt, left.right, node.right)
+	return newAttemptMetricNode(left.attempt, left.left, newRight)
+}
+
+func balanceAttemptMetricNode(node *attemptMetricNode) *attemptMetricNode {
+	balance := attemptMetricNodeHeight(node.left) - attemptMetricNodeHeight(node.right)
+	if balance > 1 {
+		if attemptMetricNodeHeight(node.left.left) < attemptMetricNodeHeight(node.left.right) {
+			node = newAttemptMetricNode(node.attempt, rotateAttemptMetricNodeLeft(node.left), node.right)
+		}
+		return rotateAttemptMetricNodeRight(node)
+	}
+	if balance < -1 {
+		if attemptMetricNodeHeight(node.right.right) < attemptMetricNodeHeight(node.right.left) {
+			node = newAttemptMetricNode(node.attempt, node.left, rotateAttemptMetricNodeRight(node.right))
+		}
+		return rotateAttemptMetricNodeLeft(node)
+	}
+	return node
+}
+
+func insertAttemptMetricNode(node *attemptMetricNode, attempt AttemptMetric) *attemptMetricNode {
+	if node == nil {
+		return newAttemptMetricNode(attempt, nil, nil)
+	}
+	if attempt.Attempt < node.attempt.Attempt {
+		return balanceAttemptMetricNode(newAttemptMetricNode(
+			node.attempt,
+			insertAttemptMetricNode(node.left, attempt),
+			node.right,
+		))
+	}
+	return balanceAttemptMetricNode(newAttemptMetricNode(
+		node.attempt,
+		node.left,
+		insertAttemptMetricNode(node.right, attempt),
+	))
+}
+
+func (m AttemptMetrics) withAttempt(attempt AttemptMetric) AttemptMetrics {
+	if m.count == 0 {
+		return newAttemptMetrics(attempt)
+	}
+
+	var root *attemptMetricNode
+	if m.count == 1 {
+		root = insertAttemptMetricNode(nil, m.attempt)
+	} else {
+		root = m.root
+	}
+	root = insertAttemptMetricNode(root, attempt)
+
+	return AttemptMetrics{
+		root:         root,
+		count:        m.count + 1,
+		totalLatency: m.totalLatency + attempt.Latency,
+	}
+}
+
+// Attempts returns the number of completed attempts in the snapshot.
+func (m AttemptMetrics) Attempts() int {
+	return m.count
+}
+
+// TotalLatency returns the sum of attempt latencies in nanoseconds.
+func (m AttemptMetrics) TotalLatency() int64 {
+	return m.totalLatency
+}
+
+func forEachAttemptMetricNode(node *attemptMetricNode, yield func(AttemptMetric) bool) bool {
+	if node == nil {
+		return true
+	}
+	if !forEachAttemptMetricNode(node.left, yield) {
+		return false
+	}
+	if !yield(node.attempt) {
+		return false
+	}
+	return forEachAttemptMetricNode(node.right, yield)
+}
+
+// ForEachAttempt calls yield for each completed attempt in launch order.
+// Iteration stops when yield returns false.
+//
+// A snapshot can contain gaps when a later speculative attempt completes before
+// an earlier attempt, or when a positive AddAttempts advances the launch index without
+// adding entries to the history. Each snapshot is immutable and includes the
+// attempt whose observer callback carries it.
+func (m AttemptMetrics) ForEachAttempt(yield func(AttemptMetric) bool) {
+	if m.count == 1 {
+		yield(m.attempt)
+		return
+	}
+	forEachAttemptMetricNode(m.root, yield)
+}
+
+type queryMetrics struct {
+	// extra is allocated only when a query observes more than one host.
+	extra map[UUID]hostMetrics
+	// history is populated only for extended observers. It is deliberately
+	// unbounded and spans automatic result pages to preserve the complete
+	// logical-execution history required by AttemptMetrics, then is cleared when
+	// a new logical execution starts.
+	history AttemptMetrics
+	host    hostMetrics
+
+	fullLatency    int64
+	nextAttempt    atomic.Int64
+	ownerEpoch     uint64
+	nextOwnerEpoch uint64
+	// totals packs attempts and latency into one atomic word on the fast path,
+	// giving readers a coherent snapshot without waiting for an idle writer.
+	totals atomic.Uint64
+
+	// refs includes one explicitly claimed Query or Batch owner plus in-flight
+	// attempts, speculative runners, and automatic paging owners.
+	refs            atomic.Int64
+	fullAttempts    int64
+	fullTotalsMu    sync.Mutex
+	l               sync.Mutex
+	lifecycle       sync.Mutex
+	hostID          UUID
+	ownerClaimed    bool
+	hostInitialized bool
+}
+
+func newQueryMetrics() *queryMetrics {
+	return &queryMetrics{}
+}
+
+const (
+	// queryMetricsLatencyBits reserves 44 low bits for cumulative latency
+	// nanoseconds and the remaining 20 bits for attempts. Packed totals support
+	// at most 1,048,575 attempts and about 4h53m of cumulative latency.
+	queryMetricsLatencyBits uint = 44
+	queryMetricsAttemptsMax      = int64(1<<(64-queryMetricsLatencyBits) - 1)
+	queryMetricsLatencyMax       = int64(1<<queryMetricsLatencyBits - 1)
+	queryMetricsLatencyMask      = uint64(1<<queryMetricsLatencyBits - 1)
+
+	// queryMetricsFullTotals reserves the all-ones packed value as the sentinel
+	// for full-width totals. Crossing either packed limit, producing a negative
+	// total, or reaching the reserved combination moves totals to fullTotalsMu
+	// until reset.
+	queryMetricsFullTotals = ^uint64(0)
+)
 
 // preFilledQueryMetrics initializes new queryMetrics based on per-host supplied data.
 func preFilledQueryMetrics(m map[UUID]*hostMetrics) *queryMetrics {
-	qm := &queryMetrics{m: m}
-	for _, hm := range qm.m {
-		qm.totalAttempts += hm.Attempts
+	qm := newQueryMetrics()
+	hostIDs := make([]UUID, 0, len(m))
+	for hostID, hm := range m {
+		if hm != nil {
+			hostIDs = append(hostIDs, hostID)
+		}
 	}
+	slices.SortFunc(hostIDs, func(a, b UUID) int {
+		return bytes.Compare(a[:], b[:])
+	})
+
+	qm.l.Lock()
+	var attempts int64
+	for _, hostID := range hostIDs {
+		hm := m[hostID]
+		qm.addHostMetricsLocked(hostID, *hm)
+		qm.addTotals(hm.Attempts, hm.TotalLatency)
+		attempts += int64(hm.Attempts)
+	}
+	qm.nextAttempt.Store(attempts)
+	qm.l.Unlock()
 	return qm
 }
 
-// hostMetrics returns a snapshot of metrics for given host.
-// If the metrics for host don't exist, they are created.
+func (qm *queryMetrics) retain() {
+	qm.refs.Add(1)
+}
+
+func (qm *queryMetrics) release() {
+	if refs := qm.refs.Add(-1); refs < 0 {
+		// Continuing after an ownership imbalance could let this storage be
+		// reset while an old attempt or page can still update it.
+		panic("gocql: negative query metrics reference count")
+	}
+}
+
+type queryMetricsOwner struct {
+	// self detects raw Query and Batch value copies without making queryMetrics
+	// retain an interior pointer into the owning object. A self-cycle is
+	// collectible when the Query or Batch becomes unreachable.
+	self  *queryMetricsOwner
+	epoch uint64
+}
+
+// claimQueryMetricsOwner runs with qm.lifecycle held. Epochs only need to be
+// unique among copies sharing qm, so keeping the generation local avoids a
+// process-wide atomic on every query execution.
+func (qm *queryMetrics) claimQueryMetricsOwner(owner *queryMetricsOwner) {
+	qm.nextOwnerEpoch++
+	if qm.nextOwnerEpoch == 0 {
+		panic("gocql: query metrics owner epoch overflow")
+	}
+	qm.ownerEpoch = qm.nextOwnerEpoch
+	qm.ownerClaimed = true
+	owner.self = owner
+	owner.epoch = qm.ownerEpoch
+}
+
+func newOwnedQueryMetrics(owner *queryMetricsOwner) *queryMetrics {
+	qm := newQueryMetrics()
+	qm.claimQueryMetricsOwner(owner)
+	qm.refs.Store(1)
+	return qm
+}
+
+// transferQueryMetricsOwner gives an official shallow copy ownership of the
+// shared idle metrics storage. The source remains valid and lazily detaches if
+// it is executed later. No allocation is needed for the common
+// Query(...).WithContext(...).Exec() path.
+func transferQueryMetricsOwner(qm *queryMetrics, from, to *queryMetricsOwner) {
+	to.self = to
+	to.epoch = 0
+	if qm == nil {
+		return
+	}
+	qm.lifecycle.Lock()
+	switch {
+	case qm.ownerClaimed && from.self == from && qm.ownerEpoch == from.epoch:
+		qm.claimQueryMetricsOwner(to)
+	case !qm.ownerClaimed && qm.refs.Load() == 0 &&
+		(from.self == from || from.self == nil && from.epoch == 0):
+		qm.claimQueryMetricsOwner(to)
+		qm.refs.Store(1)
+	}
+	qm.lifecycle.Unlock()
+}
+
+// prepareQueryMetrics starts a new logical execution. It reuses storage when
+// this value owns the idle state and detaches for copied values or when an old
+// speculative attempt or page still pins the prior execution.
+func prepareQueryMetrics(metrics **queryMetrics, owner *queryMetricsOwner) *queryMetrics {
+	qm := *metrics
+	if qm == nil {
+		qm = newOwnedQueryMetrics(owner)
+		*metrics = qm
+		return qm
+	}
+
+	qm.lifecycle.Lock()
+	if !qm.ownerClaimed && qm.refs.Load() == 0 &&
+		(owner.self == owner || owner.self == nil && owner.epoch == 0) {
+		qm.claimQueryMetricsOwner(owner)
+		qm.refs.Store(1)
+		qm.reset()
+		qm.lifecycle.Unlock()
+		return qm
+	}
+
+	if qm.ownerClaimed && owner.self == owner &&
+		qm.ownerEpoch == owner.epoch && qm.refs.Load() == 1 {
+		// Rotate the epoch before reuse so raw value copies carrying the prior
+		// epoch become stale and detach on their first execution.
+		qm.claimQueryMetricsOwner(owner)
+		qm.reset()
+		qm.lifecycle.Unlock()
+		return qm
+	}
+
+	if qm.ownerClaimed && owner.self == owner && qm.ownerEpoch == owner.epoch {
+		qm.ownerClaimed = false
+		qm.release()
+	}
+	qm.lifecycle.Unlock()
+
+	qm = newOwnedQueryMetrics(owner)
+	*metrics = qm
+	return qm
+}
+
+type attemptToken struct {
+	start   time.Time
+	metrics *queryMetrics
+	attempt int
+}
+
+func (qm *queryMetrics) beginAttempt() attemptToken {
+	qm.retain()
+	return attemptToken{
+		metrics: qm,
+		attempt: int(qm.nextAttempt.Add(1) - 1),
+		start:   time.Now(),
+	}
+}
+
+// hostMetrics returns a snapshot of metrics for the given host, or a zero value
+// if no per-host metrics were recorded for it. Per-host metrics include observed
+// attempts and explicit AddAttempts or AddLatency updates. Other unobserved
+// attempts update only execution totals, so zero does not imply the host was
+// never attempted.
 func (qm *queryMetrics) hostMetrics(host *HostInfo) *hostMetrics {
 	qm.l.Lock()
 	metrics := qm.hostMetricsLocked(host)
-	copied := new(hostMetrics)
-	*copied = *metrics
 	qm.l.Unlock()
+
+	copied := new(hostMetrics)
+	*copied = metrics
 	return copied
 }
 
-// hostMetricsLocked gets or creates host metrics for given host.
+// hostMetricsLocked returns a copy of metrics for the given host, or a zero
+// value if no per-host metrics were recorded for it. Per-host metrics include
+// observed attempts and explicit AddAttempts or AddLatency updates. Other
+// unobserved attempts update only execution totals, so zero does not imply the
+// host was never attempted.
 // It must be called only while holding qm.l lock.
-func (qm *queryMetrics) hostMetricsLocked(host *HostInfo) *hostMetrics {
-	id := host.hostUUID()
-	metrics, exists := qm.m[id]
-	if !exists {
-		// if the host is not in the map, it means it's been accessed for the first time
-		metrics = &hostMetrics{}
-		qm.m[id] = metrics
+func (qm *queryMetrics) hostMetricsLocked(host *HostInfo) hostMetrics {
+	return qm.hostMetricsByIDLocked(host.hostUUID())
+}
+
+func (qm *queryMetrics) hostMetricsByIDLocked(hostID UUID) hostMetrics {
+	if !qm.hostInitialized {
+		return hostMetrics{}
 	}
 
+	if qm.hostID == hostID {
+		return qm.host
+	}
+
+	if qm.extra == nil {
+		return hostMetrics{}
+	}
+	return qm.extra[hostID]
+}
+
+func (qm *queryMetrics) addHostMetricsLocked(hostID UUID, add hostMetrics) hostMetrics {
+	if !qm.hostInitialized {
+		qm.hostID = hostID
+		qm.hostInitialized = true
+	}
+
+	if qm.hostID == hostID {
+		qm.host.Attempts += add.Attempts
+		qm.host.TotalLatency += add.TotalLatency
+		return qm.host
+	}
+
+	if qm.extra == nil {
+		qm.extra = make(map[UUID]hostMetrics)
+	}
+
+	metrics := qm.extra[hostID]
+	metrics.Attempts += add.Attempts
+	metrics.TotalLatency += add.TotalLatency
+	qm.extra[hostID] = metrics
 	return metrics
 }
 
 // attempts returns the number of times the query was executed.
 func (qm *queryMetrics) attempts() int {
-	qm.l.Lock()
-	attempts := qm.totalAttempts
-	qm.l.Unlock()
-	return attempts
+	attempts, _ := qm.totalsSnapshot()
+	return int(attempts)
 }
 
 func (qm *queryMetrics) latency() int64 {
-	qm.l.Lock()
-	var (
-		attempts int
-		latency  int64
-	)
-	for _, metric := range qm.m {
-		attempts += metric.Attempts
-		latency += metric.TotalLatency
-	}
-	qm.l.Unlock()
+	attempts, latency := qm.totalsSnapshot()
 	if attempts > 0 {
-		return latency / int64(attempts)
+		return latency / attempts
 	}
 	return 0
 }
 
+func (qm *queryMetrics) totalsSnapshot() (attempts, latency int64) {
+	packed := qm.totals.Load()
+	if packed != queryMetricsFullTotals {
+		return unpackQueryMetricsTotals(packed)
+	}
+
+	qm.fullTotalsMu.Lock()
+	attempts, latency = qm.fullAttempts, qm.fullLatency
+	qm.fullTotalsMu.Unlock()
+	return attempts, latency
+}
+
+func unpackQueryMetricsTotals(packed uint64) (attempts, latency int64) {
+	return int64(packed >> queryMetricsLatencyBits), int64(packed & queryMetricsLatencyMask)
+}
+
+func packQueryMetricsTotals(attempts, latency int64) uint64 {
+	return uint64(attempts)<<queryMetricsLatencyBits | uint64(latency)
+}
+
+func canPackQueryMetricsTotals(attempts, latency int64) bool {
+	if attempts < 0 || attempts > queryMetricsAttemptsMax || latency < 0 || latency > queryMetricsLatencyMax {
+		return false
+	}
+	// Keep the all-ones combination unambiguous as the full-width sentinel.
+	return packQueryMetricsTotals(attempts, latency) != queryMetricsFullTotals
+}
+
+func (qm *queryMetrics) addFullTotals(addAttempts, addLatencyNanos int64) (int64, bool) {
+	qm.fullTotalsMu.Lock()
+	if qm.totals.Load() != queryMetricsFullTotals {
+		qm.fullTotalsMu.Unlock()
+		return 0, false
+	}
+	totalAttempts := qm.fullAttempts
+	qm.fullAttempts += addAttempts
+	qm.fullLatency += addLatencyNanos
+	qm.fullTotalsMu.Unlock()
+	return totalAttempts, true
+}
+
+func (qm *queryMetrics) addTotals(addAttempts int, addLatencyNanos int64) int64 {
+	addAttempts64 := int64(addAttempts)
+	for {
+		packed := qm.totals.Load()
+		if packed == queryMetricsFullTotals {
+			if totalAttempts, ok := qm.addFullTotals(addAttempts64, addLatencyNanos); ok {
+				return totalAttempts
+			}
+			continue
+		}
+
+		attempts, latency := unpackQueryMetricsTotals(packed)
+		nextAttempts := attempts + addAttempts64
+		nextLatency := latency + addLatencyNanos
+		if canPackQueryMetricsTotals(nextAttempts, nextLatency) {
+			if qm.totals.CompareAndSwap(packed, packQueryMetricsTotals(nextAttempts, nextLatency)) {
+				return attempts
+			}
+			continue
+		}
+
+		qm.fullTotalsMu.Lock()
+		if qm.totals.Load() != packed {
+			qm.fullTotalsMu.Unlock()
+			continue
+		}
+		qm.fullAttempts = nextAttempts
+		qm.fullLatency = nextLatency
+		if qm.totals.CompareAndSwap(packed, queryMetricsFullTotals) {
+			qm.fullTotalsMu.Unlock()
+			return attempts
+		}
+		qm.fullTotalsMu.Unlock()
+	}
+}
+
 // reset resets metrics, to forget about prior query executions.
-// Uses clear() instead of make() to preserve the map's backing array,
-// avoiding a heap allocation on each re-execution.
+// Uses clear() instead of make() to preserve the extra map's backing array
+// when a query has observed more than one host.
 func (qm *queryMetrics) reset() {
 	qm.l.Lock()
-	clear(qm.m)
-	qm.totalAttempts = 0
+	qm.hostID = UUID{}
+	qm.hostInitialized = false
+	qm.host = hostMetrics{}
+	qm.history = AttemptMetrics{}
+	clear(qm.extra)
+	qm.nextAttempt.Store(0)
+	qm.fullTotalsMu.Lock()
+	qm.fullAttempts = 0
+	qm.fullLatency = 0
+	qm.totals.Store(0)
+	qm.fullTotalsMu.Unlock()
 	qm.l.Unlock()
 }
 
-// attempt adds given number of attempts and latency for given host.
-// It returns previous total attempts.
-// If needsHostMetrics is true, a copy of updated hostMetrics is returned.
-func (qm *queryMetrics) attempt(addAttempts int, addLatency time.Duration,
-	host *HostInfo, needsHostMetrics bool) (int, *hostMetrics) {
+// recordHostAdjustment records explicit adjustments to totals and deprecated
+// per-host metrics.
+func (qm *queryMetrics) recordHostAdjustment(addAttempts int, addLatency time.Duration,
+	host *HostInfo) {
+	addLatencyNanos := addLatency.Nanoseconds()
+	qm.nextAttempt.Add(int64(addAttempts))
+
 	qm.l.Lock()
+	qm.addTotals(addAttempts, addLatencyNanos)
+	qm.addHostMetricsLocked(host.hostUUID(), hostMetrics{
+		Attempts:     addAttempts,
+		TotalLatency: addLatencyNanos,
+	})
+	qm.l.Unlock()
+}
 
-	totalAttempts := qm.totalAttempts
-	qm.totalAttempts += addAttempts
-
-	updateHostMetrics := qm.hostMetricsLocked(host)
-	updateHostMetrics.Attempts += addAttempts
-	updateHostMetrics.TotalLatency += addLatency.Nanoseconds()
-
-	var hostMetricsCopy *hostMetrics
-	if needsHostMetrics {
-		hostMetricsCopy = new(hostMetrics)
-		*hostMetricsCopy = *updateHostMetrics
+// finishAttempt records the completion of one launch-assigned attempt. The
+// token pins its exact logical execution even if the Query has since detached
+// to a new metrics object.
+func (qm *queryMetrics) finishAttempt(token attemptToken, latency time.Duration,
+	host *HostInfo, observed, needsAttemptMetrics bool) (int, *hostMetrics, AttemptMetrics) {
+	addLatencyNanos := latency.Nanoseconds()
+	if !observed {
+		qm.addTotals(1, addLatencyNanos)
+		return token.attempt, nil, AttemptMetrics{}
 	}
 
+	qm.l.Lock()
+	qm.addTotals(1, addLatencyNanos)
+	updateHostMetrics := qm.addHostMetricsLocked(host.hostUUID(), hostMetrics{
+		Attempts:     1,
+		TotalLatency: addLatencyNanos,
+	})
+	if needsAttemptMetrics {
+		qm.history = qm.history.withAttempt(AttemptMetric{
+			Attempt: token.attempt,
+			Host:    host,
+			Latency: addLatencyNanos,
+		})
+	}
+	attemptMetrics := qm.history
 	qm.l.Unlock()
-	return totalAttempts, hostMetricsCopy
+
+	hostMetricsCopy := new(hostMetrics)
+	*hostMetricsCopy = updateHostMetrics
+	return token.attempt, hostMetricsCopy, attemptMetrics
 }
 
 // Query represents a CQL statement that can be executed.
@@ -1205,13 +1807,16 @@ type Query struct {
 	observer          QueryObserver
 	metrics           *queryMetrics
 	session           *Session
-	// Timeout on waiting for response from server
-	customPayload map[string][]byte
+	customPayload     map[string][]byte
 	// getKeyspace is field so that it can be overriden in tests
 	getKeyspace func() string
 	// routingInfo is a pointer because Query can be copied and copyable struct can't hold a mutex.
-	routingInfo *queryRoutingInfo
-	binding     func(q *QueryInfo) ([]any, error)
+	routingInfo       *queryRoutingInfo
+	binding           func(q *QueryInfo) ([]any, error)
+	executionAttempts *atomic.Int64
+	metricsOwner      queryMetricsOwner
+	nowInSecondsValue *int
+	keyspace          string
 	// hostID specifies the host on which the query should be executed.
 	// If it is empty, then the host is picked by HostSelectionPolicy
 	hostID     string
@@ -1267,6 +1872,16 @@ func (qri *queryRoutingInfo) getPartitioner() Partitioner {
 	return qri.partitioner
 }
 
+// keyspaceTable returns the cached keyspace and table together, under a single
+// lock. They are always written as a pair (by GetRoutingKey and by
+// Conn.executeQuery), so reading them in one critical section is what keeps a
+// reader from pairing one goroutine's keyspace with another's table.
+func (qri *queryRoutingInfo) keyspaceTable() (string, string) {
+	qri.mu.RLock()
+	defer qri.mu.RUnlock()
+	return qri.keyspace, qri.table
+}
+
 func (q *Query) defaultsFromSession() {
 	s := q.session
 
@@ -1281,7 +1896,8 @@ func (q *Query) defaultsFromSession() {
 	q.defaultTimestamp = s.cfg.DefaultTimestamp
 	q.idempotent = s.cfg.DefaultIdempotence
 	if q.metrics == nil {
-		q.metrics = &queryMetrics{m: make(map[UUID]*hostMetrics)}
+		q.metrics = newQueryMetrics()
+		q.metricsOwner.self = &q.metricsOwner
 	}
 
 	q.spec = defaultNonSpecExec
@@ -1306,11 +1922,17 @@ func (q Query) String() string {
 
 // Attempts returns the number of times the query was executed.
 func (q *Query) Attempts() int {
+	if q.executionAttempts != nil {
+		return int(q.executionAttempts.Load())
+	}
 	return q.metrics.attempts()
 }
 
+// AddAttempts adds i to the query's attempt count for host. An adjustment that
+// makes the total negative permanently switches the metrics to mutex-backed
+// full-width storage until reset.
 func (q *Query) AddAttempts(i int, host *HostInfo) {
-	q.metrics.attempt(i, 0, host, false)
+	q.metrics.recordHostAdjustment(i, 0, host)
 }
 
 // Latency returns the average amount of nanoseconds per attempt of the query.
@@ -1318,8 +1940,11 @@ func (q *Query) Latency() int64 {
 	return q.metrics.latency()
 }
 
+// AddLatency adds l nanoseconds to the query's latency for host. An adjustment
+// that makes the total negative also makes Latency return a negative value and
+// permanently switches the metrics to mutex-backed full-width storage until reset.
 func (q *Query) AddLatency(l int64, host *HostInfo) {
-	q.metrics.attempt(0, time.Duration(l)*time.Nanosecond, host, false)
+	q.metrics.recordHostAdjustment(0, time.Duration(l)*time.Nanosecond, host)
 }
 
 // Consistency sets the consistency level for this query. If no consistency
@@ -1419,9 +2044,57 @@ func (q *Query) withContext(ctx context.Context) ExecutableQuery {
 // query, queries will be canceled and return once the context is
 // canceled.
 func (q *Query) WithContext(ctx context.Context) *Query {
-	q2 := *q
+	q2 := cloneQuery(q, q.metrics)
 	q2.context = ctx
-	return &q2
+	transferQueryMetricsOwner(q.metrics, &q.metricsOwner, &q2.metricsOwner)
+	return q2
+}
+
+// cloneQuery makes a shallow copy without reading the atomically updated
+// refCount as an ordinary field. The copy receives an independent lifecycle;
+// prepareCache is transferred with an atomic read.
+func cloneQuery(q *Query, metrics *queryMetrics) *Query {
+	return &Query{
+		trace:             q.trace,
+		context:           q.context,
+		pageContextParent: q.pageContextParent,
+		spec:              q.spec,
+		rt:                q.rt,
+		conn:              q.conn,
+		observer:          q.observer,
+		metrics:           metrics,
+		session:           q.session,
+		customPayload:     q.customPayload,
+		getKeyspace:       q.getKeyspace,
+		routingInfo:       q.routingInfo,
+		binding:           q.binding,
+		// The proto v5 per-statement options travel with the clone. Every
+		// execution of an idempotent query with a speculative policy runs from a
+		// clone, as does every page after the first (cloneQueryForNextPage) and
+		// every retry, so dropping them here would silently execute against the
+		// session keyspace instead of the requested one.
+		keyspace:                   q.keyspace,
+		nowInSecondsValue:          q.nowInSecondsValue,
+		hostID:                     q.hostID,
+		stmt:                       q.stmt,
+		routingKey:                 q.routingKey,
+		values:                     q.values,
+		pageState:                  q.pageState,
+		requestTimeout:             q.requestTimeout,
+		defaultTimestampValue:      q.defaultTimestampValue,
+		prefetch:                   q.prefetch,
+		pageSize:                   q.pageSize,
+		refCount:                   1,
+		cons:                       q.cons,
+		serialCons:                 q.serialCons,
+		disableAutoPage:            q.disableAutoPage,
+		deferReleasedErrorFinalize: q.deferReleasedErrorFinalize,
+		idempotent:                 q.idempotent,
+		skipPrepare:                q.skipPrepare,
+		disableSkipMetadata:        q.disableSkipMetadata,
+		defaultTimestamp:           q.defaultTimestamp,
+		prepareCache:               atomic.LoadUint32(&q.prepareCache),
+	}
 }
 
 // Deprecate: does nothing, cancel the context passed to WithContext
@@ -1429,27 +2102,39 @@ func (q *Query) Cancel() {
 	// TODO: delete
 }
 
-func (q *Query) execute(ctx context.Context, conn *Conn) *Iter {
-	return conn.executeQuery(ctx, q)
+func (q *Query) execute(ctx context.Context, conn *Conn, metrics *queryMetrics) *Iter {
+	return conn.executeQueryWithMetrics(ctx, q, metrics)
 }
 
-func (q *Query) attempt(keyspace string, end, start time.Time, iter *Iter, host *HostInfo) {
-	latency := end.Sub(start)
-	attempt, metricsForHost := q.metrics.attempt(1, latency, host, q.observer != nil)
+func (q *Query) finishAttempt(token attemptToken, keyspace string, end time.Time, iter *Iter, host *HostInfo) {
+	defer token.metrics.release()
+	latency := end.Sub(token.start)
+	extendedObserver, needsAttemptMetrics := q.observer.(QueryObserverWithAttemptMetrics)
+	attempt, metricsForHost, attemptMetrics := token.metrics.finishAttempt(
+		token, latency, host, q.observer != nil, needsAttemptMetrics,
+	)
 
 	if q.observer != nil {
-		q.observer.ObserveQuery(q.Context(), ObservedQuery{
+		observed := ObservedQuery{
 			Keyspace:  keyspace,
 			Statement: q.stmt,
 			Values:    q.values,
-			Start:     start,
+			Start:     token.start,
 			End:       end,
 			Rows:      iter.numRows,
 			Host:      host,
 			Metrics:   metricsForHost,
 			Err:       iter.err,
 			Attempt:   attempt,
-		})
+		}
+		if needsAttemptMetrics {
+			extendedObserver.ObserveQueryWithAttemptMetrics(q.Context(), ObservedQueryWithAttemptMetrics{
+				ObservedQuery:  observed,
+				AttemptMetrics: attemptMetrics,
+			})
+		} else {
+			q.observer.ObserveQuery(q.Context(), observed)
+		}
 	}
 }
 
@@ -1462,8 +2147,18 @@ func (q *Query) Keyspace() string {
 	if q.getKeyspace != nil {
 		return q.getKeyspace()
 	}
-	if q.routingInfo.keyspace != "" {
-		return q.routingInfo.keyspace
+	// routingInfo.keyspace is written under routingInfo.mu by GetRoutingKey,
+	// which can run concurrently with the (speculative) execution goroutines
+	// that call Keyspace() via queryExecutor.attemptQuery. Read it under the
+	// same lock, matching queryRoutingInfo.isLWT/getPartitioner.
+	q.routingInfo.mu.RLock()
+	routingKeyspace := q.routingInfo.keyspace
+	q.routingInfo.mu.RUnlock()
+	if routingKeyspace != "" {
+		return routingKeyspace
+	}
+	if q.keyspace != "" {
+		return q.keyspace
 	}
 
 	if q.session == nil {
@@ -1476,6 +2171,12 @@ func (q *Query) Keyspace() string {
 
 // Table returns name of the table the query will be executed against.
 func (q *Query) Table() string {
+	// routingInfo.table is written under routingInfo.mu by GetRoutingKey and by
+	// Conn.executeQuery, either of which can run concurrently with the
+	// (speculative) execution goroutines that reach Table() via the token-aware
+	// host policy. Read it under the same lock, matching Query.Keyspace().
+	q.routingInfo.mu.RLock()
+	defer q.routingInfo.mu.RUnlock()
 	return q.routingInfo.table
 }
 
@@ -1507,7 +2208,7 @@ func (q *Query) GetRoutingKey() ([]byte, error) {
 	}
 
 	// try to determine the routing key
-	routingKeyInfo, err := q.session.routingKeyInfo(q.Context(), q.stmt, q.requestTimeout)
+	routingKeyInfo, err := q.session.routingKeyInfo(q.Context(), q.stmt, q.keyspace, q.requestTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -1686,6 +2387,21 @@ func (q *Query) PageState(state []byte) *Query {
 // statement. This should only be used to work around cassandra bugs, such as when using
 // CAS operations which do not end in Cas.
 //
+// This is the only way to force metadata on a connection that exchanges result
+// metadata IDs — native protocol v5, or protocol v4 with the SCYLLA_USE_METADATA_ID
+// extension negotiated. There, skipping is the default and the cluster-level
+// ClusterConfig.DisableSkipMetadata is ignored, but this per-query setting still
+// wins.
+//
+// Conditional (LWT) statements are the case to keep in mind: their response column
+// set depends on whether the condition applied, which a result metadata ID cannot
+// express, since the ID describes the statement and not the outcome. In practice
+// the driver does not skip for them anyway — a prepared conditional statement's
+// result metadata is empty, and metadata is never skipped without cached columns to
+// reuse — and ScanCAS and MapScanCAS set this internally regardless. Setting it
+// explicitly on a conditional statement driven through Iter or MapScan is therefore
+// belt-and-braces rather than required.
+//
 // See https://issues.apache.org/jira/browse/CASSANDRA-11099
 // https://github.com/apache/cassandra-gocql-driver/issues/612
 func (q *Query) NoSkipMetadata() *Query {
@@ -1731,7 +2447,8 @@ func (q *Query) Iter() *Iter {
 	}
 
 	// Retry on empty page if pagination is manual
-	iter := q.executeQueryForIterPostProcessing()
+	metrics := prepareQueryMetrics(&q.metrics, &q.metricsOwner)
+	iter := q.executeQueryForIterPostProcessing(metrics)
 	var hiddenWarnings []string
 	for iter.err == nil && iter.numRows == 0 && !iter.LastPage() {
 		if warnings := iter.Warnings(); len(warnings) > 0 {
@@ -1740,7 +2457,7 @@ func (q *Query) Iter() *Iter {
 		ps := iter.PageState()
 		iter.discard()
 		q.PageState(ps)
-		iter = q.executeQueryForIterPostProcessing()
+		iter = q.executeQueryForIterPostProcessing(metrics)
 	}
 	if len(hiddenWarnings) > 0 {
 		iter.allWarnings = append(hiddenWarnings, iter.allWarnings...)
@@ -1751,24 +2468,26 @@ func (q *Query) Iter() *Iter {
 	return iter
 }
 
-func (q *Query) executeQueryForIterPostProcessing() (iter *Iter) {
+func (q *Query) executeQueryForIterPostProcessing(metrics *queryMetrics) (iter *Iter) {
 	q.deferReleasedErrorFinalize = true
 	defer func() {
 		q.deferReleasedErrorFinalize = false
 	}()
-	return q.executeQuery()
+	return q.executeQueryWithMetrics(metrics)
 }
 
 func (q *Query) executeQuery() *Iter {
-	// Drop metrics from prior query executions
-	q.metrics.reset()
+	metrics := prepareQueryMetrics(&q.metrics, &q.metricsOwner)
+	return q.executeQueryWithMetrics(metrics)
+}
 
+func (q *Query) executeQueryWithMetrics(metrics *queryMetrics) *Iter {
 	if q.conn != nil {
 		// if the query was specifically run on a connection then re-use that
 		// connection when fetching the next results
-		return q.conn.executeQuery(q.Context(), q)
+		return q.conn.executeQueryWithMetrics(q.Context(), q, metrics)
 	}
-	return q.session.executeQuery(q)
+	return q.session.executeQueryWithMetrics(q, metrics)
 }
 
 // MapScan executes the query, copies the columns of the first selected
@@ -1865,16 +2584,15 @@ func (q *Query) Release() {
 }
 
 // reset zeroes out all fields of a query so that it can be safely pooled.
-// It preserves the metrics allocation for reuse. routingInfo is always freshly
-// allocated because paging copies share the pointer (see conn.go executeQuery).
+// It reuses idle metrics storage, but detaches if an in-flight attempt still
+// pins the prior execution. routingInfo is always freshly allocated because
+// paging copies share the pointer (see conn.go executeQuery).
 func (q *Query) reset() {
-	m := q.metrics
-	if m != nil {
-		clear(m.m)
-		m.totalAttempts = 0
-	}
+	m := prepareQueryMetrics(&q.metrics, &q.metricsOwner)
+	owner := q.metricsOwner
 
-	*q = Query{routingInfo: &queryRoutingInfo{}, metrics: m, refCount: 1}
+	*q = Query{routingInfo: &queryRoutingInfo{}, metrics: m, metricsOwner: owner, refCount: 1}
+	q.metricsOwner.self = &q.metricsOwner
 }
 
 func (q *Query) incRefCount() {
@@ -1911,6 +2629,39 @@ func (q *Query) GetHostID() string {
 	return q.hostID
 }
 
+// SetKeyspace will enable keyspace flag on the query.
+// It allows to specify the keyspace that the query should be executed in
+//
+// Only available on protocol >= 5.
+func (q *Query) SetKeyspace(keyspace string) *Query {
+	q.keyspace = keyspace
+	// GetRoutingKey resolves the keyspace override into routingInfo, and
+	// Keyspace() gives that cached value precedence over q.keyspace. Left alone,
+	// SetKeyspace("a"); GetRoutingKey(); SetKeyspace("b") would keep reporting
+	// keyspace "a" — and keep routing with "a"'s table metadata and partitioner —
+	// on any execution path that does not call GetRoutingKey again (a host-pinned
+	// or explicitly routed query).
+	//
+	// Detached rather than cleared in place, because WithContext returns a shallow
+	// copy that shares this pointer. Clearing would reach back through it and wipe
+	// the cache of the query the copy came from, which is worse than the bug it
+	// fixes: that query's GetRoutingKey returns early when it has an explicit
+	// routing key, so nothing ever rebuilds what was cleared and it goes on with a
+	// nil partitioner and an empty table. A fresh instance gives this query its own
+	// cache and leaves every other holder's intact.
+	q.routingInfo = &queryRoutingInfo{}
+	return q
+}
+
+// WithNowInSeconds will enable the with now_in_seconds flag on the query.
+// Also, it allows to define now_in_seconds value.
+//
+// Only available on protocol >= 5.
+func (q *Query) WithNowInSeconds(now int) *Query {
+	q.nowInSecondsValue = &now
+	return q
+}
+
 // Iter represents an iterator that can be used to iterate over all rows that
 // were returned by a query. The iterator might send additional queries to the
 // database during the iteration if paging was enabled.
@@ -1933,6 +2684,7 @@ func (q *Query) GetHostID() string {
 // Close() or each other will result in undefined behavior.
 type Iter struct {
 	warningQuery          ExecutableQuery
+	warningMetrics        *queryMetrics
 	framer                framerInterface
 	err                   error
 	warningHandler        WarningHandler
@@ -1984,6 +2736,7 @@ func (iter *Iter) copyPageData(src *Iter) {
 	if iter.warningQuery == nil {
 		iter.warningHandler = src.warningHandler
 		iter.warningQuery = src.warningQuery
+		iter.warningMetrics = src.warningMetrics
 		iter.warningQueryOwned = src.warningQueryOwned
 	} else {
 		src.releaseWarningQuery()
@@ -1996,16 +2749,45 @@ func (iter *Iter) copyPageData(src *Iter) {
 	src.next = nil
 	src.warningHandler = nil
 	src.warningQuery = nil
+	src.warningMetrics = nil
 	src.warningQueryOwned = false
 	// Intentionally don't copy iter.closed - it's managed with atomic operations
 }
 
 func (iter *Iter) bindWarningHandler(qry ExecutableQuery, handler WarningHandler) *Iter {
+	var metrics *queryMetrics
+	switch qry := qry.(type) {
+	case *Query:
+		metrics = qry.metrics
+	case *Batch:
+		metrics = qry.metrics
+	}
+	return iter.bindWarningHandlerWithMetrics(qry, metrics, handler)
+}
+
+func (iter *Iter) bindWarningHandlerWithMetrics(
+	qry ExecutableQuery,
+	metrics *queryMetrics,
+	handler WarningHandler,
+) *Iter {
 	if iter == nil || handler == nil {
 		return iter
 	}
+	// A private paging or retry view can detach its field from the metrics
+	// pinned by the execution. Give warning handlers a Query whose public
+	// metrics methods describe that exact execution.
+	if query, ok := qry.(*Query); ok && query.metrics != metrics {
+		warningQuery := cloneQuery(query, metrics)
+		// The warning binding below takes the clone's sole lifecycle reference.
+		warningQuery.refCount = 0
+		qry = warningQuery
+	}
 	iter.warningQuery = qry
 	iter.warningHandler = handler
+	iter.warningMetrics = metrics
+	if iter.warningMetrics != nil {
+		iter.warningMetrics.retain()
+	}
 	if pooledQuery, ok := qry.(*Query); ok {
 		pooledQuery.incRefCount()
 		iter.warningQueryOwned = true
@@ -2023,8 +2805,14 @@ func (iter *Iter) bindWarningHandler(qry ExecutableQuery, handler WarningHandler
 func (iter *Iter) releaseWarningQuery() {
 	qry := iter.warningQuery
 	owned := iter.warningQueryOwned
+	metrics := iter.warningMetrics
 	iter.warningQueryOwned = false
 	iter.warningQuery = nil
+	iter.warningMetrics = nil
+
+	if metrics != nil {
+		metrics.release()
+	}
 
 	if !owned {
 		return
@@ -2148,6 +2936,10 @@ func (is *iterScanner) Next() bool {
 		return false
 	}
 
+	if atomic.LoadInt32(&iter.closed) != 0 {
+		return false
+	}
+
 	for iter.pos >= iter.numRows {
 		if !iter.fetchNextPage() {
 			iter.finalize(true)
@@ -2170,7 +2962,7 @@ func (is *iterScanner) Next() bool {
 	return true
 }
 
-func scanColumn(p []byte, col ColumnInfo, dest []any) (int, error) {
+func scanColumn(p []byte, col *ColumnInfo, dest []any) (int, error) {
 	if dest[0] == nil {
 		return 1, nil
 	}
@@ -2210,9 +3002,9 @@ func (is *iterScanner) Scan(dest ...any) error {
 	// slices of dest
 	i := 0
 	var err error
-	for j, col := range iter.meta.columns {
+	for j := range iter.meta.columns {
 		var n int
-		n, err = scanColumn(is.cols[j], col, dest[i:])
+		n, err = scanColumn(is.cols[j], &iter.meta.columns[j], dest[i:])
 		if err != nil {
 			break
 		}
@@ -2242,9 +3034,6 @@ func (iter *Iter) Scanner() Scanner {
 }
 
 func (iter *Iter) readColumn() ([]byte, error) {
-	if atomic.LoadInt32(&iter.closed) != 0 {
-		return nil, errors.New("iterator closed")
-	}
 	if iter.framer == nil {
 		return nil, errors.New("no framer available")
 	}
@@ -2262,6 +3051,10 @@ func (iter *Iter) readColumn() ([]byte, error) {
 func (iter *Iter) Scan(dest ...any) bool {
 	if iter.err != nil {
 		iter.finalize(true)
+		return false
+	}
+
+	if atomic.LoadInt32(&iter.closed) != 0 {
 		return false
 	}
 
@@ -2287,7 +3080,7 @@ func (iter *Iter) Scan(dest ...any) bool {
 	// i is the current position in dest, could posible replace it and just use
 	// slices of dest
 	i := 0
-	for _, col := range iter.meta.columns {
+	for j := range iter.meta.columns {
 		colBytes, err := iter.readColumn()
 		if err != nil {
 			iter.err = err
@@ -2295,7 +3088,7 @@ func (iter *Iter) Scan(dest ...any) bool {
 			return false
 		}
 
-		n, err := scanColumn(colBytes, col, dest[i:])
+		n, err := scanColumn(colBytes, &iter.meta.columns[j], dest[i:])
 		if err != nil {
 			iter.err = err
 			iter.finalize(true)
@@ -2390,14 +3183,18 @@ func (iter *Iter) NumRows() int {
 // nextIter holds state for fetching a single page in an iterator.
 // single page might be attempted multiple times due to retries.
 type nextIter struct {
-	qry    *Query
-	next   *Iter
-	cancel context.CancelFunc
-	oncea  sync.Once
-	once   sync.Once
-	mu     sync.Mutex
-	pos    int
-	closed bool
+	qry     *Query
+	next    *Iter
+	metrics *queryMetrics
+	cancel  context.CancelFunc
+	pos     int
+	oncea   sync.Once
+	once    sync.Once
+	// metricsRelease releases the automatic-page ownership acquired by
+	// newNextIter. A fetch takes a temporary reference while it is in flight.
+	metricsRelease sync.Once
+	mu             sync.Mutex
+	closed         bool
 }
 
 func newNextIter(qry *Query, pos int) *nextIter {
@@ -2406,13 +3203,26 @@ func newNextIter(qry *Query, pos int) *nextIter {
 		parentCtx = qry.Context()
 	}
 	ctx, cancel := context.WithCancel(parentCtx)
-	nextQry := qry.WithContext(ctx)
+	nextQry := cloneQuery(qry, qry.metrics)
+	nextQry.context = ctx
 	nextQry.pageContextParent = parentCtx
-	return &nextIter{
-		qry:    nextQry,
-		pos:    pos,
-		cancel: cancel,
+	if nextQry.metrics != nil {
+		nextQry.metrics.retain()
 	}
+	return &nextIter{
+		qry:     nextQry,
+		metrics: nextQry.metrics,
+		pos:     pos,
+		cancel:  cancel,
+	}
+}
+
+func (n *nextIter) releaseMetrics() {
+	n.metricsRelease.Do(func() {
+		if n.metrics != nil {
+			n.metrics.release()
+		}
+	})
 }
 
 func (n *nextIter) fetchAsync() {
@@ -2446,6 +3256,7 @@ func (n *nextIter) close() {
 	next := n.next
 	n.next = nil
 	n.mu.Unlock()
+	n.releaseMetrics()
 
 	if next != nil {
 		next.discard()
@@ -2464,17 +3275,34 @@ func (n *nextIter) consume() {
 	n.closed = true
 	n.next = nil
 	n.mu.Unlock()
+	n.releaseMetrics()
 }
 
 func (n *nextIter) fetch() *Iter {
 	n.once.Do(func() {
+		// Synchronize with close before taking an execution reference. If close
+		// wins, the page owner can be released without a reset racing this fetch.
+		n.mu.Lock()
+		if n.closed {
+			n.mu.Unlock()
+			return
+		}
+		metrics := n.qry.metrics
+		if metrics != nil {
+			metrics.retain()
+		}
+		n.mu.Unlock()
+		if metrics != nil {
+			defer metrics.release()
+		}
+
 		// if the query was specifically run on a connection then re-use that
 		// connection when fetching the next results
 		var next *Iter
 		if n.qry.conn != nil {
-			next = n.qry.conn.executeQuery(n.qry.Context(), n.qry)
+			next = n.qry.conn.executeQueryWithMetrics(n.qry.Context(), n.qry, metrics)
 		} else {
-			next = n.qry.session.executeQuery(n.qry)
+			next = n.qry.session.executeQueryWithMetrics(n.qry, metrics)
 		}
 		n.storeFetched(next)
 	})
@@ -2492,19 +3320,22 @@ type Batch struct {
 	trace    Tracer
 	observer BatchObserver
 	// routingInfo is a pointer because Query can be copied and copyable struct can't hold a mutex.
-	routingInfo   *queryRoutingInfo
-	metrics       *queryMetrics
-	cancelBatch   func()
-	CustomPayload map[string][]byte
-	session       *Session
-	keyspace      string
+	routingInfo       *queryRoutingInfo
+	nowInSeconds      *int
+	metrics           *queryMetrics
+	cancelBatch       func()
+	CustomPayload     map[string][]byte
+	session           *Session
+	executionAttempts *atomic.Int64
+	metricsOwner      queryMetricsOwner
+	keyspace          string
 	// hostID specifies the host on which the query should be executed.
 	// If it is empty, then the host is picked by HostSelectionPolicy
 	hostID                string
 	routingKey            []byte
 	Entries               []BatchEntry
 	defaultTimestampValue int64
-	// requestTimeout is a timeout on waiting for response from serve
+	// requestTimeout is a timeout on waiting for response from server
 	requestTimeout   time.Duration
 	serialCons       Consistency
 	Cons             Consistency
@@ -2538,12 +3369,12 @@ func (s *Session) Batch(typ BatchType) *Batch {
 		session:          s,
 		Cons:             s.cons,
 		defaultTimestamp: s.cfg.DefaultTimestamp,
-		keyspace:         s.cfg.Keyspace,
-		metrics:          &queryMetrics{m: make(map[UUID]*hostMetrics)},
+		metrics:          newQueryMetrics(),
 		spec:             defaultNonSpecExec,
 		routingInfo:      &queryRoutingInfo{},
 		requestTimeout:   s.cfg.Timeout,
 	}
+	batch.metricsOwner.self = &batch.metricsOwner
 
 	s.mu.RUnlock()
 	return batch
@@ -2564,11 +3395,23 @@ func (b *Batch) Observer(observer BatchObserver) *Batch {
 }
 
 func (b *Batch) Keyspace() string {
-	return b.keyspace
+	if b.keyspace != "" {
+		return b.keyspace
+	}
+	if b.session == nil {
+		return ""
+	}
+	return b.session.cfg.Keyspace
 }
 
 // Batch has no reasonable eqivalent of Query.Table().
 func (b *Batch) Table() string {
+	// Read under routingInfo.mu for the same reason as Query.Table(). Nothing
+	// currently writes batch.routingInfo.table (Conn.executeBatch only sets
+	// lwt), but leaving one of the two accessors unlocked is how the Query.Table
+	// race was introduced in the first place.
+	b.routingInfo.mu.RLock()
+	defer b.routingInfo.mu.RUnlock()
 	return b.routingInfo.table
 }
 
@@ -2578,11 +3421,17 @@ func (b *Batch) GetSession() *Session {
 
 // Attempts returns the number of attempts made to execute the batch.
 func (b *Batch) Attempts() int {
+	if b.executionAttempts != nil {
+		return int(b.executionAttempts.Load())
+	}
 	return b.metrics.attempts()
 }
 
+// AddAttempts adds i to the batch's attempt count for host. An adjustment that
+// makes the total negative permanently switches the metrics to mutex-backed
+// full-width storage until reset.
 func (b *Batch) AddAttempts(i int, host *HostInfo) {
-	b.metrics.attempt(i, 0, host, false)
+	b.metrics.recordHostAdjustment(i, 0, host)
 }
 
 // Latency returns the average number of nanoseconds to execute a single attempt of the batch.
@@ -2590,8 +3439,11 @@ func (b *Batch) Latency() int64 {
 	return b.metrics.latency()
 }
 
+// AddLatency adds l nanoseconds to the batch's latency for host. An adjustment
+// that makes the total negative also makes Latency return a negative value and
+// permanently switches the metrics to mutex-backed full-width storage until reset.
 func (b *Batch) AddLatency(l int64, host *HostInfo) {
-	b.metrics.attempt(0, time.Duration(l)*time.Nanosecond, host, false)
+	b.metrics.recordHostAdjustment(0, time.Duration(l)*time.Nanosecond, host)
 }
 
 // GetConsistency returns the currently configured consistency level for the batch
@@ -2673,8 +3525,12 @@ func (b *Batch) withContext(ctx context.Context) ExecutableQuery {
 // query, queries will be canceled and return once the context is
 // canceled.
 func (b *Batch) WithContext(ctx context.Context) *Batch {
+	// Unlike Query, Batch has no atomically updated value fields
+	// (executionAttempts is a pointer), so a direct shallow copy is safe.
 	b2 := *b
 	b2.context = ctx
+	b2.executionAttempts = nil
+	transferQueryMetricsOwner(b.metrics, &b.metricsOwner, &b2.metricsOwner)
 	return &b2
 }
 
@@ -2726,9 +3582,13 @@ func (b *Batch) WithTimestamp(timestamp int64) *Batch {
 	return b
 }
 
-func (b *Batch) attempt(keyspace string, end, start time.Time, iter *Iter, host *HostInfo) {
-	latency := end.Sub(start)
-	attempt, metricsForHost := b.metrics.attempt(1, latency, host, b.observer != nil)
+func (b *Batch) finishAttempt(token attemptToken, keyspace string, end time.Time, iter *Iter, host *HostInfo) {
+	defer token.metrics.release()
+	latency := end.Sub(token.start)
+	extendedObserver, needsAttemptMetrics := b.observer.(BatchObserverWithAttemptMetrics)
+	attempt, metricsForHost, attemptMetrics := token.metrics.finishAttempt(
+		token, latency, host, b.observer != nil, needsAttemptMetrics,
+	)
 
 	if b.observer == nil {
 		return
@@ -2742,18 +3602,26 @@ func (b *Batch) attempt(keyspace string, end, start time.Time, iter *Iter, host 
 		values[i] = entry.Args
 	}
 
-	b.observer.ObserveBatch(b.Context(), ObservedBatch{
+	observed := ObservedBatch{
 		Keyspace:   keyspace,
 		Statements: statements,
 		Values:     values,
-		Start:      start,
+		Start:      token.start,
 		End:        end,
 		// Rows not used in batch observations // TODO - might be able to support it when using BatchCAS
 		Host:    host,
 		Metrics: metricsForHost,
 		Err:     iter.err,
 		Attempt: attempt,
-	})
+	}
+	if needsAttemptMetrics {
+		extendedObserver.ObserveBatchWithAttemptMetrics(b.Context(), ObservedBatchWithAttemptMetrics{
+			ObservedBatch:  observed,
+			AttemptMetrics: attemptMetrics,
+		})
+	} else {
+		b.observer.ObserveBatch(b.Context(), observed)
+	}
 }
 
 func (b *Batch) GetRoutingKey() ([]byte, error) {
@@ -2771,7 +3639,7 @@ func (b *Batch) GetRoutingKey() ([]byte, error) {
 		return nil, nil
 	}
 	// try to determine the routing key
-	routingKeyInfo, err := b.session.routingKeyInfo(b.Context(), entry.Stmt, b.GetRequestTimeout())
+	routingKeyInfo, err := b.session.routingKeyInfo(b.Context(), entry.Stmt, b.keyspace, b.GetRequestTimeout())
 	if err != nil {
 		return nil, err
 	}
@@ -2865,6 +3733,29 @@ func (b *Batch) GetHostID() string {
 	return b.hostID
 }
 
+// SetKeyspace will enable keyspace flag on the query.
+// It allows to specify the keyspace that the query should be executed in
+//
+// Only available on protocol >= 5.
+func (b *Batch) SetKeyspace(keyspace string) *Batch {
+	b.keyspace = keyspace
+	// Batch.Keyspace() reads b.keyspace directly, but Batch.GetRoutingKey still
+	// caches the partitioner (and lwt) it resolved for the previous override, and
+	// Batch.Partitioner()/IsLWT() serve that cache. Detached for the same reasons
+	// as Query.SetKeyspace, including the sharing through Batch.WithContext.
+	b.routingInfo = &queryRoutingInfo{}
+	return b
+}
+
+// WithNowInSeconds will enable the with now_in_seconds flag on the query.
+// Also, it allows to define now_in_seconds value.
+//
+// Only available on protocol >= 5.
+func (b *Batch) WithNowInSeconds(now int) *Batch {
+	b.nowInSeconds = &now
+	return b
+}
+
 type BatchType byte
 
 const (
@@ -2892,8 +3783,16 @@ func (c ColumnInfo) String() string {
 }
 
 // routing key indexes LRU cache
+// routingKeyInfoCacheKey avoids concatenating keyspace+stmt into a string on
+// every cache lookup; lru.Cache already takes a comparable key type for
+// exactly this reason.
+type routingKeyInfoCacheKey struct {
+	keyspace string
+	stmt     string
+}
+
 type routingKeyInfoLRU struct {
-	lru *lru.Cache[string]
+	lru *lru.Cache[routingKeyInfoCacheKey]
 	mu  sync.Mutex
 }
 
@@ -2910,7 +3809,7 @@ func (r *routingKeyInfo) String() string {
 	return fmt.Sprintf("routing key index=%v types=%v", r.indexes, r.types)
 }
 
-func (r *routingKeyInfoLRU) Remove(key string) {
+func (r *routingKeyInfoLRU) Remove(key routingKeyInfoCacheKey) {
 	r.mu.Lock()
 	r.lru.Remove(key)
 	r.mu.Unlock()
@@ -2990,7 +3889,12 @@ type ObservedQuery struct {
 	Err error
 	// Host is a reference to the host where the query was executed.
 	Host *HostInfo
-	// Metrics is the metrics for this attempt
+	// Metrics is the cumulative metrics for this host through this attempt.
+	//
+	// Deprecated: implement QueryObserverWithAttemptMetrics for execution-wide
+	// attempt metrics. Aggregate AttemptMetrics entries by Host for
+	// observed-attempt per-host totals. Explicit AddAttempts and AddLatency
+	// adjustments remain available only through Metrics.
 	Metrics   *hostMetrics
 	Keyspace  string
 	Statement string
@@ -3001,8 +3905,10 @@ type ObservedQuery struct {
 	// In paginated queries, rows from previous scans are not counted.
 	// Rows is not used in batch queries and remains at the default value
 	Rows int
-	// Attempt is the index of attempt at executing this query.
-	// The first attempt is number zero and any retries have non-zero attempt number.
+	// Attempt is the launch-order index of the attempt executing this query.
+	// The first attempt is number zero and any retries have a non-zero attempt
+	// number. With speculative execution, observer callbacks can arrive out of
+	// launch order.
 	Attempt int
 }
 
@@ -3012,6 +3918,33 @@ type QueryObserver interface {
 	// It doesn't get called if there is no query because the session is closed or there are no connections available.
 	// The error reported only shows query errors, i.e. if a SELECT is valid but finds no matches it will be nil.
 	ObserveQuery(context.Context, ObservedQuery)
+}
+
+// ObservedQueryWithAttemptMetrics is the source-compatible extension payload
+// delivered to QueryObserverWithAttemptMetrics.
+type ObservedQueryWithAttemptMetrics struct {
+	noUnkeyedLiterals struct{}
+	ObservedQuery
+	// AttemptMetrics is an immutable snapshot of all attempts in this logical
+	// execution that had completed when this observer callback was prepared.
+	//
+	// Attempts are iterated in launch order and can contain gaps when a later
+	// speculative attempt completes first. Automatic result pages share the
+	// same logical execution, so the history is not capped and a long
+	// automatically paged query retains storage proportional to its completed
+	// attempts. Manual paging starts a separate logical execution for each call
+	// to Iter.
+	AttemptMetrics AttemptMetrics
+}
+
+// QueryObserverWithAttemptMetrics optionally extends QueryObserver. When an
+// observer implements this interface, ObserveQueryWithAttemptMetrics is called
+// instead of ObserveQuery. ObserveQuery is required only to satisfy the
+// embedded interface and can be a no-op; gocql does not call it for that
+// observer.
+type QueryObserverWithAttemptMetrics interface {
+	QueryObserver
+	ObserveQueryWithAttemptMetrics(context.Context, ObservedQueryWithAttemptMetrics)
 }
 
 type ObservedBatch struct {
@@ -3024,7 +3957,12 @@ type ObservedBatch struct {
 	Err error
 	// Host is a reference to the host where the batch was executed.
 	Host *HostInfo
-	// Metrics is the metrics for this attempt
+	// Metrics is the cumulative metrics for this host through this attempt.
+	//
+	// Deprecated: implement BatchObserverWithAttemptMetrics for execution-wide
+	// attempt metrics. Aggregate AttemptMetrics entries by Host for
+	// observed-attempt per-host totals. Explicit AddAttempts and AddLatency
+	// adjustments remain available only through Metrics.
 	Metrics    *hostMetrics
 	Keyspace   string
 	Statements []string
@@ -3032,8 +3970,10 @@ type ObservedBatch struct {
 	// Values[i] are bound values passed to Statements[i].
 	// Do not modify the values here, they are shared with multiple goroutines.
 	Values [][]any
-	// Attempt is the index of attempt at executing this query.
-	// The first attempt is number zero and any retries have non-zero attempt number.
+	// Attempt is the launch-order index of the attempt executing this batch.
+	// The first attempt is number zero and any retries have a non-zero attempt
+	// number. With speculative execution, observer callbacks can arrive out of
+	// launch order.
 	Attempt int
 }
 
@@ -3045,6 +3985,29 @@ type BatchObserver interface {
 	// The error reported only shows query errors, i.e. if a SELECT is valid but finds no matches it will be nil.
 	// Unlike QueryObserver.ObserveQuery it does no reporting on rows read.
 	ObserveBatch(context.Context, ObservedBatch)
+}
+
+// ObservedBatchWithAttemptMetrics is the source-compatible extension payload
+// delivered to BatchObserverWithAttemptMetrics.
+type ObservedBatchWithAttemptMetrics struct {
+	noUnkeyedLiterals struct{}
+	ObservedBatch
+	// AttemptMetrics is an immutable snapshot of all attempts in this logical
+	// execution that had completed when this observer callback was prepared.
+	//
+	// Attempts are iterated in launch order and can contain gaps when a later
+	// speculative attempt completes first.
+	AttemptMetrics AttemptMetrics
+}
+
+// BatchObserverWithAttemptMetrics optionally extends BatchObserver. When an
+// observer implements this interface, ObserveBatchWithAttemptMetrics is called
+// instead of ObserveBatch. ObserveBatch is required only to satisfy the
+// embedded interface and can be a no-op; gocql does not call it for that
+// observer.
+type BatchObserverWithAttemptMetrics interface {
+	BatchObserver
+	ObserveBatchWithAttemptMetrics(context.Context, ObservedBatchWithAttemptMetrics)
 }
 
 type ObservedConnect struct {

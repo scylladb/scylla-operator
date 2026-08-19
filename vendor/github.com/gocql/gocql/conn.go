@@ -26,6 +26,7 @@ package gocql
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -127,6 +128,15 @@ type SslOptions struct {
 	//
 	// See SslOptions documentation to see how EnableHostVerification interacts with the provided tls.Config.
 	EnableHostVerification bool
+	// DisableStrictCertificateValidation disables strict chain validation.
+	// Strict validation requires TLS verification (InsecureSkipVerify=false).
+	// When false (default) with verification enabled, the driver validates the
+	// entire chain up to a self-signed root. When true, Go's default applies.
+	//
+	// Deprecated: This option is provided for backward compatibility and will be removed
+	// in a future version. You should ensure your certificate chains are properly configured
+	// and avoid using this option.
+	DisableStrictCertificateValidation bool
 }
 
 type ConnConfig struct {
@@ -144,6 +154,9 @@ type ConnConfig struct {
 	ProtoVersion    int
 	Keepalive       time.Duration
 	disableCoalesce bool
+	// isControlConn marks the connection used by the control connection, which is
+	// the only one reporting the driver configuration on startup.
+	isControlConn bool
 }
 
 func (c *ConnConfig) logger() StdLogger {
@@ -168,6 +181,7 @@ type ConnInterface interface {
 	exec(ctx context.Context, req frameBuilder, tracer Tracer, requestTimeout time.Duration) (*framer, error)
 	awaitSchemaAgreement(ctx context.Context) error
 	executeQuery(ctx context.Context, qry *Query) *Iter
+	executeQueryWithMetrics(ctx context.Context, qry *Query, metrics *queryMetrics) *Iter
 	querySystem(ctx context.Context, query string, values ...any) *Iter
 	getIsSchemaV2() bool
 	setSchemaV2(s bool)
@@ -180,38 +194,71 @@ type ConnInterface interface {
 // level API.
 type Conn struct {
 	auth           Authenticator
+	cfg            *ConnConfig
+	frameObserver  FrameHeaderObserver
 	streamObserver StreamObserver
 	w              contextWriter
 	logger         StdLogger
-	frameObserver  FrameHeaderObserver
 	ctx            context.Context
 	errorHandler   ConnErrorHandler
 	compressor     Compressor
-	conn           net.Conn
-	cfg            *ConnConfig
 	supported      map[string][]string
 	streams        *streams.IDGenerator
 	host           *HostInfo
 	// calls stores a map from stream ID to callReq.
 	// This map is protected by mu.
 	// calls should not be used when closed is true, calls is set to nil when closed=true.
-	calls                map[int]*callReq
-	r                    *bufio.Reader
-	session              *Session
-	framers              connFramers
-	cancel               context.CancelFunc
-	addr                 string
-	usingTimeoutClause   string
-	currentKeyspace      string
-	cqlProtoExts         []cqlProtocolExtension
-	scyllaSupported      ScyllaConnectionFeatures
-	systemRequestTimeout time.Duration
-	writeTimeout         atomic.Int64
-	readTimeout          atomic.Int64
-	mu                   sync.Mutex
-	tabletsRoutingV1     int32
-	headerBuf            [headSize]byte
-	isShardAware         bool
+	calls map[int]*callReq
+	// segScratch holds the reusable buffers inbound v5 segments are read into.
+	// Only touched by the receive path, which runs on the serve() goroutine.
+	segScratch segmentScratch
+	// headerReader is the reader the current frame or segment header is read
+	// through (see readFrameHeader, readFirstSegmentHeader). Reused rather than
+	// allocated per header, and like segScratch only touched by whichever
+	// goroutine is currently receiving. The two header reads never nest, and the
+	// startup coordinator's reader never overlaps serve(): a frameTicker tick is
+	// only sent while the previous response is still outstanding, and
+	// processFrameSource touches neither field after handing that response to its
+	// caller.
+	//
+	// Note that last clause is what makes it safe, not an ordering — setupConn
+	// returns on the startupErr send, which the options goroutine performs before
+	// close(frameTicker), so the startup reader can still be unwinding when
+	// serve() starts. Work added to processFrameSource after the response is
+	// delivered would need a real barrier here.
+	headerReader headerReader
+	r            connReadSource
+	session      *Session
+	framers      connFramers
+	cancel       context.CancelFunc
+	// currentKeyspace is the keyspace this connection was switched to by
+	// Conn.UseKeyspace, and the default the prepared-statement cache is keyed by
+	// (see executeQuery/executeBatch). It deliberately tracks only driver-issued
+	// USE: a `USE` statement a caller executes as an ordinary query switches the
+	// server side of whichever single pooled connection it landed on, and the
+	// driver does not follow it — so cache keys keep using the configured keyspace.
+	//
+	// Atomic because UseKeyspace is exported: a caller invoking it on a live
+	// connection would otherwise race the request goroutines reading it.
+	currentKeyspace atomic.Pointer[string]
+	addr            string
+	// systemRequest carries the timeouts driver-issued system queries are sent
+	// with. See systemRequestState for why the two travel together.
+	//
+	// Atomic because finalizeConnection switches the timeout from
+	// cfg.ConnectTimeout to cfg.MetadataSchemaRequestTimeout at the very end of
+	// Session.init, by which point the control connection is already registered
+	// for server push events: a SCHEMA_CHANGE arriving inside that window makes
+	// the event-debouncer goroutine run querySystem on this connection
+	// concurrently with the write.
+	systemRequest    atomic.Pointer[systemRequestState]
+	cqlProtoExts     []cqlProtocolExtension
+	scyllaSupported  ScyllaConnectionFeatures
+	writeTimeout     atomic.Int64
+	mu               sync.Mutex
+	tabletsRoutingV1 int32
+	headerBuf        [headSize]byte
+	isShardAware     bool
 	// true if connection close process for the connection started.
 	// closed is protected by mu.
 	closed     bool
@@ -227,15 +274,58 @@ func (c *Conn) setSchemaV2(s bool) {
 	c.isSchemaV2 = s
 }
 
-func (c *Conn) setSystemRequestTimeout(t time.Duration) {
-	c.systemRequestTimeout = t
-	c.recalculateSystemRequestTimeout()
+// systemRequestState is the immutable pair of timeouts a driver-issued system
+// query is sent with: the client-side deadline, and the ScyllaDB-only
+// " USING TIMEOUT ...ms" clause pre-rendered from it (empty when the clause does
+// not apply). The two are published as one snapshot so a reader can never pair
+// one with a stale version of the other - which would ask the server to abort a
+// system query on a deadline the client is not waiting on, or vice versa.
+//
+// Field order keeps the string first so the GC scans 8 pointer bytes, not 16
+// (govet's fieldalignment).
+type systemRequestState struct {
+	usingClause string
+	timeout     time.Duration
 }
 
-func (c *Conn) recalculateSystemRequestTimeout() {
-	if c.systemRequestTimeout > time.Duration(0) && c.isScyllaConn() {
-		c.usingTimeoutClause = " USING TIMEOUT " + strconv.FormatInt(c.systemRequestTimeout.Milliseconds(), 10) + "ms"
+// systemRequestStatement returns stmt with the USING TIMEOUT clause appended and
+// the client-side timeout to send it with, both taken from one snapshot so the
+// two can never disagree. It is the only way the query paths should reach them.
+func (c *Conn) systemRequestStatement(stmt string) (string, time.Duration) {
+	state := c.getSystemRequestState()
+	return stmt + state.usingClause, state.timeout
+}
+
+// getSystemRequestState returns the current snapshot.
+func (c *Conn) getSystemRequestState() systemRequestState {
+	if state := c.systemRequest.Load(); state != nil {
+		return *state
 	}
+	return systemRequestState{}
+}
+
+// setSystemRequestTimeout publishes t together with the clause derived from it.
+// The clause is ScyllaDB-only and needs a positive timeout, so it is empty
+// otherwise - a timeout the caller disabled must not leave an older clause in
+// force.
+func (c *Conn) setSystemRequestTimeout(t time.Duration) {
+	next := systemRequestState{timeout: t}
+	if t > time.Duration(0) && c.isScyllaConn() {
+		next.usingClause = " USING TIMEOUT " + strconv.FormatInt(t.Milliseconds(), 10) + "ms"
+	}
+	c.systemRequest.Store(&next)
+}
+
+// recalculateSystemRequestTimeout re-renders the clause for the timeout already
+// in effect. It is called once the connection knows whether it talks to
+// ScyllaDB, which the clause depends on.
+//
+// It re-reads the timeout rather than naming the value its only caller knows is
+// in force (cfg.ConnectTimeout, from dialWithoutObserver): republishing whatever
+// is current cannot overwrite a timeout some later change publishes earlier in
+// startup, which would put every system query back under an unrelated setting.
+func (c *Conn) recalculateSystemRequestTimeout() {
+	c.setSystemRequestTimeout(c.getSystemRequestState().timeout)
 }
 
 func (c *Conn) finalizeConnection() {
@@ -243,19 +333,13 @@ func (c *Conn) finalizeConnection() {
 	// It is done to make sure that connection is easy to establish when users set very low `WriteTimeout` and/or `Timeout`
 	// This method sets timeouts to `operational` values after connection successfully created
 	c.writeTimeout.Store(int64(c.cfg.WriteTimeout))
-	c.readTimeout.Store(int64(c.cfg.ReadTimeout))
 	c.setSystemRequestTimeout(c.session.cfg.MetadataSchemaRequestTimeout)
 	c.w.setWriteTimeout(c.cfg.WriteTimeout)
+	c.r.SetTimeout(c.cfg.ReadTimeout)
 }
 
 func (c *Conn) getScyllaSupported() ScyllaConnectionFeatures {
 	return c.scyllaSupported
-}
-
-// connect establishes a connection to a Cassandra node using session's connection config.
-// note: every connection needs to get `conn.finalizeConnection` called ont it when initialization process is done
-func (s *Session) connect(ctx context.Context, host *HostInfo, errorHandler ConnErrorHandler) (*Conn, error) {
-	return s.dial(ctx, host, s.connCfg, errorHandler)
 }
 
 // connectShard establishes a connection to a shard.
@@ -370,8 +454,10 @@ func (s *Session) dialWithoutObserver(ctx context.Context, host *HostInfo, cfg *
 
 	ctx, cancel := context.WithCancel(ctx)
 	c := &Conn{
-		conn:          dialedHost.Conn,
-		r:             bufio.NewReader(dialedHost.Conn),
+		r: &connReader{
+			conn: dialedHost.Conn,
+			r:    bufio.NewReader(dialedHost.Conn),
+		},
 		cfg:           cfg,
 		calls:         make(map[int]*callReq),
 		version:       uint8(cfg.ProtoVersion),
@@ -389,12 +475,12 @@ func (s *Session) dialWithoutObserver(ctx context.Context, host *HostInfo, cfg *
 			semaphore: make(chan struct{}, 1),
 			quit:      make(chan struct{}),
 		},
-		ctx:                  ctx,
-		cancel:               cancel,
-		logger:               cfg.logger(),
-		streamObserver:       s.streamObserver,
-		systemRequestTimeout: cfg.ConnectTimeout,
+		ctx:            ctx,
+		cancel:         cancel,
+		logger:         cfg.logger(),
+		streamObserver: s.streamObserver,
 	}
+	c.setSystemRequestTimeout(cfg.ConnectTimeout)
 
 	if err := c.init(ctx, dialedHost); err != nil {
 		cancel()
@@ -413,7 +499,7 @@ func (s *Session) streamIDGenerator() *streams.IDGenerator {
 }
 
 func (c *Conn) init(ctx context.Context, dialedHost *DialedHost) error {
-	c.readTimeout.Store(int64(c.cfg.ConnectTimeout))
+	c.r.SetTimeout(c.cfg.ConnectTimeout)
 	c.writeTimeout.Store(int64(c.cfg.ConnectTimeout))
 	c.w.setWriteTimeout(c.cfg.ConnectTimeout)
 
@@ -432,13 +518,21 @@ func (c *Conn) init(ctx context.Context, dialedHost *DialedHost) error {
 		conn:        c,
 	}
 
+	// The driver configuration is identical for every connection of a session,
+	// so it is reported only on the control connection to keep the other STARTUP
+	// frames small. Leaving the reporter nil elsewhere reuses the same path that
+	// a session with reporting disabled takes.
+	if c.cfg.isControlConn {
+		startup.driverConfigReporter = c.session.driverConfigReporter
+	}
+
 	if err := startup.setupConn(ctx); err != nil {
 		return err
 	}
 
 	// dont coalesce startup frames
 	if c.session.cfg.WriteCoalesceWaitTime > 0 && !c.cfg.disableCoalesce && !dialedHost.DisableCoalesce {
-		c.w = newWriteCoalescer(c.conn, c.cfg.ConnectTimeout, c.session.cfg.WriteCoalesceWaitTime, ctx.Done())
+		c.w = newWriteCoalescer(dialedHost.Conn, c.cfg.ConnectTimeout, c.session.cfg.WriteCoalesceWaitTime, ctx.Done())
 	}
 
 	if c.isScyllaConn() { // ScyllaDB does not support system.peers_v2
@@ -455,36 +549,19 @@ func (c *Conn) Write(p []byte) (n int, err error) {
 	return c.w.writeContext(context.Background(), p)
 }
 
+// Read reads data from the connection.
+//
+// The driver itself reads through the connection's connReader (which owns the
+// read-deadline handling); Read is retained so that *Conn keeps satisfying
+// io.Reader for external callers, as it does io.Writer via Write.
 func (c *Conn) Read(p []byte) (n int, err error) {
-	const maxAttempts = 5
-	timeout := c.readTimeout.Load()
-
-	for i := 0; i < maxAttempts; i++ {
-		var nn int
-		if timeout > 0 {
-			err = c.conn.SetReadDeadline(time.Now().Add(time.Duration(timeout)))
-			if err != nil {
-				return 0, err
-			}
-		}
-
-		nn, err = io.ReadFull(c.r, p[n:])
-		n += nn
-		if err == nil {
-			break
-		}
-
-		if verr, ok := err.(net.Error); !ok || !verr.Temporary() {
-			break
-		}
-	}
-
-	return
+	return c.r.Read(p)
 }
 
 type startupCoordinator struct {
-	conn        *Conn
-	frameTicker chan struct{}
+	conn                 *Conn
+	frameTicker          chan struct{}
+	driverConfigReporter *driverConfigReporter
 }
 
 func (s *startupCoordinator) setupConn(ctx context.Context) error {
@@ -496,10 +573,19 @@ func (s *startupCoordinator) setupConn(ctx context.Context) error {
 	}
 	defer cancel()
 
+	// Only for proto v5+.
+	// Indicates if STARTUP has been completed.
+	// github.com/apache/cassandra/blob/trunk/doc/native_protocol_v5.spec
+	// 2.3.1 Initial Handshake
+	// 	In order to support both v5 and earlier formats, the v5 framing format is not
+	//  applied to message exchanges before an initial handshake is completed.
+	startupCompleted := &atomic.Bool{}
+	startupCompleted.Store(false)
+
 	startupErr := make(chan error)
 	go func() {
 		for range s.frameTicker {
-			err := s.conn.recv(ctx)
+			err := s.conn.recv(ctx, startupCompleted.Load())
 			if err != nil {
 				select {
 				case startupErr <- err:
@@ -513,7 +599,7 @@ func (s *startupCoordinator) setupConn(ctx context.Context) error {
 
 	go func() {
 		defer close(s.frameTicker)
-		err := s.options(ctx)
+		err := s.options(ctx, startupCompleted)
 		select {
 		case startupErr <- err:
 		case <-ctx.Done():
@@ -541,14 +627,14 @@ func (s *startupCoordinator) setupConn(ctx context.Context) error {
 // readBytesCopy (e.g. SupportedFrame, AuthChallengeFrame, AuthSuccessFrame)
 // are safe; frame types that use readBytes and expose []byte fields would not
 // be safe and must not be returned from this function.
-func (s *startupCoordinator) write(ctx context.Context, frame frameBuilder) (frame, error) {
+func (s *startupCoordinator) write(ctx context.Context, frame frameBuilder, startupCompleted *atomic.Bool) (frame, error) {
 	select {
 	case s.frameTicker <- struct{}{}:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 
-	framer, err := s.conn.exec(ctx, frame, nil, s.conn.cfg.ConnectTimeout)
+	framer, err := s.conn.execInternal(ctx, frame, nil, s.conn.cfg.ConnectTimeout, startupCompleted.Load())
 	if err != nil {
 		return nil, err
 	}
@@ -557,8 +643,8 @@ func (s *startupCoordinator) write(ctx context.Context, frame frameBuilder) (fra
 	return framer.parseFrame()
 }
 
-func (s *startupCoordinator) options(ctx context.Context) error {
-	frame, err := s.write(ctx, &writeOptionsFrame{})
+func (s *startupCoordinator) options(ctx context.Context, startupCompleted *atomic.Bool) error {
+	frame, err := s.write(ctx, &writeOptionsFrame{}, startupCompleted)
 	if err != nil {
 		return err
 	}
@@ -574,13 +660,13 @@ func (s *startupCoordinator) options(ctx context.Context) error {
 	if current := s.conn.host.ScyllaFeatures(); current != s.conn.scyllaSupported.ScyllaHostFeatures {
 		s.conn.host.setScyllaFeatures(s.conn.scyllaSupported.ScyllaHostFeatures)
 	}
-	s.conn.cqlProtoExts = parseCQLProtocolExtensions(s.conn.supported, s.conn.logger)
+	s.conn.cqlProtoExts = parseCQLProtocolExtensions(s.conn.supported, s.conn.version, s.conn.logger)
 
 	// initFramerCache must be called after startup(), because startup() may
 	// nil out c.compressor if the server does not support the requested
 	// compression algorithm. Calling it before would snapshot a stale
 	// compressor and set FlagCompress, causing protocol errors.
-	err = s.startup(ctx)
+	err = s.startup(ctx, startupCompleted)
 	if err != nil {
 		return err
 	}
@@ -588,16 +674,51 @@ func (s *startupCoordinator) options(ctx context.Context) error {
 	return nil
 }
 
-func (s *startupCoordinator) startup(ctx context.Context) error {
+// startupOptions builds the STARTUP options the driver always sends.
+//
+// The application's options go in first so the driver-owned keys below can
+// overwrite them, never the other way round. They describe the driver, the
+// protocol it is speaking and the session the connection belongs to, and are
+// not the application's to change: a callback that set CQL_VERSION could make
+// every connection in the cluster fail the handshake, one that set DRIVER_NAME
+// or DRIVER_VERSION would misreport the driver to the server for the life of
+// the connection, and one that set SESSION_ID would break correlating a
+// session's connections in system.clients.
+//
+// The ordering is easy to lose, which is how it was lost: upstream has no
+// ApplicationInfo hook and writes these three as a map literal, so merging the
+// two put the callback last.
+func startupOptions(cqlVersion, driverName, driverVersion string, info ApplicationInfo, driverConfig *driverConfigReporter, sessionID string, isScyllaConn bool) map[string]string {
 	m := map[string]string{}
 
-	if s.conn.session.cfg.ApplicationInfo != nil {
-		s.conn.session.cfg.ApplicationInfo.UpdateStartupOptions(m)
+	if info != nil {
+		info.UpdateStartupOptions(m)
 	}
 
-	m["CQL_VERSION"] = s.conn.cfg.CQLVersion
-	m["DRIVER_NAME"] = s.conn.session.cfg.DriverName
-	m["DRIVER_VERSION"] = s.conn.session.cfg.DriverVersion
+	if driverConfig != nil {
+		driverConfig.updateStartupOptions(m, isScyllaConn)
+	}
+
+	m[sessionIDStartupKey] = sessionID
+	m["CQL_VERSION"] = cqlVersion
+	m["DRIVER_NAME"] = driverName
+	m["DRIVER_VERSION"] = driverVersion
+
+	return m
+}
+
+func (s *startupCoordinator) startup(ctx context.Context, startupCompleted *atomic.Bool) error {
+	// COMPRESSION and the CQL protocol extensions below are driver-owned too, and
+	// are already protected by being written after the callback has run.
+	m := startupOptions(
+		s.conn.cfg.CQLVersion,
+		s.conn.session.cfg.DriverName,
+		s.conn.session.cfg.DriverVersion,
+		s.conn.session.cfg.ApplicationInfo,
+		s.driverConfigReporter,
+		s.conn.session.id,
+		s.conn.isScyllaConn(),
+	)
 
 	if s.conn.compressor != nil {
 		comp := s.conn.supported["COMPRESSION"]
@@ -621,7 +742,7 @@ func (s *startupCoordinator) startup(ctx context.Context) error {
 		}
 	}
 
-	frame, err := s.write(ctx, &writeStartupFrame{opts: m})
+	frame, err := s.write(ctx, &writeStartupFrame{opts: m}, startupCompleted)
 	if err != nil {
 		return err
 	}
@@ -630,15 +751,19 @@ func (s *startupCoordinator) startup(ctx context.Context) error {
 	case error:
 		return v
 	case *frm.ReadyFrame:
+		// Startup is successfully completed, so we could use Native Protocol 5
+		startupCompleted.Store(true)
 		return nil
 	case *frm.AuthenticateFrame:
-		return s.authenticateHandshake(ctx, v)
+		// Startup is successfully completed, so we could use Native Protocol 5
+		startupCompleted.Store(true)
+		return s.authenticateHandshake(ctx, v, startupCompleted)
 	default:
 		return NewErrProtocol("Unknown type of response to startup frame: %s", v)
 	}
 }
 
-func (s *startupCoordinator) authenticateHandshake(ctx context.Context, authFrame *frm.AuthenticateFrame) error {
+func (s *startupCoordinator) authenticateHandshake(ctx context.Context, authFrame *frm.AuthenticateFrame, startupCompleted *atomic.Bool) error {
 	if s.conn.auth == nil {
 		return fmt.Errorf("authentication required (using %q)", authFrame.Class)
 	}
@@ -650,7 +775,7 @@ func (s *startupCoordinator) authenticateHandshake(ctx context.Context, authFram
 
 	req := &writeAuthResponseFrame{data: resp}
 	for {
-		frame, err := s.write(ctx, req)
+		frame, err := s.write(ctx, req, startupCompleted)
 		if err != nil {
 			return err
 		}
@@ -754,8 +879,43 @@ func (c *Conn) setTabletSupported(val bool) {
 	atomic.StoreInt32(&c.tabletsRoutingV1, intVal)
 }
 
+// usesMetadataID reports whether SCYLLA_USE_METADATA_ID was negotiated on this
+// connection. This is the extension alone; see tracksResultMetadataID for the
+// question the request path actually asks.
+//
+// It reads the framer config rather than a separate field on Conn, so the request
+// path and the pooled framers that encode and decode the result metadata ID cannot
+// disagree: a Conn that believed the extension was on while its framers did not
+// would ask the server to skip metadata while writing no ID to compare against.
+// initFramerCache populates the config during connection setup, before any query
+// can run.
+//
+// One framer is not built from that config: framerPool.get falls back to newFramer
+// when the pool is disabled, which yields scyllaUseMetadataID false regardless of
+// what was negotiated. That is correct during the handshake, and unreachable from
+// the request path afterwards — execInternal acquires its framer before addCall
+// rejects a closed connection, so a framer taken after the pool closed belongs to a
+// call that never writes a frame. It is a property of call ordering rather than of
+// construction, so see #982, which also covers flagLWT and tabletsRoutingV1.
+func (c *Conn) usesMetadataID() bool {
+	return c.framers.defaults.scyllaUseMetadataID
+}
+
+// tracksResultMetadataID reports whether an EXECUTE on this connection carries a
+// result metadata ID for the server to compare its own against — either because
+// native protocol v5 makes the field mandatory, or because
+// SCYLLA_USE_METADATA_ID backported it to v4. Either way the server answers a
+// stale ID with METADATA_CHANGED, which is what makes skipping result metadata
+// recoverable. See shouldSkipResultMetadata.
+//
+// Read from the same framer config as usesMetadataID, for the same reason, and
+// because initCache has already masked the protocol version there.
+func (c *Conn) tracksResultMetadataID() bool {
+	return c.framers.defaults.proto > protoVersion4 || c.framers.defaults.scyllaUseMetadataID
+}
+
 func (c *Conn) close() error {
-	return c.conn.Close()
+	return c.r.Close()
 }
 
 func (c *Conn) Close() {
@@ -767,15 +927,39 @@ func (c *Conn) Close() {
 // open and is therefore usually called in a separate goroutine.
 func (c *Conn) serve(ctx context.Context) {
 	var err error
-	for err == nil {
-		err = c.recv(ctx)
+	for {
+		err = c.recv(ctx, true)
+		if err == nil {
+			continue
+		}
+		// A benign idle timeout: the peer simply had nothing to send. Log it and
+		// read again rather than dropping a healthy connection.
+		//
+		// Expected to be unreachable in practice — the wait for a header's first byte
+		// runs with the read deadline disarmed (readFrameHeader,
+		// readFirstSegmentHeader), so an idle connection cannot time out at all. The
+		// branch is kept as the safety net for a regression in that disarm: without
+		// it, such a regression would close every idle connection once per ReadTimeout
+		// instead of printing this line. It is deliberately narrow — the deadline is
+		// re-armed once the peer starts sending, and a timeout that already consumed
+		// part of a header is not normalised to ErrReadHeaderTimeout, because the
+		// stream position would be unknown and continuing would mis-frame everything
+		// after it.
+		if errors.Is(err, ErrReadHeaderTimeout) {
+			c.logger.Print("gocql: read header timeout") // TODO: Provide more details from wrapped error?
+			err = nil
+			continue
+		}
+		break
 	}
 
 	c.closeWithError(err)
 }
 
-func (c *Conn) discardFrame(head frm.FrameHeader) error {
-	_, err := io.CopyN(io.Discard, c, int64(head.Length))
+func (c *Conn) discardFrame(r io.Reader, head frm.FrameHeader) error {
+	// Read the body from the same reader that supplied the header: for proto v5
+	// this may be a segment buffer rather than the socket (c.r).
+	_, err := io.CopyN(io.Discard, r, int64(head.Length))
 	if err != nil {
 		return err
 	}
@@ -841,27 +1025,122 @@ func (c *Conn) heartBeat(ctx context.Context) {
 	}
 }
 
-func (c *Conn) recv(ctx context.Context) error {
-	// not safe for concurrent reads
-
-	// read a full header, ignore timeouts, as this is being ran in a loop
-	// TODO: TCP level deadlines? or just query level deadlines?
-	if c.readTimeout.Load() > 0 {
-		c.conn.SetReadDeadline(time.Time{})
+func (c *Conn) recv(ctx context.Context, startupCompleted bool) error {
+	// If startup is completed and native proto 5+ is set up then we should
+	// unwrap payload from compressed/uncompressed frame
+	if startupCompleted && c.version > protoVersion4 {
+		return c.recvSegment(ctx)
 	}
 
-	var headStartTime time.Time
-	if c.frameObserver != nil {
+	return c.processFrame(ctx, c.r)
+}
+
+// frameSource supplies one CQL frame to processFrame. The header always comes
+// from r — the socket, or a buffer holding an already-received segment payload.
+//
+// Field order is dictated by govet's fieldalignment rather than by how the fields
+// relate: body's length and capacity are the only trailing words here that hold no
+// pointer, so it goes last to keep the pointer-scanned prefix short. It belongs
+// with r.
+type frameSource struct {
+	r io.Reader
+	// segment, when non-nil, is the self-contained v5 segment payload r reads
+	// from. Such a segment carries only whole frames, so a header declaring a body
+	// longer than what is left in the segment is a framing violation, and
+	// processFrameSource rejects it before readFrame acts on the declared length.
+	//
+	// That check is what keeps the length honest here. Off the socket, a lying
+	// header costs the peer the bytes it claimed or stalls into a net.Error that
+	// takes the connection down; out of a segment the short read is immediate and
+	// yields io.ErrUnexpectedEOF, which is not a net.Error, so processFrameSource
+	// keeps it per-request and leaves the connection up. A ~20-byte segment could
+	// otherwise buy a maxFrameSize allocation, repeatable for as long as the peer
+	// cares to send them.
+	//
+	// Nil on the pre-v5 socket path, and nil for a reassembled frame, where
+	// framer.adoptFrameBody already matches the declared length exactly.
+	segment *bytes.Reader
+	// netStart/netEnd are the window of the network read that delivered these
+	// bytes, for FrameHeaderObserver. On v5 the CQL header is parsed out of a
+	// segment that has already arrived, so processFrameSource cannot measure the
+	// network wait itself — the reader that could is recvSegment, and it passes
+	// the window down here.
+	//
+	// Zero means "not measured", which is the pre-v5 socket path: there
+	// processFrameSource reads the header off the wire and times it directly.
+	netStart, netEnd time.Time
+	// body is set only when the whole frame body is already in memory and the
+	// buffer holding it can be given away: the read framer then adopts it instead
+	// of reading and copying the body a second time (see framer.adoptFrameBody).
+	body []byte
+}
+
+// readBody fills f with the frame body described by head, either by reading it
+// from s.r or by adopting the buffer s already holds.
+func (s frameSource) readBody(f *framer, head *frm.FrameHeader) error {
+	if s.body != nil {
+		return f.adoptFrameBody(s.body, head)
+	}
+	return f.readFrame(s.r, head)
+}
+
+func (c *Conn) processFrame(ctx context.Context, r io.Reader) error {
+	return c.processFrameSource(ctx, frameSource{r: r})
+}
+
+// readFrameHeader reads one CQL frame header from r with the read deadline
+// disarmed for its first byte: the serve() loop waits indefinitely for the next
+// inbound frame, so a short ReadTimeout must not fire on an idle connection. Once
+// the peer has started sending, headerReader re-arms the deadline, so the rest of
+// the header — and the body read that follows — are bounded by the operational
+// timeout. The disarm is also cleared via defer, which covers the paths that
+// deliver no byte at all, and means a panic cannot leave the connection
+// deadline-free.
+//
+// Disarming through a dedicated flag (rather than zeroing and restoring the
+// connReader timeout) keeps the operational timeout intact, so a concurrent
+// finalizeConnection switching the reader from ConnectTimeout to ReadTimeout is
+// never lost. The header read itself clears any stale deadline (connReader.Read).
+//
+// Unlike readFirstSegmentHeader, the disarm here is a dynamic check: on proto v5 r
+// is a reader over an already-received segment payload, which has no deadline to
+// disarm. Missing it in that case is correct, not a bug.
+func (c *Conn) readFrameHeader(r io.Reader) (frm.FrameHeader, error) {
+	d, _ := r.(deadlineDisarmer)
+	if d != nil {
+		d.setDisarm(true)
+		defer d.setDisarm(false)
+	}
+
+	c.headerReader.reset(r, d)
+	return readHeader(&c.headerReader, c.headerBuf[:])
+}
+
+func (c *Conn) processFrameSource(ctx context.Context, src frameSource) error {
+	// not safe for concurrent reads
+	r := src.r
+
+	// The observer documents Start/End as when the header started and finished
+	// coming off the network. When the caller already did that read and measured
+	// it (v5: the header is parsed out of a segment that has arrived), its window
+	// is the truthful one; timing the parse here would report memory speed.
+	headStartTime, headEndTime := src.netStart, src.netEnd
+	measureHere := headStartTime.IsZero() && c.frameObserver != nil
+
+	if measureHere {
 		headStartTime = time.Now()
 	}
 	// were just reading headers over and over and copy bodies
-	head, err := readHeader(c.r, c.headerBuf[:])
+	head, err := c.readFrameHeader(r)
+
+	if measureHere {
+		headEndTime = time.Now()
+	}
 	if err != nil {
 		return err
 	}
 
 	if c.frameObserver != nil {
-		headEndTime := time.Now()
 		c.frameObserver.ObserveFrameHeader(context.Background(), ObservedFrameHeader{
 			Version: head.Version,
 			Flags:   head.Flags,
@@ -874,12 +1153,21 @@ func (c *Conn) recv(ctx context.Context) error {
 		})
 	}
 
+	// Fatal, like the stream bound below, and for the same reason: the segment
+	// payload's CRC32 already verified, so this is not corruption in flight but a
+	// peer whose framing does not describe the bytes it sent. Nothing later on this
+	// connection can be trusted to start where we think it does. Making it
+	// per-request instead is what would let the peer repeat it — see frameSource.
+	if src.segment != nil && head.Length > src.segment.Len() {
+		return fmt.Errorf("gocql: frame header declares a %d byte body but only %d bytes remain in the self-contained segment", head.Length, src.segment.Len())
+	}
+
 	if head.Stream > c.streams.NumStreams {
 		return fmt.Errorf("gocql: frame header stream is beyond call expected bounds: %d", head.Stream)
 	} else if head.Stream <= 0 {
 		// reserved stream that we dont use, probably due to a protocol error
 		// or a bug in Cassandra, this should be an error, parse it and return.
-		framer, err := c.readFrameIntoFramer(head)
+		framer, err := c.readFrameIntoFramer(src, head)
 		if err != nil {
 			return err
 		}
@@ -920,23 +1208,24 @@ func (c *Conn) recv(ctx context.Context) error {
 	c.mu.Unlock()
 	if call == nil || !ok {
 		c.logger.Printf("gocql: received response for stream which has no handler: header=%v\n", head)
-		return c.discardFrame(head)
+		return c.discardFrame(r, head)
 	} else if head.Stream != call.streamID {
 		panic(fmt.Sprintf("call has incorrect streamID: got %d expected %d", call.streamID, head.Stream))
 	}
 
 	framer := c.getReadFramer()
 
-	err = framer.readFrame(c, &head)
-	if err != nil {
-		// only net errors should cause the connection to be closed. Though
-		// cassandra returning corrupt frames will be returned here as well.
-		if _, ok := err.(net.Error); ok {
-			c.releaseReadFramer(framer)
-			return err
-		}
-	}
+	err = src.readBody(framer, &head)
 
+	desynced := bodyReadDesyncedConn(err)
+
+	// Deliver the outcome before returning it, even when fatal. head.Stream was
+	// already removed from c.calls above, so closeWithError's drain loop can no
+	// longer find this call: returning early would leave the caller waiting out its
+	// full request timeout for a response that can never arrive, and would leak the
+	// callReq. Delivering first makes it fail immediately, and the framer/stream
+	// accounting stays on the paths that already handle it.
+	//
 	// we either, return a response to the caller, the caller timedout, or the
 	// connection has closed. Either way we should never block indefinatly here
 	select {
@@ -948,12 +1237,49 @@ func (c *Conn) recv(ctx context.Context) error {
 		c.abandonRecvCall(call, framer)
 	}
 
+	if desynced {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Conn) readFrameIntoFramer(head frm.FrameHeader) (*framer, error) {
+// bodyReadDesyncedConn reports whether a frame-body read failure left the
+// connection at an unknown stream offset, in which case it is fatal: the
+// unconsumed remainder of the body is still on the wire and every subsequent read
+// would be mis-framed. A decode failure, or an over-long frame whose body was
+// successfully discarded, leaves the stream aligned and stays a per-request error.
+//
+// Two kinds of failure qualify.
+//
+// A network error means the body was read partially or not at all. errors.As
+// rather than a type assertion: readFrame wraps the read error, so an assertion on
+// the wrapper never matches (which is precisely how this used to leave desynced
+// connections in the pool).
+//
+// A failed read deadline arm means connReader.Read never reached the socket, so
+// the whole body is still queued on a connection that is otherwise healthy — the
+// worst case, because nothing else will surface the problem and serve() reads the
+// body as its next frame header. It needs naming rather than being left to the
+// net.Error test: net.Conn.SetReadDeadline is only conventionally a *net.OpError,
+// and a connection from a user-supplied Dialer or HostDialer may return a plain
+// error, which would classify this as per-request.
+func bodyReadDesyncedConn(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, errArmReadDeadline) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr)
+}
+
+func (c *Conn) readFrameIntoFramer(src frameSource, head frm.FrameHeader) (*framer, error) {
 	framer := c.getReadFramer()
-	if err := framer.readFrame(c, &head); err != nil {
+	// Take the body from the same source that supplied the header: for proto v5
+	// that is a segment payload or a reassembled frame rather than the socket (c.r).
+	if err := src.readBody(framer, &head); err != nil {
 		c.releaseReadFramer(framer)
 		return nil, err
 	}
@@ -977,6 +1303,458 @@ func (c *Conn) releaseStream(call *callReq) {
 			})
 		})
 	}
+}
+
+func (c *Conn) recvSegment(ctx context.Context) error {
+	// Read the first segment's header with the read deadline disarmed: on an
+	// idle connection the serve() loop blocks here waiting for the peer to
+	// start sending the next frame, and that wait must not be bounded by
+	// ReadTimeout. Only the wait for the header's first byte is unbounded — the
+	// rest of the header (headerReader), the payload of this segment and any
+	// continuation segments are all read with the deadline re-armed, so a peer that
+	// starts sending and then stalls mid-read is caught by the per-read ReadTimeout.
+	//
+	// Note the deadline is per-read (see connReader.Read), not per-frame: a
+	// single logical CQL frame may span many segments (recvSplitFrame), so
+	// ReadTimeout bounds how long any one read may stall, not the total time
+	// to assemble a frame. And a read that stalls but keeps making progress is
+	// resumed up to maxReadAttempts times, so one read can take that multiple of
+	// ReadTimeout before failing — only a read that delivers nothing fails within a
+	// single one. A peer that keeps trickling progress is therefore not bounded by
+	// time at all; it is bounded by the frame length recvSplitFrame enforces against
+	// the reassembled size.
+	//
+	// netStart/netEnd bracket this read for FrameHeaderObserver. The CQL headers
+	// inside are parsed out of memory further down, so timing them there would
+	// report the parse rather than the network wait the observer documents; the
+	// window is measured here and carried to processFrameSource instead. Sampled
+	// only when an observer is installed, so an unobserved connection pays nothing.
+	netStart := c.observedNow()
+	hdr, err := c.readFirstSegmentHeader()
+	if err != nil {
+		return err
+	}
+
+	payload, err := readSegmentPayload(c.r, hdr, c.compressor, &c.segScratch)
+	if err != nil {
+		return err
+	}
+	netEnd := c.observedNow()
+
+	if hdr.isSelfContained {
+		// The segment holds one or more complete CQL frames.
+		return c.processAllFramesInSegment(ctx, bytes.NewReader(payload), netStart, netEnd)
+	}
+
+	// The segment is the first slice of a single large CQL frame split across
+	// several non-self-contained segments; reassemble the whole frame before
+	// processing it.
+	return c.recvSplitFrame(ctx, payload, netStart, netEnd)
+}
+
+// observedNow returns the current time when a frame header observer is
+// installed, and the zero time otherwise. Callers thread the result into
+// frameSource, where a zero value means "not measured" and processFrameSource
+// falls back to timing the header read itself.
+func (c *Conn) observedNow() time.Time {
+	if c.frameObserver == nil {
+		return time.Time{}
+	}
+	return time.Now()
+}
+
+// headerReader reads one frame or segment header, bounding the read-deadline
+// disarm to the wait for its first byte.
+//
+// The idle wait has to be unbounded: serve() blocks on the next header for as long
+// as the peer has nothing to send, and a short ReadTimeout must not drop a healthy
+// connection. But once the first byte has arrived the peer is mid-header, and the
+// rest belongs under ReadTimeout like any other transfer — otherwise a peer that
+// sends one byte and then stops holds the serve goroutine for as long as it keeps
+// the socket open, and the connection is never dropped.
+//
+// The disarm is per-read (connReader.armDeadline runs once per read attempt), so
+// bounding it means capping the first read to a single byte and clearing the disarm
+// before the next one; the remainder is then read with the deadline armed. Capping
+// costs one extra read of a bufio.Reader, which the first read has already filled
+// from the socket.
+//
+// n counts the bytes delivered. That is the caller's benign-vs-fatal signal for a
+// header-read timeout: nothing consumed is the idle peer, part of a header consumed
+// leaves the stream at an unknown offset (readFirstSegmentHeader, readHeader).
+type headerReader struct {
+	r io.Reader
+	// disarm is the reader whose deadline is disarmed for the first byte, and is
+	// cleared once that byte arrives so the cap and the re-arm happen exactly once.
+	// Nil when there is no deadline to bound: on proto v5 the CQL header is parsed
+	// out of a segment payload that has already been received.
+	disarm deadlineDisarmer
+	n      int
+}
+
+func (h *headerReader) reset(r io.Reader, disarm deadlineDisarmer) {
+	h.r = r
+	h.disarm = disarm
+	h.n = 0
+}
+
+func (h *headerReader) Read(p []byte) (int, error) {
+	if h.disarm != nil && len(p) > 1 {
+		// Only the wait for the first byte runs without a deadline.
+		p = p[:1]
+	}
+	n, err := h.r.Read(p)
+	h.n += n
+	if n > 0 && h.disarm != nil {
+		// The peer has started sending: bound everything from here on. The caller's
+		// deferred re-arm still covers the paths that deliver no byte at all.
+		h.disarm.setDisarm(false)
+		h.disarm = nil
+	}
+	return n, err
+}
+
+// readFirstSegmentHeader reads the header of the next segment, with the read
+// deadline disarmed for its first byte so an idle serve() loop can block
+// indefinitely waiting for the next frame to begin. The deadline is disarmed via a
+// dedicated flag (so connReader.Read does not re-arm it), which leaves the
+// operational timeout value intact, so a concurrent finalizeConnection switching
+// the reader from ConnectTimeout to ReadTimeout is never clobbered.
+//
+// Only the idle wait is unbounded. headerReader re-arms the deadline as soon as the
+// peer delivers a byte, so the rest of the header is bounded by ReadTimeout and a
+// peer that sends a header prefix and then stalls cannot hold the serve goroutine;
+// the deferred clear covers the paths that deliver no byte at all, and a panic.
+//
+// A read timeout during the idle wait is normalised to ErrReadHeaderTimeout so
+// serve() treats it as a benign idle timeout instead of closing the connection —
+// but only if the read consumed nothing. A timeout partway through a header leaves
+// the stream at an unknown offset, so it stays a plain error and takes the
+// connection down rather than mis-framing everything that follows. That is the
+// timeout the re-arm above makes reachable.
+func (c *Conn) readFirstSegmentHeader() (segmentHeader, error) {
+	// No type assertion: Conn.r is a connReadSource, so the disarm always applies.
+	c.r.setDisarm(true)
+	defer c.r.setDisarm(false)
+
+	// Counted rather than plumbing a byte count out of the segment header readers:
+	// the count only matters here, where the benign/fatal decision is made.
+	c.headerReader.reset(c.r, c.r)
+
+	hdr, err := readSegmentHeader(&c.headerReader, c.compressor)
+	if err != nil {
+		var netErr net.Error
+		if c.headerReader.n == 0 && errors.As(err, &netErr) && netErr.Timeout() {
+			return segmentHeader{}, fmt.Errorf("%w: %w", ErrReadHeaderTimeout, err)
+		}
+		return segmentHeader{}, err
+	}
+	return hdr, nil
+}
+
+// recvSplitFrame reassembles a single CQL frame that the peer split across
+// multiple non-self-contained segments and processes it. first is the payload of
+// the segment already consumed by recvSegment.
+//
+// Every read here runs with the deadline armed (the peer is mid-transfer), so a
+// peer that stops sending fails within one ReadTimeout — see connReader.Read for
+// how a read that stalls but keeps progressing is resumed instead. The
+// reassembly buffer is allocated exactly once, sized to the frame length the peer
+// declared in the CQL frame header, and appending the arriving payloads is bounded
+// by that length. So neither a lying header nor incremental growth can inflate it:
+// growing a buffer to a maxFrameSize frame would end up holding ~512 MiB for a
+// valid 256 MiB response. Ownership of the buffer is then handed to the read
+// framer rather than copied into it, so the frame is never resident twice.
+//
+// The declared length itself is the peer's to choose, up to maxFrameSize, so a
+// small hostile prologue still buys this one allocation before any body byte has
+// arrived. Accepted deliberately, because it is bounded: at most once per
+// connection — the continuation reads run under ReadTimeout, so a peer that
+// stalls after declaring takes the connection down with it. Growing the buffer
+// as payloads arrive would blunt that, at the cost of roughly doubling peak
+// memory for every valid large frame, which is the common case. Contrast the
+// self-contained path, where the same lie is repeatable per-request and is
+// therefore rejected before the allocation instead (see frameSource).
+//
+// netStart/netEnd are the network-read window of the first segment, for
+// FrameHeaderObserver. netEnd is extended below if the CQL header itself needed
+// more segments to arrive — but only that far: the observer's End is when the
+// header finished arriving, not the rest of the frame.
+func (c *Conn) recvSplitFrame(ctx context.Context, first []byte, netStart, netEnd time.Time) error {
+	// The CQL frame header may itself be split across segments, in which case the
+	// frame length cannot be learnt from the first segment alone. Accumulate into a
+	// local buffer until the header is complete; this is bounded by one segment
+	// payload plus headSize, because a continuation segment must make progress and
+	// only headSize bytes are needed. Segment payloads alias c.segScratch, so each
+	// has to be copied before the next segment is read.
+	if len(first) < headSize {
+		accumulated := append([]byte(nil), first...)
+		for len(accumulated) < headSize {
+			payload, err := c.readContinuationSegment()
+			if err != nil {
+				return err
+			}
+			accumulated = append(accumulated, payload...)
+		}
+		first = accumulated
+		netEnd = c.observedNow()
+	}
+
+	// Peek the CQL frame header (without consuming it — processFrame re-reads it
+	// from the reassembled frame) to learn the total frame length.
+	head, err := readHeader(bytes.NewReader(first[:headSize]), c.headerBuf[:])
+	if err != nil {
+		return err
+	}
+	if head.Length < 0 || head.Length > maxFrameSize {
+		return fmt.Errorf("gocql: invalid frame body length in segmented frame: %d", head.Length)
+	}
+	total := headSize + head.Length
+	if len(first) > total {
+		return fmt.Errorf("gocql: segmented frame exceeds its declared length %d", total)
+	}
+
+	frame := make([]byte, 0, total)
+	frame = append(frame, first...)
+	for len(frame) < total {
+		payload, err := c.readContinuationSegment()
+		if err != nil {
+			return err
+		}
+		if len(frame)+len(payload) > total {
+			return fmt.Errorf("gocql: segmented frame exceeds its declared length %d", total)
+		}
+		frame = append(frame, payload...)
+	}
+
+	// The body is handed over as an owned buffer: the read framer adopts it
+	// instead of allocating and copying another frame-sized buffer. The header is
+	// still read from the front of the same bytes, so processFrame observes and
+	// validates it exactly as it does for an unsegmented frame.
+	return c.processFrameSource(ctx, frameSource{
+		r:        bytes.NewReader(frame),
+		body:     frame[headSize:],
+		netStart: netStart,
+		netEnd:   netEnd,
+	})
+}
+
+// readContinuationSegment reads the next segment of a frame split across several
+// segments and returns its payload, which aliases c.segScratch and is therefore
+// only valid until the next segment is read. The reads run with the deadline armed,
+// so a peer that stops sending fails within one ReadTimeout (connReader.Read).
+// A self-contained segment, or one that makes no forward progress (empty
+// payload), is rejected so a hostile peer cannot drive an infinite reassembly
+// loop.
+func (c *Conn) readContinuationSegment() ([]byte, error) {
+	hdr, err := readSegmentHeader(c.r, c.compressor)
+	if err != nil {
+		return nil, fmt.Errorf("gocql: failed to read continuation segment header: %w", err)
+	}
+	if hdr.isSelfContained {
+		return nil, fmt.Errorf("gocql: received self-contained segment, but expected a continuation")
+	}
+	payload, err := readSegmentPayload(c.r, hdr, c.compressor, &c.segScratch)
+	if err != nil {
+		return nil, fmt.Errorf("gocql: failed to read continuation segment payload: %w", err)
+	}
+	if len(payload) == 0 {
+		return nil, fmt.Errorf("gocql: continuation segment made no progress (empty payload)")
+	}
+	return payload, nil
+}
+
+func (c *Conn) processAllFramesInSegment(ctx context.Context, r *bytes.Reader, netStart, netEnd time.Time) error {
+	// A self-contained segment carries one or more complete CQL frames, so we
+	// drain them all. This is safe to iterate: the segment payload has already
+	// been CRC32-verified, and processFrameSource consumes exactly one frame
+	// (header + body) per call, keeping r aligned for the next iteration. It
+	// returns a non-nil error only for connection-fatal conditions (which stops
+	// the loop); a per-request decode error is delivered to that request's
+	// waiting caller and it returns nil, so sibling frames in the same segment are
+	// still processed.
+	//
+	// r is passed as the segment as well as the reader, which is what bounds each
+	// frame's declared body length by the bytes actually left in the segment (see
+	// frameSource).
+	//
+	// Every frame packed into this segment reports the same observer window: they
+	// did all arrive in the one network read, and attributing a slice of it to
+	// each would be an invention.
+	var err error
+	for r.Len() > 0 && err == nil {
+		err = c.processFrameSource(ctx, frameSource{
+			r:        r,
+			segment:  r,
+			netStart: netStart,
+			netEnd:   netEnd,
+		})
+	}
+
+	return err
+}
+
+// deadlineDisarmer is a reader whose read deadline can be disarmed for a read
+// that is expected to wait indefinitely (the idle wait for the next frame or
+// segment header). See connReader.armDeadline.
+type deadlineDisarmer interface {
+	setDisarm(bool)
+}
+
+// connReadSource is the reader Conn reads through: the part of net.Conn the
+// receive path actually uses, plus read-timeout control and the deadline disarm.
+//
+// Unexported, deliberately. The disarm is not optional for the connection's own
+// reader, so requiring it here turns "this reader silently loses the disarm"
+// from a runtime surprise into a compile error, and an unexported method means
+// only this package can implement it. That costs nothing: Conn.r is unexported
+// and no exported API accepts or returns one.
+type connReadSource interface {
+	// Read reads data from the connection.
+	Read(p []byte) (n int, err error)
+
+	// Close closes the connection.
+	Close() error
+
+	// RemoteAddr returns the remote network address, if known.
+	RemoteAddr() net.Addr
+
+	// SetTimeout sets the timeout duration for reading data from the conn.
+	SetTimeout(timeout time.Duration)
+
+	// GetTimeout returns the timeout duration.
+	GetTimeout() time.Duration
+
+	deadlineDisarmer
+}
+
+// connReader implements connReadSource.
+type connReader struct {
+	conn    net.Conn
+	r       *bufio.Reader
+	timeout atomic.Int64
+	disarm  atomic.Bool
+}
+
+var _ connReadSource = (*connReader)(nil)
+
+// maxReadAttempts bounds how many times Read re-arms the deadline and resumes a
+// read that timed out while still making progress. See Read.
+const maxReadAttempts = 5
+
+// errArmReadDeadline marks a read that failed before it reached the socket,
+// because the read deadline could not be armed. Nothing was consumed, which makes
+// it fatal to a frame body read: the body is still queued on a connection that is
+// otherwise healthy (see bodyReadDesyncedConn). It is a named error rather than a
+// bare wrap because that classification cannot be inferred from the underlying
+// error, which need not be a net.Error.
+var errArmReadDeadline = errors.New("gocql: unable to arm the read deadline")
+
+// Read fills p, resuming across read-deadline expiries for as long as the peer
+// keeps delivering bytes.
+//
+// The retry exists because ReadTimeout is a per-read budget, not a transfer budget:
+// a large frame body arriving over a slow link can need more than one budget while
+// being perfectly healthy. Each attempt arms a fresh deadline and resumes at p[n:],
+// so no bytes are dropped.
+//
+// It is gated on forward progress, which is what keeps ReadTimeout meaningful as
+// "identify faulty connections early and drop it" (see ClusterConfig.ReadTimeout):
+// an attempt that delivered nothing means the peer has stopped, and that fails
+// immediately in a single ReadTimeout rather than after maxReadAttempts of them.
+// Only a timeout is resumable — for any other network error the stream's position
+// is no longer trustworthy, so resuming could silently mis-frame.
+//
+// Note the caller can still observe a partial read: on failure n bytes of p were
+// consumed off the connection and cannot be put back, so a frame reader that gets
+// an error here has to treat the connection as desynced (see processFrameSource).
+func (c *connReader) Read(p []byte) (n int, err error) {
+	for attempt := 0; attempt < maxReadAttempts; attempt++ {
+		if aerr := c.armDeadline(); aerr != nil {
+			// Wrapped so a caller can tell this from a read that reached the socket:
+			// nothing was consumed here, so a frame body read that hits it leaves the
+			// whole body queued. Double %w keeps the underlying error inspectable.
+			return n, fmt.Errorf("%w: %w", errArmReadDeadline, aerr)
+		}
+
+		nn, rerr := io.ReadFull(c.r, p[n:])
+		n += nn
+		if rerr == nil {
+			return n, nil
+		}
+		err = rerr
+
+		var netErr net.Error
+		if !errors.As(err, &netErr) || !netErr.Timeout() {
+			// Not resumable. Timeout() rather than the deprecated Temporary(), which
+			// is also true for e.g. ECONNRESET — where the connection is gone and
+			// retrying just burns attempts.
+			break
+		}
+		if nn == 0 {
+			// The peer stopped sending, not merely slowed down.
+			break
+		}
+	}
+
+	return n, err
+}
+
+// armDeadline arms (or clears) the underlying read deadline for the read attempt
+// that is about to start — once per attempt, so a Read that resumes after a timeout
+// gets a fresh deadline, and so a concurrent finalizeConnection switching the
+// reader from ConnectTimeout to ReadTimeout is picked up by the next attempt.
+//
+// The setter error is returned rather than dropped: a net.Conn
+// whose SetReadDeadline fails would otherwise be read with no deadline at all,
+// or with a stale one from an earlier read. This mirrors the write path, where
+// deadlineContextWriter.writeContext and writeCoalescer.flush both report
+// SetWriteDeadline failures instead of writing anyway.
+func (c *connReader) armDeadline() error {
+	if c.conn == nil {
+		return nil
+	}
+	if c.disarm.Load() {
+		// The read deadline is disarmed around the frame/segment header read in
+		// the serve() loop: on an idle connection that read blocks indefinitely
+		// waiting for the next frame, so a short ReadTimeout must not fire here.
+		// We disarm via this flag rather than by zeroing the operational timeout
+		// so that a concurrent finalizeConnection (which switches the reader from
+		// ConnectTimeout to ReadTimeout) is never clobbered by a restore.
+		return c.conn.SetReadDeadline(time.Time{})
+	}
+	if timeout := c.GetTimeout(); timeout > 0 {
+		return c.conn.SetReadDeadline(time.Now().Add(timeout))
+	}
+	// A read deadline is absolute and persists across reads: once the timeout is
+	// disabled we must clear any deadline armed by a previous read (or during
+	// connection setup, e.g. ConnectTimeout), otherwise idle connections keep
+	// tripping the stale deadline.
+	return c.conn.SetReadDeadline(time.Time{})
+}
+
+// setDisarm enables or disables the read-deadline disarm used around the
+// frame/segment header read (see Read). It deliberately leaves the operational
+// timeout value untouched so it can be toggled without racing a concurrent
+// finalizeConnection.
+func (c *connReader) setDisarm(v bool) {
+	c.disarm.Store(v)
+}
+
+func (c *connReader) Close() error {
+	return c.conn.Close()
+}
+
+func (c *connReader) RemoteAddr() net.Addr {
+	return c.conn.RemoteAddr()
+}
+
+func (c *connReader) SetTimeout(timeout time.Duration) {
+	c.timeout.Store(int64(timeout))
+}
+
+func (c *connReader) GetTimeout() time.Duration {
+	return time.Duration(c.timeout.Load())
 }
 
 type callReq struct {
@@ -1139,7 +1917,6 @@ type writeCoalescer struct {
 	testEnqueuedHook func()
 	testFlushedHook  func()
 	timeout          atomic.Int64
-	mu               sync.Mutex
 }
 
 func (w *writeCoalescer) setWriteTimeout(timeout time.Duration) {
@@ -1314,6 +2091,10 @@ func (c *Conn) addCall(call *callReq) error {
 // typically via defer immediately after parsing or after transferring ownership
 // to an Iter.
 func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer, requestTimeout time.Duration) (*framer, error) {
+	return c.execInternal(ctx, req, tracer, requestTimeout, true)
+}
+
+func (c *Conn) execInternal(ctx context.Context, req frameBuilder, tracer Tracer, requestTimeout time.Duration, startupCompleted bool) (*framer, error) {
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return nil, &QueryError{err: ctxErr, potentiallyExecuted: false}
 	}
@@ -1394,6 +2175,22 @@ func (c *Conn) exec(ctx context.Context, req frameBuilder, tracer Tracer, reques
 			recycleCall = true
 		}
 		return nil, &QueryError{err: err, potentiallyExecuted: false}
+	}
+
+	if c.version > protoVersion4 && startupCompleted {
+		if err = framer.prepareModernLayout(); err != nil {
+			c.releaseWriteFramer(framer)
+			// prepareModernLayout failed before any bytes were written, so this
+			// is equivalent to a buildFrame failure: the connection is untouched
+			// and the request was never sent. Signal completion via the deferred
+			// epilogue and let exec() own the stream/call cleanup.
+			stopWaiting = true
+			if c.removeCallIfOpen(call.streamID) {
+				releaseStream = true
+				recycleCall = true
+			}
+			return nil, &QueryError{err: err, potentiallyExecuted: false}
+		}
 	}
 
 	n, err := c.w.writeContext(ctx, framer.buf)
@@ -1535,9 +2332,10 @@ type StreamObserverContext interface {
 }
 
 type preparedStatment struct {
-	id       []byte
-	response resultMetadata
-	request  preparedMetadata
+	response         resultMetadata
+	id               []byte
+	resultMetadataID []byte
+	request          preparedMetadata
 }
 
 type inflightPrepare struct {
@@ -1547,8 +2345,8 @@ type inflightPrepare struct {
 	preparedStatment *preparedStatment
 }
 
-func (c *Conn) prepareStatement(ctx context.Context, stmt string, tracer Tracer, requestTimeout time.Duration) (*preparedStatment, error) {
-	cacheKey := c.session.stmtsLRU.keyFor(c.host.HostID(), c.currentKeyspace, stmt)
+func (c *Conn) prepareStatement(ctx context.Context, stmt string, tracer Tracer, keyspace string, requestTimeout time.Duration) (*preparedStatment, error) {
+	cacheKey := c.session.stmtsLRU.keyFor(c.host.hostUUID(), keyspace, stmt)
 	flight, ok := c.session.stmtsLRU.execIfMissing(cacheKey, func(cache *lru.Cache[stmtCacheKey]) *inflightPrepare {
 		flight := &inflightPrepare{
 			done: make(chan struct{}),
@@ -1565,7 +2363,7 @@ func (c *Conn) prepareStatement(ctx context.Context, stmt string, tracer Tracer,
 				statement: stmt,
 			}
 			if c.version > protoVersion4 {
-				prep.keyspace = c.currentKeyspace
+				prep.keyspace = keyspace
 			}
 
 			// we won the race to do the load, if our context is canceled we shouldnt
@@ -1595,9 +2393,12 @@ func (c *Conn) prepareStatement(ctx context.Context, stmt string, tracer Tracer,
 			switch x := frame.(type) {
 			case *resultPreparedFrame:
 				flight.preparedStatment = &preparedStatment{
-					id:       x.preparedID,
-					request:  x.reqMeta,
-					response: x.respMeta,
+					// preparedID is already defensively copied by readShortBytesCopy()
+					// in the frame parser; resultMetadataID likewise.
+					id:               x.preparedID,
+					resultMetadataID: x.resultMetadataID,
+					request:          x.reqMeta,
+					response:         x.respMeta,
 				}
 			case error:
 				flight.err = x
@@ -1639,7 +2440,66 @@ func marshalQueryValue(typ TypeInfo, value any, dst *queryValues) error {
 	return nil
 }
 
+// shouldSkipResultMetadata reports whether an EXECUTE request should ask the
+// server to skip result metadata in its RESULT/Rows response.
+//
+// A per-query NoSkipMetadata() (queryDisableSkipMetadata) always forces metadata.
+//
+// hasColumns is not only an optimization. A statement whose RESULT/Prepared
+// response carries no result metadata cannot have its metadata reused, and on
+// current ScyllaDB asking to skip it is unrecoverable: such a statement is handed
+// an ID hashed from empty metadata, the server compares the returned ID against
+// that same empty-metadata ID, always matches, and so never sets
+// METADATA_CHANGED — leaving the driver with a response it has no columns to
+// decode. LIST ROLES OF is the motivating case. The server-side fixes for this
+// (scylladb/scylladb#29233, scylladb/scylladb#29275) are both closed unmerged, so
+// this gate is load-bearing, not cosmetic. The Scylla python-driver and
+// java-driver check the same thing, java-driver first of all.
+//
+// idTracked means the response carries a result metadata ID mechanism the driver
+// can rely on: the connection speaks a protocol that exchanges result metadata
+// IDs *and* the prepared statement holds a non-empty one. Both halves matter — the
+// ID exchange is what makes the server report staleness with METADATA_CHANGED, and
+// an ID is what it has to compare against. With both in hand skipping is safe, so
+// the session-level DisableSkipMetadata is deliberately overridden, including when
+// it was set explicitly. That flag is itself a workaround for the invalidation bug
+// this mechanism fixes (https://github.com/scylladb/scylladb/issues/20860), and
+// upstream gocql skips by default on every protocol version.
+//
+// This follows scylladb/scylla-drivers#81: skipping is the safe default "if
+// SCYLLA_USE_METADATA_ID was negotiated or CQL v5 is used". The Scylla java-driver
+// reaches the same rule from the other direction — DefaultPreparedStatement's
+// resolveSkipMetadata returns true for any non-empty result metadata ID, which
+// native v5 always supplies. The Scylla python-driver implements the extension half
+// only, deliberately leaving native v5 alone.
+//
+// A statement prepared before the ID exchange was available has no ID. The prepared
+// cache is keyed by host and survives reconnects, so that is reachable during a
+// rolling upgrade. Such a statement asks for metadata for one more round trip: the
+// empty ID it sends is treated as a mismatch, the server answers METADATA_CHANGED
+// with a fresh ID, and later executions skip. Gating here means there is never a
+// window where the driver skips metadata it cannot recover.
+func shouldSkipResultMetadata(sessionDisableSkipMetadata, queryDisableSkipMetadata, idTracked, hasColumns bool) bool {
+	disableSkipMeta := queryDisableSkipMetadata || (!idTracked && sessionDisableSkipMetadata)
+	return !disableSkipMeta && hasColumns
+}
+
+// metadataIDTracked reports whether an EXECUTE for this prepared statement can rely
+// on the server to report result-metadata changes, which is what makes skipping
+// metadata safe. Both conditions are required: the connection must exchange result
+// metadata IDs at all (Conn.tracksResultMetadataID — native v5 or the
+// SCYLLA_USE_METADATA_ID extension), and the statement must carry a non-empty
+// result metadata ID for the server to compare its own against. See
+// shouldSkipResultMetadata.
+func metadataIDTracked(idExchangeActive bool, resultMetadataID []byte) bool {
+	return idExchangeActive && len(resultMetadataID) > 0
+}
+
 func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
+	return c.executeQueryWithMetrics(ctx, qry, qry.metrics)
+}
+
+func (c *Conn) executeQueryWithMetrics(ctx context.Context, qry *Query, metrics *queryMetrics) (iter *Iter) {
 	params := queryParams{
 		consistency: qry.cons,
 	}
@@ -1655,8 +2515,17 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 	if qry.pageSize > 0 {
 		params.pageSize = qry.pageSize
 	}
-	if c.version > protoVersion4 {
-		params.keyspace = c.currentKeyspace
+	// Always forward these to the framer regardless of protocol version. On
+	// protocol < v5 the frame writer rejects them with an explicit
+	// "unsupported option" error instead of silently dropping the value.
+	params.keyspace = qry.keyspace
+	params.nowInSeconds = qry.nowInSecondsValue
+
+	// If a keyspace for the qry is overriden,
+	// then we should use it to create stmt cache key
+	usedKeyspace := c.getCurrentKeyspace()
+	if qry.keyspace != "" {
+		usedKeyspace = qry.keyspace
 	}
 
 	var (
@@ -1664,10 +2533,19 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 		info  *preparedStatment
 	)
 
+	// The keyspace and table this attempt routes by, used below to attribute a
+	// tablet-routing hint. Held in locals rather than read back out of
+	// qry.routingInfo: one *Query (and one *queryRoutingInfo) is shared by every
+	// speculative execution goroutine and by the auto-paging copy, so a sibling
+	// goroutine can overwrite the cached pair between the write below and the read
+	// at the end of this function. Seeded from the cache for the non-prepared path,
+	// where only GetRoutingKey has written it.
+	routingKeyspace, routingTable := qry.routingInfo.keyspaceTable()
+
 	if !qry.skipPrepare && qry.shouldPrepare() {
 		// Prepare all DML queries. Other queries can not be prepared.
 		var err error
-		info, err = c.prepareStatement(ctx, qry.stmt, qry.trace, qry.GetRequestTimeout())
+		info, err = c.prepareStatement(ctx, qry.stmt, qry.trace, usedKeyspace, qry.GetRequestTimeout())
 		if err != nil {
 			return &Iter{err: err}
 		}
@@ -1700,20 +2578,31 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 			}
 		}
 
-		// if the metadata was not present in the response then we should not skip it
-		params.skipMeta = !(c.session.cfg.DisableSkipMetadata || qry.disableSkipMetadata) && len(info.response.columns) != 0
+		params.skipMeta = shouldSkipResultMetadata(
+			c.session.cfg.DisableSkipMetadata,
+			qry.disableSkipMetadata,
+			metadataIDTracked(c.tracksResultMetadataID(), info.resultMetadataID),
+			len(info.response.columns) != 0,
+		)
 
 		frame = &writeExecuteFrame{
-			preparedID:    info.id,
-			params:        params,
-			customPayload: qry.customPayload,
+			preparedID:       info.id,
+			resultMetadataID: info.resultMetadataID,
+			params:           params,
+			customPayload:    qry.customPayload,
 		}
 
 		// Set "lwt", keyspace", "table" property in the query if it is present in preparedMetadata
+		routingKeyspace = info.request.keyspace
+		if routingKeyspace == "" {
+			routingKeyspace = usedKeyspace
+		}
+		routingTable = info.request.table
+
 		qry.routingInfo.mu.Lock()
 		qry.routingInfo.lwt = info.request.lwt
-		qry.routingInfo.keyspace = info.request.keyspace
-		qry.routingInfo.table = info.request.table
+		qry.routingInfo.keyspace = routingKeyspace
+		qry.routingInfo.table = routingTable
 		qry.routingInfo.mu.Unlock()
 	} else {
 		frame = &writeQueryFrame{
@@ -1734,14 +2623,16 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 
 	resp, err := framer.parseFrame()
 	if err != nil {
-		return newErrorIterWithReleasedFramer(err, framer).bindWarningHandler(qry, warningHandler)
+		return newErrorIterWithReleasedFramer(err, framer).
+			bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 	}
 
 	if len(framer.customPayload) > 0 {
 		if hint, ok := framer.customPayload["tablets-routing-v1"]; ok {
-			tablet, err := unmarshalTabletHint(hint, c.version, qry.routingInfo.keyspace, qry.routingInfo.table)
+			tablet, err := unmarshalTabletHint(hint, c.version, routingKeyspace, routingTable)
 			if err != nil {
-				return newErrorIterWithReleasedFramer(err, framer).bindWarningHandler(qry, warningHandler)
+				return newErrorIterWithReleasedFramer(err, framer).
+					bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 			}
 			c.session.metadataDescriber.AddTablet(tablet)
 		}
@@ -1753,30 +2644,95 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 
 	switch x := resp.(type) {
 	case *resultVoidFrame:
-		return (&Iter{framer: framer}).bindWarningHandler(qry, warningHandler)
+		return (&Iter{framer: framer}).
+			bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 	case *resultRowsFrame:
+		if x.meta.noMetaData() && info == nil {
+			return newErrorIterWithReleasedFramer(
+				errors.New("gocql: did not receive metadata but prepared info is nil"),
+				framer,
+			).bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
+		}
+
+		if x.meta.newMetadataID != nil && x.meta.noMetaData() {
+			// METADATA_CHANGED obliges the server to include the new metadata, so this
+			// response is malformed, and there are two wrong ways to continue.
+			//
+			// Adopting the new ID while keeping the old columns is unrecoverable: the
+			// server would match the ID from then on and stop sending metadata, leaving
+			// the driver decoding rows against stale columns indefinitely. The
+			// python-driver guards that the same way.
+			//
+			// Decoding *this* response against the cached columns is no better. The
+			// server has just declared them stale, and the noMetaData() branch below
+			// would reuse them anyway — which is precisely the misdecode this whole
+			// mechanism exists to prevent (scylladb/scylladb#20860).
+			//
+			// So do neither. Fail the query with the old ID still cached: a retry
+			// resends it, the server reports the mismatch again, and it has another
+			// chance to answer with the metadata it owes.
+			return newErrorIterWithReleasedFramer(
+				fmt.Errorf("gocql: server reported changed result metadata for %q but sent no column metadata", qry.stmt),
+				framer,
+			).bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
+		}
+
+		if x.meta.newMetadataID != nil {
+			// If a RESULT/Rows message reports changed resultset metadata with the
+			// Metadata_changed flag, the reported new resultset metadata must be used
+			// in subsequent executions.
+			cacheKey := c.session.stmtsLRU.keyFor(c.host.hostUUID(), usedKeyspace, qry.stmt)
+			// Use the already-completed local `info` rather than dereferencing the
+			// cached inflight entry's preparedStatment field. `info` comes from the
+			// prepareStatement call above and is guaranteed complete.
+			//
+			// updateMetadataIfSame performs the presence/identity check and the
+			// replacement atomically under the cache lock, so a concurrent eviction
+			// or a newer/in-flight prepare installed for the same key between check
+			// and replace cannot be resurrected or clobbered. It only replaces the
+			// entry while it is still the exact prepared statement `info` points to
+			// (pointer identity, not id bytes), so a same-id reprepare of a newer
+			// generation is left untouched.
+			//
+			// `response` caches this whole resultMetadata, so it keeps this response's
+			// flags (METADATA_CHANGED, possibly HasMorePages) and pagingState alongside
+			// the columns. Only the columns are reused: the code below reads
+			// morePages()/noMetaData() off the live x.meta, and overwrites
+			// iter.meta.pagingState from it.
+			if info != nil {
+				newInflight := &inflightPrepare{
+					done: make(chan struct{}),
+					preparedStatment: &preparedStatment{
+						id:               info.id,
+						resultMetadataID: x.meta.newMetadataID,
+						request:          info.request,
+						response:         x.meta,
+					},
+				}
+				// Close done to avoid deadlocks on subsequent requests waiting on this.
+				close(newInflight.done)
+				if c.session.stmtsLRU.updateMetadataIfSame(cacheKey, info, newInflight) {
+					// Update info so the code below sees the updated prepared statement.
+					info = newInflight.preparedStatment
+				}
+			}
+		}
+
 		iter := (&Iter{
 			meta:    x.meta,
 			framer:  framer,
 			numRows: x.numRows,
-		}).bindWarningHandler(qry, warningHandler)
+		}).bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 
-		if params.skipMeta {
-			if info != nil {
-				iter.meta = info.response
-				// pagingState is already independently allocated by readBytesCopy()
-				// during frame parsing, no additional copy needed.
-				iter.meta.pagingState = x.meta.pagingState
-			} else {
-				return newErrorIterWithReleasedFramer(errors.New("gocql: did not receive metadata but prepared info is nil"), framer).bindWarningHandler(qry, warningHandler)
-			}
+		if x.meta.noMetaData() {
+			iter.meta = info.response
+			// pagingState is already independently allocated by readBytesCopy()
+			// during frame parsing, no additional copy needed.
+			iter.meta.pagingState = x.meta.pagingState
 		}
 
 		if x.meta.morePages() && !qry.disableAutoPage {
-			newQry := new(Query)
-			*newQry = *qry
-			newQry.pageState = x.meta.pagingState
-			newQry.metrics = &queryMetrics{m: make(map[UUID]*hostMetrics)}
+			newQry := cloneQueryForNextPage(qry, metrics, x.meta.pagingState)
 
 			iter.next = newNextIter(newQry, int((1-qry.prefetch)*float64(x.numRows)))
 
@@ -1787,9 +2743,11 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 
 		return iter
 	case *resultKeyspaceFrame:
-		return (&Iter{framer: framer}).bindWarningHandler(qry, warningHandler)
+		return (&Iter{framer: framer}).
+			bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 	case *frm.SchemaChangeKeyspace, *frm.SchemaChangeTable, *frm.SchemaChangeFunction, *frm.SchemaChangeAggregate, *frm.SchemaChangeType:
-		iter := (&Iter{framer: framer}).bindWarningHandler(qry, warningHandler)
+		iter := (&Iter{framer: framer}).
+			bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 		if err := c.awaitSchemaAgreement(ctx); err != nil {
 			// TODO: should have this behind a flag
 			c.logger.Println(err)
@@ -1799,15 +2757,27 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) (iter *Iter) {
 		// is not consistent with regards to its schema.
 		return iter
 	case *RequestErrUnprepared:
-		stmtCacheKey := c.session.stmtsLRU.keyFor(c.host.HostID(), c.currentKeyspace, qry.stmt)
+		stmtCacheKey := c.session.stmtsLRU.keyFor(c.host.hostUUID(), usedKeyspace, qry.stmt)
 		c.session.stmtsLRU.evictPreparedID(stmtCacheKey, x.StatementId)
 		framer.Release()
-		return c.executeQuery(ctx, qry)
+		return c.executeQueryWithMetrics(ctx, qry, metrics)
 	case error:
-		return newErrorIterWithReleasedFramer(x, framer).bindWarningHandler(qry, warningHandler)
+		return newErrorIterWithReleasedFramer(x, framer).
+			bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 	default:
-		return newErrorIterWithReleasedFramer(NewErrProtocol("Unknown type in response to execute query (%T): %s", x, x), framer).bindWarningHandler(qry, warningHandler)
+		return newErrorIterWithReleasedFramer(
+			NewErrProtocol("Unknown type in response to execute query (%T): %s", x, x),
+			framer,
+		).bindWarningHandlerWithMetrics(qry, metrics, warningHandler)
 	}
+}
+
+func cloneQueryForNextPage(qry *Query, metrics *queryMetrics, pageState []byte) *Query {
+	next := cloneQuery(qry, metrics)
+	next.pageState = pageState
+	// Automatic pages belong to one logical execution, and newNextIter pins
+	// this exact run until the page is retired.
+	return next
 }
 
 func (c *Conn) Pick(qry *Query) *Conn {
@@ -1858,9 +2828,24 @@ func (c *Conn) UseKeyspace(keyspace string) error {
 		return NewErrProtocol("unknown frame in response to USE: %v", x)
 	}
 
-	c.currentKeyspace = keyspace
+	c.setCurrentKeyspace(keyspace)
 
 	return nil
+}
+
+// setCurrentKeyspace records the keyspace this connection was switched to. See the
+// currentKeyspace field for why it is atomic.
+func (c *Conn) setCurrentKeyspace(keyspace string) {
+	c.currentKeyspace.Store(&keyspace)
+}
+
+// getCurrentKeyspace returns the keyspace this connection was switched to, or ""
+// if it was never switched (Cluster.Keyspace empty, or a control connection).
+func (c *Conn) getCurrentKeyspace() string {
+	if ks := c.currentKeyspace.Load(); ks != nil {
+		return *ks
+	}
+	return ""
 }
 
 func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
@@ -1875,6 +2860,17 @@ func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
 		customPayload:         batch.CustomPayload,
 	}
 
+	// Always forward these to the framer regardless of protocol version. On
+	// protocol < v5 the frame writer rejects them with an explicit
+	// "unsupported option" error instead of silently dropping the value.
+	req.keyspace = batch.keyspace
+	req.nowInSeconds = batch.nowInSeconds
+
+	usedKeyspace := c.getCurrentKeyspace()
+	if batch.keyspace != "" {
+		usedKeyspace = batch.keyspace
+	}
+
 	stmts := make(map[string]string, len(batch.Entries))
 
 	hasLwtEntries := false
@@ -1884,7 +2880,7 @@ func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
 		b := &req.statements[i]
 
 		if len(entry.Args) > 0 || entry.binding != nil {
-			info, err := c.prepareStatement(batch.Context(), entry.Stmt, batch.trace, batch.GetRequestTimeout())
+			info, err := c.prepareStatement(batch.Context(), entry.Stmt, batch.trace, usedKeyspace, batch.GetRequestTimeout())
 			if err != nil {
 				return &Iter{err: err}
 			}
@@ -1961,7 +2957,7 @@ func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
 	case *RequestErrUnprepared:
 		stmt, found := stmts[string(x.StatementId)]
 		if found {
-			key := c.session.stmtsLRU.keyFor(c.host.HostID(), c.currentKeyspace, stmt)
+			key := c.session.stmtsLRU.keyFor(c.host.hostUUID(), usedKeyspace, stmt)
 			c.session.stmtsLRU.evictPreparedID(key, x.StatementId)
 		}
 		framer.Release()
@@ -1982,12 +2978,13 @@ func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
 }
 
 func (c *Conn) querySystem(ctx context.Context, query string, values ...any) *Iter {
-	q := c.session.Query(query+c.usingTimeoutClause, values...).Consistency(One).Trace(nil)
+	stmt, timeout := c.systemRequestStatement(query)
+	q := c.session.Query(stmt, values...).Consistency(One).Trace(nil)
 	q.skipPrepare = true
 	q.disableSkipMetadata = true
 	// we want to keep the query on this connection
 	q.conn = c
-	q.SetRequestTimeout(c.systemRequestTimeout)
+	q.SetRequestTimeout(timeout)
 	return c.executeQuery(ctx, q)
 }
 
@@ -1997,7 +2994,7 @@ const qrySystemPeersV2 = "SELECT peer, data_center, host_id, native_address, nat
 
 const qrySystemLocal = "SELECT broadcast_address, cluster_name, data_center, host_id, listen_address, partitioner, rack, release_version, rpc_address, schema_version, tokens FROM system.local WHERE key='local'"
 
-func getSchemaAgreement(queryLocalSchemasRows []string, querySystemPeersRows []schemaAgreementHost, logger StdLogger) (err error) {
+func getSchemaAgreement(localSchemaVersion string, querySystemPeersRows []schemaAgreementHost, logger StdLogger) error {
 	versions := make(map[string]struct{})
 
 	for _, row := range querySystemPeersRows {
@@ -2008,9 +3005,8 @@ func getSchemaAgreement(queryLocalSchemasRows []string, querySystemPeersRows []s
 		versions[row.SchemaVersion.String()] = struct{}{}
 	}
 
-	for _, schemaVersion := range queryLocalSchemasRows {
-		versions[schemaVersion] = struct{}{}
-		schemaVersion = ""
+	if localSchemaVersion != "" {
+		versions[localSchemaVersion] = struct{}{}
 	}
 
 	if len(versions) > 1 {
@@ -2039,64 +3035,91 @@ func (h *schemaAgreementHost) IsValid() bool {
 
 func (c *Conn) awaitSchemaAgreement(ctx context.Context) error {
 	endDeadline := time.Now().Add(c.session.cfg.MaxWaitSchemaAgreement)
+	deadlineCtx, cancelDeadline := context.WithDeadline(ctx, endDeadline)
+	defer cancelDeadline()
 
-	var err error
-	ticker := time.NewTicker(200 * time.Millisecond) // Create a ticker that ticks every 200ms
+	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
-	waitForNextTick := func() error {
+	var lastErr error
+	for time.Now().Before(endDeadline) {
+		queryCtx, cancel := context.WithCancel(deadlineCtx)
+
+		var (
+			hosts              []schemaAgreementHost
+			localSchemaVersion string
+			wg                 sync.WaitGroup
+			errMu              sync.Mutex
+			firstErr           error
+		)
+
+		recordErr := func(err error) {
+			if err == nil {
+				return
+			}
+			errMu.Lock()
+			defer errMu.Unlock()
+			if firstErr == nil {
+				firstErr = err
+				cancel()
+			}
+		}
+
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			var query string
+			if c.getIsSchemaV2() {
+				query = "SELECT host_id, data_center, rack, schema_version, preferred_ip FROM system.peers_v2"
+			} else {
+				query = "SELECT host_id, data_center, rack, schema_version, rpc_address FROM system.peers"
+			}
+			iter := c.querySystem(queryCtx, query)
+			var tmp schemaAgreementHost
+			for iter.Scan(&tmp.HostID, &tmp.DataCenter, &tmp.Rack, &tmp.SchemaVersion, &tmp.RPCAddress) {
+				hosts = append(hosts, tmp)
+			}
+			recordErr(iter.Close())
+		}()
+		go func() {
+			defer wg.Done()
+			iter := c.querySystem(queryCtx, "SELECT schema_version FROM system.local WHERE key='local'")
+			for iter.Scan(&localSchemaVersion) {
+			}
+			recordErr(iter.Close())
+		}()
+		wg.Wait()
+		cancel()
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if firstErr != nil {
+			if deadlineCtx.Err() != nil {
+				// The internal per-round context hit endDeadline rather than a real
+				// query failure; preserve it as lastErr and let the loop condition
+				// above exit naturally instead of surfacing a raw deadline error.
+				lastErr = firstErr
+				break
+			}
+			return firstErr
+		}
+
+		if err := getSchemaAgreement(localSchemaVersion, hosts, c.logger); err == ErrConnectionClosed || err == nil {
+			return err
+		} else {
+			lastErr = err
+		}
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-deadlineCtx.Done():
 		case <-ticker.C:
-			return nil
 		}
 	}
 
-	for time.Now().Before(endDeadline) {
-		var iter *Iter
-		if c.getIsSchemaV2() {
-			iter = c.querySystem(ctx, "SELECT host_id, data_center, rack, schema_version, preferred_ip FROM system.peers_v2")
-		} else {
-			iter = c.querySystem(ctx, "SELECT host_id, data_center, rack, schema_version, rpc_address FROM system.peers")
-		}
-		// Scan order: host_id, data_center, rack, schema_version, rpc_address/preferred_ip
-		var hosts []schemaAgreementHost
-		var tmp schemaAgreementHost
-		for iter.Scan(&tmp.HostID, &tmp.DataCenter, &tmp.Rack, &tmp.SchemaVersion, &tmp.RPCAddress) {
-			hosts = append(hosts, tmp)
-		}
-		err = iter.Close()
-		if err != nil {
-			return err
-		}
-
-		schemaVersions := []string{}
-
-		iter = c.querySystem(ctx, "SELECT schema_version FROM system.local WHERE key='local'")
-
-		var schemaVersion string
-		for iter.Scan(&schemaVersion) {
-			schemaVersions = append(schemaVersions, schemaVersion)
-			schemaVersion = ""
-		}
-
-		if err = iter.Close(); err != nil {
-			return err
-		}
-
-		err = getSchemaAgreement(schemaVersions, hosts, c.logger)
-
-		if err == ErrConnectionClosed || err == nil {
-			return err
-		}
-
-		if tickerErr := waitForNextTick(); tickerErr != nil {
-			return tickerErr
-		}
-	}
-
-	return err
+	return lastErr
 }
 
 var (

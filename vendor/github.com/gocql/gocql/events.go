@@ -286,7 +286,6 @@ func (s *Session) handleNodeDown(ip net.IP, port int) {
 		}
 
 		s.policy.HostDown(host)
-		hostID := host.HostID()
-		s.pool.removeHost(hostID)
+		s.pool.removeHost(host.hostUUID())
 	}
 }

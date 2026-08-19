@@ -29,14 +29,15 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type ExecutableQuery interface {
 	borrowForExecution()    // Used to ensure that the query stays alive for lifetime of a particular execution goroutine.
 	releaseAfterExecution() // Used when a goroutine finishes its execution attempts, either with ok result or an error.
-	execute(ctx context.Context, conn *Conn) *Iter
-	attempt(keyspace string, end, start time.Time, iter *Iter, host *HostInfo)
+	execute(ctx context.Context, conn *Conn, metrics *queryMetrics) *Iter
+	finishAttempt(token attemptToken, keyspace string, end time.Time, iter *Iter, host *HostInfo)
 	retryPolicy() RetryPolicy
 	speculativeExecutionPolicy() SpeculativeExecutionPolicy
 	GetRoutingKey() ([]byte, error)
@@ -59,37 +60,68 @@ type queryExecutor struct {
 	policy HostSelectionPolicy
 }
 
-func (q *queryExecutor) attemptQuery(ctx context.Context, qry ExecutableQuery, conn *Conn) *Iter {
-	start := time.Now()
-	iter := qry.execute(ctx, conn)
+type queryExecutionResult struct {
+	iter        *Iter
+	consistency Consistency
+}
+
+// queryExecutionResults returns an unbuffered result handoff. Once the caller
+// accepts a winner it stops receiving and cancels the execution context. A
+// buffer could accept a late loser after that point and orphan its Iter.
+func queryExecutionResults() chan queryExecutionResult {
+	return make(chan queryExecutionResult)
+}
+
+func (q *queryExecutor) attemptQuery(ctx context.Context, qry ExecutableQuery, metrics *queryMetrics,
+	executionAttempts *atomic.Int64, localAttempts *int64, conn *Conn) *Iter {
+	token := metrics.beginAttempt()
+	iter := qry.execute(ctx, conn, metrics)
 	end := time.Now()
 
-	qry.attempt(q.pool.keyspace, end, start, iter, conn.host)
+	// Retry accounting is page-scoped and must become visible before an
+	// observer callback can block this runner while another speculative branch
+	// asks the retry policy for the completed-attempt count.
+	if executionAttempts != nil {
+		executionAttempts.Add(1)
+	} else {
+		*localAttempts++
+	}
+	// Report the query's effective keyspace to observers rather than the
+	// pool/session keyspace. Query.SetKeyspace()/Batch.SetKeyspace() (proto v5
+	// keyspace override) make these diverge, and Keyspace() is the single
+	// source of truth for a statement's keyspace (routing/prepared metadata,
+	// then the SetKeyspace override, then the session default).
+	qry.finishAttempt(token, qry.Keyspace(), end, iter, conn.host)
 
 	return iter
 }
 
-func (q *queryExecutor) speculate(ctx context.Context, qry ExecutableQuery, sp SpeculativeExecutionPolicy,
-	hostIter NextHost, results chan *Iter) *Iter {
+func (q *queryExecutor) speculate(ctx context.Context, qry, releaseQry ExecutableQuery, sp SpeculativeExecutionPolicy,
+	metrics *queryMetrics, executionAttempts *atomic.Int64, hostIter NextHost,
+	results chan queryExecutionResult) queryExecutionResult {
 	ticker := time.NewTicker(sp.Delay())
 	defer ticker.Stop()
 
 	for i := 0; i < sp.Attempts(); i++ {
 		select {
 		case <-ticker.C:
-			qry.borrowForExecution() // ensure liveness in case of executing Query to prevent races with Query.Release().
-			go q.run(ctx, qry, hostIter, results)
+			releaseQry.borrowForExecution() // prevent Query.Release while this runner uses the captured execution view.
+			metrics.retain()
+			go q.run(ctx, qry, releaseQry, metrics, executionAttempts, hostIter, results)
 		case <-ctx.Done():
-			return &Iter{err: ctx.Err()}
-		case iter := <-results:
-			return iter
+			return queryExecutionResult{
+				iter:        &Iter{err: ctx.Err()},
+				consistency: qry.GetConsistency(),
+			}
+		case result := <-results:
+			return result
 		}
 	}
 
-	return nil
+	return queryExecutionResult{}
 }
 
-func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
+func (q *queryExecutor) executeQuery(qry ExecutableQuery, metrics *queryMetrics) (*Iter, error) {
 	var hostIter NextHost
 
 	// check if the hostID is specified for the query,
@@ -113,8 +145,18 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	// it is, we force the policy to NonSpeculative
 	sp := qry.speculativeExecutionPolicy()
 	if qry.GetHostID() != "" || !qry.IsIdempotent() || sp.Attempts() == 0 {
-		return q.do(qry.Context(), qry, hostIter), nil
+		iter, consistency := q.do(qry.Context(), qry, metrics, nil, hostIter)
+		if consistency != qry.GetConsistency() {
+			qry.SetConsistency(consistency)
+		}
+		return iter, nil
 	}
+	executionQry := queryForSpeculativeExecution(qry, metrics)
+	executionAttempts := new(atomic.Int64)
+	// Runner borrows can be released immediately after publishing a result.
+	// Keep the original alive through winner-state propagation below.
+	qry.borrowForExecution()
+	defer qry.releaseAfterExecution()
 
 	// When speculative execution is enabled, we could be accessing the host iterator from multiple goroutines below.
 	// To ensure we don't call it concurrently, we wrap the returned NextHost function here to synchronize access to it.
@@ -129,31 +171,98 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	ctx, cancel := context.WithCancel(qry.Context())
 	defer cancel()
 
-	results := make(chan *Iter, 1)
+	results := queryExecutionResults()
 
 	// Launch the main execution
-	qry.borrowForExecution() // ensure liveness in case of executing Query to prevent races with Query.Release().
-	go q.run(ctx, qry, hostIter, results)
+	qry.borrowForExecution() // prevent Query.Release while this runner uses the captured execution view.
+	metrics.retain()
+	go q.run(ctx, executionQry, qry, metrics, executionAttempts, hostIter, results)
 
 	// The speculative executions are launched _in addition_ to the main
 	// execution, on a timer. So Speculation{2} would make 3 executions running
 	// in total.
-	if iter := q.speculate(ctx, qry, sp, hostIter, results); iter != nil {
-		return iter, nil
+	if result := q.speculate(ctx, executionQry, qry, sp, metrics, executionAttempts, hostIter, results); result.iter != nil {
+		if result.consistency != qry.GetConsistency() {
+			qry.SetConsistency(result.consistency)
+		}
+		return result.iter, nil
 	}
 
 	select {
-	case iter := <-results:
-		return iter, nil
+	case result := <-results:
+		if result.consistency != qry.GetConsistency() {
+			qry.SetConsistency(result.consistency)
+		}
+		return result.iter, nil
 	case <-ctx.Done():
 		return &Iter{err: ctx.Err()}, nil
 	}
 }
 
-func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter NextHost) *Iter {
+func queryForSpeculativeExecution(qry ExecutableQuery, metrics *queryMetrics) ExecutableQuery {
+	switch qry := qry.(type) {
+	case *Query:
+		return cloneQuery(qry, metrics)
+	case *Batch:
+		executionBatch := *qry
+		executionBatch.metrics = metrics
+		executionBatch.metricsOwner = queryMetricsOwner{}
+		executionBatch.executionAttempts = nil
+		executionBatch.Entries = append([]BatchEntry(nil), qry.Entries...)
+		return &executionBatch
+	default:
+		return qry.withContext(qry.Context())
+	}
+}
+
+type fallbackExecutionRetryableQuery struct {
+	ExecutableQuery
+	attempts *atomic.Int64
+}
+
+func (q fallbackExecutionRetryableQuery) Attempts() int {
+	return int(q.attempts.Load())
+}
+
+func queryForExecution(qry ExecutableQuery, metrics *queryMetrics, attempts *atomic.Int64) ExecutableQuery {
+	switch qry := qry.(type) {
+	case *Query:
+		executionQry := cloneQuery(qry, metrics)
+		executionQry.executionAttempts = attempts
+		return executionQry
+	case *Batch:
+		executionBatch := *qry
+		executionBatch.metrics = metrics
+		executionBatch.executionAttempts = attempts
+		return &executionBatch
+	default:
+		return &fallbackExecutionRetryableQuery{
+			ExecutableQuery: qry,
+			attempts:        attempts,
+		}
+	}
+}
+
+func queryForRetryExecution(qry ExecutableQuery, metrics *queryMetrics) ExecutableQuery {
+	switch qry := qry.(type) {
+	case *Query:
+		return cloneQuery(qry, metrics)
+	case *Batch:
+		executionBatch := *qry
+		executionBatch.metrics = metrics
+		executionBatch.metricsOwner = queryMetricsOwner{}
+		executionBatch.executionAttempts = nil
+		return &executionBatch
+	default:
+		return qry.withContext(qry.Context())
+	}
+}
+
+func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, metrics *queryMetrics,
+	executionAttempts *atomic.Int64, hostIter NextHost) (*Iter, Consistency) {
 	rt := qry.retryPolicy()
 	if rt == nil {
-		rt = &SimpleRetryPolicy{NumRetries: 3}
+		rt = defaultRetryPolicy
 	}
 
 	lwtRT, isRTSupportsLWT := rt.(LWTRetryPolicy)
@@ -168,8 +277,9 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 		getShouldRetry = rt.Attempt
 		getRetryType = rt.GetRetryType
 	}
-
 	var potentiallyExecuted bool
+	var retryableQry RetryableQuery
+	var localAttempts int64
 
 	execute := func(qry ExecutableQuery, selectedHost SelectedHost) (iter *Iter, retry RetryType) {
 		host := selectedHost.Info()
@@ -199,7 +309,7 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 				},
 			}, RetryNextHost
 		}
-		iter = q.attemptQuery(ctx, qry, conn)
+		iter = q.attemptQuery(ctx, qry, metrics, executionAttempts, &localAttempts, conn)
 		iter.host = selectedHost.Info()
 		// Update host
 		if iter.err == nil {
@@ -238,14 +348,29 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 	for selectedHost != nil {
 		iter, retryType := execute(qry, selectedHost)
 		if iter.err == nil {
-			return iter
+			return iter, qry.GetConsistency()
 		}
 		lastErr = iter.err
 
 		// Exit if retry policy decides to not retry anymore
 		if retryType == RetryType(255) {
-			if !getShouldRetry(qry) {
-				return iter
+			if retryableQry == nil {
+				// Retry policies may mutate consistency. Lazily copy the query
+				// after the first failed attempt so successful executions keep
+				// their allocation profile, concurrent speculative executions
+				// do not race, and custom policies still see *Query or *Batch.
+				if executionAttempts == nil {
+					executionAttempts = new(atomic.Int64)
+					executionAttempts.Store(localAttempts)
+				}
+				qry = queryForRetryExecution(qry, metrics)
+				retryableQry = queryForExecution(qry, metrics, executionAttempts)
+			}
+			retryableQry.SetConsistency(qry.GetConsistency())
+			shouldRetry := getShouldRetry(retryableQry)
+			qry.SetConsistency(retryableQry.GetConsistency())
+			if !shouldRetry {
+				return iter, qry.GetConsistency()
 			}
 			retryType = getRetryType(iter.err)
 		}
@@ -257,7 +382,7 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 			// retry on the same host
 			continue
 		case Rethrow, Ignore:
-			return iter
+			return iter, qry.GetConsistency()
 		case RetryNextHost:
 			iter.finalize(true)
 			// retry on the next host
@@ -265,21 +390,23 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, hostIter Ne
 			continue
 		default:
 			// Undefined? Return nil and error, this will panic in the requester
-			return &Iter{err: ErrUnknownRetryType}
+			return &Iter{err: ErrUnknownRetryType}, qry.GetConsistency()
 		}
 	}
 	if lastErr != nil {
-		return &Iter{err: lastErr}
+		return &Iter{err: lastErr}, qry.GetConsistency()
 	}
-	return &Iter{err: ErrNoConnections}
+	return &Iter{err: ErrNoConnections}, qry.GetConsistency()
 }
 
-func (q *queryExecutor) run(ctx context.Context, qry ExecutableQuery, hostIter NextHost, results chan<- *Iter) {
-	iter := q.do(ctx, qry, hostIter)
+func (q *queryExecutor) run(ctx context.Context, qry, releaseQry ExecutableQuery, metrics *queryMetrics,
+	executionAttempts *atomic.Int64, hostIter NextHost, results chan<- queryExecutionResult) {
+	defer metrics.release()
+	iter, consistency := q.do(ctx, qry, metrics, executionAttempts, hostIter)
 	select {
-	case results <- iter:
+	case results <- queryExecutionResult{iter: iter, consistency: consistency}:
 	case <-ctx.Done():
 		iter.discard()
 	}
-	qry.releaseAfterExecution()
+	releaseQry.releaseAfterExecution()
 }

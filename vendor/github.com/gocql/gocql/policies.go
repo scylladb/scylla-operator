@@ -38,29 +38,97 @@ import (
 	"time"
 )
 
-// cowHostList implements a copy on write host list, its equivalent type is []*HostInfo
+const hostInfoListMapThreshold = 20
+
+// hostInfoList is an immutable host list snapshot with optional indexed lookup.
+type hostInfoList struct {
+	hosts     []*HostInfo
+	hostsByID map[UUID]*HostInfo
+	hostIDs   []UUID
+}
+
+func newHostInfoList(hosts []*HostInfo) *hostInfoList {
+	hosts = hosts[:len(hosts):len(hosts)]
+	l := &hostInfoList{
+		hosts: hosts,
+	}
+
+	if len(hosts) >= hostInfoListMapThreshold {
+		hostsByID := make(map[UUID]*HostInfo, len(hosts))
+		l.hostsByID = hostsByID
+		for _, host := range hosts {
+			hostID := host.hostUUID()
+			if hostID.IsEmpty() {
+				continue
+			}
+			if _, ok := hostsByID[hostID]; !ok {
+				hostsByID[hostID] = host
+			}
+		}
+		return l
+	}
+
+	hostIDs := make([]UUID, len(hosts))
+	for i, host := range hosts {
+		hostIDs[i] = host.hostUUID()
+	}
+	l.hostIDs = hostIDs
+
+	return l
+}
+
+// allHosts returns hosts in this snapshot. Callers must treat the returned slice as read-only.
+func (l *hostInfoList) allHosts() []*HostInfo {
+	if l == nil {
+		return nil
+	}
+	return l.hosts
+}
+
+// len returns the number of hosts in this snapshot.
+func (l *hostInfoList) len() int {
+	if l == nil {
+		return 0
+	}
+	return len(l.hosts)
+}
+
+// hostByID finds a host in this snapshot by host_id.
+func (l *hostInfoList) hostByID(hostID UUID) *HostInfo {
+	if l == nil || hostID.IsEmpty() {
+		return nil
+	}
+	if l.hostsByID != nil {
+		return l.hostsByID[hostID]
+	}
+	for i, id := range l.hostIDs {
+		if id == hostID {
+			return l.hosts[i]
+		}
+	}
+	return nil
+}
+
+// cowHostList implements a copy-on-write host list.
 type cowHostList struct {
-	list atomic.Value
+	list atomic.Pointer[hostInfoList]
 	mu   sync.Mutex
 }
 
 func (c *cowHostList) String() string {
-	return fmt.Sprintf("%+v", c.get())
+	return fmt.Sprintf("%+v", c.get().allHosts())
 }
 
-func (c *cowHostList) get() []*HostInfo {
-	// TODO(zariel): should we replace this with []*HostInfo?
-	l, ok := c.list.Load().(*[]*HostInfo)
-	if !ok {
-		return nil
-	}
-	return *l
+func (c *cowHostList) get() *hostInfoList {
+	return c.list.Load()
 }
 
 // add will add a host if it not already in the list
 func (c *cowHostList) add(host *HostInfo) bool {
 	c.mu.Lock()
-	l := c.get()
+	defer c.mu.Unlock()
+
+	l := c.get().allHosts()
 
 	if n := len(l); n == 0 {
 		l = []*HostInfo{host}
@@ -68,7 +136,6 @@ func (c *cowHostList) add(host *HostInfo) bool {
 		newL := make([]*HostInfo, n+1)
 		for i := 0; i < n; i++ {
 			if host.Equal(l[i]) {
-				c.mu.Unlock()
 				return false
 			}
 			newL[i] = l[i]
@@ -77,17 +144,48 @@ func (c *cowHostList) add(host *HostInfo) bool {
 		l = newL
 	}
 
-	c.list.Store(&l)
-	c.mu.Unlock()
+	c.list.Store(newHostInfoList(l))
+	return true
+}
+
+func (c *cowHostList) addAll(hosts []*HostInfo) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	l := c.get().allHosts()
+	newL := make([]*HostInfo, len(l), len(l)+len(hosts))
+	copy(newL, l)
+
+	added := false
+	for _, host := range hosts {
+		exists := false
+		for _, existing := range newL {
+			if host.Equal(existing) {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			newL = append(newL, host)
+			added = true
+		}
+	}
+
+	if !added {
+		return false
+	}
+
+	c.list.Store(newHostInfoList(newL))
 	return true
 }
 
 func (c *cowHostList) remove(host *HostInfo) bool {
 	c.mu.Lock()
-	l := c.get()
+	defer c.mu.Unlock()
+
+	l := c.get().allHosts()
 	size := len(l)
 	if size == 0 {
-		c.mu.Unlock()
 		return false
 	}
 
@@ -102,13 +200,10 @@ func (c *cowHostList) remove(host *HostInfo) bool {
 	}
 
 	if !found {
-		c.mu.Unlock()
 		return false
 	}
 
-	newL = newL[: size-1 : size-1]
-	c.list.Store(&newL)
-	c.mu.Unlock()
+	c.list.Store(newHostInfoList(newL))
 
 	return true
 }
@@ -168,6 +263,9 @@ type LWTRetryPolicy interface {
 type SimpleRetryPolicy struct {
 	NumRetries int // Number of times to retry a query
 }
+
+// defaultRetryPolicy is the shared fallback when no RetryPolicy is configured.
+var defaultRetryPolicy RetryPolicy = &SimpleRetryPolicy{NumRetries: 3}
 
 // Attempt tells gocql to attempt the query again based on query.Attempts being less
 // than the NumRetries defined in the policy.
@@ -448,7 +546,7 @@ func (r *roundRobinHostPolicy) IsOperational(*Session) error        { return nil
 
 func (r *roundRobinHostPolicy) Pick(qry ExecutableQuery) NextHost {
 	nextStartOffset := atomic.AddUint64(&r.lastUsedHostIdx, 1)
-	return roundRobbin(int(nextStartOffset), r.hosts.get())
+	return roundRobbin(int(nextStartOffset), r.hosts.get().allHosts())
 }
 
 func (r *roundRobinHostPolicy) AddHost(host *HostInfo) {
@@ -517,7 +615,7 @@ func TokenAwareHostPolicy(fallback HostSelectionPolicy, opts ...func(*tokenAware
 }
 
 // clusterMeta holds metadata about cluster topology.
-// It is used inside atomic.Value and shallow copies are used when replacing it,
+// It is used inside atomic.Pointer and shallow copies are used when replacing it,
 // so fields should not be modified in-place. Instead, to modify a field a copy of the field should be made
 // and the pointer in clusterMeta updated to point to the new value.
 type clusterMeta struct {
@@ -531,7 +629,7 @@ var MAX_IN_FLIGHT_THRESHOLD int = 10
 type tokenAwareHostPolicy struct {
 	fallback HostSelectionPolicy
 	// atomic store for *clusterMeta
-	metadata            atomic.Value
+	metadata            atomic.Pointer[clusterMeta]
 	logger              StdLogger
 	getKeyspaceMetadata func(keyspace string) (*KeyspaceMetadata, error)
 	getKeyspaceName     func() string
@@ -626,7 +724,7 @@ func (t *tokenAwareHostPolicy) SetPartitioner(partitioner string) {
 		t.fallback.SetPartitioner(partitioner)
 		t.partitioner = partitioner
 		meta := t.getMetadataForUpdate()
-		meta.resetTokenRing(t.partitioner, t.hosts.get(), t.logger)
+		meta.resetTokenRing(t.partitioner, t.hosts.get().allHosts(), t.logger)
 		t.updateReplicas(meta, t.getKeyspaceName())
 		t.metadata.Store(meta)
 	}
@@ -636,7 +734,7 @@ func (t *tokenAwareHostPolicy) AddHost(host *HostInfo) {
 	t.mu.Lock()
 	if t.hosts.add(host) {
 		meta := t.getMetadataForUpdate()
-		meta.resetTokenRing(t.partitioner, t.hosts.get(), t.logger)
+		meta.resetTokenRing(t.partitioner, t.hosts.get().allHosts(), t.logger)
 		t.updateReplicas(meta, t.getKeyspaceName())
 		t.metadata.Store(meta)
 	}
@@ -648,12 +746,10 @@ func (t *tokenAwareHostPolicy) AddHost(host *HostInfo) {
 func (t *tokenAwareHostPolicy) AddHosts(hosts []*HostInfo) {
 	t.mu.Lock()
 
-	for _, host := range hosts {
-		t.hosts.add(host)
-	}
+	t.hosts.addAll(hosts)
 
 	meta := t.getMetadataForUpdate()
-	meta.resetTokenRing(t.partitioner, t.hosts.get(), t.logger)
+	meta.resetTokenRing(t.partitioner, t.hosts.get().allHosts(), t.logger)
 	t.updateReplicas(meta, t.getKeyspaceName())
 	t.metadata.Store(meta)
 
@@ -668,7 +764,7 @@ func (t *tokenAwareHostPolicy) RemoveHost(host *HostInfo) {
 	t.mu.Lock()
 	if t.hosts.remove(host) {
 		meta := t.getMetadataForUpdate()
-		meta.resetTokenRing(t.partitioner, t.hosts.get(), t.logger)
+		meta.resetTokenRing(t.partitioner, t.hosts.get().allHosts(), t.logger)
 		t.updateReplicas(meta, t.getKeyspaceName())
 		t.metadata.Store(meta)
 	}
@@ -689,8 +785,7 @@ func (t *tokenAwareHostPolicy) HostDown(host *HostInfo) {
 // Metadata uses copy on write, so the returned value should be only used for reading.
 // To obtain a copy that could be updated, use getMetadataForUpdate instead.
 func (t *tokenAwareHostPolicy) getMetadataReadOnly() *clusterMeta {
-	meta, _ := t.metadata.Load().(*clusterMeta)
-	return meta
+	return t.metadata.Load()
 }
 
 // getMetadataForUpdate returns clusterMeta suitable for updating.
@@ -849,13 +944,12 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 	if session := qry.GetSession(); session != nil && session.tabletsRoutingV1 && isInt64Token {
 		tabletReplicas := session.findTabletReplicasUnsafeForToken(qry.Keyspace(), qry.Table(), int64(tokenCasted))
 		if len(tabletReplicas) != 0 {
+			// Presized to the known upper bound.
+			replicas = make([]*HostInfo, 0, len(tabletReplicas))
 			hosts := t.hosts.get()
 			for _, replica := range tabletReplicas {
-				for _, host := range hosts {
-					if host.hostId == UUID(replica.HostUUIDValue()) {
-						replicas = append(replicas, host)
-						break
-					}
+				if host := hosts.hostByID(UUID(replica.HostUUIDValue())); host != nil {
+					replicas = append(replicas, host)
 				}
 			}
 		}
@@ -880,11 +974,15 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 		replicas = []*HostInfo{host}
 	}
 
-	if t.shuffleReplicas && !qry.IsLWT() && len(replicas) > 1 {
+	// Cache IsLWT() once: it is read on both the shuffle and avoid-slow-replicas
+	// paths below, and computing it can take a lock on the query routing info.
+	isLWT := qry.IsLWT()
+
+	if t.shuffleReplicas && !isLWT && len(replicas) > 1 {
 		shuffleHostsInPlace(replicas)
 	}
 
-	if s := qry.GetSession(); s != nil && !qry.IsLWT() && t.avoidSlowReplicas {
+	if s := qry.GetSession(); s != nil && !isLWT && t.avoidSlowReplicas {
 		partitionHealthy(replicas, s)
 	}
 
@@ -1001,6 +1099,20 @@ func DCAwareRoundRobinPolicy(localDC string, opts ...dcAwarePolicyOption) HostSe
 func (d *dcAwareRR) setDCFailoverDisabled() {
 	d.disableDCFailover = true
 }
+
+// dcFailoverDisabled reports whether this policy was constructed with
+// HostPolicyOptionDisableDCFailover. Used by driver_config.go to report
+// query.load-balancing.policy.fallback-to-non-preferred-nodes.
+func (d *dcAwareRR) dcFailoverDisabled() bool {
+	return d.disableDCFailover
+}
+
+// localDatacenter reports the datacenter this policy prioritizes. Used by
+// driver_config.go to report query.load-balancing.node-preference.
+func (d *dcAwareRR) localDatacenter() string {
+	return d.local
+}
+
 func (d *dcAwareRR) Init(*Session)                       {}
 func (d *dcAwareRR) Reset()                              {}
 func (d *dcAwareRR) KeyspaceChanged(KeyspaceUpdateEvent) {}
@@ -1091,9 +1203,9 @@ func roundRobbin(shift int, hosts ...[]*HostInfo) NextHost {
 func (d *dcAwareRR) Pick(q ExecutableQuery) NextHost {
 	nextStartOffset := atomic.AddUint64(&d.lastUsedHostIdx, 1)
 	if d.disableDCFailover {
-		return roundRobbin(int(nextStartOffset), d.localHosts.get())
+		return roundRobbin(int(nextStartOffset), d.localHosts.get().allHosts())
 	}
-	return roundRobbin(int(nextStartOffset), d.localHosts.get(), d.remoteHosts.get())
+	return roundRobbin(int(nextStartOffset), d.localHosts.get().allHosts(), d.remoteHosts.get().allHosts())
 }
 
 // RackAwareRoundRobinPolicy is a host selection policies which will prioritize and
@@ -1149,6 +1261,24 @@ func (d *rackAwareRR) setDCFailoverDisabled() {
 	d.disableDCFailover = true
 }
 
+// dcFailoverDisabled reports whether this policy was constructed with
+// HostPolicyOptionDisableDCFailover. Used by driver_config.go to report
+// query.load-balancing.policy.fallback-to-non-preferred-nodes.
+func (d *rackAwareRR) dcFailoverDisabled() bool {
+	return d.disableDCFailover
+}
+
+// localDatacenter and localRackName report the datacenter/rack this policy
+// prioritizes. Used by driver_config.go to report
+// query.load-balancing.node-preference.
+func (d *rackAwareRR) localDatacenter() string {
+	return d.localDC
+}
+
+func (d *rackAwareRR) localRackName() string {
+	return d.localRack
+}
+
 func (d *rackAwareRR) HostTier(host *HostInfo) uint {
 	if host.DataCenter() == d.localDC {
 		if host.Rack() == d.localRack {
@@ -1181,9 +1311,9 @@ func (d *rackAwareRR) HostDown(host *HostInfo) { d.RemoveHost(host) }
 func (d *rackAwareRR) Pick(q ExecutableQuery) NextHost {
 	nextStartOffset := atomic.AddUint64(&d.lastUsedHostIdx, 1)
 	if d.disableDCFailover {
-		return roundRobbin(int(nextStartOffset), d.hosts[0].get(), d.hosts[1].get())
+		return roundRobbin(int(nextStartOffset), d.hosts[0].get().allHosts(), d.hosts[1].get().allHosts())
 	}
-	return roundRobbin(int(nextStartOffset), d.hosts[0].get(), d.hosts[1].get(), d.hosts[2].get())
+	return roundRobbin(int(nextStartOffset), d.hosts[0].get().allHosts(), d.hosts[1].get().allHosts(), d.hosts[2].get().allHosts())
 }
 
 // ReadyPolicy defines a policy for when a HostSelectionPolicy can be used. After

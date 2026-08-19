@@ -343,24 +343,24 @@ func compareInterfaceMaps(a, b map[string]any) bool {
 
 // cowTabletList implements a copy on write keyspace metadata map, its equivalent type is map[string]*KeyspaceMetadata
 type cowKeyspaceMetadataMap struct {
-	keyspaceMap atomic.Value
+	keyspaceMap atomic.Pointer[map[string]*KeyspaceMetadata]
 	mu          sync.Mutex
 }
 
 func (c *cowKeyspaceMetadataMap) get() map[string]*KeyspaceMetadata {
-	l, ok := c.keyspaceMap.Load().(map[string]*KeyspaceMetadata)
-	if !ok {
+	l := c.keyspaceMap.Load()
+	if l == nil {
 		return nil
 	}
-	return l
+	return *l
 }
 
 func (c *cowKeyspaceMetadataMap) getKeyspace(keyspaceName string) (*KeyspaceMetadata, bool) {
-	m, ok := c.keyspaceMap.Load().(map[string]*KeyspaceMetadata)
-	if !ok {
-		return nil, ok
+	m := c.keyspaceMap.Load()
+	if m == nil {
+		return nil, false
 	}
-	val, ok := m[keyspaceName]
+	val, ok := (*m)[keyspaceName]
 	return val, ok
 }
 
@@ -376,7 +376,7 @@ func (c *cowKeyspaceMetadataMap) set(keyspaceName string, keyspaceMetadata *Keys
 	}
 	newM[keyspaceName] = keyspaceMetadata
 
-	c.keyspaceMap.Store(newM)
+	c.keyspaceMap.Store(&newM)
 	return true
 }
 
@@ -394,7 +394,7 @@ func (c *cowKeyspaceMetadataMap) removeKeyspace(keyspaceName string) {
 	newM := maps.Clone(m)
 	delete(newM, keyspaceName)
 
-	c.keyspaceMap.Store(newM)
+	c.keyspaceMap.Store(&newM)
 }
 
 // updateKeyspace atomically clones a keyspace's mutable maps, applies fn to
@@ -416,7 +416,7 @@ func (c *cowKeyspaceMetadataMap) updateKeyspace(keyspaceName string, fn func(ks 
 
 	newM := maps.Clone(m)
 	newM[keyspaceName] = cloned
-	c.keyspaceMap.Store(newM)
+	c.keyspaceMap.Store(&newM)
 	return true
 }
 

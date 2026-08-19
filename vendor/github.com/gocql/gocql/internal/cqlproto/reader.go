@@ -22,6 +22,7 @@
 package cqlproto
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 )
@@ -85,7 +86,7 @@ func (r *Reader) ReadRawInt() int32 {
 	if p == nil {
 		return 0
 	}
-	return int32(p[0])<<24 | int32(p[1])<<16 | int32(p[2])<<8 | int32(p[3])
+	return int32(binary.BigEndian.Uint32(p))
 }
 
 // ReadRawBigInt reads a raw 8-byte big-endian int64 (no length prefix).
@@ -94,8 +95,7 @@ func (r *Reader) ReadRawBigInt() int64 {
 	if p == nil {
 		return 0
 	}
-	return int64(p[0])<<56 | int64(p[1])<<48 | int64(p[2])<<40 | int64(p[3])<<32 |
-		int64(p[4])<<24 | int64(p[5])<<16 | int64(p[6])<<8 | int64(p[7])
+	return int64(binary.BigEndian.Uint64(p))
 }
 
 // ReadRawUUID reads a raw 16-byte UUID (no length prefix).
@@ -135,7 +135,7 @@ func (r *Reader) ReadInt() (int32, bool) {
 		r.err = fmt.Errorf("unmarshal int: expected 4 bytes got %d", len(p))
 		return 0, false
 	}
-	return int32(p[0])<<24 | int32(p[1])<<16 | int32(p[2])<<8 | int32(p[3]), true
+	return int32(binary.BigEndian.Uint32(p)), true
 }
 
 // ReadBigInt reads a length-prefixed int64: [4-byte len][8-byte value].
@@ -152,8 +152,7 @@ func (r *Reader) ReadBigInt() (int64, bool) {
 		r.err = fmt.Errorf("unmarshal bigint: expected 8 bytes got %d", len(p))
 		return 0, false
 	}
-	return int64(p[0])<<56 | int64(p[1])<<48 | int64(p[2])<<40 | int64(p[3])<<32 |
-		int64(p[4])<<24 | int64(p[5])<<16 | int64(p[6])<<8 | int64(p[7]), true
+	return int64(binary.BigEndian.Uint64(p)), true
 }
 
 // ReadUUID reads a length-prefixed UUID: [4-byte len][16-byte value].

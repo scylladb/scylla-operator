@@ -54,7 +54,7 @@ type SetTablets interface {
 
 type policyConnPool struct {
 	session       *Session
-	hostConnPools map[string]*hostConnPool
+	hostConnPools map[UUID]*hostConnPool
 	keyspace      string
 	port          int
 	numConns      int
@@ -108,7 +108,7 @@ func newPolicyConnPool(session *Session) *policyConnPool {
 		port:          session.cfg.Port,
 		numConns:      session.cfg.NumConns,
 		keyspace:      session.cfg.Keyspace,
-		hostConnPools: map[string]*hostConnPool{},
+		hostConnPools: map[UUID]*hostConnPool{},
 	}
 
 	return pool
@@ -118,7 +118,7 @@ func (p *policyConnPool) SetHosts(hosts []*HostInfo) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	toRemove := make(map[string]struct{})
+	toRemove := make(map[UUID]struct{})
 	for hostID := range p.hostConnPools {
 		toRemove[hostID] = struct{}{}
 	}
@@ -130,7 +130,7 @@ func (p *policyConnPool) SetHosts(hosts []*HostInfo) {
 			// don't create a connection pool for a down host
 			continue
 		}
-		hostID := host.HostID()
+		hostID := host.hostUUID()
 		if _, exists := p.hostConnPools[hostID]; exists {
 			// still have this host, so don't remove it
 			delete(toRemove, hostID)
@@ -155,7 +155,7 @@ func (p *policyConnPool) SetHosts(hosts []*HostInfo) {
 		createCount--
 		if pool.Size() > 0 {
 			// add pool only if there a connections available
-			p.hostConnPools[pool.host.HostID()] = pool
+			p.hostConnPools[pool.host.hostUUID()] = pool
 		}
 	}
 
@@ -189,16 +189,21 @@ func (p *policyConnPool) Size() int {
 }
 
 func (p *policyConnPool) getPool(host *HostInfo) (pool *hostConnPool, ok bool) {
-	hostID := host.HostID()
+	hostID := host.hostUUID()
 	p.mu.RLock()
 	pool, ok = p.hostConnPools[hostID]
 	p.mu.RUnlock()
 	return
 }
 
+// Rare path (SetHostID/GetHostPoolByID); getPool is the hot path and skips this parse.
 func (p *policyConnPool) getPoolByHostID(hostID string) (pool *hostConnPool, ok bool) {
+	id, err := ParseUUID(hostID)
+	if err != nil {
+		return nil, false
+	}
 	p.mu.RLock()
-	pool, ok = p.hostConnPools[hostID]
+	pool, ok = p.hostConnPools[id]
 	p.mu.RUnlock()
 	return
 }
@@ -225,7 +230,7 @@ func (p *policyConnPool) Close() {
 }
 
 func (p *policyConnPool) addHost(host *HostInfo) {
-	hostID := host.HostID()
+	hostID := host.hostUUID()
 	p.mu.Lock()
 	pool, ok := p.hostConnPools[hostID]
 	if !ok {
@@ -243,7 +248,7 @@ func (p *policyConnPool) addHost(host *HostInfo) {
 	pool.fill_debounce()
 }
 
-func (p *policyConnPool) removeHost(hostID string) {
+func (p *policyConnPool) removeHost(hostID UUID) {
 	p.mu.Lock()
 	pool, ok := p.hostConnPools[hostID]
 	if !ok {

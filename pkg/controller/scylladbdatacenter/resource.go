@@ -340,53 +340,44 @@ func getServicePorts(sdc *scyllav1alpha1.ScyllaDBDatacenter) ([]corev1.ServicePo
 
 // getPodManagementPolicy resolves the PodManagementPolicyType for StatefulSets of a given ScyllaDBDatacenter.
 func getPodManagementPolicy(sdc *scyllav1alpha1.ScyllaDBDatacenter) (appsv1.PodManagementPolicyType, error) {
-	bootstrapPolicy, err := effectiveBootstrapPolicy(sdc)
+	parallelNodeOperationsEnabled, err := effectiveParallelNodeOperationsEnabled(sdc)
 	if err != nil {
-		return "", fmt.Errorf("can't get effective bootstrap policy: %w", err)
+		return "", fmt.Errorf("can't determine effective parallel node operations enablement: %w", err)
 	}
 
-	if bootstrapPolicy == scyllav1alpha1.BootstrapPolicyParallel {
+	if parallelNodeOperationsEnabled {
 		return appsv1.ParallelPodManagement, nil
 	}
 
 	return appsv1.OrderedReadyPodManagement, nil
 }
 
-// effectiveBootstrapPolicy resolves the bootstrap policy of the given ScyllaDBDatacenter.
-func effectiveBootstrapPolicy(sdc *scyllav1alpha1.ScyllaDBDatacenter) (scyllav1alpha1.BootstrapPolicy, error) {
-	if sdc.Spec.BootstrapPolicy == nil {
-		return scyllav1alpha1.BootstrapPolicySequential, nil
+// effectiveParallelNodeOperationsEnabled resolves whether parallel node operations are effectively enabled for the
+// given ScyllaDBDatacenter.
+func effectiveParallelNodeOperationsEnabled(sdc *scyllav1alpha1.ScyllaDBDatacenter) (bool, error) {
+	if sdc.Spec.EnableParallelNodeOperations == nil || !*sdc.Spec.EnableParallelNodeOperations {
+		return false, nil
 	}
 
-	switch *sdc.Spec.BootstrapPolicy {
-	case scyllav1alpha1.BootstrapPolicySequential:
-		return scyllav1alpha1.BootstrapPolicySequential, nil
-
-	case scyllav1alpha1.BootstrapPolicyParallel:
-		scyllaDBVersion, err := naming.ImageToVersion(sdc.Spec.ScyllaDB.Image)
-		if err != nil {
-			return "", fmt.Errorf("can't get version of image %q: %w", sdc.Spec.ScyllaDB.Image, err)
-		}
-
-		// A ScyllaDB version lower than the one required for parallel bootstrap shouldn't get past admission, which
-		// rejects it on both create and update. This is only a sanity check guarding against version skew, e.g. a
-		// bypassed or failing webhook. A version which can't be parsed is deliberately treated as not supporting
-		// parallel bootstrap.
-		if !semver.NewScyllaVersion(scyllaDBVersion).SupportFeatureSafe(semver.ScyllaDBVersionRequiredForParallelBootstrap) {
-			return "", fmt.Errorf(
-				"bootstrap policy %q requires a semver-parseable ScyllaDB version >= %d.%d, got %q",
-				scyllav1alpha1.BootstrapPolicyParallel,
-				semver.ScyllaDBVersionRequiredForParallelBootstrap.Major,
-				semver.ScyllaDBVersionRequiredForParallelBootstrap.Minor,
-				scyllaDBVersion,
-			)
-		}
-
-		return scyllav1alpha1.BootstrapPolicyParallel, nil
-
-	default:
-		return "", fmt.Errorf("unsupported bootstrap policy %q", *sdc.Spec.BootstrapPolicy)
+	scyllaDBVersion, err := naming.ImageToVersion(sdc.Spec.ScyllaDB.Image)
+	if err != nil {
+		return false, fmt.Errorf("can't get version of image %q: %w", sdc.Spec.ScyllaDB.Image, err)
 	}
+
+	// A ScyllaDB version lower than the one required for parallel bootstrap shouldn't get past admission, which
+	// rejects it on both create and update. This is only a sanity check guarding against version skew, e.g. a
+	// bypassed or failing webhook. A version which can't be parsed is deliberately treated as not supporting
+	// parallel bootstrap.
+	if !semver.NewScyllaVersion(scyllaDBVersion).SupportFeatureSafe(semver.ScyllaDBVersionRequiredForParallelBootstrap) {
+		return false, fmt.Errorf(
+			"parallel node operations require a semver-parseable ScyllaDB version >= %d.%d, got %q",
+			semver.ScyllaDBVersionRequiredForParallelBootstrap.Major,
+			semver.ScyllaDBVersionRequiredForParallelBootstrap.Minor,
+			scyllaDBVersion,
+		)
+	}
+
+	return true, nil
 }
 
 // StatefulSetForRack make a StatefulSet for the rack.

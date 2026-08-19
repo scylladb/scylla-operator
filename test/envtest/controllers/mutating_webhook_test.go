@@ -11,7 +11,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	operatorcmd "github.com/scylladb/scylla-operator/pkg/cmd/operator"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
@@ -112,8 +111,8 @@ var _ = g.Describe("Mutating admission webhook", func() {
 			o.Expect(updatedBaselineSpec).NotTo(o.HaveKey(field), "the defaulters must never stamp %q on an already existing object", field)
 		}
 	},
-		// Sequential is never stamped: an unset bootstrapPolicy is left unset, so that objects whose owners never
-		// made a choice keep resolving it rather than being pinned to today's resolution.
+		// false is never stamped: an unset enableParallelNodeOperations is left unset, so that objects whose owners
+		// never made a choice keep resolving it rather than being pinned to today's resolution.
 		g.Entry("admits a ScyllaCluster with a version not supporting parallel bootstrap unchanged", &entry{
 			resource:            "scyllaclusters",
 			expectedIntercepted: true,
@@ -124,7 +123,7 @@ var _ = g.Describe("Mutating admission webhook", func() {
 			},
 			expectedDefaultedSpecFields: nil,
 		}),
-		g.Entry("stamps a Parallel bootstrapPolicy on a ScyllaCluster with a version supporting parallel bootstrap", &entry{
+		g.Entry("stamps enableParallelNodeOperations on a ScyllaCluster with a version supporting parallel bootstrap", &entry{
 			resource:            "scyllaclusters",
 			expectedIntercepted: true,
 			newObject: func(name, namespace string) client.Object {
@@ -133,16 +132,16 @@ var _ = g.Describe("Mutating admission webhook", func() {
 				return sc
 			},
 			expectedDefaultedSpecFields: map[string]any{
-				"bootstrapPolicy": string(scyllav1.BootstrapPolicyParallel),
+				"enableParallelNodeOperations": true,
 			},
 		}),
-		g.Entry("admits a ScyllaCluster with an explicit bootstrapPolicy unchanged", &entry{
+		g.Entry("admits a ScyllaCluster with an explicit enableParallelNodeOperations unchanged", &entry{
 			resource:            "scyllaclusters",
 			expectedIntercepted: true,
 			newObject: func(name, namespace string) client.Object {
 				sc := newBasicScyllaCluster(name, namespace)
 				sc.Spec.Version = unit.ScyllaDBImageAtParallelBootstrapThresholdTag
-				sc.Spec.BootstrapPolicy = new(scyllav1.BootstrapPolicySequential)
+				sc.Spec.EnableParallelNodeOperations = new(false)
 				return sc
 			},
 			expectedDefaultedSpecFields: nil,
@@ -158,7 +157,7 @@ var _ = g.Describe("Mutating admission webhook", func() {
 			},
 			expectedDefaultedSpecFields: nil,
 		}),
-		g.Entry("stamps a Parallel bootstrapPolicy on a ScyllaDBDatacenter with an image supporting parallel bootstrap", &entry{
+		g.Entry("stamps enableParallelNodeOperations on a ScyllaDBDatacenter with an image supporting parallel bootstrap", &entry{
 			resource:            "scylladbdatacenters",
 			expectedIntercepted: true,
 			newObject: func(name, namespace string) client.Object {
@@ -168,17 +167,17 @@ var _ = g.Describe("Mutating admission webhook", func() {
 				return sdc
 			},
 			expectedDefaultedSpecFields: map[string]any{
-				"bootstrapPolicy": string(scyllav1alpha1.BootstrapPolicyParallel),
+				"enableParallelNodeOperations": true,
 			},
 		}),
-		g.Entry("admits a ScyllaDBDatacenter with an explicit bootstrapPolicy unchanged", &entry{
+		g.Entry("admits a ScyllaDBDatacenter with an explicit enableParallelNodeOperations unchanged", &entry{
 			resource:            "scylladbdatacenters",
 			expectedIntercepted: true,
 			newObject: func(name, namespace string) client.Object {
 				sdc := makeEnvtestScyllaDBDatacenter(namespace, []string{"rack1"})
 				sdc.Name = name
 				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
-				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicySequential)
+				sdc.Spec.EnableParallelNodeOperations = new(false)
 				return sdc
 			},
 			expectedDefaultedSpecFields: nil,

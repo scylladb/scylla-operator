@@ -24,10 +24,10 @@ type IngressController struct {
 }
 
 type ScyllaClusterOptions struct {
-	ExposeOptions    ExposeOptions
-	StorageClassName string
-	ReactorBackend   string
-	BootstrapPolicy  string
+	ExposeOptions                ExposeOptions
+	StorageClassName             string
+	ReactorBackend               string
+	EnableParallelNodeOperations string
 }
 
 func (o *ScyllaClusterOptions) ScyllaArgs() []string {

@@ -9,8 +9,8 @@ metadata:
 spec:
   clusterName: basic
   datacenterName: us-east-1
-  {{- if .bootstrapPolicy }}
-  bootstrapPolicy: {{ .bootstrapPolicy }}
+  {{- if .enableParallelNodeOperations }}
+  enableParallelNodeOperations: {{ .enableParallelNodeOperations }}
   {{- end }}
   scyllaDB:
     image: "{{ .scyllaDBImageRef }}"

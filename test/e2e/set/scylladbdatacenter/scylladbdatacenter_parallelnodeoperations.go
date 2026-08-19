@@ -50,31 +50,31 @@ var _ = g.Describe("ScyllaDBDatacenter", framework.SuiteParallel, framework.Suit
 	}
 
 	type entry struct {
-		initialBootstrapPolicy scyllav1alpha1.BootstrapPolicy
-		targetBootstrapPolicy  scyllav1alpha1.BootstrapPolicy
+		initialEnableParallelNodeOperations bool
+		targetEnableParallelNodeOperations  bool
 	}
 
 	describeEntry := func(e *entry) string {
-		return fmt.Sprintf("from %s to %s", e.initialBootstrapPolicy, e.targetBootstrapPolicy)
+		return fmt.Sprintf("from %t to %t", e.initialEnableParallelNodeOperations, e.targetEnableParallelNodeOperations)
 	}
 
-	podManagementPolicyForBootstrapPolicy := func(bootstrapPolicy scyllav1alpha1.BootstrapPolicy) appsv1.PodManagementPolicyType {
-		if bootstrapPolicy == scyllav1alpha1.BootstrapPolicyParallel {
+	podManagementPolicyForEnableParallelNodeOperations := func(enableParallelNodeOperations bool) appsv1.PodManagementPolicyType {
+		if enableParallelNodeOperations {
 			return appsv1.ParallelPodManagement
 		}
 
 		return appsv1.OrderedReadyPodManagement
 	}
 
-	g.DescribeTable("should recreate StatefulSets without disrupting nodes when the bootstrap policy is changed",
+	g.DescribeTable("should recreate StatefulSets without disrupting nodes when parallel node operations are toggled",
 		func(ctx g.SpecContext, e *entry) {
 			ns, nsClient, ok := f.DefaultNamespaceIfAny()
 			o.Expect(ok).To(o.BeTrue())
 
 			sdc := f.GetDefaultScyllaDBDatacenter()
-			sdc.Spec.BootstrapPolicy = &e.initialBootstrapPolicy
+			sdc.Spec.EnableParallelNodeOperations = &e.initialEnableParallelNodeOperations
 
-			framework.By("Creating a ScyllaDBDatacenter with the %s bootstrap policy", e.initialBootstrapPolicy)
+			framework.By("Creating a ScyllaDBDatacenter with parallel node operations enabled=%t", e.initialEnableParallelNodeOperations)
 			sdc, err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Create(ctx, sdc, metav1.CreateOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -86,12 +86,12 @@ var _ = g.Describe("ScyllaDBDatacenter", framework.SuiteParallel, framework.Suit
 			scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), sdc)
 			scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), sdc)
 
-			framework.By("Verifying the rack StatefulSets are created with the %s pod management policy", podManagementPolicyForBootstrapPolicy(e.initialBootstrapPolicy))
+			framework.By("Verifying the rack StatefulSets are created with the %s pod management policy", podManagementPolicyForEnableParallelNodeOperations(e.initialEnableParallelNodeOperations))
 			statefulSets, err := utilsv1alpha1.GetStatefulSetsForScyllaDBDatacenter(ctx, nsClient.KubeClient().AppsV1(), sdc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(statefulSets).To(o.HaveLen(len(sdc.Spec.Racks)))
 			for _, sts := range statefulSets {
-				o.Expect(sts.Spec.PodManagementPolicy).To(o.Equal(podManagementPolicyForBootstrapPolicy(e.initialBootstrapPolicy)))
+				o.Expect(sts.Spec.PodManagementPolicy).To(o.Equal(podManagementPolicyForEnableParallelNodeOperations(e.initialEnableParallelNodeOperations)))
 			}
 
 			initialPodUIDs := getRackPodUIDs(ctx, nsClient, statefulSets)
@@ -102,17 +102,17 @@ var _ = g.Describe("ScyllaDBDatacenter", framework.SuiteParallel, framework.Suit
 			err = podObserver.Start(ctx)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			framework.By("Changing the bootstrap policy to %s", e.targetBootstrapPolicy)
+			framework.By("Setting parallel node operations enabled=%t", e.targetEnableParallelNodeOperations)
 			sdc, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Patch(
 				ctx,
 				sdc.Name,
 				types.MergePatchType,
-				[]byte(fmt.Sprintf(`{"spec":{"bootstrapPolicy":%q}}`, e.targetBootstrapPolicy)),
+				[]byte(fmt.Sprintf(`{"spec":{"enableParallelNodeOperations":%t}}`, e.targetEnableParallelNodeOperations)),
 				metav1.PatchOptions{},
 			)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(sdc.Spec.BootstrapPolicy).NotTo(o.BeNil())
-			o.Expect(*sdc.Spec.BootstrapPolicy).To(o.Equal(e.targetBootstrapPolicy))
+			o.Expect(sdc.Spec.EnableParallelNodeOperations).NotTo(o.BeNil())
+			o.Expect(*sdc.Spec.EnableParallelNodeOperations).To(o.Equal(e.targetEnableParallelNodeOperations))
 
 			framework.By("Waiting for the ScyllaDBDatacenter to roll out (RV=%s)", sdc.ResourceVersion)
 			patchRolloutCtx, patchRolloutCtxCancel := utilsv1alpha1.ContextForRollout(ctx, sdc)
@@ -122,18 +122,18 @@ var _ = g.Describe("ScyllaDBDatacenter", framework.SuiteParallel, framework.Suit
 			scylladbdatacenterverification.Verify(ctx, nsClient.KubeClient(), nsClient.ScyllaClient(), sdc)
 			scylladbdatacenterverification.WaitForFullQuorum(ctx, nsClient.KubeClient().CoreV1(), sdc)
 
-			framework.By("Verifying the rack StatefulSets are recreated with the %s pod management policy", podManagementPolicyForBootstrapPolicy(e.targetBootstrapPolicy))
+			framework.By("Verifying the rack StatefulSets are recreated with the %s pod management policy", podManagementPolicyForEnableParallelNodeOperations(e.targetEnableParallelNodeOperations))
 			statefulSets, err = utilsv1alpha1.GetStatefulSetsForScyllaDBDatacenter(ctx, nsClient.KubeClient().AppsV1(), sdc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(statefulSets).To(o.HaveLen(len(sdc.Spec.Racks)))
 			for _, sts := range statefulSets {
-				o.Expect(sts.Spec.PodManagementPolicy).To(o.Equal(podManagementPolicyForBootstrapPolicy(e.targetBootstrapPolicy)))
+				o.Expect(sts.Spec.PodManagementPolicy).To(o.Equal(podManagementPolicyForEnableParallelNodeOperations(e.targetEnableParallelNodeOperations)))
 			}
 
 			framework.By("Verifying the nodes were not disrupted")
 			observedPodEvents, err := podObserver.Stop()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			framework.Infof("Observed %d Pod events during the bootstrap policy change.", len(observedPodEvents))
+			framework.Infof("Observed %d Pod events during the parallel node operations change.", len(observedPodEvents))
 
 			// The StatefulSets are deleted with an orphan propagation policy, so their Pods survive the recreation and
 			// are adopted back. Any Pod being deleted or replaced at any point during the change means the running nodes were disrupted.
@@ -144,17 +144,17 @@ var _ = g.Describe("ScyllaDBDatacenter", framework.SuiteParallel, framework.Suit
 				o.Expect(observedPodEvent.Obj.DeletionTimestamp).To(o.BeNil(), fmt.Sprintf("Pod %q should not have been marked for deletion", observedPodEvent.Obj.Name))
 
 				initialPodUID, ok := initialPodUIDs[observedPodEvent.Obj.Name]
-				o.Expect(ok).To(o.BeTrue(), fmt.Sprintf("Pod %q should have existed before the bootstrap policy change", observedPodEvent.Obj.Name))
+				o.Expect(ok).To(o.BeTrue(), fmt.Sprintf("Pod %q should have existed before the parallel node operations change", observedPodEvent.Obj.Name))
 				o.Expect(observedPodEvent.Obj.UID).To(o.Equal(initialPodUID), fmt.Sprintf("Pod %q should not have been recreated", observedPodEvent.Obj.Name))
 			}
 		},
 		g.Entry(describeEntry, &entry{
-			initialBootstrapPolicy: scyllav1alpha1.BootstrapPolicySequential,
-			targetBootstrapPolicy:  scyllav1alpha1.BootstrapPolicyParallel,
+			initialEnableParallelNodeOperations: false,
+			targetEnableParallelNodeOperations:  true,
 		}),
 		g.Entry(describeEntry, &entry{
-			initialBootstrapPolicy: scyllav1alpha1.BootstrapPolicyParallel,
-			targetBootstrapPolicy:  scyllav1alpha1.BootstrapPolicySequential,
+			initialEnableParallelNodeOperations: true,
+			targetEnableParallelNodeOperations:  false,
 		}),
 	)
 })

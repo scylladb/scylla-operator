@@ -565,7 +565,7 @@ func TestMakeScyllaDBDatacenters(t *testing.T) {
 						Name: "c",
 					},
 				},
-				BootstrapPolicy: pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential),
+				EnableParallelNodeOperations: new(false),
 			},
 		}
 	}

@@ -90,9 +90,6 @@ object
    * - :ref:`backups<api-scylla.scylladb.com-scyllaclusters-v1-.spec.backups[]>`
      - array (object)
      - backups specifies backup tasks in Scylla Manager. When Scylla Manager is not installed, these will be ignored.
-   * - bootstrapPolicy
-     - string
-     - bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in parallel (Parallel). Parallel requires ScyllaDB 2026.2 or later. If not provided, it's treated as Sequential. On creation, it's set to Parallel when spec.version is a semver-parseable version supporting parallel bootstrap. The set value is persisted, so it stays in effect across ScyllaDB version changes until it's explicitly changed. It's otherwise left unset, and never set on an already existing object.
    * - cpuset
      - boolean
      - cpuset determines if the cluster will use cpu-pinning. Deprecated: `cpuset` is deprecated. It is now treated as if it is always set to true regardless of its value.
@@ -105,6 +102,9 @@ object
    * - dnsDomains
      - array (string)
      - dnsDomains is a list of DNS domains this cluster is reachable by. These domains are used when setting up the infrastructure, like certificates. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.
+   * - enableParallelNodeOperations
+     - boolean
+     - enableParallelNodeOperations controls whether operations on ScyllaDB nodes may be performed concurrently. When it's disabled, ScyllaDB nodes are started one at a time. Enabling it requires ScyllaDB 2026.2 or later. If not provided, it's treated as disabled. On creation, it's set to true when spec.version is a semver-parseable version supporting parallel bootstrap. The set value is persisted, so it stays in effect across ScyllaDB version changes until it's explicitly changed. It's otherwise left unset, and never set on an already existing object.
    * - :ref:`exposeOptions<api-scylla.scylladb.com-scyllaclusters-v1-.spec.exposeOptions>`
      - object
      - exposeOptions specifies options for exposing ScyllaCluster services. This field is immutable. EXPERIMENTAL. Do not rely on any particular behaviour controlled by this field.

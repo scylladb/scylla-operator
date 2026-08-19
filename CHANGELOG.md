@@ -33,19 +33,22 @@
   [#3587](https://github.com/scylladb/scylla-operator/pull/3587)
 
 ### Features & Enhancements
-- Added an optional `bootstrapPolicy` field to `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec`, accepting `Sequential`
-  or `Parallel`. `Parallel` requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
+- Added an optional `enableParallelNodeOperations` boolean field to `ScyllaCluster.spec` and
+  `ScyllaDBDatacenter.spec`. Enabling it requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
+  In this release it only controls how nodes are started. Its scope is expected to widen in a future release, where it
+  will most likely also allow decommissioning nodes in parallel, so setting it to `true` now may take effect for more
+  operations after an upgrade.
   [#3568](https://github.com/scylladb/scylla-operator/pull/3568)
 - The webhook server now serves a mutating admission webhook that applies API defaults to `ScyllaClusters` and
   `ScyllaDBDatacenters` on creation. Matching `MutatingWebhookConfiguration` is added to the operator's manifests.
   [#3579](https://github.com/scylladb/scylla-operator/pull/3579)
-- ScyllaDB nodes can now bootstrap in parallel. With `bootstrapPolicy: Parallel`, the nodes of a rack are started
-  without each one waiting for the previous ordinal to become ready, and all missing racks are created in a single sync
-  rather than one per requeue, which cuts the time to bring up a cluster. Creating them still waits for any in-flight
-  scaling, update or upgrade of the existing racks to settle. Newly created clusters use `Parallel` by default, while
-  existing ones stay on `Sequential` and can opt in. The policy can be changed on a running cluster without disruptions
-  to existing nodes. Parallel bootstrap isn't available for datacenters managed by `ScyllaDBCluster`, which always
-  bootstraps sequentially.
+- ScyllaDB nodes can now bootstrap in parallel. With `enableParallelNodeOperations: true`, the nodes of a rack are
+  started without each one waiting for the previous ordinal to become ready, and all missing racks are created in a
+  single sync rather than one per requeue, which cuts the time to bring up a cluster. Creating them still waits for any
+  in-flight scaling, update or upgrade of the existing racks to settle. Newly created clusters have it enabled by
+  default, while existing ones keep bootstrapping sequentially and can opt in. It can be changed on a running cluster
+  without disruptions to existing nodes. Parallel bootstrap isn't available for datacenters managed by
+  `ScyllaDBCluster`, which always bootstraps sequentially.
   [#3578](https://github.com/scylladb/scylla-operator/pull/3578), [#3588](https://github.com/scylladb/scylla-operator/pull/3588)
 
 ### Other changes

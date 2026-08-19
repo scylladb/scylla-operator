@@ -1079,122 +1079,110 @@ func TestValidateScyllaCluster(t *testing.T) {
 			expectedErrorString: `spec.alternator.servingCertificate.operatorManagedOptions.additionalIPAddresses: Invalid value: "0.not-an-ip.0.0": must be a valid IP address, (e.g. 10.9.8.7 or 2001:db8::ffff)`,
 		},
 		{
-			name: "unset bootstrapPolicy",
+			name: "unset enableParallelNodeOperations",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
-				cluster.Spec.BootstrapPolicy = nil
+				cluster.Spec.EnableParallelNodeOperations = nil
 				return cluster
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
-			name: "unsupported bootstrapPolicy",
-			cluster: func() *scyllav1.ScyllaCluster {
-				cluster := validCluster.DeepCopy()
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicy("foo"))
-				return cluster
-			}(),
-			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeNotSupported, Field: "spec.bootstrapPolicy", BadValue: scyllav1.BootstrapPolicy("foo"), Detail: `supported values: "Sequential", "Parallel"`},
-			},
-			expectedErrorString: `spec.bootstrapPolicy: Unsupported value: "foo": supported values: "Sequential", "Parallel"`,
-		},
-		{
-			name: "Sequential bootstrapPolicy with a version not supporting parallel bootstrap",
+			name: "disabled parallel node operations with a version not supporting parallel bootstrap",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "2025.1.0"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicySequential)
+				cluster.Spec.EnableParallelNodeOperations = new(false)
 				return cluster
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
-			name: "Sequential bootstrapPolicy with an unparseable version",
+			name: "disabled parallel node operations with an unparseable version",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "latest"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicySequential)
+				cluster.Spec.EnableParallelNodeOperations = new(false)
 				return cluster
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
-			name: "Parallel bootstrapPolicy with the minimal supported version",
+			name: "enabled parallel node operations with the minimal supported version",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "2026.2.0"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				cluster.Spec.EnableParallelNodeOperations = new(true)
 				return cluster
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
-			name: "Parallel bootstrapPolicy with a pre-release of the minimal supported version",
+			name: "enabled parallel node operations with a pre-release of the minimal supported version",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "2026.2.0-rc0"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				cluster.Spec.EnableParallelNodeOperations = new(true)
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.bootstrapPolicy", BadValue: scyllav1.BootstrapPolicyParallel, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
-			expectedErrorString: `spec.bootstrapPolicy: Invalid value: "Parallel": requires a semver-parseable ScyllaDB version >= 2026.2`,
+			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
 		},
 		{
-			name: "Parallel bootstrapPolicy with a version newer than the minimal supported one",
+			name: "enabled parallel node operations with a version newer than the minimal supported one",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "2026.3.0"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				cluster.Spec.EnableParallelNodeOperations = new(true)
 				return cluster
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
-			name: "Parallel bootstrapPolicy with an older major version",
+			name: "enabled parallel node operations with an older major version",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "2025.1.0"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				cluster.Spec.EnableParallelNodeOperations = new(true)
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.bootstrapPolicy", BadValue: scyllav1.BootstrapPolicyParallel, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
-			expectedErrorString: `spec.bootstrapPolicy: Invalid value: "Parallel": requires a semver-parseable ScyllaDB version >= 2026.2`,
+			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
 		},
 		{
-			name: "Parallel bootstrapPolicy with an older minor version",
+			name: "enabled parallel node operations with an older minor version",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "2026.1.0"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				cluster.Spec.EnableParallelNodeOperations = new(true)
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.bootstrapPolicy", BadValue: scyllav1.BootstrapPolicyParallel, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
-			expectedErrorString: `spec.bootstrapPolicy: Invalid value: "Parallel": requires a semver-parseable ScyllaDB version >= 2026.2`,
+			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
 		},
 		{
-			name: "Parallel bootstrapPolicy with an unparseable version",
+			name: "enabled parallel node operations with an unparseable version",
 			cluster: func() *scyllav1.ScyllaCluster {
 				cluster := validCluster.DeepCopy()
 				cluster.Spec.Version = "latest"
-				cluster.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				cluster.Spec.EnableParallelNodeOperations = new(true)
 				return cluster
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.bootstrapPolicy", BadValue: scyllav1.BootstrapPolicyParallel, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
-			expectedErrorString: `spec.bootstrapPolicy: Invalid value: "Parallel": requires a semver-parseable ScyllaDB version >= 2026.2`,
+			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
 		},
 	}
 
@@ -1472,76 +1460,76 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			expectedErrorString: `spec.exposeOptions.broadcastOptions.nodes.type: Invalid value: "PodIP": field is immutable`,
 		},
 		{
-			name: "bootstrapPolicy can be changed to Parallel with a supported version",
+			name: "enableParallelNodeOperations can be enabled with a supported version",
 			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.2.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicySequential)
+				sc.Spec.EnableParallelNodeOperations = new(false)
 				return sc
 			}(),
 			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.2.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				sc.Spec.EnableParallelNodeOperations = new(true)
 				return sc
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
-			name: "bootstrapPolicy can be changed to Sequential with an unsupported version",
+			name: "enableParallelNodeOperations can be disabled with an unsupported version",
 			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.1.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				sc.Spec.EnableParallelNodeOperations = new(true)
 				return sc
 			}(),
 			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.1.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicySequential)
+				sc.Spec.EnableParallelNodeOperations = new(false)
 				return sc
 			}(),
 			expectedErrorList:   nil,
 			expectedErrorString: "",
 		},
 		{
-			name: "bootstrapPolicy cannot be changed to Parallel with an unsupported version",
+			name: "enableParallelNodeOperations cannot be enabled with an unsupported version",
 			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.1.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicySequential)
+				sc.Spec.EnableParallelNodeOperations = new(false)
 				return sc
 			}(),
 			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.1.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				sc.Spec.EnableParallelNodeOperations = new(true)
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.bootstrapPolicy", BadValue: scyllav1.BootstrapPolicyParallel, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
-			expectedErrorString: `spec.bootstrapPolicy: Invalid value: "Parallel": requires a semver-parseable ScyllaDB version >= 2026.2`,
+			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
 		},
 		{
-			name: "version cannot be downgraded below the one required by Parallel bootstrapPolicy",
+			name: "version cannot be downgraded below the one required by enabled enableParallelNodeOperations",
 			old: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.2.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				sc.Spec.EnableParallelNodeOperations = new(true)
 				return sc
 			}(),
 			new: func() *scyllav1.ScyllaCluster {
 				sc := unit.NewSingleRackCluster(3)
 				sc.Spec.Version = "2026.1.0"
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				sc.Spec.EnableParallelNodeOperations = new(true)
 				return sc
 			}(),
 			expectedErrorList: field.ErrorList{
-				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.bootstrapPolicy", BadValue: scyllav1.BootstrapPolicyParallel, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
+				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
-			expectedErrorString: `spec.bootstrapPolicy: Invalid value: "Parallel": requires a semver-parseable ScyllaDB version >= 2026.2`,
+			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
 		},
 	}
 

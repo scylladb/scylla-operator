@@ -19,26 +19,26 @@ For background on the StatefulSet-per-rack architecture, see [StatefulSets and r
 
 ## Sequential and parallel node provisioning
 
-The Operator controls how it provisions new nodes with bootstrap policies. The policy determines whether Operator bootstraps ScyllaDB nodes one at a time or all at once: when you create a cluster, add, or scale-out a rack.
+The Operator controls how it provisions new nodes with parallel node operations. They determine whether Operator starts ScyllaDB nodes one at a time or all at once: when you create a cluster, add, or scale-out a rack.
 
-With the `Sequential` policy, Operator bootstraps ScyllaDB nodes one at a time. Within a rack, each Pod must become ready before Operator starts the next one. Operator creates racks one at a time. Bringing up a cluster takes as long as the sum of every node's startup time.
+With parallel node operations disabled, Operator starts ScyllaDB nodes one at a time. Within a rack, each Pod must become ready before Operator starts the next one. Operator creates racks one at a time. Bringing up a cluster takes as long as the sum of every node's startup time.
 
-With the `Parallel` policy, Operator starts all ScyllaDB nodes at once. Operator starts Pods of a rack without waiting for the previous ones to become ready. Operator creates all racks at the same time. Bringing up a cluster is faster, and the difference grows with the number of nodes.
+With parallel node operations enabled, Operator starts all ScyllaDB nodes at once. Operator starts Pods of a rack without waiting for the previous ones to become ready. Operator creates all racks at the same time. Bringing up a cluster is faster, and the difference grows with the number of nodes.
 
-`Parallel` provides better performance when your keyspaces are backed by tablets (the default since ScyllaDB 2025.2), as opposed to vnodes. Therefore, we strongly recommend that you only use tablets for your data keyspaces. This is because with vnode-based keyspaces, a joining node streams its data before it finishes joining, which slows down bringing up new nodes. With tablets, the data is moved in the background after the node joins, so the time to bring up new nodes is not affected by data streaming.
+Parallel node operations provide better performance when your keyspaces are backed by tablets (the default since ScyllaDB 2025.2), as opposed to vnodes. Therefore, we strongly recommend that you only use tablets for your data keyspaces. This is because with vnode-based keyspaces, a joining node streams its data before it finishes joining, which slows down bringing up new nodes. With tablets, the data is moved in the background after the node joins, so the time to bring up new nodes is not affected by data streaming.
 Consider setting [`tablets_mode_for_new_keyspaces`](https://docs.scylladb.com/manual/stable/architecture/tablets.html#enabling-tablets) to `enforced` in your [ScyllaDB configuration](../deploy-scylladb/deploy-your-first-cluster.md#create-a-scylladb-configuration) to prevent individual keyspaces from opting out of tablets.
 
 :::{note}
-The Operator waits for the cluster to settle before creating new racks. An in-flight scaling operation, configuration update, or version upgrade delays the creation of new nodes under both policies.
+The Operator waits for the cluster to settle before creating new racks. An in-flight scaling operation, configuration update, or version upgrade delays the creation of new nodes either way.
 :::
 
-### Configure the bootstrap policy
+### Configure parallel node operations
 
 :::{tip}
-You can change the bootstrap policy at any time, in either direction. Changing it does not disrupt the running nodes.
+You can enable or disable parallel node operations at any time. Changing it does not disrupt the running nodes.
 :::
 
-You can configure the bootstrap policy with the `spec.bootstrapPolicy` field of a `ScyllaCluster`, which accepts `Sequential` and `Parallel`.
+You can configure parallel node operations with the `spec.enableParallelNodeOperations` field of a `ScyllaCluster`, which accepts `true` and `false`.
 
 ```yaml
 apiVersion: scylla.scylladb.com/v1
@@ -47,25 +47,25 @@ metadata:
   name: scylla
   namespace: scylla
 spec:
-  bootstrapPolicy: Parallel
+  enableParallelNodeOperations: true
 ```
 
 :::{caution}
-The minimum ScyllaDB version required by Operator for `Parallel` bootstrap policy is 2026.2.
-The Operator determines the ScyllaDB version from the ScyllaDB container image tag and rejects `Parallel` when the version doesn't satisfy the requirement. An image whose version cannot be determined, such as one pinned by digest, is treated as not supporting parallel bootstrap.
+The minimum ScyllaDB version required by Operator for parallel node operations is 2026.2.
+The Operator determines the ScyllaDB version from the ScyllaDB container image tag and rejects `true` when the version doesn't satisfy the requirement. An image whose version cannot be determined, such as one pinned by digest, is treated as not supporting parallel bootstrap.
 :::
 
-If you don't specify the field, the Operator defaults to `Parallel` on creation, provided the ScyllaDB version is higher or equal to 2026.2.
+If you don't specify the field, the Operator defaults it to `true` on creation, provided the ScyllaDB version is higher or equal to 2026.2.
 
 Operator keeps bootstrapping the nodes of clusters that already existed before the addition of this feature sequentially. 
-It is recommended that you configure the field to `Parallel` explicitly to bootstrap new nodes in parallel.
+It is recommended that you set the field to `true` explicitly to bootstrap new nodes in parallel.
 
 ## Bootstrap synchronisation
 
 In Kubernetes, Pods can start simultaneously, and a new node could attempt to bootstrap while another node is still restarting and appears down to its peers. ScyllaDB denies such a join request and leaves the new node in a state that is not recoverable automatically.
 
 Enabling the `BootstrapSynchronisation` feature gate protects against this by holding each node's startup until all nodes in the cluster are UP. 
-It is recommended that you enable it with either bootstrap policy. See [Bootstrap synchronisation](../understand/bootstrap-sync.md) for details on the mechanism and [Feature gates](../reference/feature-gates.md) for instructions on enabling feature gates.
+It is recommended that you enable it whether or not parallel node operations are enabled. See [Bootstrap synchronisation](../understand/bootstrap-sync.md) for details on the mechanism and [Feature gates](../reference/feature-gates.md) for instructions on enabling feature gates.
 
 ## Scale a ScyllaCluster
 

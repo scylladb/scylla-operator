@@ -275,18 +275,18 @@ func MigrateV1ScyllaClusterSpecToV1Alpha1ScyllaDBDatacenterSpec(scName string, s
 		MinTerminationGracePeriodSeconds:        scSpec.MinTerminationGracePeriodSeconds,
 		MinReadySeconds:                         scSpec.MinReadySeconds,
 		ReadinessGates:                          scSpec.ReadinessGates,
-		BootstrapPolicy: func() *scyllav1alpha1.BootstrapPolicy {
-			// A managed ScyllaDBDatacenter always carries an explicit bootstrapPolicy, so an unset bootstrapPolicy in
-			// the parent ScyllaCluster has to be resolved here. It's resolved to Sequential: an unset value covers
-			// both ScyllaClusters created before the field existed and ones created with a ScyllaDB version that
-			// doesn't support bootstrapping nodes in parallel, and neither may start doing so on an operator upgrade.
-			// Changing this resolution changes the behavior of every such existing cluster, so it must not be treated
-			// as an implementation detail of the create time defaulting.
-			if scSpec.BootstrapPolicy == nil {
-				return pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential)
+		EnableParallelNodeOperations: func() *bool {
+			// A managed ScyllaDBDatacenter always carries an explicit enableParallelNodeOperations, so an unset
+			// enableParallelNodeOperations in the parent ScyllaCluster has to be resolved here. It's resolved to false:
+			// an unset value covers both ScyllaClusters created before the field existed and ones created with a
+			// ScyllaDB version that doesn't support bootstrapping nodes in parallel, and neither may start doing so on
+			// an operator upgrade. Changing this resolution changes the behavior of every such existing cluster, so it
+			// must not be treated as an implementation detail of the create time defaulting.
+			if scSpec.EnableParallelNodeOperations == nil {
+				return new(false)
 			}
 
-			return pointer.Ptr(scyllav1alpha1.BootstrapPolicy(*scSpec.BootstrapPolicy))
+			return new(*scSpec.EnableParallelNodeOperations)
 		}(),
 	}, apimachineryutilerrors.NewAggregate(migrateErrs)
 }

@@ -152,27 +152,15 @@ type ScyllaClusterSpec struct {
 	// +optional
 	ReadinessGates []corev1.PodReadinessGate `json:"readinessGates,omitempty"`
 
-	// bootstrapPolicy controls whether ScyllaDB nodes are bootstrapped one at a time (Sequential) or started in
-	// parallel (Parallel). Parallel requires ScyllaDB 2026.2 or later.
-	// If not provided, it's treated as Sequential.
-	// On creation, it's set to Parallel when spec.version is a semver-parseable version supporting parallel
-	// bootstrap. The set value is persisted, so it stays in effect across ScyllaDB version changes until it's
-	// explicitly changed. It's otherwise left unset, and never set on an already existing object.
-	// +kubebuilder:validation:Enum=Sequential;Parallel
+	// enableParallelNodeOperations controls whether operations on ScyllaDB nodes may be performed concurrently.
+	// When it's disabled, ScyllaDB nodes are started one at a time. Enabling it requires ScyllaDB 2026.2 or later.
+	// If not provided, it's treated as disabled.
+	// On creation, it's set to true when spec.version is a semver-parseable version supporting parallel bootstrap.
+	// The set value is persisted, so it stays in effect across ScyllaDB version changes until it's explicitly
+	// changed. It's otherwise left unset, and never set on an already existing object.
 	// +optional
-	BootstrapPolicy *BootstrapPolicy `json:"bootstrapPolicy,omitempty"`
+	EnableParallelNodeOperations *bool `json:"enableParallelNodeOperations,omitempty"`
 }
-
-// BootstrapPolicy describes the ordering of ScyllaDB nodes bootstrap.
-type BootstrapPolicy string
-
-const (
-	// BootstrapPolicySequential specifies that ScyllaDB nodes are bootstrapped one at a time.
-	BootstrapPolicySequential BootstrapPolicy = "Sequential"
-
-	// BootstrapPolicyParallel specifies that ScyllaDB nodes are started in parallel.
-	BootstrapPolicyParallel BootstrapPolicy = "Parallel"
-)
 
 type PodIPSourceType string
 

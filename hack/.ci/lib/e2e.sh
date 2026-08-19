@@ -126,6 +126,8 @@ spec:
     args:
     - must-gather
     - --all-resources
+    # PackageManifests (OpenShift/OLM) are huge (hundreds of files per namespace) and irrelevant to e2e debugging.
+    - --exclude-resource=PackageManifest.packages.operators.coreos.com
     - --loglevel=2
     - --dest-dir=/tmp/artifacts
     image: "${must_gather_image}"

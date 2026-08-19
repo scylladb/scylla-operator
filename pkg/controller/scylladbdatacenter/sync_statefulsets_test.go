@@ -109,12 +109,12 @@ func Test_createMissingStatefulSets(t *testing.T) {
 			expectedErrorString: `can't create missing statefulset "default/foo": apply failed`,
 		},
 		{
-			name: "returns the StatefulSets created before an apply error with parallel bootstrap policy",
+			name: "returns the StatefulSets created before an apply error with parallel node operations enabled",
 			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := newScyllaDBDatacenter()
 				sdc.Generation = 3
 				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
-				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				sdc.Spec.EnableParallelNodeOperations = new(true)
 				return sdc
 			}(),
 			required: []*appsv1.StatefulSet{
@@ -151,12 +151,12 @@ func Test_createMissingStatefulSets(t *testing.T) {
 			expectedErrorString: `can't create missing statefulset "default/bar": apply failed`,
 		},
 		{
-			name: "creates all missing StatefulSets with parallel bootstrap policy",
+			name: "creates all missing StatefulSets with parallel node operations enabled",
 			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := newScyllaDBDatacenter()
 				sdc.Generation = 3
 				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
-				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				sdc.Spec.EnableParallelNodeOperations = new(true)
 				return sdc
 			}(),
 			required: []*appsv1.StatefulSet{
@@ -190,12 +190,12 @@ func Test_createMissingStatefulSets(t *testing.T) {
 			expectedErrorString: "",
 		},
 		{
-			name: "creates only the missing StatefulSets with parallel bootstrap policy",
+			name: "creates only the missing StatefulSets with parallel node operations enabled",
 			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := newScyllaDBDatacenter()
 				sdc.Generation = 3
 				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
-				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				sdc.Spec.EnableParallelNodeOperations = new(true)
 				return sdc
 			}(),
 			required: []*appsv1.StatefulSet{
@@ -226,11 +226,11 @@ func Test_createMissingStatefulSets(t *testing.T) {
 			expectedErrorString: "",
 		},
 		{
-			name: "returns an error with parallel bootstrap policy and an unsupported ScyllaDB version",
+			name: "returns an error with parallel node operations enabled and an unsupported ScyllaDB version",
 			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := newScyllaDBDatacenter()
 				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageBelowParallelBootstrapThreshold
-				sdc.Spec.BootstrapPolicy = new(scyllav1alpha1.BootstrapPolicyParallel)
+				sdc.Spec.EnableParallelNodeOperations = new(true)
 				return sdc
 			}(),
 			required: []*appsv1.StatefulSet{
@@ -243,7 +243,7 @@ func Test_createMissingStatefulSets(t *testing.T) {
 			},
 			expectedCreated:     nil,
 			expectedConditions:  nil,
-			expectedErrorString: `can't get effective bootstrap policy: bootstrap policy "Parallel" requires a semver-parseable ScyllaDB version >= 2026.2, got "2026.1.0"`,
+			expectedErrorString: `can't determine effective parallel node operations enablement: parallel node operations require a semver-parseable ScyllaDB version >= 2026.2, got "2026.1.0"`,
 		},
 	}
 

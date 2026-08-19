@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/defaulting"
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/semver"
@@ -28,8 +27,8 @@ var consistencyTestScyllaDBVersions = []string{
 	"",
 }
 
-// TestDefaultingIsConsistentWithValidation asserts that defaulting a bootstrapPolicy never adds a validation error.
-// Parallel is only ever stamped for versions the validation accepts it for, which this covers from both sides.
+// TestDefaultingIsConsistentWithValidation asserts that defaulting enableParallelNodeOperations never adds a validation
+// error. true is only ever stamped for versions the validation accepts it for, which this covers from both sides.
 // The mutating webhook runs before the validating one, so a value stamped by the former and rejected by the latter
 // would fail a creation the user could have made themselves.
 func TestDefaultingIsConsistentWithValidation(t *testing.T) {
@@ -45,16 +44,16 @@ func TestDefaultingIsConsistentWithValidation(t *testing.T) {
 				sc := unit.NewSingleRackCluster(3)
 				// spec.version is used verbatim as the tag of the ScyllaDB image.
 				sc.Spec.Version = version
-				sc.Spec.BootstrapPolicy = nil
+				sc.Spec.EnableParallelNodeOperations = nil
 
 				errListBeforeDefaulting := validation.ValidateScyllaCluster(sc)
 
 				defaulting.SetDefaultsScyllaCluster(sc)
-				verifyDefaultedBootstrapPolicy(t, version, sc.Spec.BootstrapPolicy, scyllav1.BootstrapPolicyParallel)
+				verifyDefaultedEnableParallelNodeOperations(t, version, sc.Spec.EnableParallelNodeOperations)
 
 				errListAfterDefaulting := validation.ValidateScyllaCluster(sc)
 				if !reflect.DeepEqual(errListBeforeDefaulting, errListAfterDefaulting) {
-					t.Errorf("defaulting bootstrapPolicy changed the validation result: %s", cmp.Diff(errListBeforeDefaulting, errListAfterDefaulting))
+					t.Errorf("defaulting enableParallelNodeOperations changed the validation result: %s", cmp.Diff(errListBeforeDefaulting, errListAfterDefaulting))
 				}
 			})
 		}
@@ -68,43 +67,43 @@ func TestDefaultingIsConsistentWithValidation(t *testing.T) {
 				t.Parallel()
 
 				sdc := newConsistencyTestScyllaDBDatacenter(version)
-				sdc.Spec.BootstrapPolicy = nil
+				sdc.Spec.EnableParallelNodeOperations = nil
 
 				errListBeforeDefaulting := validation.ValidateScyllaDBDatacenter(sdc)
 
 				defaulting.SetDefaultsScyllaDBDatacenter(sdc)
-				verifyDefaultedBootstrapPolicy(t, version, sdc.Spec.BootstrapPolicy, scyllav1alpha1.BootstrapPolicyParallel)
+				verifyDefaultedEnableParallelNodeOperations(t, version, sdc.Spec.EnableParallelNodeOperations)
 
 				errListAfterDefaulting := validation.ValidateScyllaDBDatacenter(sdc)
 				if !reflect.DeepEqual(errListBeforeDefaulting, errListAfterDefaulting) {
-					t.Errorf("defaulting bootstrapPolicy changed the validation result: %s", cmp.Diff(errListBeforeDefaulting, errListAfterDefaulting))
+					t.Errorf("defaulting enableParallelNodeOperations changed the validation result: %s", cmp.Diff(errListBeforeDefaulting, errListAfterDefaulting))
 				}
 			})
 		}
 	})
 }
 
-// verifyDefaultedBootstrapPolicy asserts that defaulting stamped Parallel exactly for the ScyllaDB versions supporting
-// parallel bootstrap, and left bootstrapPolicy unset for every other one. Sequential is never stamped, so that objects
-// whose owners never made a choice keep resolving an unset bootstrapPolicy rather than being pinned to today's
-// resolution of it.
-func verifyDefaultedBootstrapPolicy[P ~string](t *testing.T, scyllaDBVersion string, got *P, parallel P) {
+// verifyDefaultedEnableParallelNodeOperations asserts that defaulting stamped true exactly for the ScyllaDB versions
+// supporting parallel bootstrap, and left enableParallelNodeOperations unset for every other one. false is never
+// stamped, so that objects whose owners never made a choice keep resolving an unset enableParallelNodeOperations rather
+// than being pinned to today's resolution of it.
+func verifyDefaultedEnableParallelNodeOperations(t *testing.T, scyllaDBVersion string, got *bool) {
 	t.Helper()
 
 	if !semver.SupportsParallelBootstrap(scyllaDBVersion) {
 		if got != nil {
-			t.Errorf("expected bootstrapPolicy to be left unset, got %q", *got)
+			t.Errorf("expected enableParallelNodeOperations to be left unset, got %t", *got)
 		}
 		return
 	}
 
 	if got == nil {
-		t.Errorf("expected bootstrapPolicy to be stamped with %q, got none", parallel)
+		t.Errorf("expected enableParallelNodeOperations to be stamped with true, got none")
 		return
 	}
 
-	if *got != parallel {
-		t.Errorf("expected bootstrapPolicy to be stamped with %q, got %q", parallel, *got)
+	if !*got {
+		t.Errorf("expected enableParallelNodeOperations to be stamped with true, got %t", *got)
 	}
 }
 

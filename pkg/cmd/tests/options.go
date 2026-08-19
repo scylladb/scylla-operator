@@ -35,12 +35,12 @@ type IngressControllerOptions struct {
 }
 
 type ScyllaClusterOptions struct {
-	NodeServiceType             string
-	NodesBroadcastAddressType   string
-	ClientsBroadcastAddressType string
-	StorageClassName            string
-	ReactorBackend              string
-	BootstrapPolicy             string
+	NodeServiceType              string
+	NodesBroadcastAddressType    string
+	ClientsBroadcastAddressType  string
+	StorageClassName             string
+	ReactorBackend               string
+	EnableParallelNodeOperations string
 }
 
 var supportedNodeServiceTypes = []scyllav1.NodeServiceType{
@@ -58,9 +58,9 @@ var supportedReactorBackends = []string{
 	"linux-aio",
 }
 
-var supportedBootstrapPolicies = []scyllav1.BootstrapPolicy{
-	scyllav1.BootstrapPolicySequential,
-	scyllav1.BootstrapPolicyParallel,
+var supportedEnableParallelNodeOperationsValues = []string{
+	"true",
+	"false",
 }
 
 type TestFrameworkOptions struct {
@@ -93,12 +93,12 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 		CleanupPolicyUntyped:        string(framework.CleanupPolicyAlways),
 		IngressController:           &IngressControllerOptions{},
 		ScyllaClusterOptionsUntyped: &ScyllaClusterOptions{
-			NodeServiceType:             string(scyllav1.NodeServiceTypeHeadless),
-			NodesBroadcastAddressType:   string(scyllav1.BroadcastAddressTypePodIP),
-			ClientsBroadcastAddressType: string(scyllav1.BroadcastAddressTypePodIP),
-			StorageClassName:            "",
-			ReactorBackend:              "", // Leaving empty to rely on ScyllaDB default.
-			BootstrapPolicy:             "", // Leaving empty to rely on the operator's default.
+			NodeServiceType:              string(scyllav1.NodeServiceTypeHeadless),
+			NodesBroadcastAddressType:    string(scyllav1.BroadcastAddressTypePodIP),
+			ClientsBroadcastAddressType:  string(scyllav1.BroadcastAddressTypePodIP),
+			StorageClassName:             "",
+			ReactorBackend:               "", // Leaving empty to rely on ScyllaDB default.
+			EnableParallelNodeOperations: "", // Leaving empty to rely on the operator's default.
 		},
 		ObjectStorageOptions:        NewObjectStorageOptions(),
 		ScyllaDBVersion:             configassets.Project.Operator.ScyllaDBVersion,
@@ -150,8 +150,8 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.StorageClassName, "scyllacluster-storageclass-name", "", o.ScyllaClusterOptionsUntyped.StorageClassName, fmt.Sprintf("Name of the StorageClass to request for ScyllaCluster storage."))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.ReactorBackend, "scyllacluster-reactor-backend", "", o.ScyllaClusterOptionsUntyped.ReactorBackend, fmt.Sprintf("Name of the reactor backend to use for ScyllaCluster."))
-	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.BootstrapPolicy, "scyllacluster-bootstrap-policy", "", o.ScyllaClusterOptionsUntyped.BootstrapPolicy, fmt.Sprintf("Bootstrap policy to set on ScyllaClusters and ScyllaDBDatacenters created by tests. Leave empty to rely on the operator's defaulting. Allowed values are [%s].", strings.Join(
-		oslices.ConvertSlice(supportedBootstrapPolicies, oslices.ToString[scyllav1.BootstrapPolicy]),
+	cmd.PersistentFlags().StringVarP(&o.ScyllaClusterOptionsUntyped.EnableParallelNodeOperations, "scyllacluster-enable-parallel-node-operations", "", o.ScyllaClusterOptionsUntyped.EnableParallelNodeOperations, fmt.Sprintf("Whether to enable parallel node operations on ScyllaClusters and ScyllaDBDatacenters created by tests. Leave empty to rely on the operator's defaulting. Allowed values are [%s].", strings.Join(
+		supportedEnableParallelNodeOperationsValues,
 		", ",
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBVersion, "scylladb-version", "", o.ScyllaDBVersion, "Version of ScyllaDB to use.")
@@ -202,8 +202,8 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, fmt.Errorf("invalid scyllacluster-reactor-backend: %q", o.ScyllaClusterOptionsUntyped.ReactorBackend))
 	}
 
-	if bootstrapPolicy := o.ScyllaClusterOptionsUntyped.BootstrapPolicy; bootstrapPolicy != "" && !oslices.ContainsItem(supportedBootstrapPolicies, scyllav1.BootstrapPolicy(bootstrapPolicy)) {
-		errors = append(errors, fmt.Errorf("invalid scyllacluster-bootstrap-policy: %q", o.ScyllaClusterOptionsUntyped.BootstrapPolicy))
+	if enableParallelNodeOperations := o.ScyllaClusterOptionsUntyped.EnableParallelNodeOperations; enableParallelNodeOperations != "" && !oslices.ContainsItem(supportedEnableParallelNodeOperationsValues, enableParallelNodeOperations) {
+		errors = append(errors, fmt.Errorf("invalid scyllacluster-enable-parallel-node-operations: %q", o.ScyllaClusterOptionsUntyped.EnableParallelNodeOperations))
 	}
 
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBVersion) {
@@ -313,9 +313,9 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 			NodesBroadcastAddressType:   scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.NodesBroadcastAddressType),
 			ClientsBroadcastAddressType: scyllav1.BroadcastAddressType(o.ScyllaClusterOptionsUntyped.ClientsBroadcastAddressType),
 		},
-		StorageClassName: o.ScyllaClusterOptionsUntyped.StorageClassName,
-		ReactorBackend:   o.ScyllaClusterOptionsUntyped.ReactorBackend,
-		BootstrapPolicy:  o.ScyllaClusterOptionsUntyped.BootstrapPolicy,
+		StorageClassName:             o.ScyllaClusterOptionsUntyped.StorageClassName,
+		ReactorBackend:               o.ScyllaClusterOptionsUntyped.ReactorBackend,
+		EnableParallelNodeOperations: o.ScyllaClusterOptionsUntyped.EnableParallelNodeOperations,
 	}
 
 	workerRestConfigs := make(map[string]*rest.Config, len(o.WorkerClientConfigs))

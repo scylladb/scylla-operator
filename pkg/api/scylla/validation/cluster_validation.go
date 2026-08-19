@@ -37,11 +37,6 @@ var (
 		scyllav1.BroadcastAddressTypeServiceLoadBalancerIngress,
 	}
 
-	SupportedScyllaV1BootstrapPolicies = []scyllav1.BootstrapPolicy{
-		scyllav1.BootstrapPolicySequential,
-		scyllav1.BootstrapPolicyParallel,
-	}
-
 	schedulerTaskSpecCronParseOptions = cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor
 )
 
@@ -224,13 +219,9 @@ func ValidateScyllaClusterSpec(spec *scyllav1.ScyllaClusterSpec, fldPath *field.
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("minReadySeconds"), *spec.MinReadySeconds, "must be non-negative integer"))
 	}
 
-	if spec.BootstrapPolicy != nil {
-		allErrs = append(allErrs, validateEnum(*spec.BootstrapPolicy, SupportedScyllaV1BootstrapPolicies, fldPath.Child("bootstrapPolicy"))...)
-
-		if *spec.BootstrapPolicy == scyllav1.BootstrapPolicyParallel {
-			// spec.version is used verbatim as the tag of the ScyllaDB image, so there's no image reference to strip the version from.
-			allErrs = append(allErrs, validateParallelBootstrapPolicyScyllaDBVersion(*spec.BootstrapPolicy, spec.Version, fldPath.Child("bootstrapPolicy"))...)
-		}
+	if spec.EnableParallelNodeOperations != nil && *spec.EnableParallelNodeOperations {
+		// spec.version is used verbatim as the tag of the ScyllaDB image, so there's no image reference to strip the version from.
+		allErrs = append(allErrs, validateEnabledParallelNodeOperationsScyllaDBVersion(spec.Version, fldPath.Child("enableParallelNodeOperations"))...)
 	}
 
 	return allErrs

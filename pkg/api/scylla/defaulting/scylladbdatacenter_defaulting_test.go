@@ -15,7 +15,7 @@ import (
 func TestSetDefaultsScyllaDBDatacenter(t *testing.T) {
 	t.Parallel()
 
-	newScyllaDBDatacenter := func(image string, bootstrapPolicy *scyllav1alpha1.BootstrapPolicy) *scyllav1alpha1.ScyllaDBDatacenter {
+	newScyllaDBDatacenter := func(image string, enableParallelNodeOperations *bool) *scyllav1alpha1.ScyllaDBDatacenter {
 		return &scyllav1alpha1.ScyllaDBDatacenter{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "basic",
@@ -31,7 +31,7 @@ func TestSetDefaultsScyllaDBDatacenter(t *testing.T) {
 						Name: "rack",
 					},
 				},
-				BootstrapPolicy: bootstrapPolicy,
+				EnableParallelNodeOperations: enableParallelNodeOperations,
 			},
 		}
 	}
@@ -42,66 +42,66 @@ func TestSetDefaultsScyllaDBDatacenter(t *testing.T) {
 		expected   *scyllav1alpha1.ScyllaDBDatacenter
 	}{
 		{
-			name:       "unset bootstrapPolicy with the minimal version supporting parallel bootstrap is defaulted to Parallel",
+			name:       "unset enableParallelNodeOperations with the minimal version supporting parallel bootstrap is defaulted to Parallel",
 			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, nil),
-			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicyParallel)),
+			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(true)),
 		},
 		{
-			name:       "unset bootstrapPolicy with a version newer than the minimal one supporting parallel bootstrap is defaulted to Parallel",
+			name:       "unset enableParallelNodeOperations with a version newer than the minimal one supporting parallel bootstrap is defaulted to Parallel",
 			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageAboveParallelBootstrapThreshold, nil),
-			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAboveParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicyParallel)),
+			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAboveParallelBootstrapThreshold, new(true)),
 		},
 		{
-			name:       "unset bootstrapPolicy with an older version is left unset",
+			name:       "unset enableParallelNodeOperations with an older version is left unset",
 			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageBelowParallelBootstrapThreshold, nil),
 			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageBelowParallelBootstrapThreshold, nil),
 		},
 		{
 			// Per semver precedence a pre-release version is lower than the same version without one, matching how
-			// an explicitly set Parallel bootstrapPolicy is validated.
-			name:       "unset bootstrapPolicy with a pre-release of the minimal version supporting parallel bootstrap is left unset",
+			// an explicitly set Parallel enableParallelNodeOperations is validated.
+			name:       "unset enableParallelNodeOperations with a pre-release of the minimal version supporting parallel bootstrap is left unset",
 			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImagePreReleaseOfParallelBootstrapThreshold, nil),
 			expected:   newScyllaDBDatacenter(unit.ScyllaDBImagePreReleaseOfParallelBootstrapThreshold, nil),
 		},
 		{
-			name:       "unset bootstrapPolicy with an unparseable tag is left unset",
+			name:       "unset enableParallelNodeOperations with an unparseable tag is left unset",
 			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImage, nil),
 			expected:   newScyllaDBDatacenter(unit.ScyllaDBImage, nil),
 		},
 		{
 			// A digest pinned image carries no tag to determine the version from.
-			name:       "unset bootstrapPolicy with a digest pinned image is left unset",
+			name:       "unset enableParallelNodeOperations with a digest pinned image is left unset",
 			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageRepository+"@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a", nil),
 			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageRepository+"@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a", nil),
 		},
 		{
-			name:       "unset bootstrapPolicy with a tagged and digest pinned image is defaulted from the tag",
+			name:       "unset enableParallelNodeOperations with a tagged and digest pinned image is defaulted from the tag",
 			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold+"@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a", nil),
-			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold+"@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a", new(scyllav1alpha1.BootstrapPolicyParallel)),
+			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold+"@sha256:d450d2d8636ab7b511b68180b4c535bf2294d0d6427adf11fc7f4bddfdbff35a", new(true)),
 		},
 		{
 			// Mutating admission runs before the object is validated against the CRD schema, so the defaulter has to
 			// tolerate a spec missing the fields it reads.
-			name:       "unset bootstrapPolicy with an empty image is left unset",
+			name:       "unset enableParallelNodeOperations with an empty image is left unset",
 			datacenter: newScyllaDBDatacenter("", nil),
 			expected:   newScyllaDBDatacenter("", nil),
 		},
 		{
-			name:       "explicit Sequential bootstrapPolicy is preserved",
-			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicySequential)),
-			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicySequential)),
+			name:       "explicit false enableParallelNodeOperations is preserved",
+			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(false)),
+			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(false)),
 		},
 		{
-			name:       "explicit Parallel bootstrapPolicy is preserved",
-			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicyParallel)),
-			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicyParallel)),
+			name:       "explicit true enableParallelNodeOperations is preserved",
+			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(true)),
+			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageAtParallelBootstrapThreshold, new(true)),
 		},
 		{
 			// Rejecting a value the user set themselves is the validating webhook's job. The defaulter must not
 			// silently turn an invalid request into a valid one.
-			name:       "explicit Parallel bootstrapPolicy with a version not supporting it is preserved",
-			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageBelowParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicyParallel)),
-			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageBelowParallelBootstrapThreshold, new(scyllav1alpha1.BootstrapPolicyParallel)),
+			name:       "explicit true enableParallelNodeOperations with a version not supporting it is preserved",
+			datacenter: newScyllaDBDatacenter(unit.ScyllaDBImageBelowParallelBootstrapThreshold, new(true)),
+			expected:   newScyllaDBDatacenter(unit.ScyllaDBImageBelowParallelBootstrapThreshold, new(true)),
 		},
 	}
 

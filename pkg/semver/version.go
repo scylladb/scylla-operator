@@ -57,8 +57,9 @@ func (sv ScyllaVersion) SupportFeatureSafe(featureVersion semver.Version) bool {
 // SupportsParallelBootstrap returns whether the given ScyllaDB version supports bootstrapping nodes in parallel.
 // A version which can't be parsed, e.g. one of an image pinned by a digest, is deliberately treated as not supporting
 // it, so that parallel bootstrap is only ever enabled for versions known to support it.
-// This is the single predicate both the validation of an explicitly set bootstrapPolicy and its create time defaulting
-// are evaluated against, so that the defaulting can never stamp a value the validation rejects.
+// This is the single predicate both the validation of an explicitly enabled enableParallelNodeOperations and its
+// create time defaulting are evaluated against, so that the defaulting can never stamp a value the validation
+// rejects.
 func SupportsParallelBootstrap(scyllaDBVersion string) bool {
 	return NewScyllaVersion(scyllaDBVersion).SupportFeatureSafe(ScyllaDBVersionRequiredForParallelBootstrap)
 }

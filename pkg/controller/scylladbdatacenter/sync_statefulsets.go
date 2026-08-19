@@ -437,8 +437,8 @@ func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 }
 
 // createMissingStatefulSets creates the missing StatefulSets from requiredStatefulSets.
-// Existing StatefulSets are skipped. With the Sequential bootstrap policy at most one missing StatefulSet is created so
-// that racks bootstrap one by one, while with the Parallel one all of them are created at once.
+// Existing StatefulSets are skipped. With parallel node operations disabled at most one missing StatefulSet is created
+// so that racks bootstrap one by one, while with parallel node operations enabled all of them are created at once.
 // It returns the StatefulSets created so far and their progressing conditions, together with an error if a creation
 // failed.
 func createMissingStatefulSets(
@@ -448,9 +448,9 @@ func createMissingStatefulSets(
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
 ) ([]*appsv1.StatefulSet, []metav1.Condition, error) {
-	bootstrapPolicy, err := effectiveBootstrapPolicy(sdc)
+	parallelNodeOperationsEnabled, err := effectiveParallelNodeOperationsEnabled(sdc)
 	if err != nil {
-		return nil, nil, fmt.Errorf("can't get effective bootstrap policy: %w", err)
+		return nil, nil, fmt.Errorf("can't determine effective parallel node operations enablement: %w", err)
 	}
 
 	createdStatefulSets := make([]*appsv1.StatefulSet, 0)
@@ -475,7 +475,7 @@ func createMissingStatefulSets(
 		createdStatefulSets = append(createdStatefulSets, sts)
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, req, "apply", sdc.Generation)
 
-		if bootstrapPolicy != scyllav1alpha1.BootstrapPolicyParallel {
+		if !parallelNodeOperationsEnabled {
 			// StatefulSets must be created sequentially. Return early.
 			return createdStatefulSets, progressingConditions, nil
 		}

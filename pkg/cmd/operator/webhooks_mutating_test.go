@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -173,7 +172,7 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 		expectedError   error
 	}{
 		{
-			// Sequential is never stamped: an unset bootstrapPolicy is left unset, so that objects whose owners
+			// Sequential is never stamped: an unset enableParallelNodeOperations is left unset, so that objects whose owners
 			// never made a choice keep resolving it rather than being pinned to today's resolution.
 			name: "a ScyllaCluster with a version not supporting parallel bootstrap is admitted unchanged",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
@@ -185,7 +184,7 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 			expectedError:   nil,
 		},
 		{
-			name: "a ScyllaCluster with a version supporting parallel bootstrap is stamped with a Parallel bootstrapPolicy",
+			name: "a ScyllaCluster with a version supporting parallel bootstrap is stamped with enableParallelNodeOperations",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
 				Group:    "scylla.scylladb.com",
 				Version:  "v1",
@@ -194,19 +193,19 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 			expectedPatches: []jsonpatch.Operation{
 				{
 					Operation: "add",
-					Path:      "/spec/bootstrapPolicy",
-					Value:     string(scyllav1.BootstrapPolicyParallel),
+					Path:      "/spec/enableParallelNodeOperations",
+					Value:     true,
 				},
 			},
 			expectedError: nil,
 		},
 		{
-			name: "a ScyllaCluster with an explicit bootstrapPolicy passes through unchanged",
+			name: "a ScyllaCluster with an explicit enableParallelNodeOperations passes through unchanged",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
 				Group:    "scylla.scylladb.com",
 				Version:  "v1",
 				Resource: "scyllaclusters",
-			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1","kind":"ScyllaCluster","metadata":{"name":"basic","namespace":"test"},"spec":{"version":"2026.2.0","agentVersion":"3.4.0","bootstrapPolicy":"Sequential","datacenter":{"name":"dc1","racks":[{"name":"rack1","members":3,"storage":{"capacity":"1Gi"}}]}}}`)),
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1","kind":"ScyllaCluster","metadata":{"name":"basic","namespace":"test"},"spec":{"version":"2026.2.0","agentVersion":"3.4.0","enableParallelNodeOperations":false,"datacenter":{"name":"dc1","racks":[{"name":"rack1","members":3,"storage":{"capacity":"1Gi"}}]}}}`)),
 			expectedPatches: nil,
 			expectedError:   nil,
 		},
@@ -221,7 +220,7 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 			expectedError:   nil,
 		},
 		{
-			name: "a ScyllaDBDatacenter with an image supporting parallel bootstrap is stamped with a Parallel bootstrapPolicy",
+			name: "a ScyllaDBDatacenter with an image supporting parallel bootstrap is stamped with enableParallelNodeOperations",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
 				Group:    "scylla.scylladb.com",
 				Version:  "v1alpha1",
@@ -230,19 +229,19 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 			expectedPatches: []jsonpatch.Operation{
 				{
 					Operation: "add",
-					Path:      "/spec/bootstrapPolicy",
-					Value:     string(scyllav1alpha1.BootstrapPolicyParallel),
+					Path:      "/spec/enableParallelNodeOperations",
+					Value:     true,
 				},
 			},
 			expectedError: nil,
 		},
 		{
-			name: "a ScyllaDBDatacenter with an explicit bootstrapPolicy passes through unchanged",
+			name: "a ScyllaDBDatacenter with an explicit enableParallelNodeOperations passes through unchanged",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
 				Group:    "scylla.scylladb.com",
 				Version:  "v1alpha1",
 				Resource: "scylladbdatacenters",
-			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBDatacenter","metadata":{"name":"basic","namespace":"test"},"spec":{"clusterName":"basic","scyllaDB":{"image":"docker.io/scylladb/scylla:2026.2.0"},"bootstrapPolicy":"Sequential","racks":[{"name":"rack1"}]}}`)),
+			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBDatacenter","metadata":{"name":"basic","namespace":"test"},"spec":{"clusterName":"basic","scyllaDB":{"image":"docker.io/scylladb/scylla:2026.2.0"},"enableParallelNodeOperations":false,"racks":[{"name":"rack1"}]}}`)),
 			expectedPatches: nil,
 			expectedError:   nil,
 		},

@@ -57,7 +57,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		env = envtest.Setup(ctx)
 	})
 
-	g.It("should create rack StatefulSets sequentially with Sequential bootstrap policy", func(ctx g.SpecContext) {
+	g.It("should create rack StatefulSets sequentially with parallel node operations disabled", func(ctx g.SpecContext) {
 		g.By("Running ScyllaDBDatacenter controller")
 		runScyllaDBDatacenterController(ctx, env)
 
@@ -65,7 +65,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		createScyllaOperatorConfig(ctx, env)
 
 		g.By("Creating a ScyllaDBDatacenter with two racks")
-		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b"}, withBootstrapPolicy(scyllav1alpha1.BootstrapPolicySequential))
+		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b"}, withEnableParallelNodeOperations(false))
 		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -87,15 +87,15 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		waitForStatefulSet(ctx, env, secondRackStatefulSetName, scyllaDBDatacenterControllerDefaultEventuallyTimeout)
 	})
 
-	g.It("should create rack StatefulSets in parallel with Parallel bootstrap policy", func(ctx g.SpecContext) {
+	g.It("should create rack StatefulSets in parallel with parallel node operations enabled", func(ctx g.SpecContext) {
 		g.By("Running ScyllaDBDatacenter controller")
 		runScyllaDBDatacenterController(ctx, env)
 
 		g.By("Creating ScyllaOperatorConfig singleton")
 		createScyllaOperatorConfig(ctx, env)
 
-		g.By("Creating a ScyllaDBDatacenter with three racks and the Parallel bootstrap policy")
-		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b", "rack-c"}, withBootstrapPolicy(scyllav1alpha1.BootstrapPolicyParallel))
+		g.By("Creating a ScyllaDBDatacenter with three racks and parallel node operations enabled")
+		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{"rack-a", "rack-b", "rack-c"}, withEnableParallelNodeOperations(true))
 		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -106,8 +106,8 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		}
 	})
 
-	g.DescribeTableSubtree("with bootstrap policy",
-		func(bootstrapPolicy scyllav1alpha1.BootstrapPolicy) {
+	g.DescribeTableSubtree("with parallel node operations",
+		func(enableParallelNodeOperations bool) {
 			g.DescribeTable("should not create a StatefulSet for a new rack while an existing rack is not rolled out",
 				func(ctx g.SpecContext, initialRacks, updatedRacks []string, existingRack, newRack string) {
 					g.By("Running ScyllaDBDatacenter controller")
@@ -117,7 +117,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 					createScyllaOperatorConfig(ctx, env)
 
 					g.By("Creating a ScyllaDBDatacenter")
-					sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), initialRacks, withBootstrapPolicy(bootstrapPolicy))
+					sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), initialRacks, withEnableParallelNodeOperations(enableParallelNodeOperations))
 					sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
 					o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -156,11 +156,11 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 				g.Entry("when new rack is appended", []string{"rack-a"}, []string{"rack-a", "rack-b"}, "rack-a", "rack-b"),
 			)
 		},
-		g.Entry("Sequential", scyllav1alpha1.BootstrapPolicySequential),
-		// The Parallel bootstrap policy only relaxes the initial creation of missing StatefulSets. Adding a rack to an
-		// existing datacenter still waits for the existing racks to roll out, so that racks aren't added while another one
-		// is scaling or updating, regardless of the bootstrap policy.
-		g.Entry("Parallel", scyllav1alpha1.BootstrapPolicyParallel),
+		g.Entry("disabled", false),
+		// Parallel node operations only relax the initial creation of missing StatefulSets. Adding a rack to an existing
+		// datacenter still waits for the existing racks to roll out, so that racks aren't added while another one is
+		// scaling or updating, regardless of whether parallel node operations are enabled.
+		g.Entry("enabled", true),
 	)
 })
 
@@ -210,9 +210,9 @@ func makeEnvtestScyllaDBDatacenter(namespace string, racks []string, mutators ..
 	return sdc
 }
 
-func withBootstrapPolicy(bootstrapPolicy scyllav1alpha1.BootstrapPolicy) func(*scyllav1alpha1.ScyllaDBDatacenter) {
+func withEnableParallelNodeOperations(enableParallelNodeOperations bool) func(*scyllav1alpha1.ScyllaDBDatacenter) {
 	return func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
-		sdc.Spec.BootstrapPolicy = new(bootstrapPolicy)
+		sdc.Spec.EnableParallelNodeOperations = new(enableParallelNodeOperations)
 	}
 }
 

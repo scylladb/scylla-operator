@@ -216,15 +216,15 @@ func scyllaDBTargetRepositoryVersion() (string, string) {
 func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
 	scyllaDBRepository, scyllaDBVersion := scyllaDBTargetRepositoryVersion()
 	renderArgs := map[string]any{
-		"scyllaDBRepository":          scyllaDBRepository,
-		"scyllaDBVersion":             scyllaDBVersion,
-		"scyllaDBManagerVersion":      TestContext.ScyllaDBManagerAgentVersion,
-		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
-		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
-		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
-		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
-		"scyllaArgs":                  TestContext.ScyllaClusterOptions.ScyllaArgs(),
-		"bootstrapPolicy":             TestContext.ScyllaClusterOptions.BootstrapPolicy,
+		"scyllaDBRepository":           scyllaDBRepository,
+		"scyllaDBVersion":              scyllaDBVersion,
+		"scyllaDBManagerVersion":       TestContext.ScyllaDBManagerAgentVersion,
+		"nodeServiceType":              TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType":  TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":             TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                   TestContext.ScyllaClusterOptions.ScyllaArgs(),
+		"enableParallelNodeOperations": TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
 	}
 
 	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
@@ -246,16 +246,16 @@ func (f *Framework) GetNonDevModeScyllaCluster() *scyllav1.ScyllaCluster {
 func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
 	scyllaDBRepository, scyllaDBVersion := scyllaDBTargetRepositoryVersion()
 	renderArgs := map[string]any{
-		"scyllaDBRepository":          scyllaDBRepository,
-		"scyllaDBVersion":             scyllaDBVersion,
-		"scyllaDBManagerVersion":      TestContext.ScyllaDBManagerAgentVersion,
-		"nodeServiceType":             TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
-		"nodesBroadcastAddressType":   TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
-		"clientsBroadcastAddressType": TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
-		"storageClassName":            TestContext.ScyllaClusterOptions.StorageClassName,
-		"scyllaArgs":                  TestContext.ScyllaClusterOptions.ScyllaArgs(),
-		"rackNames":                   []string{"a", "b", "c"},
-		"bootstrapPolicy":             TestContext.ScyllaClusterOptions.BootstrapPolicy,
+		"scyllaDBRepository":           scyllaDBRepository,
+		"scyllaDBVersion":              scyllaDBVersion,
+		"scyllaDBManagerVersion":       TestContext.ScyllaDBManagerAgentVersion,
+		"nodeServiceType":              TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType":  TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":             TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                   TestContext.ScyllaClusterOptions.ScyllaArgs(),
+		"rackNames":                    []string{"a", "b", "c"},
+		"enableParallelNodeOperations": TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
 	}
 
 	sc, _, err := scyllafixture.ZonalScyllaClusterTemplate.RenderObject(renderArgs)
@@ -274,7 +274,7 @@ func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatac
 		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
 		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
 		"scyllaDBManagerAgentRepository": configassets.ScyllaDBManagerAgentImageRepository,
-		"bootstrapPolicy":                TestContext.ScyllaClusterOptions.BootstrapPolicy,
+		"enableParallelNodeOperations":   TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
 	}
 
 	sdc, _, err := scyllafixture.ScyllaDBDatacenterTemplate.RenderObject(renderArgs)

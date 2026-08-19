@@ -309,41 +309,41 @@ func TestMigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(t *testing.T) {
 			},
 		},
 		{
-			name: "unset bootstrapPolicy is migrated into Sequential",
+			name: "unset enableParallelNodeOperations is migrated into false",
 			scyllaCluster: func() *scyllav1.ScyllaCluster {
 				sc := newBasicScyllaCluster()
-				sc.Spec.BootstrapPolicy = nil
+				sc.Spec.EnableParallelNodeOperations = nil
 				return sc
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Spec.BootstrapPolicy = pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential)
+				sd.Spec.EnableParallelNodeOperations = new(false)
 				return sd
 			}(),
 		},
 		{
-			name: "explicit Sequential bootstrapPolicy is migrated verbatim",
+			name: "explicit false enableParallelNodeOperations is migrated verbatim",
 			scyllaCluster: func() *scyllav1.ScyllaCluster {
 				sc := newBasicScyllaCluster()
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicySequential)
+				sc.Spec.EnableParallelNodeOperations = new(false)
 				return sc
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Spec.BootstrapPolicy = pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential)
+				sd.Spec.EnableParallelNodeOperations = new(false)
 				return sd
 			}(),
 		},
 		{
-			name: "explicit Parallel bootstrapPolicy is migrated verbatim",
+			name: "explicit true enableParallelNodeOperations is migrated verbatim",
 			scyllaCluster: func() *scyllav1.ScyllaCluster {
 				sc := newBasicScyllaCluster()
-				sc.Spec.BootstrapPolicy = pointer.Ptr(scyllav1.BootstrapPolicyParallel)
+				sc.Spec.EnableParallelNodeOperations = new(true)
 				return sc
 			}(),
 			expectedScyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sd := newBasicScyllaDBDatacenterWithNoStatus()
-				sd.Spec.BootstrapPolicy = pointer.Ptr(scyllav1alpha1.BootstrapPolicyParallel)
+				sd.Spec.EnableParallelNodeOperations = new(true)
 				return sd
 			}(),
 		},
@@ -744,7 +744,7 @@ func newBasicScyllaDBDatacenterWithStatus() *scyllav1alpha1.ScyllaDBDatacenter {
 					Name:         "a",
 				},
 			},
-			BootstrapPolicy: pointer.Ptr(scyllav1alpha1.BootstrapPolicySequential),
+			EnableParallelNodeOperations: new(false),
 		},
 		Status: scyllav1alpha1.ScyllaDBDatacenterStatus{
 			ObservedGeneration: pointer.Ptr[int64](123),

@@ -951,9 +951,9 @@ func (in *ScyllaClusterSpec) DeepCopyInto(out *ScyllaClusterSpec) {
 		*out = make([]corev1.PodReadinessGate, len(*in))
 		copy(*out, *in)
 	}
-	if in.BootstrapPolicy != nil {
-		in, out := &in.BootstrapPolicy, &out.BootstrapPolicy
-		*out = new(BootstrapPolicy)
+	if in.EnableParallelNodeOperations != nil {
+		in, out := &in.EnableParallelNodeOperations, &out.EnableParallelNodeOperations
+		*out = new(bool)
 		**out = **in
 	}
 	return

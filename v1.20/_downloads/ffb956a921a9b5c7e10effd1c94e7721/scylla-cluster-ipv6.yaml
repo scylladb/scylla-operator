@@ -1,0 +1,51 @@
+apiVersion: scylla.scylladb.com/v1
+kind: ScyllaCluster
+metadata:
+  name: scylla-ipv6-example
+  namespace: scylla
+spec:
+  version: 2025.4.0
+  
+  # [network]
+  network:
+    dnsPolicy: ClusterFirst
+    ipFamilyPolicy: SingleStack
+    ipFamilies: ["IPv6"]
+  # [/network]
+  
+  datacenter:
+    name: ipv6-datacenter
+    racks:
+    - name: ipv6-rack-a
+      members: 3
+      storage:
+        capacity: 100Gi
+        storageClassName: scylladb-local-xfs
+      resources:
+        requests:
+          cpu: 2
+          memory: 8Gi
+        limits:
+          cpu: 2
+          memory: 8Gi
+      placement:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values: ["zone-a"]
+  
+  # [exposeOptions]
+  exposeOptions:
+    broadcastOptions:
+      nodes:
+        type: PodIP
+        podIP:
+          source: Status
+      clients:
+        type: PodIP
+        podIP:
+          source: Status
+  # [/exposeOptions]

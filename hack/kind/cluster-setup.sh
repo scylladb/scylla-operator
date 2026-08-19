@@ -12,6 +12,9 @@ shopt -s inherit_errexit
 readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
 
 source "${repo_root}/hack/kind/lib.sh"
+source "${repo_root}/hack/lib/assets.sh"
+
+kind_node_image="$( get-config '.operatorTests.kindNodeImage' )"
 
 # Ensure all kind calls use podman.
 export KIND_EXPERIMENTAL_PROVIDER=podman
@@ -43,7 +46,7 @@ EOF
 
 # Ensure KinD cluster exists.
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
-    KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${repo_root}/hack/kind/cluster-config.yaml" --retain)
+    KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${repo_root}/hack/kind/cluster-config.yaml" --image="${kind_node_image}" --retain)
 
     # As we rely on rootless Podman, we need to delegate cgroup management to the user systemd instance (this is implicitly
     # done on systems with systemd >= 252, but needs to be explicit on older systems).

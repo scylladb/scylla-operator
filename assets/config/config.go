@@ -44,6 +44,7 @@ type OperatorTestsConfig struct {
 	ScyllaDBVersions         ScyllaDBTestVersions `json:"scyllaDBVersions"`
 	NodeSetupImage           string               `json:"nodeSetupImage"`
 	EnvTestKubernetesVersion string               `json:"envTestKubernetesVersion"`
+	KindNodeImage            string               `json:"kindNodeImage"`
 }
 
 type CertManagerConfig struct {

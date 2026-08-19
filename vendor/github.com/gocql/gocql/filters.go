@@ -53,12 +53,25 @@ func DenyAllFilter() HostFilter {
 	})
 }
 
+// dataCenterHostFilter accepts hosts in one datacenter.
+//
+// It is a named type rather than a HostFilterFunc closure so that the
+// datacenter it selects can be read back: a closure captures it where nothing
+// can reach it, and every filter built from one is indistinguishable as a
+// HostFilterFunc. driver_config.go reports this filter as the part of the
+// cluster the driver holds connections to.
+type dataCenterHostFilter struct {
+	dataCenter string
+}
+
+func (f dataCenterHostFilter) Accept(host *HostInfo) bool {
+	return host.DataCenter() == f.dataCenter
+}
+
 // DataCenterHostFilter filters all hosts such that they are in the same data center
 // as the supplied data center.
 func DataCenterHostFilter(dataCenter string) HostFilter {
-	return HostFilterFunc(func(host *HostInfo) bool {
-		return host.DataCenter() == dataCenter
-	})
+	return dataCenterHostFilter{dataCenter: dataCenter}
 }
 
 // Deprecated: Use DataCenterHostFilter instead.

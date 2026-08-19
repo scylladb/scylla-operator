@@ -34,14 +34,12 @@ import (
 const defaultMaxPreparedStmts = 1000
 
 // stmtCacheKey is a composite key for the prepared statement cache.
-// Using a struct avoids the string concatenation allocation that occurred
-// on every query and fixes the theoretical key collision bug where
-// different (hostID, keyspace, statement) tuples could produce the same
-// concatenated string.
+// A struct avoids the allocation and collision risk of concatenating
+// (hostID, keyspace, statement) into a single string key.
 type stmtCacheKey struct {
-	hostID    string
 	keyspace  string
 	statement string
+	hostID    UUID
 }
 
 // preparedLRU is the prepared statement cache
@@ -71,6 +69,47 @@ func (p *preparedLRU) remove(key stmtCacheKey) bool {
 	return p.lru.Remove(key)
 }
 
+// updateMetadataIfSame atomically replaces the cache entry for key with val, but
+// only when the currently cached entry is still the exact prepared statement
+// identified by expect (pointer identity of its preparedStatment, and its done
+// channel already closed). It returns true if the replacement happened.
+//
+// Pointer identity — not the prepared id — is the generation token: a concurrent
+// eviction+reprepare for the same statement installs a new *inflightPrepare with
+// a freshly allocated *preparedStatment, so even though the prepared id bytes are
+// typically identical across reprepares, the pointer differs and this stale
+// refresh is correctly skipped.
+//
+// This makes the METADATA_CHANGED metadata refresh a single locked operation:
+// the presence/identity check and the replacement cannot be interleaved with a
+// concurrent eviction (which would otherwise be resurrected) or with a newer or
+// still-in-flight prepare installed for the same key (which would otherwise be
+// clobbered).
+func (p *preparedLRU) updateMetadataIfSame(key stmtCacheKey, expect *preparedStatment, val *inflightPrepare) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	cur, ok := p.lru.Get(key)
+	if !ok {
+		return false
+	}
+	ifp, ok := cur.(*inflightPrepare)
+	if !ok {
+		return false
+	}
+
+	select {
+	case <-ifp.done:
+		if ifp.preparedStatment != nil && ifp.preparedStatment == expect {
+			p.lru.Add(key, val)
+			return true
+		}
+	default:
+		// still in-flight — leave the newer prepare alone
+	}
+	return false
+}
+
 func (p *preparedLRU) execIfMissing(key stmtCacheKey, fn func(cache *lru.Cache[stmtCacheKey]) *inflightPrepare) (*inflightPrepare, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -86,7 +125,7 @@ func (p *preparedLRU) execIfMissing(key stmtCacheKey, fn func(cache *lru.Cache[s
 // keyFor constructs a zero-allocation composite cache key from the given
 // components. The returned struct references the original strings without
 // copying, so no heap allocation occurs.
-func (p *preparedLRU) keyFor(hostID, keyspace, statement string) stmtCacheKey {
+func (p *preparedLRU) keyFor(hostID UUID, keyspace, statement string) stmtCacheKey {
 	return stmtCacheKey{
 		hostID:    hostID,
 		keyspace:  keyspace,
@@ -110,7 +149,11 @@ func (p *preparedLRU) evictPreparedID(key stmtCacheKey, id []byte) {
 
 	select {
 	case <-ifp.done:
-		if bytes.Equal(id, ifp.preparedStatment.id) {
+		// preparedStatment is nil when the prepare failed. prepareStatement removes
+		// such an entry from the cache before closing done, so it should not be
+		// reachable from here — but that is an ordering nothing enforces, and the
+		// check costs less than the panic. updateMetadataIfSame guards the same way.
+		if ifp.preparedStatment != nil && bytes.Equal(id, ifp.preparedStatment.id) {
 			p.lru.Remove(key)
 		}
 	default:

@@ -53,16 +53,18 @@ const (
 	FlagGlobalTableSpec int = 0x01
 	FlagHasMorePages    int = 0x02
 	FlagNoMetaData      int = 0x04
+	FlagMetaDataChanged int = 0x08
 
 	// query flags
-	FlagValues                byte = 0x01
-	FlagSkipMetaData          byte = 0x02
-	FlagPageSize              byte = 0x04
-	FlagWithPagingState       byte = 0x08
-	FlagWithSerialConsistency byte = 0x10
-	FlagDefaultTimestamp      byte = 0x20
-	FlagWithNameValues        byte = 0x40
-	FlagWithKeyspace          byte = 0x80
+	FlagValues                uint32 = 0x01
+	FlagSkipMetaData          uint32 = 0x02
+	FlagPageSize              uint32 = 0x04
+	FlagWithPagingState       uint32 = 0x08
+	FlagWithSerialConsistency uint32 = 0x10
+	FlagDefaultTimestamp      uint32 = 0x20
+	FlagWithNameValues        uint32 = 0x40
+	FlagWithKeyspace          uint32 = 0x80
+	FlagWithNowInSeconds      uint32 = 0x100
 
 	// prepare flags
 	FlagWithPreparedKeyspace uint32 = 0x01

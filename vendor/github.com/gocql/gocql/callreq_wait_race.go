@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// Race builds on loaded CI can delay runnable goroutines long enough to trip
+// short deadlock guards even when cleanup is progressing.
+const callReqDoneTimeout = 10 * time.Second
+
 func waitCallReqDone(call *callReq, where string) {
 	done := make(chan struct{})
 	go func() {
@@ -14,7 +18,7 @@ func waitCallReqDone(call *callReq, where string) {
 		close(done)
 	}()
 
-	timer := time.NewTimer(2 * time.Second)
+	timer := time.NewTimer(callReqDoneTimeout)
 	defer timer.Stop()
 
 	select {

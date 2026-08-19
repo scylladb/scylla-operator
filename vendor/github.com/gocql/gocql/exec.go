@@ -84,13 +84,12 @@ func NewSingleHostQueryExecutor(cfg *ClusterConfig) (e SingleHostQueryExecutor, 
 	// node.
 	hosts = shuffleHosts(hosts)
 
-	conncfg := *e.control.session.connCfg
-	conncfg.disableCoalesce = true
+	conncfg := e.session.controlConnConfig()
 
 	var conn *Conn
 
 	for _, host := range hosts {
-		conn, err = e.control.session.dial(e.control.session.ctx, host, &conncfg, e.control)
+		conn, err = e.control.session.dial(e.control.session.ctx, host, conncfg, e.control)
 		if err != nil {
 			e.control.session.logger.Printf("gocql: unable to dial control conn %v:%v: %v\n", host.ConnectAddress(), host.Port(), err)
 			continue

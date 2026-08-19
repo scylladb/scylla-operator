@@ -122,6 +122,7 @@ const (
 	lwtAddMetadataMarkKey = "SCYLLA_LWT_ADD_METADATA_MARK"
 	rateLimitError        = "SCYLLA_RATE_LIMIT_ERROR"
 	tabletsRoutingV1      = "TABLETS_ROUTING_V1"
+	scyllaUseMetadataID   = "SCYLLA_USE_METADATA_ID"
 )
 
 // "tabletsRoutingV1" CQL Protocol Extension.
@@ -256,6 +257,45 @@ func (ext *lwtAddMetadataMarkExt) name() string {
 	return lwtAddMetadataMarkKey
 }
 
+// "SCYLLA_USE_METADATA_ID" CQL Protocol Extension.
+// Enables storing and updating metadata IDs for prepared statements, similar to CQL v5.
+// When negotiated, the driver tracks metadata changes and updates cached metadata accordingly.
+type scyllaUseMetadataIDExt struct {
+}
+
+var _ cqlProtocolExtension = &scyllaUseMetadataIDExt{}
+
+// newScyllaUseMetadataIDExt returns the extension only for a protocol v4 connection,
+// which is the whole of what the extension is: a backport of the v5 result metadata
+// id to v4. Version matters because opting in changes the wire format — EXECUTE
+// carries a [short bytes] result metadata id and RESULT/Prepared answers with one
+// (see writeExecuteFrame and parseResultPrepared) — so on v3, where that field is not
+// defined, the opt-in would desynchronise a connection the driver otherwise supports
+// (newFramer accepts v3, and a non-zero ClusterConfig.ProtoVersion skips
+// discoverProtocol). On v5 the field is already mandatory and Conn.tracksResultMetadataID
+// is true without the extension, so asking for it again would be redundant.
+func newScyllaUseMetadataIDExt(supported map[string][]string, version byte) *scyllaUseMetadataIDExt {
+	if version&protoVersionMask != protoVersion4 {
+		return nil
+	}
+	if _, found := supported[scyllaUseMetadataID]; found {
+		return &scyllaUseMetadataIDExt{}
+	}
+	return nil
+}
+
+// name implements cqlProtocolExtension.
+func (ext *scyllaUseMetadataIDExt) name() string {
+	return scyllaUseMetadataID
+}
+
+// serialize implements cqlProtocolExtension.
+func (ext *scyllaUseMetadataIDExt) serialize() map[string]string {
+	return map[string]string{
+		scyllaUseMetadataID: "",
+	}
+}
+
 func parseSupported(supported map[string][]string, logger StdLogger) ScyllaConnectionFeatures {
 	const (
 		scyllaShard             = "SCYLLA_SHARD"
@@ -265,7 +305,6 @@ func parseSupported(supported map[string][]string, logger StdLogger) ScyllaConne
 		scyllaShardingIgnoreMSB = "SCYLLA_SHARDING_IGNORE_MSB"
 		scyllaShardAwarePort    = "SCYLLA_SHARD_AWARE_PORT"
 		scyllaShardAwarePortSSL = "SCYLLA_SHARD_AWARE_PORT_SSL"
-		scyllaUseMetadataID     = "SCYLLA_USE_METADATA_ID"
 	)
 
 	var (
@@ -351,7 +390,12 @@ func parseSupported(supported map[string][]string, logger StdLogger) ScyllaConne
 	return si
 }
 
-func parseCQLProtocolExtensions(supported map[string][]string, logger StdLogger) []cqlProtocolExtension {
+// parseCQLProtocolExtensions turns the server's SUPPORTED multimap into the
+// extensions this connection will opt into. version is the connection's protocol
+// version: an extension whose wire effect is version-specific is gated on it here,
+// which is the single point that feeds both the STARTUP opt-in (startupCoordinator.startup)
+// and the framer config (connFramers.initCache), so the two cannot disagree.
+func parseCQLProtocolExtensions(supported map[string][]string, version byte, logger StdLogger) []cqlProtocolExtension {
 	exts := []cqlProtocolExtension{}
 
 	lwtExt := newLwtAddMetaMarkExt(supported, logger)
@@ -367,6 +411,11 @@ func parseCQLProtocolExtensions(supported map[string][]string, logger StdLogger)
 	tabletsExt := newTabletsRoutingV1Ext(supported)
 	if tabletsExt != nil {
 		exts = append(exts, tabletsExt)
+	}
+
+	metadataIDExt := newScyllaUseMetadataIDExt(supported, version)
+	if metadataIDExt != nil {
+		exts = append(exts, metadataIDExt)
 	}
 
 	return exts
@@ -392,7 +441,7 @@ func (c *Conn) isScyllaConn() bool {
 type scyllaConnPicker struct {
 	logger StdLogger
 	// disableShardAwarePortUntil is used to temporarily disable new connections to the shard-aware port temporarily
-	disableShardAwarePortUntil *atomic.Value
+	disableShardAwarePortUntil *atomic.Pointer[time.Time]
 	address                    string
 	excessConns                []*Conn
 	conns                      []*Conn
@@ -428,7 +477,7 @@ func newScyllaConnPicker(conn *Conn, logger StdLogger) *scyllaConnPicker {
 		logger:                 logger,
 		excessConnsLimitRate:   conn.session.cfg.MaxExcessShardConnectionsRate,
 
-		disableShardAwarePortUntil: new(atomic.Value),
+		disableShardAwarePortUntil: new(atomic.Pointer[time.Time]),
 	}
 }
 
@@ -570,7 +619,7 @@ func (p *scyllaConnPicker) Put(conn *Conn) error {
 				scyllaShardAwarePortFallbackDuration,
 			)
 			until := time.Now().Add(scyllaShardAwarePortFallbackDuration)
-			p.disableShardAwarePortUntil.Store(until)
+			p.disableShardAwarePortUntil.Store(&until)
 
 			return fmt.Errorf("connection landed on %d shard that already has connection", shard)
 		} else {
@@ -769,8 +818,7 @@ func (p *scyllaConnPicker) NextShard() (shardID, nrShards int) {
 		return 0, 0
 	}
 
-	disableUntil, _ := p.disableShardAwarePortUntil.Load().(time.Time)
-	if time.Now().Before(disableUntil) {
+	if disableUntil := p.disableShardAwarePortUntil.Load(); disableUntil != nil && time.Now().Before(*disableUntil) {
 		// There is suspicion that the shard-aware-port is not reachable
 		// or misconfigured, fall back to the non-shard-aware port
 		return 0, 0

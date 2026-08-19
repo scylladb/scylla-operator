@@ -786,14 +786,21 @@ define patch-config-monitoring
 	./hack/sync-config-with-monitoring-versions.sh "$(1)"
 endef
 
+# $1 - config file path
+define patch-config-scylladb-test-versions
+	./hack/sync-config-with-scylladb-test-versions.sh "$(1)"
+endef
+
 update-config:
 	$(call patch-config-monitoring,./assets/config/config.yaml)
+	$(call patch-config-scylladb-test-versions,./assets/config/config.yaml)
 .PHONY: update-config
 
 verify-config: tmp_dir :=$(shell mktemp -d)
 verify-config:
 	cp ./assets/config/config.yaml "$(tmp_dir)/config.yaml"
 	$(call patch-config-monitoring,"$(tmp_dir)/config.yaml")
+	$(call patch-config-scylladb-test-versions,"$(tmp_dir)/config.yaml")
 	$(diff) "$(tmp_dir)/config.yaml" ./assets/config/config.yaml || (echo 'Config is not up to date. Please run `make update-config` to update it.' && false)
 .PHONY: verify-config
 

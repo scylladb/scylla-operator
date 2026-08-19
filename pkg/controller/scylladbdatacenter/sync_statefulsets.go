@@ -39,11 +39,11 @@ func snapshotTag(prefix string, t time.Time) string {
 	return fmt.Sprintf("so_%s_%sUTC", prefix, t.UTC().Format(time.RFC3339))
 }
 
-func (sdcc *Controller) makeRacks(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSets map[string]*appsv1.StatefulSet, nodeExporterImage string, inputsHash string) ([]*appsv1.StatefulSet, error) {
+func (sdcc *Controller) makeRacks(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSets map[string]*appsv1.StatefulSet, services map[string]*corev1.Service, nodeExporterImage string, inputsHash string) ([]*appsv1.StatefulSet, error) {
 	sets := make([]*appsv1.StatefulSet, 0, len(sdc.Spec.Racks))
 	for i, rack := range sdc.Spec.Racks {
 		oldSts := statefulSets[naming.StatefulSetNameForRack(rack, sdc)]
-		sts, err := StatefulSetForRack(rack, sdc, oldSts, sdcc.operatorImage, nodeExporterImage, i, inputsHash)
+		sts, err := StatefulSetForRack(rack, sdc, oldSts, services, sdcc.operatorImage, nodeExporterImage, i, inputsHash)
 		if err != nil {
 			return nil, err
 		}
@@ -562,7 +562,7 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, fmt.Errorf("can't hash inputs: %w", err)
 	}
 
-	requiredStatefulSets, err := sdcc.makeRacks(sdc, statefulSets, nodeExporterImage, inputsHash)
+	requiredStatefulSets, err := sdcc.makeRacks(sdc, statefulSets, services, nodeExporterImage, inputsHash)
 	if err != nil {
 		sdcc.eventRecorder.Eventf(
 			sdc,

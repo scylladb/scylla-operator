@@ -25,6 +25,44 @@ import (
 
 var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
 
+// getEffectiveRackNodeCount returns the desired node count of the rack, clamped to the lowest ordinal of a member
+// whose decommission has been initiated. Decommission is irrevocable, so a node count raised during an ongoing
+// decommission can only take effect after the decommissioned members are removed and their services pruned;
+// the members are then re-added by bootstrapping fresh nodes.
+func getEffectiveRackNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, services map[string]*corev1.Service) (*int32, error) {
+	nodeCount, err := controllerhelpers.GetRackNodeCount(sdc, rackName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
+	}
+
+	effectiveNodeCount := *nodeCount
+	for _, svc := range services {
+		if svc.Labels[naming.RackNameLabel] != rackName {
+			continue
+		}
+
+		if _, ok := svc.Labels[naming.DecommissionedLabel]; !ok {
+			continue
+		}
+
+		ordinalStrings := serviceOrdinalRegex.FindStringSubmatch(svc.Name)
+		if len(ordinalStrings) != 2 {
+			return nil, fmt.Errorf("can't parse ordinal from service %q", naming.ObjRef(svc))
+		}
+
+		ordinal, err := strconv.Atoi(ordinalStrings[1])
+		if err != nil {
+			return nil, fmt.Errorf("can't parse ordinal from service %q: %w", naming.ObjRef(svc), err)
+		}
+
+		if int32(ordinal) < effectiveNodeCount {
+			effectiveNodeCount = int32(ordinal)
+		}
+	}
+
+	return &effectiveNodeCount, nil
+}
+
 func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) ([]*corev1.Service, error) {
 	identityService, err := IdentityService(sdc)
 	if err != nil {
@@ -37,9 +75,9 @@ func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, old
 
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		rackNodes, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
+		rackNodes, err := getEffectiveRackNodeCount(sdc, rack.Name, oldServices)
 		if err != nil {
-			return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
+			return nil, fmt.Errorf("can't get effective rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 		}
 
 		for ord := int32(0); ord < *rackNodes; ord++ {

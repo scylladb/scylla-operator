@@ -1,4 +1,7 @@
 # This is a kind cluster configuration file used for testing the Scylla Operator.
+# The kube-apiserver has the MutablePVNodeAffinity feature gate enabled to simulate PV orphaning in E2E tests.
+# It gates PersistentVolume nodeAffinity update validation, which is evaluated by the kube-apiserver, so it
+# doesn't have to be enabled on kubelet. It's alpha as of Kubernetes 1.35, hence it has to be enabled explicitly.
 # Each node has:
 # - the KubeletInUserNamespace feature gate enabled to allow running containers in user namespaces
 # - a mount for a local containerd registry configuration
@@ -15,6 +18,11 @@ nodes:
         nodeRegistration:
           kubeletExtraArgs:
             feature-gates: KubeletInUserNamespace=true
+      - |
+        kind: ClusterConfiguration
+        apiServer:
+          extraArgs:
+            feature-gates: MutablePVNodeAffinity=true
     extraMounts:
       - hostPath: ./hack/kind/containerd-registries
         containerPath: /etc/containerd/certs.d

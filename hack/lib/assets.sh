@@ -3,8 +3,9 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
-readonly config_file="assets/config/config.yaml"
-readonly metadata_file="assets/metadata/metadata.yaml"
+readonly assets_repo_root="$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../.." )"
+readonly config_file="${assets_repo_root}/assets/config/config.yaml"
+readonly metadata_file="${assets_repo_root}/assets/metadata/metadata.yaml"
 
 # get-yaml-value retrieves a value from a YAML file.
 # Usage: get-yaml-value <file-path> <yaml-key>

@@ -81,6 +81,8 @@
 
 - Updated default ScyllaDB Manager version from `3.11.2` to `3.12.0`.
   [#3520](https://github.com/scylladb/scylla-operator/pull/3520)
+- Bumped builder image from `quay.io/scylladb/scylla-operator-images:golang-1.26` to `quay.io/scylladb/scylla-operator-images:golang-1.27`.
+  [#3609](https://github.com/scylladb/scylla-operator/pull/3609)
 
 ## [1.21.1](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.1)
 

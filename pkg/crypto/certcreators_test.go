@@ -242,6 +242,7 @@ func TestX509CertCreator_MakeCertificate(t *testing.T) {
 			cert.RawIssuer = nil
 			cert.RawSubject = nil
 			cert.RawSubjectPublicKeyInfo = nil
+			cert.RawSignatureAlgorithm = nil
 			cert.Subject.Names = nil
 			cert.Issuer.Names = nil
 			cert.Extensions = nil

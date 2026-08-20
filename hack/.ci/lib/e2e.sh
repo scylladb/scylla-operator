@@ -322,6 +322,14 @@ function run-e2e {
     kubectl create -n=e2e secret generic s3-credentials --dry-run=client -o=yaml | kubectl_create -f=-
   fi
 
+  if [[ -n "${SO_S3_AGENT_CONFIG_PATH+x}" ]]; then
+    agent_config_in_container_path=/var/run/secrets/agent-config/agent-config.yaml
+    kubectl create -n=e2e secret generic agent-config --from-file=agent-config.yaml="${SO_S3_AGENT_CONFIG_PATH}" --dry-run=client -o=yaml | kubectl_create -f=-
+  else
+    kubectl create -n=e2e secret generic agent-config --dry-run=client -o=yaml | kubectl_create -f=-
+    agent_config_in_container_path=""
+  fi
+
   # Build a comma-separated string following a `<cluster_identifier>=<bucket_name>` format expected by `--worker-object-storage-buckets` flag.
   worker_object_storage_buckets=$(
     res=()
@@ -385,6 +393,7 @@ function run-e2e {
     "--object-storage-bucket=${SO_BUCKET_NAME}"
     "--gcs-service-account-key-path=${gcs_sa_in_container_path}"
     "--s3-credentials-file-path=${s3_credentials_in_container_path}"
+    "--s3-agent-config-path=${agent_config_in_container_path}"
     "--scylladb-version=${SCYLLADB_VERSION}"
     "--scylladb-manager-version=${SCYLLADB_MANAGER_VERSION}"
     "--scylladb-manager-agent-version=${SCYLLADB_MANAGER_AGENT_VERSION}"
@@ -456,6 +465,8 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
       mountPath: /var/run/secrets/gcs-service-account-credentials
     - name: s3-credentials
       mountPath: /var/run/secrets/s3-credentials
+    - name: agent-config
+      mountPath: /var/run/secrets/agent-config
     - name: kubeconfig
       mountPath: /var/run/secrets/kubeconfig
       subPath: kubeconfig
@@ -478,6 +489,9 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
   - name: s3-credentials
     secret:
       secretName: s3-credentials
+  - name: agent-config
+    secret:
+      secretName: agent-config
   - name: kubeconfig
     secret:
       secretName: kubeconfig

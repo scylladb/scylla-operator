@@ -27,14 +27,17 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-// Not part of SuiteKindFast: requires external object storage configured on the cluster.
-var _ = g.Describe("Scylla Manager integration", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
+var _ = g.Describe("Scylla Manager integration", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {
 		f = framework.NewFramework(ctx, "scyllacluster")
 	})
 
+	// The object storage backend is determined by the settings passed to the test framework: the credentials
+	// type selects how the agent is set up (GCS service account key or S3 credentials, optionally with a custom
+	// agent config, e.g. an S3 endpoint override - for kind minio) and, together with the bucket name, the backup
+	// location ("gcs:<bucket>" or "s3:<bucket>"). The test itself is agnostic to the specific storage provider.
 	g.It("should register cluster, sync backup tasks and support manual restore procedure", func(ctx g.SpecContext) {
 		sourceSC := f.GetDefaultScyllaCluster()
 		sourceSC.Spec.Datacenter.Racks[0].Members = 1
@@ -740,7 +743,7 @@ func setUpObjectStorageCredentials(ctx context.Context, ns string, nsClient fram
 		s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 		o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
-		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sc, ns, s3CredentialsFile)
+		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sc, ns, s3CredentialsFile, objectStorageSettings.S3AgentConfig())
 
 	}
 }
@@ -784,7 +787,7 @@ func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Inte
 	}
 }
 
-func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, namespace string, s3CredentialsFile []byte) {
+func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sc *scyllav1.ScyllaCluster, namespace string, s3CredentialsFile []byte, s3AgentConfig []byte) {
 	g.GinkgoHelper()
 
 	secret := &corev1.Secret{
@@ -798,6 +801,23 @@ func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Inter
 
 	secret, err := coreClient.Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
+
+	var agentConfigSecretName string
+	if len(s3AgentConfig) > 0 {
+		agentConfigSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "s3-agent-config-",
+			},
+			Data: map[string][]byte{
+				naming.ScyllaAgentConfigFileName: s3AgentConfig,
+			},
+		}
+
+		agentConfigSecret, err = coreClient.Secrets(namespace).Create(ctx, agentConfigSecret, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		agentConfigSecretName = agentConfigSecret.Name
+	}
 
 	for i := range sc.Spec.Datacenter.Racks {
 		sc.Spec.Datacenter.Racks[i].Volumes = append(sc.Spec.Datacenter.Racks[i].Volumes, corev1.Volume{
@@ -820,5 +840,9 @@ func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Inter
 			MountPath: "/var/lib/scylla-manager/.aws/credentials",
 			SubPath:   "credentials",
 		})
+
+		if len(agentConfigSecretName) > 0 {
+			sc.Spec.Datacenter.Racks[i].ScyllaAgentConfig = agentConfigSecretName
+		}
 	}
 }

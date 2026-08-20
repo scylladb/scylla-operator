@@ -17,6 +17,10 @@ type ClusterObjectStorageSettings struct {
 
 	// s3Credentials are the AWS credentials in JSON format. It's populated when Type=ObjectStorageTypeS3.
 	s3Credentials []byte
+
+	// s3AgentConfig is an optional custom Scylla Manager Agent configuration for S3-compatible storage (e.g., endpoint override for MinIO).
+	// It's populated when Type=ObjectStorageTypeS3 and an agent config is provided.
+	s3AgentConfig []byte
 }
 
 // NewGCSClusterObjectStorageSettings creates a new ClusterObjectStorageSettings for a cluster using a GCS bucket.
@@ -35,8 +39,9 @@ func NewGCSClusterObjectStorageSettings(bucketName string, serviceAccountKey []b
 	}, nil
 }
 
-// NewS3ClusterObjectStorageSettings creates a new ClusterObjectStorageSettings for a cluster using an S3 bucket.
-func NewS3ClusterObjectStorageSettings(bucketName string, credentials []byte) (ClusterObjectStorageSettings, error) {
+// NewS3ClusterObjectStorageSettings creates a new ClusterObjectStorageSettings for a cluster using an S3-compatible bucket.
+// agentConfig is an optional custom Scylla Manager Agent configuration (e.g., for specifying a custom S3 endpoint like MinIO); pass nil when not needed.
+func NewS3ClusterObjectStorageSettings(bucketName string, credentials, agentConfig []byte) (ClusterObjectStorageSettings, error) {
 	if len(bucketName) == 0 {
 		return ClusterObjectStorageSettings{}, errors.New("bucket name cannot be empty")
 	}
@@ -47,6 +52,7 @@ func NewS3ClusterObjectStorageSettings(bucketName string, credentials []byte) (C
 		storageType:   ObjectStorageTypeS3,
 		bucketName:    bucketName,
 		s3Credentials: credentials,
+		s3AgentConfig: agentConfig,
 	}, nil
 }
 
@@ -70,4 +76,10 @@ func (s ClusterObjectStorageSettings) GCSServiceAccountKey() []byte {
 // It's up to the caller to ensure that this is only called when Type is ObjectStorageTypeS3.
 func (s ClusterObjectStorageSettings) S3CredentialsFile() []byte {
 	return s.s3Credentials
+}
+
+// S3AgentConfig returns the optional custom Scylla Manager Agent configuration for S3-compatible storage.
+// It's up to the caller to ensure that this is only called when Type is ObjectStorageTypeS3.
+func (s ClusterObjectStorageSettings) S3AgentConfig() []byte {
+	return s.s3AgentConfig
 }

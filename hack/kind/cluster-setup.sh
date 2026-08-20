@@ -122,4 +122,13 @@ else
 
   # Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
   "${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
+
+  # Deploy MinIO as the object storage for backup/restore e2e tests.
+  minio_deploy_dir="${ARTIFACTS}/deploy/minio"
+  mkdir -p "${minio_deploy_dir}"
+  cp "${repo_root}"/hack/.ci/manifests/namespaces/minio/*.yaml "${minio_deploy_dir}"
+  yq e --inplace '.spec.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${minio_deploy_dir}/10_pvc.yaml"
+
+  kubectl apply --server-side=true -f "${minio_deploy_dir}"
+  kubectl -n minio rollout status --timeout=5m deployment.apps/minio
 fi

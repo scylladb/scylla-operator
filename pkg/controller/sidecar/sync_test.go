@@ -28,6 +28,8 @@ func TestNodeIsScyllaDBClusterMember(t *testing.T) {
 			name: "node owning normal tokens is a member",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
+				case "/storage_service/operation_mode":
+					w.Write([]byte(`"NORMAL"`))
 				case "/storage_service/host_id":
 					w.Write([]byte(`[{"key":"10.0.0.1","value":"` + hostID + `"}]`))
 				case "/storage_service/tokens/10.0.0.1":
@@ -44,6 +46,8 @@ func TestNodeIsScyllaDBClusterMember(t *testing.T) {
 			name: "node without normal tokens is known but not a member",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
+				case "/storage_service/operation_mode":
+					w.Write([]byte(`"NORMAL"`))
 				case "/storage_service/host_id":
 					w.Write([]byte(`[{"key":"10.0.0.1","value":"` + hostID + `"}]`))
 				case "/storage_service/tokens/10.0.0.1":
@@ -57,14 +61,14 @@ func TestNodeIsScyllaDBClusterMember(t *testing.T) {
 			expectedErr:    false,
 		},
 		{
-			name: "node absent from the host ID map is undeterminable",
+			name: "node absent from the host ID map is undeterminable when node is not in normal operation mode",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
 				case "/storage_service/host_id":
-					w.Write([]byte(`[{"key":"10.0.0.2","value":"ffffffff-ffff-ffff-ffff-ffffffffffff"}]`))
+					w.Write([]byte(`[{"key":"10.0.0.2","value":"different-host-id"}]`))
+				case "/storage_service/operation_mode":
+					w.Write([]byte(`"JOINING"`))
 				default:
-					// The node tokens endpoint must not be reached, it reports an empty token list for an
-					// address the cluster doesn't know, which is indistinguishable from a bootstrapping node.
 					t.Errorf("unexpected request to %q", r.URL.Path)
 				}
 			},
@@ -73,9 +77,40 @@ func TestNodeIsScyllaDBClusterMember(t *testing.T) {
 			expectedErr:    false,
 		},
 		{
-			name: "host ID map error is propagated",
+			name: "node absent from the host ID map while normal is an error",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/storage_service/operation_mode":
+					w.Write([]byte(`"NORMAL"`))
+				case "/storage_service/host_id":
+					w.Write([]byte(`[{"key":"10.0.0.2","value":"ffffffff-ffff-ffff-ffff-ffffffffffff"}]`))
+				default:
+					// The node tokens endpoint must not be reached when the expected HostID is absent.
+					t.Errorf("unexpected request to %q", r.URL.Path)
+				}
+			},
+			expectedMember: false,
+			expectedKnown:  false,
+			expectedErr:    true,
+		},
+		{
+			name: "operation mode error is propagated",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
+			},
+			expectedMember: false,
+			expectedKnown:  false,
+			expectedErr:    true,
+		},
+		{
+			name: "host ID map error is propagated",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/storage_service/operation_mode":
+					w.Write([]byte(`"NORMAL"`))
+				default:
+					w.WriteHeader(http.StatusInternalServerError)
+				}
 			},
 			expectedMember: false,
 			expectedKnown:  false,
@@ -85,6 +120,8 @@ func TestNodeIsScyllaDBClusterMember(t *testing.T) {
 			name: "node tokens error is propagated",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
+				case "/storage_service/operation_mode":
+					w.Write([]byte(`"NORMAL"`))
 				case "/storage_service/host_id":
 					w.Write([]byte(`[{"key":"10.0.0.1","value":"` + hostID + `"}]`))
 				default:

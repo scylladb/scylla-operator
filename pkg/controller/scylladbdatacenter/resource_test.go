@@ -1506,6 +1506,7 @@ exec scylla-manager-agent \
 		rack                scyllav1alpha1.RackSpec
 		scyllaDBDatacenter  *scyllav1alpha1.ScyllaDBDatacenter
 		existingStatefulSet *appsv1.StatefulSet
+		services            map[string]*corev1.Service
 		expectedStatefulSet *appsv1.StatefulSet
 		expectedError       error
 	}{
@@ -1516,6 +1517,33 @@ exec scylla-manager-agent \
 			existingStatefulSet: nil,
 			expectedStatefulSet: newBasicStatefulSet(),
 			expectedError:       nil,
+		},
+		{
+			name: "replicas clamped to the lowest ordinal of a decommissioned member",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.Racks[0].Nodes = new(int32(3))
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			services: map[string]*corev1.Service{
+				"basic-dc-rack-1": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "basic-dc-rack-1",
+						Labels: map[string]string{
+							naming.RackNameLabel:       "rack",
+							naming.DecommissionedLabel: naming.LabelValueTrue,
+						},
+					},
+				},
+			},
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.Replicas = new(int32(1))
+				return sts
+			}(),
+			expectedError: nil,
 		},
 		{
 			name: "error for invalid Rack storage",
@@ -2257,7 +2285,7 @@ exec scylla-manager-agent \
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, unit.ScyllaDBOperatorImage, unit.ScyllaDBNodeExporterImage, 0, "")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, tc.services, unit.ScyllaDBOperatorImage, unit.ScyllaDBNodeExporterImage, 0, "")
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",

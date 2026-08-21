@@ -5790,19 +5790,20 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 		}
 	}
 
-	newMemberService := func(name, hostID string) *corev1.Service {
+	newMemberService := func(name, rackName, hostID string) *corev1.Service {
 		return &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: "default",
 				Annotations: map[string]string{
-					"default-sc-annotation":                                              "bar",
-					"internal.scylla-operator.scylladb.com/host-id":                      hostID,
-					"internal.scylla-operator.scylladb.com/node-joined-scylladb-cluster": "true",
+					"default-sc-annotation":                    "bar",
+					naming.HostIDAnnotation:                    hostID,
+					naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
 				},
 				Labels: map[string]string{
-					"default-sc-label": "foo",
-					"scylla-operator.scylladb.com/scylla-service-type": "member",
+					"default-sc-label":            "foo",
+					naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeMember),
+					naming.RackNameLabel:          rackName,
 				},
 			},
 		}
@@ -6090,7 +6091,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-0"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
 			},
 			pods: []*corev1.Pod{},
 			expected: &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
@@ -6150,7 +6151,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-0"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
 			},
 			pods: []*corev1.Pod{
 				{
@@ -6217,7 +6218,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-0"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
 			},
 			pods: []*corev1.Pod{
 				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
@@ -6281,7 +6282,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-0"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
 			},
 			pods: []*corev1.Pod{
 				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
@@ -6356,7 +6357,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-0"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
 			},
 			pods: []*corev1.Pod{},
 			expected: &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
@@ -6421,12 +6422,13 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 						Name:      "basic-dc-a-0",
 						Namespace: "default",
 						Annotations: map[string]string{
-							"default-sc-annotation": "bar",
-							"internal.scylla-operator.scylladb.com/node-joined-scylladb-cluster": "true",
+							"default-sc-annotation":                    "bar",
+							naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
 						},
 						Labels: map[string]string{
-							"default-sc-label": "foo",
-							"scylla-operator.scylladb.com/scylla-service-type": "member",
+							"default-sc-label":            "foo",
+							naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeMember),
+							naming.RackNameLabel:          "a",
 						},
 					},
 				},
@@ -6497,7 +6499,7 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-0"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
 			},
 			pods: []*corev1.Pod{
 				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
@@ -6572,9 +6574,9 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-0"),
-				"basic-dc-a-1": newMemberService("basic-dc-a-1", "host-id-1"),
-				"basic-dc-a-2": newMemberService("basic-dc-a-2", "host-id-2"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
+				"basic-dc-a-1": newMemberService("basic-dc-a-1", "a", "host-id-1"),
+				"basic-dc-a-2": newMemberService("basic-dc-a-2", "a", "host-id-2"),
 			},
 			pods: []*corev1.Pod{
 				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
@@ -6753,10 +6755,10 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-a-0"),
-				"basic-dc-a-1": newMemberService("basic-dc-a-1", "host-id-a-1"),
-				"basic-dc-b-0": newMemberService("basic-dc-b-0", "host-id-b-0"),
-				"basic-dc-b-1": newMemberService("basic-dc-b-1", "host-id-b-1"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-a-0"),
+				"basic-dc-a-1": newMemberService("basic-dc-a-1", "a", "host-id-a-1"),
+				"basic-dc-b-0": newMemberService("basic-dc-b-0", "b", "host-id-b-0"),
+				"basic-dc-b-1": newMemberService("basic-dc-b-1", "b", "host-id-b-1"),
 			},
 			pods: []*corev1.Pod{
 				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
@@ -7006,10 +7008,10 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				return sdc
 			}(),
 			services: map[string]*corev1.Service{
-				"basic-dc-a-0": newMemberService("basic-dc-a-0", "host-id-a-0"),
-				"basic-dc-a-1": newMemberService("basic-dc-a-1", "host-id-a-1"),
-				"basic-dc-b-0": newMemberService("basic-dc-b-0", "host-id-b-0"),
-				"basic-dc-b-1": newMemberService("basic-dc-b-1", "host-id-b-1"),
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-a-0"),
+				"basic-dc-a-1": newMemberService("basic-dc-a-1", "a", "host-id-a-1"),
+				"basic-dc-b-0": newMemberService("basic-dc-b-0", "b", "host-id-b-0"),
+				"basic-dc-b-1": newMemberService("basic-dc-b-1", "b", "host-id-b-1"),
 			},
 			pods: []*corev1.Pod{
 				// Each pod's ObservedNodes are intentionally in reverse (unsorted) order to verify sorting.
@@ -7215,6 +7217,403 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 									},
 									{
 										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "rack scaled down by one, decommissioning node still has a service and a pod and is reported",
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaDBDatacenter()
+
+				sdc.Spec.Racks[0].RackTemplate.Nodes = pointer.Ptr[int32](2)
+
+				return sdc
+			}(),
+			services: map[string]*corev1.Service{
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
+				"basic-dc-a-1": newMemberService("basic-dc-a-1", "a", "host-id-1"),
+				"basic-dc-a-2": newMemberService("basic-dc-a-2", "a", "host-id-2"),
+			},
+			pods: []*corev1.Pod{
+				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-2",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-a-1", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-2",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-a-2", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-2",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+			},
+			expected: &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-12wmr",
+					Namespace: "default",
+					Labels: map[string]string{
+						"default-sc-label":             "foo",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector": "basic",
+						"scylla/cluster": "basic",
+					},
+					Annotations: map[string]string{
+						"default-sc-annotation": "bar",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "basic",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				DatacenterName: "dc",
+				Racks: []scyllav1alpha1.RackNodesStatusReport{
+					{
+						Name: "a",
+						Nodes: []scyllav1alpha1.NodeStatusReport{
+							{
+								Ordinal: 0,
+								HostID:  pointer.Ptr("host-id-0"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-2",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+							{
+								Ordinal: 1,
+								HostID:  pointer.Ptr("host-id-1"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-2",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+							{
+								Ordinal: 2,
+								HostID:  pointer.Ptr("host-id-2"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-2",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			// One rack is scaling out while another is scaling in, in a single patch. The new node of rack a is created
+			// first and rack b's scale down is deferred until it's rolled out, so all of rack b's nodes have to be reported
+			// for the new node to get past the bootstrap barrier.
+			name: "one rack scaled up while another is scaled down, the nodes of the scaled down rack are all reported",
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := basicScyllaDBDatacenter()
+
+				sdc.Spec.Racks = []scyllav1alpha1.RackSpec{
+					{
+						Name: "a",
+						RackTemplate: scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](2),
+						},
+					},
+					{
+						Name: "b",
+						RackTemplate: scyllav1alpha1.RackTemplate{
+							Nodes: pointer.Ptr[int32](1),
+						},
+					},
+				}
+				return sdc
+			}(),
+			services: map[string]*corev1.Service{
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-a-0"),
+				"basic-dc-b-0": newMemberService("basic-dc-b-0", "b", "host-id-b-0"),
+				"basic-dc-b-1": newMemberService("basic-dc-b-1", "b", "host-id-b-1"),
+				"basic-dc-b-2": newMemberService("basic-dc-b-2", "b", "host-id-b-2"),
+			},
+			pods: []*corev1.Pod{
+				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-2",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-b-0", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-2",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-b-1", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-2",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+				newPod(t, "basic-dc-b-2", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-a-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-1",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+						{
+							HostID: "host-id-b-2",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+			},
+			expected: &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-12wmr",
+					Namespace: "default",
+					Labels: map[string]string{
+						"default-sc-label":             "foo",
+						"app":                          "scylla",
+						"app.kubernetes.io/managed-by": "scylla-operator",
+						"app.kubernetes.io/name":       "scylla",
+						"scylla-operator.scylladb.com/scylladb-datacenter-nodes-status-report-selector": "basic",
+						"scylla/cluster": "basic",
+					},
+					Annotations: map[string]string{
+						"default-sc-annotation": "bar",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "basic",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				DatacenterName: "dc",
+				Racks: []scyllav1alpha1.RackNodesStatusReport{
+					{
+						Name: "a",
+						Nodes: []scyllav1alpha1.NodeStatusReport{
+							{
+								Ordinal: 0,
+								HostID:  pointer.Ptr("host-id-a-0"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-2",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+						},
+					},
+					{
+						Name: "b",
+						Nodes: []scyllav1alpha1.NodeStatusReport{
+							{
+								Ordinal: 0,
+								HostID:  pointer.Ptr("host-id-b-0"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-2",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+							{
+								Ordinal: 1,
+								HostID:  pointer.Ptr("host-id-b-1"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-2",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+							{
+								Ordinal: 2,
+								HostID:  pointer.Ptr("host-id-b-2"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-a-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-1",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+									{
+										HostID: "host-id-b-2",
 										Status: scyllav1alpha1.NodeStatusUp,
 									},
 								},

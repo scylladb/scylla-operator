@@ -18,6 +18,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	scyllafixture "github.com/scylladb/scylla-operator/test/e2e/fixture/scylla"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -472,6 +473,34 @@ func createUserNamespace(ctx context.Context, clusterName string, labels map[str
 	// Create a restricted client using the user SA.
 	userClientConfig := restclient.AnonymousClientConfig(adminClientConfig)
 	userClientConfig.BearerToken = string(token)
+
+	// The apiserver authorizer may not have observed the RoleBindings yet, making initial requests fail with 403.
+	// The canary permission below is granted only by the RoleBinding created last, and the authorizer observes
+	// RoleBindings in creation order, so it being allowed proves both RoleBindings have taken effect.
+	By("Waiting for ServiceAccount %q permission propagation in namespace %q.", userSA.Name, ns.Name)
+	userKubeClient, err := kubernetes.NewForConfig(userClientConfig)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = apimachineryutilwait.PollImmediate(2*time.Second, 30*time.Second, func() (bool, error) {
+		ssar, err := userKubeClient.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, &authorizationv1.SelfSubjectAccessReview{
+			Spec: authorizationv1.SelfSubjectAccessReviewSpec{
+				ResourceAttributes: &authorizationv1.ResourceAttributes{
+					Namespace: ns.Name,
+					Verb:      "get",
+					Group:     "scylla.scylladb.com",
+					Resource:  "scylladbdatacenternodesstatusreports",
+				},
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			// Tolerate 401: the authenticator may not have observed the new SA token yet.
+			if apierrors.IsUnauthorized(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return ssar.Status.Allowed, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
 
 	// Wait for default ServiceAccount.
 	By("Waiting for default ServiceAccount in namespace %q.", ns.Name)

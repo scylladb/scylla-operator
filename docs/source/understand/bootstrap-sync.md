@@ -37,14 +37,15 @@ On each reconciliation, the internal datacenter controller reads the status anno
 
 ```
 ScyllaDBDatacenterNodesStatusReport
-└── datacenter (gossip DC name)
-    └── rack[]
-        └── node[]
-            ├── ordinal
-            ├── hostID
-            └── observedNodes[]
-                ├── hostID (of the observed node)
-                └── status ("UP" or "DOWN")
+├── datacenterName (gossip DC name)
+└── racks[]
+    ├── name
+    └── nodes[]
+        ├── ordinal
+        ├── hostID
+        └── observedNodes[]
+            ├── hostID (of the observed node)
+            └── status ("UP" or "DOWN")
 ```
 
 Each node entry records how that node sees every other node in the cluster.

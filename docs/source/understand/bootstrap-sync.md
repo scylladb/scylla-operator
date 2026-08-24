@@ -33,7 +33,7 @@ A `StatusReporter` controller runs inside the sidecar container on every ScyllaD
 
 ### Stage 2 — Datacenter controller assembles the report
 
-On each reconciliation, the internal datacenter controller reads the status annotation from every pod in the datacenter and assembles them into an internal `ScyllaDBDatacenterNodesStatusReport` custom resource. This resource is namespaced and contains a nested structure:
+On each reconciliation, the internal datacenter controller collects the reported statuses and assembles them into an internal `ScyllaDBDatacenterNodesStatusReport` custom resource. Only nodes that have joined the ScyllaDB cluster and own normal tokens in it are included, so the report covers ScyllaDB nodes rather than the Kubernetes objects representing them. A node that is still bootstrapping has no entry, and a missing entry doesn't imply the node is unhealthy. This resource is namespaced and contains a nested structure:
 
 ```
 ScyllaDBDatacenterNodesStatusReport

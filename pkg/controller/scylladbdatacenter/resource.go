@@ -2423,15 +2423,21 @@ func cloneMapExcludingKeysOrEmpty[M ~map[K]V, S ~[]K, K comparable, V any](m M, 
 	return r
 }
 
+// makeScyllaDBDatacenterNodesStatusReport creates a ScyllaDBDatacenterNodesStatusReport for a ScyllaDBDatacenter.
+// The caller must ensure all the provided Services are controlled by the given ScyllaDBDatacenter.
 func makeScyllaDBDatacenterNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport, error) {
-	var err error
-
 	var errs []error
+
+	rackMemberServices, err := groupMemberServicesByRack(services)
+	if err != nil {
+		return nil, fmt.Errorf("can't group member Services by rack for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+	}
+
 	var rackStatusReports []scyllav1alpha1.RackNodesStatusReport
 	for _, rack := range sdc.Spec.Racks {
-		rackNodesStatusReport, err := makeRackNodesStatusReport(sdc, &rack, services, podLister)
+		rackNodesStatusReport, err := makeRackNodesStatusReport(sdc, &rack, rackMemberServices[rack.Name], podLister)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("can't make rack status report for rack %q of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err))
+			errs = append(errs, fmt.Errorf("can't make rack nodes status report for rack %q of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err))
 			continue
 		}
 
@@ -2469,19 +2475,45 @@ func makeScyllaDBDatacenterNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacen
 	return ssr, nil
 }
 
-func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.RackNodesStatusReport, error) {
+// groupMemberServicesByRack filters member Services and groups them by the name of the rack they belong to.
+// The caller must ensure all the provided Services are controlled by a single ScyllaDBDatacenter.
+func groupMemberServicesByRack(services map[string]*corev1.Service) (map[string][]*corev1.Service, error) {
 	var errs []error
 
-	desiredRackNodeCount, err := controllerhelpers.GetRackNodeCount(sdc, rackSpec.Name)
+	rackMemberServices := map[string][]*corev1.Service{}
+	for _, svc := range services {
+		if svc.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+			continue
+		}
+
+		rackName, ok := svc.Labels[naming.RackNameLabel]
+		if !ok {
+			errs = append(errs, fmt.Errorf("member Service %q is missing %q label", naming.ObjRef(svc), naming.RackNameLabel))
+			continue
+		}
+
+		rackMemberServices[rackName] = append(rackMemberServices[rackName], svc)
+	}
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
-		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rackSpec.Name, naming.ObjRef(sdc), err)
+		return nil, err
 	}
 
+	return rackMemberServices, nil
+}
+
+// makeRackNodesStatusReport creates a RackNodesStatusReport for a rack.
+// Nodes are enumerated from the rack's existing member Services rather than from the desired node count, because a node
+// being decommissioned during a scale down remains a member of the ScyllaDB cluster and remains observed by its peers
+// until its member Service is deleted.
+func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, rackMemberServices []*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.RackNodesStatusReport, error) {
+	var errs []error
+
 	var nodeStatusReports []scyllav1alpha1.NodeStatusReport
-	for ord := int32(0); ord < *desiredRackNodeCount; ord++ {
-		nodeStatusReport, ok, err := makeNodeStatusReport(sdc, rackSpec, int(ord), services, podLister)
+	for _, svc := range rackMemberServices {
+		nodeStatusReport, ok, err := makeNodeStatusReport(sdc, svc, podLister)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("can't make node status report for node %d of rack %q of ScyllaDBDatacenter %q: %w", ord, rackSpec.Name, naming.ObjRef(sdc), err))
+			errs = append(errs, fmt.Errorf("can't make node status report for member Service %q of rack %q of ScyllaDBDatacenter %q: %w", naming.ObjRef(svc), rackSpec.Name, naming.ObjRef(sdc), err))
 			continue
 		}
 		if !ok {
@@ -2490,10 +2522,15 @@ func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec 
 
 		nodeStatusReports = append(nodeStatusReports, *nodeStatusReport)
 	}
-	err = apimachineryutilerrors.NewAggregate(errs)
+	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
 		return nil, err
 	}
+
+	// Ordering by ordinal guarantees stability of the entries and prevents unnecessary state changes that would result only from reshuffling.
+	slices.SortFunc(nodeStatusReports, func(a, b scyllav1alpha1.NodeStatusReport) int {
+		return a.Ordinal - b.Ordinal
+	})
 
 	rackStatusReport := &scyllav1alpha1.RackNodesStatusReport{
 		Name:  rackSpec.Name,
@@ -2506,21 +2543,20 @@ func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec 
 // It returns an optional NodeStatusReport, a boolean indicating whether the NodeStatusReport is non-nil, and an error.
 // A node is included in the report only while its Service is annotated with naming.NodeJoinedScyllaDBClusterAnnotation
 // set to true, signaling it is a member of the ScyllaDB cluster.
-func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, ordinal int, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.NodeStatusReport, bool, error) {
-	svcName := naming.MemberServiceName(*rackSpec, sdc, ordinal)
-	svc, ok := services[svcName]
-	if !ok {
-		klog.V(4).InfoS("Member Service is missing, skipping", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KRef(sdc.Namespace, svcName))
-		return nil, false, nil
-	}
-
+// The provided Service must be a member Service, named with an ordinal suffix.
+func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.NodeStatusReport, bool, error) {
 	if svc.Annotations[naming.NodeJoinedScyllaDBClusterAnnotation] != naming.LabelValueTrue {
 		klog.V(5).InfoS("Node has not yet been annotated as a member of the ScyllaDB cluster, skipping", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "AnnotationKey", naming.NodeJoinedScyllaDBClusterAnnotation)
 		return nil, false, nil
 	}
 
+	ordinal, err := naming.IndexFromName(svc.Name)
+	if err != nil {
+		return nil, false, fmt.Errorf("can't get ordinal from member Service %q: %w", naming.ObjRef(svc), err)
+	}
+
 	nodeStatusReport := &scyllav1alpha1.NodeStatusReport{
-		Ordinal: ordinal,
+		Ordinal: int(ordinal),
 	}
 
 	hostID := svc.Annotations[naming.HostIDAnnotation]

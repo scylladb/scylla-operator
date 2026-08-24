@@ -21,7 +21,6 @@ const (
 
 	// BootstrapSynchronisation enables a barrier which ensures bootstrap preconditions are met before starting a ScyllaDB node attempting to join the cluster.
 	// alpha: v1.19
-	// beta: v1.22
 	BootstrapSynchronisation featuregate.Feature = "BootstrapSynchronisation"
 )
 
@@ -37,8 +36,8 @@ func init() {
 			PreRelease: featuregate.Beta,
 		},
 		BootstrapSynchronisation: {
-			Default:    true,
-			PreRelease: featuregate.Beta,
+			Default:    false,
+			PreRelease: featuregate.Alpha,
 		},
 	}))
 }

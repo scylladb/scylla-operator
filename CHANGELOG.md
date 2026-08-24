@@ -31,6 +31,14 @@
   reported as successful and the key was forgotten rather than requeued, losing the retry with backoff. The degraded
   condition was reported correctly, so this was not visible in the resource status.
   [#3587](https://github.com/scylladb/scylla-operator/pull/3587)
+- Fixed nodes being decommissioned dropping out of `ScyllaDBDatacenterNodesStatusReport` and blocking bootstrapping new nodes for the duration of the decommission.
+  The report enumerated a rack's nodes from the desired node count, so a decommissioning node
+  disappeared from it as soon as the count shrank, while its peers kept reporting it until the decommission
+  completed. The bootstrap barrier requires every observed host ID to have a report entry of its own, so a node joining
+  during a scale down waited for the decommission to finish. 
+  This could additionally prevent unblocking decommissioning by adding new nodes.
+  The report is now built from the existing member Services.
+  [#3615](https://github.com/scylladb/scylla-operator/pull/3615)
 
 ### Features & Enhancements
 - Added an optional `enableParallelNodeOperations` boolean field to `ScyllaCluster.spec` and

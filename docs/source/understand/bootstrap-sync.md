@@ -2,6 +2,10 @@
 
 This page explains why bootstrap synchronisation exists, how the barrier mechanism works, and how node statuses are propagated across the cluster.
 
+:::{warning}
+Due to a known bug, the barrier can block new nodes from bootstrapping while a decommission (scale-down) is in progress. This is most disruptive when the decommission cannot complete on its own, such as when the remaining nodes are too few to satisfy the keyspace replication factor, because adding nodes is the usual remedy. To work around this, [set the force annotation](#overriding-the-precondition) on the member Services of the nodes being added.
+:::
+
 ## The problem
 
 [ScyllaDB requires that no node in the cluster considers any other node to be down when a new node joins.](https://docs.scylladb.com/manual/stable/operating-scylla/procedures/cluster-management/add-node-to-cluster.html#check-the-status-of-nodes)

@@ -76,7 +76,7 @@ If any node is missing a host ID, has not yet reported, does not list another no
 * - Requirement
   - Value
 * - Feature gate
-  - `BootstrapSynchronisation` (default on since v1.22)
+  - `BootstrapSynchronisation` (default off since v1.19)
 * - Minimum ScyllaDB version
   - 2025.2
 ```

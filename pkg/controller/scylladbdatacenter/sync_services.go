@@ -25,7 +25,23 @@ import (
 
 var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
 
-func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) ([]*corev1.Service, error) {
+// getMemberServiceOrdinal returns the ordinal of the member the service with the given name belongs to.
+// TODO: Label services with the ordinal instead of parsing.
+func getMemberServiceOrdinal(name string) (int32, error) {
+	ordinalStrings := serviceOrdinalRegex.FindStringSubmatch(name)
+	if len(ordinalStrings) != 2 {
+		return 0, fmt.Errorf("can't parse ordinal from member service name %q", name)
+	}
+
+	ordinal, err := strconv.ParseInt(ordinalStrings[1], 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("can't parse ordinal from member service name %q: %w", name, err)
+	}
+
+	return int32(ordinal), nil
+}
+
+func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, status *scyllav1alpha1.ScyllaDBDatacenterStatus, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) ([]*corev1.Service, error) {
 	identityService, err := IdentityService(sdc)
 	if err != nil {
 		return nil, fmt.Errorf("can't create identity service: %w", err)
@@ -37,9 +53,9 @@ func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, old
 
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		rackNodes, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
+		rackNodes, err := getEffectiveRackNodeCount(sdc, rack.Name, getRackDecommissioningNodes(status, rack.Name))
 		if err != nil {
-			return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
+			return nil, fmt.Errorf("can't get effective rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 		}
 
 		for ord := int32(0); ord < *rackNodes; ord++ {
@@ -100,19 +116,12 @@ func (sdcc *Controller) pruneServices(
 			errs = append(errs, fmt.Errorf("statefulset %s/%s is missing", sdc.Namespace, stsName))
 			continue
 		}
-		// TODO: Label services with the ordinal instead of parsing.
-		// TODO: Move it to a function and unit test it.
-		svcOrdinalStrings := serviceOrdinalRegex.FindStringSubmatch(svc.Name)
-		if len(svcOrdinalStrings) != 2 {
-			errs = append(errs, fmt.Errorf("can't parse ordinal from service %s/%s", svc.Namespace, svc.Name))
-			continue
-		}
-		svcOrdinal, err := strconv.Atoi(svcOrdinalStrings[1])
+		svcOrdinal, err := getMemberServiceOrdinal(svc.Name)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		if int32(svcOrdinal) < *sts.Spec.Replicas {
+		if svcOrdinal < *sts.Spec.Replicas {
 			progressingConditions = append(progressingConditions, metav1.Condition{
 				Type:               serviceControllerProgressingCondition,
 				Status:             metav1.ConditionTrue,
@@ -206,7 +215,7 @@ func (sdcc *Controller) syncServices(
 	statefulSets map[string]*appsv1.StatefulSet,
 	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
-	requiredServices, err := sdcc.makeServices(sdc, services, jobs)
+	requiredServices, err := sdcc.makeServices(sdc, status, services, jobs)
 	if err != nil {
 		return nil, fmt.Errorf("can't make services: %w", err)
 	}

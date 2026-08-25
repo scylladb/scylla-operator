@@ -382,7 +382,7 @@ func effectiveParallelNodeOperationsEnabled(sdc *scyllav1alpha1.ScyllaDBDatacent
 
 // StatefulSetForRack make a StatefulSet for the rack.
 // existingSts may be nil if it doesn't exist yet.
-func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, existingSts *appsv1.StatefulSet, sidecarImage string, nodeExporterImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
+func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, existingSts *appsv1.StatefulSet, decommissioningNodes []string, sidecarImage string, nodeExporterImage string, rackOrdinal int, inputsHash string) (*appsv1.StatefulSet, error) {
 	selectorLabels, err := naming.RackSelectorLabels(rack, sdc)
 	if err != nil {
 		return nil, fmt.Errorf("can't get selector labels: %w", err)
@@ -523,9 +523,11 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 		return nil, fmt.Errorf("can't get scylla container ports: %w", err)
 	}
 
-	rackNodeCount, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
+	// Members that are leaving hold the top of the ordinal range until they are removed, so a node count change made
+	// in the meantime can only take effect after that.
+	rackNodeCount, err := getEffectiveRackNodeCount(sdc, rack.Name, decommissioningNodes)
 	if err != nil {
-		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
+		return nil, fmt.Errorf("can't get effective rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 	}
 
 	initContainers, err := makeInitContainers(sdc, sidecarImage)

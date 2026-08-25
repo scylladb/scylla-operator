@@ -131,7 +131,11 @@ func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, 
 	// Calculate the status for racks.
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		status.Racks = append(status.Racks, *calculateRackStatus(sdcc.podLister, sdc, rack.Name, statefulSetMap[stsName]))
+		rackStatus := calculateRackStatus(sdcc.podLister, sdc, rack.Name, statefulSetMap[stsName])
+		// The record of decommissioning nodes isn't derived from the observed state, it's maintained explicitly by the
+		// StatefulSet sync, so carry it over.
+		rackStatus.DecommissioningNodes = getRackDecommissioningNodes(&sdc.Status, rack.Name)
+		status.Racks = append(status.Racks, *rackStatus)
 	}
 
 	updateAggregatedStatusFields(status)

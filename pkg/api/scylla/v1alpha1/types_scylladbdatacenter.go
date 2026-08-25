@@ -496,6 +496,17 @@ type RackStatus struct {
 	// stale should eventually become false when the appropriate controller writes a fresh status.
 	// +optional
 	Stale *bool `json:"stale,omitempty"`
+
+	// decommissioningNodes specify the names of the rack's nodes that are leaving the cluster. A node's
+	// decommission can't be revoked, so once it has been initiated the node has to finish leaving and be
+	// removed together with its resources before its name can be used again.
+	// decommissioningNodes is only present while a scale down of the rack is in progress. While it's present,
+	// the rack reconciles as if its node count excluded these nodes, so any node count change made in the
+	// meantime only takes effect once they are removed, and the capacity they give back is added as new,
+	// empty nodes.
+	// +optional
+	// +listType=atomic
+	DecommissioningNodes []string `json:"decommissioningNodes,omitempty"`
 }
 
 // ScyllaDBDatacenterStatus defines the observed state of ScyllaDBDatacenter.

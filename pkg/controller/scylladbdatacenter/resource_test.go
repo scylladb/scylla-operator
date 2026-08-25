@@ -1502,12 +1502,13 @@ exec scylla-manager-agent \
 	const runBootstrapBarrierInitContainerIndex = 1
 
 	tt := []struct {
-		name                string
-		rack                scyllav1alpha1.RackSpec
-		scyllaDBDatacenter  *scyllav1alpha1.ScyllaDBDatacenter
-		existingStatefulSet *appsv1.StatefulSet
-		expectedStatefulSet *appsv1.StatefulSet
-		expectedError       error
+		name                 string
+		rack                 scyllav1alpha1.RackSpec
+		scyllaDBDatacenter   *scyllav1alpha1.ScyllaDBDatacenter
+		existingStatefulSet  *appsv1.StatefulSet
+		decommissioningNodes []string
+		expectedStatefulSet  *appsv1.StatefulSet
+		expectedError        error
 	}{
 		{
 			name:                "new StatefulSet",
@@ -1516,6 +1517,23 @@ exec scylla-manager-agent \
 			existingStatefulSet: nil,
 			expectedStatefulSet: newBasicStatefulSet(),
 			expectedError:       nil,
+		},
+		{
+			name: "replicas pinned to the lowest ordinal of a decommissioning node",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.Racks[0].Nodes = new(int32(3))
+				return sdc
+			}(),
+			existingStatefulSet:  nil,
+			decommissioningNodes: []string{"basic-dc-rack-1", "basic-dc-rack-2"},
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				sts.Spec.Replicas = new(int32(1))
+				return sts
+			}(),
+			expectedError: nil,
 		},
 		{
 			name: "error for invalid Rack storage",
@@ -2257,7 +2275,7 @@ exec scylla-manager-agent \
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, unit.ScyllaDBOperatorImage, unit.ScyllaDBNodeExporterImage, 0, "")
+			got, err := StatefulSetForRack(tc.rack, tc.scyllaDBDatacenter, tc.existingStatefulSet, tc.decommissioningNodes, unit.ScyllaDBOperatorImage, unit.ScyllaDBNodeExporterImage, 0, "")
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Fatalf("expected and actual errors differ: %s",

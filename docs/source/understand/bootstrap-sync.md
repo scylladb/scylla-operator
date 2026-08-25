@@ -2,6 +2,10 @@
 
 This page explains why bootstrap synchronisation exists, how the barrier mechanism works, and how node statuses are propagated across the cluster.
 
+:::{warning}
+Due to a known bug, the barrier can block new nodes from bootstrapping while a decommission (scale-down) is in progress. This is most disruptive when the decommission cannot complete on its own, such as when the remaining nodes are too few to satisfy the keyspace replication factor, because adding nodes is the usual remedy. To work around this, [set the force annotation](#overriding-the-precondition) on the member Services of the nodes being added.
+:::
+
 ## The problem
 
 [ScyllaDB requires that no node in the cluster considers any other node to be down when a new node joins.](https://docs.scylladb.com/manual/stable/operating-scylla/procedures/cluster-management/add-node-to-cluster.html#check-the-status-of-nodes)
@@ -19,7 +23,7 @@ When the `BootstrapSynchronisation` feature gate is enabled, the Operator adds a
 
 2. **Force annotation set?** — If the node's member Service carries the annotation `scylla-operator.scylladb.com/force-proceed-to-bootstrap: "true"`, the barrier exits immediately, bypassing the precondition. The annotation can also be set on the `ScyllaCluster` resource, which propagates it to all member Services in the datacenter.
 
-3. **Replacing a dead node?** — If the node is being added as a replacement (the replacement annotation is present on the Service), the barrier exits immediately. Replacement has its own prerequisites that are outside the scope of this mechanism.
+3. **Replacing a dead node?** — If the node is being added as a replacement (the replacement label is present on the Service), the barrier exits immediately. Replacement has its own prerequisites that are outside the scope of this mechanism.
 
 4. **Precondition check** — The init container watches internal node-status report resources (`ScyllaDBDatacenterNodesStatusReport`) and evaluates whether every reporting node in the cluster sees every other node as `UP`. The barrier blocks until this condition is satisfied.
 
@@ -33,18 +37,19 @@ A `StatusReporter` controller runs inside the sidecar container on every ScyllaD
 
 ### Stage 2 — Datacenter controller assembles the report
 
-On each reconciliation, the internal datacenter controller reads the status annotation from every pod in the datacenter and assembles them into an internal `ScyllaDBDatacenterNodesStatusReport` custom resource. This resource is namespaced and contains a nested structure:
+On each reconciliation, the internal datacenter controller collects the reported statuses and assembles them into an internal `ScyllaDBDatacenterNodesStatusReport` custom resource. Only nodes that have joined the ScyllaDB cluster and own normal tokens in it are included, so the report covers ScyllaDB nodes rather than the Kubernetes objects representing them. A node that is still bootstrapping has no entry, and a missing entry doesn't imply the node is unhealthy. This resource is namespaced and contains a nested structure:
 
 ```
 ScyllaDBDatacenterNodesStatusReport
-└── datacenter (gossip DC name)
-    └── rack[]
-        └── node[]
-            ├── ordinal
-            ├── hostID
-            └── observedNodes[]
-                ├── hostID (of the observed node)
-                └── status ("UP" or "DOWN")
+├── datacenterName (gossip DC name)
+└── racks[]
+    ├── name
+    └── nodes[]
+        ├── ordinal
+        ├── hostID
+        └── observedNodes[]
+            ├── hostID (of the observed node)
+            └── status ("UP" or "DOWN")
 ```
 
 Each node entry records how that node sees every other node in the cluster.

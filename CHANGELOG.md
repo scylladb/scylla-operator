@@ -10,6 +10,18 @@
 
 ## Unreleased
 
+### Upgrade requirements
+
+- Before upgrading, check your `ScyllaCluster` and `ScyllaDBDatacenter` member services for leftover
+  `scylla/decommissioned=true` labels and remove the stale ones. The label is stale if the node it belongs to is
+  healthy - for example, because it was recovered manually after its decommission had completed. Starting with this
+  release, the Operator treats every labeled node as a node that has to leave the cluster, so it decommissions such a
+  node, deletes its `PersistentVolumeClaim` and removes it from its rack, without any user action.
+  ```
+  kubectl get svc -A -l scylla/decommissioned=true
+  ```
+  [#3603](https://github.com/scylladb/scylla-operator/pull/3603)
+
 ### Bug fixes
 
 - Fixed `ScyllaDBDatacenter` rollouts getting stuck when a new rack was inserted before existing racks while an existing 
@@ -26,6 +38,14 @@
   Every node is now cleaned up once the ring changes. Note that this increases the number of cleanup jobs created at once,
   from N-1 to N for an N node cluster.
   [#3574](https://github.com/scylladb/scylla-operator/pull/3574)
+- Fixed a rack getting stuck forever when its node count was changed while one of its nodes was still being
+  decommissioned. A node's decommission can't be revoked, so the nodes that a scale down of a rack removes are now
+  recorded in `status.racks[].decommissioningNodes` before any of them is asked to decommission. Until they have left
+  and been removed, the rack keeps reconciling towards the node count that excludes them, and node count changes made
+  in the meantime only take effect afterwards, with the capacity given back added as new, empty nodes. The admission
+  webhook warns about such a deferred change, rejects removing a rack whose nodes are still leaving, and the rack
+  reports the deferral as progressing.
+  [#3603](https://github.com/scylladb/scylla-operator/pull/3603)
 - Fixed the `ScyllaDBDatacenter` controller discarding failures to sync `ScyllaDBDatacenterNodesStatusReport` objects.
   The error was dropped instead of being aggregated into the error returned by the reconciliation, so a failed sync was
   reported as successful and the key was forgotten rather than requeued, losing the retry with backoff. The degraded

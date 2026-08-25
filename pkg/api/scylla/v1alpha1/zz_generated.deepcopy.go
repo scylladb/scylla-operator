@@ -1244,6 +1244,11 @@ func (in *RackStatus) DeepCopyInto(out *RackStatus) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.DecommissioningNodes != nil {
+		in, out := &in.DecommissioningNodes, &out.DecommissioningNodes
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

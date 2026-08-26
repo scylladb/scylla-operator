@@ -211,7 +211,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		return objectErr
 	}
 
-	status := sdcc.calculateStatus(sdc, statefulSetMap)
+	status := sdcc.calculateStatus(sdc, statefulSetMap, serviceMap)
 
 	if sdc.DeletionTimestamp != nil {
 		return sdcc.updateStatus(ctx, sdc, status)

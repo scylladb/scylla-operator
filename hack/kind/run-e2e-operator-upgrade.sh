@@ -7,6 +7,8 @@ shopt -s inherit_errexit
 
 # Absolute, so it stays valid when the test is run from the build root below.
 readonly repo_root="$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../.." )"
+# The test invokes the deploy scripts via relative paths, so everything runs from the repository root.
+cd "${repo_root}"
 
 # Ensure all kind calls use podman.
 export KIND_EXPERIMENTAL_PROVIDER=podman
@@ -19,24 +21,18 @@ fi
 REENTRANT="${REENTRANT:-true}"
 export REENTRANT
 
-# Release branch worktrees created by resolve-operator-version below; removed by cleanup.
-worktrees=()
-
 # cleanup collects artifacts (best-effort, before teardown as it needs the cluster) and always tears the cluster
 # down, preserving the original exit code. Unlike other kind e2e tests, this one dirties the environment (deploys
 # and upgrades the operator stack), so it must not leave the cluster around for reuse.
 function cleanup {
   local exit_code=$?
-  # The must-gather image has to be a full ref; resolve a bare released version against the released repository
-  # (mirroring getOperatorImageRef in the test).
-  local must_gather_image="${OPERATOR_UPGRADE_TO_VERSION:-}"
+  # The must-gather image has to be a full ref; by now the "to" ref is resolved (an image ref) or a bare
+  # released version, which resolves against the released repository (mirroring getOperatorImageRef in the test).
+  local must_gather_image="${OPERATOR_UPGRADE_TO_REF:-}"
   if [ -n "${must_gather_image}" ] && [[ "${must_gather_image}" != */* ]]; then
     must_gather_image="docker.io/scylladb/scylla-operator:${must_gather_image}"
   fi
   ( gather-artifacts-on-exit "${must_gather_image}" ) || true
-  for worktree in "${worktrees[@]}"; do
-    git -C "${repo_root}" worktree remove --force "${worktree}" || true
-  done
   "${repo_root}/hack/kind/cluster-teardown.sh" || true
   rm -f "${KUBECONFIG:-}" || true
   exit "${exit_code}"
@@ -77,44 +73,44 @@ ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}/upgrade-operator"
 mkdir -p "${ARTIFACTS}"
 export ARTIFACTS
 
-# Versions to upgrade between; env-overridable (e.g. parsed from the triggering CI comment), defaulting from the
-# config assets like run-e2e in hack/.ci/lib/e2e.sh. Each accepts a released version, a full image ref, "latest"
-# (build the current tree) or "<major.minor>-latest" (e.g. "1.21-latest": build the tip of the corresponding
-# release branch, v1.21); the "-latest" forms are kind-runner-only, as they require building an image.
-OPERATOR_UPGRADE_FROM_VERSION="${OPERATOR_UPGRADE_FROM_VERSION:-$( yq '.operatorTests.operatorVersions.upgradeFrom' "${repo_root}/assets/config/config.yaml" )}"
-OPERATOR_UPGRADE_TO_VERSION="${OPERATOR_UPGRADE_TO_VERSION:-latest}"
+# Endpoints of the upgrade; env-overridable. Each accepts a full image ref (used verbatim) or a tag of the
+# released repository, docker.io/scylladb/scylla-operator - e.g. a released version ("1.20.2") or a CI build
+# ("1.21-<git-commit-hash>", the exact artifact a release would promote).
+# Defaults: the ref upgraded from is the previous minor's highest released patch when the current ref is
+# a release branch (vX.Y) or a release(-candidate) tag (vX.Y.Z[-rc.N]), the highest released version otherwise
+# (master, feature branches); the ref upgraded to is the checked-out tree (empty ref), built from source.
+# The current ref comes from the CI event context - the PR target branch on pull requests, the ref the workflow
+# runs on otherwise - because checkouts in CI are detached HEADs, often shallow, so git can't tell.
 
-# resolve-operator-version resolves the "latest"/"<major.minor>-latest" forms in the version variable named by $1:
-# it builds the image from the corresponding tree (the current one, or a temporary release branch worktree) and
-# replaces the value with the SHA-pinned image ref. The tree is stored in the variable named by $2 — the test runs
-# that version's deploy script from it, so the deployed manifests match the tree the image was built from.
-# Released versions and full image refs are left as-is; a released version deploys via hack/ci-deploy-release.sh,
-# which resolves the manifests from the image's OCI source/revision labels — the release's exact git SHA.
-function resolve-operator-version {
-  local -n version="${1:?Missing version variable name}"
-  local -n deploy_dir="${2:?Missing deploy dir variable name}"
+# operator-upgrade-from-ref prints the highest stable released version (without the leading "v") - among the
+# minors strictly below X.Y (the previous minor's highest patch) when the given ref is a release branch "vX.Y"
+# or a release(-candidate) tag "vX.Y.Z[-rc.N]", overall otherwise (master, feature branches).
+function operator-upgrade-from-ref {
+  local ref="${1-}"
+  local tags
 
-  deploy_dir="${repo_root}"
-  if [[ "${version}" =~ ^([0-9]+\.[0-9]+)-latest$ ]]; then
-    local release_branch="v${BASH_REMATCH[1]}"
-    deploy_dir="$( mktemp -d )"
-    worktrees+=( "${deploy_dir}" )
-    # Fetch by URL: CI checkouts (Prow clonerefs) have no "origin" remote, and a local clone's
-    # "origin" may be a fork without the release branches.
-    git -C "${repo_root}" fetch https://github.com/scylladb/scylla-operator.git "${release_branch}"
-    git -C "${repo_root}" worktree add --detach "${deploy_dir}" FETCH_HEAD
-    version=""
-  elif [ "${version}" == "latest" ]; then
-    version=""
-  else
-    # A released version or a full image ref needs no build.
-    return 0
+  # Always list the canonical repository's tags - the local clone may be shallow, a fork without the release
+  # tags, or simply stale (cloned before the newest release was tagged).
+  tags="$( git ls-remote --tags --refs https://github.com/scylladb/scylla-operator.git | sed -e 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' )"
+
+  if [[ "${ref}" =~ ^v([0-9]+)\.([0-9]+)(\.[0-9]+(-rc\.[0-9]+)?)?$ ]]; then
+    tags="$( awk -F '[v.]' -v major="${BASH_REMATCH[1]}" -v minor="${BASH_REMATCH[2]}" '$2+0 < major+0 || ($2+0 == major+0 && $3+0 < minor+0)' <<< "${tags}" )"
   fi
-  build-and-push-operator-image "${deploy_dir}" "${1}"
+
+  if [ -z "${tags}" ]; then
+    echo "Can't determine the released version to upgrade from: no release tag matching ref \"${ref}\"" >&2
+    return 1
+  fi
+
+  sort -V <<< "${tags}" | tail -n 1 | sed -e 's/^v//'
 }
 
-resolve-operator-version OPERATOR_UPGRADE_FROM_VERSION operator_upgrade_from_deploy_dir
-resolve-operator-version OPERATOR_UPGRADE_TO_VERSION operator_upgrade_to_deploy_dir
+current_ref="${GITHUB_BASE_REF:-${GITHUB_REF_NAME:-$( git -C "${repo_root}" rev-parse --abbrev-ref HEAD )}}"
+OPERATOR_UPGRADE_FROM_REF="${OPERATOR_UPGRADE_FROM_REF:-$( operator-upgrade-from-ref "${current_ref}" )}"
+
+# Build the checked-out tree and push it to the kind registry (digest-pinned ref) when no "to" ref is given;
+# no-op for a non-empty ref.
+build-and-push-operator-image "${repo_root}" OPERATOR_UPGRADE_TO_REF
 
 apply-e2e-workarounds
 
@@ -130,7 +126,5 @@ go run "${repo_root}/cmd/scylla-operator-tests" run kind-operator-upgrade \
   --scyllacluster-clients-broadcast-address-type=PodIP \
   --scyllacluster-storageclass-name=standard \
   --scyllacluster-reactor-backend=io_uring \
-  --operator-upgrade-from-version="${OPERATOR_UPGRADE_FROM_VERSION}" \
-  --operator-upgrade-from-deploy-dir="${operator_upgrade_from_deploy_dir}" \
-  --operator-upgrade-to-version="${OPERATOR_UPGRADE_TO_VERSION}" \
-  --operator-upgrade-to-deploy-dir="${operator_upgrade_to_deploy_dir}"
+  --operator-upgrade-from-version="${OPERATOR_UPGRADE_FROM_REF}" \
+  --operator-upgrade-to-version="${OPERATOR_UPGRADE_TO_REF}"

@@ -25,7 +25,8 @@ import (
 const (
 	operatorName = "scylla-operator"
 
-	// releaseDeployScript deploys the released manifests/CRDs; masterDeployScript deploys the current checkout's bundle.
+	// releaseDeployScript deploys the released manifests/CRDs; masterDeployScript deploys the deploy dir tree's
+	// bundle (the checkout, or a git-ref worktree prepared by the runner script).
 	releaseDeployScript = "hack/ci-deploy-release.sh"
 	masterDeployScript  = "hack/ci-deploy.sh"
 )
@@ -37,10 +38,14 @@ var _ = g.Describe("Operator Upgrade", framework.SuiteOperatorUpgrade, func() {
 		f = framework.NewFramework(ctx, "operator-upgrade")
 	})
 
-	g.It("should upgrade the operator between the configured versions", g.SpecTimeout(testTimeout), func(ctx g.SpecContext) {
+	g.It("should upgrade the operator between the configured refs", g.SpecTimeout(testTimeout), func(ctx g.SpecContext) {
+		// The refs have no default - the caller (hack/kind/run-e2e-operator-upgrade.sh in CI) computes them.
+		o.Expect(framework.TestContext.OperatorUpgradeFrom).NotTo(o.BeEmpty(), "--operator-upgrade-from-version must be set for the operator upgrade suite")
+		o.Expect(framework.TestContext.OperatorUpgradeTo).NotTo(o.BeEmpty(), "--operator-upgrade-to-version must be set for the operator upgrade suite")
+
 		// The upgrade endpoints are independent: each is either a released version (resolved against the released
-		// operator repository) or a full image ref (e.g. a locally built image pushed to the kind registry), so the
-		// test covers released -> current checkout as well as released -> released upgrades.
+		// operator repository) or a full image ref (e.g. an image built from a git ref and pushed to the kind
+		// registry), so the test covers released -> built as well as released -> released upgrades.
 		upgradeFromImageRef := getOperatorImageRef(framework.TestContext.OperatorUpgradeFrom)
 		upgradeToImageRef := getOperatorImageRef(framework.TestContext.OperatorUpgradeTo)
 
@@ -55,7 +60,7 @@ var _ = g.Describe("Operator Upgrade", framework.SuiteOperatorUpgrade, func() {
 		o.Expect(apierrors.IsNotFound(err)).To(o.BeTrue(), "expected no operator deployment before the test deploys it, got err=%v", err)
 
 		framework.By("Deploying the released operator stack (%s)", upgradeFromImageRef)
-		ciDeploy(ctx, upgradeFromImageRef, framework.TestContext.OperatorUpgradeFromDeployDir, filepath.Join(artifactsDir, "initial-manifest-bundle"))
+		ciDeploy(ctx, upgradeFromImageRef, filepath.Join(artifactsDir, "initial-manifest-bundle"))
 		o.Expect(getOperatorImage(ctx, f)).To(o.Equal(upgradeFromImageRef))
 
 		framework.By("Creating a ScyllaCluster")
@@ -70,7 +75,7 @@ var _ = g.Describe("Operator Upgrade", framework.SuiteOperatorUpgrade, func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Upgrading the operator stack to image %s", upgradeToImageRef)
-		ciDeploy(ctx, upgradeToImageRef, framework.TestContext.OperatorUpgradeToDeployDir, filepath.Join(artifactsDir, "upgraded-manifest-bundle"))
+		ciDeploy(ctx, upgradeToImageRef, filepath.Join(artifactsDir, "upgraded-manifest-bundle"))
 		o.Expect(getOperatorImage(ctx, f)).To(o.Equal(upgradeToImageRef))
 
 		// Trigger a reconciliation by the upgraded operator and make sure it rolls the ScyllaCluster back to a stable state.
@@ -95,14 +100,13 @@ var _ = g.Describe("Operator Upgrade", framework.SuiteOperatorUpgrade, func() {
 })
 
 // ciDeploy deploys the operator stack with the given operator image via the deploy script matching the ref. The
-// script path is relative, so it resolves within deployDir — the repository tree whose scripts and manifests are
-// deployed (empty means the current directory, i.e. the repository root). The script sets the operator image from
-// the ref and blocks on `kubectl rollout status`, so on return the operator is running the target image and available.
-func ciDeploy(ctx context.Context, operatorImageRef, deployDir, artifactsDir string) {
+// script path is relative, so the test must run from the repository root (the kind runner script cds there).
+// The script sets the operator image from the ref and blocks on `kubectl rollout status`, so on return the
+// operator is running the target image and available.
+func ciDeploy(ctx context.Context, operatorImageRef, artifactsDir string) {
 	deployScript := getDeployScriptForImageRef(operatorImageRef)
 
 	cmd := exec.CommandContext(ctx, deployScript, operatorImageRef)
-	cmd.Dir = deployDir
 	cmd.Env = append(os.Environ(), "REENTRANT=true", fmt.Sprintf("ARTIFACTS=%s", artifactsDir))
 	output, err := cmd.CombinedOutput()
 	o.Expect(err).NotTo(o.HaveOccurred(), "%s failed: %s", deployScript, string(output))
@@ -111,8 +115,10 @@ func ciDeploy(ctx context.Context, operatorImageRef, deployDir, artifactsDir str
 // getDeployScriptForImageRef picks the deploy script for the given operator image. A released image (explicit tag
 // other than "latest") deploys via releaseDeployScript, which resolves the manifests from the image's
 // org.opencontainers.image.{source,revision} labels, so the deployed manifests belong to that exact version.
-// Anything else — a "latest" tag or an untagged/digest-only ref, like a locally built image pushed to the kind
-// registry — deploys the current checkout's manifests via masterDeployScript.
+// Anything else — the master-lineage "latest" tag or an untagged/digest-only ref, like an image built from source
+// and pushed to the kind registry — deploys the deploy dir tree's manifests via masterDeployScript, matching how
+// the rest of CI deploys such images (e.g. the master periodics resolve the published "latest" and deploy it via
+// hack/ci-deploy.sh with the master checkout).
 func getDeployScriptForImageRef(operatorImageRef string) string {
 	ref, err := reference.ParseAnyReference(operatorImageRef)
 	o.Expect(err).NotTo(o.HaveOccurred(), "invalid operator image reference %q", operatorImageRef)

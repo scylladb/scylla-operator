@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.22.0](#1220)
 - [1.21.1](#1211)
 - [1.20.3](#1203)
 - [1.21.0](#1210)
@@ -10,16 +11,63 @@
 
 ## Unreleased
 
+## [1.22.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.22.0)
+
+Release date: TODO
+
+### Highlights
+
+- 🚀 ScyllaDB nodes can now be added in parallel, rather than one at a time, which makes cluster creation and scale-up faster.
+  Parallel node operations are toggled with the new `enableParallelNodeOperations` field in `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec`, and can be enabled or disabled at any time without disrupting the running nodes.
+  Enabling parallel node operations requires ScyllaDB 2026.2 or later. Parallel node operations are enabled on creation when the ScyllaDB version satisfies the requirement.
+  Clusters that existed before this release keep starting nodes sequentially until opted-in.
+- ✨ ScyllaDB Operator now runs `scylladb-node-exporter` as a dedicated sidecar for ScyllaDB 2026.3 and later, which no longer bundle node-exporter.
+- ✨ `NodeConfig` local disk setup now accepts generic filesystem creation flags via `spec.localDiskSetup.filesystems[].flags`, used to apply the ScyllaDB-recommended XFS metadata options.
+- 🐛 Fixed `ScyllaDBDatacenter` rollouts getting stuck when a new rack was inserted before existing racks while an existing rack was still progressing.
+- 🐛 Fixed the certificate controller minting a new certificate authority on an informer cache miss, which accumulated CAs in the bundle.
+- 🐛 Fixed nodes being skipped by cleanup after the token ring changed.
+- 🐛 Fixed the sidecar returning spurious errors during node decommission.
+- 🐛 Fixed the managed ScyllaDB Manager `ScyllaDBDatacenter` stalling its rollout after an operator upgrade that also rolls out a new version of Manager's own ScyllaDB instance.
+
+### Features & Enhancements
+
+- ScyllaDB nodes can now be added in parallel. With `enableParallelNodeOperations: true`, the Operator starts the
+  pods of a rack without waiting for the previous ordinal to become ready, and creates all racks at the same time
+  rather than one at a time, so bringing up a cluster no longer takes the sum of every node's startup time. Creating
+  them still waits for any in-flight scaling, update or upgrade of the existing racks to settle. Parallel node
+  operations perform best with tablet-based keyspaces, the default since ScyllaDB 2025.2, because a node joining a
+  vnode-based keyspace streams its data before it finishes joining. Parallel node operations aren't available for
+  datacenters managed by `ScyllaDBCluster`, which always starts nodes sequentially.
+  Refer to the [sequential and parallel node provisioning documentation](https://operator.docs.scylladb.com/v1.22/operate/scale-add-remove-racks.html#sequential-and-parallel-node-provisioning) for details.
+  [#3578](https://github.com/scylladb/scylla-operator/pull/3578), [#3588](https://github.com/scylladb/scylla-operator/pull/3588), [#3555](https://github.com/scylladb/scylla-operator/pull/3555)
+- Added an optional `enableParallelNodeOperations` boolean field to `ScyllaCluster.spec` and
+  `ScyllaDBDatacenter.spec`, toggling parallel node operations. It can be enabled or disabled at any time and changing
+  it does not disrupt the running nodes. Enabling it requires ScyllaDB 2026.2 or later, declared with a semver-parseable
+  image tag; an image whose version can't be determined, such as one pinned by digest, is rejected. The Operator
+  defaults the field to `true` on creation when the ScyllaDB version satisfies the requirement, while clusters that
+  existed before this release keep starting nodes sequentially until the field is set explicitly. In this release it
+  only controls how nodes are started. Its scope is expected to widen in a future release, where it will most likely
+  also allow decommissioning nodes in parallel, so setting it to `true` now may take effect for more operations after
+  an upgrade.
+  [#3568](https://github.com/scylladb/scylla-operator/pull/3568), [#3600](https://github.com/scylladb/scylla-operator/pull/3600)
+- The webhook server now serves a mutating admission webhook that applies API defaults to `ScyllaClusters` and
+  `ScyllaDBDatacenters` on creation. Matching `MutatingWebhookConfiguration` is added to the operator's manifests.
+  [#3579](https://github.com/scylladb/scylla-operator/pull/3579)
+- `NodeConfig` local disk setup now supports generic filesystem creation flags through the new
+  `spec.localDiskSetup.filesystems[].flags` field, passed through to the `mkfs` command. The `NodeConfig` examples use it
+  to apply the ScyllaDB-recommended XFS metadata options `-m rmapbt=0` and `-m reflink=0`, reducing XFS metadata overhead
+  without hardcoding filesystem-specific options in the implementation.
+  [#3515](https://github.com/scylladb/scylla-operator/pull/3515)
+- The ScyllaDB Manager Agent container now waits for the ScyllaDB API to become available before it starts, instead of
+  starting concurrently with ScyllaDB and failing its initial calls.
+  [#3484](https://github.com/scylladb/scylla-operator/pull/3484)
+
 ### Bug fixes
 
 - Fixed `ScyllaDBDatacenter` rollouts getting stuck when a new rack was inserted before existing racks while an existing 
   rack was still progressing. The controller now waits for all existing `StatefulSets` to roll out before a new
   `StatefulSet` is created.
   [#3513](https://github.com/scylladb/scylla-operator/pull/3513)
-- Fixed the sidecar returning spurious errors during node decommission. `IsDecommissioning()` in the ScyllaDB API
-  wrapper incorrectly compared against `OperationalModeDecommissioned` instead of `OperationalModeDecommissioning`,
-  which resulted in an unhandled error being logged.
-  [#3538](https://github.com/scylladb/scylla-operator/pull/3538)
 - Fixed nodes being skipped by cleanup after the token ring changed. The operator seeded a node's last cleaned up token
   ring hash with whatever ring state its sidecar sampled first, which exempted that node from cleanup of the ring it
   first observed. Which nodes ended up exempt depended on the race between node joins and the time for sidecar to propagate the token ring hash.
@@ -31,32 +79,26 @@
   reported as successful and the key was forgotten rather than requeued, losing the retry with backoff. The degraded
   condition was reported correctly, so this was not visible in the resource status.
   [#3587](https://github.com/scylladb/scylla-operator/pull/3587)
-
-### Features & Enhancements
-- Added an optional `enableParallelNodeOperations` boolean field to `ScyllaCluster.spec` and
-  `ScyllaDBDatacenter.spec`. Enabling it requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
-  In this release it only controls how nodes are started. Its scope is expected to widen in a future release, where it
-  will most likely also allow decommissioning nodes in parallel, so setting it to `true` now may take effect for more
-  operations after an upgrade.
-  [#3568](https://github.com/scylladb/scylla-operator/pull/3568)
-- The webhook server now serves a mutating admission webhook that applies API defaults to `ScyllaClusters` and
-  `ScyllaDBDatacenters` on creation. Matching `MutatingWebhookConfiguration` is added to the operator's manifests.
-  [#3579](https://github.com/scylladb/scylla-operator/pull/3579)
-- ScyllaDB nodes can now bootstrap in parallel. With `enableParallelNodeOperations: true`, the nodes of a rack are
-  started without each one waiting for the previous ordinal to become ready, and all missing racks are created in a
-  single sync rather than one per requeue, which cuts the time to bring up a cluster. Creating them still waits for any
-  in-flight scaling, update or upgrade of the existing racks to settle. Newly created clusters have it enabled by
-  default, while existing ones keep bootstrapping sequentially and can opt in. It can be changed on a running cluster
-  without disruptions to existing nodes. Parallel bootstrap isn't available for datacenters managed by
-  `ScyllaDBCluster`, which always bootstraps sequentially.
-  [#3578](https://github.com/scylladb/scylla-operator/pull/3578), [#3588](https://github.com/scylladb/scylla-operator/pull/3588)
+- Fixed the sidecar returning spurious errors during node decommission. An unhandled error was being logged due to an incorrect operational mode check.
+  [#3538](https://github.com/scylladb/scylla-operator/pull/3538)
+- Fixed the certificate controller minting a new certificate authority when the informer cache missed an object created
+  by a preceding reconcile. `ManageCertificates` received point-in-time snapshots of `Secrets` and `ConfigMaps` taken at
+  the start of the reconcile loop; when a second reconcile fired before the informer caught up, the lookup returned
+  nothing and a new CA with a different key was minted and accumulated in the CA bundle. The lookup now falls back to a
+  live GET on a cache miss.
+  [#3467](https://github.com/scylladb/scylla-operator/pull/3467)
+- Fixed the managed ScyllaDB Manager `ScyllaDBDatacenter` stalling its rollout after an operator upgrade, when the
+  upgrade also rolls out a new version of Manager's own ScyllaDB instance.
+  [#3559](https://github.com/scylladb/scylla-operator/pull/3559)
+- Fixed the webhook server logging the memory address of the port pointer instead of the port number.
+  [#3526](https://github.com/scylladb/scylla-operator/pull/3526)
 
 ### Other changes
 
 - ScyllaDB Operator now runs `scylladb-node-exporter` as a dedicated sidecar container for ScyllaDB clusters running
   version 2026.3 or later, since these versions no longer bundle node-exporter. The node-exporter container image is configurable via
   `ScyllaOperatorConfig.spec.scyllaDBNodeExporterImage`.
-  [#3482](https://github.com/scylladb/scylla-operator/pull/3482)
+  [#3482](https://github.com/scylladb/scylla-operator/pull/3482), [#3523](https://github.com/scylladb/scylla-operator/pull/3523)
 - The bootstrap barrier now only takes into account nodes that have already joined the ScyllaDB cluster and own tokens
   in it. `ScyllaDBDatacenterNodesStatusReport` reflects the same: a node appears in it only once it's a member of the
   ScyllaDB cluster, so the absence of an entry no longer implies the corresponding node is missing or unhealthy.
@@ -75,10 +117,47 @@
 
 ### Dependencies
 
-- Updated default ScyllaDB Manager version from `3.11.2` to `3.12.0`.
-  [#3520](https://github.com/scylladb/scylla-operator/pull/3520)
+- Updated default ScyllaDB version from `2026.1.3` to `2026.2.5`, and the ScyllaDB utils image to the matching
+  `2026.2.5`.
+  [#3456](https://github.com/scylladb/scylla-operator/pull/3456), [#3501](https://github.com/scylladb/scylla-operator/pull/3501), [#3516](https://github.com/scylladb/scylla-operator/pull/3516), [#3561](https://github.com/scylladb/scylla-operator/pull/3561), [#3612](https://github.com/scylladb/scylla-operator/pull/3612), [#3617](https://github.com/scylladb/scylla-operator/pull/3617)
+- Updated default ScyllaDB Manager and ScyllaDB Manager Agent versions from `3.10.1` to `3.12.0`.
+  [#3461](https://github.com/scylladb/scylla-operator/pull/3461), [#3471](https://github.com/scylladb/scylla-operator/pull/3471), [#3487](https://github.com/scylladb/scylla-operator/pull/3487), [#3520](https://github.com/scylladb/scylla-operator/pull/3520)
 - Bumped builder image from `quay.io/scylladb/scylla-operator-images:golang-1.26` to `quay.io/scylladb/scylla-operator-images:golang-1.27`.
   [#3609](https://github.com/scylladb/scylla-operator/pull/3609)
+- Bumped base image from `base-ubi-9.7-minimal` to `base-ubi-9.8-minimal`.
+  [#3608](https://github.com/scylladb/scylla-operator/pull/3608)
+- Updated Kubernetes client libraries (`k8s.io/*`) from `v0.36.1` to `v0.36.4`.
+  [#3541](https://github.com/scylladb/scylla-operator/pull/3541), [#3613](https://github.com/scylladb/scylla-operator/pull/3613)
+- Updated bundled `scylla-monitoring` from `4.14.3` to `4.15.2`, with improvements to Grafana dashboards served by
+  `ScyllaDBMonitoring`, Grafana from `12.4.2` to `12.4.6` and Prometheus from `v3.9.1` to `v3.12.0`.
+  [#3448](https://github.com/scylladb/scylla-operator/pull/3448), [#3485](https://github.com/scylladb/scylla-operator/pull/3485), [#3536](https://github.com/scylladb/scylla-operator/pull/3536)
+
+<details>
+<summary>Other dependencies updates</summary>
+
+- `github.com/aws/aws-sdk-go-v2` from `v1.41.7` to `v1.43.7`, along with the rest of the AWS SDK modules and
+  `github.com/aws/smithy-go` from `v1.25.1` to `v1.27.9`.
+  [#3455](https://github.com/scylladb/scylla-operator/pull/3455), [#3469](https://github.com/scylladb/scylla-operator/pull/3469), [#3479](https://github.com/scylladb/scylla-operator/pull/3479), [#3486](https://github.com/scylladb/scylla-operator/pull/3486), [#3499](https://github.com/scylladb/scylla-operator/pull/3499), [#3506](https://github.com/scylladb/scylla-operator/pull/3506), [#3517](https://github.com/scylladb/scylla-operator/pull/3517), [#3541](https://github.com/scylladb/scylla-operator/pull/3541), [#3613](https://github.com/scylladb/scylla-operator/pull/3613), [#3616](https://github.com/scylladb/scylla-operator/pull/3616)
+- `google.golang.org/grpc` from `v1.81.1` to `v1.83.1`.
+  [#3479](https://github.com/scylladb/scylla-operator/pull/3479), [#3506](https://github.com/scylladb/scylla-operator/pull/3506), [#3541](https://github.com/scylladb/scylla-operator/pull/3541)
+- `golang.org/x/sys` from `v0.44.0` to `v0.47.0`.
+  [#3455](https://github.com/scylladb/scylla-operator/pull/3455), [#3469](https://github.com/scylladb/scylla-operator/pull/3469), [#3486](https://github.com/scylladb/scylla-operator/pull/3486)
+- `github.com/prometheus/client_golang` from `v1.23.2` to `v1.24.1`.
+  [#3517](https://github.com/scylladb/scylla-operator/pull/3517)
+- `github.com/go-openapi/runtime` from `v0.31.0` to `v0.33.1` and `github.com/go-openapi/strfmt` from `v0.26.2` to `v0.27.0`.
+  [#3455](https://github.com/scylladb/scylla-operator/pull/3455), [#3479](https://github.com/scylladb/scylla-operator/pull/3479), [#3506](https://github.com/scylladb/scylla-operator/pull/3506), [#3517](https://github.com/scylladb/scylla-operator/pull/3517), [#3616](https://github.com/scylladb/scylla-operator/pull/3616)
+- `github.com/grafana/grafana-openapi-client-go` from `v0.0.0-20260430175825-547a3b5a00a5` to `v0.0.0-20260724161645-6029e6c64947`.
+  [#3455](https://github.com/scylladb/scylla-operator/pull/3455), [#3469](https://github.com/scylladb/scylla-operator/pull/3469), [#3517](https://github.com/scylladb/scylla-operator/pull/3517)
+- `github.com/onsi/ginkgo/v2` from `v2.29.0` to `v2.32.1` and `github.com/onsi/gomega` from `v1.41.0` to `v1.42.1`.
+  [#3475](https://github.com/scylladb/scylla-operator/pull/3475), [#3479](https://github.com/scylladb/scylla-operator/pull/3479), [#3541](https://github.com/scylladb/scylla-operator/pull/3541)
+- `github.com/magiconair/properties` from `v1.8.10` to `v1.18.11`.
+  [#3517](https://github.com/scylladb/scylla-operator/pull/3517)
+- `k8s.io/utils` from `v0.0.0-20260507154919-ff6756f316d2` to `v0.0.0-20260707023825-cf1189d6abe3`.
+  [#3479](https://github.com/scylladb/scylla-operator/pull/3479), [#3486](https://github.com/scylladb/scylla-operator/pull/3486)
+- `go` directive in `go.mod` from `1.26.0` to `1.27.0`.
+  [#3455](https://github.com/scylladb/scylla-operator/pull/3455), [#3609](https://github.com/scylladb/scylla-operator/pull/3609)
+
+</details>
 
 ## [1.21.1](https://github.com/scylladb/scylla-operator/releases/tag/v1.21.1)
 

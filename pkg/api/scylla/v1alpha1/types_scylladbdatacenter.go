@@ -493,8 +493,7 @@ type RackStatus struct {
 	AvailableNodes *int32 `json:"availableNodes,omitempty"`
 
 	// decommissioningNodes holds the list of nodes in this rack that are leaving the cluster.
-	// An entry is recorded before the node's decommission is requested, and it is removed only after the node has been
-	// successfully decommissioned.
+	// A node is listed from the moment its decommission is requested until it has been decommissioned and removed.
 	// Until the list is empty, changes to the number of nodes requested in this rack are accepted but not applied.
 	// +optional
 	// +listType=map

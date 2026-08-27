@@ -683,6 +683,30 @@ func (sdcc *Controller) syncStatefulSets(
 			}
 		}
 
+		rackStatus := getRackStatus(status.Racks, rackName)
+		if rackStatus != nil && len(rackStatus.DecommissioningNodes) > 0 {
+			// The node count is held at the effective count while nodes are leaving. A plain scale-down has the spec
+			// already at the effective count, so a difference means the spec changed since and the change is deferred.
+			specNodeCount, err := controllerhelpers.GetRackNodeCount(sdc, rackName)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
+			}
+
+			if *specNodeCount != *req.Spec.Replicas {
+				decommissioningNodeNames := oslices.ConvertSlice(rackStatus.DecommissioningNodes, func(node scyllav1alpha1.DecommissioningNodeStatus) string {
+					return node.Name
+				})
+				klog.V(4).InfoS("Deferring rack node count change until the decommissioning nodes are removed", "ScyllaDBDatacenter", klog.KObj(sdc), "Rack", rackName, "NodeCount", *specNodeCount, "EffectiveNodeCount", *req.Spec.Replicas, "DecommissioningNodes", decommissioningNodeNames)
+				progressingConditions = append(progressingConditions, metav1.Condition{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "DeferringRackNodeCountChange",
+					Message:            fmt.Sprintf("Deferring node count change of rack %q to %d until its decommissioning nodes %q are removed.", rackName, *specNodeCount, decommissioningNodeNames),
+					ObservedGeneration: sdc.Generation,
+				})
+			}
+		}
+
 		// Wait if any decommissioning is in progress. With parallel node operations enabled the wait is scoped to the
 		// rack, so that the other racks keep scaling, otherwise it holds the whole datacenter so that only one node
 		// operation is in flight at a time.

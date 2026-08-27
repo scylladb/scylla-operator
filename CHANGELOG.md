@@ -12,6 +12,10 @@
 
 ### Bug fixes
 
+- Fixed the `ScyllaDBDatacenter` controller updating the status in a loop while any member Service was missing its
+  hostID annotation, e.g. during bootstrap. The `CertControllerProgressing` condition listed the waiting Services in a
+  random order, so every sync produced a different status, and every status update triggered another sync.
+  [#3626](https://github.com/scylladb/scylla-operator/pull/3626)
 - Fixed `ScyllaDBDatacenter` rollouts getting stuck when a new rack was inserted before existing racks while an existing 
   rack was still progressing. The controller now waits for all existing `StatefulSets` to roll out before a new
   `StatefulSet` is created.

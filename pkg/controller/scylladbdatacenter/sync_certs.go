@@ -122,6 +122,40 @@ func makeScyllaConnectionConfig(
 	return secret, nil
 }
 
+// getMemberServiceHostIDs returns the hostIDs of the member Services in serviceMap and a progressing message for
+// every member Service that doesn't have one yet.
+// Both are sorted, so that the certificates and the conditions built from them can be reconciled in a declarative way.
+// Otherwise the map iteration order would make the status differ on every sync, and every status update would
+// trigger another sync.
+func getMemberServiceHostIDs(serviceMap map[string]*corev1.Service) ([]string, []string) {
+	var hostIDs []string
+	var progressingMessages []string
+	for _, svc := range serviceMap {
+		if svc.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
+			continue
+		}
+
+		hostID, hasHostID := svc.Annotations[naming.HostIDAnnotation]
+		if len(hostID) == 0 {
+			if hasHostID {
+				klog.Warningf("service %q has empty hostID", klog.KObj(svc))
+			}
+
+			message := fmt.Sprintf("waiting for service %q to have a hostID set", naming.ObjRef(svc))
+			progressingMessages = append(progressingMessages, message)
+
+			continue
+		}
+
+		hostIDs = append(hostIDs, hostID)
+	}
+
+	slices.Sort(hostIDs)
+	slices.Sort(progressingMessages)
+
+	return hostIDs, progressingMessages
+}
+
 func (sdcc *Controller) syncCerts(
 	ctx context.Context,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
@@ -294,27 +328,7 @@ func (sdcc *Controller) syncCerts(
 			return cmp.Compare(a.String(), b.String())
 		})
 
-		var hostIDs []string
-		var progressingMessages []string
-		for _, svc := range serviceMap {
-			if svc.Labels[naming.ScyllaServiceTypeLabel] != string(naming.ScyllaServiceTypeMember) {
-				continue
-			}
-
-			hostID, hasHostID := svc.Annotations[naming.HostIDAnnotation]
-			if len(hostID) == 0 {
-				if hasHostID {
-					klog.Warningf("service %q has empty hostID", klog.KObj(svc))
-				}
-
-				message := fmt.Sprintf("waiting for service %q to have a hostID set", naming.ObjRef(svc))
-				progressingMessages = append(progressingMessages, message)
-
-				continue
-			}
-
-			hostIDs = append(hostIDs, hostID)
-		}
+		hostIDs, progressingMessages := getMemberServiceHostIDs(serviceMap)
 
 		// For every cluster domain we'll create "cql" subdomain and "UUID.cql" subdomains for every node.
 		for _, domain := range sdc.Spec.DNSDomains {

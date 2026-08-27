@@ -348,6 +348,7 @@ func Test_ensureRackNamesInRackStatuses(t *testing.T) {
 		scyllaDBDatacenter  *scyllav1alpha1.ScyllaDBDatacenter
 		status              *scyllav1alpha1.ScyllaDBDatacenterStatus
 		statefulSets        []*appsv1.StatefulSet
+		services            map[string]*corev1.Service
 		expectedRacks       []scyllav1alpha1.RackStatus
 		expectedErrorString string
 	}{
@@ -385,6 +386,35 @@ func Test_ensureRackNamesInRackStatuses(t *testing.T) {
 			},
 			expectedRacks: []scyllav1alpha1.RackStatus{
 				freshRackStatus("foo"),
+			},
+		},
+		{
+			name:               "lists nodes whose member Service carries the decommissioned label",
+			scyllaDBDatacenter: newScyllaDBDatacenter(),
+			status:             &scyllav1alpha1.ScyllaDBDatacenterStatus{},
+			statefulSets: []*appsv1.StatefulSet{
+				newRackStatefulSet("foo"),
+			},
+			services: map[string]*corev1.Service{
+				"foo-1": {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      "foo-1",
+						Labels: map[string]string{
+							naming.RackNameLabel:       "foo",
+							naming.DecommissionedLabel: naming.LabelValueFalse,
+						},
+					},
+				},
+			},
+			expectedRacks: []scyllav1alpha1.RackStatus{
+				func() scyllav1alpha1.RackStatus {
+					rs := freshRackStatus("foo")
+					rs.DecommissioningNodes = []scyllav1alpha1.DecommissioningNodeStatus{
+						{Name: "foo-1"},
+					}
+					return rs
+				}(),
 			},
 		},
 		{
@@ -435,6 +465,7 @@ func Test_ensureRackNamesInRackStatuses(t *testing.T) {
 				tc.scyllaDBDatacenter,
 				tc.status,
 				tc.statefulSets,
+				tc.services,
 			)
 
 			var errStr string

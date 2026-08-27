@@ -490,6 +490,7 @@ func ensureRackNamesInRackStatuses(
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
 	statefulSets []*appsv1.StatefulSet,
+	services map[string]*corev1.Service,
 ) error {
 	var errs []error
 
@@ -504,14 +505,13 @@ func ensureRackNamesInRackStatuses(
 			continue
 		}
 
-		updatedRackStatus := *calculateRackStatus(podLister, sdc, rackName, sts)
 		_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
 			return rackStatus.Name == rackName
 		})
 		if ok {
-			status.Racks[idx] = updatedRackStatus
+			status.Racks[idx] = *calculateRackStatus(podLister, sdc, rackName, sts, services)
 		} else {
-			status.Racks = append(status.Racks, updatedRackStatus)
+			status.Racks = append(status.Racks, *calculateRackStatus(podLister, sdc, rackName, sts, services))
 		}
 	}
 
@@ -634,7 +634,7 @@ func (sdcc *Controller) syncStatefulSets(
 	}
 
 	// Record the statuses of the StatefulSets that were created, even if creating another one failed.
-	err = ensureRackNamesInRackStatuses(sdcc.podLister, sdc, status, createdStatefulSets)
+	err = ensureRackNamesInRackStatuses(sdcc.podLister, sdc, status, createdStatefulSets, services)
 	if err != nil {
 		createErrs = append(createErrs, fmt.Errorf("can't update status with rack statuses: %w", err))
 	}
@@ -870,7 +870,7 @@ func (sdcc *Controller) syncStatefulSets(
 						continue
 					}
 
-					status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts)
+					status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts, services)
 				}
 			}
 			if anyStsChanged {
@@ -1138,7 +1138,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc))
 			}
 
-			status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts)
+			status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts, services)
 		}
 
 		// Wait for the StatefulSet to roll out.

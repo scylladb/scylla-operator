@@ -492,10 +492,26 @@ type RackStatus struct {
 	// +optional
 	AvailableNodes *int32 `json:"availableNodes,omitempty"`
 
+	// decommissioningNodes holds the list of nodes in this rack that are leaving the cluster.
+	// An entry is recorded before the node's decommission is requested, and it is removed only after the node has been
+	// successfully decommissioned.
+	// Until the list is empty, changes to the number of nodes requested in this rack are accepted but not applied.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	DecommissioningNodes []DecommissioningNodeStatus `json:"decommissioningNodes,omitempty"`
+
 	// stale indicates if the current rack status is collected for a previous generation.
 	// stale should eventually become false when the appropriate controller writes a fresh status.
 	// +optional
 	Stale *bool `json:"stale,omitempty"`
+}
+
+// DecommissioningNodeStatus is the status of a node that is leaving a cluster.
+type DecommissioningNodeStatus struct {
+	// name specifies the name of the node that is leaving. It matches the name of the node's member Service.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
 }
 
 // ScyllaDBDatacenterStatus defines the observed state of ScyllaDBDatacenter.

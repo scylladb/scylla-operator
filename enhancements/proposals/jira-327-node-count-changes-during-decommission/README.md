@@ -10,10 +10,6 @@ The proposed design records the leaving nodes in a per-rack status field before 
 
 The barrier blocks the whole rack only because we use StatefulSets today: a StatefulSet can only remove its highest-numbered node, so leaving nodes and new nodes cannot coexist in a rack. The rule itself is per node, and the design is ready for a future move away from StatefulSets, where the barrier shrinks to single nodes and a rack can scale out while other nodes are still leaving.
 
-Decisions to make:
-
-1. A decommission that ScyllaDB keeps rejecting stays trapped behind the barrier. Do we build an escape hatch now, knowing it becomes unnecessary once node management moves away from StatefulSets — or do we accept the risk until then? See Risks and mitigations.
-
 ## Problem
 
 The operator asks a node to decommission by setting the `scylla/decommissioned=false` label on its member service. The sidecar runs `nodetool decommission` and sets the label to `true` when done.
@@ -62,9 +58,13 @@ status:
   racks:
   - name: a
     decommissioningNodes:   # present only while a scale-down is in progress
-    - basic-dc-a-1
-    - basic-dc-a-2
+    - name: basic-dc-a-1
+    - name: basic-dc-a-2
 ```
+
+Each entry is an object rather than a bare name, so per-node metadata can be added later without another API change. The list is keyed by `name` (`listType=map`), so concurrent writers merge per entry instead of clobbering the whole list. The order of the entries carries no meaning and no logic may depend on it — entries are kept sorted only so that a reshuffle doesn't produce an endless stream of status updates.
+
+The same record is mirrored into the `ScyllaCluster` API as `status.racks[].decommissioningMembers`, following the members vocabulary that API already uses for its rack status.
 
 The record is a write-ahead log of the decommission labels: it says exactly which nodes are leaving, in the same language as the labels. Its meaning is defined per node ("these identities are leaving and must be fully removed before they may exist again") — it never mentions ordinals or StatefulSets.
 
@@ -98,7 +98,7 @@ sequenceDiagram
 
 The decommission labels stay the ground truth underneath the record: if the record and the labels ever disagree, the labels win — a stamped node is irrevocably leaving, no matter what the record says. And a lost record (a restored backup, manual edits) is simply rebuilt from the labels.
 
-The design works the same for parallel decommissioning: instead of one node at a time, all listed nodes are stamped and decommissioned at once — nothing about the record or the lifecycle changes.
+The design works the same for parallel decommissioning: with `spec.enableParallelNodeOperations` enabled, all the listed nodes are stamped and decommissioned at once instead of one at a time — nothing about the record or the lifecycle changes.
 
 ## Readiness for heterogeneous nodes in a rack
 
@@ -129,6 +129,6 @@ With rack-aware replication (tablets keyspaces using rack lists), a leaving node
 
 The problem exists today too, with no documented remedy — and today the decommission wait blocks the whole datacenter, so the design narrows the risk rather than creating it. But today's undocumented way out (manually removing the label) stops working: the record and the labels rebuild each other, so hand-editing either one is undone by the controller.
 
-Handling this explicitly needs an escape hatch — for example, a `scylla/decommission-abort=true` label on the member service: the *sidecar* safely drops `decommissioned=false` between attempts (only it can do this without a race, and it ignores the abort if the node already left), and the *controller* then drops the node from `decommissioningNodes` and does not re-stamp a service carrying the abort label.
+Handling this explicitly would need an escape hatch — for example, a `scylla/decommission-abort=true` label on the member service: the *sidecar* safely drops `decommissioned=false` between attempts (only it can do this without a race, and it ignores the abort if the node already left), and the *controller* then drops the node from `decommissioningNodes` and does not re-stamp a service carrying the abort label.
 
-The escape hatch is only needed for as long as we use StatefulSets: with non-StatefulSet node management, a new node can simply be added to the rack, and the stuck decommission proceeds on its own. Decision to make: build the escape hatch now, knowing it becomes unnecessary later — or accept the risk until then?
+The escape hatch is only needed for as long as we use StatefulSets: with non-StatefulSet node management, a new node can simply be added to the rack, and the stuck decommission proceeds on its own. **Decided: the escape hatch is out of scope for this design and is postponed until node management moves away from StatefulSets.** Until then the risk is accepted — it exists today as well, and the cluster stays healthy while the decommission waits.

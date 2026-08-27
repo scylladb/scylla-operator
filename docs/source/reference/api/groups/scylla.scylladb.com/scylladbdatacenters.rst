@@ -13508,6 +13508,9 @@ object
    * - currentVersion
      - string
      - version specifies the current version of ScyllaDB in use.
+   * - :ref:`decommissioningNodes<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.status.racks[].decommissioningNodes[]>`
+     - array (object)
+     - decommissioningNodes holds the list of nodes in this rack that are leaving the cluster. An entry is recorded before the node's decommission is requested, and it is removed only after the node has been successfully decommissioned. Until the list is empty, changes to the number of nodes requested in this rack are accepted but not applied.
    * - name
      - string
      - name specifies the name of datacenter this status describes.
@@ -13526,3 +13529,28 @@ object
    * - updatedVersion
      - string
      - updatedVersion specifies the updated version of ScyllaDB.
+
+.. _api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.status.racks[].decommissioningNodes[]:
+
+.status.racks[].decommissioningNodes[]
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Description
+"""""""""""
+DecommissioningNodeStatus is the status of a node that is leaving a cluster.
+
+Type
+""""
+object
+
+
+.. list-table::
+   :widths: 25 10 150
+   :header-rows: 1
+
+   * - Property
+     - Type
+     - Description
+   * - name
+     - string
+     - name specifies the name of the node that is leaving. It matches the name of the node's member Service.

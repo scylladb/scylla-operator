@@ -4073,6 +4073,27 @@ spec:
                             type: string
                         type: object
                       type: array
+                    decommissioningMembers:
+                      description: |-
+                        decommissioningMembers holds the list of members in this rack that are leaving the cluster.
+                        An entry is recorded before the member's decommission is requested, and it is removed only after the member has
+                        been successfully decommissioned.
+                        Until the list is empty, changes to the number of members requested in this rack are accepted but not applied.
+                      items:
+                        description: DecommissioningMemberStatus is the status of
+                          a member that is leaving a cluster.
+                        properties:
+                          name:
+                            description: name is the name of the member that is leaving.
+                              It matches the name of the member's Service.
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - name
+                      x-kubernetes-list-type: map
                     members:
                       description: members is the current number of members requested
                         in the specific Rack

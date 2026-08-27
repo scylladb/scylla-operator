@@ -867,6 +867,15 @@ type RackStatus struct {
 	// +optional
 	UpdatedMembers *int32 `json:"updatedMembers,omitempty"`
 
+	// decommissioningMembers holds the list of members in this rack that are leaving the cluster.
+	// An entry is recorded before the member's decommission is requested, and it is removed only after the member has
+	// been successfully decommissioned.
+	// Until the list is empty, changes to the number of members requested in this rack are accepted but not applied.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	DecommissioningMembers []DecommissioningMemberStatus `json:"decommissioningMembers,omitempty"`
+
 	// stale indicates if the current rack status is collected for a previous generation.
 	// stale should eventually become false when the appropriate controller writes a fresh status.
 	// +optional
@@ -879,6 +888,13 @@ type RackStatus struct {
 	// DEPRECATED: since Scylla Operator 1.10 it's only used for deprecated replace node procedure (ScyllaDB OS <5.2, Enterprise <2023.1).
 	//             With Scylla Operator 1.11+ this field may be empty.
 	ReplaceAddressFirstBoot map[string]string `json:"replace_address_first_boot,omitempty"`
+}
+
+// DecommissioningMemberStatus is the status of a member that is leaving a cluster.
+type DecommissioningMemberStatus struct {
+	// name is the name of the member that is leaving. It matches the name of the member's Service.
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
 }
 
 // RackCondition is an observation about the state of a rack.

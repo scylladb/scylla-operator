@@ -5630,6 +5630,25 @@ spec:
                               type: string
                           type: object
                         type: array
+                      decommissioningMembers:
+                        description: |-
+                          decommissioningMembers holds the list of members in this rack that are leaving the cluster.
+                          An entry is recorded before the member's decommission is requested, and it is removed only after the member has
+                          been successfully decommissioned.
+                          Until the list is empty, changes to the number of members requested in this rack are accepted but not applied.
+                        items:
+                          description: DecommissioningMemberStatus is the status of a member that is leaving a cluster.
+                          properties:
+                            name:
+                              description: name is the name of the member that is leaving. It matches the name of the member's Service.
+                              type: string
+                          required:
+                            - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                          - name
+                        x-kubernetes-list-type: map
                       members:
                         description: members is the current number of members requested in the specific Rack
                         format: int32
@@ -45775,6 +45794,25 @@ spec:
                       currentVersion:
                         description: version specifies the current version of ScyllaDB in use.
                         type: string
+                      decommissioningNodes:
+                        description: |-
+                          decommissioningNodes holds the list of nodes in this rack that are leaving the cluster.
+                          An entry is recorded before the node's decommission is requested, and it is removed only after the node has been
+                          successfully decommissioned.
+                          Until the list is empty, changes to the number of nodes requested in this rack are accepted but not applied.
+                        items:
+                          description: DecommissioningNodeStatus is the status of a node that is leaving a cluster.
+                          properties:
+                            name:
+                              description: name specifies the name of the node that is leaving. It matches the name of the node's member Service.
+                              type: string
+                          required:
+                            - name
+                          type: object
+                        type: array
+                        x-kubernetes-list-map-keys:
+                          - name
+                        x-kubernetes-list-type: map
                       name:
                         description: name specifies the name of datacenter this status describes.
                         type: string

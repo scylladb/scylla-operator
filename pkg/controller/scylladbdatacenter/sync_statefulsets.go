@@ -648,6 +648,11 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, nil
 	}
 
+	parallelNodeOperationsEnabled, err := effectiveParallelNodeOperationsEnabled(sdc)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't determine effective parallel node operations enablement: %w", err)
+	}
+
 	// Scale before the update.
 	for _, req := range requiredStatefulSets {
 		sts := statefulSets[req.Name]
@@ -671,10 +676,13 @@ func (sdcc *Controller) syncStatefulSets(
 			}
 		}
 
-		// Wait if any decommissioning is in progress.
+		// Wait if any decommissioning is in progress. With parallel node operations enabled the wait is scoped to the
+		// rack, so that the other racks keep scaling, otherwise it holds the whole datacenter so that only one node
+		// operation is in flight at a time.
+		isDecommissioning := false
 		for _, svc := range rackServices {
 			if svc.Labels[naming.DecommissionedLabel] == naming.LabelValueFalse {
-				klog.V(4).InfoS("Waiting for service to be decommissioned")
+				klog.V(4).InfoS("Waiting for service to be decommissioned", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc))
 				progressingConditions = append(progressingConditions, metav1.Condition{
 					Type:               statefulSetControllerProgressingCondition,
 					Status:             metav1.ConditionTrue,
@@ -682,9 +690,16 @@ func (sdcc *Controller) syncStatefulSets(
 					Message:            fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
 					ObservedGeneration: sdc.Generation,
 				})
-
+				isDecommissioning = true
+				break
+			}
+		}
+		if isDecommissioning {
+			if !parallelNodeOperationsEnabled {
 				return progressingConditions, nil
 			}
+
+			continue
 		}
 
 		if scale.Spec.Replicas == *sts.Spec.Replicas {
@@ -733,6 +748,12 @@ func (sdcc *Controller) syncStatefulSets(
 			return progressingConditions, fmt.Errorf("can't update scale: %w", err)
 		}
 		return progressingConditions, err
+	}
+
+	// Wait for the racks that are still decommissioning before proceeding with an update, so that only the scaling
+	// above ever changes the replicas of a StatefulSet.
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
 	}
 
 	// TODO: This blocks unstucking by an update.

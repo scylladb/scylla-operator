@@ -1823,14 +1823,14 @@ func MakeRoleBinding(sdc *scyllav1alpha1.ScyllaDBDatacenter) *rbacv1.RoleBinding
 	}
 }
 
-func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister, image string) ([]*batchv1.Job, []metav1.Condition, error) {
+func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, status *scyllav1alpha1.ScyllaDBDatacenterStatus, services map[string]*corev1.Service, statefulSets map[string]*appsv1.StatefulSet, podLister corev1listers.PodLister, image string) ([]*batchv1.Job, []metav1.Condition, error) {
 	var jobs []*batchv1.Job
 	var progressingConditions []metav1.Condition
 
 	for _, rack := range sdc.Spec.Racks {
-		rackNodes, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
+		rackNodes, err := getEffectiveRackNodeCount(sdc, status, statefulSets, rack)
 		if err != nil {
-			return jobs, progressingConditions, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
+			return jobs, progressingConditions, fmt.Errorf("can't get effective node count of rack %q of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 		}
 
 		for i := int32(0); i < *rackNodes; i++ {

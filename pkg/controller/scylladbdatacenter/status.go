@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -134,6 +137,69 @@ func calculateDecommissioningNodes(rackName string, services map[string]*corev1.
 	})
 
 	return nodes
+}
+
+// getRackStatus returns the status of the named rack from racks, or nil if there is none.
+func getRackStatus(racks []scyllav1alpha1.RackStatus, rackName string) *scyllav1alpha1.RackStatus {
+	rackStatus, _, ok := oslices.Find(racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+		return rackStatus.Name == rackName
+	})
+	if !ok {
+		return nil
+	}
+
+	return &rackStatus
+}
+
+// getServiceOrdinal returns the ordinal of the member Service from its name.
+func getServiceOrdinal(name string) (int32, error) {
+	ordinalStrings := serviceOrdinalRegex.FindStringSubmatch(name)
+	if len(ordinalStrings) != 2 {
+		return 0, fmt.Errorf("can't parse ordinal from service name %q", name)
+	}
+
+	ordinal, err := strconv.ParseInt(ordinalStrings[1], 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("can't parse ordinal from service name %q: %w", name, err)
+	}
+
+	return int32(ordinal), nil
+}
+
+// getEffectiveRackNodeCount returns the node count the rack reconciles to.
+// While the rack has decommissioning nodes listed in status, the count excludes them: the listed nodes are leaving
+// and the StatefulSet can only remove its highest ordinals, so the count is the lowest listed ordinal, capped at the
+// current StatefulSet replicas. Any change to the spec node count waits until the list is empty.
+// Otherwise it is the spec node count.
+func getEffectiveRackNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, status *scyllav1alpha1.ScyllaDBDatacenterStatus, statefulSets map[string]*appsv1.StatefulSet, rack scyllav1alpha1.RackSpec) (*int32, error) {
+	specNodeCount, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
+	if err != nil {
+		return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
+	}
+
+	rackStatus := getRackStatus(status.Racks, rack.Name)
+	if rackStatus == nil || len(rackStatus.DecommissioningNodes) == 0 {
+		return specNodeCount, nil
+	}
+
+	var nodeCount *int32
+	for _, node := range rackStatus.DecommissioningNodes {
+		ordinal, err := getServiceOrdinal(node.Name)
+		if err != nil {
+			return nil, fmt.Errorf("can't get ordinal of decommissioning node %q of rack %q of ScyllaDBDatacenter %q: %w", node.Name, rack.Name, naming.ObjRef(sdc), err)
+		}
+
+		if nodeCount == nil || ordinal < *nodeCount {
+			nodeCount = new(ordinal)
+		}
+	}
+
+	sts, ok := statefulSets[naming.StatefulSetNameForRack(rack, sdc)]
+	if ok && sts.Spec.Replicas != nil && *sts.Spec.Replicas < *nodeCount {
+		nodeCount = new(*sts.Spec.Replicas)
+	}
+
+	return nodeCount, nil
 }
 
 func updateAggregatedStatusFields(status *scyllav1alpha1.ScyllaDBDatacenterStatus) {

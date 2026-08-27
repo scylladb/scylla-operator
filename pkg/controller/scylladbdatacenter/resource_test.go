@@ -4339,7 +4339,7 @@ func TestMakeJobs(t *testing.T) {
 
 			podLister := corev1listers.NewPodLister(podCache)
 
-			gotJobs, gotConditions, err := MakeJobs(tc.scyllaDBDatacenter, tc.services, podLister, unit.ScyllaDBOperatorImage)
+			gotJobs, gotConditions, err := MakeJobs(tc.scyllaDBDatacenter, &tc.scyllaDBDatacenter.Status, tc.services, nil, podLister, unit.ScyllaDBOperatorImage)
 			if err != nil {
 				t.Errorf("expected nil err, got: %v", err)
 			}

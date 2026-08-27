@@ -25,7 +25,7 @@ import (
 
 var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
 
-func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, oldServices map[string]*corev1.Service, jobs map[string]*batchv1.Job) ([]*corev1.Service, error) {
+func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, status *scyllav1alpha1.ScyllaDBDatacenterStatus, oldServices map[string]*corev1.Service, statefulSets map[string]*appsv1.StatefulSet, jobs map[string]*batchv1.Job) ([]*corev1.Service, error) {
 	identityService, err := IdentityService(sdc)
 	if err != nil {
 		return nil, fmt.Errorf("can't create identity service: %w", err)
@@ -37,9 +37,9 @@ func (sdcc *Controller) makeServices(sdc *scyllav1alpha1.ScyllaDBDatacenter, old
 
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		rackNodes, err := controllerhelpers.GetRackNodeCount(sdc, rack.Name)
+		rackNodes, err := getEffectiveRackNodeCount(sdc, status, statefulSets, rack)
 		if err != nil {
-			return nil, fmt.Errorf("can't get rack %q node count of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
+			return nil, fmt.Errorf("can't get effective node count of rack %q of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err)
 		}
 
 		for ord := int32(0); ord < *rackNodes; ord++ {
@@ -206,7 +206,7 @@ func (sdcc *Controller) syncServices(
 	statefulSets map[string]*appsv1.StatefulSet,
 	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
-	requiredServices, err := sdcc.makeServices(sdc, services, jobs)
+	requiredServices, err := sdcc.makeServices(sdc, status, services, statefulSets, jobs)
 	if err != nil {
 		return nil, fmt.Errorf("can't make services: %w", err)
 	}

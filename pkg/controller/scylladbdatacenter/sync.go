@@ -360,7 +360,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		jobControllerDegradedCondition,
 		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return sdcc.syncJobs(ctx, sdc, serviceMap, jobMap)
+			return sdcc.syncJobs(ctx, sdc, status, serviceMap, statefulSetMap, jobMap)
 		},
 	)
 	if err != nil {

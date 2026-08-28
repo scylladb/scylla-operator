@@ -3,7 +3,9 @@ package scylladbdatacenter
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -14,7 +16,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -514,5 +520,407 @@ func newStatefulSet(name string) *appsv1.StatefulSet {
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: new(int32(1)),
 		},
+	}
+}
+
+func Test_pruneStatefulSets(t *testing.T) {
+	t.Parallel()
+
+	newRackStatefulSet := func(name, rackName string, uid types.UID) *appsv1.StatefulSet {
+		sts := newStatefulSet(name)
+		sts.UID = uid
+		if len(rackName) != 0 {
+			sts.Labels = map[string]string{naming.RackNameLabel: rackName}
+		}
+		return sts
+	}
+
+	tt := []struct {
+		name                  string
+		required              []*appsv1.StatefulSet
+		existing              map[string]*appsv1.StatefulSet
+		rackStatuses          []scyllav1alpha1.RackStatus
+		expectedDeleted       []string
+		expectedRackStatuses  []scyllav1alpha1.RackStatus
+		expectedConditionsLen int
+	}{
+		{
+			name: "keeps required StatefulSets",
+			required: []*appsv1.StatefulSet{
+				newRackStatefulSet("foo", "a", "1"),
+			},
+			existing: map[string]*appsv1.StatefulSet{
+				"foo": newRackStatefulSet("foo", "a", "1"),
+			},
+			rackStatuses:          []scyllav1alpha1.RackStatus{{Name: "a"}},
+			expectedDeleted:       nil,
+			expectedRackStatuses:  []scyllav1alpha1.RackStatus{{Name: "a"}},
+			expectedConditionsLen: 0,
+		},
+		{
+			name: "deletes an excessive StatefulSet and drops its rack status",
+			required: []*appsv1.StatefulSet{
+				newRackStatefulSet("foo", "a", "1"),
+			},
+			existing: map[string]*appsv1.StatefulSet{
+				"foo": newRackStatefulSet("foo", "a", "1"),
+				"bar": newRackStatefulSet("bar", "b", "2"),
+			},
+			rackStatuses:          []scyllav1alpha1.RackStatus{{Name: "a"}, {Name: "b"}},
+			expectedDeleted:       []string{"bar"},
+			expectedRackStatuses:  []scyllav1alpha1.RackStatus{{Name: "a"}},
+			expectedConditionsLen: 1,
+		},
+		{
+			name:     "skips StatefulSets that are already being deleted",
+			required: []*appsv1.StatefulSet{},
+			existing: map[string]*appsv1.StatefulSet{
+				"bar": func() *appsv1.StatefulSet {
+					sts := newRackStatefulSet("bar", "b", "2")
+					sts.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+					return sts
+				}(),
+			},
+			rackStatuses:          []scyllav1alpha1.RackStatus{{Name: "b"}},
+			expectedDeleted:       nil,
+			expectedRackStatuses:  []scyllav1alpha1.RackStatus{{Name: "b"}},
+			expectedConditionsLen: 0,
+		},
+		{
+			name:     "deletes an excessive StatefulSet without a rack label and keeps the statuses",
+			required: []*appsv1.StatefulSet{},
+			existing: map[string]*appsv1.StatefulSet{
+				"bar": newRackStatefulSet("bar", "", "2"),
+			},
+			rackStatuses:          []scyllav1alpha1.RackStatus{{Name: "b"}},
+			expectedDeleted:       []string{"bar"},
+			expectedRackStatuses:  []scyllav1alpha1.RackStatus{{Name: "b"}},
+			expectedConditionsLen: 1,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			existingObjects := make([]runtime.Object, 0, len(tc.existing))
+			for _, sts := range tc.existing {
+				existingObjects = append(existingObjects, sts)
+			}
+			kubeClient := kubefake.NewSimpleClientset(existingObjects...)
+
+			sdcc := &Controller{kubeClient: kubeClient}
+			status := &scyllav1alpha1.ScyllaDBDatacenterStatus{Racks: tc.rackStatuses}
+
+			conditions, err := sdcc.pruneStatefulSets(context.Background(), newScyllaDBDatacenter(), status, tc.required, tc.existing)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(conditions) != tc.expectedConditionsLen {
+				t.Errorf("expected %d progressing condition(s), got %d: %v", tc.expectedConditionsLen, len(conditions), conditions)
+			}
+
+			var deleted []string
+			for _, action := range kubeClient.Actions() {
+				if deleteAction, ok := action.(clienttesting.DeleteAction); ok {
+					deleted = append(deleted, deleteAction.GetName())
+				}
+			}
+			sort.Strings(deleted)
+			if !cmp.Equal(deleted, tc.expectedDeleted) {
+				t.Errorf("deleted StatefulSets differ: expected %v, got %v", tc.expectedDeleted, deleted)
+			}
+
+			if diff := cmp.Diff(tc.expectedRackStatuses, status.Racks); diff != "" {
+				t.Errorf("rack statuses differ (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func Test_checkExistingStatefulSetsRolloutStatus(t *testing.T) {
+	t.Parallel()
+
+	newRollingStatefulSet := func(name string, replicas int32, rolledOut bool) *appsv1.StatefulSet {
+		sts := newStatefulSet(name)
+		sts.Generation = 2
+		sts.Spec.Replicas = new(replicas)
+		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+		sts.Status.ObservedGeneration = 1
+		if rolledOut {
+			sts.Status.ObservedGeneration = 2
+			sts.Status.Replicas = replicas
+			sts.Status.ReadyReplicas = replicas
+			sts.Status.AvailableReplicas = replicas
+			sts.Status.UpdatedReplicas = replicas
+			sts.Status.CurrentRevision = "rev"
+			sts.Status.UpdateRevision = "rev"
+		}
+		return sts
+	}
+
+	tt := []struct {
+		name               string
+		required           []*appsv1.StatefulSet
+		existing           map[string]*appsv1.StatefulSet
+		expectedConditions []metav1.Condition
+	}{
+		{
+			name:               "ignores missing StatefulSets",
+			required:           []*appsv1.StatefulSet{newRollingStatefulSet("foo", 1, false)},
+			existing:           map[string]*appsv1.StatefulSet{},
+			expectedConditions: nil,
+		},
+		{
+			name:               "no condition for a rolled out StatefulSet",
+			required:           []*appsv1.StatefulSet{newRollingStatefulSet("foo", 1, true)},
+			existing:           map[string]*appsv1.StatefulSet{"foo": newRollingStatefulSet("foo", 1, true)},
+			expectedConditions: nil,
+		},
+		{
+			name:     "waits for a StatefulSet that is not rolled out",
+			required: []*appsv1.StatefulSet{newRollingStatefulSet("foo", 1, true)},
+			existing: map[string]*appsv1.StatefulSet{"foo": newRollingStatefulSet("foo", 1, false)},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForStatefulSetRollout",
+					Message:            `Waiting for StatefulSet "default/foo" to roll out.`,
+					ObservedGeneration: 0,
+				},
+			},
+		},
+		{
+			name:               "skips a StatefulSet that is about to be scaled",
+			required:           []*appsv1.StatefulSet{newRollingStatefulSet("foo", 2, true)},
+			existing:           map[string]*appsv1.StatefulSet{"foo": newRollingStatefulSet("foo", 1, false)},
+			expectedConditions: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sdcc := &Controller{}
+			conditions, err := sdcc.checkExistingStatefulSetsRolloutStatus(context.Background(), newScyllaDBDatacenter(), tc.required, tc.existing)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if diff := cmp.Diff(tc.expectedConditions, conditions); diff != "" {
+				t.Errorf("conditions differ (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func Test_setStatefulSetsAvailableStatusCondition(t *testing.T) {
+	t.Parallel()
+
+	const image = "docker.io/scylladb/scylla:6.2.0"
+
+	newSDC := func(nodes int32, racks ...string) *scyllav1alpha1.ScyllaDBDatacenter {
+		sdc := newScyllaDBDatacenter()
+		sdc.Generation = 7
+		sdc.Spec.ScyllaDB.Image = image
+		sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{Nodes: new(nodes)}
+		for _, rack := range racks {
+			sdc.Spec.Racks = append(sdc.Spec.Racks, scyllav1alpha1.RackSpec{Name: rack})
+		}
+		return sdc
+	}
+
+	newRackStatus := func(name, version string, ready, updated int32, stale bool) scyllav1alpha1.RackStatus {
+		return scyllav1alpha1.RackStatus{
+			Name:           name,
+			CurrentVersion: version,
+			ReadyNodes:     new(ready),
+			UpdatedNodes:   new(updated),
+			Stale:          new(stale),
+		}
+	}
+
+	tt := []struct {
+		name              string
+		sdc               *scyllav1alpha1.ScyllaDBDatacenter
+		racks             []scyllav1alpha1.RackStatus
+		expectedCondition metav1.Condition
+	}{
+		{
+			name: "available when all racks are at the desired version, updated and ready",
+			sdc:  newSDC(2, "a", "b"),
+			racks: []scyllav1alpha1.RackStatus{
+				newRackStatus("a", "6.2.0", 2, 2, false),
+				newRackStatus("b", "6.2.0", 2, 2, false),
+			},
+			expectedCondition: metav1.Condition{
+				Type:               statefulSetControllerAvailableCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             internalapi.AsExpectedReason,
+				Message:            "",
+				ObservedGeneration: 7,
+			},
+		},
+		{
+			name: "not available when a rack is at a different version",
+			sdc:  newSDC(2, "a", "b"),
+			racks: []scyllav1alpha1.RackStatus{
+				newRackStatus("a", "6.2.0", 2, 2, false),
+				newRackStatus("b", "6.1.0", 2, 2, false),
+			},
+			expectedCondition: metav1.Condition{
+				Type:               statefulSetControllerAvailableCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             "RacksNotAtDesiredVersion",
+				Message:            `Racks "b" are not in the desired version`,
+				ObservedGeneration: 7,
+			},
+		},
+		{
+			name: "not available when members are not updated",
+			sdc:  newSDC(2, "a"),
+			racks: []scyllav1alpha1.RackStatus{
+				newRackStatus("a", "6.2.0", 2, 1, false),
+			},
+			expectedCondition: metav1.Condition{
+				Type:               statefulSetControllerAvailableCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             "MembersNotUpdated",
+				Message:            "Only 1 out of 2 member(s) have been updated",
+				ObservedGeneration: 7,
+			},
+		},
+		{
+			name: "not available when members are not ready",
+			sdc:  newSDC(2, "a"),
+			racks: []scyllav1alpha1.RackStatus{
+				newRackStatus("a", "6.2.0", 1, 2, false),
+			},
+			expectedCondition: metav1.Condition{
+				Type:               statefulSetControllerAvailableCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             "MembersNotReady",
+				Message:            "Only 1 out of 2 member(s) are ready",
+				ObservedGeneration: 7,
+			},
+		},
+		{
+			name: "stale rack statuses don't count towards updated members",
+			sdc:  newSDC(2, "a"),
+			racks: []scyllav1alpha1.RackStatus{
+				newRackStatus("a", "6.2.0", 2, 2, true),
+			},
+			expectedCondition: metav1.Condition{
+				Type:               statefulSetControllerAvailableCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             "MembersNotUpdated",
+				Message:            "Only 0 out of 2 member(s) have been updated",
+				ObservedGeneration: 7,
+			},
+		},
+		{
+			name:  "a rack without a status is skipped",
+			sdc:   newSDC(2, "a"),
+			racks: nil,
+			expectedCondition: metav1.Condition{
+				Type:               statefulSetControllerAvailableCondition,
+				Status:             metav1.ConditionFalse,
+				Reason:             "MembersNotUpdated",
+				Message:            "Only 0 out of 2 member(s) have been updated",
+				ObservedGeneration: 7,
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sdcc := &Controller{}
+			status := &scyllav1alpha1.ScyllaDBDatacenterStatus{Racks: tc.racks}
+			sdcc.setStatefulSetsAvailableStatusCondition(tc.sdc, status)
+
+			if len(status.Conditions) != 1 {
+				t.Fatalf("expected exactly one condition, got %v", status.Conditions)
+			}
+			got := status.Conditions[0]
+			got.LastTransitionTime = metav1.Time{}
+			if diff := cmp.Diff(tc.expectedCondition, got); diff != "" {
+				t.Errorf("condition differs (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func Test_decodeUpgradeContext(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name                string
+		configMap           *corev1.ConfigMap
+		expected            *internalapi.DatacenterUpgradeContext
+		expectedErrorString string
+	}{
+		{
+			name: "decodes a valid upgrade context",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "uc"},
+				Data: map[string]string{
+					naming.UpgradeContextConfigMapKey: `{"state":"RolloutRun","fromVersion":"6.1.0","toVersion":"6.2.0","systemSnapshotTag":"s","dataSnapshotTag":"d"}`,
+				},
+			},
+			expected: &internalapi.DatacenterUpgradeContext{
+				State:             internalapi.RolloutRunUpgradePhase,
+				FromVersion:       "6.1.0",
+				ToVersion:         "6.2.0",
+				SystemSnapshotTag: "s",
+				DataSnapshotTag:   "d",
+			},
+			expectedErrorString: "",
+		},
+		{
+			name: "fails on a missing key",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "uc"},
+				Data:       map[string]string{},
+			},
+			expected:            nil,
+			expectedErrorString: `upgrade context ConfigMap "default/uc" is missing "upgrade-context.json" key`,
+		},
+		{
+			name: "fails on malformed data",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "uc"},
+				Data: map[string]string{
+					naming.UpgradeContextConfigMapKey: `{`,
+				},
+			},
+			expected:            nil,
+			expectedErrorString: `can't decode ugprade context from ConfigMap "default/uc": can't json decode ugprade context: unexpected EOF`,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sdcc := &Controller{}
+			got, err := sdcc.decodeUpgradeContext(tc.configMap)
+
+			gotErrorString := ""
+			if err != nil {
+				gotErrorString = err.Error()
+			}
+			if gotErrorString != tc.expectedErrorString {
+				t.Fatalf("expected error %q, got %q", tc.expectedErrorString, gotErrorString)
+			}
+
+			if diff := cmp.Diff(tc.expected, got); diff != "" {
+				t.Errorf("upgrade context differs (-want +got):\n%s", diff)
+			}
+		})
 	}
 }

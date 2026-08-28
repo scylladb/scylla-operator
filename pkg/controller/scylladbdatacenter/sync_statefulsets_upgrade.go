@@ -3,9 +3,9 @@ package scylladbdatacenter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/blang/semver"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
@@ -20,8 +20,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// This file holds the upgrade state machine of the StatefulSet sync. A version upgrade (a change of the major or minor
-// ScyllaDB version) is recorded in the upgrade context ConfigMap and driven through the following phases:
+// The upgrade step drives the upgrade state machine. A version upgrade (a change of the major or minor ScyllaDB
+// version, started by the update step) is recorded in the upgrade context ConfigMap and goes through these phases:
 //
 //	PreHooks    -> run the pre-upgrade hook on the whole datacenter
 //	RolloutInit -> partition all StatefulSets fully and update their templates, so no Pod is updated yet
@@ -29,56 +29,7 @@ import (
 //	PostHooks   -> run the post-upgrade hook and remove the upgrade context
 //
 // Every phase is reentrant. A phase transition is a change of the state recorded in the upgrade context ConfigMap.
-
-// upgradeHookRequeueDelay is how long to wait before checking a hook that is still in progress.
-const upgradeHookRequeueDelay = 5 * time.Second
-
-// detectVersionUpgrade compares the ScyllaDB versions of the required and the existing StatefulSet and reports whether
-// they differ in the major or minor version, in which case the change has to go through the upgrade state machine.
-func detectVersionUpgrade(required, existing *appsv1.StatefulSet) (bool, string, string, error) {
-	requiredVersionString, requiredVersionLabelPresent := required.Labels[naming.ScyllaVersionLabel]
-	existingVersionString, existingVersionLabelPresent := existing.Labels[naming.ScyllaVersionLabel]
-
-	if !requiredVersionLabelPresent || !existingVersionLabelPresent {
-		return false, "", "", nil
-	}
-
-	requiredVersion, err := semver.Parse(requiredVersionString)
-	if err != nil {
-		return false, "", "", err
-	}
-	existingVersion, err := semver.Parse(existingVersionString)
-	if err != nil {
-		return false, "", "", err
-	}
-
-	if requiredVersion.Major != existingVersion.Major || requiredVersion.Minor != existingVersion.Minor {
-		return true, existingVersionString, requiredVersionString, nil
-	}
-
-	return false, "", "", nil
-}
-
-// startUpgrade records a new upgrade context in its pre-hooks phase, which starts the upgrade state machine.
-func (sdcc *Controller) startUpgrade(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, fromVersion, toVersion string) ([]metav1.Condition, error) {
-	sdcc.eventRecorder.Eventf(sdc, corev1.EventTypeNormal, "UpgradeStarted", "Version changed from %q to %q", fromVersion, toVersion)
-
-	progressingConditions := []metav1.Condition{
-		newStatefulSetProgressingCondition(sdc, reasonUpgrading, "Starting cluster upgrade"),
-	}
-
-	now := time.Now()
-	applyConditions, err := sdcc.applyUpgradeContext(ctx, sdc, &internalapi.DatacenterUpgradeContext{
-		State:             internalapi.PreHooksUpgradePhase,
-		FromVersion:       fromVersion,
-		ToVersion:         toVersion,
-		SystemSnapshotTag: snapshotTag("system", now),
-		DataSnapshotTag:   snapshotTag("data", now),
-	})
-	progressingConditions = append(progressingConditions, applyConditions...)
-
-	return progressingConditions, err
-}
+// The hooks themselves are in sync_statefulsets_upgrade_hooks.go.
 
 // syncUpgrade runs the current phase of the upgrade recorded in the upgrade context ConfigMap. It's a no-op when no
 // upgrade is in progress.
@@ -369,3 +320,21 @@ func (sdcc *Controller) advanceStatefulSetPartition(ctx context.Context, sts, ex
 		return nil
 	})
 }
+
+func (sdcc *Controller) decodeUpgradeContext(upgradeContextConfigMap *corev1.ConfigMap) (*internalapi.DatacenterUpgradeContext, error) {
+	ucRaw, ok := upgradeContextConfigMap.Data[naming.UpgradeContextConfigMapKey]
+	if !ok {
+		return nil, fmt.Errorf("upgrade context ConfigMap %q is missing %q key", naming.ObjRef(upgradeContextConfigMap), naming.UpgradeContextConfigMapKey)
+	}
+
+	uc := &internalapi.DatacenterUpgradeContext{}
+	err := uc.Decode(strings.NewReader(ucRaw))
+	if err != nil {
+		return nil, fmt.Errorf("can't decode ugprade context from ConfigMap %q: %w", naming.ObjRef(upgradeContextConfigMap), err)
+	}
+
+	return uc, nil
+}
+
+// upgradeHookRequeueDelay is how long to wait before checking a hook that is still in progress.
+const upgradeHookRequeueDelay = 5 * time.Second

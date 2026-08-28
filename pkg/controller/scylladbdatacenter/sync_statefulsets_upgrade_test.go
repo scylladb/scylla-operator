@@ -8,7 +8,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -17,80 +16,19 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
-func Test_detectVersionUpgrade(t *testing.T) {
+func Test_syncUpgrade_noUpgradeInProgress(t *testing.T) {
 	t.Parallel()
 
-	newVersionedStatefulSet := func(version string) *appsv1.StatefulSet {
-		sts := newStatefulSet("sts")
-		if len(version) != 0 {
-			sts.Labels = map[string]string{naming.ScyllaVersionLabel: version}
-		}
-		return sts
+	sdcc := &Controller{}
+	conditions, err := sdcc.syncUpgrade(context.Background(), &statefulSetSyncContext{
+		sdc:        newScyllaDBDatacenter(),
+		configMaps: map[string]*corev1.ConfigMap{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	tt := []struct {
-		name            string
-		required        string
-		existing        string
-		expectedUpgrade bool
-		expectedFrom    string
-		expectedTo      string
-		expectedErr     bool
-	}{
-		{
-			name:            "no upgrade without version labels",
-			required:        "",
-			existing:        "6.2.0",
-			expectedUpgrade: false,
-		},
-		{
-			name:            "no upgrade for the same version",
-			required:        "6.2.0",
-			existing:        "6.2.0",
-			expectedUpgrade: false,
-		},
-		{
-			name:            "no upgrade for a patch version change",
-			required:        "6.2.1",
-			existing:        "6.2.0",
-			expectedUpgrade: false,
-		},
-		{
-			name:            "upgrade for a minor version change",
-			required:        "6.3.0",
-			existing:        "6.2.0",
-			expectedUpgrade: true,
-			expectedFrom:    "6.2.0",
-			expectedTo:      "6.3.0",
-		},
-		{
-			name:            "upgrade for a major version change",
-			required:        "2025.1.0",
-			existing:        "6.2.0",
-			expectedUpgrade: true,
-			expectedFrom:    "6.2.0",
-			expectedTo:      "2025.1.0",
-		},
-		{
-			name:        "fails on an unparsable version",
-			required:    "latest",
-			existing:    "6.2.0",
-			expectedErr: true,
-		},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			upgrade, from, to, err := detectVersionUpgrade(newVersionedStatefulSet(tc.required), newVersionedStatefulSet(tc.existing))
-			if (err != nil) != tc.expectedErr {
-				t.Fatalf("expected error: %t, got: %v", tc.expectedErr, err)
-			}
-			if upgrade != tc.expectedUpgrade || from != tc.expectedFrom || to != tc.expectedTo {
-				t.Errorf("expected (%t, %q, %q), got (%t, %q, %q)", tc.expectedUpgrade, tc.expectedFrom, tc.expectedTo, upgrade, from, to)
-			}
-		})
+	if len(conditions) != 0 {
+		t.Errorf("expected no conditions, got %v", conditions)
 	}
 }
 
@@ -162,18 +100,72 @@ func Test_transitionUpgradePhase(t *testing.T) {
 	}
 }
 
-func Test_syncUpgrade_noUpgradeInProgress(t *testing.T) {
+func Test_decodeUpgradeContext(t *testing.T) {
 	t.Parallel()
 
-	sdcc := &Controller{}
-	conditions, err := sdcc.syncUpgrade(context.Background(), &statefulSetSyncContext{
-		sdc:        newScyllaDBDatacenter(),
-		configMaps: map[string]*corev1.ConfigMap{},
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	tt := []struct {
+		name                string
+		configMap           *corev1.ConfigMap
+		expected            *internalapi.DatacenterUpgradeContext
+		expectedErrorString string
+	}{
+		{
+			name: "decodes a valid upgrade context",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "uc"},
+				Data: map[string]string{
+					naming.UpgradeContextConfigMapKey: `{"state":"RolloutRun","fromVersion":"6.1.0","toVersion":"6.2.0","systemSnapshotTag":"s","dataSnapshotTag":"d"}`,
+				},
+			},
+			expected: &internalapi.DatacenterUpgradeContext{
+				State:             internalapi.RolloutRunUpgradePhase,
+				FromVersion:       "6.1.0",
+				ToVersion:         "6.2.0",
+				SystemSnapshotTag: "s",
+				DataSnapshotTag:   "d",
+			},
+			expectedErrorString: "",
+		},
+		{
+			name: "fails on a missing key",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "uc"},
+				Data:       map[string]string{},
+			},
+			expected:            nil,
+			expectedErrorString: `upgrade context ConfigMap "default/uc" is missing "upgrade-context.json" key`,
+		},
+		{
+			name: "fails on malformed data",
+			configMap: &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "uc"},
+				Data: map[string]string{
+					naming.UpgradeContextConfigMapKey: `{`,
+				},
+			},
+			expected:            nil,
+			expectedErrorString: `can't decode ugprade context from ConfigMap "default/uc": can't json decode ugprade context: unexpected EOF`,
+		},
 	}
-	if len(conditions) != 0 {
-		t.Errorf("expected no conditions, got %v", conditions)
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sdcc := &Controller{}
+			got, err := sdcc.decodeUpgradeContext(tc.configMap)
+
+			gotErrorString := ""
+			if err != nil {
+				gotErrorString = err.Error()
+			}
+			if gotErrorString != tc.expectedErrorString {
+				t.Fatalf("expected error %q, got %q", tc.expectedErrorString, gotErrorString)
+			}
+
+			if diff := cmp.Diff(tc.expected, got); diff != "" {
+				t.Errorf("upgrade context differs (-want +got):\n%s", diff)
+			}
+		})
 	}
 }

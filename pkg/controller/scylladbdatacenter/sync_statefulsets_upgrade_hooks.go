@@ -22,151 +22,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// This file holds the upgrade hooks: the actions run against the ScyllaDB nodes before and after a datacenter upgrade
-// and before and after every node upgrade. They talk to the ScyllaDB API and are the only part of the StatefulSet sync
-// that does.
+// The upgrade hooks are the actions run against the ScyllaDB nodes before and after a datacenter upgrade and before
+// and after every node upgrade. They talk to the ScyllaDB API and are the only part of the StatefulSet sync that does.
 //
 // TODO: Move the hooks into Jobs so that they don't run inside the controller.
-
-var systemKeyspaces = []string{"system", "system_schema"}
-
-func snapshotTag(prefix string, t time.Time) string {
-	return fmt.Sprintf("so_%s_%sUTC", prefix, t.UTC().Format(time.RFC3339))
-}
-
-func (sdcc *Controller) getScyllaManagerAgentToken(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
-	secretName := naming.AgentAuthTokenSecretName(sdc)
-	secret, err := sdcc.secretLister.Secrets(sdc.Namespace).Get(secretName)
-	if err != nil {
-		return "", fmt.Errorf("can't get manager agent auth secret %s/%s: %w", sdc.Namespace, secretName, err)
-	}
-
-	token, err := helpers.GetAgentAuthTokenFromSecret(secret)
-	if err != nil {
-		return "", fmt.Errorf("can't get agent token from secret %s: %w", naming.ObjRef(secret), err)
-	}
-
-	return token, nil
-}
-
-func (sdcc *Controller) getScyllaClient(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, hosts []string) (*scyllaclient.Client, error) {
-	managerAgentAuthToken, err := sdcc.getScyllaManagerAgentToken(ctx, sdc)
-	if err != nil {
-		return nil, fmt.Errorf("can't get manager agent auth token: %w", err)
-	}
-
-	client, err := sdcc.newScyllaDBClient(hosts, managerAgentAuthToken)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-func (sdcc *Controller) backupKeyspaces(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, keyspaces []string, snapshotTag string) error {
-	return parallel.ForEach(len(hosts), func(i int) error {
-		host := hosts[i]
-
-		snapshots, err := scyllaClient.Snapshots(ctx, host)
-		if err != nil {
-			return fmt.Errorf("can't list snapshots on host %q: %w", host, err)
-		}
-
-		if oslices.ContainsItem(snapshots, snapshotTag) {
-			return nil
-		}
-
-		for _, keyspace := range keyspaces {
-			err := scyllaClient.TakeSnapshot(ctx, host, snapshotTag, keyspace)
-			if err != nil {
-				return fmt.Errorf("can't take a snapshot on host %q and keyspace %q: %w", host, keyspace, err)
-			}
-		}
-
-		return nil
-	})
-}
-
-func (sdcc *Controller) removeSnapshot(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, snapshotTags []string) error {
-	return parallel.ForEach(len(hosts), func(i int) error {
-		host := hosts[i]
-
-		snapshots, err := scyllaClient.Snapshots(ctx, host)
-		if err != nil {
-			return fmt.Errorf("can't list snapshots on host %q: %w", host, err)
-		}
-
-		snapshotSet := apimachineryutilsets.NewString(snapshots...)
-		for _, snapshotTag := range snapshotTags {
-			if !snapshotSet.Has(snapshotTag) {
-				continue
-			}
-
-			err := scyllaClient.DeleteSnapshot(ctx, host, snapshotTag)
-			if err != nil {
-				return fmt.Errorf("can't delete snapshot %q on host %q: %w", snapshotTag, host, err)
-			}
-		}
-
-		return nil
-	})
-}
-
-// upgradeNode identifies a single ScyllaDB node targeted by the node upgrade hooks.
-type upgradeNode struct {
-	service *corev1.Service
-	pod     *corev1.Pod
-	host    string
-}
-
-// resolveUpgradeNode looks up the member Service, the Pod and the ScyllaDB host of the node at the given ordinal of
-// the StatefulSet.
-func (sdcc *Controller) resolveUpgradeNode(sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) (*upgradeNode, error) {
-	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
-	svc, ok := services[svcName]
-	if !ok {
-		return nil, fmt.Errorf("missing service %q", naming.ManualRef(sdc.Namespace, svcName))
-	}
-
-	podName := naming.PodNameFromService(svc)
-	pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(podName)
-	if err != nil {
-		return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
-	}
-
-	host, err := controllerhelpers.GetScyllaHost(sdc, svc, pod)
-	if err != nil {
-		return nil, err
-	}
-
-	return &upgradeNode{
-		service: svc,
-		pod:     pod,
-		host:    host,
-	}, nil
-}
-
-// setNodeMaintenanceMode toggles the maintenance label on the member Service. A node under maintenance doesn't fail
-// its liveness checks, e.g. while it is drained.
-func (sdcc *Controller) setNodeMaintenanceMode(ctx context.Context, svc *corev1.Service, enabled bool) error {
-	labelValue := "null"
-	if enabled {
-		labelValue = `""`
-	}
-
-	_, err := sdcc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
-		ctx,
-		svc.Name,
-		types.StrategicMergePatchType,
-		[]byte(fmt.Sprintf(`{"metadata": {"labels":{"%s": %s}}}`, naming.NodeMaintenanceLabel, labelValue)),
-		metav1.PatchOptions{},
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // beforeUpgrade runs hooks before a cluster upgrade starts.
 // It returns true if the action is done, false if the caller should repeat later.
@@ -337,4 +196,144 @@ func (sdcc *Controller) afterNodeUpgrade(ctx context.Context, sdc *scyllav1alpha
 	}
 
 	return nil
+}
+
+// upgradeNode identifies a single ScyllaDB node targeted by the node upgrade hooks.
+type upgradeNode struct {
+	service *corev1.Service
+	pod     *corev1.Pod
+	host    string
+}
+
+// resolveUpgradeNode looks up the member Service, the Pod and the ScyllaDB host of the node at the given ordinal of
+// the StatefulSet.
+func (sdcc *Controller) resolveUpgradeNode(sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service) (*upgradeNode, error) {
+	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
+	svc, ok := services[svcName]
+	if !ok {
+		return nil, fmt.Errorf("missing service %q", naming.ManualRef(sdc.Namespace, svcName))
+	}
+
+	podName := naming.PodNameFromService(svc)
+	pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(podName)
+	if err != nil {
+		return nil, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
+	}
+
+	host, err := controllerhelpers.GetScyllaHost(sdc, svc, pod)
+	if err != nil {
+		return nil, err
+	}
+
+	return &upgradeNode{
+		service: svc,
+		pod:     pod,
+		host:    host,
+	}, nil
+}
+
+// setNodeMaintenanceMode toggles the maintenance label on the member Service. A node under maintenance doesn't fail
+// its liveness checks, e.g. while it is drained.
+func (sdcc *Controller) setNodeMaintenanceMode(ctx context.Context, svc *corev1.Service, enabled bool) error {
+	labelValue := "null"
+	if enabled {
+		labelValue = `""`
+	}
+
+	_, err := sdcc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
+		ctx,
+		svc.Name,
+		types.StrategicMergePatchType,
+		[]byte(fmt.Sprintf(`{"metadata": {"labels":{"%s": %s}}}`, naming.NodeMaintenanceLabel, labelValue)),
+		metav1.PatchOptions{},
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (sdcc *Controller) getScyllaClient(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, hosts []string) (*scyllaclient.Client, error) {
+	managerAgentAuthToken, err := sdcc.getScyllaManagerAgentToken(ctx, sdc)
+	if err != nil {
+		return nil, fmt.Errorf("can't get manager agent auth token: %w", err)
+	}
+
+	client, err := sdcc.newScyllaDBClient(hosts, managerAgentAuthToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func (sdcc *Controller) getScyllaManagerAgentToken(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
+	secretName := naming.AgentAuthTokenSecretName(sdc)
+	secret, err := sdcc.secretLister.Secrets(sdc.Namespace).Get(secretName)
+	if err != nil {
+		return "", fmt.Errorf("can't get manager agent auth secret %s/%s: %w", sdc.Namespace, secretName, err)
+	}
+
+	token, err := helpers.GetAgentAuthTokenFromSecret(secret)
+	if err != nil {
+		return "", fmt.Errorf("can't get agent token from secret %s: %w", naming.ObjRef(secret), err)
+	}
+
+	return token, nil
+}
+
+func (sdcc *Controller) backupKeyspaces(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, keyspaces []string, snapshotTag string) error {
+	return parallel.ForEach(len(hosts), func(i int) error {
+		host := hosts[i]
+
+		snapshots, err := scyllaClient.Snapshots(ctx, host)
+		if err != nil {
+			return fmt.Errorf("can't list snapshots on host %q: %w", host, err)
+		}
+
+		if oslices.ContainsItem(snapshots, snapshotTag) {
+			return nil
+		}
+
+		for _, keyspace := range keyspaces {
+			err := scyllaClient.TakeSnapshot(ctx, host, snapshotTag, keyspace)
+			if err != nil {
+				return fmt.Errorf("can't take a snapshot on host %q and keyspace %q: %w", host, keyspace, err)
+			}
+		}
+
+		return nil
+	})
+}
+
+func (sdcc *Controller) removeSnapshot(ctx context.Context, scyllaClient *scyllaclient.Client, hosts, snapshotTags []string) error {
+	return parallel.ForEach(len(hosts), func(i int) error {
+		host := hosts[i]
+
+		snapshots, err := scyllaClient.Snapshots(ctx, host)
+		if err != nil {
+			return fmt.Errorf("can't list snapshots on host %q: %w", host, err)
+		}
+
+		snapshotSet := apimachineryutilsets.NewString(snapshots...)
+		for _, snapshotTag := range snapshotTags {
+			if !snapshotSet.Has(snapshotTag) {
+				continue
+			}
+
+			err := scyllaClient.DeleteSnapshot(ctx, host, snapshotTag)
+			if err != nil {
+				return fmt.Errorf("can't delete snapshot %q on host %q: %w", snapshotTag, host, err)
+			}
+		}
+
+		return nil
+	})
+}
+
+var systemKeyspaces = []string{"system", "system_schema"}
+
+func snapshotTag(prefix string, t time.Time) string {
+	return fmt.Sprintf("so_%s_%sUTC", prefix, t.UTC().Format(time.RFC3339))
 }

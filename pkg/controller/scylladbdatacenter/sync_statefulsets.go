@@ -7,13 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blang/semver"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
 
@@ -495,276 +492,31 @@ func (sdcc *Controller) syncStatefulSets(
 		}
 	}
 
-	upgradeContextConfigMap, ok := configMaps[naming.UpgradeContextConfigMapName(sdc)]
-	// Run hooks if an upgrade is in progress.
-	if ok {
-		currentUpgradeContext, err := sdcc.decodeUpgradeContext(upgradeContextConfigMap)
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
-		}
-
-		progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(sdc, reasonRunningUpgradeHooks, "Running upgrade hooks"))
-
-		// Isolate the live values in a block to prevent accidental use.
-		{
-			// We could still see an old status. Although hooks are mandated to be reentrant,
-			// they are pretty expensive to run so it's cheaper to recheck the partition with a live call.
-			// TODO: Remove the live call when the hooks are migrated to run as Jobs.
-			freshUpgradeContextConfigMap, err := sdcc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Get(ctx, naming.UpgradeContextConfigMapName(sdc), metav1.GetOptions{})
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't get upgrade context ConfigMap %q: %w", naming.UpgradeContextConfigMapName(sdc), err)
-			}
-
-			freshUpgradeContext, err := sdcc.decodeUpgradeContext(freshUpgradeContextConfigMap)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
-			}
-
-			if freshUpgradeContext.State != currentUpgradeContext.State {
-				// Wait for requeue.
-				klog.V(2).InfoS("Stale upgrade context, waiting for requeue", "ScyllaDBDatacenter", sdc)
-				return progressingConditions, err
-			}
-		}
-
-		klog.V(4).InfoS("Upgrade is in progress", "Phase", currentUpgradeContext.State)
-		switch currentUpgradeContext.State {
-		case internalapi.PreHooksUpgradePhase:
-			// TODO: Move the pre-upgrade hook into a Job.
-			done, err := sdcc.beforeUpgrade(ctx, sdc, services, currentUpgradeContext)
-			if err != nil {
-				return progressingConditions, err
-			}
-			if !done {
-				sdcc.queue.AddAfter(key, 5*time.Second)
-				return progressingConditions, nil
-			}
-
-			currentUpgradeContext.State = internalapi.RolloutInitUpgradePhase
-			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
-			}
-
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
-			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
-			}
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
-			}
-
-			return progressingConditions, nil
-
-		case internalapi.RolloutInitUpgradePhase:
-			// Partition all StatefulSet at once to block changes but no Pod update is done yet.
-			var errs []error
-			anyStsChanged := false
-			for _, required := range requiredStatefulSets {
-				existing, ok := statefulSets[required.Name]
-				if !ok {
-					// At this point all missing statefulSets should have been created.
-					return progressingConditions, fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
-				}
-				// We are depending on the current values so we need to use optimistic concurrency.
-				// It will make sure we always set the corresponding partition for the scale.
-				// It also forces our informers to be up-to-date.
-				required.ResourceVersion = existing.ResourceVersion
-				// Avoid scaling.
-				required.Spec.Replicas = pointer.Ptr(*existing.Spec.Replicas)
-				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*existing.Spec.Replicas)
-				// Use apply to also update the spec.template
-				updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
-				if err != nil {
-					errs = append(errs, fmt.Errorf("can't apply statefulset to set partition: %w", err))
-				}
-
-				if changed {
-					anyStsChanged = true
-
-					err = updateRackStatus(sdcc.podLister, sdc, status, updatedSts, services)
-					if err != nil {
-						errs = append(errs, err)
-						continue
-					}
-				}
-			}
-			if anyStsChanged {
-				// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-				time.Sleep(sdcc.statefulSetCachePropagationDelay)
-			}
-			err = apimachineryutilerrors.NewAggregate(errs)
-			if err != nil {
-				return progressingConditions, err
-			}
-
-			currentUpgradeContext.State = internalapi.RolloutRunUpgradePhase
-			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
-			}
-
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
-			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
-			}
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
-			}
-
-			return progressingConditions, nil
-
-		case internalapi.RolloutRunUpgradePhase:
-			for _, sts := range requiredStatefulSets {
-				partition := *sts.Spec.UpdateStrategy.RollingUpdate.Partition
-
-				// Isolate the live values in a block to prevent accidental use.
-				{
-					// TODO: Remove the live call when hooks are migrated into Jobs.
-					// We could still see an old partition. Although hooks are mandated to be reentrant,
-					// they are pretty expensive to run so it's cheaper to recheck the partition with a live call.
-					freshSts, err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
-					if err != nil {
-						return progressingConditions, err
-					}
-
-					if freshSts.Spec.UpdateStrategy.RollingUpdate == nil ||
-						*freshSts.Spec.UpdateStrategy.RollingUpdate.Partition != partition {
-						// Wait for requeue.
-						klog.V(2).InfoS("Stale StatefulSet partition, waiting for requeue", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-						return progressingConditions, nil
-					}
-				}
-
-				if partition < *sts.Spec.Replicas {
-					// TODO: Move the post-node-upgrade hook into a Job.
-					err = sdcc.afterNodeUpgrade(ctx, sdc, sts, partition, services, currentUpgradeContext)
-					if err != nil {
-						return progressingConditions, err
-					}
-					klog.V(2).InfoS("AfterNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-				}
-
-				if partition <= 0 {
-					continue
-				}
-
-				nextPartition := partition - 1
-
-				klog.V(4).InfoS("Upgrade is running a rollout", "Partition", partition, "NextPartition", nextPartition)
-
-				// TODO: Move the pre-node-upgrade hook into a Job.
-				done, err := sdcc.beforeNodeUpgrade(ctx, sdc, sts, nextPartition, services, currentUpgradeContext)
-				if err != nil {
-					return progressingConditions, err
-				}
-
-				if !done {
-					klog.V(4).InfoS("PreNodeUpgrade hook in progress. Waiting a bit.", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-					sdcc.queue.AddAfter(key, 5*time.Second)
-					return progressingConditions, nil
-				}
-				klog.V(2).InfoS("PreNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-
-				// TODO: Use bare update when hooks are extracted into Jobs.
-				//       But at this point rerunning them is expensive so we retry with condition check.
-				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-					freshSts, err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-
-					existingSts, found := statefulSets[freshSts.Name]
-					if found && freshSts.UID != existingSts.UID {
-						return fmt.Errorf("statefulset was recreated in the meantime")
-					}
-
-					if freshSts.Spec.UpdateStrategy.RollingUpdate == nil ||
-						*freshSts.Spec.UpdateStrategy.RollingUpdate.Partition != partition {
-						return fmt.Errorf("statefulset partition mismatch: expected %d, got %d", partition, *freshSts.Spec.UpdateStrategy.RollingUpdate.Partition)
-
-					}
-
-					freshSts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(nextPartition)
-					_, err = sdcc.kubeClient.AppsV1().StatefulSets(freshSts.Namespace).Update(ctx, freshSts, metav1.UpdateOptions{})
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				if err != nil {
-					return progressingConditions, err
-				}
-
-				// Partition can move only one rack a time.
-				return progressingConditions, nil
-			}
-
-			currentUpgradeContext.State = internalapi.PostHooksUpgradePhase
-			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
-			}
-
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
-			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
-			}
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
-			}
-
-			return progressingConditions, nil
-
-		case internalapi.PostHooksUpgradePhase:
-			err = sdcc.afterUpgrade(ctx, sdc, services, currentUpgradeContext)
-			if err != nil {
-				return progressingConditions, err
-			}
-
-			cmName := naming.UpgradeContextConfigMapName(sdc)
-			cm, ok := configMaps[cmName]
-			if !ok {
-				return progressingConditions, nil
-			}
-
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "delete", sdc.Generation)
-			err = sdcc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Delete(ctx, cmName, metav1.DeleteOptions{
-				Preconditions: &metav1.Preconditions{
-					UID: &cm.UID,
-				},
-				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationBackground),
-			})
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't delete upgrade context ConfigMap %q: %w", naming.ManualRef(sdc.Namespace, cmName), err)
-			}
-
-			return progressingConditions, nil
-
-		default:
-			// An old cluster with an old state machine can still be going through an update, or stuck.
-			// Given have to be reentrant we'll just start again to be sure no step is missed, even a new one.
-			klog.Warningf("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sdc), currentUpgradeContext.State)
-			currentUpgradeContext.State = internalapi.PreHooksUpgradePhase
-			cm, err := MakeUpgradeContextConfigMap(sdc, currentUpgradeContext)
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
-			}
-
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
-			if changed {
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
-			}
-			if err != nil {
-				return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
-			}
-
-			return progressingConditions, nil
-		}
+	upgradeContextConfigMap, upgradeInProgress := configMaps[naming.UpgradeContextConfigMapName(sdc)]
+	if upgradeInProgress {
+		upgradeProgressingConditions, err := sdcc.syncUpgrade(ctx, key, sdc, status, requiredStatefulSets, statefulSets, services, upgradeContextConfigMap)
+		progressingConditions = append(progressingConditions, upgradeProgressingConditions...)
+		return progressingConditions, err
 	}
 
-	// Begin the update.
+	updateProgressingConditions, err := sdcc.updateStatefulSets(ctx, sdc, status, requiredStatefulSets, statefulSets, services)
+	progressingConditions = append(progressingConditions, updateProgressingConditions...)
+	return progressingConditions, err
+}
+
+// updateStatefulSets applies the required StatefulSets one at a time, waiting for each to roll out before moving on
+// to the next one. A change of the major or minor ScyllaDB version isn't applied directly but starts an upgrade
+// instead.
+func (sdcc *Controller) updateStatefulSets(
+	ctx context.Context,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
+	requiredStatefulSets []*appsv1.StatefulSet,
+	statefulSets map[string]*appsv1.StatefulSet,
+	services map[string]*corev1.Service,
+) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
 	anyStsChanged := false
 	defer func() {
 		if anyStsChanged {
@@ -773,53 +525,17 @@ func (sdcc *Controller) syncStatefulSets(
 		}
 	}()
 	for _, required := range requiredStatefulSets {
-		// Check for version upgrades first.
 		existing, existingFound := statefulSets[required.Name]
-		if existingFound && upgradeContextConfigMap == nil {
-			requiredVersionString, requiredVersionLabelPresent := required.Labels[naming.ScyllaVersionLabel]
-			existingVersionString, existingVersionLabelPresent := existing.Labels[naming.ScyllaVersionLabel]
+		if existingFound {
+			upgradeNeeded, fromVersion, toVersion, err := detectVersionUpgrade(required, existing)
+			if err != nil {
+				return progressingConditions, err
+			}
 
-			if requiredVersionLabelPresent && existingVersionLabelPresent {
-				requiredVersion, err := semver.Parse(requiredVersionString)
-				if err != nil {
-					return progressingConditions, err
-				}
-				existingVersion, err := semver.Parse(existingVersionString)
-				if err != nil {
-					return progressingConditions, err
-				}
-
-				if requiredVersion.Major != existingVersion.Major ||
-					requiredVersion.Minor != existingVersion.Minor {
-					// We need to run hooks for version upgrades.
-					sdcc.eventRecorder.Eventf(sdc, corev1.EventTypeNormal, "UpgradeStarted", "Version changed from %q to %q", existingVersionString, requiredVersionString)
-
-					progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(sdc, reasonUpgrading, "Starting cluster upgrade"))
-
-					// Initiate the upgrade. This triggers a state machine to run hooks first.
-					now := time.Now()
-
-					cm, err := MakeUpgradeContextConfigMap(sdc, &internalapi.DatacenterUpgradeContext{
-						State:             internalapi.PreHooksUpgradePhase,
-						FromVersion:       existingVersionString,
-						ToVersion:         requiredVersionString,
-						SystemSnapshotTag: snapshotTag("system", now),
-						DataSnapshotTag:   snapshotTag("data", now),
-					})
-					if err != nil {
-						return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
-					}
-
-					cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
-					if changed {
-						controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
-					}
-					if err != nil {
-						return progressingConditions, fmt.Errorf("can't apply upgrade context ConfigMap: %w", err)
-					}
-
-					return progressingConditions, nil
-				}
+			if upgradeNeeded {
+				startConditions, err := sdcc.startUpgrade(ctx, sdc, fromVersion, toVersion)
+				progressingConditions = append(progressingConditions, startConditions...)
+				return progressingConditions, err
 			}
 		}
 

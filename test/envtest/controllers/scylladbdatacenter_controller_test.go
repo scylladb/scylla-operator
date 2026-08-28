@@ -497,11 +497,16 @@ func markStatefulSetAsRolledOut(ctx context.Context, statefulSets appsv1client.S
 	statefulSet, err := statefulSets.Get(ctx, name, metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	replicas := *statefulSet.Spec.Replicas
+	// With a partitioned rolling update only the ordinals at or above the partition are updated.
+	updatedReplicas := replicas
+	if statefulSet.Spec.UpdateStrategy.RollingUpdate != nil && statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+		updatedReplicas = replicas - *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
+	}
 	statefulSet.Status.ObservedGeneration = statefulSet.Generation
 	statefulSet.Status.Replicas = replicas
 	statefulSet.Status.ReadyReplicas = replicas
 	statefulSet.Status.AvailableReplicas = replicas
-	statefulSet.Status.UpdatedReplicas = replicas
+	statefulSet.Status.UpdatedReplicas = updatedReplicas
 	statefulSet.Status.CurrentRevision = "envtest-revision"
 	statefulSet.Status.UpdateRevision = statefulSet.Status.CurrentRevision
 	_, err = statefulSets.UpdateStatus(ctx, statefulSet, metav1.UpdateOptions{})
@@ -527,7 +532,7 @@ func (g *staticKeyGenerator) GetKeyType() crypto.KeyType {
 	return crypto.ECDSAKeyType
 }
 
-func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment) {
+func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment, extraOptions ...scylladbdatacenter.ControllerOption) {
 	g.GinkgoHelper()
 
 	kubeClient := e.TypedKubeClient()
@@ -553,6 +558,7 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
 		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
 	}
+	options = append(options, extraOptions...)
 
 	sdcc, err := scylladbdatacenter.NewController(
 		kubeClient,

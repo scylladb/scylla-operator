@@ -19,7 +19,7 @@ import (
 // updateStatefulSets applies the required StatefulSets one at a time, waiting for each to roll out before moving on
 // to the next one. A change of the major or minor ScyllaDB version isn't applied directly but starts an upgrade
 // instead.
-func (sdcc *Controller) updateStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) updateStatefulSets(ctx context.Context, sc *statefulSetSyncContext) (stepResult, error) {
 	var progressingConditions []metav1.Condition
 
 	anyStsChanged := false
@@ -33,19 +33,19 @@ func (sdcc *Controller) updateStatefulSets(ctx context.Context, sc *statefulSetS
 		if existingFound {
 			upgradeNeeded, fromVersion, toVersion, err := detectVersionUpgrade(required, existing)
 			if err != nil {
-				return progressingConditions, err
+				return blockWith(progressingConditions...), err
 			}
 
 			if upgradeNeeded {
 				startConditions, err := sdcc.startUpgrade(ctx, sc.sdc, fromVersion, toVersion)
 				progressingConditions = append(progressingConditions, startConditions...)
-				return progressingConditions, err
+				return blockWith(progressingConditions...), err
 			}
 		}
 
 		updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
 		if err != nil {
-			return progressingConditions, fmt.Errorf("can't apply statefulset update: %w", err)
+			return blockWith(progressingConditions...), fmt.Errorf("can't apply statefulset update: %w", err)
 		}
 
 		if changed {
@@ -55,23 +55,23 @@ func (sdcc *Controller) updateStatefulSets(ctx context.Context, sc *statefulSetS
 
 			err = updateRackStatus(sdcc.podLister, sc.sdc, sc.status, updatedSts, sc.services)
 			if err != nil {
-				return progressingConditions, err
+				return blockWith(progressingConditions...), err
 			}
 		}
 
 		// Wait for the StatefulSet to roll out.
 		cond, err := getStatefulSetRolloutProgressingCondition(sc.sdc, updatedSts)
 		if err != nil {
-			return progressingConditions, err
+			return blockWith(progressingConditions...), err
 		}
 
 		if cond != nil {
 			progressingConditions = append(progressingConditions, *cond)
-			return progressingConditions, nil
+			return blockWith(progressingConditions...), nil
 		}
 	}
 
-	return progressingConditions, nil
+	return blockWith(progressingConditions...), nil
 }
 
 // detectVersionUpgrade compares the ScyllaDB versions of the required and the existing StatefulSet and reports whether

@@ -15,7 +15,7 @@ import (
 )
 
 // pruneStatefulSets deletes the StatefulSets that aren't required anymore and drops their rack statuses.
-func (sdcc *Controller) pruneStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) pruneStatefulSets(ctx context.Context, sc *statefulSetSyncContext) (stepResult, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
 	for _, sts := range sc.existingStatefulSets {
@@ -63,8 +63,8 @@ func (sdcc *Controller) pruneStatefulSets(ctx context.Context, sc *statefulSetSy
 
 	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
-		return progressingConditions, fmt.Errorf("can't delete StatefulSet(s): %w", err)
+		return blockWith(progressingConditions...), fmt.Errorf("can't delete StatefulSet(s): %w", err)
 	}
 
-	return progressingConditions, nil
+	return blockWith(progressingConditions...), nil
 }

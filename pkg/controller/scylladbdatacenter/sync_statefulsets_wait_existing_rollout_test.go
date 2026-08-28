@@ -75,11 +75,12 @@ func Test_waitForExistingStatefulSetsRollout(t *testing.T) {
 			t.Parallel()
 
 			sdcc := &Controller{}
-			conditions, err := sdcc.waitForExistingStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
+			res, err := sdcc.waitForExistingStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
 				sdc:                  newScyllaDBDatacenter(),
 				requiredStatefulSets: tc.required,
 				existingStatefulSets: tc.existing,
 			})
+			conditions := res.progressingConditions
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

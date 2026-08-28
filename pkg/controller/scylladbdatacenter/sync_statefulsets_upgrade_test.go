@@ -20,10 +20,11 @@ func Test_syncUpgrade_noUpgradeInProgress(t *testing.T) {
 	t.Parallel()
 
 	sdcc := &Controller{}
-	conditions, err := sdcc.syncUpgrade(context.Background(), &statefulSetSyncContext{
+	res, err := sdcc.syncUpgrade(context.Background(), &statefulSetSyncContext{
 		sdc:        newScyllaDBDatacenter(),
 		configMaps: map[string]*corev1.ConfigMap{},
 	})
+	conditions := res.progressingConditions
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

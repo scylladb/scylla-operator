@@ -3,6 +3,7 @@ package scylladbdatacenter
 import (
 	"context"
 	"fmt"
+	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -36,7 +37,6 @@ func (sdcc *Controller) syncStatefulSets(
 	}
 
 	sc := &statefulSetSyncContext{
-		key:                  key,
 		sdc:                  sdc,
 		status:               status,
 		requiredStatefulSets: requiredStatefulSets,
@@ -59,13 +59,17 @@ func (sdcc *Controller) syncStatefulSets(
 	for _, step := range steps {
 		klog.V(5).InfoS("Running StatefulSet sync step", "ScyllaDBDatacenter", klog.KObj(sdc), "Step", step.name)
 
-		stepProgressingConditions, err := step.run(ctx, sc)
-		progressingConditions = append(progressingConditions, stepProgressingConditions...)
+		res, err := step.run(ctx, sc)
+		progressingConditions = append(progressingConditions, res.progressingConditions...)
 		if err != nil {
 			return progressingConditions, err
 		}
 
-		if len(progressingConditions) > 0 {
+		if res.requeueAfter > 0 {
+			sdcc.queue.AddAfter(key, res.requeueAfter)
+		}
+
+		if res.blocks() {
 			klog.V(4).InfoS("StatefulSet sync is waiting", "ScyllaDBDatacenter", klog.KObj(sdc), "Step", step.name)
 			return progressingConditions, nil
 		}
@@ -81,9 +85,6 @@ func (sdcc *Controller) syncStatefulSets(
 // steps, so they must not be modified. Changes to the cluster go through the API server and are observed by the next
 // sync.
 type statefulSetSyncContext struct {
-	// key is the work queue key of the ScyllaDBDatacenter, used to requeue it with a delay. Read-only.
-	key string
-
 	// sdc is the ScyllaDBDatacenter being synced. Read-only.
 	sdc *scyllav1alpha1.ScyllaDBDatacenter
 
@@ -107,11 +108,42 @@ type statefulSetSyncContext struct {
 	configMaps map[string]*corev1.ConfigMap
 }
 
-// statefulSetSyncStep is one step of the StatefulSet sync. Returning any progressing condition stops the sync until
-// the next requeue.
+// statefulSetSyncStep is one step of the StatefulSet sync.
 type statefulSetSyncStep struct {
 	name string
-	run  func(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error)
+	run  func(ctx context.Context, sc *statefulSetSyncContext) (stepResult, error)
+}
+
+// stepResult is what a step of the StatefulSet sync returns. A step either lets the sync proceed to the next step, or
+// blocks it until the next requeue by returning a progressing condition or asking for a delayed requeue.
+type stepResult struct {
+	// progressingConditions report what the step has just changed or is waiting for. Any condition blocks the sync:
+	// the change or the awaited event is observed by the informers, which requeue the ScyllaDBDatacenter.
+	progressingConditions []metav1.Condition
+
+	// requeueAfter, when set, requeues the ScyllaDBDatacenter after the delay and blocks the sync. It is for waits that
+	// no informer event ends, e.g. an upgrade hook that is still running.
+	requeueAfter time.Duration
+}
+
+// blocks reports whether the step stops the sync until the next requeue.
+func (r stepResult) blocks() bool {
+	return len(r.progressingConditions) > 0 || r.requeueAfter > 0
+}
+
+// proceed lets the sync move on to the next step.
+func proceed() stepResult {
+	return stepResult{}
+}
+
+// blockWith blocks the sync with the given progressing conditions. With no conditions it lets the sync proceed.
+func blockWith(progressingConditions ...metav1.Condition) stepResult {
+	return stepResult{progressingConditions: progressingConditions}
+}
+
+// requeueIn blocks the sync and requeues the ScyllaDBDatacenter after the delay.
+func requeueIn(delay time.Duration) stepResult {
+	return stepResult{requeueAfter: delay}
 }
 
 // makeRequiredStatefulSets builds the StatefulSets the ScyllaDBDatacenter calls for. It returns a progressing

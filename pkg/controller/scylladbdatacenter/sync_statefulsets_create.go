@@ -17,7 +17,7 @@ import (
 )
 
 // createStatefulSets creates the missing StatefulSets and records the statuses of the racks they belong to.
-func (sdcc *Controller) createStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) createStatefulSets(ctx context.Context, sc *statefulSetSyncContext) (stepResult, error) {
 	createdStatefulSets, progressingConditions, err := createMissingStatefulSets(
 		ctx,
 		func(ctx context.Context, required *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
@@ -42,7 +42,7 @@ func (sdcc *Controller) createStatefulSets(ctx context.Context, sc *statefulSetS
 		errs = append(errs, fmt.Errorf("can't update status with rack statuses: %w", err))
 	}
 
-	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
+	return blockWith(progressingConditions...), apimachineryutilerrors.NewAggregate(errs)
 }
 
 // createMissingStatefulSets creates the missing StatefulSets from requiredStatefulSets.

@@ -33,77 +33,79 @@ import (
 
 // syncUpgrade runs the current phase of the upgrade recorded in the upgrade context ConfigMap. It's a no-op when no
 // upgrade is in progress.
-func (sdcc *Controller) syncUpgrade(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) syncUpgrade(ctx context.Context, sc *statefulSetSyncContext) (stepResult, error) {
 	sdc := sc.sdc
 
 	upgradeContextConfigMap, upgradeInProgress := sc.configMaps[naming.UpgradeContextConfigMapName(sdc)]
 	if !upgradeInProgress {
-		return nil, nil
+		return proceed(), nil
 	}
 
 	var progressingConditions []metav1.Condition
 
 	upgradeContext, err := decodeUpgradeContext(upgradeContextConfigMap)
 	if err != nil {
-		return progressingConditions, fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+		return blockWith(progressingConditions...), fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
 	}
 
 	progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(sdc, reasonRunningUpgradeHooks, "Running upgrade hooks"))
 
 	fresh, err := sdcc.isUpgradeContextFresh(ctx, sdc, upgradeContext)
 	if err != nil {
-		return progressingConditions, err
+		return blockWith(progressingConditions...), err
 	}
 	if !fresh {
 		klog.V(2).InfoS("Stale upgrade context, waiting for requeue", "ScyllaDBDatacenter", klog.KObj(sdc))
-		return progressingConditions, nil
+		return blockWith(progressingConditions...), nil
 	}
 
 	klog.V(4).InfoS("Upgrade is in progress", "Phase", upgradeContext.State)
 
-	var phaseConditions []metav1.Condition
+	var phaseResult stepResult
 	switch upgradeContext.State {
 	case internalapi.PreHooksUpgradePhase:
-		phaseConditions, err = sdcc.runPreHooksUpgradePhase(ctx, sc, upgradeContext)
+		phaseResult, err = sdcc.runPreHooksUpgradePhase(ctx, sc, upgradeContext)
 
 	case internalapi.RolloutInitUpgradePhase:
-		phaseConditions, err = sdcc.runRolloutInitUpgradePhase(ctx, sc, upgradeContext)
+		phaseResult, err = sdcc.runRolloutInitUpgradePhase(ctx, sc, upgradeContext)
 
 	case internalapi.RolloutRunUpgradePhase:
-		phaseConditions, err = sdcc.runRolloutRunUpgradePhase(ctx, sc, upgradeContext)
+		phaseResult, err = sdcc.runRolloutRunUpgradePhase(ctx, sc, upgradeContext)
 
 	case internalapi.PostHooksUpgradePhase:
-		phaseConditions, err = sdcc.runPostHooksUpgradePhase(ctx, sc, upgradeContextConfigMap, upgradeContext)
+		phaseResult, err = sdcc.runPostHooksUpgradePhase(ctx, sc, upgradeContextConfigMap, upgradeContext)
 
 	default:
 		// An old cluster with an old state machine can still be going through an update, or stuck.
 		// Given have to be reentrant we'll just start again to be sure no step is missed, even a new one.
 		klog.Warningf("ScyllaCluster %q has an unknown upgrade phase %q. Resetting the phase.", klog.KObj(sdc), upgradeContext.State)
-		phaseConditions, err = sdcc.transitionUpgradePhase(ctx, sdc, upgradeContext, internalapi.PreHooksUpgradePhase)
+		var resetConditions []metav1.Condition
+		resetConditions, err = sdcc.transitionUpgradePhase(ctx, sdc, upgradeContext, internalapi.PreHooksUpgradePhase)
+		phaseResult = blockWith(resetConditions...)
 	}
-	progressingConditions = append(progressingConditions, phaseConditions...)
 
-	return progressingConditions, err
+	phaseResult.progressingConditions = append(progressingConditions, phaseResult.progressingConditions...)
+	return phaseResult, err
 }
 
 // runPreHooksUpgradePhase runs the pre-upgrade hook and moves on to initializing the rollout once it's done.
-func (sdcc *Controller) runPreHooksUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) runPreHooksUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) (stepResult, error) {
 	// TODO: Move the pre-upgrade hook into a Job.
 	done, err := sdcc.beforeUpgrade(ctx, sc.sdc, sc.services, upgradeContext)
 	if err != nil {
-		return nil, err
+		return proceed(), err
 	}
 	if !done {
-		sdcc.queue.AddAfter(sc.key, upgradeHookRequeueDelay)
-		return nil, nil
+		return requeueIn(upgradeHookRequeueDelay), nil
 	}
 
-	return sdcc.transitionUpgradePhase(ctx, sc.sdc, upgradeContext, internalapi.RolloutInitUpgradePhase)
+	progressingConditions, err := sdcc.transitionUpgradePhase(ctx, sc.sdc, upgradeContext, internalapi.RolloutInitUpgradePhase)
+	return blockWith(progressingConditions...), err
 }
 
 // runRolloutInitUpgradePhase partitions all StatefulSets fully while updating their templates, so that changes are
 // blocked but no Pod is updated yet, and moves on to running the rollout.
-func (sdcc *Controller) runRolloutInitUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) runRolloutInitUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) (stepResult, error) {
 	sdc := sc.sdc
 
 	var errs []error
@@ -112,7 +114,7 @@ func (sdcc *Controller) runRolloutInitUpgradePhase(ctx context.Context, sc *stat
 		existing, ok := sc.existingStatefulSets[required.Name]
 		if !ok {
 			// At this point all missing statefulSets should have been created.
-			return nil, fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
+			return proceed(), fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
 		}
 		// Apply a copy: the required StatefulSets are shared with the following steps and must stay as built.
 		partitioned := required.DeepCopy()
@@ -142,18 +144,19 @@ func (sdcc *Controller) runRolloutInitUpgradePhase(ctx context.Context, sc *stat
 	if anyStsChanged {
 		sdcc.waitForStatefulSetCachePropagation()
 	}
-	err := apimachineryutilerrors.NewAggregate(errs)
-	if err != nil {
-		return nil, err
+	aggErr := apimachineryutilerrors.NewAggregate(errs)
+	if aggErr != nil {
+		return proceed(), aggErr
 	}
 
-	return sdcc.transitionUpgradePhase(ctx, sdc, upgradeContext, internalapi.RolloutRunUpgradePhase)
+	progressingConditions, err := sdcc.transitionUpgradePhase(ctx, sdc, upgradeContext, internalapi.RolloutRunUpgradePhase)
+	return blockWith(progressingConditions...), err
 }
 
 // runRolloutRunUpgradePhase moves the partition of the first StatefulSet that hasn't finished rolling by one node,
 // running the post-node-upgrade hook for the node that was just rolled and the pre-node-upgrade hook for the next one.
 // Once all StatefulSets are fully rolled it moves on to the post-hooks.
-func (sdcc *Controller) runRolloutRunUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) runRolloutRunUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) (stepResult, error) {
 	sdc := sc.sdc
 	services := sc.services
 
@@ -162,27 +165,28 @@ func (sdcc *Controller) runRolloutRunUpgradePhase(ctx context.Context, sc *state
 		sts, ok := sc.existingStatefulSets[required.Name]
 		if !ok {
 			// At this point all missing statefulSets should have been created.
-			return nil, fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
+			return proceed(), fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
 		}
 		if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
-			return nil, fmt.Errorf("internal error: statefulset %q has no partition set", naming.ObjRef(sts))
+			return proceed(), fmt.Errorf("internal error: statefulset %q has no partition set", naming.ObjRef(sts))
 		}
 		partition := *sts.Spec.UpdateStrategy.RollingUpdate.Partition
 
 		fresh, err := sdcc.isStatefulSetPartitionFresh(ctx, sts, partition)
 		if err != nil {
-			return nil, err
+			return proceed(), err
 		}
 		if !fresh {
+			// The StatefulSet informer catches up and requeues.
 			klog.V(2).InfoS("Stale StatefulSet partition, waiting for requeue", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-			return nil, nil
+			return blockWith(), nil
 		}
 
 		if partition < *sts.Spec.Replicas {
 			// TODO: Move the post-node-upgrade hook into a Job.
 			err = sdcc.afterNodeUpgrade(ctx, sdc, sts, partition, services, upgradeContext)
 			if err != nil {
-				return nil, err
+				return proceed(), err
 			}
 			klog.V(2).InfoS("AfterNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 		}
@@ -198,35 +202,35 @@ func (sdcc *Controller) runRolloutRunUpgradePhase(ctx context.Context, sc *state
 		// TODO: Move the pre-node-upgrade hook into a Job.
 		done, err := sdcc.beforeNodeUpgrade(ctx, sdc, sts, nextPartition, services, upgradeContext)
 		if err != nil {
-			return nil, err
+			return proceed(), err
 		}
 
 		if !done {
 			klog.V(4).InfoS("PreNodeUpgrade hook in progress. Waiting a bit.", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-			sdcc.queue.AddAfter(sc.key, upgradeHookRequeueDelay)
-			return nil, nil
+			return requeueIn(upgradeHookRequeueDelay), nil
 		}
 		klog.V(2).InfoS("PreNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 
 		err = sdcc.advanceStatefulSetPartition(ctx, sts, partition, nextPartition)
 		if err != nil {
-			return nil, err
+			return proceed(), err
 		}
 
-		// Partition can move only one rack a time.
-		return nil, nil
+		// Partition can move only one rack a time. The StatefulSet update requeues.
+		return blockWith(), nil
 	}
 
-	return sdcc.transitionUpgradePhase(ctx, sdc, upgradeContext, internalapi.PostHooksUpgradePhase)
+	progressingConditions, err := sdcc.transitionUpgradePhase(ctx, sdc, upgradeContext, internalapi.PostHooksUpgradePhase)
+	return blockWith(progressingConditions...), err
 }
 
 // runPostHooksUpgradePhase runs the post-upgrade hook and removes the upgrade context, which ends the upgrade.
-func (sdcc *Controller) runPostHooksUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContextConfigMap *corev1.ConfigMap, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) runPostHooksUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContextConfigMap *corev1.ConfigMap, upgradeContext *internalapi.DatacenterUpgradeContext) (stepResult, error) {
 	sdc := sc.sdc
 
 	err := sdcc.afterUpgrade(ctx, sdc, sc.services, upgradeContext)
 	if err != nil {
-		return nil, err
+		return proceed(), err
 	}
 
 	var progressingConditions []metav1.Condition
@@ -238,10 +242,10 @@ func (sdcc *Controller) runPostHooksUpgradePhase(ctx context.Context, sc *statef
 		PropagationPolicy: pointer.Ptr(metav1.DeletePropagationBackground),
 	})
 	if err != nil {
-		return progressingConditions, fmt.Errorf("can't delete upgrade context ConfigMap %q: %w", naming.ObjRef(upgradeContextConfigMap), err)
+		return blockWith(progressingConditions...), fmt.Errorf("can't delete upgrade context ConfigMap %q: %w", naming.ObjRef(upgradeContextConfigMap), err)
 	}
 
-	return progressingConditions, nil
+	return blockWith(progressingConditions...), nil
 }
 
 // transitionUpgradePhase records the next phase in the upgrade context.

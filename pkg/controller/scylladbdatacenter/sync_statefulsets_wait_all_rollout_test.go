@@ -30,11 +30,12 @@ func Test_waitForAllStatefulSetsRollout(t *testing.T) {
 		t.Parallel()
 
 		sdcc := &Controller{}
-		conditions, err := sdcc.waitForAllStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
+		res, err := sdcc.waitForAllStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
 			sdc:                  newScyllaDBDatacenter(),
 			requiredStatefulSets: []*appsv1.StatefulSet{newStatefulSet("a"), newStatefulSet("b")},
 			existingStatefulSets: map[string]*appsv1.StatefulSet{"a": newRollingStatefulSet("a", true), "b": newRollingStatefulSet("b", true)},
 		})
+		conditions := res.progressingConditions
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -47,11 +48,12 @@ func Test_waitForAllStatefulSetsRollout(t *testing.T) {
 		t.Parallel()
 
 		sdcc := &Controller{}
-		conditions, err := sdcc.waitForAllStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
+		res, err := sdcc.waitForAllStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
 			sdc:                  newScyllaDBDatacenter(),
 			requiredStatefulSets: []*appsv1.StatefulSet{newStatefulSet("a"), newStatefulSet("b")},
 			existingStatefulSets: map[string]*appsv1.StatefulSet{"a": newRollingStatefulSet("a", true), "b": newRollingStatefulSet("b", false)},
 		})
+		conditions := res.progressingConditions
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

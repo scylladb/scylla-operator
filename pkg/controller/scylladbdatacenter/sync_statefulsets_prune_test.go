@@ -106,12 +106,13 @@ func Test_pruneStatefulSets(t *testing.T) {
 			sdcc := &Controller{kubeClient: kubeClient}
 			status := &scyllav1alpha1.ScyllaDBDatacenterStatus{Racks: tc.rackStatuses}
 
-			conditions, err := sdcc.pruneStatefulSets(context.Background(), &statefulSetSyncContext{
+			res, err := sdcc.pruneStatefulSets(context.Background(), &statefulSetSyncContext{
 				sdc:                  newScyllaDBDatacenter(),
 				status:               status,
 				requiredStatefulSets: tc.required,
 				existingStatefulSets: tc.existing,
 			})
+			conditions := res.progressingConditions
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

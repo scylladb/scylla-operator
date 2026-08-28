@@ -39,10 +39,11 @@ func Test_waitForNodesStatusReportController(t *testing.T) {
 			t.Parallel()
 
 			sdcc := &Controller{}
-			conditions, err := sdcc.waitForNodesStatusReportController(context.Background(), &statefulSetSyncContext{
+			res, err := sdcc.waitForNodesStatusReportController(context.Background(), &statefulSetSyncContext{
 				sdc:    newScyllaDBDatacenter(),
 				status: &scyllav1alpha1.ScyllaDBDatacenterStatus{Conditions: tc.conditions},
 			})
+			conditions := res.progressingConditions
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

@@ -11,7 +11,7 @@ import (
 // waitForExistingStatefulSetsRollout returns progressing conditions for the existing StatefulSets that haven't rolled
 // out yet, so that racks bootstrap one by one. StatefulSets about to be scaled are skipped: when a member is
 // decommissioned there is a Pod left that's not ready until the scale happens.
-func (sdcc *Controller) waitForExistingStatefulSetsRollout(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) waitForExistingStatefulSetsRollout(ctx context.Context, sc *statefulSetSyncContext) (stepResult, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
 
@@ -39,8 +39,8 @@ func (sdcc *Controller) waitForExistingStatefulSetsRollout(ctx context.Context, 
 
 	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
-		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
+		return blockWith(progressingConditions...), fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
 	}
 
-	return progressingConditions, nil
+	return blockWith(progressingConditions...), nil
 }

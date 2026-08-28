@@ -18,7 +18,7 @@ import (
 // a time, and a scale-down goes one node at a time: the leaving node is first asked to decommission through its member
 // Service and the StatefulSet is only scaled once the node reports it's decommissioned. Nothing is scaled while a
 // decommission is in progress.
-func (sdcc *Controller) scaleStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+func (sdcc *Controller) scaleStatefulSets(ctx context.Context, sc *statefulSetSyncContext) (stepResult, error) {
 	sdc := sc.sdc
 	for _, req := range sc.requiredStatefulSets {
 		sts := sc.existingStatefulSets[req.Name]
@@ -28,13 +28,11 @@ func (sdcc *Controller) scaleStatefulSets(ctx context.Context, sc *statefulSetSy
 		for _, svc := range rackServices {
 			if svc.Labels[naming.DecommissionedLabel] == naming.LabelValueFalse {
 				klog.V(4).InfoS("Waiting for service to be decommissioned")
-				return []metav1.Condition{
-					newStatefulSetProgressingCondition(
-						sdc,
-						reasonWaitingForRackServiceDecommission,
-						fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
-					),
-				}, nil
+				return blockWith(newStatefulSetProgressingCondition(
+					sdc,
+					reasonWaitingForRackServiceDecommission,
+					fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
+				)), nil
 			}
 		}
 
@@ -44,14 +42,17 @@ func (sdcc *Controller) scaleStatefulSets(ctx context.Context, sc *statefulSetSy
 			continue
 		}
 
+		var progressingConditions []metav1.Condition
+		var err error
 		if requiredReplicas < currentReplicas {
-			return sdcc.scaleStatefulSetDown(ctx, sdc, sts, rackServices)
+			progressingConditions, err = sdcc.scaleStatefulSetDown(ctx, sdc, sts, rackServices)
+		} else {
+			progressingConditions, err = sdcc.scaleStatefulSet(ctx, sdc, sts, requiredReplicas)
 		}
-
-		return sdcc.scaleStatefulSet(ctx, sdc, sts, requiredReplicas)
+		return blockWith(progressingConditions...), err
 	}
 
-	return nil, nil
+	return proceed(), nil
 }
 
 // scaleStatefulSetDown removes the last node of the StatefulSet: it asks the node to decommission and, once the node

@@ -146,12 +146,13 @@ func Test_scaleStatefulSets(t *testing.T) {
 
 			required := newRackStatefulSet(tc.requiredReplicas)
 			sdcc := &Controller{kubeClient: kubeClient}
-			conditions, err := sdcc.scaleStatefulSets(context.Background(), &statefulSetSyncContext{
+			res, err := sdcc.scaleStatefulSets(context.Background(), &statefulSetSyncContext{
 				sdc:                  newScyllaDBDatacenter(),
 				requiredStatefulSets: []*appsv1.StatefulSet{required},
 				existingStatefulSets: map[string]*appsv1.StatefulSet{required.Name: tc.existing},
 				services:             tc.services,
 			})
+			conditions := res.progressingConditions
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

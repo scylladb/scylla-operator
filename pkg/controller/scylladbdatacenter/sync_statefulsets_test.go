@@ -933,3 +933,203 @@ func Test_decodeUpgradeContext(t *testing.T) {
 		})
 	}
 }
+
+func Test_updateRackStatus(t *testing.T) {
+	t.Parallel()
+
+	newRackStatefulSet := func(rackName string, replicas int32) *appsv1.StatefulSet {
+		sts := newStatefulSet("sts-" + rackName)
+		sts.Labels = map[string]string{naming.RackNameLabel: rackName}
+		sts.Spec.Replicas = new(replicas)
+		sts.Status.ReadyReplicas = replicas
+		return sts
+	}
+
+	emptyPodLister := corev1listers.NewPodLister(cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}))
+
+	t.Run("replaces an existing rack status", func(t *testing.T) {
+		t.Parallel()
+
+		status := &scyllav1alpha1.ScyllaDBDatacenterStatus{
+			Racks: []scyllav1alpha1.RackStatus{{Name: "a"}, {Name: "b"}},
+		}
+
+		err := updateRackStatus(emptyPodLister, newScyllaDBDatacenter(), status, newRackStatefulSet("b", 3), nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(status.Racks) != 2 || status.Racks[1].Name != "b" || *status.Racks[1].Nodes != 3 || *status.Racks[1].ReadyNodes != 3 {
+			t.Errorf("unexpected rack statuses: %+v", status.Racks)
+		}
+	})
+
+	t.Run("appends a missing rack status", func(t *testing.T) {
+		t.Parallel()
+
+		status := &scyllav1alpha1.ScyllaDBDatacenterStatus{
+			Racks: []scyllav1alpha1.RackStatus{{Name: "a"}},
+		}
+
+		err := updateRackStatus(emptyPodLister, newScyllaDBDatacenter(), status, newRackStatefulSet("b", 1), nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(status.Racks) != 2 || status.Racks[1].Name != "b" || *status.Racks[1].Nodes != 1 {
+			t.Errorf("unexpected rack statuses: %+v", status.Racks)
+		}
+	})
+
+	t.Run("fails without a rack label", func(t *testing.T) {
+		t.Parallel()
+
+		status := &scyllav1alpha1.ScyllaDBDatacenterStatus{}
+		err := updateRackStatus(emptyPodLister, newScyllaDBDatacenter(), status, newStatefulSet("unlabeled"), nil)
+		if err == nil {
+			t.Fatal("expected an error")
+		}
+		if len(status.Racks) != 0 {
+			t.Errorf("expected no rack statuses, got %+v", status.Racks)
+		}
+	})
+}
+
+func Test_waitForNodesStatusReportController(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name            string
+		conditions      []metav1.Condition
+		expectedReasons []string
+	}{
+		{
+			name:            "proceeds when the controller is settled",
+			conditions:      []metav1.Condition{{Type: scyllaDBDatacenterNodesStatusReportControllerProgressingCondition, Status: metav1.ConditionFalse}},
+			expectedReasons: nil,
+		},
+		{
+			name:            "waits when the controller is progressing",
+			conditions:      []metav1.Condition{{Type: scyllaDBDatacenterNodesStatusReportControllerProgressingCondition, Status: metav1.ConditionTrue}},
+			expectedReasons: []string{reasonWaitingForScyllaDBDatacenterNodesStatusReportController},
+		},
+		{
+			name:            "waits when the controller is degraded",
+			conditions:      []metav1.Condition{{Type: scyllaDBDatacenterNodesStatusReportControllerDegradedCondition, Status: metav1.ConditionTrue}},
+			expectedReasons: []string{reasonWaitingForScyllaDBDatacenterNodesStatusReportController},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sdcc := &Controller{}
+			conditions, err := sdcc.waitForNodesStatusReportController(context.Background(), &statefulSetSyncContext{
+				sdc:    newScyllaDBDatacenter(),
+				status: &scyllav1alpha1.ScyllaDBDatacenterStatus{Conditions: tc.conditions},
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			var reasons []string
+			for _, cond := range conditions {
+				reasons = append(reasons, cond.Reason)
+			}
+			if diff := cmp.Diff(tc.expectedReasons, reasons); diff != "" {
+				t.Errorf("condition reasons differ (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func Test_waitForAllStatefulSetsRollout(t *testing.T) {
+	t.Parallel()
+
+	newRollingStatefulSet := func(name string, rolledOut bool) *appsv1.StatefulSet {
+		sts := newStatefulSet(name)
+		sts.Generation = 1
+		sts.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+		if rolledOut {
+			sts.Status.ObservedGeneration = 1
+			sts.Status.Replicas = 1
+			sts.Status.ReadyReplicas = 1
+			sts.Status.AvailableReplicas = 1
+			sts.Status.UpdatedReplicas = 1
+			sts.Status.CurrentRevision = "rev"
+			sts.Status.UpdateRevision = "rev"
+		}
+		return sts
+	}
+
+	t.Run("proceeds when all StatefulSets are rolled out", func(t *testing.T) {
+		t.Parallel()
+
+		sdcc := &Controller{}
+		conditions, err := sdcc.waitForAllStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
+			sdc:                  newScyllaDBDatacenter(),
+			requiredStatefulSets: []*appsv1.StatefulSet{newStatefulSet("a"), newStatefulSet("b")},
+			existingStatefulSets: map[string]*appsv1.StatefulSet{"a": newRollingStatefulSet("a", true), "b": newRollingStatefulSet("b", true)},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(conditions) != 0 {
+			t.Errorf("expected no conditions, got %v", conditions)
+		}
+	})
+
+	t.Run("waits for the first StatefulSet that is not rolled out", func(t *testing.T) {
+		t.Parallel()
+
+		sdcc := &Controller{}
+		conditions, err := sdcc.waitForAllStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
+			sdc:                  newScyllaDBDatacenter(),
+			requiredStatefulSets: []*appsv1.StatefulSet{newStatefulSet("a"), newStatefulSet("b")},
+			existingStatefulSets: map[string]*appsv1.StatefulSet{"a": newRollingStatefulSet("a", true), "b": newRollingStatefulSet("b", false)},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(conditions) != 1 || conditions[0].Reason != reasonWaitingForStatefulSetRollout || conditions[0].Message != `Waiting for StatefulSet "default/b" to roll out.` {
+			t.Errorf("expected a single rollout condition for b, got %v", conditions)
+		}
+	})
+}
+
+func Test_makeRequiredStatefulSets(t *testing.T) {
+	t.Parallel()
+
+	sdc := newScyllaDBDatacenter()
+	sdc.Name = "basic"
+
+	t.Run("waits for the node exporter image", func(t *testing.T) {
+		t.Parallel()
+
+		sdcc := &Controller{}
+		required, conditions, err := sdcc.makeRequiredStatefulSets(sdc, &scyllav1alpha1.ScyllaOperatorConfig{}, nil, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if required != nil || len(conditions) != 1 || conditions[0].Reason != reasonWaitingForScyllaDBNodeExporterImage {
+			t.Errorf("expected only a %q condition, got %v, %v", reasonWaitingForScyllaDBNodeExporterImage, required, conditions)
+		}
+	})
+
+	t.Run("waits for the managed config", func(t *testing.T) {
+		t.Parallel()
+
+		soc := &scyllav1alpha1.ScyllaOperatorConfig{}
+		soc.Status.ScyllaDBNodeExporterImage = new("node-exporter:latest")
+
+		sdcc := &Controller{}
+		required, conditions, err := sdcc.makeRequiredStatefulSets(sdc, soc, nil, map[string]*corev1.ConfigMap{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if required != nil || len(conditions) != 1 || conditions[0].Reason != reasonWaitingForManagedConfig {
+			t.Errorf("expected only a %q condition, got %v, %v", reasonWaitingForManagedConfig, required, conditions)
+		}
+	})
+}

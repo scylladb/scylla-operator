@@ -862,8 +862,8 @@ func (sdcc *Controller) syncStatefulSets(
 						continue
 					}
 
-					_, idx, ok := oslices.Find(sdc.Status.Racks, func(status scyllav1alpha1.RackStatus) bool {
-						return status.Name == rackName
+					_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+						return rackStatus.Name == rackName
 					})
 					if !ok {
 						errs = append(errs, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc)))
@@ -1131,8 +1131,8 @@ func (sdcc *Controller) syncStatefulSets(
 					naming.RackNameLabel,
 				)
 			}
-			_, idx, ok := oslices.Find(sdc.Status.Racks, func(status scyllav1alpha1.RackStatus) bool {
-				return status.Name == rackName
+			_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+				return rackStatus.Name == rackName
 			})
 			if !ok {
 				return progressingConditions, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc))

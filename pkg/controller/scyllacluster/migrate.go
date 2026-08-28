@@ -385,6 +385,23 @@ func MigrateV1ScyllaClusterToV1Alpha1ScyllaDBDatacenter(sc *scyllav1.ScyllaClust
 	return sdc, upgradeContext, apimachineryutilerrors.NewAggregate(migrateErrs)
 }
 
+// migrateV1Alpha1DecommissioningNodesToV1DecommissioningMembers migrates v1alpha1 decommissioning nodes into
+// v1 decommissioning members. An empty record stays nil so that the migrated status round-trips unchanged.
+func migrateV1Alpha1DecommissioningNodesToV1DecommissioningMembers(nodes []scyllav1alpha1.DecommissioningNodeStatus) []scyllav1.DecommissioningMemberStatus {
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	members := make([]scyllav1.DecommissioningMemberStatus, 0, len(nodes))
+	for _, node := range nodes {
+		members = append(members, scyllav1.DecommissioningMemberStatus{
+			Name: node.Name,
+		})
+	}
+
+	return members
+}
+
 // migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus migrates v1alpha1.ScyllaDBDatacenterStatus into v1.ScyllaClusterStatus.
 // ObservedGeneration is not migrated as there might be a generation skew between ScyllaCluster and ScyllaDBDatacenter.
 // Conditions are handled independently as they also need to take controller conditions into account.
@@ -411,10 +428,11 @@ func migrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(sdc *scyllav
 						}
 						return 0
 					}(),
-					AvailableMembers: rackStatus.AvailableNodes,
-					UpdatedMembers:   rackStatus.UpdatedNodes,
-					Stale:            rackStatus.Stale,
-					Conditions:       nil,
+					AvailableMembers:       rackStatus.AvailableNodes,
+					UpdatedMembers:         rackStatus.UpdatedNodes,
+					DecommissioningMembers: migrateV1Alpha1DecommissioningNodesToV1DecommissioningMembers(rackStatus.DecommissioningNodes),
+					Stale:                  rackStatus.Stale,
+					Conditions:             nil,
 				}
 
 				rackServices := oslices.Filter(services, func(svc *corev1.Service) bool {

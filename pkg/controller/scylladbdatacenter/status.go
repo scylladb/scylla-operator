@@ -3,10 +3,13 @@ package scylladbdatacenter
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -57,18 +60,20 @@ func getScyllaVersion(podLister corev1listers.PodLister, sts *appsv1.StatefulSet
 	return version, nil
 }
 
-// calculateRackStatus builds rack status from its StatefulSet.
+// calculateRackStatus builds rack status from its StatefulSet and member Services.
 // If sts is nil, it returns a stale zero status so the rack still appears in status.
 // Empty racks report the target image version; non-empty racks report the version from ordinal-0.
-func calculateRackStatus(podLister corev1listers.PodLister, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet) *scyllav1alpha1.RackStatus {
+// The decommissioning nodes are derived from the decommissioned labels of the rack's member Services in services.
+func calculateRackStatus(podLister corev1listers.PodLister, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, services map[string]*corev1.Service) *scyllav1alpha1.RackStatus {
 	status := &scyllav1alpha1.RackStatus{
-		Name:           rackName,
-		Nodes:          new(int32(0)),
-		CurrentNodes:   new(int32(0)),
-		UpdatedNodes:   new(int32(0)),
-		ReadyNodes:     new(int32(0)),
-		AvailableNodes: new(int32(0)),
-		Stale:          new(true),
+		Name:                 rackName,
+		Nodes:                new(int32(0)),
+		CurrentNodes:         new(int32(0)),
+		UpdatedNodes:         new(int32(0)),
+		ReadyNodes:           new(int32(0)),
+		AvailableNodes:       new(int32(0)),
+		DecommissioningNodes: calculateDecommissioningNodes(rackName, services),
+		Stale:                new(true),
 	}
 
 	if sts == nil {
@@ -104,6 +109,33 @@ func calculateRackStatus(podLister corev1listers.PodLister, sdc *scyllav1alpha1.
 	return status
 }
 
+// calculateDecommissioningNodes returns the nodes of the rack whose member Service carries the decommissioned label,
+// with either value: a node is leaving from the moment its decommission is requested until its Service is pruned.
+// The labels are the ground truth, so the list is derived from them on every sync.
+// Entries are sorted by name so that the list is stable across syncs. It is nil when no node is leaving.
+func calculateDecommissioningNodes(rackName string, services map[string]*corev1.Service) []scyllav1alpha1.DecommissioningNodeStatus {
+	var nodes []scyllav1alpha1.DecommissioningNodeStatus
+	for _, svc := range services {
+		if svc.Labels[naming.RackNameLabel] != rackName {
+			continue
+		}
+
+		if _, ok := svc.Labels[naming.DecommissionedLabel]; !ok {
+			continue
+		}
+
+		nodes = append(nodes, scyllav1alpha1.DecommissioningNodeStatus{
+			Name: svc.Name,
+		})
+	}
+
+	slices.SortFunc(nodes, func(a, b scyllav1alpha1.DecommissioningNodeStatus) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	return nodes
+}
+
 func updateAggregatedStatusFields(status *scyllav1alpha1.ScyllaDBDatacenterStatus) {
 	status.Nodes = new(int32(0))
 	status.ReadyNodes = new(int32(0))
@@ -121,7 +153,7 @@ func updateAggregatedStatusFields(status *scyllav1alpha1.ScyllaDBDatacenterStatu
 // calculateStatus calculates the ScyllaCluster status.
 // This function should always succeed. Do not return an error.
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
-func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSetMap map[string]*appsv1.StatefulSet) *scyllav1alpha1.ScyllaDBDatacenterStatus {
+func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1alpha1.ScyllaDBDatacenterStatus {
 	status := sdc.Status.DeepCopy()
 	status.ObservedGeneration = new(sdc.Generation)
 
@@ -131,7 +163,7 @@ func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, 
 	// Calculate the status for racks.
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		status.Racks = append(status.Racks, *calculateRackStatus(sdcc.podLister, sdc, rack.Name, statefulSetMap[stsName]))
+		status.Racks = append(status.Racks, *calculateRackStatus(sdcc.podLister, sdc, rack.Name, statefulSetMap[stsName], serviceMap))
 	}
 
 	updateAggregatedStatusFields(status)

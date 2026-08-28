@@ -65,6 +65,29 @@ func TestMigrateV1Alpha1ScyllaDBDatacenterStatusToV1ScyllaClusterStatus(t *testi
 			expectedScyllaClusterStatus: newMigratedScyllaClusterStatus(),
 		},
 		{
+			name:       "decommissioning nodes are mirrored as decommissioning members",
+			configMaps: nil,
+			services:   nil,
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenterWithStatus()
+				sdc.Status.Racks[0].DecommissioningNodes = []scyllav1alpha1.DecommissioningNodeStatus{
+					{Name: "basic-dc-a-1"},
+					{Name: "basic-dc-a-2"},
+				}
+				return sdc
+			}(),
+			expectedScyllaClusterStatus: func() scyllav1.ScyllaClusterStatus {
+				status := newMigratedScyllaClusterStatus()
+				rackStatus := status.Racks["a"]
+				rackStatus.DecommissioningMembers = []scyllav1.DecommissioningMemberStatus{
+					{Name: "basic-dc-a-1"},
+					{Name: "basic-dc-a-2"},
+				}
+				status.Racks["a"] = rackStatus
+				return status
+			}(),
+		},
+		{
 			name:       "decommissioning and leaving rack condition when one of the member services has special label",
 			configMaps: nil,
 			services: []*corev1.Service{

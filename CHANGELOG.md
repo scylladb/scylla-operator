@@ -37,6 +37,9 @@
   [#3587](https://github.com/scylladb/scylla-operator/pull/3587)
 
 ### Features & Enhancements
+- Added `status.racks[].decommissioningNodes` to `ScyllaDBDatacenter` and `status.racks[].decommissioningMembers` to
+  `ScyllaCluster`, listing the nodes that are leaving the cluster.
+  [#3623](https://github.com/scylladb/scylla-operator/pull/3623)
 - Added an optional `enableParallelNodeOperations` boolean field to `ScyllaCluster.spec` and
   `ScyllaDBDatacenter.spec`. Enabling it requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
   In this release it only controls how nodes are started. Its scope is expected to widen in a future release, where it

@@ -56,26 +56,36 @@ func (sdcc *Controller) syncStatefulSets(
 		{name: "run the upgrade", run: sdcc.syncUpgrade},
 		{name: "update the StatefulSets", run: sdcc.updateStatefulSets},
 	}
+	res, err := runStatefulSetSyncSteps(ctx, sc, steps)
+	progressingConditions = append(progressingConditions, res.progressingConditions...)
+	if res.requeueAfter > 0 {
+		sdcc.queue.AddAfter(key, res.requeueAfter)
+	}
+
+	return progressingConditions, err
+}
+
+// runStatefulSetSyncSteps runs the steps in order until one blocks or fails. It returns the progressing conditions of
+// all the steps run, the requeue delay of the blocking step, if any, and the error of the failing step, if any.
+func runStatefulSetSyncSteps(ctx context.Context, sc *statefulSetSyncContext, steps []statefulSetSyncStep) (stepResult, error) {
+	var res stepResult
 	for _, step := range steps {
-		klog.V(5).InfoS("Running StatefulSet sync step", "ScyllaDBDatacenter", klog.KObj(sdc), "Step", step.name)
+		klog.V(5).InfoS("Running StatefulSet sync step", "ScyllaDBDatacenter", klog.KObj(sc.sdc), "Step", step.name)
 
-		res, err := step.run(ctx, sc)
-		progressingConditions = append(progressingConditions, res.progressingConditions...)
+		stepRes, err := step.run(ctx, sc)
+		res.progressingConditions = append(res.progressingConditions, stepRes.progressingConditions...)
+		res.requeueAfter = stepRes.requeueAfter
 		if err != nil {
-			return progressingConditions, err
+			return res, err
 		}
 
-		if res.requeueAfter > 0 {
-			sdcc.queue.AddAfter(key, res.requeueAfter)
-		}
-
-		if res.blocks() {
-			klog.V(4).InfoS("StatefulSet sync is waiting", "ScyllaDBDatacenter", klog.KObj(sdc), "Step", step.name)
-			return progressingConditions, nil
+		if stepRes.blocks() {
+			klog.V(4).InfoS("StatefulSet sync is waiting", "ScyllaDBDatacenter", klog.KObj(sc.sdc), "Step", step.name)
+			return res, nil
 		}
 	}
 
-	return progressingConditions, nil
+	return res, nil
 }
 
 // statefulSetSyncContext carries the inputs shared by the steps of the StatefulSet sync. The steps run one after

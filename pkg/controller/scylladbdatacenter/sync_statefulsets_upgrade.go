@@ -114,15 +114,17 @@ func (sdcc *Controller) runRolloutInitUpgradePhase(ctx context.Context, sc *stat
 			// At this point all missing statefulSets should have been created.
 			return nil, fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
 		}
+		// Apply a copy: the required StatefulSets are shared with the following steps and must stay as built.
+		partitioned := required.DeepCopy()
 		// We are depending on the current values so we need to use optimistic concurrency.
 		// It will make sure we always set the corresponding partition for the scale.
 		// It also forces our informers to be up-to-date.
-		required.ResourceVersion = existing.ResourceVersion
+		partitioned.ResourceVersion = existing.ResourceVersion
 		// Avoid scaling.
-		required.Spec.Replicas = pointer.Ptr(*existing.Spec.Replicas)
-		required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*existing.Spec.Replicas)
+		partitioned.Spec.Replicas = pointer.Ptr(*existing.Spec.Replicas)
+		partitioned.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*existing.Spec.Replicas)
 		// Use apply to also update the spec.template
-		updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
+		updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, partitioned, resourceapply.ApplyOptions{})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't apply statefulset to set partition: %w", err))
 		}

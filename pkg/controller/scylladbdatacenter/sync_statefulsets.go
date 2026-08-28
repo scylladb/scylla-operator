@@ -77,11 +77,9 @@ func (sdcc *Controller) syncStatefulSets(
 // statefulSetSyncContext carries the inputs shared by the steps of the StatefulSet sync. The steps run one after
 // another, so a step sees what the previous ones wrote.
 //
-// Read-only: key, sdc, existingStatefulSets, services and configMaps. They come from the informer caches and are shared
-// with the rest of the controller, so they must not be modified. Changes to the cluster go through the API server and
-// are observed by the next sync.
-//
-// Writable: status and requiredStatefulSets, see their doc comments.
+// Everything but status is read-only: the objects come from the informer caches or are shared with the following
+// steps, so they must not be modified. Changes to the cluster go through the API server and are observed by the next
+// sync.
 type statefulSetSyncContext struct {
 	// key is the work queue key of the ScyllaDBDatacenter, used to requeue it with a delay. Read-only.
 	key string
@@ -95,9 +93,8 @@ type statefulSetSyncContext struct {
 	// before the informer caches catch up. Conditions are only read from it.
 	status *scyllav1alpha1.ScyllaDBDatacenterStatus
 
-	// requiredStatefulSets are the StatefulSets the ScyllaDBDatacenter calls for, in rack order. They are built by this
-	// sync and owned by it, so a step may adjust them before applying them, e.g. the upgrade sets the partition and
-	// keeps the current replicas on them. The adjustment is visible to the following steps of the same sync.
+	// requiredStatefulSets are the StatefulSets the ScyllaDBDatacenter calls for, in rack order. Read-only: a step that
+	// needs to apply a variation of one, e.g. with a partition set, applies a copy.
 	requiredStatefulSets []*appsv1.StatefulSet
 
 	// existingStatefulSets are the StatefulSets owned by the ScyllaDBDatacenter, by name. Read-only.

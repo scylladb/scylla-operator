@@ -23,6 +23,154 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// The StatefulSet sync reconciles the rack StatefulSets of a ScyllaDBDatacenter. It is a pipeline of steps run in a
+// fixed order by syncStatefulSets. Every step returns the progressing conditions it produced; returning any condition
+// stops the pipeline until the next requeue. That is how racks are created, scaled and updated one at a time.
+//
+// The steps live in this file, except for scaling (sync_statefulsets_scale.go) and the upgrade state machine
+// (sync_statefulsets_upgrade.go) together with its hooks (sync_statefulsets_upgrade_hooks.go).
+
+const (
+	reasonWaitingForScyllaDBNodeExporterImage                     = "WaitingForScyllaDBNodeExporterImage"
+	reasonWaitingForManagedConfig                                 = "WaitingForManagedConfig"
+	reasonWaitingForScyllaDBDatacenterNodesStatusReportController = "WaitingForScyllaDBDatacenterNodesStatusReportController"
+	reasonWaitingForStatefulSetRollout                            = "WaitingForStatefulSetRollout"
+	reasonWaitingForRackServiceDecommission                       = "WaitingForRackServiceDecommission"
+	reasonWaitingForMissingService                                = "WaitingForMissingService"
+	reasonRunningUpgradeHooks                                     = "RunningUpgradeHooks"
+	reasonUpgrading                                               = "Upgrading"
+)
+
+// statefulSetSyncContext carries the inputs shared by the steps of the StatefulSet sync.
+type statefulSetSyncContext struct {
+	// key is the work queue key of the ScyllaDBDatacenter, used to requeue it with a delay.
+	key string
+
+	sdc *scyllav1alpha1.ScyllaDBDatacenter
+	// status is the status being computed in this sync. Steps that change StatefulSets refresh the rack statuses in it.
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus
+
+	// requiredStatefulSets are the StatefulSets the ScyllaDBDatacenter calls for, in rack order.
+	requiredStatefulSets []*appsv1.StatefulSet
+	// existingStatefulSets are the StatefulSets owned by the ScyllaDBDatacenter, by name.
+	existingStatefulSets map[string]*appsv1.StatefulSet
+
+	services   map[string]*corev1.Service
+	configMaps map[string]*corev1.ConfigMap
+}
+
+// statefulSetSyncStep is one step of the StatefulSet sync. Returning any progressing condition stops the sync until
+// the next requeue.
+type statefulSetSyncStep struct {
+	name string
+	run  func(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error)
+}
+
+func (sdcc *Controller) syncStatefulSets(
+	ctx context.Context,
+	key string,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	soc *scyllav1alpha1.ScyllaOperatorConfig,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
+	statefulSets map[string]*appsv1.StatefulSet,
+	services map[string]*corev1.Service,
+	configMaps map[string]*corev1.ConfigMap,
+) ([]metav1.Condition, error) {
+	requiredStatefulSets, progressingConditions, err := sdcc.makeRequiredStatefulSets(sdc, soc, statefulSets, configMaps)
+	if err != nil || len(progressingConditions) > 0 {
+		return progressingConditions, err
+	}
+
+	sc := &statefulSetSyncContext{
+		key:                  key,
+		sdc:                  sdc,
+		status:               status,
+		requiredStatefulSets: requiredStatefulSets,
+		existingStatefulSets: statefulSets,
+		services:             services,
+		configMaps:           configMaps,
+	}
+
+	steps := []statefulSetSyncStep{
+		// Delete has to be the first action to avoid getting stuck on quota.
+		{name: "prune excessive StatefulSets", run: sdcc.pruneStatefulSets},
+		{name: "wait for the nodes status report controller to settle", run: sdcc.waitForNodesStatusReportController},
+		{name: "wait for the existing StatefulSets to roll out", run: sdcc.waitForExistingStatefulSetsRollout},
+		{name: "create the missing StatefulSets", run: sdcc.createStatefulSets},
+		{name: "scale the StatefulSets", run: sdcc.scaleStatefulSets},
+		{name: "wait for all StatefulSets to roll out", run: sdcc.waitForAllStatefulSetsRollout},
+		{name: "run the upgrade", run: sdcc.syncUpgrade},
+		{name: "update the StatefulSets", run: sdcc.updateStatefulSets},
+	}
+	for _, step := range steps {
+		klog.V(5).InfoS("Running StatefulSet sync step", "ScyllaDBDatacenter", klog.KObj(sdc), "Step", step.name)
+
+		stepProgressingConditions, err := step.run(ctx, sc)
+		progressingConditions = append(progressingConditions, stepProgressingConditions...)
+		if err != nil {
+			return progressingConditions, err
+		}
+
+		if len(progressingConditions) > 0 {
+			klog.V(4).InfoS("StatefulSet sync is waiting", "ScyllaDBDatacenter", klog.KObj(sdc), "Step", step.name)
+			return progressingConditions, nil
+		}
+	}
+
+	return progressingConditions, nil
+}
+
+// makeRequiredStatefulSets builds the StatefulSets the ScyllaDBDatacenter calls for. It returns a progressing
+// condition instead when an input they depend on isn't available yet.
+func (sdcc *Controller) makeRequiredStatefulSets(
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	soc *scyllav1alpha1.ScyllaOperatorConfig,
+	statefulSets map[string]*appsv1.StatefulSet,
+	configMaps map[string]*corev1.ConfigMap,
+) ([]*appsv1.StatefulSet, []metav1.Condition, error) {
+	if soc.Status.ScyllaDBNodeExporterImage == nil {
+		return nil, []metav1.Condition{
+			newStatefulSetProgressingCondition(
+				sdc,
+				reasonWaitingForScyllaDBNodeExporterImage,
+				"Waiting for ScyllaOperatorConfig to have scylladb-node-exporter image available in the status.",
+			),
+		}, nil
+	}
+	nodeExporterImage := *soc.Status.ScyllaDBNodeExporterImage
+
+	managedScyllaDBConfigCMName := naming.GetScyllaDBManagedConfigCMName(sdc.Name)
+	managedScyllaDBConfigCM, found := configMaps[managedScyllaDBConfigCMName]
+	if !found {
+		klog.V(2).InfoS("Waiting for managed config map", "ScyllaDBDatacenter", klog.KObj(sdc), "ConfigMapName", managedScyllaDBConfigCMName)
+		return nil, []metav1.Condition{
+			newStatefulSetProgressingCondition(
+				sdc,
+				reasonWaitingForManagedConfig,
+				fmt.Sprintf("Waiting for ConfigMap %q to be created.", managedScyllaDBConfigCMName),
+			),
+		}, nil
+	}
+
+	inputsHash, err := hash.HashObjects(managedScyllaDBConfigCM.Data)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't hash inputs: %w", err)
+	}
+
+	requiredStatefulSets, err := sdcc.makeRacks(sdc, statefulSets, nodeExporterImage, inputsHash)
+	if err != nil {
+		sdcc.eventRecorder.Eventf(
+			sdc,
+			corev1.EventTypeWarning,
+			"InvalidRack",
+			"Failed to make rack: %v", err,
+		)
+		return nil, nil, err
+	}
+
+	return requiredStatefulSets, nil, nil
+}
+
 func (sdcc *Controller) makeRacks(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSets map[string]*appsv1.StatefulSet, nodeExporterImage string, inputsHash string) ([]*appsv1.StatefulSet, error) {
 	sets := make([]*appsv1.StatefulSet, 0, len(sdc.Spec.Racks))
 	for i, rack := range sdc.Spec.Racks {
@@ -37,93 +185,17 @@ func (sdcc *Controller) makeRacks(sdc *scyllav1alpha1.ScyllaDBDatacenter, statef
 	return sets, nil
 }
 
-const (
-	reasonWaitingForScyllaDBNodeExporterImage                     = "WaitingForScyllaDBNodeExporterImage"
-	reasonWaitingForManagedConfig                                 = "WaitingForManagedConfig"
-	reasonWaitingForScyllaDBDatacenterNodesStatusReportController = "WaitingForScyllaDBDatacenterNodesStatusReportController"
-	reasonWaitingForStatefulSetRollout                            = "WaitingForStatefulSetRollout"
-	reasonWaitingForRackServiceDecommission                       = "WaitingForRackServiceDecommission"
-	reasonWaitingForMissingService                                = "WaitingForMissingService"
-	reasonRunningUpgradeHooks                                     = "RunningUpgradeHooks"
-	reasonUpgrading                                               = "Upgrading"
-)
-
-// newStatefulSetProgressingCondition makes a progressing condition of the StatefulSet sync. Returning one from a sync
-// step means the sync has to stop and wait for a requeue.
-func newStatefulSetProgressingCondition(sdc *scyllav1alpha1.ScyllaDBDatacenter, reason, message string) metav1.Condition {
-	return metav1.Condition{
-		Type:               statefulSetControllerProgressingCondition,
-		Status:             metav1.ConditionTrue,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: sdc.Generation,
-	}
-}
-
-// getStatefulSetRolloutProgressingCondition returns a progressing condition when the StatefulSet hasn't rolled out yet,
-// and nil when it has.
-func getStatefulSetRolloutProgressingCondition(sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet) (*metav1.Condition, error) {
-	rolledOut, err := controllerhelpers.IsStatefulSetRolledOut(sts)
-	if err != nil {
-		return nil, fmt.Errorf("can't verify statefulset %q rollout status: %w", naming.ObjRef(sts), err)
-	}
-
-	if rolledOut {
-		return nil, nil
-	}
-
-	klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-	cond := newStatefulSetProgressingCondition(sdc, reasonWaitingForStatefulSetRollout, fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(sts)))
-	return &cond, nil
-}
-
-// updateRackStatus recomputes the status of the rack owned by the StatefulSet and records it in status, adding it when
-// it's not there yet.
-func updateRackStatus(
-	podLister corev1listers.PodLister,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
-	sts *appsv1.StatefulSet,
-	services map[string]*corev1.Service,
-) error {
-	rackName, ok := sts.Labels[naming.RackNameLabel]
-	if !ok {
-		return fmt.Errorf(
-			"can't determine rack name: statefulset %s is missing label %q",
-			naming.ObjRef(sts),
-			naming.RackNameLabel,
-		)
-	}
-
-	rackStatus := *calculateRackStatus(podLister, sdc, rackName, sts, services)
-	_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
-		return rackStatus.Name == rackName
-	})
-	if ok {
-		status.Racks[idx] = rackStatus
-	} else {
-		status.Racks = append(status.Racks, rackStatus)
-	}
-
-	return nil
-}
-
-func (sdcc *Controller) pruneStatefulSets(
-	ctx context.Context,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
-	requiredStatefulSets []*appsv1.StatefulSet,
-	statefulSets map[string]*appsv1.StatefulSet,
-) ([]metav1.Condition, error) {
+// pruneStatefulSets deletes the StatefulSets that aren't required anymore and drops their rack statuses.
+func (sdcc *Controller) pruneStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
-	for _, sts := range statefulSets {
+	for _, sts := range sc.existingStatefulSets {
 		if sts.DeletionTimestamp != nil {
 			continue
 		}
 
 		isRequired := false
-		for _, req := range requiredStatefulSets {
+		for _, req := range sc.requiredStatefulSets {
 			if sts.Name == req.Name {
 				isRequired = true
 			}
@@ -135,7 +207,7 @@ func (sdcc *Controller) pruneStatefulSets(
 		// TODO: Decommission the rack before removal.
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, sts, "delete", sdc.Generation)
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, sts, "delete", sc.sdc.Generation)
 		err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Delete(ctx, sts.Name, metav1.DeleteOptions{
 			Preconditions: &metav1.Preconditions{
 				UID: &sts.UID,
@@ -155,36 +227,58 @@ func (sdcc *Controller) pruneStatefulSets(
 			continue
 		}
 
-		status.Racks = oslices.FilterOut(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+		sc.status.Racks = oslices.FilterOut(sc.status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
 			return rackStatus.Name == rackName
 		})
 	}
-	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
+
+	err := apimachineryutilerrors.NewAggregate(errs)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't delete StatefulSet(s): %w", err)
+	}
+
+	return progressingConditions, nil
 }
 
-// checkExistingStatefulSetsRolloutStatus returns progressing conditions for existing StatefulSets that haven't rolled out yet.
-func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
-	ctx context.Context,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	requiredStatefulSets []*appsv1.StatefulSet,
-	statefulSets map[string]*appsv1.StatefulSet,
-) ([]metav1.Condition, error) {
+// waitForNodesStatusReportController waits for the ScyllaDBDatacenterNodesStatusReport controller to settle before
+// making any changes. This ensures that the status report is up to date, which lowers the chance of a new node being
+// bootstrapped while the cluster is unhealthy.
+func (sdcc *Controller) waitForNodesStatusReportController(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+	isProgressing := apimeta.IsStatusConditionTrue(sc.status.Conditions, scyllaDBDatacenterNodesStatusReportControllerProgressingCondition)
+	isDegraded := apimeta.IsStatusConditionTrue(sc.status.Conditions, scyllaDBDatacenterNodesStatusReportControllerDegradedCondition)
+	if !isProgressing && !isDegraded {
+		return nil, nil
+	}
+
+	klog.V(4).InfoS("Waiting for ScyllaDBDatacenterNodesStatusReport controller to settle", "ScyllaDBDatacenter", klog.KObj(sc.sdc), "Progressing", isProgressing, "Degraded", isDegraded)
+	return []metav1.Condition{
+		newStatefulSetProgressingCondition(
+			sc.sdc,
+			reasonWaitingForScyllaDBDatacenterNodesStatusReportController,
+			"Waiting for ScyllaDBDatacenterNodesStatusReport controller to settle.",
+		),
+	}, nil
+}
+
+// waitForExistingStatefulSetsRollout returns progressing conditions for the existing StatefulSets that haven't rolled
+// out yet, so that racks bootstrap one by one. StatefulSets about to be scaled are skipped: when a member is
+// decommissioned there is a Pod left that's not ready until the scale happens.
+func (sdcc *Controller) waitForExistingStatefulSetsRollout(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
 
-	for _, req := range requiredStatefulSets {
-		sts, ok := statefulSets[req.Name]
+	for _, req := range sc.requiredStatefulSets {
+		sts, ok := sc.existingStatefulSets[req.Name]
 		if !ok {
 			continue
 		}
 
-		// When we decommission a member there is a pod left that's not ready until we scale.
 		if req.Spec.Replicas != nil && sts.Spec.Replicas != nil &&
 			*req.Spec.Replicas != *sts.Spec.Replicas {
 			continue
 		}
 
-		cond, err := getStatefulSetRolloutProgressingCondition(sdc, sts)
+		cond, err := getStatefulSetRolloutProgressingCondition(sc.sdc, sts)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -193,6 +287,40 @@ func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 		if cond != nil {
 			progressingConditions = append(progressingConditions, *cond)
 		}
+	}
+
+	err := apimachineryutilerrors.NewAggregate(errs)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
+	}
+
+	return progressingConditions, nil
+}
+
+// createStatefulSets creates the missing StatefulSets and records the statuses of the racks they belong to.
+func (sdcc *Controller) createStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+	createdStatefulSets, progressingConditions, err := createMissingStatefulSets(
+		ctx,
+		func(ctx context.Context, required *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
+			return resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
+		},
+		sc.sdc,
+		sc.requiredStatefulSets,
+		sc.existingStatefulSets,
+	)
+	if len(createdStatefulSets) > 0 {
+		defer sdcc.waitForStatefulSetCachePropagation()
+	}
+
+	var errs []error
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't create StatefulSet(s): %w", err))
+	}
+
+	// Record the statuses of the StatefulSets that were created, even if creating another one failed.
+	err = ensureRackNamesInRackStatuses(sdcc.podLister, sc.sdc, sc.status, createdStatefulSets, sc.services)
+	if err != nil {
+		errs = append(errs, fmt.Errorf("can't update status with rack statuses: %w", err))
 	}
 
 	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
@@ -267,191 +395,39 @@ func ensureRackNamesInRackStatuses(
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (sdcc *Controller) syncStatefulSets(
-	ctx context.Context,
-	key string,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	soc *scyllav1alpha1.ScyllaOperatorConfig,
-	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
-	statefulSets map[string]*appsv1.StatefulSet,
-	services map[string]*corev1.Service,
-	configMaps map[string]*corev1.ConfigMap,
-) ([]metav1.Condition, error) {
-	var err error
-	var progressingConditions []metav1.Condition
+// waitForAllStatefulSetsRollout waits for all racks to be up and ready before any of them is upgraded or updated.
+// TODO: This blocks unstucking by an update. Also blocks lowering resources when the cluster is running low.
+func (sdcc *Controller) waitForAllStatefulSetsRollout(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+	for _, req := range sc.requiredStatefulSets {
+		sts := sc.existingStatefulSets[req.Name]
 
-	if soc.Status.ScyllaDBNodeExporterImage == nil {
-		progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(
-			sdc,
-			reasonWaitingForScyllaDBNodeExporterImage,
-			"Waiting for ScyllaOperatorConfig to have scylladb-node-exporter image available in the status.",
-		))
-		return progressingConditions, nil
-	}
-	nodeExporterImage := *soc.Status.ScyllaDBNodeExporterImage
-
-	managedScyllaDBConfigCMName := naming.GetScyllaDBManagedConfigCMName(sdc.Name)
-	managedScyllaDBConfigCM, found := configMaps[managedScyllaDBConfigCMName]
-	if !found {
-		klog.V(2).InfoS("Waiting for managed config map", "ScyllaDBDatacenter", klog.KObj(sdc), "ConfigMapName", managedScyllaDBConfigCMName)
-		progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(
-			sdc,
-			reasonWaitingForManagedConfig,
-			fmt.Sprintf("Waiting for ConfigMap %q to be created.", managedScyllaDBConfigCMName),
-		))
-		return progressingConditions, nil
-	}
-
-	inputsHash, err := hash.HashObjects(managedScyllaDBConfigCM.Data)
-	if err != nil {
-		return progressingConditions, fmt.Errorf("can't hash inputs: %w", err)
-	}
-
-	requiredStatefulSets, err := sdcc.makeRacks(sdc, statefulSets, nodeExporterImage, inputsHash)
-	if err != nil {
-		sdcc.eventRecorder.Eventf(
-			sdc,
-			corev1.EventTypeWarning,
-			"InvalidRack",
-			"Failed to make rack: %v", err,
-		)
-		return progressingConditions, err
-	}
-
-	// Delete any excessive StatefulSets.
-	// Delete has to be the first action to avoid getting stuck on quota.
-	pruneProgressingConditions, err := sdcc.pruneStatefulSets(ctx, sdc, status, requiredStatefulSets, statefulSets)
-	progressingConditions = append(progressingConditions, pruneProgressingConditions...)
-	if err != nil {
-		return progressingConditions, fmt.Errorf("can't delete StatefulSet(s): %w", err)
-	}
-
-	// Wait for the ScyllaDBDatacenterNodesStatusReport controller to settle before proceeding.
-	// This ensures that the status report is up to date before we start making changes,
-	// which lowers the chance of a new node being bootstrapped while the cluster is unhealthy.
-	isScyllaDBDatacenterNodesStatusReportControllerProgressing := apimeta.IsStatusConditionTrue(status.Conditions, scyllaDBDatacenterNodesStatusReportControllerProgressingCondition)
-	isScyllaDBDatacenterNodesStatusReportControllerDegraded := apimeta.IsStatusConditionTrue(status.Conditions, scyllaDBDatacenterNodesStatusReportControllerDegradedCondition)
-	if isScyllaDBDatacenterNodesStatusReportControllerProgressing || isScyllaDBDatacenterNodesStatusReportControllerDegraded {
-		klog.V(4).InfoS("Waiting for ScyllaDBDatacenterNodesStatusReport controller to settle", "ScyllaDBDatacenter", klog.KObj(sdc), "Progressing", isScyllaDBDatacenterNodesStatusReportControllerProgressing, "Degraded", isScyllaDBDatacenterNodesStatusReportControllerDegraded)
-		progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(
-			sdc,
-			reasonWaitingForScyllaDBDatacenterNodesStatusReportController,
-			"Waiting for ScyllaDBDatacenterNodesStatusReport controller to settle.",
-		))
-	}
-	if len(progressingConditions) > 0 {
-		return progressingConditions, nil
-	}
-
-	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets)
-	if err != nil {
-		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
-	}
-	// Wait for existing StatefulSets to roll out. Racks can only bootstrap one by one.
-	if len(progressingConditions) > 0 {
-		return progressingConditions, nil
-	}
-
-	// Before any update, make sure all StatefulSets are present.
-	// Create any that are missing.
-	createdStatefulSets, createProgressingConditions, err := createMissingStatefulSets(
-		ctx,
-		func(ctx context.Context, required *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
-			return resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
-		},
-		sdc,
-		requiredStatefulSets,
-		statefulSets,
-	)
-	progressingConditions = append(progressingConditions, createProgressingConditions...)
-	defer func() {
-		if len(createProgressingConditions) > 0 {
-			// Wait for the informers to catch up.
-			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(sdcc.statefulSetCachePropagationDelay)
-		}
-	}()
-	var createErrs []error
-	if err != nil {
-		createErrs = append(createErrs, fmt.Errorf("can't create StatefulSet(s): %w", err))
-	}
-
-	// Record the statuses of the StatefulSets that were created, even if creating another one failed.
-	err = ensureRackNamesInRackStatuses(sdcc.podLister, sdc, status, createdStatefulSets, services)
-	if err != nil {
-		createErrs = append(createErrs, fmt.Errorf("can't update status with rack statuses: %w", err))
-	}
-
-	if len(createErrs) > 0 {
-		return progressingConditions, apimachineryutilerrors.NewAggregate(createErrs)
-	}
-
-	// Return to wait for created StatefulSets to roll out before proceeding.
-	if len(progressingConditions) > 0 {
-		return progressingConditions, nil
-	}
-
-	// Scale before the update.
-	scaleProgressingConditions, err := sdcc.scaleStatefulSets(ctx, sdc, requiredStatefulSets, statefulSets, services)
-	progressingConditions = append(progressingConditions, scaleProgressingConditions...)
-	if err != nil {
-		return progressingConditions, fmt.Errorf("can't scale StatefulSet(s): %w", err)
-	}
-	if len(progressingConditions) > 0 {
-		return progressingConditions, nil
-	}
-
-	// TODO: This blocks unstucking by an update.
-	//  	 Also blocks lowering resources when the cluster is running low.
-	// Wait for all racks to be up and ready.
-	for _, req := range requiredStatefulSets {
-		sts := statefulSets[req.Name]
-
-		cond, err := getStatefulSetRolloutProgressingCondition(sdc, sts)
+		cond, err := getStatefulSetRolloutProgressingCondition(sc.sdc, sts)
 		if err != nil {
-			return progressingConditions, err
+			return nil, err
 		}
 
 		if cond != nil {
-			progressingConditions = append(progressingConditions, *cond)
-			return progressingConditions, nil
+			return []metav1.Condition{*cond}, nil
 		}
 	}
 
-	upgradeContextConfigMap, upgradeInProgress := configMaps[naming.UpgradeContextConfigMapName(sdc)]
-	if upgradeInProgress {
-		upgradeProgressingConditions, err := sdcc.syncUpgrade(ctx, key, sdc, status, requiredStatefulSets, statefulSets, services, upgradeContextConfigMap)
-		progressingConditions = append(progressingConditions, upgradeProgressingConditions...)
-		return progressingConditions, err
-	}
-
-	updateProgressingConditions, err := sdcc.updateStatefulSets(ctx, sdc, status, requiredStatefulSets, statefulSets, services)
-	progressingConditions = append(progressingConditions, updateProgressingConditions...)
-	return progressingConditions, err
+	return nil, nil
 }
 
 // updateStatefulSets applies the required StatefulSets one at a time, waiting for each to roll out before moving on
 // to the next one. A change of the major or minor ScyllaDB version isn't applied directly but starts an upgrade
 // instead.
-func (sdcc *Controller) updateStatefulSets(
-	ctx context.Context,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
-	requiredStatefulSets []*appsv1.StatefulSet,
-	statefulSets map[string]*appsv1.StatefulSet,
-	services map[string]*corev1.Service,
-) ([]metav1.Condition, error) {
+func (sdcc *Controller) updateStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
 	anyStsChanged := false
 	defer func() {
 		if anyStsChanged {
-			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(sdcc.statefulSetCachePropagationDelay)
+			sdcc.waitForStatefulSetCachePropagation()
 		}
 	}()
-	for _, required := range requiredStatefulSets {
-		existing, existingFound := statefulSets[required.Name]
+	for _, required := range sc.requiredStatefulSets {
+		existing, existingFound := sc.existingStatefulSets[required.Name]
 		if existingFound {
 			upgradeNeeded, fromVersion, toVersion, err := detectVersionUpgrade(required, existing)
 			if err != nil {
@@ -459,7 +435,7 @@ func (sdcc *Controller) updateStatefulSets(
 			}
 
 			if upgradeNeeded {
-				startConditions, err := sdcc.startUpgrade(ctx, sdc, fromVersion, toVersion)
+				startConditions, err := sdcc.startUpgrade(ctx, sc.sdc, fromVersion, toVersion)
 				progressingConditions = append(progressingConditions, startConditions...)
 				return progressingConditions, err
 			}
@@ -473,16 +449,16 @@ func (sdcc *Controller) updateStatefulSets(
 		if changed {
 			anyStsChanged = true
 
-			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, required, "apply", sdc.Generation)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, required, "apply", sc.sdc.Generation)
 
-			err = updateRackStatus(sdcc.podLister, sdc, status, updatedSts, services)
+			err = updateRackStatus(sdcc.podLister, sc.sdc, sc.status, updatedSts, sc.services)
 			if err != nil {
 				return progressingConditions, err
 			}
 		}
 
 		// Wait for the StatefulSet to roll out.
-		cond, err := getStatefulSetRolloutProgressingCondition(sdc, updatedSts)
+		cond, err := getStatefulSetRolloutProgressingCondition(sc.sdc, updatedSts)
 		if err != nil {
 			return progressingConditions, err
 		}
@@ -494,6 +470,73 @@ func (sdcc *Controller) updateStatefulSets(
 	}
 
 	return progressingConditions, nil
+}
+
+// waitForStatefulSetCachePropagation gives the informers time to observe a StatefulSet we've just changed, so that
+// the next sync doesn't act on a stale cache.
+// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
+func (sdcc *Controller) waitForStatefulSetCachePropagation() {
+	time.Sleep(sdcc.statefulSetCachePropagationDelay)
+}
+
+// newStatefulSetProgressingCondition makes a progressing condition of the StatefulSet sync. Returning one from a sync
+// step means the sync has to stop and wait for a requeue.
+func newStatefulSetProgressingCondition(sdc *scyllav1alpha1.ScyllaDBDatacenter, reason, message string) metav1.Condition {
+	return metav1.Condition{
+		Type:               statefulSetControllerProgressingCondition,
+		Status:             metav1.ConditionTrue,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: sdc.Generation,
+	}
+}
+
+// getStatefulSetRolloutProgressingCondition returns a progressing condition when the StatefulSet hasn't rolled out yet,
+// and nil when it has.
+func getStatefulSetRolloutProgressingCondition(sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet) (*metav1.Condition, error) {
+	rolledOut, err := controllerhelpers.IsStatefulSetRolledOut(sts)
+	if err != nil {
+		return nil, fmt.Errorf("can't verify statefulset %q rollout status: %w", naming.ObjRef(sts), err)
+	}
+
+	if rolledOut {
+		return nil, nil
+	}
+
+	klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
+	cond := newStatefulSetProgressingCondition(sdc, reasonWaitingForStatefulSetRollout, fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(sts)))
+	return &cond, nil
+}
+
+// updateRackStatus recomputes the status of the rack owned by the StatefulSet and records it in status, adding it when
+// it's not there yet.
+func updateRackStatus(
+	podLister corev1listers.PodLister,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
+	sts *appsv1.StatefulSet,
+	services map[string]*corev1.Service,
+) error {
+	rackName, ok := sts.Labels[naming.RackNameLabel]
+	if !ok {
+		return fmt.Errorf(
+			"can't determine rack name: statefulset %s is missing label %q",
+			naming.ObjRef(sts),
+			naming.RackNameLabel,
+		)
+	}
+
+	rackStatus := *calculateRackStatus(podLister, sdc, rackName, sts, services)
+	_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+		return rackStatus.Name == rackName
+	})
+	if ok {
+		status.Racks[idx] = rackStatus
+	} else {
+		status.Racks = append(status.Racks, rackStatus)
+	}
+
+	return nil
 }
 
 func (sdcc *Controller) setStatefulSetsAvailableStatusCondition(
@@ -580,8 +623,6 @@ func (sdcc *Controller) setStatefulSetsAvailableStatusCondition(
 			ObservedGeneration: sdc.Generation,
 		})
 	}
-
-	return
 }
 
 func (sdcc *Controller) decodeUpgradeContext(upgradeContextConfigMap *corev1.ConfigMap) (*internalapi.DatacenterUpgradeContext, error) {

@@ -18,16 +18,11 @@ import (
 // a time, and a scale-down goes one node at a time: the leaving node is first asked to decommission through its member
 // Service and the StatefulSet is only scaled once the node reports it's decommissioned. Nothing is scaled while a
 // decommission is in progress.
-func (sdcc *Controller) scaleStatefulSets(
-	ctx context.Context,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	requiredStatefulSets []*appsv1.StatefulSet,
-	statefulSets map[string]*appsv1.StatefulSet,
-	services map[string]*corev1.Service,
-) ([]metav1.Condition, error) {
-	for _, req := range requiredStatefulSets {
-		sts := statefulSets[req.Name]
-		rackServices := servicesForRack(services, sts.Labels[naming.RackNameLabel])
+func (sdcc *Controller) scaleStatefulSets(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+	sdc := sc.sdc
+	for _, req := range sc.requiredStatefulSets {
+		sts := sc.existingStatefulSets[req.Name]
+		rackServices := servicesForRack(sc.services, sts.Labels[naming.RackNameLabel])
 
 		// Wait if any decommissioning is in progress.
 		for _, svc := range rackServices {

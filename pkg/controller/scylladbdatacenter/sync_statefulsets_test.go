@@ -612,7 +612,12 @@ func Test_pruneStatefulSets(t *testing.T) {
 			sdcc := &Controller{kubeClient: kubeClient}
 			status := &scyllav1alpha1.ScyllaDBDatacenterStatus{Racks: tc.rackStatuses}
 
-			conditions, err := sdcc.pruneStatefulSets(context.Background(), newScyllaDBDatacenter(), status, tc.required, tc.existing)
+			conditions, err := sdcc.pruneStatefulSets(context.Background(), &statefulSetSyncContext{
+				sdc:                  newScyllaDBDatacenter(),
+				status:               status,
+				requiredStatefulSets: tc.required,
+				existingStatefulSets: tc.existing,
+			})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -639,7 +644,7 @@ func Test_pruneStatefulSets(t *testing.T) {
 	}
 }
 
-func Test_checkExistingStatefulSetsRolloutStatus(t *testing.T) {
+func Test_waitForExistingStatefulSetsRollout(t *testing.T) {
 	t.Parallel()
 
 	newRollingStatefulSet := func(name string, replicas int32, rolledOut bool) *appsv1.StatefulSet {
@@ -705,7 +710,11 @@ func Test_checkExistingStatefulSetsRolloutStatus(t *testing.T) {
 			t.Parallel()
 
 			sdcc := &Controller{}
-			conditions, err := sdcc.checkExistingStatefulSetsRolloutStatus(context.Background(), newScyllaDBDatacenter(), tc.required, tc.existing)
+			conditions, err := sdcc.waitForExistingStatefulSetsRollout(context.Background(), &statefulSetSyncContext{
+				sdc:                  newScyllaDBDatacenter(),
+				requiredStatefulSets: tc.required,
+				existingStatefulSets: tc.existing,
+			})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

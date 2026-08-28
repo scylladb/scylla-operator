@@ -80,17 +80,16 @@ func (sdcc *Controller) startUpgrade(ctx context.Context, sdc *scyllav1alpha1.Sc
 	return progressingConditions, err
 }
 
-// syncUpgrade runs the current phase of the upgrade recorded in the upgrade context ConfigMap.
-func (sdcc *Controller) syncUpgrade(
-	ctx context.Context,
-	key string,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
-	requiredStatefulSets []*appsv1.StatefulSet,
-	statefulSets map[string]*appsv1.StatefulSet,
-	services map[string]*corev1.Service,
-	upgradeContextConfigMap *corev1.ConfigMap,
-) ([]metav1.Condition, error) {
+// syncUpgrade runs the current phase of the upgrade recorded in the upgrade context ConfigMap. It's a no-op when no
+// upgrade is in progress.
+func (sdcc *Controller) syncUpgrade(ctx context.Context, sc *statefulSetSyncContext) ([]metav1.Condition, error) {
+	sdc := sc.sdc
+
+	upgradeContextConfigMap, upgradeInProgress := sc.configMaps[naming.UpgradeContextConfigMapName(sdc)]
+	if !upgradeInProgress {
+		return nil, nil
+	}
+
 	var progressingConditions []metav1.Condition
 
 	upgradeContext, err := sdcc.decodeUpgradeContext(upgradeContextConfigMap)
@@ -114,16 +113,16 @@ func (sdcc *Controller) syncUpgrade(
 	var phaseConditions []metav1.Condition
 	switch upgradeContext.State {
 	case internalapi.PreHooksUpgradePhase:
-		phaseConditions, err = sdcc.runPreHooksUpgradePhase(ctx, key, sdc, services, upgradeContext)
+		phaseConditions, err = sdcc.runPreHooksUpgradePhase(ctx, sc, upgradeContext)
 
 	case internalapi.RolloutInitUpgradePhase:
-		phaseConditions, err = sdcc.runRolloutInitUpgradePhase(ctx, sdc, status, requiredStatefulSets, statefulSets, services, upgradeContext)
+		phaseConditions, err = sdcc.runRolloutInitUpgradePhase(ctx, sc, upgradeContext)
 
 	case internalapi.RolloutRunUpgradePhase:
-		phaseConditions, err = sdcc.runRolloutRunUpgradePhase(ctx, key, sdc, requiredStatefulSets, statefulSets, services, upgradeContext)
+		phaseConditions, err = sdcc.runRolloutRunUpgradePhase(ctx, sc, upgradeContext)
 
 	case internalapi.PostHooksUpgradePhase:
-		phaseConditions, err = sdcc.runPostHooksUpgradePhase(ctx, sdc, services, upgradeContextConfigMap, upgradeContext)
+		phaseConditions, err = sdcc.runPostHooksUpgradePhase(ctx, sc, upgradeContextConfigMap, upgradeContext)
 
 	default:
 		// An old cluster with an old state machine can still be going through an update, or stuck.
@@ -137,41 +136,29 @@ func (sdcc *Controller) syncUpgrade(
 }
 
 // runPreHooksUpgradePhase runs the pre-upgrade hook and moves on to initializing the rollout once it's done.
-func (sdcc *Controller) runPreHooksUpgradePhase(
-	ctx context.Context,
-	key string,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	services map[string]*corev1.Service,
-	upgradeContext *internalapi.DatacenterUpgradeContext,
-) ([]metav1.Condition, error) {
+func (sdcc *Controller) runPreHooksUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
 	// TODO: Move the pre-upgrade hook into a Job.
-	done, err := sdcc.beforeUpgrade(ctx, sdc, services, upgradeContext)
+	done, err := sdcc.beforeUpgrade(ctx, sc.sdc, sc.services, upgradeContext)
 	if err != nil {
 		return nil, err
 	}
 	if !done {
-		sdcc.queue.AddAfter(key, upgradeHookRequeueDelay)
+		sdcc.queue.AddAfter(sc.key, upgradeHookRequeueDelay)
 		return nil, nil
 	}
 
-	return sdcc.transitionUpgradePhase(ctx, sdc, upgradeContext, internalapi.RolloutInitUpgradePhase)
+	return sdcc.transitionUpgradePhase(ctx, sc.sdc, upgradeContext, internalapi.RolloutInitUpgradePhase)
 }
 
 // runRolloutInitUpgradePhase partitions all StatefulSets fully while updating their templates, so that changes are
 // blocked but no Pod is updated yet, and moves on to running the rollout.
-func (sdcc *Controller) runRolloutInitUpgradePhase(
-	ctx context.Context,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
-	requiredStatefulSets []*appsv1.StatefulSet,
-	statefulSets map[string]*appsv1.StatefulSet,
-	services map[string]*corev1.Service,
-	upgradeContext *internalapi.DatacenterUpgradeContext,
-) ([]metav1.Condition, error) {
+func (sdcc *Controller) runRolloutInitUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
+	sdc := sc.sdc
+
 	var errs []error
 	anyStsChanged := false
-	for _, required := range requiredStatefulSets {
-		existing, ok := statefulSets[required.Name]
+	for _, required := range sc.requiredStatefulSets {
+		existing, ok := sc.existingStatefulSets[required.Name]
 		if !ok {
 			// At this point all missing statefulSets should have been created.
 			return nil, fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
@@ -192,7 +179,7 @@ func (sdcc *Controller) runRolloutInitUpgradePhase(
 		if changed {
 			anyStsChanged = true
 
-			err = updateRackStatus(sdcc.podLister, sdc, status, updatedSts, services)
+			err = updateRackStatus(sdcc.podLister, sdc, sc.status, updatedSts, sc.services)
 			if err != nil {
 				errs = append(errs, err)
 				continue
@@ -200,8 +187,7 @@ func (sdcc *Controller) runRolloutInitUpgradePhase(
 		}
 	}
 	if anyStsChanged {
-		// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-		time.Sleep(sdcc.statefulSetCachePropagationDelay)
+		sdcc.waitForStatefulSetCachePropagation()
 	}
 	err := apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
@@ -214,16 +200,11 @@ func (sdcc *Controller) runRolloutInitUpgradePhase(
 // runRolloutRunUpgradePhase moves the partition of the first StatefulSet that hasn't finished rolling by one node,
 // running the post-node-upgrade hook for the node that was just rolled and the pre-node-upgrade hook for the next one.
 // Once all StatefulSets are fully rolled it moves on to the post-hooks.
-func (sdcc *Controller) runRolloutRunUpgradePhase(
-	ctx context.Context,
-	key string,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	requiredStatefulSets []*appsv1.StatefulSet,
-	statefulSets map[string]*appsv1.StatefulSet,
-	services map[string]*corev1.Service,
-	upgradeContext *internalapi.DatacenterUpgradeContext,
-) ([]metav1.Condition, error) {
-	for _, sts := range requiredStatefulSets {
+func (sdcc *Controller) runRolloutRunUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
+	sdc := sc.sdc
+	services := sc.services
+
+	for _, sts := range sc.requiredStatefulSets {
 		partition := *sts.Spec.UpdateStrategy.RollingUpdate.Partition
 
 		fresh, err := sdcc.isStatefulSetPartitionFresh(ctx, sts, partition)
@@ -260,12 +241,12 @@ func (sdcc *Controller) runRolloutRunUpgradePhase(
 
 		if !done {
 			klog.V(4).InfoS("PreNodeUpgrade hook in progress. Waiting a bit.", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-			sdcc.queue.AddAfter(key, upgradeHookRequeueDelay)
+			sdcc.queue.AddAfter(sc.key, upgradeHookRequeueDelay)
 			return nil, nil
 		}
 		klog.V(2).InfoS("PreNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 
-		err = sdcc.advanceStatefulSetPartition(ctx, sts, statefulSets[sts.Name], partition, nextPartition)
+		err = sdcc.advanceStatefulSetPartition(ctx, sts, sc.existingStatefulSets[sts.Name], partition, nextPartition)
 		if err != nil {
 			return nil, err
 		}
@@ -278,14 +259,10 @@ func (sdcc *Controller) runRolloutRunUpgradePhase(
 }
 
 // runPostHooksUpgradePhase runs the post-upgrade hook and removes the upgrade context, which ends the upgrade.
-func (sdcc *Controller) runPostHooksUpgradePhase(
-	ctx context.Context,
-	sdc *scyllav1alpha1.ScyllaDBDatacenter,
-	services map[string]*corev1.Service,
-	upgradeContextConfigMap *corev1.ConfigMap,
-	upgradeContext *internalapi.DatacenterUpgradeContext,
-) ([]metav1.Condition, error) {
-	err := sdcc.afterUpgrade(ctx, sdc, services, upgradeContext)
+func (sdcc *Controller) runPostHooksUpgradePhase(ctx context.Context, sc *statefulSetSyncContext, upgradeContextConfigMap *corev1.ConfigMap, upgradeContext *internalapi.DatacenterUpgradeContext) ([]metav1.Condition, error) {
+	sdc := sc.sdc
+
+	err := sdcc.afterUpgrade(ctx, sdc, sc.services, upgradeContext)
 	if err != nil {
 		return nil, err
 	}

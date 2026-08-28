@@ -738,36 +738,56 @@ func (sdcc *Controller) syncStatefulSets(
 		}
 
 		if scale.Spec.Replicas < *sts.Spec.Replicas {
-			// Make sure we always scale down by 1 member.
-			scale.Spec.Replicas = *sts.Spec.Replicas - 1
-
-			lastSvcName := fmt.Sprintf("%s-%d", sts.Name, *sts.Spec.Replicas-1)
-			lastSvc, ok := rackServices[lastSvcName]
-			if !ok {
-				klog.V(4).InfoS("Missing service", "ScyllaDBDatacenter", klog.KObj(sdc), "ServiceName", lastSvcName)
-				progressingConditions = append(progressingConditions, metav1.Condition{
-					Type:               statefulSetControllerProgressingCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "WaitingForMissingService",
-					Message:            fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(req), lastSvcName),
-					ObservedGeneration: sdc.Generation,
-				})
-				// Services are managed in the other loop.
-				// When informers see the new service, will get re-queued.
-				return progressingConditions, nil
+			// The nodes leaving in this step are the ordinals above the target count. With parallel node operations
+			// disabled only the highest one leaves, so that a single node operation is in flight at a time.
+			lowestLeavingOrdinal := *sts.Spec.Replicas - 1
+			if parallelNodeOperationsEnabled {
+				lowestLeavingOrdinal = scale.Spec.Replicas
+			} else {
+				scale.Spec.Replicas = *sts.Spec.Replicas - 1
 			}
 
-			if len(lastSvc.Labels[naming.DecommissionedLabel]) == 0 {
-				lastSvcCopy := lastSvc.DeepCopy()
+			// Record the intent to decommission every leaving member before scaling down to any of them, so that the
+			// StatefulSet never removes a node whose decommission wasn't requested.
+			// The scale-down below is only reached once they are all decommissioned, as the wait above blocks on any
+			// member of this rack that is still leaving.
+			requestedDecommission := false
+			for ord := lowestLeavingOrdinal; ord < *sts.Spec.Replicas; ord++ {
+				svcName := fmt.Sprintf("%s-%d", sts.Name, ord)
+				svc, ok := rackServices[svcName]
+				if !ok {
+					klog.V(4).InfoS("Missing service", "ScyllaDBDatacenter", klog.KObj(sdc), "ServiceName", svcName)
+					progressingConditions = append(progressingConditions, metav1.Condition{
+						Type:               statefulSetControllerProgressingCondition,
+						Status:             metav1.ConditionTrue,
+						Reason:             "WaitingForMissingService",
+						Message:            fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(req), svcName),
+						ObservedGeneration: sdc.Generation,
+					})
+					// Services are managed in the other loop.
+					// When informers see the new service, will get re-queued.
+					return progressingConditions, nil
+				}
+
+				if len(svc.Labels[naming.DecommissionedLabel]) != 0 {
+					continue
+				}
+
+				svcCopy := svc.DeepCopy()
 				// Record the intent to decommission the member.
 				// TODO: Move this into syncServices so it reconciles properly. This is edge triggered
 				//  and nothing will reconcile the label if something goes wrong or the flow changes.
-				lastSvcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, lastSvcCopy, "update", sdc.Generation)
-				_, err := sdcc.kubeClient.CoreV1().Services(lastSvcCopy.Namespace).Update(ctx, lastSvcCopy, metav1.UpdateOptions{})
+				svcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, svcCopy, "update", sdc.Generation)
+				_, err := sdcc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
 				if err != nil {
 					return progressingConditions, err
 				}
+
+				requestedDecommission = true
+			}
+
+			if requestedDecommission {
 				return progressingConditions, nil
 			}
 		}

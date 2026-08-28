@@ -74,21 +74,39 @@ func (sdcc *Controller) syncStatefulSets(
 	return progressingConditions, nil
 }
 
-// statefulSetSyncContext carries the inputs shared by the steps of the StatefulSet sync.
+// statefulSetSyncContext carries the inputs shared by the steps of the StatefulSet sync. The steps run one after
+// another, so a step sees what the previous ones wrote.
+//
+// Read-only: key, sdc, existingStatefulSets, services and configMaps. They come from the informer caches and are shared
+// with the rest of the controller, so they must not be modified. Changes to the cluster go through the API server and
+// are observed by the next sync.
+//
+// Writable: status and requiredStatefulSets, see their doc comments.
 type statefulSetSyncContext struct {
-	// key is the work queue key of the ScyllaDBDatacenter, used to requeue it with a delay.
+	// key is the work queue key of the ScyllaDBDatacenter, used to requeue it with a delay. Read-only.
 	key string
 
+	// sdc is the ScyllaDBDatacenter being synced. Read-only.
 	sdc *scyllav1alpha1.ScyllaDBDatacenter
-	// status is the status being computed in this sync. Steps that change StatefulSets refresh the rack statuses in it.
+
+	// status is the status of the ScyllaDBDatacenter being computed in this sync; it is written to the API server once
+	// all the syncs are done. It is writable: a step that deletes, creates or updates a StatefulSet updates the
+	// corresponding rack status right away (see updateRackStatus) so that the recorded status reflects the change
+	// before the informer caches catch up. Conditions are only read from it.
 	status *scyllav1alpha1.ScyllaDBDatacenterStatus
 
-	// requiredStatefulSets are the StatefulSets the ScyllaDBDatacenter calls for, in rack order.
+	// requiredStatefulSets are the StatefulSets the ScyllaDBDatacenter calls for, in rack order. They are built by this
+	// sync and owned by it, so a step may adjust them before applying them, e.g. the upgrade sets the partition and
+	// keeps the current replicas on them. The adjustment is visible to the following steps of the same sync.
 	requiredStatefulSets []*appsv1.StatefulSet
-	// existingStatefulSets are the StatefulSets owned by the ScyllaDBDatacenter, by name.
+
+	// existingStatefulSets are the StatefulSets owned by the ScyllaDBDatacenter, by name. Read-only.
 	existingStatefulSets map[string]*appsv1.StatefulSet
 
-	services   map[string]*corev1.Service
+	// services are the Services owned by the ScyllaDBDatacenter, by name. Read-only.
+	services map[string]*corev1.Service
+
+	// configMaps are the ConfigMaps owned by the ScyllaDBDatacenter, by name. Read-only.
 	configMaps map[string]*corev1.ConfigMap
 }
 

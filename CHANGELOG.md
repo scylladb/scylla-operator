@@ -36,8 +36,8 @@
 - Added an optional `enableParallelNodeOperations` boolean field to `ScyllaCluster.spec` and
   `ScyllaDBDatacenter.spec`. Enabling it requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
   In this release it only controls how nodes are started. Its scope is expected to widen in a future release, where it
-  will most likely also allow decommissioning nodes in parallel, so setting it to `true` now may take effect for more
-  operations after an upgrade.
+  will also allow decommissioning nodes in parallel, so setting it to `true` now takes effect for those operations after
+  an upgrade, without another change to the spec.
   [#3568](https://github.com/scylladb/scylla-operator/pull/3568)
 - The webhook server now serves a mutating admission webhook that applies API defaults to `ScyllaClusters` and
   `ScyllaDBDatacenters` on creation. Matching `MutatingWebhookConfiguration` is added to the operator's manifests.

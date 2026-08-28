@@ -43,7 +43,7 @@ func (sdcc *Controller) syncUpgrade(ctx context.Context, sc *statefulSetSyncCont
 
 	var progressingConditions []metav1.Condition
 
-	upgradeContext, err := sdcc.decodeUpgradeContext(upgradeContextConfigMap)
+	upgradeContext, err := decodeUpgradeContext(upgradeContextConfigMap)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
 	}
@@ -281,7 +281,7 @@ func (sdcc *Controller) isUpgradeContextFresh(ctx context.Context, sdc *scyllav1
 		return false, fmt.Errorf("can't get upgrade context ConfigMap %q: %w", cmName, err)
 	}
 
-	freshUpgradeContext, err := sdcc.decodeUpgradeContext(freshUpgradeContextConfigMap)
+	freshUpgradeContext, err := decodeUpgradeContext(freshUpgradeContextConfigMap)
 	if err != nil {
 		return false, fmt.Errorf("can't decode upgrade context for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
 	}
@@ -332,7 +332,7 @@ func (sdcc *Controller) advanceStatefulSetPartition(ctx context.Context, sts *ap
 	})
 }
 
-func (sdcc *Controller) decodeUpgradeContext(upgradeContextConfigMap *corev1.ConfigMap) (*internalapi.DatacenterUpgradeContext, error) {
+func decodeUpgradeContext(upgradeContextConfigMap *corev1.ConfigMap) (*internalapi.DatacenterUpgradeContext, error) {
 	ucRaw, ok := upgradeContextConfigMap.Data[naming.UpgradeContextConfigMapKey]
 	if !ok {
 		return nil, fmt.Errorf("upgrade context ConfigMap %q is missing %q key", naming.ObjRef(upgradeContextConfigMap), naming.UpgradeContextConfigMapKey)

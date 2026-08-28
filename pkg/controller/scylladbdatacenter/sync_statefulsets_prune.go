@@ -33,8 +33,8 @@ func (sdcc *Controller) pruneStatefulSets(ctx context.Context, sc *statefulSetSy
 			continue
 		}
 
-		// TODO: Decommission the rack before removal.
-
+		// A rack can only be removed once it has no members: admission rejects removing a rack with members, so there is
+		// nothing to decommission here.
 		propagationPolicy := metav1.DeletePropagationBackground
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, sts, "delete", sc.sdc.Generation)
 		err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Delete(ctx, sts.Name, metav1.DeleteOptions{

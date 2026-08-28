@@ -152,8 +152,7 @@ func Test_decodeUpgradeContext(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			sdcc := &Controller{}
-			got, err := sdcc.decodeUpgradeContext(tc.configMap)
+			got, err := decodeUpgradeContext(tc.configMap)
 
 			gotErrorString := ""
 			if err != nil {

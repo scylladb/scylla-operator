@@ -157,7 +157,16 @@ func (sdcc *Controller) runRolloutRunUpgradePhase(ctx context.Context, sc *state
 	sdc := sc.sdc
 	services := sc.services
 
-	for _, sts := range sc.requiredStatefulSets {
+	for _, required := range sc.requiredStatefulSets {
+		// The rollout is driven by the partition and the replicas the StatefulSet currently has.
+		sts, ok := sc.existingStatefulSets[required.Name]
+		if !ok {
+			// At this point all missing statefulSets should have been created.
+			return nil, fmt.Errorf("internal error: can't lookup stateful set %s/%s", required.Namespace, required.Name)
+		}
+		if sts.Spec.UpdateStrategy.RollingUpdate == nil || sts.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+			return nil, fmt.Errorf("internal error: statefulset %q has no partition set", naming.ObjRef(sts))
+		}
 		partition := *sts.Spec.UpdateStrategy.RollingUpdate.Partition
 
 		fresh, err := sdcc.isStatefulSetPartitionFresh(ctx, sts, partition)
@@ -199,7 +208,7 @@ func (sdcc *Controller) runRolloutRunUpgradePhase(ctx context.Context, sc *state
 		}
 		klog.V(2).InfoS("PreNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 
-		err = sdcc.advanceStatefulSetPartition(ctx, sts, sc.existingStatefulSets[sts.Name], partition, nextPartition)
+		err = sdcc.advanceStatefulSetPartition(ctx, sts, partition, nextPartition)
 		if err != nil {
 			return nil, err
 		}
@@ -297,14 +306,14 @@ func (sdcc *Controller) isStatefulSetPartitionFresh(ctx context.Context, sts *ap
 // it is still the StatefulSet we know at the given partition.
 // TODO: Use bare update when hooks are extracted into Jobs. But at this point rerunning them is expensive so we retry
 // with a condition check.
-func (sdcc *Controller) advanceStatefulSetPartition(ctx context.Context, sts, existingSts *appsv1.StatefulSet, partition, nextPartition int32) error {
+func (sdcc *Controller) advanceStatefulSetPartition(ctx context.Context, sts *appsv1.StatefulSet, partition, nextPartition int32) error {
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		freshSts, err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 
-		if existingSts != nil && freshSts.UID != existingSts.UID {
+		if freshSts.UID != sts.UID {
 			return fmt.Errorf("statefulset was recreated in the meantime")
 		}
 

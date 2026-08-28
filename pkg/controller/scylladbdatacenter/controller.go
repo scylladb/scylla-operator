@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -91,9 +92,24 @@ type Controller struct {
 	keyGetter crypto.KeyGenerator
 
 	statefulSetCachePropagationDelay time.Duration
+
+	// newScyllaDBClient creates a ScyllaDB API client for the given hosts, authenticated with the given
+	// ScyllaDB Manager Agent auth token.
+	newScyllaDBClient ScyllaDBClientFactory
 }
 
+// ScyllaDBClientFactory creates a ScyllaDB API client for the given hosts, authenticated with the given
+// ScyllaDB Manager Agent auth token.
+type ScyllaDBClientFactory func(hosts []string, authToken string) (*scyllaclient.Client, error)
+
 type ControllerOption func(ctrl *Controller)
+
+// WithScyllaDBClientFactory overrides how the controller creates ScyllaDB API clients.
+func WithScyllaDBClientFactory(factory ScyllaDBClientFactory) ControllerOption {
+	return func(c *Controller) {
+		c.newScyllaDBClient = factory
+	}
+}
 
 // WithStatefulSetCachePropagationDelay overrides the delay after applying StatefulSet changes to let informer caches
 // observe the update.
@@ -177,6 +193,8 @@ func NewController(
 		keyGetter: keyGetter,
 
 		statefulSetCachePropagationDelay: defaultStatefulSetCachePropagationDelay,
+
+		newScyllaDBClient: controllerhelpers.NewScyllaClientFromToken,
 	}
 
 	for _, option := range options {

@@ -74,7 +74,7 @@ func (sdcc *Controller) getScyllaClient(ctx context.Context, sdc *scyllav1alpha1
 		return nil, fmt.Errorf("can't get manager agent auth token: %w", err)
 	}
 
-	client, err := controllerhelpers.NewScyllaClientFromToken(hosts, managerAgentAuthToken)
+	client, err := sdcc.newScyllaDBClient(hosts, managerAgentAuthToken)
 	if err != nil {
 		return nil, err
 	}

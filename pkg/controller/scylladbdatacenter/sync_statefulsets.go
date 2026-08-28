@@ -15,7 +15,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -393,86 +392,13 @@ func (sdcc *Controller) syncStatefulSets(
 	}
 
 	// Scale before the update.
-	for _, req := range requiredStatefulSets {
-		sts := statefulSets[req.Name]
-
-		scale := &autoscalingv1.Scale{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            sts.Name,
-				Namespace:       sts.Namespace,
-				ResourceVersion: sts.ResourceVersion,
-			},
-			Spec: autoscalingv1.ScaleSpec{
-				Replicas: *req.Spec.Replicas,
-			},
-		}
-
-		rackServices := map[string]*corev1.Service{}
-		for _, svc := range services {
-			svcRackName, ok := svc.Labels[naming.RackNameLabel]
-			if ok && svcRackName == sts.Labels[naming.RackNameLabel] {
-				rackServices[svc.Name] = svc
-			}
-		}
-
-		// Wait if any decommissioning is in progress.
-		for _, svc := range rackServices {
-			if svc.Labels[naming.DecommissionedLabel] == naming.LabelValueFalse {
-				klog.V(4).InfoS("Waiting for service to be decommissioned")
-				progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(
-					sdc,
-					reasonWaitingForRackServiceDecommission,
-					fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
-				))
-
-				return progressingConditions, nil
-			}
-		}
-
-		if scale.Spec.Replicas == *sts.Spec.Replicas {
-			continue
-		}
-
-		if scale.Spec.Replicas < *sts.Spec.Replicas {
-			// Make sure we always scale down by 1 member.
-			scale.Spec.Replicas = *sts.Spec.Replicas - 1
-
-			lastSvcName := fmt.Sprintf("%s-%d", sts.Name, *sts.Spec.Replicas-1)
-			lastSvc, ok := rackServices[lastSvcName]
-			if !ok {
-				klog.V(4).InfoS("Missing service", "ScyllaDBDatacenter", klog.KObj(sdc), "ServiceName", lastSvcName)
-				progressingConditions = append(progressingConditions, newStatefulSetProgressingCondition(
-					sdc,
-					reasonWaitingForMissingService,
-					fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(req), lastSvcName),
-				))
-				// Services are managed in the other loop.
-				// When informers see the new service, will get re-queued.
-				return progressingConditions, nil
-			}
-
-			if len(lastSvc.Labels[naming.DecommissionedLabel]) == 0 {
-				lastSvcCopy := lastSvc.DeepCopy()
-				// Record the intent to decommission the member.
-				// TODO: Move this into syncServices so it reconciles properly. This is edge triggered
-				//  and nothing will reconcile the label if something goes wrong or the flow changes.
-				lastSvcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
-				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, lastSvcCopy, "update", sdc.Generation)
-				_, err := sdcc.kubeClient.CoreV1().Services(lastSvcCopy.Namespace).Update(ctx, lastSvcCopy, metav1.UpdateOptions{})
-				if err != nil {
-					return progressingConditions, err
-				}
-				return progressingConditions, nil
-			}
-		}
-
-		klog.V(2).InfoS("Scaling StatefulSet", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts), "CurrentReplicas", *sts.Spec.Replicas, "UpdatedReplicas", scale.Spec.Replicas)
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, scale, "updateScale", sdc.Generation)
-		_, err = sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).UpdateScale(ctx, sts.Name, scale, metav1.UpdateOptions{})
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't update scale: %w", err)
-		}
-		return progressingConditions, err
+	scaleProgressingConditions, err := sdcc.scaleStatefulSets(ctx, sdc, requiredStatefulSets, statefulSets, services)
+	progressingConditions = append(progressingConditions, scaleProgressingConditions...)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't scale StatefulSet(s): %w", err)
+	}
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
 	}
 
 	// TODO: This blocks unstucking by an update.

@@ -55,6 +55,11 @@ The minimum ScyllaDB version required by Operator for parallel node operations i
 The Operator determines the ScyllaDB version from the ScyllaDB container image tag and rejects `true` when the version doesn't satisfy the requirement. An image whose version cannot be determined, such as one pinned by digest, is treated as not supporting parallel bootstrap.
 :::
 
+:::{warning}
+The field currently only controls how nodes are started. Its scope is expected to widen in a future release, where it will also allow decommissioning nodes in parallel.
+Setting it to `true` now takes effect for those operations after you upgrade the Operator, without another change to the spec.
+:::
+
 If you don't specify the field, the Operator defaults it to `true` on creation, provided the ScyllaDB version is higher or equal to 2026.2.
 
 Operator keeps bootstrapping the nodes of clusters that already existed before the addition of this feature sequentially. 

@@ -20,6 +20,7 @@ import (
 	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scylla"
@@ -53,6 +54,10 @@ const (
 	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Consistently may pass while the
 	// controller is delayed instead of observing real steady state.
 	scyllaDBDatacenterControllerDefaultConsistentlyTimeout = 5 * time.Second
+
+	// envtestServiceFinalizer holds a member Service in a terminating state, so that specs can freeze the window
+	// between the controller deleting it and the object actually going away.
+	envtestServiceFinalizer = "scylla-operator.scylladb.com/envtest"
 )
 
 var _ = g.Describe("ScyllaDBDatacenter controller", func() {
@@ -383,6 +388,59 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 			waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, otherRackName, otherLeavingServiceName)
 		})
 
+		// The rack node count in the status reaches zero as soon as the StatefulSet is scaled down, while the member
+		// Service of the last leaving node lives until it is pruned. The Service is held by a finalizer to freeze that
+		// window, in which the rack removal used to be admitted, leaving its member Service and PVC unprunable.
+		g.It("should reject removing a rack whose last leaving node is not pruned yet", func(ctx g.SpecContext) {
+			sdc, rackStatefulSetName, leavingServiceName := setup(ctx)
+
+			lastServiceName := fmt.Sprintf("%s-0", rackStatefulSetName)
+
+			g.By("Adding a finalizer to the member Service of the last node")
+			addServiceFinalizer(ctx, env, lastServiceName)
+
+			g.By("Scaling the rack down to zero nodes")
+			scaleRackTemplate(ctx, env, sdc.Name, 0)
+
+			g.By("Marking both nodes as decommissioned in place of the sidecar")
+			for _, serviceName := range []string{leavingServiceName, lastServiceName} {
+				waitForServiceDecommissionedLabel(ctx, env, serviceName, naming.LabelValueFalse)
+				setServiceDecommissionedLabel(ctx, env, serviceName, naming.LabelValueTrue)
+			}
+
+			g.By("Waiting for the rack StatefulSet to be scaled down to zero replicas")
+			waitForStatefulSetReplicas(ctx, env, rackStatefulSetName, 0)
+
+			g.By("Marking the rack StatefulSet as rolled out so that the rack status is not stale")
+			markStatefulSetAsRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), rackStatefulSetName)
+
+			g.By("Waiting for the rack status to report no nodes with the finalized node still listed as leaving")
+			o.Eventually(func(eo o.Gomega, ctx context.Context) {
+				rackStatus := getRackStatus(ctx, env, sdc.Name, rackName)
+				eo.Expect(rackStatus).NotTo(o.BeNil())
+				eo.Expect(rackStatus.Nodes).To(o.HaveValue(o.BeEquivalentTo(0)))
+				eo.Expect(rackStatus.Stale).To(o.HaveValue(o.BeFalse()))
+				eo.Expect(rackStatus.DecommissioningNodes).To(o.Equal([]scyllav1alpha1.DecommissioningNodeStatus{
+					{Name: lastServiceName},
+				}))
+			}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+
+			g.By("Verifying the rack can't be removed")
+			err := removeRacks(ctx, env, sdc.Name)
+			o.Expect(err).To(o.HaveOccurred())
+			o.Expect(err.Error()).To(o.ContainSubstring(fmt.Sprintf("rack %q can't be removed because it still has nodes leaving the cluster: %s", rackName, lastServiceName)))
+
+			g.By("Removing the finalizer from the member Service of the last node")
+			removeServiceFinalizer(ctx, env, lastServiceName)
+
+			g.By("Waiting for the last node's Service to be pruned and the record to drain")
+			waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, rackName, lastServiceName)
+
+			g.By("Verifying the rack can be removed")
+			err = removeRacks(ctx, env, sdc.Name)
+			o.Expect(err).NotTo(o.HaveOccurred())
+		})
+
 		g.It("should rebuild the list from the decommissioned labels when it is wiped from the status", func(ctx g.SpecContext) {
 			sdc, _, leavingServiceName := setup(ctx)
 
@@ -504,8 +562,8 @@ func waitForService(ctx context.Context, e *envtest.Environment, name string, ti
 	return service
 }
 
-// getDecommissioningNodes returns the decommissioning nodes recorded in the status of the named rack.
-func getDecommissioningNodes(ctx context.Context, e *envtest.Environment, sdcName, rackName string) []scyllav1alpha1.DecommissioningNodeStatus {
+// getRackStatus returns the status of the named rack, or nil if the rack has none.
+func getRackStatus(ctx context.Context, e *envtest.Environment, sdcName, rackName string) *scyllav1alpha1.RackStatus {
 	g.GinkgoHelper()
 
 	sdc, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Get(ctx, sdcName, metav1.GetOptions{})
@@ -513,11 +571,80 @@ func getDecommissioningNodes(ctx context.Context, e *envtest.Environment, sdcNam
 
 	for _, rackStatus := range sdc.Status.Racks {
 		if rackStatus.Name == rackName {
-			return rackStatus.DecommissioningNodes
+			return &rackStatus
 		}
 	}
 
 	return nil
+}
+
+// getDecommissioningNodes returns the decommissioning nodes recorded in the status of the named rack.
+func getDecommissioningNodes(ctx context.Context, e *envtest.Environment, sdcName, rackName string) []scyllav1alpha1.DecommissioningNodeStatus {
+	g.GinkgoHelper()
+
+	rackStatus := getRackStatus(ctx, e, sdcName, rackName)
+	if rackStatus == nil {
+		return nil
+	}
+
+	return rackStatus.DecommissioningNodes
+}
+
+// removeRacks removes all racks from the spec, returning the error of the update so that admission can be asserted.
+// The controller keeps writing the status, so the update is retried on conflict to make sure the error that's returned
+// comes from admission and not from a resource version race.
+func removeRacks(ctx context.Context, e *envtest.Environment, sdcName string) error {
+	g.GinkgoHelper()
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		sdc, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Get(ctx, sdcName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(e.Namespace(), sdcName), err)
+		}
+
+		sdc.Spec.Racks = nil
+		_, err = e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Update(ctx, sdc, metav1.UpdateOptions{})
+
+		return err
+	})
+}
+
+func addServiceFinalizer(ctx context.Context, e *envtest.Environment, name string) {
+	g.GinkgoHelper()
+
+	updateServiceFinalizers(ctx, e, name, func(finalizers []string) []string {
+		return append(finalizers, envtestServiceFinalizer)
+	})
+}
+
+func removeServiceFinalizer(ctx context.Context, e *envtest.Environment, name string) {
+	g.GinkgoHelper()
+
+	updateServiceFinalizers(ctx, e, name, func(finalizers []string) []string {
+		return oslices.Filter(finalizers, func(finalizer string) bool {
+			return finalizer != envtestServiceFinalizer
+		})
+	})
+}
+
+func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name string, mutateFunc func([]string) []string) {
+	g.GinkgoHelper()
+
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		svc, err := e.TypedKubeClient().CoreV1().Services(e.Namespace()).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("can't get Service %q: %w", naming.ManualRef(e.Namespace(), name), err)
+		}
+
+		svc.Finalizers = mutateFunc(svc.Finalizers)
+		_, err = e.TypedKubeClient().CoreV1().Services(e.Namespace()).Update(ctx, svc, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("can't update Service %q: %w", naming.ObjRef(svc), err)
+		}
+
+		return nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 func scaleRackTemplate(ctx context.Context, e *envtest.Environment, sdcName string, nodes int32) {

@@ -165,11 +165,13 @@ You must scale the rack to zero members first, wait for decommissioning to finis
 Update the ScyllaCluster spec to set `members: 0` for the rack being removed:
 
 ```bash
-kubectl -n scylla patch scyllacluster scylla --type=json \
-  -p='[{"op":"replace","path":"/spec/datacenter/racks/<index>/members","value":0}]'
-```
+# Zero-based index of the rack being removed in spec.datacenter.racks. Change it for your cluster.
+RACK_INDEX=0
 
-Replace `<index>` with the zero-based index of the rack in the `racks` array.
+kubectl -n scylla patch scyllacluster scylla --type=json --patch-file=/dev/stdin <<EOF
+[{"op": "replace", "path": "/spec/datacenter/racks/${RACK_INDEX}/members", "value": 0}]
+EOF
+```
 
 Wait for the Operator to decommission all nodes in the rack:
 
@@ -186,15 +188,66 @@ kubectl -n scylla get pods -l scylla/rack=<rack-name>
 
 Expected output: no pods listed.
 
+Verify no member of the rack is still leaving the cluster:
+
+```bash
+kubectl -n scylla describe scyllacluster scylla
+```
+
+Under `Status` → `Racks`, the entry of the rack being removed has to look like this:
+
+```console
+  Racks:
+    us-east-1a:
+      Available Members:  0
+      Members:            0
+      Ready Members:      0
+      Stale:              false
+      Updated Members:    0
+      Version:            2026.2.5
+```
+
+A rack that still has a member leaving lists it under `Decommissioning Members`:
+
+```console
+  Racks:
+    us-east-1a:
+      Available Members:  0
+      Conditions:
+        Status:  True
+        Type:    MemberLeaving
+      Decommissioning Members:
+        Name:           scylla-us-east-1-us-east-1a-0
+      Members:          0
+      Ready Members:    0
+      Stale:            false
+      Updated Members:  0
+      Version:          2026.2.5
+```
+
+A member is listed there from the moment its decommission is requested until it has been decommissioned and its Service and PVC have been removed.
+
 #### Step 2: Remove the rack definition from the spec
 
 Remove the rack entry from `spec.datacenter.racks`:
 
 ```bash
-kubectl -n scylla edit scyllacluster scylla
+# The same rack index as in step 1.
+RACK_INDEX=0
+
+kubectl -n scylla patch scyllacluster scylla --type=json --patch-file=/dev/stdin <<EOF
+[{"op": "remove", "path": "/spec/datacenter/racks/${RACK_INDEX}"}]
+EOF
 ```
 
-Delete the entire rack entry. Save and apply.
+The Operator's admission webhook rejects the removal while the rack still has members leaving the cluster, and names the members that hold it up.
+The command then fails with:
+
+```console
+The ScyllaCluster "scylla" is invalid: spec.datacenter.racks[0]: Forbidden: rack "us-east-1a" can't be removed because it still has members leaving the cluster: scylla-us-east-1-us-east-1a-0; they have to finish decommissioning and be removed first, please retry later
+```
+
+Wait for the named members to be removed and retry.
 
 :::{warning}
 Removing a rack is irreversible — any data that was stored on the rack's nodes is streamed away during decommission.

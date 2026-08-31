@@ -35,6 +35,11 @@
   reported as successful and the key was forgotten rather than requeued, losing the retry with backoff. The degraded
   condition was reported correctly, so this was not visible in the resource status.
   [#3587](https://github.com/scylladb/scylla-operator/pull/3587)
+- Removing a rack of a `ScyllaDBDatacenter` or a `ScyllaCluster` that still has nodes leaving the cluster is now
+  rejected on admission. Previously the removal was only blocked while the rack's `StatefulSet` had replicas, so a rack
+  could be removed after the last node's `StatefulSet` was scaled down but before its member `Service` and `PVC` were
+  removed, after which the operator could no longer resolve their rack and never cleaned them up.
+  [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
 
 - Fixed a rack getting stuck forever when its node count was changed while one of its nodes was being decommissioned.
   A node whose decommission has started must now finish leaving, together with its Service and PVC, before the rack
@@ -50,6 +55,10 @@
 - Added `status.racks[].decommissioningNodes` to `ScyllaDBDatacenter` and `status.racks[].decommissioningMembers` to
   `ScyllaCluster`, listing the nodes that are leaving the cluster.
   [#3623](https://github.com/scylladb/scylla-operator/pull/3623)
+- Changing the number of nodes of a `ScyllaDBDatacenter` rack, or of members of a `ScyllaCluster` rack, that has nodes
+  leaving the cluster now produces an admission warning. The change is accepted, but it isn't applied until the leaving
+  nodes have finished decommissioning and been removed.
+  [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
 - Added an optional `enableParallelNodeOperations` boolean field to `ScyllaCluster.spec` and
   `ScyllaDBDatacenter.spec`. Enabling it requires ScyllaDB 2026.2 or later, declared with a semver-parseable image tag.
   In this release it only controls how nodes are started. Its scope is expected to widen in a future release, where it

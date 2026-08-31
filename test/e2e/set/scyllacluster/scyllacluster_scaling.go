@@ -5,6 +5,7 @@ package scyllacluster
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -29,202 +30,176 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		f = framework.NewFramework(ctx, "scyllacluster")
 	})
 
-	g.It("should support scaling", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
-		defer cancel()
+	type scalingStep struct {
+		members int32
+		// beforeFunc, when set, runs against the cluster in the state preceding the scaling operation.
+		beforeFunc func(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster)
+		// verifyFunc asserts how the cluster's members changed over the scaling operation.
+		// leftHostIDs holds the host IDs of every node which has left the cluster.
+		verifyFunc func(previousHostIDs, hostIDs, leftHostIDs []string)
+	}
 
-		sc := f.GetDefaultScyllaCluster()
-		sc.Spec.Datacenter.Racks[0].Members = 3
+	type horizontalScalingEntry struct {
+		initialMembers int32
+		steps          []scalingStep
+	}
 
-		framework.By("Creating a ScyllaCluster with 3 members")
-		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx1, waitCtx1Cancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtx1Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx1, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+	g.DescribeTable("should support horizontal scaling", func(ctx g.SpecContext, e *horizontalScalingEntry) {
+		sc := createClusterAndWaitForRollout(ctx, f, e.initialMembers)
 		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(3))
-		o.Expect(hostIDs).To(o.HaveLen(3))
+		o.Expect(hosts).To(o.HaveLen(int(e.initialMembers)))
+		o.Expect(hostIDs).To(o.HaveLen(int(e.initialMembers)))
+
 		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
-		framework.By("Scaling the ScyllaCluster to 5 replicas")
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sc.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 5}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
-		o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(5))
+		// Host IDs of nodes that have left the cluster. None of them may be resurrected - a node scaled back up has to
+		// bootstrap from scratch, instead of reusing storage left over from a decommissioned node.
+		var leftHostIDs []string
 
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx2, waitCtx2Cancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtx2Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx2, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		for _, step := range e.steps {
+			if step.beforeFunc != nil {
+				step.beforeFunc(ctx, f, sc)
+			}
 
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
+			previousHostIDs := hostIDs
 
-		oldHosts := hosts
-		oldHostIDs := hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(3))
-		o.Expect(oldHostIDs).To(o.HaveLen(3))
-		o.Expect(hosts).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
+			sc = scaleClusterAndWaitForRollout(ctx, f, sc, step.members)
+			scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
-		verification.VerifyCQLData(ctx, di)
+			hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(hosts).To(o.HaveLen(int(step.members)))
+			o.Expect(hostIDs).To(o.HaveLen(int(step.members)))
 
-		podName := naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc) + "-4"
-		svcName := podName
-		framework.By("Marking ScyllaCluster node #4 (%s) for maintenance", podName)
-		svc := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					naming.NodeMaintenanceLabel: "",
+			for _, previousHostID := range previousHostIDs {
+				if !slices.Contains(hostIDs, previousHostID) {
+					leftHostIDs = append(leftHostIDs, previousHostID)
+				}
+			}
+
+			step.verifyFunc(previousHostIDs, hostIDs, leftHostIDs)
+
+			verification.VerifyCQLData(ctx, di)
+		}
+	},
+		g.Entry("out", &horizontalScalingEntry{
+			initialMembers: 2,
+			steps: []scalingStep{
+				{members: 3, verifyFunc: verifyScaledOut},
+			},
+		}),
+		g.Entry("in", &horizontalScalingEntry{
+			initialMembers: 3,
+			steps: []scalingStep{
+				{members: 2, verifyFunc: verifyScaledIn},
+			},
+		}),
+		// Draining a node leaves it in ScyllaDB's DRAINED operational mode, which no longer accepts writes and cannot be
+		// undrained - the sidecar has to restart ScyllaDB to make the node decommissionable at all. Maintenance mode is
+		// how that state is reachable in practice: it makes the readiness probe report the node as not ready, so the
+		// operator does not restart it while nodetool is driven against it by hand.
+		//
+		// Scaling in from here therefore exercises a different code path than an ordinary decommission.
+		g.Entry("in, when the node has been drained in maintenance mode", &horizontalScalingEntry{
+			initialMembers: 3,
+			steps: []scalingStep{
+				{
+					members:    2,
+					beforeFunc: markHighestOrdinalForMaintenanceAndDrain,
+					verifyFunc: verifyScaledIn,
 				},
 			},
-		}
-		patch, err := helpers.CreateTwoWayMergePatch(&corev1.Service{}, svc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		svc, err = f.KubeClient().CoreV1().Services(sc.Namespace).Patch(
-			ctx,
-			svcName,
-			types.StrategicMergePatchType,
-			patch,
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Manually draining ScyllaCluster node #4 (%s)", podName)
-		ec := &corev1.EphemeralContainer{
-			TargetContainerName: naming.ScyllaContainerName,
-			EphemeralContainerCommon: corev1.EphemeralContainerCommon{
-				Name:            "e2e-drain-scylla",
-				Image:           scylladbdatacenter.ImageForCluster(sc),
-				ImagePullPolicy: corev1.PullIfNotPresent,
-				Command:         []string{"/usr/bin/nodetool", "drain"},
-				Args:            []string{},
+		}),
+		// Scaling back out verifies that a decommissioned node's storage isn't left in place and reused.
+		g.Entry("out, with new storage after decommissioning", &horizontalScalingEntry{
+			initialMembers: 3,
+			steps: []scalingStep{
+				{members: 2, verifyFunc: verifyScaledIn},
+				{members: 3, verifyFunc: verifyScaledOutWithNewNodes},
 			},
-		}
-		pod, err := utils.RunEphemeralContainerAndWaitForCompletion(ctx, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, ec)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		ephemeralContainerState := controllerhelpers.FindContainerStatus(pod, ec.Name)
-		o.Expect(ephemeralContainerState).NotTo(o.BeNil())
-		o.Expect(ephemeralContainerState.State.Terminated).NotTo(o.BeNil())
-		o.Expect(ephemeralContainerState.State.Terminated.ExitCode).To(o.BeEquivalentTo(0))
-
-		framework.By("Scaling the ScyllaCluster down to 4 replicas")
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace).Patch(
-			ctx,
-			sc.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 4}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(4))
-
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx3, waitCtx3Cancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtx3Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx3, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		oldHosts = hosts
-		oldHostIDs = hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(5))
-		o.Expect(oldHostIDs).To(o.HaveLen(5))
-		o.Expect(hosts).To(o.HaveLen(4))
-		o.Expect(hostIDs).To(o.HaveLen(4))
-		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
-
-		verification.VerifyCQLData(ctx, di)
-
-		framework.By("Scaling the ScyllaCluster down to 3 replicas")
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sc.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 3}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(3))
-
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx5, waitCtx5Cancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtx5Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx5, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		oldHosts = hosts
-		oldHostIDs = hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(4))
-		o.Expect(oldHostIDs).To(o.HaveLen(4))
-		o.Expect(hosts).To(o.HaveLen(3))
-		o.Expect(hostIDs).To(o.HaveLen(3))
-		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
-
-		verification.VerifyCQLData(ctx, di)
-
-		framework.By("Scaling the ScyllaCluster back to 5 replicas to make sure there isn't an old (decommissioned) storage in place")
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-			ctx,
-			sc.Name,
-			types.JSONPatchType,
-			[]byte(`[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": 5}]`),
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(5))
-
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx6, waitCtx6Cancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtx6Cancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx6, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		oldHosts = hosts
-		oldHostIDs = hostIDs
-		hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(oldHosts).To(o.HaveLen(3))
-		o.Expect(oldHostIDs).To(o.HaveLen(3))
-		o.Expect(hosts).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.HaveLen(5))
-		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
-
-		verification.VerifyCQLData(ctx, di)
-	})
+		}),
+	)
 })
+
+// verifyScaledOut asserts that scaling out preserved every node the cluster already had.
+func verifyScaledOut(previousHostIDs, hostIDs, _ []string) {
+	g.GinkgoHelper()
+
+	o.Expect(hostIDs).To(o.ContainElements(previousHostIDs))
+}
+
+// verifyScaledIn asserts that scaling in only removed nodes, without replacing any of the remaining ones.
+func verifyScaledIn(previousHostIDs, hostIDs, _ []string) {
+	g.GinkgoHelper()
+
+	o.Expect(previousHostIDs).To(o.ContainElements(hostIDs))
+}
+
+// verifyScaledOutWithNewNodes asserts that scaling out preserved the existing nodes and bootstrapped genuinely new
+// ones, instead of resurrecting a node which has left the cluster from storage left behind after it.
+func verifyScaledOutWithNewNodes(previousHostIDs, hostIDs, leftHostIDs []string) {
+	g.GinkgoHelper()
+
+	verifyScaledOut(previousHostIDs, hostIDs, leftHostIDs)
+
+	// Guard against the assertion below passing vacuously before any node has left the cluster.
+	o.Expect(leftHostIDs).NotTo(o.BeEmpty())
+	for _, leftHostID := range leftHostIDs {
+		o.Expect(hostIDs).NotTo(
+			o.ContainElement(leftHostID),
+			"host ID %q of a node which has left the cluster must not be resurrected", leftHostID,
+		)
+	}
+}
+
+// markHighestOrdinalForMaintenanceAndDrain puts the highest ordinal node of the first rack into maintenance mode and drains it.
+func markHighestOrdinalForMaintenanceAndDrain(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster) {
+	g.GinkgoHelper()
+
+	o.Expect(sc.Spec.Datacenter.Racks).NotTo(o.BeEmpty())
+	rack := sc.Spec.Datacenter.Racks[0]
+	o.Expect(rack.Members).NotTo(o.BeZero())
+	ordinal := int(rack.Members) - 1
+	podName := naming.PodNameForScyllaCluster(rack, sc, ordinal)
+	svcName := naming.MemberServiceNameForScyllaCluster(rack, sc, ordinal)
+
+	framework.By("Marking ScyllaCluster node #%d (%s) for maintenance", ordinal, podName)
+	svc := &corev1.Service{
+		Labels: map[string]string{
+			naming.NodeMaintenanceLabel: "",
+		},
+	}
+	patch, err := helpers.CreateTwoWayMergePatch(&corev1.Service{}, svc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	_, err = f.KubeClient().CoreV1().Services(sc.Namespace).Patch(
+		ctx,
+		svcName,
+		types.StrategicMergePatchType,
+		patch,
+		metav1.PatchOptions{},
+	)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.By("Manually draining ScyllaCluster node #%d (%s)", ordinal, podName)
+	ec := &corev1.EphemeralContainer{
+		TargetContainerName: naming.ScyllaContainerName,
+		Name:                "e2e-drain-scylla",
+		Image:               scylladbdatacenter.ImageForCluster(sc),
+		ImagePullPolicy:     corev1.PullIfNotPresent,
+		Command:             []string{"/usr/bin/nodetool", "drain"},
+		Args:                []string{},
+	}
+	pod, err := utils.RunEphemeralContainerAndWaitForCompletion(ctx, f.KubeClient().CoreV1().Pods(sc.Namespace), podName, ec)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	ephemeralContainerState := controllerhelpers.FindContainerStatus(pod, ec.Name)
+	o.Expect(ephemeralContainerState).NotTo(o.BeNil())
+	o.Expect(ephemeralContainerState.State.Terminated).NotTo(o.BeNil())
+	o.Expect(ephemeralContainerState.State.Terminated.ExitCode).To(o.BeEquivalentTo(0))
+}
 
 var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteKindFast, func() {
 	var f *framework.Framework

@@ -476,15 +476,7 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 				continue
 			}
 
-			oldRackNodeCount := int32(0)
-			if old.Spec.RackTemplate != nil && old.Spec.RackTemplate.Nodes != nil {
-				oldRackNodeCount = *old.Spec.RackTemplate.Nodes
-			}
-			if oldRack.Nodes != nil {
-				oldRackNodeCount = *oldRack.Nodes
-			}
-
-			if oldRackNodeCount != 0 {
+			if getScyllaDBDatacenterRackNodeCount(&old.Spec, oldRack) != 0 {
 				allErrs = append(allErrs, field.Forbidden(fldPath.Child("racks").Index(i), fmt.Sprintf("rack %q can't be removed because it still has members that have to be scaled down to zero first", removedRackName)))
 				continue
 			}
@@ -498,6 +490,14 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 
 			if oldRackStatus.Nodes != nil && *oldRackStatus.Nodes != 0 {
 				allErrs = append(allErrs, field.Forbidden(fldPath.Child("racks").Index(i), fmt.Sprintf("rack %q can't be removed because the members are being scaled down", removedRackName)))
+				continue
+			}
+
+			// The node count above mirrors the StatefulSet replicas, which reach zero before the leaving nodes are
+			// pruned. Removing the rack while any of them are still around leaves the controller unable to resolve
+			// their rack, so their member Services and PVCs are never pruned.
+			if len(oldRackStatus.DecommissioningNodes) != 0 {
+				allErrs = append(allErrs, field.Forbidden(fldPath.Child("racks").Index(i), fmt.Sprintf("rack %q can't be removed because it still has nodes leaving the cluster: %s; they have to finish decommissioning and be removed first, please retry later", removedRackName, strings.Join(getDecommissioningNodeNames(oldRackStatus.DecommissioningNodes), ", "))))
 				continue
 			}
 
@@ -564,6 +564,26 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(newNodeServiceType, oldNodeServiceType, fldPath.Child("exposeOptions", "nodeService", "type"))...)
 
 	return allErrs
+}
+
+// getScyllaDBDatacenterRackNodeCount returns the number of nodes requested in the given rack of spec, resolving the
+// rack template default.
+func getScyllaDBDatacenterRackNodeCount(spec *scyllav1alpha1.ScyllaDBDatacenterSpec, rack scyllav1alpha1.RackSpec) int32 {
+	if rack.Nodes != nil {
+		return *rack.Nodes
+	}
+
+	if spec.RackTemplate != nil && spec.RackTemplate.Nodes != nil {
+		return *spec.RackTemplate.Nodes
+	}
+
+	return 0
+}
+
+func getDecommissioningNodeNames(decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus) []string {
+	return oslices.ConvertSlice(decommissioningNodes, func(decommissioningNode scyllav1alpha1.DecommissioningNodeStatus) string {
+		return decommissioningNode.Name
+	})
 }
 
 func validateStructSliceFieldUniqueness[E any, F comparable](s []E, mapFunc func(E) F, fieldSubPath string, structPath *field.Path) field.ErrorList {
@@ -676,6 +696,42 @@ func GetWarningsOnScyllaDBDatacenterUpdate(new, old *scyllav1alpha1.ScyllaDBData
 	var warnings []string
 
 	warnings = append(warnings, getWarningsForScyllaDBDatacenterSpec(&new.Spec, field.NewPath("spec"))...)
+	warnings = append(warnings, getWarningsForScyllaDBDatacenterRackNodeCountUpdate(new, old, field.NewPath("spec"))...)
+
+	return warnings
+}
+
+// getWarningsForScyllaDBDatacenterRackNodeCountUpdate warns about changes to the number of nodes of a rack that has
+// nodes leaving the cluster. Such a change is accepted, but it isn't applied until the leaving nodes are gone.
+func getWarningsForScyllaDBDatacenterRackNodeCountUpdate(new, old *scyllav1alpha1.ScyllaDBDatacenter, fldPath *field.Path) []string {
+	var warnings []string
+
+	for i, newRack := range new.Spec.Racks {
+		oldRack, _, ok := oslices.Find(old.Spec.Racks, func(rackSpec scyllav1alpha1.RackSpec) bool {
+			return rackSpec.Name == newRack.Name
+		})
+		if !ok {
+			continue
+		}
+
+		if getScyllaDBDatacenterRackNodeCount(&new.Spec, newRack) == getScyllaDBDatacenterRackNodeCount(&old.Spec, oldRack) {
+			continue
+		}
+
+		oldRackStatus, _, ok := oslices.Find(old.Status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+			return rackStatus.Name == newRack.Name
+		})
+		if !ok || len(oldRackStatus.DecommissioningNodes) == 0 {
+			continue
+		}
+
+		warnings = append(warnings, fmt.Sprintf(
+			"%s: rack %q has nodes leaving the cluster: %s. The requested number of nodes is accepted, but it won't be applied until they have finished decommissioning and been removed.",
+			fldPath.Child("racks").Index(i),
+			newRack.Name,
+			strings.Join(getDecommissioningNodeNames(oldRackStatus.DecommissioningNodes), ", "),
+		))
+	}
 
 	return warnings
 }

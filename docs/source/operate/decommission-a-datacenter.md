@@ -58,7 +58,8 @@ Keep clients away from the datacenter for the rest of the procedure.
 :::{note}
 [Maintenance mode](use-maintenance-mode.md) is not a substitute for reconfiguring clients.
 It only removes a node from its Kubernetes Service endpoints — drivers that discover nodes through ScyllaDB's topology metadata (for example in a [PodIP-based multi-datacenter setup](../deploy-scylladb/deploy-multi-datacenter-cluster.md#networking)) connect to the nodes directly and are not affected.
-It also fails the node's readiness probe, which interferes with the Operator orchestration this procedure relies on.
+It also marks the node permanently unready, so the `ScyllaCluster` reports `Available=False`, and Operator-driven changes to racks other than the one being scaled stall until the label is removed.
+If your clients do connect through Kubernetes Services and you want to drop nodes from Service endpoints as they are removed, use the [rack-by-rack variant](#alternative-decommission-one-rack-at-a-time-under-maintenance-mode) of Step 4, which keeps maintenance mode scoped to the rack currently being scaled down.
 :::
 
 ### Step 2: Repair the cluster
@@ -167,6 +168,42 @@ UN  10.0.19.237  634 KB     256          ?       64b6292a-327f-4128-852a-6004039
 :::{note}
 If any node of the decommissioned datacenter shows up as `DN`, the node was removed without a clean decommission (for example, the pods were deleted while the nodes were still members).
 Remove such nodes manually with [`nodetool removenode`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html), passing the Host ID reported by `nodetool status`.
+:::
+
+#### Alternative: decommission one rack at a time under maintenance mode
+
+If your clients reach ScyllaDB through Kubernetes Services (rather than connecting to Pod IPs directly), you can combine a rack-by-rack scale-down with [maintenance mode](use-maintenance-mode.md) to drop each rack's nodes from Service endpoints just before they are decommissioned.
+Maintenance mode does not stop the ScyllaDB process, so the Operator still decommissions the rack's nodes cleanly, one at a time, streaming their data away as usual.
+
+For each rack of the datacenter, one rack at a time:
+
+1. Wait for the `ScyllaCluster` to settle:
+
+   ```bash
+   kubectl --context="${CONTEXT_DC2}" -n=scylla wait --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-cluster
+   ```
+
+2. Enable maintenance mode on all member Services of the rack (rack `a` in this example):
+
+   ```bash
+   kubectl --context="${CONTEXT_DC2}" -n=scylla label svc -l='scylla/cluster=scylla-cluster,scylla/rack=a' scylla/node-maintenance=""
+   ```
+
+3. Set the rack's `members` to 0 and wait for the scale-down to finish:
+
+   ```bash
+   kubectl --context="${CONTEXT_DC2}" -n=scylla wait --timeout=60m --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/scylla-cluster
+   ```
+
+:::{warning}
+Only the rack currently being scaled down may have nodes in maintenance mode.
+A maintenance-mode node in any other rack stalls all Operator-driven changes to the datacenter: the `ScyllaCluster` stays at `Progressing=True` with reason `WaitingForStatefulSetRollout` for that rack's StatefulSet, and the scale-down never starts.
+If that happens, remove the `scylla/node-maintenance` label from the other racks' Services to unblock it.
+:::
+
+:::{note}
+While a rack's nodes are in maintenance mode but not yet scaled down, the `ScyllaCluster` reports `Available=False` with reason `MembersNotReady`.
+Use `Progressing=False` to sequence the racks, and expect `Available=True` only once the datacenter has no members left.
 :::
 
 ### Step 5: Remove the datacenter from the seeds of the remaining datacenters

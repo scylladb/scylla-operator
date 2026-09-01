@@ -76,7 +76,11 @@ func (sdcc *Controller) pruneServices(
 				isRequired = true
 			}
 		}
-		if isRequired {
+		// A Service of a node that finished its decommission can be in the required set again when the node count was
+		// raised back mid-decommission and the spec calls for its ordinal. It must still be pruned, together with its
+		// PVC, or the decommissioned label would keep the rack held forever (see syncRackDecommission). It is
+		// recreated fresh below, and a new, empty node reuses the ordinal once the StatefulSet grows back.
+		if isRequired && svc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
 			continue
 		}
 

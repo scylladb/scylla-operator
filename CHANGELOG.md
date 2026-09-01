@@ -60,6 +60,11 @@
 
 ### Other changes
 
+- Added a guide for decommissioning a datacenter of a manual multi-datacenter ScyllaDB cluster, available under
+  Operate. It covers stopping client traffic, repairing, removing the datacenter from keyspace replication (for both
+  tablets and vnodes keyspaces), scaling the datacenter's racks to zero for a clean Operator-driven decommission,
+  removing stale external seeds, and cleaning up the ScyllaCluster.
+  [#3636](https://github.com/scylladb/scylla-operator/pull/3636)
 - ScyllaDB Operator now runs `scylladb-node-exporter` as a dedicated sidecar container for ScyllaDB clusters running
   version 2026.3 or later, since these versions no longer bundle node-exporter. The node-exporter container image is configurable via
   `ScyllaOperatorConfig.spec.scyllaDBNodeExporterImage`.

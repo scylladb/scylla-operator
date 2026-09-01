@@ -36,6 +36,16 @@
   condition was reported correctly, so this was not visible in the resource status.
   [#3587](https://github.com/scylladb/scylla-operator/pull/3587)
 
+- Fixed a rack getting stuck forever when its node count was changed while one of its nodes was being decommissioned.
+  A node whose decommission has started must now finish leaving, together with its Service and PVC, before the rack
+  applies any further node count change. The deferred change is reported with the `DeferringRackNodeCountChange`
+  reason in the `Progressing` condition. Capacity that comes back is bootstrapped as new, empty nodes.
+  **Warning: after the upgrade, the operator removes any node whose member Service carries a leftover
+  `scylla/decommissioned=true` label, together with its PVC. If such a node is healthy, its data is lost. Before
+  upgrading, check for these labels with `kubectl get svc -A -l scylla/decommissioned=true` and remove the label from
+  the Services of healthy nodes.**
+  [#3629](https://github.com/scylladb/scylla-operator/pull/3629)
+
 ### Features & Enhancements
 - Added `status.racks[].decommissioningNodes` to `ScyllaDBDatacenter` and `status.racks[].decommissioningMembers` to
   `ScyllaCluster`, listing the nodes that are leaving the cluster.

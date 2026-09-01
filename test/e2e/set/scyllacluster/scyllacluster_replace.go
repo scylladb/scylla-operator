@@ -179,5 +179,8 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(postReplacementHostIDs).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 		o.Expect(postReplacementHostIDs).NotTo(o.ContainElement(preReplacementHostID))
 		o.Expect(postReplacementHostIDs).To(o.ContainElement(postReplacementHostID))
+
+		framework.By("Verifying the data survived the replacement")
+		verification.VerifyCQLData(ctx, di)
 	})
 })

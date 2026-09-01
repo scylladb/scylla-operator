@@ -44,9 +44,10 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteKindFa
 	})
 
 	g.It("should replace a node with orphaned PV", func(ctx g.SpecContext) {
-		sc := f.GetDefaultScyllaCluster()
+		// Use 3 racks of 1 member each instead of a single rack of 3 members, so that the default keyspace
+		// replication of a replica per rack replicates the test data across 3 nodes.
+		sc := f.GetDefaultZonalScyllaClusterWithThreeRacks()
 		sc.Spec.AutomaticOrphanedNodeCleanup = true
-		sc.Spec.Datacenter.Racks[0].Members = 3
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
@@ -64,6 +65,8 @@ var _ = g.Describe("ScyllaCluster Orphaned PV controller", framework.SuiteKindFa
 		hosts, _, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(3))
+		// The node's storage is discarded and the replacement streams from the other replicas, so the data only
+		// survives if it is replicated. The default replication puts a replica on each of the 3 racks.
 		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 

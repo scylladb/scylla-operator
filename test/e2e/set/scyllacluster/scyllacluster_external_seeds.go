@@ -4,6 +4,8 @@ package scyllacluster
 
 import (
 	"context"
+	"maps"
+	"slices"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -96,7 +98,7 @@ var _ = g.Describe("MultiDC cluster", framework.SuiteParallel, framework.SuitePa
 		o.Expect(hostIDsByDC[sc1.Spec.Datacenter.Name]).To(o.ConsistOf(hostIDs1))
 		o.Expect(hostIDsByDC[sc2.Spec.Datacenter.Name]).To(o.HaveLen(int(utils.GetMemberCount(sc2))))
 
-		di2 := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
+		di2 := verification.InsertAndVerifyCQLData(ctx, slices.Concat(slices.Collect(maps.Values(hostsByDC))...))
 		defer di2.Close()
 
 		framework.By("Verifying data of datacenter %q", sc1.Spec.Datacenter.Name)

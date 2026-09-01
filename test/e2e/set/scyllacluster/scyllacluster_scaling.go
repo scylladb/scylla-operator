@@ -53,8 +53,8 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(3))
 		o.Expect(hostIDs).To(o.HaveLen(3))
-		diRF3 := verification.InsertAndVerifyCQLData(ctx, hosts)
-		defer diRF3.Close()
+		di := verification.InsertAndVerifyCQLData(ctx, hosts)
+		defer di.Close()
 
 		framework.By("Scaling the ScyllaCluster to 5 replicas")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -87,7 +87,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.HaveLen(5))
 		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 
-		verification.VerifyCQLData(ctx, diRF3)
+		verification.VerifyCQLData(ctx, di)
 
 		podName := naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc) + "-4"
 		svcName := podName
@@ -158,7 +158,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.HaveLen(4))
 		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
 
-		verification.VerifyCQLData(ctx, diRF3)
+		verification.VerifyCQLData(ctx, di)
 
 		framework.By("Scaling the ScyllaCluster down to 3 replicas")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -190,7 +190,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.HaveLen(3))
 		o.Expect(oldHostIDs).To(o.ContainElements(hostIDs))
 
-		verification.VerifyCQLData(ctx, diRF3)
+		verification.VerifyCQLData(ctx, di)
 
 		framework.By("Scaling the ScyllaCluster back to 5 replicas to make sure there isn't an old (decommissioned) storage in place")
 		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
@@ -222,7 +222,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(hostIDs).To(o.HaveLen(5))
 		o.Expect(hostIDs).To(o.ContainElements(oldHostIDs))
 
-		verification.VerifyCQLData(ctx, diRF3)
+		verification.VerifyCQLData(ctx, di)
 	})
 })
 

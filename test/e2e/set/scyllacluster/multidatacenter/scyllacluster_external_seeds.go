@@ -103,7 +103,7 @@ var _ = g.Describe("MultiDC cluster", framework.SuiteMultiDatacenterParallel, fu
 
 		hostIDs1 := hostIDsByDC[sc1.Spec.Datacenter.Name]
 
-		di1 := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
+		di1 := verification.InsertAndVerifyCQLData(ctx, slices.Concat(slices.Collect(maps.Values(hostsByDC))...))
 		defer di1.Close()
 
 		framework.By("Verifying data of datacenter %q", sc0.Spec.Datacenter.Name)
@@ -163,7 +163,7 @@ var _ = g.Describe("MultiDC cluster", framework.SuiteMultiDatacenterParallel, fu
 		o.Expect(hostIDsByDC[sc1.Spec.Datacenter.Name]).To(o.ConsistOf(hostIDs1))
 		o.Expect(hostIDsByDC[sc2.Spec.Datacenter.Name]).To(o.HaveLen(int(utils.GetMemberCount(sc2))))
 
-		di2 := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
+		di2 := verification.InsertAndVerifyCQLData(ctx, slices.Concat(slices.Collect(maps.Values(hostsByDC))...))
 		defer di2.Close()
 
 		framework.By("Verifying data of datacenter %q", sc0.Spec.Datacenter.Name)

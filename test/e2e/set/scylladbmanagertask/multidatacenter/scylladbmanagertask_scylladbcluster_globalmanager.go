@@ -83,7 +83,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		allHosts := slices.Concat(slices.Collect(maps.Values(hostsByDC))...)
 		o.Expect(allHosts).To(o.HaveLen(int(controllerhelpers.GetScyllaDBClusterNodeCount(sc))))
 
-		di := verification.InsertAndVerifyCQLDataByDC(ctx, hostsByDC)
+		di := verification.InsertAndVerifyCQLData(ctx, slices.Concat(slices.Collect(maps.Values(hostsByDC))...))
 		g.DeferCleanup(di.Close)
 
 		smt = &scyllav1alpha1.ScyllaDBManagerTask{

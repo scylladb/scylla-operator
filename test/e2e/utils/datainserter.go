@@ -5,7 +5,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -26,11 +25,10 @@ const (
 )
 
 type DataInserter struct {
-	session           *gocqlx.Session
-	keyspace          string
-	table             *table.Table
-	data              []*TestData
-	replicationFactor map[string]int
+	session  *gocqlx.Session
+	keyspace string
+	table    *table.Table
+	data     []*TestData
 }
 
 type TestData struct {
@@ -47,11 +45,6 @@ func WithSession(session *gocqlx.Session) func(*DataInserter) {
 }
 
 func NewDataInserter(hosts []string, options ...DataInserterOption) (*DataInserter, error) {
-	// Instead of specifying hosts for the provided datacenter, use 'replication_factor' as a single key to specify a default RF.
-	return NewMultiDCDataInserter(map[string][]string{"replication_factor": hosts}, options...)
-}
-
-func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserterOption) (*DataInserter, error) {
 	keyspace := apimachineryutilrand.String(8)
 	table := table.New(table.Metadata{
 		Name:    fmt.Sprintf(`"%s"."test"`, keyspace),
@@ -63,16 +56,10 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 		data = append(data, &TestData{Id: i, Data: apimachineryutilrand.String(32)})
 	}
 
-	replicationFactor := make(map[string]int, len(dcHosts))
-	for dc, hosts := range dcHosts {
-		replicationFactor[dc] = len(hosts)
-	}
-
 	di := &DataInserter{
-		keyspace:          keyspace,
-		table:             table,
-		data:              data,
-		replicationFactor: replicationFactor,
+		keyspace: keyspace,
+		table:    table,
+		data:     data,
 	}
 
 	for _, option := range options {
@@ -80,7 +67,7 @@ func NewMultiDCDataInserter(dcHosts map[string][]string, options ...DataInserter
 	}
 
 	if di.session == nil {
-		err := di.SetClientEndpoints(slices.Concat(slices.Collect(maps.Values(dcHosts))...))
+		err := di.SetClientEndpoints(hosts)
 		if err != nil {
 			return nil, fmt.Errorf("can't set client endpoints: %w", err)
 		}
@@ -124,17 +111,13 @@ func (di *DataInserter) SetClientEndpoints(hosts []string) error {
 }
 
 func (di *DataInserter) Insert(ctx context.Context) error {
-	ss := make([]string, 0, len(di.replicationFactor))
-	for dc, rf := range di.replicationFactor {
-		ss = append(ss, fmt.Sprintf("'%s': %d", dc, rf))
-	}
-	replicationFactor := strings.Join(ss, ",")
-
-	framework.Infof("Creating keyspace %q with RF %q", di.keyspace, replicationFactor)
+	// The replication factor is deliberately left unset. With neither datacenters nor a replication factor
+	// specified, ScyllaDB places a replica on every rack of every datacenter, which is RF-rack-valid by
+	// construction.
+	framework.Infof("Creating keyspace %q", di.keyspace)
 	err := di.session.ExecStmt(fmt.Sprintf(
-		`CREATE KEYSPACE %q WITH replication = {'class': 'NetworkTopologyStrategy', %s}`,
+		`CREATE KEYSPACE %q WITH replication = {'class': 'NetworkTopologyStrategy'}`,
 		di.keyspace,
-		replicationFactor,
 	))
 	if err != nil {
 		return fmt.Errorf("can't create keyspace: %w", err)

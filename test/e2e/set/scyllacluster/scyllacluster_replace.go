@@ -32,8 +32,9 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		ns, nsClient, ok := f.DefaultNamespaceIfAny()
 		o.Expect(ok).To(o.BeTrue(), "Can't get default namespace")
 
-		sc := f.GetDefaultScyllaCluster()
-		sc.Spec.Datacenter.Racks[0].Members = 3
+		// Use 3 racks of 1 member each instead of a single rack of 3 members, so that the default keyspace
+		// replication of a replica per rack replicates the test data across 3 nodes.
+		sc := f.GetDefaultZonalScyllaClusterWithThreeRacks()
 
 		framework.By("Creating a ScyllaCluster")
 		sc, err := nsClient.ScyllaClient().ScyllaV1().ScyllaClusters(ns.Name).Create(ctx, sc, metav1.CreateOptions{})
@@ -51,6 +52,8 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		hosts, err := utils.GetBroadcastRPCAddresses(ctx, nsClient.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
+		// The node's storage is discarded and the replacement streams from the other replicas, so the data only
+		// survives if it is replicated. The default replication puts a replica on each of the 3 racks.
 		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
 
@@ -176,5 +179,8 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(postReplacementHostIDs).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 		o.Expect(postReplacementHostIDs).NotTo(o.ContainElement(preReplacementHostID))
 		o.Expect(postReplacementHostIDs).To(o.ContainElement(postReplacementHostID))
+
+		framework.By("Verifying the data survived the replacement")
+		verification.VerifyCQLData(ctx, di)
 	})
 })

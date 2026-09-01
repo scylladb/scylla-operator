@@ -69,7 +69,7 @@ var _ = g.Describe("ScyllaDBCluster", framework.SuiteMultiDatacenterParallel, fu
 		o.Expect(err).NotTo(o.HaveOccurred())
 		allInitialHosts := slices.Concat(slices.Collect(maps.Values(initialHostsByDC))...)
 		o.Expect(allInitialHosts).To(o.HaveLen(int(controllerhelpers.GetScyllaDBClusterNodeCount(sc))))
-		di := verification.InsertAndVerifyCQLDataByDC(ctx, initialHostsByDC)
+		di := verification.InsertAndVerifyCQLData(ctx, slices.Concat(slices.Collect(maps.Values(initialHostsByDC))...))
 		defer di.Close()
 
 		var initialScyllaClientReportedVersions []string

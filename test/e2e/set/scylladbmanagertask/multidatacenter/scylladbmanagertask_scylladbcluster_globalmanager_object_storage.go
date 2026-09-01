@@ -71,7 +71,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBCluster integration with glo
 		o.Expect(err).NotTo(o.HaveOccurred())
 		allSourceHosts := slices.Concat(slices.Collect(maps.Values(sourceHostsByDC))...)
 		o.Expect(allSourceHosts).To(o.HaveLen(int(controllerhelpers.GetScyllaDBClusterNodeCount(sourceSC))))
-		di := verification.InsertAndVerifyCQLDataByDC(ctx, sourceHostsByDC)
+		di := verification.InsertAndVerifyCQLData(ctx, slices.Concat(slices.Collect(maps.Values(sourceHostsByDC))...))
 		defer di.Close()
 
 		var backupLocations []string

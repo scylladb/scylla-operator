@@ -19,14 +19,6 @@ func InsertAndVerifyCQLData(ctx context.Context, hosts []string, options ...util
 	return di
 }
 
-func InsertAndVerifyCQLDataByDC(ctx context.Context, hosts map[string][]string) *utils.DataInserter {
-	di, err := utils.NewMultiDCDataInserter(hosts)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	InsertAndVerifyCQLDataUsingDataInserter(ctx, di)
-	return di
-}
-
 func InsertAndVerifyCQLDataUsingDataInserter(ctx context.Context, di *utils.DataInserter) *utils.DataInserter {
 	framework.By("Inserting data")
 	err := di.Insert(ctx)

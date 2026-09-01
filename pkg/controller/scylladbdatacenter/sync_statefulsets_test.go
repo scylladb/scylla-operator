@@ -757,6 +757,13 @@ func Test_syncRackDecommission(t *testing.T) {
 				{
 					Type:               statefulSetControllerProgressingCondition,
 					Status:             metav1.ConditionTrue,
+					Reason:             "DeferringRackNodeCountChange",
+					Message:            fmt.Sprintf(`Deferring node count change of rack %q to 3 until the Services of its decommissioning nodes ["%s-1"] are pruned.`, rackName, stsName),
+					ObservedGeneration: sdc.Generation,
+				},
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
 					Reason:             "WaitingForRackServiceDecommission",
 					Message:            fmt.Sprintf(`Waiting for rack service "%s/%s-1" to decommission.`, testNamespace, stsName),
 					ObservedGeneration: sdc.Generation,
@@ -770,6 +777,13 @@ func Test_syncRackDecommission(t *testing.T) {
 			sts:          newSts(1),
 			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueTrue))),
 			expectedConditions: []metav1.Condition{
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "DeferringRackNodeCountChange",
+					Message:            fmt.Sprintf(`Deferring node count change of rack %q to 2 until the Services of its decommissioning nodes ["%s-1"] are pruned.`, rackName, stsName),
+					ObservedGeneration: sdc.Generation,
+				},
 				{
 					Type:               statefulSetControllerProgressingCondition,
 					Status:             metav1.ConditionTrue,

@@ -548,6 +548,18 @@ func getDecommissioningNodeNames(decommissioningNodes []scyllav1alpha1.Decommiss
 	return names
 }
 
+// makeDeferredNodeCountChangeCondition makes the progressing condition reporting that a change of the rack's spec node
+// count waits for the decommissioning nodes.
+func makeDeferredNodeCountChangeCondition(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, specNodeCount int32, decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus) metav1.Condition {
+	return metav1.Condition{
+		Type:               statefulSetControllerProgressingCondition,
+		Status:             metav1.ConditionTrue,
+		Reason:             "DeferringRackNodeCountChange",
+		Message:            fmt.Sprintf("Deferring node count change of rack %q to %d until the Services of its decommissioning nodes %q are pruned.", rackName, specNodeCount, getDecommissioningNodeNames(decommissioningNodes)),
+		ObservedGeneration: sdc.Generation,
+	}
+}
+
 // makeWaitingForRackServicePruningCondition makes the progressing condition reporting that the rack's decommissioned
 // nodes wait for their Services to be pruned.
 func makeWaitingForRackServicePruningCondition(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus) metav1.Condition {
@@ -570,7 +582,8 @@ func makeWaitingForRackServicePruningCondition(sdc *scyllav1alpha1.ScyllaDBDatac
 //  4. Prune: pruneServices removes the node's Service and PVC (syncServices).
 //
 // The branches below are dispatched by the rack's current state, so they appear in guard order, not lifecycle order.
-// While any node is leaving, changes to the spec node count, up or down, are deferred.
+// While any node is leaving, changes to the spec node count, up or down, are deferred and reported with a progressing
+// condition.
 // It returns the progressing conditions to report: the rack still has leaving nodes and is held for as long as there
 // are any.
 func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, rackServices map[string]*corev1.Service) ([]metav1.Condition, error) {
@@ -593,6 +606,12 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 			return progressingConditions, fmt.Errorf("can't get decommission target node count of rack %q of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
 		}
 
+		// A plain scale-down has the spec already at the target count, so a difference means the spec changed since
+		// and the change is deferred until the leaving nodes' Services are pruned.
+		if *specNodeCount != targetNodeCount {
+			klog.V(4).InfoS("Deferring rack node count change until the Services of the decommissioning nodes are pruned", "ScyllaDBDatacenter", klog.KObj(sdc), "Rack", rackName, "NodeCount", *specNodeCount, "TargetNodeCount", targetNodeCount, "DecommissioningNodes", getDecommissioningNodeNames(decommissioningNodes))
+			progressingConditions = append(progressingConditions, makeDeferredNodeCountChangeCondition(sdc, rackName, *specNodeCount, decommissioningNodes))
+		}
 	}
 
 	// Wait if any decommissioning is in progress: a node with the label set to false was requested to decommission

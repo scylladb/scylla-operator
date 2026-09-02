@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -598,6 +599,121 @@ func Test_getRackDecommissionTargetNodeCount(t *testing.T) {
 	}
 }
 
+func Test_getRackScaleDownReplicas(t *testing.T) {
+	t.Parallel()
+
+	const stsName = "foo"
+
+	newSts := func(replicas int32) *appsv1.StatefulSet {
+		return &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: stsName,
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: new(replicas),
+			},
+		}
+	}
+	// newRackServices builds the member Services of ordinals 0..len(labelValues)-1, each with the given decommissioned
+	// label value, or without the label for an empty value. A nil value leaves the Service out.
+	newRackServices := func(labelValues ...*string) map[string]*corev1.Service {
+		rackServices := map[string]*corev1.Service{}
+		for ordinal, labelValue := range labelValues {
+			if labelValue == nil {
+				continue
+			}
+			labels := map[string]string{}
+			if len(*labelValue) != 0 {
+				labels[naming.DecommissionedLabel] = *labelValue
+			}
+			rackServices[naming.MemberServiceNameForStatefulSet(stsName, ordinal)] = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   naming.MemberServiceNameForStatefulSet(stsName, ordinal),
+					Labels: labels,
+				},
+			}
+		}
+		return rackServices
+	}
+	none, requested, done := new(""), new(naming.LabelValueFalse), new(naming.LabelValueTrue)
+
+	tt := []struct {
+		name                 string
+		sts                  *appsv1.StatefulSet
+		lowestLeavingOrdinal int32
+		rackServices         map[string]*corev1.Service
+		expectedReplicas     int32
+	}{
+		{
+			name:                 "no leaving node decommissioned yet",
+			sts:                  newSts(3),
+			lowestLeavingOrdinal: 1,
+			rackServices:         newRackServices(none, requested, requested),
+			expectedReplicas:     3,
+		},
+		{
+			name:                 "the highest node decommissioned with a lower one in flight",
+			sts:                  newSts(3),
+			lowestLeavingOrdinal: 1,
+			rackServices:         newRackServices(none, requested, done),
+			expectedReplicas:     2,
+		},
+		{
+			name:                 "a lower node decommissioned with the highest one in flight",
+			sts:                  newSts(3),
+			lowestLeavingOrdinal: 1,
+			rackServices:         newRackServices(none, done, requested),
+			expectedReplicas:     3,
+		},
+		{
+			name:                 "every leaving node decommissioned",
+			sts:                  newSts(3),
+			lowestLeavingOrdinal: 1,
+			rackServices:         newRackServices(none, done, done),
+			expectedReplicas:     1,
+		},
+		{
+			name:                 "the run stops at the lowest leaving ordinal",
+			sts:                  newSts(3),
+			lowestLeavingOrdinal: 2,
+			rackServices:         newRackServices(done, done, done),
+			expectedReplicas:     2,
+		},
+		{
+			name:                 "a node that was just requested ends the run",
+			sts:                  newSts(3),
+			lowestLeavingOrdinal: 0,
+			rackServices:         newRackServices(none, none, done),
+			expectedReplicas:     2,
+		},
+		{
+			name:                 "a missing Service ends the run",
+			sts:                  newSts(3),
+			lowestLeavingOrdinal: 0,
+			rackServices:         newRackServices(done, nil, done),
+			expectedReplicas:     2,
+		},
+		{
+			name:                 "the highest node missing yields the current replicas",
+			sts:                  newSts(2),
+			lowestLeavingOrdinal: 1,
+			rackServices:         newRackServices(none, nil),
+			expectedReplicas:     2,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := getRackScaleDownReplicas(tc.sts, tc.lowestLeavingOrdinal, tc.rackServices)
+			if got != tc.expectedReplicas {
+				t.Errorf("expected replicas %d, got %d", tc.expectedReplicas, got)
+			}
+		})
+	}
+}
+
 func Test_syncRackDecommission(t *testing.T) {
 	t.Parallel()
 
@@ -613,6 +729,13 @@ func Test_syncRackDecommission(t *testing.T) {
 				},
 			},
 		}
+		return sdc
+	}
+
+	newParallelSDCWithNodes := func(nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
+		sdc := newSDCWithNodes(nodes)
+		sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageAtParallelBootstrapThreshold
+		sdc.Spec.EnableParallelNodeOperations = new(true)
 		return sdc
 	}
 
@@ -643,7 +766,7 @@ func Test_syncRackDecommission(t *testing.T) {
 		return &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: testNamespace,
-				Name:      fmt.Sprintf("%s-%d", stsName, ordinal),
+				Name:      naming.MemberServiceNameForStatefulSet(stsName, int(ordinal)),
 				Labels:    labels,
 			},
 		}
@@ -662,6 +785,28 @@ func Test_syncRackDecommission(t *testing.T) {
 		controllerhelpers.AddGenericProgressingStatusCondition(&conditions, statefulSetControllerProgressingCondition, svcCopy, "update", sdc.Generation)
 		return conditions[0]
 	}
+	makeWaitingForDecommissionCondition := func(ordinal int32) metav1.Condition {
+		return metav1.Condition{
+			Type:               statefulSetControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "WaitingForRackServiceDecommission",
+			Message:            fmt.Sprintf(`Waiting for rack service "%s/%s-%d" to decommission.`, testNamespace, stsName, ordinal),
+			ObservedGeneration: sdc.Generation,
+		}
+	}
+	makeDeferringCondition := func(specNodeCount int32, decommissioningOrdinals ...int32) metav1.Condition {
+		names := make([]string, 0, len(decommissioningOrdinals))
+		for _, ordinal := range decommissioningOrdinals {
+			names = append(names, naming.MemberServiceNameForStatefulSet(stsName, int(ordinal)))
+		}
+		return metav1.Condition{
+			Type:               statefulSetControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "DeferringRackNodeCountChange",
+			Message:            fmt.Sprintf(`Deferring node count change of rack %q to %d until the Services of its decommissioning nodes %q are pruned.`, rackName, specNodeCount, names),
+			ObservedGeneration: sdc.Generation,
+		}
+	}
 	makeScaleCondition := func(sts *appsv1.StatefulSet, replicas int32) metav1.Condition {
 		scale := &autoscalingv1.Scale{
 			ObjectMeta: metav1.ObjectMeta{
@@ -679,18 +824,18 @@ func Test_syncRackDecommission(t *testing.T) {
 	}
 
 	tt := []struct {
-		name                                     string
-		sdc                                      *scyllav1alpha1.ScyllaDBDatacenter
-		rackName                                 string
-		sts                                      *appsv1.StatefulSet
-		rackServices                             map[string]*corev1.Service
-		expectedConditions                       []metav1.Condition
-		expectedErrorString                      string
-		expectedDecommissionRequestedServiceName string
-		expectedScaledReplicas                   *int32
+		name                                      string
+		sdc                                       *scyllav1alpha1.ScyllaDBDatacenter
+		rackName                                  string
+		sts                                       *appsv1.StatefulSet
+		rackServices                              map[string]*corev1.Service
+		expectedConditions                        []metav1.Condition
+		expectedErrorString                       string
+		expectedDecommissionRequestedServiceNames []string
+		expectedScaledReplicas                    *int32
 	}{
 		{
-			name:               "idle rack yields no conditions and no actions",
+			name:               "idle rack yields no conditions and no actions with parallel node operations disabled",
 			sdc:                newSDCWithNodes(1),
 			rackName:           rackName,
 			sts:                newSts(1),
@@ -698,16 +843,25 @@ func Test_syncRackDecommission(t *testing.T) {
 			expectedConditions: nil,
 		},
 		{
-			name:                                     "a fresh scale-down stamps the highest node",
-			sdc:                                      newSDCWithNodes(1),
-			rackName:                                 rackName,
-			sts:                                      newSts(2),
-			rackServices:                             newRackServices(newMemberService(0, nil), newMemberService(1, nil)),
-			expectedConditions:                       []metav1.Condition{makeStampCondition(newMemberService(1, nil))},
-			expectedDecommissionRequestedServiceName: stsName + "-1",
+			name:               "a fresh scale-down stamps the highest node with parallel node operations disabled",
+			sdc:                newSDCWithNodes(1),
+			rackName:           rackName,
+			sts:                newSts(2),
+			rackServices:       newRackServices(newMemberService(0, nil), newMemberService(1, nil)),
+			expectedConditions: []metav1.Condition{makeStampCondition(newMemberService(1, nil))},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-1"},
 		},
 		{
-			name:         "an in-flight decommission of the highest node is waited for",
+			name:               "a fresh multi-node scale-down stamps the highest node only with parallel node operations disabled",
+			sdc:                newSDCWithNodes(1),
+			rackName:           rackName,
+			sts:                newSts(3),
+			rackServices:       newRackServices(newMemberService(0, nil), newMemberService(1, nil), newMemberService(2, nil)),
+			expectedConditions: []metav1.Condition{makeStampCondition(newMemberService(2, nil))},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-2"},
+		},
+		{
+			name:         "an in-flight decommission of the highest node is waited for with parallel node operations disabled",
 			sdc:          newSDCWithNodes(1),
 			rackName:     rackName,
 			sts:          newSts(2),
@@ -723,7 +877,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			},
 		},
 		{
-			name:         "an in-flight decommission below the highest node is waited for and the highest node is not stamped",
+			name:         "an in-flight decommission below the highest node is waited for and the highest node is not stamped with parallel node operations disabled",
 			sdc:          newSDCWithNodes(1),
 			rackName:     rackName,
 			sts:          newSts(3),
@@ -739,7 +893,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			},
 		},
 		{
-			name:                   "a decommissioned highest node concludes by scaling the StatefulSet below it",
+			name:                   "a decommissioned highest node concludes by scaling the StatefulSet below it with parallel node operations disabled",
 			sdc:                    newSDCWithNodes(1),
 			rackName:               rackName,
 			sts:                    newSts(2),
@@ -748,7 +902,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			expectedScaledReplicas: new(int32(1)),
 		},
 		{
-			name:         "a node count raised mid-decommission is deferred",
+			name:         "a node count raised mid-decommission is deferred with parallel node operations disabled",
 			sdc:          newSDCWithNodes(3),
 			rackName:     rackName,
 			sts:          newSts(2),
@@ -771,7 +925,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			},
 		},
 		{
-			name:         "decommissioned nodes scaled away already are held until their Services are pruned",
+			name:         "decommissioned nodes scaled away already are held until their Services are pruned with parallel node operations disabled",
 			sdc:          newSDCWithNodes(2),
 			rackName:     rackName,
 			sts:          newSts(1),
@@ -794,7 +948,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			},
 		},
 		{
-			name:         "a scale-down with the highest node's Service missing waits for it",
+			name:         "a scale-down with the highest node's Service missing waits for it with parallel node operations disabled",
 			sdc:          newSDCWithNodes(1),
 			rackName:     rackName,
 			sts:          newSts(2),
@@ -810,7 +964,151 @@ func Test_syncRackDecommission(t *testing.T) {
 			},
 		},
 		{
-			name:                "a rack missing from the spec errors out",
+			name:               "a fresh multi-node scale-down stamps all the leaving nodes at once with parallel node operations enabled",
+			sdc:                newParallelSDCWithNodes(1),
+			rackName:           rackName,
+			sts:                newSts(3),
+			rackServices:       newRackServices(newMemberService(0, nil), newMemberService(1, nil), newMemberService(2, nil)),
+			expectedConditions: []metav1.Condition{makeStampCondition(newMemberService(1, nil)), makeStampCondition(newMemberService(2, nil))},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-1", stsName + "-2"},
+		},
+		{
+			name:         "a partially requested multi-node scale-down stamps the remaining leaving nodes with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(1),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueFalse)), newMemberService(2, nil)),
+			expectedConditions: []metav1.Condition{
+				makeWaitingForDecommissionCondition(1),
+				makeStampCondition(newMemberService(2, nil)),
+			},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-2"},
+		},
+		{
+			name:         "a node above an in-flight node is requested even after the node count was reverted, as the StatefulSet can't remove the in-flight node alone, with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(3),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueFalse)), newMemberService(2, nil)),
+			expectedConditions: []metav1.Condition{
+				makeDeferringCondition(3, 1),
+				makeWaitingForDecommissionCondition(1),
+				makeStampCondition(newMemberService(2, nil)),
+			},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-2"},
+		},
+		{
+			name:         "a node count reverted after a pass cut short saves the nodes that weren't requested yet with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(3),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, nil), newMemberService(2, new(naming.LabelValueFalse))),
+			expectedConditions: []metav1.Condition{
+				makeDeferringCondition(3, 2),
+				makeWaitingForDecommissionCondition(2),
+			},
+		},
+		{
+			name:         "a scale-down cut short after the highest node was requested resumes only once the requested node is pruned with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(1),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, nil), newMemberService(2, new(naming.LabelValueFalse))),
+			expectedConditions: []metav1.Condition{
+				makeDeferringCondition(1, 2),
+				makeWaitingForDecommissionCondition(2),
+			},
+		},
+		{
+			name:         "a decommissioned highest node is scaled away while a lower leaving node is still in flight with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(1),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueFalse)), newMemberService(2, new(naming.LabelValueTrue))),
+			expectedConditions: []metav1.Condition{
+				makeWaitingForDecommissionCondition(1),
+				makeScaleCondition(newSts(3), 2),
+			},
+			expectedScaledReplicas: new(int32(2)),
+		},
+		{
+			name:         "a multi-node scale-down with the lower leaving node decommissioned first is waited for with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(1),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueTrue)), newMemberService(2, new(naming.LabelValueFalse))),
+			expectedConditions: []metav1.Condition{
+				makeWaitingForDecommissionCondition(2),
+			},
+		},
+		{
+			name:         "in-flight decommissions are waited for in a stable order with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(1),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueFalse)), newMemberService(2, new(naming.LabelValueFalse))),
+			expectedConditions: []metav1.Condition{
+				makeWaitingForDecommissionCondition(1),
+				makeWaitingForDecommissionCondition(2),
+			},
+		},
+		{
+			name:                   "a fully decommissioned multi-node scale-down concludes by scaling the StatefulSet to the target with parallel node operations enabled",
+			sdc:                    newParallelSDCWithNodes(1),
+			rackName:               rackName,
+			sts:                    newSts(3),
+			rackServices:           newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueTrue)), newMemberService(2, new(naming.LabelValueTrue))),
+			expectedConditions:     []metav1.Condition{makeScaleCondition(newSts(3), 1)},
+			expectedScaledReplicas: new(int32(1)),
+		},
+		{
+			name:         "a node count lowered further mid-decommission is deferred with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(0),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueFalse)), newMemberService(2, new(naming.LabelValueFalse))),
+			expectedConditions: []metav1.Condition{
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "DeferringRackNodeCountChange",
+					Message:            fmt.Sprintf(`Deferring node count change of rack %q to 0 until the Services of its decommissioning nodes ["%[2]s-1" "%[2]s-2"] are pruned.`, rackName, stsName),
+					ObservedGeneration: sdc.Generation,
+				},
+				makeWaitingForDecommissionCondition(1),
+				makeWaitingForDecommissionCondition(2),
+			},
+		},
+		{
+			name:         "a multi-node scale-down with a leaving node's Service missing waits for it before requesting any with parallel node operations enabled",
+			sdc:          newParallelSDCWithNodes(1),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(2, nil)),
+			expectedConditions: []metav1.Condition{
+				{
+					Type:               statefulSetControllerProgressingCondition,
+					Status:             metav1.ConditionTrue,
+					Reason:             "WaitingForMissingService",
+					Message:            fmt.Sprintf(`Statusfulset "%s/%s" is waiting for service %q to be created`, testNamespace, stsName, stsName+"-1"),
+					ObservedGeneration: sdc.Generation,
+				},
+			},
+		},
+		{
+			name: "an unsupported ScyllaDB version with parallel node operations enabled errors out",
+			sdc: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newParallelSDCWithNodes(1)
+				sdc.Spec.ScyllaDB.Image = unit.ScyllaDBImageBelowParallelBootstrapThreshold
+				return sdc
+			}(),
+			rackName:            rackName,
+			sts:                 newSts(2),
+			rackServices:        newRackServices(newMemberService(0, nil), newMemberService(1, nil)),
+			expectedErrorString: `can't determine effective parallel node operations enablement: parallel node operations require a semver-parseable ScyllaDB version >= 2026.2, got "2026.1.0"`,
+		},
+		{
+			name:                "a rack missing from the spec errors out with parallel node operations disabled",
 			sdc:                 newSDCWithNodes(1),
 			rackName:            "missing",
 			sts:                 newSts(1),
@@ -818,7 +1116,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			expectedErrorString: fmt.Sprintf(`can't get rack "missing" node count of ScyllaDBDatacenter "%[1]s/": can't find rack "missing" in rack spec of ScyllaDBDatacenter "%[1]s/"`, testNamespace),
 		},
 		{
-			name:                "an unparsable leaving node name errors out",
+			name:                "an unparsable leaving node name errors out with parallel node operations disabled",
 			sdc:                 newSDCWithNodes(1),
 			rackName:            rackName,
 			sts:                 newSts(1),
@@ -866,7 +1164,7 @@ func Test_syncRackDecommission(t *testing.T) {
 
 			// A Service whose decommissioned label value changed is one whose decommission was requested: the flow
 			// only ever sets the label to false.
-			var decommissionRequestedServiceName string
+			var decommissionRequestedServiceNames []string
 			for name := range tc.rackServices {
 				svc, err := client.CoreV1().Services(testNamespace).Get(t.Context(), name, metav1.GetOptions{})
 				if err != nil {
@@ -878,10 +1176,11 @@ func Test_syncRackDecommission(t *testing.T) {
 				if svc.Labels[naming.DecommissionedLabel] != naming.LabelValueFalse {
 					t.Errorf("service %q has unexpected decommissioned label value %q", name, svc.Labels[naming.DecommissionedLabel])
 				}
-				decommissionRequestedServiceName = name
+				decommissionRequestedServiceNames = append(decommissionRequestedServiceNames, name)
 			}
-			if decommissionRequestedServiceName != tc.expectedDecommissionRequestedServiceName {
-				t.Errorf("expected the decommission of service %q to be requested, got %q", tc.expectedDecommissionRequestedServiceName, decommissionRequestedServiceName)
+			slices.Sort(decommissionRequestedServiceNames)
+			if diff := cmp.Diff(tc.expectedDecommissionRequestedServiceNames, decommissionRequestedServiceNames, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("decommission requested services differ (-want +got):\n%s", diff)
 			}
 			if !reflect.DeepEqual(scaledReplicas, tc.expectedScaledReplicas) {
 				t.Errorf("expected scaled replicas %v, got %v", tc.expectedScaledReplicas, scaledReplicas)
@@ -927,7 +1226,7 @@ func Test_checkExistingStatefulSetsRolloutStatus(t *testing.T) {
 		return &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: testNamespace,
-				Name:      fmt.Sprintf("foo-%d", ordinal),
+				Name:      naming.MemberServiceNameForStatefulSet("foo", int(ordinal)),
 				Labels: map[string]string{
 					naming.RackNameLabel:       rackName,
 					naming.DecommissionedLabel: naming.LabelValueFalse,

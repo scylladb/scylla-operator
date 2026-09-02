@@ -63,12 +63,18 @@ func ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc *scyllav1alpha
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, sc.Name, "auth-token")
 }
 
+// MemberServiceNameForStatefulSet returns the name of the member Service of the node at the given ordinal of the
+// StatefulSet with the given name. It is the same as the name of the node's Pod.
+func MemberServiceNameForStatefulSet(stsName string, ordinal int) string {
+	return fmt.Sprintf("%s-%d", stsName, ordinal)
+}
+
 func MemberServiceName(r scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.ScyllaDBDatacenter, idx int) string {
-	return fmt.Sprintf("%s-%d", StatefulSetNameForRack(r, sdc), idx)
+	return MemberServiceNameForStatefulSet(StatefulSetNameForRack(r, sdc), idx)
 }
 
 func MemberServiceNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, idx int) string {
-	return fmt.Sprintf("%s-%d", StatefulSetNameForRackForScyllaCluster(r, sc), idx)
+	return MemberServiceNameForStatefulSet(StatefulSetNameForRackForScyllaCluster(r, sc), idx)
 }
 
 func PodNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, idx int) string {

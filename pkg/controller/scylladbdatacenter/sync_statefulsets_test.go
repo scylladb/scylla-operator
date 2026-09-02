@@ -889,3 +889,125 @@ func Test_syncRackDecommission(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkExistingStatefulSetsRolloutStatus(t *testing.T) {
+	t.Parallel()
+
+	const rackName = "a"
+
+	sdc := newScyllaDBDatacenter()
+	sdc.Generation = 3
+
+	newRackStatefulSet := func(replicas int32, rolledOut bool) *appsv1.StatefulSet {
+		sts := newStatefulSet("foo")
+		sts.Generation = 1
+		sts.Labels = map[string]string{
+			naming.RackNameLabel: rackName,
+		}
+		sts.Spec.Replicas = new(replicas)
+		sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+			Type: appsv1.RollingUpdateStatefulSetStrategyType,
+		}
+		sts.Status = appsv1.StatefulSetStatus{
+			ObservedGeneration: 1,
+			Replicas:           replicas,
+			ReadyReplicas:      replicas,
+			AvailableReplicas:  replicas,
+			UpdatedReplicas:    replicas,
+			CurrentRevision:    "rev",
+			UpdateRevision:     "rev",
+		}
+		if !rolledOut {
+			sts.Status.ReadyReplicas = replicas - 1
+			sts.Status.AvailableReplicas = replicas - 1
+		}
+		return sts
+	}
+	newLeavingMemberService := func(ordinal int32) *corev1.Service {
+		return &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testNamespace,
+				Name:      fmt.Sprintf("foo-%d", ordinal),
+				Labels: map[string]string{
+					naming.RackNameLabel:       rackName,
+					naming.DecommissionedLabel: naming.LabelValueFalse,
+				},
+			},
+		}
+	}
+	waitingForRolloutCondition := metav1.Condition{
+		Type:               statefulSetControllerProgressingCondition,
+		Status:             metav1.ConditionTrue,
+		Reason:             "WaitingForStatefulSetRollout",
+		Message:            fmt.Sprintf(`Waiting for StatefulSet "%s/foo" to roll out.`, testNamespace),
+		ObservedGeneration: sdc.Generation,
+	}
+
+	tt := []struct {
+		name               string
+		required           []*appsv1.StatefulSet
+		existing           map[string]*appsv1.StatefulSet
+		services           map[string]*corev1.Service
+		expectedConditions []metav1.Condition
+	}{
+		{
+			name:     "a missing StatefulSet is skipped",
+			required: []*appsv1.StatefulSet{newRackStatefulSet(2, false)},
+			existing: map[string]*appsv1.StatefulSet{},
+		},
+		{
+			name:     "a rolled out StatefulSet yields no conditions",
+			required: []*appsv1.StatefulSet{newRackStatefulSet(2, true)},
+			existing: map[string]*appsv1.StatefulSet{"foo": newRackStatefulSet(2, true)},
+		},
+		{
+			name:               "a StatefulSet that is not rolled out is waited for",
+			required:           []*appsv1.StatefulSet{newRackStatefulSet(2, false)},
+			existing:           map[string]*appsv1.StatefulSet{"foo": newRackStatefulSet(2, false)},
+			expectedConditions: []metav1.Condition{waitingForRolloutCondition},
+		},
+		{
+			name:     "a StatefulSet whose replicas differ from the required ones is skipped",
+			required: []*appsv1.StatefulSet{newRackStatefulSet(1, false)},
+			existing: map[string]*appsv1.StatefulSet{"foo": newRackStatefulSet(2, false)},
+		},
+		{
+			name:     "a StatefulSet of a rack with leaving nodes is skipped",
+			required: []*appsv1.StatefulSet{newRackStatefulSet(2, false)},
+			existing: map[string]*appsv1.StatefulSet{"foo": newRackStatefulSet(2, false)},
+			services: map[string]*corev1.Service{
+				"foo-1": newLeavingMemberService(1),
+			},
+		},
+		{
+			name:     "leaving nodes of another rack do not skip the StatefulSet",
+			required: []*appsv1.StatefulSet{newRackStatefulSet(2, false)},
+			existing: map[string]*appsv1.StatefulSet{"foo": newRackStatefulSet(2, false)},
+			services: map[string]*corev1.Service{
+				"bar-1": func() *corev1.Service {
+					svc := newLeavingMemberService(1)
+					svc.Name = "bar-1"
+					svc.Labels[naming.RackNameLabel] = "b"
+					return svc
+				}(),
+			},
+			expectedConditions: []metav1.Condition{waitingForRolloutCondition},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			sdcc := &Controller{}
+			gotConditions, err := sdcc.checkExistingStatefulSetsRolloutStatus(t.Context(), sdc, tc.required, tc.existing, tc.services)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			if diff := cmp.Diff(tc.expectedConditions, gotConditions); diff != "" {
+				t.Errorf("conditions differ (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

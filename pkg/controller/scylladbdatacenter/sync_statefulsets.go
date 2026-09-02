@@ -394,11 +394,14 @@ func (sdcc *Controller) pruneStatefulSets(
 }
 
 // checkExistingStatefulSetsRolloutStatus returns progressing conditions for existing StatefulSets that haven't rolled out yet.
+// StatefulSets with a pending scale and those of racks with leaving nodes are skipped, as the scaling loop that runs
+// after this check owns them.
 func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 	ctx context.Context,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
+	services map[string]*corev1.Service,
 ) ([]metav1.Condition, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
@@ -409,9 +412,22 @@ func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 			continue
 		}
 
-		// When we decommission a member there is a pod left that's not ready until we scale.
+		// A StatefulSet whose replicas differ from the required ones has a scale pending, which the scaling loop
+		// applies, so its rollout is only waited for once the replicas match. A scale has to reach the loop even when
+		// the rack isn't rolled out: a scale-down starts by stamping the highest node, which may well be the one that
+		// isn't ready, e.g. a node drained under maintenance.
 		if req.Spec.Replicas != nil && sts.Spec.Replicas != nil &&
 			*req.Spec.Replicas != *sts.Spec.Replicas {
+			continue
+		}
+
+		// A rack with leaving nodes is held by syncRackDecommission, which is the only thing to touch its StatefulSet
+		// until the nodes are pruned, so no rollout can start in the meantime and there is nothing to wait for here.
+		// The leaving Pods aren't ready until the StatefulSet is scaled below them, so waiting for the rollout would
+		// never end when the spec node count is raised back to the StatefulSet replicas, which is why the pending
+		// scale check above isn't enough to cover them.
+		if len(calculateDecommissioningNodes(sts.Labels[naming.RackNameLabel], services)) != 0 {
+			klog.V(4).InfoS("Skipping the rollout wait for a StatefulSet with leaving nodes", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 			continue
 		}
 
@@ -776,7 +792,7 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, nil
 	}
 
-	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets)
+	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets, services)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
 	}

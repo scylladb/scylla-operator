@@ -261,6 +261,11 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			leavingServiceUID := leavingService.UID
 
+			// A leaving node is not ready from the moment its decommission starts, so the StatefulSet is not rolled out
+			// for as long as the node is a part of it.
+			g.By("Marking the leaving node as not ready in place of the StatefulSet controller")
+			markStatefulSetNodeAsNotReady(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), rackStatefulSetName)
+
 			g.By("Raising the node count back while the node is still decommissioning")
 			scaleRackTemplate(ctx, env, sdc.Name, initialNodes)
 
@@ -811,6 +816,26 @@ func markStatefulSetAsNotRolledOut(ctx context.Context, statefulSets appsv1clien
 	statefulSet.Status.Replicas = 1
 	statefulSet.Status.ReadyReplicas = 0
 	statefulSet.Status.UpdatedReplicas = 0
+	_, err = statefulSets.UpdateStatus(ctx, statefulSet, metav1.UpdateOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// markStatefulSetNodeAsNotReady marks one of the StatefulSet's nodes as not ready, as the StatefulSet controller would
+// report a leaving node, while keeping the StatefulSet generation observed.
+func markStatefulSetNodeAsNotReady(ctx context.Context, statefulSets appsv1client.StatefulSetInterface, name string) {
+	g.GinkgoHelper()
+
+	statefulSet, err := statefulSets.Get(ctx, name, metav1.GetOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	replicas := *statefulSet.Spec.Replicas
+	o.Expect(replicas).NotTo(o.BeZero())
+	statefulSet.Status.ObservedGeneration = statefulSet.Generation
+	statefulSet.Status.Replicas = replicas
+	statefulSet.Status.ReadyReplicas = replicas - 1
+	statefulSet.Status.AvailableReplicas = replicas - 1
+	statefulSet.Status.UpdatedReplicas = replicas
+	statefulSet.Status.CurrentRevision = "envtest-revision"
+	statefulSet.Status.UpdateRevision = statefulSet.Status.CurrentRevision
 	_, err = statefulSets.UpdateStatus(ctx, statefulSet, metav1.UpdateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 }

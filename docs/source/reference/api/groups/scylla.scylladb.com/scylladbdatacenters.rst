@@ -92,7 +92,7 @@ object
      - dnsPolicy defines how a pod's DNS will be configured.
    * - enableParallelNodeOperations
      - boolean
-     - enableParallelNodeOperations controls whether operations on ScyllaDB nodes may be performed concurrently. When it's disabled, ScyllaDB nodes are started one at a time. Enabling it requires ScyllaDB 2026.2 or later. If not provided, it's treated as disabled. On creation, it's set to true when the tag of spec.scyllaDB.image is a semver-parseable version supporting parallel bootstrap. The set value is persisted, so it stays in effect across ScyllaDB image changes until it's explicitly changed. It's otherwise left unset, and never set on an already existing object.
+     - enableParallelNodeOperations controls whether operations on ScyllaDB nodes may be performed concurrently. When it's disabled, ScyllaDB nodes are started one at a time, and a scale-down decommissions one node at a time across the whole datacenter. When it's enabled, ScyllaDB nodes are started at once, all the nodes a rack is scaled down by are decommissioned at once, and a decommission in one rack doesn't hold the scaling of the other racks. Enabling it requires ScyllaDB 2026.2 or later. If not provided, it's treated as disabled. On creation, it's set to true when the tag of spec.scyllaDB.image is a semver-parseable version supporting parallel bootstrap. The set value is persisted, so it stays in effect across ScyllaDB image changes until it's explicitly changed. It's otherwise left unset, and never set on an already existing object.
    * - :ref:`exposeOptions<api-scylla.scylladb.com-scylladbdatacenters-v1alpha1-.spec.exposeOptions>`
      - object
      - exposeOptions specifies parameters related to exposing ScyllaDBDatacenter backends.

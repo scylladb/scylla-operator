@@ -62,7 +62,13 @@ This one-at-a-time rollout naturally respects the `maxUnavailable: 1` PDB becaus
 
 ### Scale-down
 
-When scaling down, the Operator decommissions one member at a time. The SidecarController drives the decommission process inside each pod. Because only one pod is being removed at a time, the PDB is not violated.
+When scaling down, the SidecarController drives the decommission process inside each leaving pod.
+A decommissioned pod reports not ready until the Operator removes it.
+With parallel node operations disabled, one node leaves at a time, so at most one pod is unavailable and the PDB is not violated.
+With parallel node operations enabled, the Operator decommissions all the leaving nodes of a rack at once, so several pods can be unavailable.
+The PDB then blocks voluntary evictions of the remaining pods until the leaving pods are removed.
+To keep that window short, the Operator removes decommissioned pods from the top of the rack as they finish, instead of waiting for the whole batch.
+Operator-driven scaling is not an eviction and is not blocked by the PDB.
 
 ### Node replacement
 

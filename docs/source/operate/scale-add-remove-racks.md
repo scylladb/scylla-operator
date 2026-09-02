@@ -9,23 +9,31 @@ Scaling changes the replica count of that StatefulSet:
 
 - **Scale up** — new pods are appended at the end of the ordinal sequence (highest index).
   After the new node joins the token ring, the Operator automatically triggers a [data cleanup](../understand/automatic-data-cleanup.md) on affected nodes.
-- **Scale down** — the Operator decommissions the highest-ordinal pod first, streams its data to the remaining nodes, reduces the replica count, and then deletes the PVC and Service.
-  Only one node is decommissioned at a time.
+- **Scale down** — the Operator decommissions the nodes above the new count, highest ordinal first.
+  It waits for them to stream their data to the remaining nodes, then lowers the replica count and deletes their PVCs and Services.
+  Whether the Operator decommissions the leaving nodes one at a time or all at once depends on [parallel node operations](#sequential-and-parallel-node-operations).
 
 Because StatefulSets maintain contiguous pod ordinals and scale down from the highest ordinal, you cannot remove an arbitrary node from the middle of a rack.
 If a specific node is unhealthy, use [node replacement](replace-nodes.md) instead.
 
 For background on the StatefulSet-per-rack architecture, see [StatefulSets and racks](../understand/statefulsets-and-racks.md).
 
-## Sequential and parallel node provisioning
+## Sequential and parallel node operations
 
-The Operator controls how it provisions new nodes with parallel node operations. They determine whether Operator starts ScyllaDB nodes one at a time or all at once: when you create a cluster, add, or scale-out a rack.
+Parallel node operations control whether the Operator acts on nodes one at a time or all at once.
+This covers starting nodes when you create a cluster, add a rack or scale a rack up, and decommissioning nodes when you scale a rack down.
 
-With parallel node operations disabled, Operator starts ScyllaDB nodes one at a time. Within a rack, each Pod must become ready before Operator starts the next one. Operator creates racks one at a time. Bringing up a cluster takes as long as the sum of every node's startup time.
+With parallel node operations disabled, the Operator starts ScyllaDB nodes one at a time. Within a rack, each Pod must become ready before the Operator starts the next one. The Operator creates racks one at a time. Bringing up a cluster takes as long as the sum of every node's startup time.
+Likewise, scaling down removes one node at a time. The next decommission starts only after the previous node's Pod is gone, and no rack in the datacenter scales up or down in the meantime.
 
-With parallel node operations enabled, Operator starts all ScyllaDB nodes at once. Operator starts Pods of a rack without waiting for the previous ones to become ready. Operator creates all racks at the same time. Bringing up a cluster is faster, and the difference grows with the number of nodes.
+With parallel node operations enabled, the Operator starts all ScyllaDB nodes at once. The Operator starts Pods of a rack without waiting for the previous ones to become ready. The Operator creates all racks at the same time. Bringing up a cluster is faster, and the difference grows with the number of nodes.
+Likewise, scaling down decommissions all the nodes above the new count at once. The other racks can still scale up or down while it does.
+Configuration updates and version upgrades still wait until no node in the datacenter is leaving, in both modes.
 
 Parallel node operations provide better performance when your keyspaces are backed by tablets (the default since ScyllaDB 2025.2), as opposed to vnodes. Therefore, we strongly recommend that you only use tablets for your data keyspaces. This is because with vnode-based keyspaces, a joining node streams its data before it finishes joining, which slows down bringing up new nodes. With tablets, the data is moved in the background after the node joins, so the time to bring up new nodes is not affected by data streaming.
+The same holds for scaling down.
+ScyllaDB migrates tablets off all the leaving nodes at the same time.
+It streams vnode data off one leaving node at a time, no matter how many nodes are leaving, so a parallel scale-down of vnode data takes about as long as a sequential one.
 Consider setting [`tablets_mode_for_new_keyspaces`](https://docs.scylladb.com/manual/stable/architecture/tablets.html#enabling-tablets) to `enforced` in your [ScyllaDB configuration](../deploy-scylladb/deploy-your-first-cluster.md#create-a-scylladb-configuration) to prevent individual keyspaces from opting out of tablets.
 
 :::{note}
@@ -51,19 +59,14 @@ spec:
 ```
 
 :::{caution}
-The minimum ScyllaDB version required by Operator for parallel node operations is 2026.2.
-The Operator determines the ScyllaDB version from the ScyllaDB container image tag and rejects `true` when the version doesn't satisfy the requirement. An image whose version cannot be determined, such as one pinned by digest, is treated as not supporting parallel bootstrap.
-:::
-
-:::{warning}
-The field currently only controls how nodes are started. Its scope is expected to widen in a future release, where it will also allow decommissioning nodes in parallel.
-Setting it to `true` now takes effect for those operations after you upgrade the Operator, without another change to the spec.
+The minimum ScyllaDB version required by the Operator for parallel node operations is 2026.2.
+The Operator determines the ScyllaDB version from the ScyllaDB container image tag and rejects `true` when the version doesn't satisfy the requirement. An image whose version cannot be determined, such as one pinned by digest, is treated as not supporting parallel node operations.
 :::
 
 If you don't specify the field, the Operator defaults it to `true` on creation, provided the ScyllaDB version is higher or equal to 2026.2.
 
-Operator keeps bootstrapping the nodes of clusters that already existed before the addition of this feature sequentially. 
-It is recommended that you set the field to `true` explicitly to bootstrap new nodes in parallel.
+For clusters created before this feature existed, the Operator keeps starting and decommissioning nodes one at a time.
+Set the field to `true` explicitly to start and decommission their nodes in parallel.
 
 ## Bootstrap synchronisation
 
@@ -73,6 +76,13 @@ Enabling the `BootstrapSynchronisation` feature gate protects against this by ho
 It is recommended that you enable it whether or not parallel node operations are enabled. See [Bootstrap synchronisation](../understand/bootstrap-sync.md) for details on the mechanism and [Feature gates](../reference/feature-gates.md) for instructions on enabling feature gates.
 
 ## Scale a ScyllaCluster
+
+:::{warning}
+Before scaling down, make sure the resulting topology is valid for ScyllaDB.
+A scale-down is subject to the same prerequisites as [`nodetool decommission`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/decommission.html).
+ScyllaDB rejects a decommission that violates them, and the scale-down stalls until you fix the cause.
+Scaling the rack back up doesn't help, because a scale-down can't be cancelled.
+:::
 
 Change `spec.datacenter.racks[].members` to the desired node count and apply:
 
@@ -119,11 +129,43 @@ Wait for the operation to complete:
 kubectl -n scylla wait --timeout=10m --for='condition=Available' scyllaclusters.scylla.scylladb.com/scylla
 ```
 
+While scaling down, you can list the nodes that are still leaving:
+
+```bash
+kubectl -n scylla get scyllacluster scylla -o json | jq '.status.racks | map_values([.decommissioningMembers[]?.name])'
+```
+
+:::{note}
+A scale-down can't be cancelled.
+If you raise `members` back while nodes are leaving, the Operator accepts the change but applies it only once the leaving nodes are gone.
+Until then the `ScyllaCluster` reports `Progressing=True` with the reason `DeferringRackNodeCountChange`.
+Nodes whose decommission hasn't been requested yet stay, and the Operator bootstraps the rest of the returning nodes as new, empty nodes.
+If you lower `members` further instead, the newly uncovered nodes join the leaving ones right away.
+:::
+
 Verify with `nodetool status`:
 
 ```bash
 kubectl -n scylla exec -it scylla-us-east-1a-0 -c scylla -- nodetool status
 ```
+
+### If the scale-down doesn't finish
+
+The Operator never times out a decommission; ScyllaDB decides how long moving the data takes.
+If the `ScyllaCluster` stays at `Progressing=True` longer than you expect, read the reason:
+
+```bash
+kubectl -n scylla get scyllacluster scylla -o jsonpath='{range .status.conditions[?(@.status=="True")]}{.type}: {.reason}: {.message}{"\n"}{end}'
+```
+
+- `WaitingForRackServiceDecommission` — ScyllaDB hasn't finished decommissioning the named node, or keeps rejecting the request.
+  Read the log of the leaving Pod's `scylla` container first: the sidecar retries every few seconds, and ScyllaDB states why it rejects a decommission.
+  If nothing is rejected, `nodetool status` on another node shows the node as `UL` while its data is still moving.
+  Once you fix the cause, the next retry succeeds and the decommission proceeds on its own.
+- `WaitingForStatefulSetRollout` — a scale-down only starts when every other rack is fully ready. Find the Pod that isn't ready in the racks you aren't scaling, for example a node in [maintenance mode](use-maintenance-mode.md), whose readiness probe always fails.
+- `DeferringRackNodeCountChange` — you raised `members` while nodes were leaving, and the change waits for them. No action is needed.
+
+Don't delete the Pods, PVCs or Services of the leaving nodes, and don't edit the `scylla/decommissioned` label on their Services: it is the record of the decommission that the Operator and the sidecar act on.
 
 ## Add a rack to a ScyllaCluster
 
@@ -218,8 +260,10 @@ In multi-DC clusters using multiple `ScyllaCluster` resources, each datacenter i
 
 * - Consideration
   - Detail
-* - One at a time
-  - The Operator scales down one node at a time per rack, ensuring data is streamed away before the next decommission begins.
+* - Sequential or parallel scale-down
+  - With parallel node operations disabled, the Operator scales down one node at a time in the whole datacenter, streaming its data away before the next decommission begins. With parallel node operations enabled, the Operator decommissions all the leaving nodes of a rack at once, and the other racks can still scale.
+* - Changes during a scale-down
+  - A scale-down can't be cancelled. If you lower `members` further while nodes are leaving, the Operator extends the scale-down right away. If you raise it, the Operator applies the change once the leaving nodes are removed.
 * - Automatic cleanup
   - After scaling completes, the Operator triggers data cleanup Jobs on affected nodes to remove data that no longer belongs to them.
 * - PVC deletion

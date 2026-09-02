@@ -304,6 +304,66 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 		})
 
+		// A leftover decommissioned=true label on a node that is not the highest one, e.g. one carried over from before
+		// the labels became the ground truth, makes the node leaving without its decommission ever being requested.
+		// The StatefulSet can only remove its highest ordinals, so the rack drains down to the node first, and the node
+		// is then scaled away and pruned without the request step. The rack grows back with new, empty nodes. This
+		// pins that behaviour, so that a change to how the leaving nodes are derived is visible.
+		g.It("should drain the rack above a node with a stale decommissioned label and bootstrap it anew", func(ctx g.SpecContext) {
+			const nodes = int32(3)
+
+			sdc := setupDecommissioningRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
+			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
+			staleServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 0)
+
+			staleService, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, staleServiceName, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			staleServiceUID := staleService.UID
+
+			g.By("Marking the lowest node as decommissioned without its decommission having been requested")
+			setServiceDecommissionedLabel(ctx, env, staleServiceName, naming.LabelValueTrue)
+
+			// The rack drains down to the stale node in rounds: with parallel node operations enabled all the nodes
+			// above it leave in one round, otherwise one node leaves per round, from the highest ordinal. The
+			// StatefulSet is scaled below the nodes of a round before the next round is requested, and the last
+			// scale-down is followed within milliseconds by the stale node being scaled away, so the rounds are
+			// driven by the requests rather than by sampling the replicas.
+			for replicas := nodes; replicas > 1; {
+				ordinals := leavingOrdinals(enableParallelNodeOperations, replicas, 1)
+
+				g.By(fmt.Sprintf("Waiting for the decommission of node(s) %v to be requested", ordinals))
+				for _, ordinal := range ordinals {
+					waitForServiceDecommissionedLabel(ctx, env, naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(ordinal)), naming.LabelValueFalse)
+				}
+
+				g.By(fmt.Sprintf("Marking node(s) %v as decommissioned in place of the sidecar", ordinals))
+				for _, ordinal := range ordinals {
+					setServiceDecommissionedLabel(ctx, env, naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(ordinal)), naming.LabelValueTrue)
+				}
+
+				replicas = ordinals[0]
+			}
+
+			g.By("Waiting for the whole rack to be removed and to grow back with fresh nodes")
+			o.Eventually(func(eo o.Gomega, ctx context.Context) {
+				sts, err := env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()).Get(ctx, rackStatefulSetName, metav1.GetOptions{})
+				eo.Expect(err).NotTo(o.HaveOccurred())
+				eo.Expect(*sts.Spec.Replicas).To(o.Equal(nodes))
+
+				svc, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, staleServiceName, metav1.GetOptions{})
+				eo.Expect(err).NotTo(o.HaveOccurred())
+				eo.Expect(svc.UID).NotTo(o.Equal(staleServiceUID))
+
+				for ordinal := int32(0); ordinal < nodes; ordinal++ {
+					svc, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(ordinal)), metav1.GetOptions{})
+					eo.Expect(err).NotTo(o.HaveOccurred())
+					eo.Expect(svc.Labels).NotTo(o.HaveKey(naming.DecommissionedLabel))
+				}
+
+				eo.Expect(getDecommissioningNodes(ctx, env, sdc.Name, decommissioningRackName)).To(o.BeEmpty())
+			}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+		})
+
 		g.It("should rebuild the list from the decommissioned labels when it is wiped from the status", func(ctx g.SpecContext) {
 			sdc, _, leavingServiceName := setupDecommissioningRack(ctx, env, enableParallelNodeOperations)
 

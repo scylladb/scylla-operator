@@ -1001,6 +1001,29 @@ func Test_syncRackDecommission(t *testing.T) {
 			expectedConditions: []metav1.Condition{makeStampCondition(newMemberService(1, nil))},
 			expectedDecommissionRequestedServiceNames: []string{stsName + "-1"},
 		},
+		// The controller never produces a decommissioned label below an unlabelled node on its own, so the stale label
+		// cases below pin what happens to a label left over in a cluster, e.g. from before the labels became the ground
+		// truth (see the changelog): the node is leaving without its decommission ever being requested, so the rack
+		// drains down to it, and the node is then scaled away and pruned with the request step skipped.
+		{
+			name:               "a stale decommissioned label on the lowest node drains the rack above it one node at a time with parallel node operations disabled",
+			sdc:                newSDCWithNodes(3),
+			rackName:           rackName,
+			sts:                newSts(3),
+			rackServices:       newRackServices(newMemberService(0, new(naming.LabelValueTrue)), newMemberService(1, nil), newMemberService(2, nil)),
+			expectedConditions: []metav1.Condition{makeDeferringCondition(3, 0), makeStampCondition(newMemberService(2, nil))},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-2"},
+		},
+		// See the stale label case above.
+		{
+			name:                   "a node with a stale decommissioned label is scaled away without being requested to decommission with parallel node operations disabled",
+			sdc:                    newSDCWithNodes(3),
+			rackName:               rackName,
+			sts:                    newSts(1),
+			rackServices:           newRackServices(newMemberService(0, new(naming.LabelValueTrue))),
+			expectedConditions:     []metav1.Condition{makeDeferringCondition(3, 0), makeScaleCondition(newSts(1), 0)},
+			expectedScaledReplicas: new(int32(0)),
+		},
 		{
 			name:               "a fresh multi-node scale-down stamps all the leaving nodes at once with parallel node operations enabled",
 			sdc:                newParallelSDCWithNodes(1),
@@ -1045,6 +1068,16 @@ func Test_syncRackDecommission(t *testing.T) {
 				makeDeferringCondition(3, 2),
 				makeWaitingForDecommissionCondition(2),
 			},
+		},
+		// See the stale label case above.
+		{
+			name:               "a stale decommissioned label on the lowest node drains the rack above it at once with parallel node operations enabled",
+			sdc:                newParallelSDCWithNodes(3),
+			rackName:           rackName,
+			sts:                newSts(3),
+			rackServices:       newRackServices(newMemberService(0, new(naming.LabelValueTrue)), newMemberService(1, nil), newMemberService(2, nil)),
+			expectedConditions: []metav1.Condition{makeDeferringCondition(3, 0), makeStampCondition(newMemberService(1, nil)), makeStampCondition(newMemberService(2, nil))},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-1", stsName + "-2"},
 		},
 		{
 			name:         "a scale-down cut short after the highest node was requested resumes on the next pass with parallel node operations enabled",

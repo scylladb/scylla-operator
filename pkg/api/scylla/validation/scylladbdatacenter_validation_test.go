@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	corev1 "k8s.io/api/core/v1"
@@ -1116,6 +1117,59 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 			expectedErrorString: `spec.racks[0]: Forbidden: rack "rack" can't be removed because the members are being scaled down`,
 		},
 		{
+			name: "empty rack with nodes leaving the cluster removed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Status.Racks = []scyllav1alpha1.RackStatus{
+					{
+						Name:  sdc.Spec.Racks[0].Name,
+						Nodes: pointer.Ptr[int32](0),
+						DecommissioningNodes: []scyllav1alpha1.DecommissioningNodeStatus{
+							{Name: "basic-dc-rack-0"},
+						},
+						Stale: pointer.Ptr(false),
+					},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks = []scyllav1alpha1.RackSpec{}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0]", BadValue: "", Detail: `rack "rack" can't be removed because it still has nodes leaving the cluster: basic-dc-rack-0; they have to finish decommissioning and be removed first, please retry later`},
+			},
+			expectedErrorString: `spec.racks[0]: Forbidden: rack "rack" can't be removed because it still has nodes leaving the cluster: basic-dc-rack-0; they have to finish decommissioning and be removed first, please retry later`,
+		},
+		{
+			name: "empty rack with nodes leaving the cluster and stale status removed",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Status.Racks = []scyllav1alpha1.RackStatus{
+					{
+						Name:  sdc.Spec.Racks[0].Name,
+						Nodes: pointer.Ptr[int32](0),
+						DecommissioningNodes: []scyllav1alpha1.DecommissioningNodeStatus{
+							{Name: "basic-dc-rack-0"},
+							{Name: "basic-dc-rack-1"},
+						},
+						Stale: pointer.Ptr(true),
+					},
+				}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks = []scyllav1alpha1.RackSpec{}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0]", BadValue: "", Detail: `rack "rack" can't be removed because it still has nodes leaving the cluster: basic-dc-rack-0, basic-dc-rack-1; they have to finish decommissioning and be removed first, please retry later`},
+			},
+			expectedErrorString: `spec.racks[0]: Forbidden: rack "rack" can't be removed because it still has nodes leaving the cluster: basic-dc-rack-0, basic-dc-rack-1; they have to finish decommissioning and be removed first, please retry later`,
+		},
+		{
 			name: "empty rack with stale status",
 			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
 				sdc := newValidScyllaDBDatacenter()
@@ -1720,6 +1774,26 @@ func newValidScyllaDBDatacenterForWarnings() *scyllav1alpha1.ScyllaDBDatacenter 
 	}
 }
 
+// newScyllaDBDatacenterWithDecommissioningNodesForWarnings returns a two-node rack, whose node count comes from the
+// rack template, and whose status lists the named nodes as leaving the cluster.
+func newScyllaDBDatacenterWithDecommissioningNodesForWarnings(decommissioningNodeNames ...string) *scyllav1alpha1.ScyllaDBDatacenter {
+	sdc := newValidScyllaDBDatacenterForWarnings()
+	sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+		Nodes: pointer.Ptr[int32](2),
+	}
+	sdc.Status.Racks = []scyllav1alpha1.RackStatus{
+		{
+			Name:  sdc.Spec.Racks[0].Name,
+			Nodes: pointer.Ptr[int32](2),
+			DecommissioningNodes: oslices.ConvertSlice(decommissioningNodeNames, func(name string) scyllav1alpha1.DecommissioningNodeStatus {
+				return scyllav1alpha1.DecommissioningNodeStatus{Name: name}
+			}),
+		},
+	}
+
+	return sdc
+}
+
 func TestGetWarningsOnScyllaDBDatacenterCreate(t *testing.T) {
 	t.Parallel()
 
@@ -1788,6 +1862,46 @@ func TestGetWarningsOnScyllaDBDatacenterUpdate(t *testing.T) {
 			expectedWarnings: []string{
 				"`spec.exposeOptions.cql` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
 			},
+		},
+		{
+			name:   "rack node count changed while the rack has nodes leaving the cluster",
+			oldSDC: newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1", "basic-dc-rack-2"),
+			newSDC: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1", "basic-dc-rack-2")
+				sdc.Spec.Racks[0].Nodes = pointer.Ptr[int32](3)
+				return sdc
+			}(),
+			expectedWarnings: []string{
+				`spec.racks[0]: rack "rack" has nodes leaving the cluster: basic-dc-rack-1, basic-dc-rack-2. The requested number of nodes is accepted, but it won't be applied until they have finished decommissioning and been removed.`,
+			},
+		},
+		{
+			name:   "rack node count changed through the rack template while the rack has nodes leaving the cluster",
+			oldSDC: newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1"),
+			newSDC: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1")
+				sdc.Spec.RackTemplate.Nodes = pointer.Ptr[int32](3)
+				return sdc
+			}(),
+			expectedWarnings: []string{
+				`spec.racks[0]: rack "rack" has nodes leaving the cluster: basic-dc-rack-1. The requested number of nodes is accepted, but it won't be applied until they have finished decommissioning and been removed.`,
+			},
+		},
+		{
+			name:             "rack node count unchanged while the rack has nodes leaving the cluster",
+			oldSDC:           newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1"),
+			newSDC:           newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1"),
+			expectedWarnings: nil,
+		},
+		{
+			name:   "rack node count changed while no node is leaving the cluster",
+			oldSDC: newScyllaDBDatacenterWithDecommissioningNodesForWarnings(),
+			newSDC: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenterWithDecommissioningNodesForWarnings()
+				sdc.Spec.Racks[0].Nodes = pointer.Ptr[int32](3)
+				return sdc
+			}(),
+			expectedWarnings: nil,
 		},
 	}
 

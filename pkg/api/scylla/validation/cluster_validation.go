@@ -460,6 +460,14 @@ func ValidateScyllaClusterSpecUpdate(new, old *scyllav1.ScyllaCluster, fldPath *
 				continue
 			}
 
+			// The member count above mirrors the StatefulSet replicas, which reach zero before the leaving members are
+			// pruned. Removing the rack while any of them are still around leaves the controller unable to resolve
+			// their rack, so their member Services and PVCs are never pruned.
+			if decommissioningMembers := old.Status.Racks[rack.Name].DecommissioningMembers; len(decommissioningMembers) != 0 {
+				allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i), fmt.Sprintf("rack %q can't be removed because it still has members leaving the cluster: %s; they have to finish decommissioning and be removed first, please retry later", rackName, strings.Join(getDecommissioningMemberNames(decommissioningMembers), ", "))))
+				continue
+			}
+
 			if !isRackStatusUpToDate(old, rack.Name) {
 				allErrs = append(allErrs, field.InternalError(fldPath.Child("datacenter", "racks").Index(i), fmt.Errorf("rack %q can't be removed because its status, that's used to determine members count, is not yet up to date with the generation of this resource; please retry later", rackName)))
 			}
@@ -513,6 +521,12 @@ func ValidateScyllaClusterSpecUpdate(new, old *scyllav1.ScyllaCluster, fldPath *
 	return allErrs
 }
 
+func getDecommissioningMemberNames(decommissioningMembers []scyllav1.DecommissioningMemberStatus) []string {
+	return oslices.ConvertSlice(decommissioningMembers, func(decommissioningMember scyllav1.DecommissioningMemberStatus) string {
+		return decommissioningMember.Name
+	})
+}
+
 func isRackStatusUpToDate(sc *scyllav1.ScyllaCluster, rack string) bool {
 	return sc.Status.ObservedGeneration != nil &&
 		*sc.Status.ObservedGeneration >= sc.Generation &&
@@ -549,6 +563,40 @@ func GetWarningsOnScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) []string
 	var warnings []string
 
 	warnings = append(warnings, getWarningsForScyllaClusterSpec(&new.Spec, field.NewPath("spec"))...)
+	warnings = append(warnings, getWarningsForScyllaClusterRackMemberCountUpdate(new, old, field.NewPath("spec"))...)
+
+	return warnings
+}
+
+// getWarningsForScyllaClusterRackMemberCountUpdate warns about changes to the number of members of a rack that has
+// members leaving the cluster. Such a change is accepted, but it isn't applied until the leaving members are gone.
+func getWarningsForScyllaClusterRackMemberCountUpdate(new, old *scyllav1.ScyllaCluster, fldPath *field.Path) []string {
+	var warnings []string
+
+	for i, newRack := range new.Spec.Datacenter.Racks {
+		oldRack, _, ok := oslices.Find(old.Spec.Datacenter.Racks, func(rackSpec scyllav1.RackSpec) bool {
+			return rackSpec.Name == newRack.Name
+		})
+		if !ok {
+			continue
+		}
+
+		if newRack.Members == oldRack.Members {
+			continue
+		}
+
+		decommissioningMembers := old.Status.Racks[newRack.Name].DecommissioningMembers
+		if len(decommissioningMembers) == 0 {
+			continue
+		}
+
+		warnings = append(warnings, fmt.Sprintf(
+			"%s: rack %q has members leaving the cluster: %s. The requested number of members is accepted, but it won't be applied until they have finished decommissioning and been removed.",
+			fldPath.Child("datacenter", "racks").Index(i),
+			newRack.Name,
+			strings.Join(getDecommissioningMemberNames(decommissioningMembers), ", "),
+		))
+	}
 
 	return warnings
 }

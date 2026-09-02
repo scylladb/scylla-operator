@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	corev1 "k8s.io/api/core/v1"
@@ -1311,6 +1312,35 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 			expectedErrorString: `spec.datacenter.racks[0]: Forbidden: rack "test-rack" can't be removed because the members are being scaled down`,
 		},
 		{
+			name: "empty rack with members leaving the cluster removed",
+			old: withStatus(unit.NewSingleRackCluster(0), scyllav1.ScyllaClusterStatus{Racks: map[string]scyllav1.RackStatus{"test-rack": {
+				Members:                0,
+				DecommissioningMembers: []scyllav1.DecommissioningMemberStatus{{Name: "basic-us-east-1-test-rack-0"}},
+				Stale:                  pointer.Ptr(false),
+			}}}),
+			new: racksDeleted(unit.NewSingleRackCluster(0)),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0]", BadValue: "", Detail: `rack "test-rack" can't be removed because it still has members leaving the cluster: basic-us-east-1-test-rack-0; they have to finish decommissioning and be removed first, please retry later`},
+			},
+			expectedErrorString: `spec.datacenter.racks[0]: Forbidden: rack "test-rack" can't be removed because it still has members leaving the cluster: basic-us-east-1-test-rack-0; they have to finish decommissioning and be removed first, please retry later`,
+		},
+		{
+			name: "empty rack with members leaving the cluster and stale status removed",
+			old: withStatus(unit.NewSingleRackCluster(0), scyllav1.ScyllaClusterStatus{Racks: map[string]scyllav1.RackStatus{"test-rack": {
+				Members: 0,
+				DecommissioningMembers: []scyllav1.DecommissioningMemberStatus{
+					{Name: "basic-us-east-1-test-rack-0"},
+					{Name: "basic-us-east-1-test-rack-1"},
+				},
+				Stale: pointer.Ptr(true),
+			}}}),
+			new: racksDeleted(unit.NewSingleRackCluster(0)),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0]", BadValue: "", Detail: `rack "test-rack" can't be removed because it still has members leaving the cluster: basic-us-east-1-test-rack-0, basic-us-east-1-test-rack-1; they have to finish decommissioning and be removed first, please retry later`},
+			},
+			expectedErrorString: `spec.datacenter.racks[0]: Forbidden: rack "test-rack" can't be removed because it still has members leaving the cluster: basic-us-east-1-test-rack-0, basic-us-east-1-test-rack-1; they have to finish decommissioning and be removed first, please retry later`,
+		},
+		{
 			name: "empty rack with stale status",
 			old:  withStatus(unit.NewSingleRackCluster(0), scyllav1.ScyllaClusterStatus{Racks: map[string]scyllav1.RackStatus{"test-rack": {Stale: pointer.Ptr(true), Members: 0}}}),
 			new:  racksDeleted(unit.NewSingleRackCluster(0)),
@@ -1583,6 +1613,22 @@ func storageChanged(c *scyllav1.ScyllaCluster) *scyllav1.ScyllaCluster {
 	return c
 }
 
+// newScyllaClusterWithDecommissioningMembersForWarnings returns a two-member rack whose status lists the named members
+// as leaving the cluster.
+func newScyllaClusterWithDecommissioningMembersForWarnings(decommissioningMemberNames ...string) *scyllav1.ScyllaCluster {
+	sc := unit.NewSingleRackCluster(2)
+	sc.Status.Racks = map[string]scyllav1.RackStatus{
+		sc.Spec.Datacenter.Racks[0].Name: {
+			Members: 2,
+			DecommissioningMembers: oslices.ConvertSlice(decommissioningMemberNames, func(name string) scyllav1.DecommissioningMemberStatus {
+				return scyllav1.DecommissioningMemberStatus{Name: name}
+			}),
+		},
+	}
+
+	return sc
+}
+
 func TestGetWarningsOnScyllaClusterCreate(t *testing.T) {
 	t.Parallel()
 
@@ -1678,6 +1724,34 @@ func TestGetWarningsOnScyllaClusterUpdate(t *testing.T) {
 			expectedWarnings: []string{
 				"`spec.exposeOptions.cql` field is deprecated and will be removed in a future release, along with operator support for exposing CQL over an SNI proxy.",
 			},
+		},
+		{
+			name:  "rack member count changed while the rack has members leaving the cluster",
+			oldSC: newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1", "basic-us-east-1-test-rack-2"),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1", "basic-us-east-1-test-rack-2")
+				sc.Spec.Datacenter.Racks[0].Members = 3
+				return sc
+			}(),
+			expectedWarnings: []string{
+				`spec.datacenter.racks[0]: rack "test-rack" has members leaving the cluster: basic-us-east-1-test-rack-1, basic-us-east-1-test-rack-2. The requested number of members is accepted, but it won't be applied until they have finished decommissioning and been removed.`,
+			},
+		},
+		{
+			name:             "rack member count unchanged while the rack has members leaving the cluster",
+			oldSC:            newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1"),
+			newSC:            newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1"),
+			expectedWarnings: nil,
+		},
+		{
+			name:  "rack member count changed while no member is leaving the cluster",
+			oldSC: newScyllaClusterWithDecommissioningMembersForWarnings(),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := newScyllaClusterWithDecommissioningMembersForWarnings()
+				sc.Spec.Datacenter.Racks[0].Members = 3
+				return sc
+			}(),
+			expectedWarnings: nil,
 		},
 	}
 

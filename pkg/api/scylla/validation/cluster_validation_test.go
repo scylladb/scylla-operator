@@ -1738,6 +1738,16 @@ func TestGetWarningsOnScyllaClusterUpdate(t *testing.T) {
 			},
 		},
 		{
+			name:  "rack member count lowered while the rack has members leaving the cluster",
+			oldSC: newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1"),
+			newSC: func() *scyllav1.ScyllaCluster {
+				sc := newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1")
+				sc.Spec.Datacenter.Racks[0].Members = 1
+				return sc
+			}(),
+			expectedWarnings: nil,
+		},
+		{
 			name:             "rack member count unchanged while the rack has members leaving the cluster",
 			oldSC:            newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1"),
 			newSC:            newScyllaClusterWithDecommissioningMembersForWarnings("basic-us-east-1-test-rack-1"),

@@ -364,11 +364,16 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 				}))
 			}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
 
-			g.By("Verifying the decommission of the lower node is not requested until the highest node is removed")
+			g.By("Verifying the decommission of the lower node is not requested until the highest node is removed, and the scale-down is not reported as a deferred node count change")
 			o.Consistently(func(co o.Gomega, ctx context.Context) {
 				svc, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, secondLeavingServiceName, metav1.GetOptions{})
 				co.Expect(err).NotTo(o.HaveOccurred())
 				co.Expect(svc.Labels).NotTo(o.HaveKey(naming.DecommissionedLabel))
+
+				progressingCondition := getStatefulSetControllerProgressingCondition(ctx, env, sdc.Name)
+				co.Expect(progressingCondition).NotTo(o.BeNil())
+				co.Expect(progressingCondition.Status).To(o.Equal(metav1.ConditionTrue))
+				co.Expect(progressingCondition.Reason).NotTo(o.ContainSubstring("DeferringRackNodeCountChange"))
 			}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultConsistentlyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
 
 			g.By("Marking the highest node as decommissioned in place of the sidecar")
@@ -475,6 +480,49 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 			waitForStatefulSetReplicas(ctx, env, otherRackStatefulSetName, decommissioningInitialNodes+1)
 		})
 
+		g.It("should extend an ongoing scale-down when the node count is lowered further", func(ctx g.SpecContext) {
+			const nodes = int32(3)
+
+			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
+			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
+			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
+			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
+
+			g.By("Scaling the rack down to two nodes")
+			scaleRackTemplate(ctx, env, sdc.Name, nodes-1)
+
+			g.By("Waiting for the decommission of the highest node to be requested")
+			waitForServiceDecommissionedLabel(ctx, env, firstLeavingServiceName, naming.LabelValueFalse)
+
+			g.By("Lowering the node count to one while the highest node is still decommissioning")
+			scaleRackTemplate(ctx, env, sdc.Name, 1)
+
+			g.By("Verifying the decommission of the uncovered node is not requested while the highest node is still decommissioning")
+			o.Consistently(func(co o.Gomega, ctx context.Context) {
+				svc, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, secondLeavingServiceName, metav1.GetOptions{})
+				co.Expect(err).NotTo(o.HaveOccurred())
+				co.Expect(svc.Labels).NotTo(o.HaveKey(naming.DecommissionedLabel))
+			}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultConsistentlyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+
+			g.By("Marking the highest node as decommissioned in place of the sidecar")
+			setServiceDecommissionedLabel(ctx, env, firstLeavingServiceName, naming.LabelValueTrue)
+
+			g.By("Waiting for the decommission of the uncovered node to be requested")
+			waitForServiceDecommissionedLabel(ctx, env, secondLeavingServiceName, naming.LabelValueFalse)
+
+			g.By("Verifying the lowered node count is not reported as a deferred node count change")
+			progressingCondition := getStatefulSetControllerProgressingCondition(ctx, env, sdc.Name)
+			o.Expect(progressingCondition).NotTo(o.BeNil())
+			o.Expect(progressingCondition.Reason).NotTo(o.ContainSubstring("DeferringRackNodeCountChange"))
+
+			g.By("Marking the uncovered node as decommissioned in place of the sidecar")
+			setServiceDecommissionedLabel(ctx, env, secondLeavingServiceName, naming.LabelValueTrue)
+
+			g.By("Waiting for the rack StatefulSet to be scaled down to one node and both leaving nodes to be pruned")
+			waitForStatefulSetReplicas(ctx, env, rackStatefulSetName, 1)
+			waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, decommissioningRackName, firstLeavingServiceName)
+			waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, decommissioningRackName, secondLeavingServiceName)
+		})
 	})
 
 	g.Describe("decommissioning with parallel node operations enabled", func() {
@@ -606,6 +654,45 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 			waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, decommissioningRackName, leavingServiceName)
 		})
 
+		g.It("should extend an ongoing scale-down when the node count is lowered further", func(ctx g.SpecContext) {
+			const nodes = int32(3)
+
+			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
+			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
+			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
+			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
+
+			g.By("Scaling the rack down to two nodes")
+			scaleRackTemplate(ctx, env, sdc.Name, nodes-1)
+
+			g.By("Waiting for the decommission of the highest node to be requested")
+			waitForServiceDecommissionedLabel(ctx, env, firstLeavingServiceName, naming.LabelValueFalse)
+
+			g.By("Lowering the node count to one while the highest node is still decommissioning")
+			scaleRackTemplate(ctx, env, sdc.Name, 1)
+
+			g.By("Waiting for the decommission of the uncovered node to be requested while the highest node is still decommissioning")
+			waitForServiceDecommissionedLabel(ctx, env, secondLeavingServiceName, naming.LabelValueFalse)
+			svc, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, firstLeavingServiceName, metav1.GetOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(svc.Labels).To(o.HaveKeyWithValue(naming.DecommissionedLabel, naming.LabelValueFalse))
+
+			g.By("Marking the highest node as decommissioned in place of the sidecar")
+			setServiceDecommissionedLabel(ctx, env, firstLeavingServiceName, naming.LabelValueTrue)
+
+			g.By("Verifying the lowered node count is not reported as a deferred node count change")
+			progressingCondition := getStatefulSetControllerProgressingCondition(ctx, env, sdc.Name)
+			o.Expect(progressingCondition).NotTo(o.BeNil())
+			o.Expect(progressingCondition.Reason).NotTo(o.ContainSubstring("DeferringRackNodeCountChange"))
+
+			g.By("Marking the uncovered node as decommissioned in place of the sidecar")
+			setServiceDecommissionedLabel(ctx, env, secondLeavingServiceName, naming.LabelValueTrue)
+
+			g.By("Waiting for the rack StatefulSet to be scaled down to one node and both leaving nodes to be pruned")
+			waitForStatefulSetReplicas(ctx, env, rackStatefulSetName, 1)
+			waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, decommissioningRackName, firstLeavingServiceName)
+			waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, decommissioningRackName, secondLeavingServiceName)
+		})
 	})
 
 	g.DescribeTableSubtree("with parallel node operations",

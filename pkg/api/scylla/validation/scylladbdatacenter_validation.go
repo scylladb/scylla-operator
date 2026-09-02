@@ -701,8 +701,9 @@ func GetWarningsOnScyllaDBDatacenterUpdate(new, old *scyllav1alpha1.ScyllaDBData
 	return warnings
 }
 
-// getWarningsForScyllaDBDatacenterRackNodeCountUpdate warns about changes to the number of nodes of a rack that has
-// nodes leaving the cluster. Such a change is accepted, but it isn't applied until the leaving nodes are gone.
+// getWarningsForScyllaDBDatacenterRackNodeCountUpdate warns about raising the number of nodes of a rack above its nodes
+// leaving the cluster. Such a change is accepted, but it isn't applied until the leaving nodes are gone. Lowering the
+// number of nodes extends the ongoing scale-down and applies right away, so it doesn't warn.
 func getWarningsForScyllaDBDatacenterRackNodeCountUpdate(new, old *scyllav1alpha1.ScyllaDBDatacenter, fldPath *field.Path) []string {
 	var warnings []string
 
@@ -722,6 +723,10 @@ func getWarningsForScyllaDBDatacenterRackNodeCountUpdate(new, old *scyllav1alpha
 			return rackStatus.Name == newRack.Name
 		})
 		if !ok || len(oldRackStatus.DecommissioningNodes) == 0 {
+			continue
+		}
+
+		if !isNodeCountAboveLeavingNodes(getScyllaDBDatacenterRackNodeCount(&new.Spec, newRack), getDecommissioningNodeNames(oldRackStatus.DecommissioningNodes)) {
 			continue
 		}
 
@@ -747,4 +752,18 @@ func getWarningsForScyllaDBDatacenterSpec(spec *scyllav1alpha1.ScyllaDBDatacente
 	}
 
 	return warnings
+}
+
+// isNodeCountAboveLeavingNodes returns whether the node count calls for a node at or above the lowest of the leaving
+// nodes, which is what a rack can't reconcile to until they are gone. A leaving node whose ordinal can't be told is
+// treated as being called for.
+func isNodeCountAboveLeavingNodes(nodeCount int32, leavingNodeNames []string) bool {
+	for _, name := range leavingNodeNames {
+		ordinal, err := naming.IndexFromName(name)
+		if err != nil || nodeCount > ordinal {
+			return true
+		}
+	}
+
+	return false
 }

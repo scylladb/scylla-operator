@@ -536,15 +536,13 @@ func ensureRackNamesInRackStatuses(
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
-// getRackDecommissionTargetNodeCount returns the node count the rack reconciles to while nodes are leaving:
-// the leaving nodes are at the top of the StatefulSet, which can only remove its highest ordinals, so the count is the
-// lowest leaving ordinal, capped at the StatefulSet replicas.
-func getRackDecommissionTargetNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus) (int32, error) {
-	if len(decommissioningNodes) == 0 {
-		return 0, fmt.Errorf("rack %q of ScyllaDBDatacenter %q has no decommissioning nodes", rackName, naming.ObjRef(sdc))
-	}
-
-	nodeCount := *sts.Spec.Replicas
+// getRackScaleDownTargetNodeCount returns the node count a rack's scale-down reconciles to: the spec node count,
+// lowered to the lowest leaving ordinal while nodes are leaving. The leaving nodes are at the top of the StatefulSet,
+// which can only remove its highest ordinals, so a spec node count above them is deferred until they are gone, while
+// one below them applies right away, as the nodes it uncovers join the leaving ones and keep them a suffix of the
+// rack. The count is capped at the StatefulSet replicas, as the leaving nodes may already be scaled away.
+func getRackScaleDownTargetNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, specNodeCount int32, decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus) (int32, error) {
+	nodeCount := min(*sts.Spec.Replicas, specNodeCount)
 	for _, node := range decommissioningNodes {
 		ordinal, err := naming.IndexFromName(node.Name)
 		if err != nil {
@@ -622,8 +620,8 @@ func makeWaitingForRackServicePruningCondition(sdc *scyllav1alpha1.ScyllaDBDatac
 // and the StatefulSet is scaled below the decommissioned ones at the top of the rack as they finish.
 //
 // The branches below are dispatched by the rack's current state, so they appear in guard order, not lifecycle order.
-// While any node is leaving, changes to the spec node count, up or down, are deferred and reported with a progressing
-// condition.
+// While any node is leaving, a raised spec node count is deferred and reported with a progressing condition, while a
+// lowered one extends the scale-down right away.
 // It returns the progressing conditions to report: the rack still has leaving nodes and is held for as long as there
 // are any.
 func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, rackServices map[string]*corev1.Service) ([]metav1.Condition, error) {
@@ -644,19 +642,17 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 		return progressingConditions, fmt.Errorf("can't determine effective parallel node operations enablement: %w", err)
 	}
 
-	targetNodeCount := *specNodeCount
-	if len(decommissioningNodes) != 0 {
-		targetNodeCount, err = getRackDecommissionTargetNodeCount(sdc, rackName, sts, decommissioningNodes)
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't get decommission target node count of rack %q of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
-		}
+	targetNodeCount, err := getRackScaleDownTargetNodeCount(sdc, rackName, sts, *specNodeCount, decommissioningNodes)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't get scale-down target node count of rack %q of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
+	}
 
-		// A plain scale-down has the spec already at the target count, so a difference means the spec changed since
-		// and the change is deferred until the leaving nodes' Services are pruned.
-		if *specNodeCount != targetNodeCount {
-			klog.V(4).InfoS("Deferring rack node count change until the Services of the decommissioning nodes are pruned", "ScyllaDBDatacenter", klog.KObj(sdc), "Rack", rackName, "NodeCount", *specNodeCount, "TargetNodeCount", targetNodeCount, "DecommissioningNodes", getDecommissioningNodeNames(decommissioningNodes))
-			progressingConditions = append(progressingConditions, makeDeferredNodeCountChangeCondition(sdc, rackName, *specNodeCount, decommissioningNodes))
-		}
+	// A lowered node count is already in the target, so a spec above it is a node count raised above the leaving
+	// nodes. It is deferred until their Services are pruned: the returning capacity can only bootstrap as new nodes
+	// once they are fully removed, and the StatefulSet can't add a node above a leaving one.
+	if *specNodeCount > targetNodeCount {
+		klog.V(4).InfoS("Deferring rack node count change until the Services of the decommissioning nodes are pruned", "ScyllaDBDatacenter", klog.KObj(sdc), "Rack", rackName, "NodeCount", *specNodeCount, "TargetNodeCount", targetNodeCount, "DecommissioningNodes", getDecommissioningNodeNames(decommissioningNodes))
+		progressingConditions = append(progressingConditions, makeDeferredNodeCountChangeCondition(sdc, rackName, *specNodeCount, decommissioningNodes))
 	}
 
 	// Wait if any decommissioning is in progress: a node with the label set to false was requested to decommission
@@ -704,8 +700,8 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 	}
 
 	// Every leaving node is requested through its member Service, so check that all of them are present before
-	// requesting any: the first request fixes the batch (see below), and a Service missing from the caches, e.g. one
-	// being recreated, would otherwise split it.
+	// requesting any: a Service missing from the caches, e.g. one being recreated, would otherwise leave the batch
+	// half requested until it shows up.
 	for ordinal := lowestLeavingOrdinal; ordinal < *sts.Spec.Replicas; ordinal++ {
 		svcName := naming.MemberServiceNameForStatefulSet(sts.Name, int(ordinal))
 		if _, ok := rackServices[svcName]; !ok {
@@ -723,13 +719,12 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 		}
 	}
 
-	// Request the leaving nodes from the highest ordinal down. The target node count is the lowest leaving ordinal,
-	// so the first request fixes the batch and every further one extends it downwards. A node count reverted after
-	// a pass cut short, e.g. by a restart, thus saves the nodes that weren't requested yet: the batch stays truncated
-	// to the requested ones, which finish leaving and are pruned, and the rest of the scale-down resumes as another
-	// round. This gives up the atomicity of the batch on purpose. A decommission can't be taken back while a
-	// scale-down can be re-issued, so the order errs towards fewer nodes leaving, and a node that isn't requested yet
-	// is never lost to a change of mind in either mode.
+	// Request the leaving nodes from the highest ordinal down. Every request extends the leaving nodes downwards, so
+	// a node count raised after a pass cut short, e.g. by a restart, saves the nodes that weren't requested yet: the
+	// requested ones finish leaving and are pruned, and the raised count applies then. A decommission can't be taken
+	// back while a scale-down can be re-issued, so the order errs towards fewer nodes leaving, and a node that isn't
+	// requested yet is never lost to a change of mind in either mode. A count that stays lowered resumes the pass on
+	// the next sync.
 	for ordinal := *sts.Spec.Replicas - 1; ordinal >= lowestLeavingOrdinal; ordinal-- {
 		svc := rackServices[naming.MemberServiceNameForStatefulSet(sts.Name, int(ordinal))]
 		if len(svc.Labels[naming.DecommissionedLabel]) != 0 {

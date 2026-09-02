@@ -525,7 +525,7 @@ func newStatefulSet(name string) *appsv1.StatefulSet {
 	}
 }
 
-func Test_getRackDecommissionTargetNodeCount(t *testing.T) {
+func Test_getRackScaleDownTargetNodeCount(t *testing.T) {
 	t.Parallel()
 
 	sdc := newScyllaDBDatacenter()
@@ -554,6 +554,7 @@ func Test_getRackDecommissionTargetNodeCount(t *testing.T) {
 	tt := []struct {
 		name                 string
 		sts                  *appsv1.StatefulSet
+		specNodeCount        int32
 		decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus
 		expectedNodeCount    int32
 		expectedErr          error
@@ -561,24 +562,42 @@ func Test_getRackDecommissionTargetNodeCount(t *testing.T) {
 		{
 			name:                 "lowest leaving ordinal",
 			sts:                  newRackStatefulSet(3),
+			specNodeCount:        1,
 			decommissioningNodes: newDecommissioningNodes(stsName+"-1", stsName+"-2"),
 			expectedNodeCount:    1,
 		},
 		{
 			name:                 "capped at the StatefulSet replicas when the leaving nodes are already scaled down",
 			sts:                  newRackStatefulSet(2),
+			specNodeCount:        2,
 			decommissioningNodes: newDecommissioningNodes(stsName + "-2"),
 			expectedNodeCount:    2,
 		},
 		{
-			name:                 "no decommissioning nodes error out",
+			name:                 "a raised spec node count is not followed",
 			sts:                  newRackStatefulSet(3),
+			specNodeCount:        3,
+			decommissioningNodes: newDecommissioningNodes(stsName+"-1", stsName+"-2"),
+			expectedNodeCount:    1,
+		},
+		{
+			name:                 "a spec node count lowered below the leaving nodes is followed",
+			sts:                  newRackStatefulSet(3),
+			specNodeCount:        0,
+			decommissioningNodes: newDecommissioningNodes(stsName+"-1", stsName+"-2"),
+			expectedNodeCount:    0,
+		},
+		{
+			name:                 "no decommissioning nodes yield the spec node count",
+			sts:                  newRackStatefulSet(3),
+			specNodeCount:        1,
 			decommissioningNodes: nil,
-			expectedErr:          fmt.Errorf(`rack "a" of ScyllaDBDatacenter %q has no decommissioning nodes`, naming.ObjRef(sdc)),
+			expectedNodeCount:    1,
 		},
 		{
 			name:                 "unparsable leaving node name errors out",
 			sts:                  newRackStatefulSet(3),
+			specNodeCount:        3,
 			decommissioningNodes: newDecommissioningNodes("foo"),
 			expectedErr:          fmt.Errorf(`can't get ordinal of decommissioning node "foo" of rack "a" of ScyllaDBDatacenter %q: %w`, naming.ObjRef(sdc), fmt.Errorf(`didn't find '-' delimiter in string foo`)),
 		},
@@ -588,7 +607,7 @@ func Test_getRackDecommissionTargetNodeCount(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := getRackDecommissionTargetNodeCount(sdc, "a", tc.sts, tc.decommissioningNodes)
+			got, err := getRackScaleDownTargetNodeCount(sdc, "a", tc.sts, tc.specNodeCount, tc.decommissioningNodes)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected error %v, got %v", tc.expectedErr, err)
 			}
@@ -964,6 +983,25 @@ func Test_syncRackDecommission(t *testing.T) {
 			},
 		},
 		{
+			name:         "a multi-node scale-down with the highest node in flight is not reported as a deferred node count change with parallel node operations disabled",
+			sdc:          newSDCWithNodes(1),
+			rackName:     rackName,
+			sts:          newSts(3),
+			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, nil), newMemberService(2, new(naming.LabelValueFalse))),
+			expectedConditions: []metav1.Condition{
+				makeWaitingForDecommissionCondition(2),
+			},
+		},
+		{
+			name:               "a node count lowered further mid-decommission requests the next node once the previous one is decommissioned with parallel node operations disabled",
+			sdc:                newSDCWithNodes(0),
+			rackName:           rackName,
+			sts:                newSts(2),
+			rackServices:       newRackServices(newMemberService(0, nil), newMemberService(1, nil), newMemberService(2, new(naming.LabelValueTrue))),
+			expectedConditions: []metav1.Condition{makeStampCondition(newMemberService(1, nil))},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-1"},
+		},
+		{
 			name:               "a fresh multi-node scale-down stamps all the leaving nodes at once with parallel node operations enabled",
 			sdc:                newParallelSDCWithNodes(1),
 			rackName:           rackName,
@@ -1009,15 +1047,16 @@ func Test_syncRackDecommission(t *testing.T) {
 			},
 		},
 		{
-			name:         "a scale-down cut short after the highest node was requested resumes only once the requested node is pruned with parallel node operations enabled",
+			name:         "a scale-down cut short after the highest node was requested resumes on the next pass with parallel node operations enabled",
 			sdc:          newParallelSDCWithNodes(1),
 			rackName:     rackName,
 			sts:          newSts(3),
 			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, nil), newMemberService(2, new(naming.LabelValueFalse))),
 			expectedConditions: []metav1.Condition{
-				makeDeferringCondition(1, 2),
 				makeWaitingForDecommissionCondition(2),
+				makeStampCondition(newMemberService(1, nil)),
 			},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-1"},
 		},
 		{
 			name:         "a decommissioned highest node is scaled away while a lower leaving node is still in flight with parallel node operations enabled",
@@ -1062,22 +1101,17 @@ func Test_syncRackDecommission(t *testing.T) {
 			expectedScaledReplicas: new(int32(1)),
 		},
 		{
-			name:         "a node count lowered further mid-decommission is deferred with parallel node operations enabled",
+			name:         "a node count lowered further mid-decommission extends the batch with parallel node operations enabled",
 			sdc:          newParallelSDCWithNodes(0),
 			rackName:     rackName,
 			sts:          newSts(3),
 			rackServices: newRackServices(newMemberService(0, nil), newMemberService(1, new(naming.LabelValueFalse)), newMemberService(2, new(naming.LabelValueFalse))),
 			expectedConditions: []metav1.Condition{
-				{
-					Type:               statefulSetControllerProgressingCondition,
-					Status:             metav1.ConditionTrue,
-					Reason:             "DeferringRackNodeCountChange",
-					Message:            fmt.Sprintf(`Deferring node count change of rack %q to 0 until the Services of its decommissioning nodes ["%[2]s-1" "%[2]s-2"] are pruned.`, rackName, stsName),
-					ObservedGeneration: sdc.Generation,
-				},
 				makeWaitingForDecommissionCondition(1),
 				makeWaitingForDecommissionCondition(2),
+				makeStampCondition(newMemberService(0, nil)),
 			},
+			expectedDecommissionRequestedServiceNames: []string{stsName + "-0"},
 		},
 		{
 			name:         "a multi-node scale-down with a leaving node's Service missing waits for it before requesting any with parallel node operations enabled",
@@ -1121,7 +1155,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			rackName:            rackName,
 			sts:                 newSts(1),
 			rackServices:        newRackServices(&corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "foo", Labels: map[string]string{naming.RackNameLabel: rackName, naming.DecommissionedLabel: naming.LabelValueTrue}}}),
-			expectedErrorString: fmt.Sprintf(`can't get decommission target node count of rack %[1]q of ScyllaDBDatacenter "%[2]s/": can't get ordinal of decommissioning node "foo" of rack %[1]q of ScyllaDBDatacenter "%[2]s/": didn't find '-' delimiter in string foo`, rackName, testNamespace),
+			expectedErrorString: fmt.Sprintf(`can't get scale-down target node count of rack %[1]q of ScyllaDBDatacenter "%[2]s/": can't get ordinal of decommissioning node "foo" of rack %[1]q of ScyllaDBDatacenter "%[2]s/": didn't find '-' delimiter in string foo`, rackName, testNamespace),
 		},
 	}
 

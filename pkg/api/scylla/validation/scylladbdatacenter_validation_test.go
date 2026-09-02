@@ -1876,6 +1876,28 @@ func TestGetWarningsOnScyllaDBDatacenterUpdate(t *testing.T) {
 			},
 		},
 		{
+			name:   "rack node count lowered while the rack has nodes leaving the cluster",
+			oldSDC: newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1"),
+			newSDC: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1")
+				sdc.Spec.Racks[0].Nodes = pointer.Ptr[int32](1)
+				return sdc
+			}(),
+			expectedWarnings: nil,
+		},
+		{
+			name:   "rack node count lowered while the rack has nodes leaving the cluster but still above the lowest one",
+			oldSDC: newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-0"),
+			newSDC: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-0")
+				sdc.Spec.Racks[0].Nodes = pointer.Ptr[int32](1)
+				return sdc
+			}(),
+			expectedWarnings: []string{
+				`spec.racks[0]: rack "rack" has nodes leaving the cluster: basic-dc-rack-0. The requested number of nodes is accepted, but it won't be applied until they have finished decommissioning and been removed.`,
+			},
+		},
+		{
 			name:   "rack node count changed through the rack template while the rack has nodes leaving the cluster",
 			oldSDC: newScyllaDBDatacenterWithDecommissioningNodesForWarnings("basic-dc-rack-1"),
 			newSDC: func() *scyllav1alpha1.ScyllaDBDatacenter {

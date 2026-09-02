@@ -45,10 +45,13 @@
   A node whose decommission has started must now finish leaving, together with its Service and PVC, before the rack
   applies a raised node count, while a lowered one extends the scale-down right away. The deferred change is reported with the `DeferringRackNodeCountChange`
   reason in the `Progressing` condition. Capacity that comes back is bootstrapped as new, empty nodes.
-  **Warning: after the upgrade, the operator removes any node whose member Service carries a leftover
-  `scylla/decommissioned=true` label, together with its PVC. If such a node is healthy, its data is lost. Before
-  upgrading, check for these labels with `kubectl get svc -A -l scylla/decommissioned=true` and remove the label from
-  the Services of healthy nodes.**
+  **Warning: after the upgrade, the operator treats any node whose member Service carries a leftover
+  `scylla/decommissioned=true` label as leaving. Every node above it in its rack is decommissioned first, one at a time,
+  or all at once with `enableParallelNodeOperations` enabled. The labelled node is then removed together with its PVC
+  without being decommissioned, so it has to be removed from the ScyllaDB cluster by hand with `nodetool removenode`,
+  and the rack grows back with new, empty nodes. If the labelled node is healthy, its data is lost. Before upgrading,
+  check for these labels with `kubectl get svc -A -l scylla/decommissioned=true` and remove the label from the
+  Services of healthy nodes.**
   [#3629](https://github.com/scylladb/scylla-operator/pull/3629)
 
 ### Features & Enhancements

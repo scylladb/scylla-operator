@@ -908,6 +908,11 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, nil
 	}
 
+	parallelNodeOperationsEnabled, err := effectiveParallelNodeOperationsEnabled(sdc)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't determine effective parallel node operations enablement: %w", err)
+	}
+
 	// Scale before the update.
 	for _, req := range requiredStatefulSets {
 		sts := statefulSets[req.Name]
@@ -933,8 +938,13 @@ func (sdcc *Controller) syncStatefulSets(
 			return progressingConditions, fmt.Errorf("can't sync decommission of rack %q of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
 		}
 		if len(decommissionProgressingConditions) != 0 {
-			// The rack is held; only one node operation may be in flight in the datacenter.
-			return progressingConditions, nil
+			if !parallelNodeOperationsEnabled {
+				// The rack is held, and only one node operation may be in flight in the datacenter.
+				return progressingConditions, nil
+			}
+
+			// The rack is held, but the other racks keep scaling.
+			continue
 		}
 
 		if *req.Spec.Replicas <= *sts.Spec.Replicas {
@@ -959,6 +969,15 @@ func (sdcc *Controller) syncStatefulSets(
 			return progressingConditions, fmt.Errorf("can't update scale: %w", err)
 		}
 		return progressingConditions, err
+	}
+
+	// The racks that aren't held have been scaled above. While any rack is held, though, don't proceed to the update
+	// below: the required StatefulSets carry the spec node count, so applying one would scale a rack with leaving
+	// nodes without decommissioning them, and only the scaling above may change the replicas of a StatefulSet. A pod
+	// template update or an upgrade rolling out while nodes are leaving would also mix a topology change with a
+	// rolling restart, so the update waits for the whole datacenter either way.
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
 	}
 
 	// TODO: This blocks unstucking by an update.

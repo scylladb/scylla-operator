@@ -31,7 +31,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 	})
 
 	type scalingStep struct {
-		members int32
+		rackLayout
 		// beforeFunc, when set, runs against the cluster in the state preceding the scaling operation.
 		beforeFunc func(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster)
 		// verifyFunc asserts how the cluster's members changed over the scaling operation.
@@ -40,18 +40,18 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 	}
 
 	type horizontalScalingEntry struct {
-		initialMembers int32
-		steps          []scalingStep
+		initialRackLayout rackLayout
+		steps             []scalingStep
 	}
 
 	g.DescribeTable("should support horizontal scaling", func(ctx g.SpecContext, e *horizontalScalingEntry) {
-		sc := createClusterAndWaitForRollout(ctx, f, e.initialMembers)
+		sc := createClusterAndWaitForRollout(ctx, f, e.initialRackLayout)
 		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(int(e.initialMembers)))
-		o.Expect(hostIDs).To(o.HaveLen(int(e.initialMembers)))
+		o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
+		o.Expect(hostIDs).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 
 		di := verification.InsertAndVerifyCQLData(ctx, hosts)
 		defer di.Close()
@@ -67,13 +67,13 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 
 			previousHostIDs := hostIDs
 
-			sc = scaleClusterAndWaitForRollout(ctx, f, sc, step.members)
+			sc = scaleClusterAndWaitForRollout(ctx, f, sc, step.rackLayout)
 			scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 			hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(hosts).To(o.HaveLen(int(step.members)))
-			o.Expect(hostIDs).To(o.HaveLen(int(step.members)))
+			o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
+			o.Expect(hostIDs).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 
 			for _, previousHostID := range previousHostIDs {
 				if !slices.Contains(hostIDs, previousHostID) {
@@ -86,16 +86,36 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 			verification.VerifyCQLData(ctx, di)
 		}
 	},
+		// Scaling by more than a single node at a time is what distinguishes parallel node operations from sequential
+		// ones - a step moving a single node is indistinguishable between the two.
 		g.Entry("out", &horizontalScalingEntry{
-			initialMembers: 2,
+			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 1},
 			steps: []scalingStep{
-				{members: 3, verifyFunc: verifyScaledOut},
+				{rackCount: 1, membersPerRack: 3, verifyFunc: verifyScaledOut},
+			},
+		}),
+		g.Entry("out, into new racks", &horizontalScalingEntry{
+			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 1},
+			steps: []scalingStep{
+				{rackCount: 3, membersPerRack: 1, verifyFunc: verifyScaledOut},
+			},
+		}),
+		g.Entry("out, across multiple racks", &horizontalScalingEntry{
+			initialRackLayout: rackLayout{rackCount: 3, membersPerRack: 1},
+			steps: []scalingStep{
+				{rackCount: 3, membersPerRack: 2, verifyFunc: verifyScaledOut},
 			},
 		}),
 		g.Entry("in", &horizontalScalingEntry{
-			initialMembers: 3,
+			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
 			steps: []scalingStep{
-				{members: 2, verifyFunc: verifyScaledIn},
+				{rackCount: 1, membersPerRack: 1, verifyFunc: verifyScaledIn},
+			},
+		}),
+		g.Entry("in, across multiple racks", &horizontalScalingEntry{
+			initialRackLayout: rackLayout{rackCount: 3, membersPerRack: 2},
+			steps: []scalingStep{
+				{rackCount: 3, membersPerRack: 1, verifyFunc: verifyScaledIn},
 			},
 		}),
 		// Draining a node leaves it in ScyllaDB's DRAINED operational mode, which no longer accepts writes and cannot be
@@ -103,23 +123,20 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		// how that state is reachable in practice: it makes the readiness probe report the node as not ready, so the
 		// operator does not restart it while nodetool is driven against it by hand.
 		//
-		// Scaling in from here therefore exercises a different code path than an ordinary decommission.
+		// Scaling in from here therefore exercises a different code path than an ordinary decommission. The drain targets
+		// the highest ordinal node, so this entry deliberately scales in by a single node.
 		g.Entry("in, when the node has been drained in maintenance mode", &horizontalScalingEntry{
-			initialMembers: 3,
+			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
 			steps: []scalingStep{
-				{
-					members:    2,
-					beforeFunc: markHighestOrdinalForMaintenanceAndDrain,
-					verifyFunc: verifyScaledIn,
-				},
+				{rackCount: 1, membersPerRack: 2, beforeFunc: markHighestOrdinalForMaintenanceAndDrain, verifyFunc: verifyScaledIn},
 			},
 		}),
 		// Scaling back out verifies that a decommissioned node's storage isn't left in place and reused.
 		g.Entry("out, with new storage after decommissioning", &horizontalScalingEntry{
-			initialMembers: 3,
+			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
 			steps: []scalingStep{
-				{members: 2, verifyFunc: verifyScaledIn},
-				{members: 3, verifyFunc: verifyScaledOutWithNewNodes},
+				{rackCount: 1, membersPerRack: 1, verifyFunc: verifyScaledIn},
+				{rackCount: 1, membersPerRack: 3, verifyFunc: verifyScaledOutWithNewNodes},
 			},
 		}),
 	)

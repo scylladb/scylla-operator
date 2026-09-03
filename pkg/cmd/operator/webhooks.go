@@ -282,6 +282,10 @@ func (o *WebhookOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Com
 	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
+	// The mutating webhook is served by controller-runtime's admission webhook, which logs through
+	// controller-runtime's logger. Route it to klog, or it complains about never having been set up.
+	ctrllog.SetLogger(klog.Background())
+
 	stopCh := signals.StopChannel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -299,10 +303,6 @@ func (o *WebhookOptions) run(ctx context.Context, streams genericclioptions.IOSt
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	// The mutating webhook is served by controller-runtime's admission webhook, which logs through
-	// controller-runtime's logger. Route it to klog, or it complains about never having been set up.
-	ctrllog.SetLogger(klog.Background())
 
 	handler := http.NewServeMux()
 	handler.HandleFunc("/readyz", func(w http.ResponseWriter, req *http.Request) {

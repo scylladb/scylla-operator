@@ -35,6 +35,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/server/dynamiccertificates"
+	"k8s.io/klog/v2"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -44,6 +46,8 @@ const (
 
 func TestMain(m *testing.M) {
 	dynamiccertificates.FileRefreshDuration = 1 * time.Second
+	// SetLogger isn't safe for concurrent calls, so route controller-runtime's logger to klog once here.
+	ctrllog.SetLogger(klog.Background())
 	os.Exit(m.Run())
 }
 

@@ -20,7 +20,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/go-openapi/runtime v0.33.1
 	github.com/go-openapi/strfmt v0.27.0
-	github.com/gobwas/glob v0.2.3
+	github.com/gobwas/glob v1.0.0
 	github.com/gocql/gocql v1.7.0
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/google/go-cmp v0.7.0
@@ -47,9 +47,9 @@ require (
 	go.uber.org/config v1.4.1
 	golang.org/x/sys v0.47.0
 	golang.org/x/time v0.15.0
-	gomodules.xyz/jsonpatch/v2 v2.5.0
+	gomodules.xyz/jsonpatch/v3 v3.0.1
 	google.golang.org/grpc v1.83.1
-	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.36.4
 	k8s.io/apiextensions-apiserver v0.36.4

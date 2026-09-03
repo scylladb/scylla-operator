@@ -46,3 +46,4 @@ spec:
                   app.kubernetes.io/name: scylla-operator
               topologyKey: kubernetes.io/hostname
             weight: 1
+

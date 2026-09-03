@@ -2,7 +2,7 @@
     "apiVersion": "dashboard.grafana.app/v2",
     "kind": "Dashboard",
     "metadata": {
-        "name": "detailed-2026-1"
+        "name": "detailed-2026-3"
     },
     "spec": {
         "annotations": [
@@ -7123,32 +7123,214 @@
                     "data": {
                         "kind": "QueryGroup",
                         "spec": {
-                            "queries": [],
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "$topbottom([[filter_limit]], scylla_transport_cql_request_latency_summary{quantile=~\"0.9.*\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", scheduling_group_name=\"$sg\", by=\"[[by]]\"})",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "P{{quantile}} - {{scheduling_group_name}} {{dc}} {{instance}}",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
                             "queryOptions": {},
                             "transformations": []
                         }
                     },
-                    "description": "",
-                    "id": 164,
+                    "description": "CQL request latencies, measuring from the start of the request processing until the response is written to the socket.",
+                    "id": 162,
                     "links": [],
-                    "title": "",
-                    "transparent": true,
+                    "title": "CQL request latency by [[by]]",
                     "vizConfig": {
-                        "group": "text",
+                        "group": "timeseries",
                         "kind": "VizConfig",
                         "spec": {
                             "fieldConfig": {
-                                "defaults": {},
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "\u00b5s"
+                                },
                                 "overrides": []
                             },
                             "options": {
-                                "code": {
-                                    "language": "plaintext",
-                                    "showLineNumbers": false,
-                                    "showMiniMap": false
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
                                 },
-                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
-                                "mode": "html"
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-159": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "$topbottom([[filter_limit]], scylla_transport_cql_client_timestamp_drift_summary{quantile=~\"0.9.*\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", scheduling_group_name=\"$sg\", by=\"[[by]]\"})",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "P{{quantile}} - {{scheduling_group_name}} {{dc}} {{instance}}",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "CQL client timestamp drifts, the drift time between the client-provided CQL timestamp and the server time at request arrival. Useful for detecting transport delays before requests reach the CQL server.",
+                    "id": 163,
+                    "links": [],
+                    "title": "CQL client timestamp drift by [[by]]",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "\u00b5s"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
                             }
                         },
                         "version": "13.0.1"
@@ -7259,6 +7441,44 @@
                                     "mode": "multi",
                                     "sort": "desc"
                                 }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-160": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "",
+                    "id": 164,
+                    "links": [],
+                    "title": "",
+                    "transparent": true,
+                    "vizConfig": {
+                        "group": "text",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {},
+                                "overrides": []
+                            },
+                            "options": {
+                                "code": {
+                                    "language": "plaintext",
+                                    "showLineNumbers": false,
+                                    "showMiniMap": false
+                                },
+                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                                "mode": "html"
                             }
                         },
                         "version": "13.0.1"
@@ -19710,6 +19930,32 @@
                                                                     "x": 18,
                                                                     "y": 18
                                                                 }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-158"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 0,
+                                                                    "y": 24
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-159"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 6,
+                                                                    "y": 24
+                                                                }
                                                             }
                                                         ]
                                                     }
@@ -19741,7 +19987,7 @@
                                             "spec": {
                                                 "element": {
                                                     "kind": "ElementReference",
-                                                    "name": "panel-158"
+                                                    "name": "panel-160"
                                                 },
                                                 "height": 2,
                                                 "width": 24,
@@ -19776,7 +20022,7 @@
         "liveNow": false,
         "preload": false,
         "tags": [
-            "2026.1"
+            "2026.3"
         ],
         "timeSettings": {
             "autoRefresh": "5m",
@@ -20090,8 +20336,8 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "2026.1",
-                        "value": "2026.1"
+                        "text": "2026.3",
+                        "value": "2026.3"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
@@ -20100,11 +20346,11 @@
                     "options": [
                         {
                             "selected": true,
-                            "text": "2026.1",
-                            "value": "2026.1"
+                            "text": "2026.3",
+                            "value": "2026.3"
                         }
                     ],
-                    "query": "2026.1",
+                    "query": "2026.3",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

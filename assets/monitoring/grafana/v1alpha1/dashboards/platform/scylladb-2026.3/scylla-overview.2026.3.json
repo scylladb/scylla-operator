@@ -2,7 +2,7 @@
     "apiVersion": "dashboard.grafana.app/v2",
     "kind": "Dashboard",
     "metadata": {
-        "name": "overview-2026-1"
+        "name": "overview-2026-3"
     },
     "spec": {
         "annotations": [
@@ -5619,7 +5619,7 @@
         "liveNow": false,
         "preload": false,
         "tags": [
-            "2026.1"
+            "2026.3"
         ],
         "timeSettings": {
             "autoRefresh": "5m",
@@ -5891,8 +5891,8 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "2026-1",
-                        "value": "2026-1"
+                        "text": "2026-3",
+                        "value": "2026-3"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
@@ -5901,11 +5901,11 @@
                     "options": [
                         {
                             "selected": true,
-                            "text": "2026-1",
-                            "value": "2026-1"
+                            "text": "2026-3",
+                            "value": "2026-3"
                         }
                     ],
-                    "query": "2026-1",
+                    "query": "2026-3",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }
@@ -5987,8 +5987,8 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "2026.1",
-                        "value": "2026.1"
+                        "text": "2026.3",
+                        "value": "2026.3"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
@@ -5997,11 +5997,11 @@
                     "options": [
                         {
                             "selected": true,
-                            "text": "2026.1",
-                            "value": "2026.1"
+                            "text": "2026.3",
+                            "value": "2026.3"
                         }
                     ],
-                    "query": "2026.1",
+                    "query": "2026.3",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

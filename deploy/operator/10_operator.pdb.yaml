@@ -9,3 +9,4 @@ spec:
     matchLabels:
       app.kubernetes.io/name: scylla-operator
       app.kubernetes.io/instance: scylla-operator
+

@@ -77,3 +77,4 @@ spec:
                   app.kubernetes.io/name: webhook-server
               topologyKey: kubernetes.io/hostname
             weight: 1
+

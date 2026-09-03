@@ -13,6 +13,7 @@ aggregationRule:
     - matchLabels:
         rbac.operator.scylladb.com/aggregate-to-scylla-operator: "true"
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -335,6 +336,7 @@ rules:
   - update
   - watch
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -352,6 +354,7 @@ rules:
   verbs:
   - use
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -361,6 +364,7 @@ aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
         rbac.operator.scylladb.com/aggregate-to-scylla-operator-remote: "true"
+
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -442,6 +446,7 @@ rules:
   - get
   - list
   - watch
+
 
 ---
 ---
@@ -49023,6 +49028,7 @@ rules:
   - delete
   - deletecollection
 
+
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -49048,6 +49054,7 @@ rules:
   - list
   - watch
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -49057,6 +49064,7 @@ aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
         rbac.operator.scylladb.com/aggregate-to-scylla-member: "true"
+
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -49127,6 +49135,7 @@ rules:
   - list
   - watch
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -49144,6 +49153,7 @@ rules:
   verbs:
   - use
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -49153,6 +49163,7 @@ aggregationRule:
   clusterRoleSelectors:
   - matchLabels:
       rbac.operator.scylladb.com/aggregate-to-scylladb-monitoring-grafana: "true"
+
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -49171,6 +49182,7 @@ rules:
   verbs:
   - use
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -49180,6 +49192,7 @@ aggregationRule:
   clusterRoleSelectors:
   - matchLabels:
       rbac.operator.scylladb.com/aggregate-to-scylladb-monitoring-prometheus: "true"
+
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -49206,6 +49219,7 @@ rules:
   verbs:
   - get
 
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -49223,6 +49237,7 @@ rules:
   verbs:
   - use
 
+
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -49237,6 +49252,7 @@ spec:
     name: scylla-operator-selfsigned-issuer
   secretName: scylla-operator-serving-cert
 
+
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -49245,6 +49261,7 @@ metadata:
   namespace: scylla-operator
 spec:
   selfSigned: {}
+
 
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -49282,6 +49299,7 @@ webhooks:
     resources:
     - scylladbdatacenters
 
+
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -49295,6 +49313,7 @@ spec:
       app.kubernetes.io/name: scylla-operator
       app.kubernetes.io/instance: scylla-operator
 
+
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -49304,6 +49323,7 @@ metadata:
   labels:
     app.kubernetes.io/name: scylla-operator
     app.kubernetes.io/instance: scylla-operator
+
 
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -49349,6 +49369,7 @@ webhooks:
     - scylladbmanagertasks
     - scylladbmonitorings
 
+
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -49361,6 +49382,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: webhook-server
       app.kubernetes.io/instance: webhook-server
+
 
 ---
 apiVersion: v1
@@ -49380,6 +49402,7 @@ spec:
     app.kubernetes.io/name: webhook-server
     app.kubernetes.io/instance: webhook-server
 
+
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -49389,6 +49412,7 @@ metadata:
   labels:
     app.kubernetes.io/name: webhook-server
     app.kubernetes.io/instance: webhook-server
+
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -49403,6 +49427,7 @@ subjects:
 - kind: ServiceAccount
   name: scylla-operator
   namespace: scylla-operator
+
 
 ---
 apiVersion: apps/v1
@@ -49453,6 +49478,7 @@ spec:
                   app.kubernetes.io/name: scylla-operator
               topologyKey: kubernetes.io/hostname
             weight: 1
+
 
 ---
 apiVersion: apps/v1
@@ -49534,5 +49560,6 @@ spec:
                   app.kubernetes.io/name: webhook-server
               topologyKey: kubernetes.io/hostname
             weight: 1
+
 
 ---

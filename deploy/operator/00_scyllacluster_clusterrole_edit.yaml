@@ -21,3 +21,4 @@ rules:
   - update
   - delete
   - deletecollection
+

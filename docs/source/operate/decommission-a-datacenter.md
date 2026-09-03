@@ -4,11 +4,7 @@ Remove an entire datacenter from a multi-datacenter ScyllaDB cluster without los
 
 ## When to use this procedure
 
-Common reasons to decommission a datacenter:
-
-- Consolidating a multi-region deployment back to fewer regions.
-- Retiring a Kubernetes cluster or cloud region.
-- Rolling back a datacenter expansion that is no longer needed.
+This document will guide you through the process of removing the datacenter of your choice from your multi-datacenter ScyllaDB cluster.
 
 This procedure applies to multi-datacenter ScyllaDB clusters deployed as one `ScyllaCluster` per datacenter, joined with `externalSeeds`, as described in [Deploy a multi-datacenter ScyllaDB cluster](../deploy-scylladb/deploy-multi-datacenter-cluster.md).
 
@@ -18,10 +14,7 @@ Once the datacenter's replicas are dropped from keyspace replication and its nod
 :::
 
 :::{caution}
-Follow the steps in order.
-In particular, do not delete the `ScyllaCluster` of the datacenter while it still has members.
-Deleting it only kills the pods — the nodes never leave the token ring, and the remaining datacenters are left with unreachable (`DN`) ghost nodes that you have to remove manually with [`nodetool removenode`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html).
-Scaling the racks down to zero first (Step 4) lets the Operator decommission each node cleanly.
+To prevent data loss and preserve cluster integrity, first read the entire procedure cover to cover, then follow the steps precisely in order.
 :::
 
 ## How it works
@@ -37,7 +30,6 @@ when you scale a rack down, the Operator decommissions the highest-ordinal node,
 - The remaining datacenters have enough capacity and a high enough replication factor to serve your workload on their own.
 - No ScyllaDB Manager tasks depend on the datacenter being removed.
   If ScyllaDB Manager is deployed in the Kubernetes cluster hosting the datacenter you are removing, migrate it to one of the remaining datacenters first.
-  The same applies to any [ScyllaDBMonitoring](../deploy-scylladb/set-up-monitoring/setup.md) you still need.
 - `kubectl` access to all Kubernetes clusters involved.
 
 Throughout this guide, the datacenter being decommissioned is `us-east-2`, deployed as a `ScyllaCluster` named `scylla-cluster` in namespace `scylla` of the Kubernetes cluster reachable via context `${CONTEXT_DC2}`.
@@ -165,11 +157,6 @@ UN  10.0.59.24   764 KB     256          ?       a3a98e08-0dfd-4a25-a96a-c5ab2f4
 UN  10.0.19.237  634 KB     256          ?       64b6292a-327f-4128-852a-6004039f402e  a
 ```
 
-:::{note}
-If any node of the decommissioned datacenter shows up as `DN`, the node was removed without a clean decommission (for example, the pods were deleted while the nodes were still members).
-Remove such nodes manually with [`nodetool removenode`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html), passing the Host ID reported by `nodetool status`.
-:::
-
 #### Alternative: decommission one rack at a time under maintenance mode
 
 If your clients reach ScyllaDB through Kubernetes Services (rather than connecting to Pod IPs directly), you can combine a rack-by-rack scale-down with [maintenance mode](use-maintenance-mode.md) to drop each rack's nodes from Service endpoints just before they are decommissioned.
@@ -256,8 +243,6 @@ kubectl --context="${CONTEXT_DC1}" -n=scylla exec -it pod/scylla-cluster-us-east
   - Repair and replication changes must happen while the datacenter's nodes are still up; scaling to zero must happen before deleting the `ScyllaCluster`.
 * - Irreversible
   - After the replication change and decommission, re-adding the datacenter means bootstrapping it from scratch.
-* - One node at a time
-  - The Operator decommissions nodes sequentially, so the scale-down duration grows with the node count and data size of the datacenter.
 * - Tablets vs vnodes
   - Tablets keyspaces need staged `ALTER KEYSPACE` statements (RF changes of one at a time, explicit `0` at the end) and are repaired with a single `nodetool cluster repair`; vnode keyspaces are dropped in one `ALTER` and repaired with `nodetool repair -pr` on every node of the datacenter.
 * - Consistency levels
@@ -271,4 +256,4 @@ kubectl --context="${CONTEXT_DC1}" -n=scylla exec -it pod/scylla-cluster-us-east
 - [Deploy a multi-datacenter ScyllaDB cluster](../deploy-scylladb/deploy-multi-datacenter-cluster.md) — the deployment this procedure reverses
 - [Scale, add, remove racks](scale-add-remove-racks.md) — scale-down mechanics and rack removal within a datacenter
 - [Decommissioning a Data Center](https://docs.scylladb.com/manual/stable/operating-scylla/procedures/cluster-management/decommissioning-data-center.html) — the upstream ScyllaDB procedure
-- [nodetool removenode](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html) — removing dead nodes left behind by an unclean teardown
+- [nodetool alternatives](../reference/nodetool-alternatives.md) — a cheat-sheet of `nodetool` commands that are usable with Operator-managed ScyllaDB clusters

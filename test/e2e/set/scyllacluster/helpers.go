@@ -16,18 +16,29 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// createClusterAndWaitForRollout creates a ScyllaCluster with the specified number of members and waits for rollout.
+// rackLayout is the number of racks of a ScyllaCluster and the number of members in each of them.
+type rackLayout struct {
+	rackCount      int32
+	membersPerRack int32
+}
+
+func (rl rackLayout) String() string {
+	return fmt.Sprintf("%d rack(s) of %d member(s)", rl.rackCount, rl.membersPerRack)
+}
+
+// createClusterAndWaitForRollout creates a ScyllaCluster with the given rack layout and waits for rollout.
 func createClusterAndWaitForRollout(
 	ctx context.Context,
 	f *framework.Framework,
-	members int32,
+	rl rackLayout,
 ) *scyllav1.ScyllaCluster {
 	sc := f.GetDefaultScyllaCluster()
-	sc.Spec.Datacenter.Racks[0].Members = members
+	sc.Spec.Datacenter.Racks = replicateRackSpecs(sc, rl)
 
-	framework.By("Creating a %d node ScyllaCluster", members)
+	framework.By("Creating a ScyllaCluster with %s", rl)
 	sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
+	expectRackLayout(sc, rl)
 
 	framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 	waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
@@ -40,26 +51,24 @@ func createClusterAndWaitForRollout(
 	return sc
 }
 
-// scaleClusterAndWaitForRollout scales the cluster to the given number of members and waits for rollout.
+// scaleClusterAndWaitForRollout scales the cluster to the given rack layout and waits for rollout. The entire rack
+// array is replaced, so a single scaling operation can both add racks and change the member count of every rack at
+// once.
 func scaleClusterAndWaitForRollout(
 	ctx context.Context,
 	f *framework.Framework,
 	sc *scyllav1.ScyllaCluster,
-	members int32,
+	rl rackLayout,
 ) *scyllav1.ScyllaCluster {
-	patchData := []byte(fmt.Sprintf(`[{"op": "replace", "path": "/spec/datacenter/racks/0/members", "value": %d}]`, members))
-
-	framework.By("Scaling the ScyllaCluster to %d members", members)
-	sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(
-		ctx,
-		sc.Name,
-		types.JSONPatchType,
-		patchData,
-		metav1.PatchOptions{},
-	)
+	scCopy := sc.DeepCopy()
+	scCopy.Spec.Datacenter.Racks = replicateRackSpecs(sc, rl)
+	patch, err := controllerhelpers.GenerateMergePatch(sc, scCopy)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
-	o.Expect(sc.Spec.Datacenter.Racks[0].Members).To(o.BeEquivalentTo(members))
+
+	framework.By("Scaling the ScyllaCluster to %s", rl)
+	sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Patch(ctx, sc.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	expectRackLayout(sc, rl)
 
 	framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
 	waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
@@ -70,4 +79,28 @@ func scaleClusterAndWaitForRollout(
 	scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
 
 	return sc
+}
+
+// replicateRackSpecs fans the ScyllaCluster's first rack out into the given rack layout.
+func replicateRackSpecs(sc *scyllav1.ScyllaCluster, rl rackLayout) []scyllav1.RackSpec {
+	o.Expect(sc.Spec.Datacenter.Racks).NotTo(o.BeEmpty())
+	o.Expect(rl.rackCount).NotTo(o.BeZero())
+
+	rackSpecs := make([]scyllav1.RackSpec, 0, rl.rackCount)
+	for i := range rl.rackCount {
+		rackSpec := sc.Spec.Datacenter.Racks[0].DeepCopy()
+		rackSpec.Name = fmt.Sprintf("rack-%d", i)
+		rackSpec.Members = rl.membersPerRack
+		rackSpecs = append(rackSpecs, *rackSpec)
+	}
+
+	return rackSpecs
+}
+
+// expectRackLayout asserts that the ScyllaCluster has the given rack layout.
+func expectRackLayout(sc *scyllav1.ScyllaCluster, rl rackLayout) {
+	o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(int(rl.rackCount)))
+	for _, rackSpec := range sc.Spec.Datacenter.Racks {
+		o.Expect(rackSpec.Members).To(o.BeEquivalentTo(rl.membersPerRack))
+	}
 }

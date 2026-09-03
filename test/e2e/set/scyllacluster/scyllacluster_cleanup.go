@@ -28,8 +28,8 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 	})
 
 	type horizontalScalingEntry struct {
-		initialMembers int32
-		targetMembers  int32
+		initialRackLayout rackLayout
+		targetRackLayout  rackLayout
 	}
 	g.DescribeTable("nodes are cleaned up", framework.SuiteKindClusterTopology, func(ctx g.SpecContext, e *horizontalScalingEntry) {
 		jobListWatcher := createJobListWatcher(ctx, f)
@@ -37,7 +37,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		err := jobObserver.Start(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc := createClusterAndWaitForRollout(ctx, f, e.initialMembers)
+		sc := createClusterAndWaitForRollout(ctx, f, e.initialRackLayout)
 
 		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver)
 
@@ -48,7 +48,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		err = jobObserver.Start(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc = scaleClusterAndWaitForRollout(ctx, f, sc, e.targetMembers)
+		sc = scaleClusterAndWaitForRollout(ctx, f, sc, e.targetRackLayout)
 
 		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver)
 
@@ -56,12 +56,12 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(err).NotTo(o.HaveOccurred())
 	},
 		g.Entry("after scaling the cluster out", &horizontalScalingEntry{
-			initialMembers: 1,
-			targetMembers:  3,
+			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 1},
+			targetRackLayout:  rackLayout{rackCount: 1, membersPerRack: 3},
 		}),
 		g.Entry("after scaling the cluster in", &horizontalScalingEntry{
-			initialMembers: 3,
-			targetMembers:  1,
+			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
+			targetRackLayout:  rackLayout{rackCount: 1, membersPerRack: 1},
 		}),
 	)
 
@@ -71,7 +71,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		err := jobObserver.Start(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc := createClusterAndWaitForRollout(ctx, f, 3)
+		sc := createClusterAndWaitForRollout(ctx, f, rackLayout{rackCount: 1, membersPerRack: 3})
 
 		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver)
 

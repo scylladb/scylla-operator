@@ -77,10 +77,14 @@ if [ "$(podman inspect -f='{{json .NetworkSettings.Networks.kind}}' "${KIND_REGI
   podman network connect "kind" "${KIND_REGISTRY_NAME}"
 fi
 
+# Set up KUBECONFIG for kubectl commands during deployment.
+KUBECONFIG="$(mktemp --suffix ".kubeconfig")"
+kind get kubeconfig --name="${CLUSTER_NAME}" > "${KUBECONFIG}"
+export KUBECONFIG
+trap 'rm -f "${KUBECONFIG}"' EXIT
+
 # Inform KinD cluster about the local registry.
-temp_kubeconfig="$(mktemp)"
-kind get kubeconfig --name="${CLUSTER_NAME}" > "${temp_kubeconfig}"
-KUBECONFIG="${temp_kubeconfig}" cat <<EOF | kubectl apply -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -91,16 +95,9 @@ data:
     host: "${KIND_REGISTRY_HOST}:${KIND_REGISTRY_PORT}"
     help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
 EOF
-rm "${temp_kubeconfig}"
 
 REENTRANT="${REENTRANT:-true}"
 export REENTRANT
-
-# Set up KUBECONFIG for kubectl commands during deployment.
-KUBECONFIG="$(mktemp --suffix ".kubeconfig")"
-kind get kubeconfig --name="${CLUSTER_NAME}" > "${KUBECONFIG}"
-export KUBECONFIG
-trap 'rm -f "${KUBECONFIG}"' EXIT
 
 # Use 'standard' storage class that comes with KinD by default.
 # This must be set before sourcing run-e2e-shared.env.sh, which would otherwise default to 'scylladb-local-xfs'.

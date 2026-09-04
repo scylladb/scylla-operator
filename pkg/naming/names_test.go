@@ -69,6 +69,41 @@ func Test_ImageToVersion(t *testing.T) {
 	}
 }
 
+func Test_MemberServiceNameForStatefulSet(t *testing.T) {
+	t.Parallel()
+
+	tcs := []struct {
+		name         string
+		stsName      string
+		ordinal      int
+		expectedName string
+	}{
+		{
+			name:         "first node",
+			stsName:      "basic-dc-a",
+			ordinal:      0,
+			expectedName: "basic-dc-a-0",
+		},
+		{
+			name:         "ordinal with several digits",
+			stsName:      "basic-dc-a",
+			ordinal:      12,
+			expectedName: "basic-dc-a-12",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := MemberServiceNameForStatefulSet(tc.stsName, tc.ordinal)
+			if got != tc.expectedName {
+				t.Errorf("expected name %q, got %q", tc.expectedName, got)
+			}
+		})
+	}
+}
+
 func Test_ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(t *testing.T) {
 	t.Parallel()
 

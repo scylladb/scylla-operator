@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -203,7 +205,7 @@ func (sdcc *Controller) beforeNodeUpgrade(ctx context.Context, sdc *scyllav1alph
 	defer klog.V(2).InfoS("Finished running node pre-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 
 	// Make sure node is marked as under maintenance so liveness checks won't fail during drain.
-	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
+	svcName := naming.MemberServiceNameForStatefulSet(sts.Name, int(ordinal))
 	svc, ok := services[svcName]
 	if !ok {
 		return true, fmt.Errorf("missing service %s/%s", sdc.Namespace, svcName)
@@ -307,7 +309,7 @@ func (sdcc *Controller) beforeNodeUpgrade(ctx context.Context, sdc *scyllav1alph
 }
 
 func (sdcc *Controller) afterNodeUpgrade(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet, ordinal int32, services map[string]*corev1.Service, upgradeContext *internalapi.DatacenterUpgradeContext) error {
-	svcName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
+	svcName := naming.MemberServiceNameForStatefulSet(sts.Name, int(ordinal))
 	svc, ok := services[svcName]
 	if !ok {
 		return fmt.Errorf("missing service %q", naming.ManualRef(sdc.Namespace, svcName))
@@ -394,11 +396,14 @@ func (sdcc *Controller) pruneStatefulSets(
 }
 
 // checkExistingStatefulSetsRolloutStatus returns progressing conditions for existing StatefulSets that haven't rolled out yet.
+// StatefulSets with a pending scale and those of racks with leaving nodes are skipped, as the scaling loop that runs
+// after this check owns them.
 func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 	ctx context.Context,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
+	services map[string]*corev1.Service,
 ) ([]metav1.Condition, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
@@ -409,9 +414,22 @@ func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 			continue
 		}
 
-		// When we decommission a member there is a pod left that's not ready until we scale.
+		// A StatefulSet whose replicas differ from the required ones has a scale pending, which the scaling loop
+		// applies, so its rollout is only waited for once the replicas match. A scale has to reach the loop even when
+		// the rack isn't rolled out: a scale-down starts by stamping the highest node, which may well be the one that
+		// isn't ready, e.g. a node drained under maintenance.
 		if req.Spec.Replicas != nil && sts.Spec.Replicas != nil &&
 			*req.Spec.Replicas != *sts.Spec.Replicas {
+			continue
+		}
+
+		// A rack with leaving nodes is held by syncRackDecommission, which is the only thing to touch its StatefulSet
+		// until the nodes are pruned, so no rollout can start in the meantime and there is nothing to wait for here.
+		// The leaving Pods aren't ready until the StatefulSet is scaled below them, so waiting for the rollout would
+		// never end when the spec node count is raised back to the StatefulSet replicas, which is why the pending
+		// scale check above isn't enough to cover them.
+		if len(calculateDecommissioningNodes(sts.Labels[naming.RackNameLabel], services)) != 0 {
+			klog.V(4).InfoS("Skipping the rollout wait for a StatefulSet with leaving nodes", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
 			continue
 		}
 
@@ -518,15 +536,13 @@ func ensureRackNamesInRackStatuses(
 	return apimachineryutilerrors.NewAggregate(errs)
 }
 
-// getRackDecommissionTargetNodeCount returns the node count the rack reconciles to while nodes are leaving:
-// the leaving nodes are at the top of the StatefulSet, which can only remove its highest ordinals, so the count is the
-// lowest leaving ordinal, capped at the StatefulSet replicas.
-func getRackDecommissionTargetNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus) (int32, error) {
-	if len(decommissioningNodes) == 0 {
-		return 0, fmt.Errorf("rack %q of ScyllaDBDatacenter %q has no decommissioning nodes", rackName, naming.ObjRef(sdc))
-	}
-
-	nodeCount := *sts.Spec.Replicas
+// getRackScaleDownTargetNodeCount returns the node count a rack's scale-down reconciles to: the spec node count,
+// lowered to the lowest leaving ordinal while nodes are leaving. The leaving nodes are at the top of the StatefulSet,
+// which can only remove its highest ordinals, so a spec node count above them is deferred until they are gone, while
+// one below them applies right away, as the nodes it uncovers join the leaving ones and keep them a suffix of the
+// rack. The count is capped at the StatefulSet replicas, as the leaving nodes may already be scaled away.
+func getRackScaleDownTargetNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, specNodeCount int32, decommissioningNodes []scyllav1alpha1.DecommissioningNodeStatus) (int32, error) {
+	nodeCount := min(*sts.Spec.Replicas, specNodeCount)
 	for _, node := range decommissioningNodes {
 		ordinal, err := naming.IndexFromName(node.Name)
 		if err != nil {
@@ -537,6 +553,24 @@ func getRackDecommissionTargetNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter, 
 	}
 
 	return nodeCount, nil
+}
+
+// getRackScaleDownReplicas returns the replicas the rack's StatefulSet can be scaled down to right away: the lowest
+// ordinal of the run of decommissioned nodes at the top of the rack, bounded below by the lowest leaving ordinal.
+// The StatefulSet can only remove its highest ordinals, so the run has to be contiguous from the top: a node that
+// isn't decommissioned yet, or whose Service is missing, ends it. When the highest node isn't decommissioned, the
+// current replicas are returned and there is nothing to scale.
+func getRackScaleDownReplicas(sts *appsv1.StatefulSet, lowestLeavingOrdinal int32, rackServices map[string]*corev1.Service) int32 {
+	replicas := *sts.Spec.Replicas
+	for ordinal := *sts.Spec.Replicas - 1; ordinal >= lowestLeavingOrdinal; ordinal-- {
+		svc, ok := rackServices[naming.MemberServiceNameForStatefulSet(sts.Name, int(ordinal))]
+		if !ok || svc.Labels[naming.DecommissionedLabel] != naming.LabelValueTrue {
+			break
+		}
+		replicas = ordinal
+	}
+
+	return replicas
 }
 
 // getDecommissioningNodeNames returns the names of the given decommissioning nodes.
@@ -574,16 +608,20 @@ func makeWaitingForRackServicePruningCondition(sdc *scyllav1alpha1.ScyllaDBDatac
 
 // syncRackDecommission drives the decommission of the rack's leaving nodes and holds the rack while any is leaving.
 // A node is leaving from the moment its member Service carries the scylla/decommissioned label until the Service is
-// pruned, and a scale-down begins here by labelling the highest node. One node at a time, from the highest ordinal,
-// every leaving node goes through the following lifecycle:
-//  1. Request: the highest node is stamped with the scylla/decommissioned=false label.
+// pruned, and a scale-down begins here by labelling the nodes above the target node count. Every leaving node goes
+// through the following lifecycle:
+//  1. Request: the node is stamped with the scylla/decommissioned=false label.
 //  2. Wait: the node's sidecar runs the decommission and flips the label to true.
 //  3. Conclude: the StatefulSet is scaled below the node.
 //  4. Prune: pruneServices removes the node's Service and PVC (syncServices).
 //
+// With parallel node operations disabled, one node at a time goes through it, from the highest ordinal. With parallel
+// node operations enabled, all the nodes above the target count are requested at once, from the highest ordinal down,
+// and the StatefulSet is scaled below the decommissioned ones at the top of the rack as they finish.
+//
 // The branches below are dispatched by the rack's current state, so they appear in guard order, not lifecycle order.
-// While any node is leaving, changes to the spec node count, up or down, are deferred and reported with a progressing
-// condition.
+// While any node is leaving, a raised spec node count is deferred and reported with a progressing condition, while a
+// lowered one extends the scale-down right away.
 // It returns the progressing conditions to report: the rack still has leaving nodes and is held for as long as there
 // are any.
 func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, rackServices map[string]*corev1.Service) ([]metav1.Condition, error) {
@@ -599,35 +637,47 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 		return progressingConditions, nil
 	}
 
-	targetNodeCount := *specNodeCount
-	if len(decommissioningNodes) != 0 {
-		targetNodeCount, err = getRackDecommissionTargetNodeCount(sdc, rackName, sts, decommissioningNodes)
-		if err != nil {
-			return progressingConditions, fmt.Errorf("can't get decommission target node count of rack %q of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
-		}
+	parallelNodeOperationsEnabled, err := effectiveParallelNodeOperationsEnabled(sdc)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't determine effective parallel node operations enablement: %w", err)
+	}
 
-		// A plain scale-down has the spec already at the target count, so a difference means the spec changed since
-		// and the change is deferred until the leaving nodes' Services are pruned.
-		if *specNodeCount != targetNodeCount {
-			klog.V(4).InfoS("Deferring rack node count change until the Services of the decommissioning nodes are pruned", "ScyllaDBDatacenter", klog.KObj(sdc), "Rack", rackName, "NodeCount", *specNodeCount, "TargetNodeCount", targetNodeCount, "DecommissioningNodes", getDecommissioningNodeNames(decommissioningNodes))
-			progressingConditions = append(progressingConditions, makeDeferredNodeCountChangeCondition(sdc, rackName, *specNodeCount, decommissioningNodes))
-		}
+	targetNodeCount, err := getRackScaleDownTargetNodeCount(sdc, rackName, sts, *specNodeCount, decommissioningNodes)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't get scale-down target node count of rack %q of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
+	}
+
+	// A lowered node count is already in the target, so a spec above it is a node count raised above the leaving
+	// nodes. It is deferred until their Services are pruned: the returning capacity can only bootstrap as new nodes
+	// once they are fully removed, and the StatefulSet can't add a node above a leaving one.
+	if *specNodeCount > targetNodeCount {
+		klog.V(4).InfoS("Deferring rack node count change until the Services of the decommissioning nodes are pruned", "ScyllaDBDatacenter", klog.KObj(sdc), "Rack", rackName, "NodeCount", *specNodeCount, "TargetNodeCount", targetNodeCount, "DecommissioningNodes", getDecommissioningNodeNames(decommissioningNodes))
+		progressingConditions = append(progressingConditions, makeDeferredNodeCountChangeCondition(sdc, rackName, *specNodeCount, decommissioningNodes))
 	}
 
 	// Wait if any decommissioning is in progress: a node with the label set to false was requested to decommission
-	// and hasn't finished. It is not necessarily the highest ordinal, e.g. a label that outlived its scale-down, so
-	// this can't be folded into the scale-down below, and nothing may be stamped or scaled while it is in flight.
-	for _, svc := range rackServices {
-		if svc.Labels[naming.DecommissionedLabel] == naming.LabelValueFalse {
-			klog.V(4).InfoS("Waiting for the node to finish decommissioning, signalled by its Service being labelled decommissioned=true", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc))
-			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               statefulSetControllerProgressingCondition,
-				Status:             metav1.ConditionTrue,
-				Reason:             "WaitingForRackServiceDecommission",
-				Message:            fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
-				ObservedGeneration: sdc.Generation,
-			})
+	// and hasn't finished. It is not necessarily among the nodes leaving in this step, e.g. a label that outlived its
+	// scale-down, so this can't be folded into the request loop below. Nothing may be scaled while it is in flight,
+	// and with parallel node operations disabled nothing may be requested either.
+	// The Services are visited in a stable order so that the reported conditions don't change between syncs.
+	rackServiceNames := slices.Sorted(maps.Keys(rackServices))
+	for _, svcName := range rackServiceNames {
+		svc := rackServices[svcName]
+		// Only a node labelled false is in flight: an unlabelled node isn't leaving, and a node labelled true is
+		// done.
+		if svc.Labels[naming.DecommissionedLabel] != naming.LabelValueFalse {
+			continue
+		}
 
+		klog.V(4).InfoS("Waiting for the node to finish decommissioning, signalled by its Service being labelled decommissioned=true", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc))
+		progressingConditions = append(progressingConditions, metav1.Condition{
+			Type:               statefulSetControllerProgressingCondition,
+			Status:             metav1.ConditionTrue,
+			Reason:             "WaitingForRackServiceDecommission",
+			Message:            fmt.Sprintf("Waiting for rack service %q to decommission.", naming.ObjRef(svc)),
+			ObservedGeneration: sdc.Generation,
+		})
+		if !parallelNodeOperationsEnabled {
 			return progressingConditions, nil
 		}
 	}
@@ -641,40 +691,69 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 		return progressingConditions, nil
 	}
 
-	// Make sure we always scale down by 1 member.
-	newReplicas := *sts.Spec.Replicas - 1
-
-	lastSvcName := fmt.Sprintf("%s-%d", sts.Name, *sts.Spec.Replicas-1)
-	lastSvc, ok := rackServices[lastSvcName]
-	if !ok {
-		klog.V(4).InfoS("Missing service", "ScyllaDBDatacenter", klog.KObj(sdc), "ServiceName", lastSvcName)
-		progressingConditions = append(progressingConditions, metav1.Condition{
-			Type:               statefulSetControllerProgressingCondition,
-			Status:             metav1.ConditionTrue,
-			Reason:             "WaitingForMissingService",
-			Message:            fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(sts), lastSvcName),
-			ObservedGeneration: sdc.Generation,
-		})
-		// Services are managed in the other loop.
-		// When informers see the new service, will get re-queued.
-		return progressingConditions, nil
+	// The nodes leaving in this step are the ones from the lowest leaving ordinal up to the highest one, and the
+	// StatefulSet is scaled down to the lowest leaving ordinal once they are all decommissioned. With parallel node
+	// operations disabled only the highest node leaves, so that a single node operation is in flight at a time.
+	lowestLeavingOrdinal := *sts.Spec.Replicas - 1
+	if parallelNodeOperationsEnabled {
+		lowestLeavingOrdinal = targetNodeCount
 	}
 
-	if len(lastSvc.Labels[naming.DecommissionedLabel]) == 0 {
-		lastSvcCopy := lastSvc.DeepCopy()
+	// Every leaving node is requested through its member Service, so check that all of them are present before
+	// requesting any: a Service missing from the caches, e.g. one being recreated, would otherwise leave the batch
+	// half requested until it shows up.
+	for ordinal := lowestLeavingOrdinal; ordinal < *sts.Spec.Replicas; ordinal++ {
+		svcName := naming.MemberServiceNameForStatefulSet(sts.Name, int(ordinal))
+		if _, ok := rackServices[svcName]; !ok {
+			klog.V(4).InfoS("Missing service", "ScyllaDBDatacenter", klog.KObj(sdc), "ServiceName", svcName)
+			progressingConditions = append(progressingConditions, metav1.Condition{
+				Type:               statefulSetControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForMissingService",
+				Message:            fmt.Sprintf("Statusfulset %q is waiting for service %q to be created", naming.ObjRef(sts), svcName),
+				ObservedGeneration: sdc.Generation,
+			})
+			// Services are managed in the other loop.
+			// When informers see the new service, will get re-queued.
+			return progressingConditions, nil
+		}
+	}
+
+	// Request the leaving nodes from the highest ordinal down. Every request extends the leaving nodes downwards, so
+	// a node count raised after a pass cut short, e.g. by a restart, saves the nodes that weren't requested yet: the
+	// requested ones finish leaving and are pruned, and the raised count applies then. A decommission can't be taken
+	// back while a scale-down can be re-issued, so the order errs towards fewer nodes leaving, and a node that isn't
+	// requested yet is never lost to a change of mind in either mode. A count that stays lowered resumes the pass on
+	// the next sync.
+	for ordinal := *sts.Spec.Replicas - 1; ordinal >= lowestLeavingOrdinal; ordinal-- {
+		svc := rackServices[naming.MemberServiceNameForStatefulSet(sts.Name, int(ordinal))]
+		if len(svc.Labels[naming.DecommissionedLabel]) != 0 {
+			continue
+		}
+
+		svcCopy := svc.DeepCopy()
 		// Record the intent to decommission the member. This is level triggered: the leaving nodes are re-derived
 		// from the spec node count, the decommissioned labels and the StatefulSet replicas on every sync, so a
 		// failed or interrupted request ends up here again until the label is set.
-		lastSvcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
-		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, lastSvcCopy, "update", sdc.Generation)
-		_, err = sdcc.kubeClient.CoreV1().Services(lastSvcCopy.Namespace).Update(ctx, lastSvcCopy, metav1.UpdateOptions{})
+		svcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
+		klog.V(2).InfoS("Requesting the decommission of the node", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svcCopy))
+		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, svcCopy, "update", sdc.Generation)
+		_, err = sdcc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
 		if err != nil {
-			return progressingConditions, fmt.Errorf("can't update service %q: %w", naming.ObjRef(lastSvcCopy), err)
+			return progressingConditions, fmt.Errorf("can't update service %q: %w", naming.ObjRef(svcCopy), err)
 		}
+	}
+
+	// Conclude greedily: scale the StatefulSet below the decommissioned nodes at the top of the rack as soon as there
+	// are any, instead of once every leaving node is decommissioned. A decommissioned node has left the cluster and
+	// its Pod is not ready, so removing it early frees its resources and stops it from counting against the
+	// PodDisruptionBudget while the lower nodes are still leaving.
+	newReplicas := getRackScaleDownReplicas(sts, lowestLeavingOrdinal, rackServices)
+	if newReplicas == *sts.Spec.Replicas {
+		// The highest leaving node is still in flight or was just requested.
 		return progressingConditions, nil
 	}
 
-	// The node has been decommissioned, conclude by scaling the StatefulSet below it.
 	scale := &autoscalingv1.Scale{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            sts.Name,
@@ -776,7 +855,7 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, nil
 	}
 
-	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets)
+	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets, services)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
 	}
@@ -824,6 +903,11 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, nil
 	}
 
+	parallelNodeOperationsEnabled, err := effectiveParallelNodeOperationsEnabled(sdc)
+	if err != nil {
+		return progressingConditions, fmt.Errorf("can't determine effective parallel node operations enablement: %w", err)
+	}
+
 	// Scale before the update.
 	for _, req := range requiredStatefulSets {
 		sts := statefulSets[req.Name]
@@ -849,8 +933,13 @@ func (sdcc *Controller) syncStatefulSets(
 			return progressingConditions, fmt.Errorf("can't sync decommission of rack %q of ScyllaDBDatacenter %q: %w", rackName, naming.ObjRef(sdc), err)
 		}
 		if len(decommissionProgressingConditions) != 0 {
-			// The rack is held; only one node operation may be in flight in the datacenter.
-			return progressingConditions, nil
+			if !parallelNodeOperationsEnabled {
+				// The rack is held, and only one node operation may be in flight in the datacenter.
+				return progressingConditions, nil
+			}
+
+			// The rack is held, but the other racks keep scaling.
+			continue
 		}
 
 		if *req.Spec.Replicas <= *sts.Spec.Replicas {
@@ -875,6 +964,15 @@ func (sdcc *Controller) syncStatefulSets(
 			return progressingConditions, fmt.Errorf("can't update scale: %w", err)
 		}
 		return progressingConditions, err
+	}
+
+	// The racks that aren't held have been scaled above. While any rack is held, though, don't proceed to the update
+	// below: the required StatefulSets carry the spec node count, so applying one would scale a rack with leaving
+	// nodes without decommissioning them, and only the scaling above may change the replicas of a StatefulSet. A pod
+	// template update or an upgrade rolling out while nodes are leaving would also mix a topology change with a
+	// rolling restart, so the update waits for the whole datacenter either way.
+	if len(progressingConditions) > 0 {
+		return progressingConditions, nil
 	}
 
 	// TODO: This blocks unstucking by an update.

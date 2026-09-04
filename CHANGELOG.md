@@ -43,19 +43,29 @@
 
 - Fixed a rack getting stuck forever when its node count was changed while one of its nodes was being decommissioned.
   A node whose decommission has started must now finish leaving, together with its Service and PVC, before the rack
-  applies any further node count change. The deferred change is reported with the `DeferringRackNodeCountChange`
+  applies a raised node count, while a lowered one extends the scale-down right away. The deferred change is reported with the `DeferringRackNodeCountChange`
   reason in the `Progressing` condition. Capacity that comes back is bootstrapped as new, empty nodes.
-  **Warning: after the upgrade, the operator removes any node whose member Service carries a leftover
-  `scylla/decommissioned=true` label, together with its PVC. If such a node is healthy, its data is lost. Before
-  upgrading, check for these labels with `kubectl get svc -A -l scylla/decommissioned=true` and remove the label from
-  the Services of healthy nodes.**
+  **Warning: after the upgrade, the operator treats any node whose member Service carries a leftover
+  `scylla/decommissioned=true` label as leaving. Every node above it in its rack is decommissioned first, one at a time,
+  or all at once with `enableParallelNodeOperations` enabled. The labelled node is then removed together with its PVC
+  without being decommissioned, so it has to be removed from the ScyllaDB cluster by hand with `nodetool removenode`,
+  and the rack grows back with new, empty nodes. If the labelled node is healthy, its data is lost. Before upgrading,
+  check for these labels with `kubectl get svc -A -l scylla/decommissioned=true` and remove the label from the
+  Services of healthy nodes.**
   [#3629](https://github.com/scylladb/scylla-operator/pull/3629)
 
 ### Features & Enhancements
+- The `enableParallelNodeOperations` field of `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec` now also controls how
+  nodes are decommissioned. With it enabled, all the nodes a rack is scaled down by are decommissioned at once and the
+  StatefulSet is scaled below them as they finish, and a decommission in one rack no longer holds the scaling of the other
+  racks. With it disabled, nodes are still decommissioned one at a time across the datacenter. Note that objects
+  created with an earlier release with the field set to `true`, e.g. by the defaulting on creation, decommission nodes
+  in parallel after the upgrade without any change to the spec.
+  [#3639](https://github.com/scylladb/scylla-operator/pull/3639)
 - Added `status.racks[].decommissioningNodes` to `ScyllaDBDatacenter` and `status.racks[].decommissioningMembers` to
   `ScyllaCluster`, listing the nodes that are leaving the cluster.
   [#3623](https://github.com/scylladb/scylla-operator/pull/3623)
-- Changing the number of nodes of a `ScyllaDBDatacenter` rack, or of members of a `ScyllaCluster` rack, that has nodes
+- Raising the number of nodes of a `ScyllaDBDatacenter` rack, or of members of a `ScyllaCluster` rack, above its nodes
   leaving the cluster now produces an admission warning. The change is accepted, but it isn't applied until the leaving
   nodes have finished decommissioning and been removed.
   [#3633](https://github.com/scylladb/scylla-operator/pull/3633)

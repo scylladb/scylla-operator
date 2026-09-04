@@ -568,8 +568,9 @@ func GetWarningsOnScyllaClusterUpdate(new, old *scyllav1.ScyllaCluster) []string
 	return warnings
 }
 
-// getWarningsForScyllaClusterRackMemberCountUpdate warns about changes to the number of members of a rack that has
+// getWarningsForScyllaClusterRackMemberCountUpdate warns about raising the number of members of a rack above its
 // members leaving the cluster. Such a change is accepted, but it isn't applied until the leaving members are gone.
+// Lowering the number of members extends the ongoing scale-down and applies right away, so it doesn't warn.
 func getWarningsForScyllaClusterRackMemberCountUpdate(new, old *scyllav1.ScyllaCluster, fldPath *field.Path) []string {
 	var warnings []string
 
@@ -587,6 +588,10 @@ func getWarningsForScyllaClusterRackMemberCountUpdate(new, old *scyllav1.ScyllaC
 
 		decommissioningMembers := old.Status.Racks[newRack.Name].DecommissioningMembers
 		if len(decommissioningMembers) == 0 {
+			continue
+		}
+
+		if !isNodeCountAboveLeavingNodes(newRack.Members, getDecommissioningMemberNames(decommissioningMembers)) {
 			continue
 		}
 

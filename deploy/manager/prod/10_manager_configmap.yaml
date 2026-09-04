@@ -11,3 +11,4 @@ data:
     database:
       hosts:
       - scylla-manager-cluster-manager-dc-manager-rack-0
+

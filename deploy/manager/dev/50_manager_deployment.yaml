@@ -46,3 +46,4 @@ spec:
       - configMap:
           name: scylla-manager-config
         name: scylla-manager-config
+

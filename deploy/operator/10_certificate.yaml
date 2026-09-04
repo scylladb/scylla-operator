@@ -10,3 +10,4 @@ spec:
     kind: Issuer
     name: scylla-operator-selfsigned-issuer
   secretName: scylla-operator-serving-cert
+

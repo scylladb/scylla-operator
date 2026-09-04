@@ -34,7 +34,7 @@ The pod management policy of the StatefulSet is determined by whether the cluste
 With parallel node operations disabled, the Operator uses `OrderedReady`: pods are created in order (0, 1, 2, …) and each pod must become Ready before the next one is created. 
 With parallel node operations enabled, the Operator uses the `Parallel` pod management policy and pods are created without waiting for the previous ordinal to become Ready. 
 On shutdown, pods are terminated in reverse order either way.
-Please refer to [sequential and parallel node provisioning](../operate/scale-add-remove-racks.md#sequential-and-parallel-node-provisioning) for details.
+Please refer to [sequential and parallel node operations](../operate/scale-add-remove-racks.md#sequential-and-parallel-node-operations) for details.
 
 ## Scaling
 
@@ -51,9 +51,12 @@ When you decrease the `members` count, the Operator removes nodes from the **end
 1. The Operator sets the `scylla/decommissioned` label on the member Service to `"false"`, recording the intent to decommission.
 2. The sidecar running inside the pod detects this label and initiates `nodetool decommission`, which redistributes the node's token ranges and streams its data to other nodes.
 3. Once decommission completes, the sidecar updates the label to `"true"`.
-4. The Operator scales the StatefulSet's `replicas` down by one, which deletes the pod.
+4. The Operator scales the StatefulSet's `replicas` below the node's ordinal, which deletes the pod, and then deletes the node's PVC and Service.
 
-The Operator scales down **one member at a time**, regardless of how large the requested scale-down is. This ensures that only one decommission is in progress at any moment, protecting data availability.
+With parallel node operations disabled, the Operator scales down **one node at a time**, regardless of how large the requested scale-down is, so that only one decommission is in progress in the datacenter at any moment.
+With parallel node operations enabled, the Operator decommissions all the nodes above the new count at once.
+A decommission can't be cancelled, so a raised `members` count waits until the leaving nodes are removed.
+See [Scale, add, remove racks](../operate/scale-add-remove-racks.md) for details.
 
 :::{important}
 You cannot remove an arbitrary node from the middle of a rack's ordinal range by changing the `members` count. Scaling always operates on the tail of the StatefulSet. To remove a specific node (for example, ordinal 1 out of 0, 1, 2), use node replacement instead — see [Replacing nodes](../operate/replace-nodes.md).

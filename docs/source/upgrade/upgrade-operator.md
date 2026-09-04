@@ -64,6 +64,40 @@ The below instructions are **supplementary** to the standard upgrade procedure a
 Make sure to familiarize yourself with both the standard upgrade procedure and the additional steps for the specific version you are upgrading to, if applicable, and follow them accordingly.
 :::
 
+### 1.22 to 1.23
+
+#### Ensure no healthy node carries a leftover decommissioned label
+
+A stale `scylla/decommissioned=true` label makes the upgraded Operator delete a healthy node's data, so check before upgrading.
+List the member Services that carry the label in all namespaces:
+
+```bash
+kubectl get services --all-namespaces -l scylla/decommissioned=true
+```
+
+If the command prints `No resources found`, your clusters are unaffected.
+Otherwise, for every Service listed, check whether the node of the same name is healthy: its Pod is ready, and `nodetool status` run on another node of the cluster lists its host ID as `UN`.
+The host ID is in the `internal.scylla-operator.scylladb.com/host-id` annotation of the Service.
+
+If the node is healthy, the label is stale. Remove it before upgrading:
+
+```bash
+kubectl -n <namespace> label service <service-name> scylla/decommissioned-
+```
+
+If the node was in fact decommissioned, meaning its Pod isn't ready and its host ID is no longer in `nodetool status`, leave the label in place. The upgraded Operator removes the node.
+
+:::{note}
+**Why is this necessary?**
+Starting with v1.23, the Operator treats a member Service labelled `scylla/decommissioned=true` as a node that has left the cluster.
+It removes the node together with its PVC before the rack reconciles to the requested node count.
+Previous versions only acted on the label during a scale-down, so a stale label could sit on a healthy node without consequences.
+On a rack whose node at ordinal N carries a stale label, the upgraded Operator decommissions every node above N, one at a time or all at once with `enableParallelNodeOperations` enabled.
+It then removes node N together with its PVC without decommissioning it, and bootstraps the rack back to the requested count with new, empty nodes.
+A healthy node N loses its data this way, and the Operator rebuilds every node above it.
+Previous versions could leave the label behind when you reverted a scale-down before the Operator removed the node's Service, or when you recovered a decommissioned node by hand.
+:::
+
 ### 1.20 to 1.21
 
 #### Ensure ScyllaCluster repair and backup task names are RFC 1123 compliant

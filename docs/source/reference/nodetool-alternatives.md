@@ -42,7 +42,7 @@ These commands change cluster membership or topology. Using them directly will d
   - Operator alternative
 * - [`decommission`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/decommission.html)
   - Desyncs StatefulSet replica count and Operator tracking labels. Operator will not know the node was decommissioned.
-  - Scale down the rack's `members` count by 1. The Operator labels the service, the sidecar calls decommission, and the StatefulSet scales down after completion. See [Scale, add, remove racks](../operate/scale-add-remove-racks.md).
+  - Lower the rack's `members` count. The Operator labels the Services of the leaving nodes, the sidecars call decommission, and the StatefulSet scales down after completion. See [Scale, add, remove racks](../operate/scale-add-remove-racks.md).
 * - [`removenode`](https://docs.scylladb.com/manual/stable/operating-scylla/nodetool-commands/removenode.html)
   - Removes a node from the ring without Operator knowledge. Operator expects to manage membership via scale-down or replace.
   - Use the `scylla/replace` label on the member Service to trigger Operator-managed replacement. For dead nodes, see [Recover from failed replace](../troubleshoot/recover-from-failed-replace.md).

@@ -205,8 +205,16 @@ func nodeIsScyllaDBClusterMember(ctx context.Context, scyllaClient *scyllaclient
 	}
 
 	if len(localIP) == 0 {
-		// The node is not present in the cluster's token metadata, so its membership can't be determined.
-		return false, false, nil
+		opMode, err := scyllaClient.OperationMode(ctx, localhostAddr)
+		if err != nil {
+			return false, false, fmt.Errorf("can't get node operation mode: %w", err)
+		}
+
+		if opMode != scyllaclient.OperationalModeNormal {
+			return false, false, nil
+		}
+
+		return false, false, fmt.Errorf("node is in %s operation mode, but HostID %q is missing from the IP-to-HostID map: %v", opMode, hostID, ipToHostIDMap)
 	}
 
 	// Only normal tokens are reported for the endpoint, pending tokens of a bootstrapping or replacing node are not.

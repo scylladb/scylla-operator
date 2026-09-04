@@ -486,6 +486,9 @@ func newFakeScyllaDBTokenMetadataHandler(fake fakeScyllaDBTokenMetadata) http.Ha
 			}
 			encodeJSON(w, r, fake.localHostID)
 
+		case r.URL.Path == "/storage_service/operation_mode":
+			encodeJSON(w, r, scyllaclient.OperationalModeNormal)
+
 		case r.URL.Path == "/storage_service/host_id":
 			if fake.failIPToHostIDMap {
 				failWith("host id mapping is unavailable")

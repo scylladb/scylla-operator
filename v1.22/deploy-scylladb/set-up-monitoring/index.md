@@ -1,0 +1,11 @@
+# Set up monitoring
+
+ScyllaDB Operator provides the `ScyllaDBMonitoring` custom resource to set up a complete monitoring stack for your ScyllaDB clusters, based on Prometheus for metrics collection and Grafana for visualization.
+
+For details on the monitoring architecture, Prometheus modes (External and Managed), and how the components fit together, see [Monitoring](https://operator.docs.scylladb.com/stable/understand/monitoring.md).
+
+## Guides
+
+- [Set up ScyllaDB Monitoring](https://operator.docs.scylladb.com/stable/deploy-scylladb/set-up-monitoring/setup.md) — deploy Prometheus and configure `ScyllaDBMonitoring` for your cluster.
+- [Set up ScyllaDB Monitoring on OpenShift](https://operator.docs.scylladb.com/stable/deploy-scylladb/set-up-monitoring/external-prometheus-on-openshift.md) — use OpenShift User Workload Monitoring as an external Prometheus source.
+- [Expose Grafana](https://operator.docs.scylladb.com/stable/deploy-scylladb/set-up-monitoring/exposing-grafana.md) — make the Grafana dashboard accessible outside the cluster.

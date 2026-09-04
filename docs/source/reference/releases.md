@@ -10,7 +10,7 @@ The following release schedule is only advisory, there are no commitments made t
 * - Release
   - Code freeze
   - General availability
-* - 1.22
+* - 1.23
   - TBD
   - TBD
 :::
@@ -25,12 +25,15 @@ We support the latest 2 releases of ScyllaDB Operator to give everyone time to u
 * - Release
   - General availability
   - Support ends
+* - 1.22
+  - 2026-09-02
+  - Release of 1.24
 * - 1.21
   - 2026-05-20
   - Release of 1.23
 * - 1.20
   - 2026-02-23
-  - Release of 1.22
+  - 2026-09-02
 * - 1.19
   - 2025-11-19
   - 2026-05-20
@@ -149,9 +152,9 @@ The support matrix table shows the version requirements for ScyllaDB Operator. M
 * - CRI API
   - v1
 * - ScyllaDB
-  - 2025.1, 2025.3 - 2026.1
+  - 2025.1, 2026.1 - 2026.3
 * - ScyllaDB Manager
-  - 3.7 - 3.9
+  - 3.10 - 3.12
 * - ScyllaDB Monitoring
   - {{scyllaDBMonitoringVersion}} [^scylladb-monitoring-version]
 :::

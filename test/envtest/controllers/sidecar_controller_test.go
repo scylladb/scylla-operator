@@ -121,6 +121,7 @@ var _ = g.Describe("SidecarController", func() {
 	g.DescribeTable("annotates the node's membership in the ScyllaDB cluster", syncsAnnotations,
 		g.Entry("when the node owns normal tokens", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
@@ -134,6 +135,7 @@ var _ = g.Describe("SidecarController", func() {
 		}),
 		g.Entry("when the node owns no normal tokens", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				// A bootstrapping node holds only pending tokens, which the endpoint doesn't report.
@@ -149,6 +151,7 @@ var _ = g.Describe("SidecarController", func() {
 		}),
 		g.Entry("when the token ring hash can't be fetched", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode:  scyllaclient.OperationalModeNormal,
 				localHostID:    hostID,
 				ipToHostIDMap:  []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:     map[string][]string{localIP: {"-1", "0", "1"}},
@@ -159,11 +162,47 @@ var _ = g.Describe("SidecarController", func() {
 			},
 			absentAnnotations: []string{naming.CurrentTokenRingHashAnnotation},
 		}),
+		// A decommissioned node has left the token ring and its gossiper is stopped, so the token metadata API no longer answers.
+		g.Entry("when the node has been decommissioned and its token metadata can't be fetched", annotationTestCase{
+			existingAnnotations: map[string]string{
+				naming.HostIDAnnotation:                    hostID,
+				naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
+				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
+			},
+			fake: fakeScyllaDBTokenMetadata{
+				localHostID:       hostID,
+				operationMode:     scyllaclient.OperationalModeDecommissioned,
+				failIPToHostIDMap: true,
+				failRingTokens:    true,
+			},
+			expectedAnnotations: map[string]string{
+				naming.HostIDAnnotation:                    hostID,
+				naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueFalse,
+				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
+			},
+		}),
+		// A leaving node still owns its tokens and is still observed by its peers, so it stays a member until the
+		// decommission completes.
+		g.Entry("when the node is leaving", annotationTestCase{
+			fake: fakeScyllaDBTokenMetadata{
+				localHostID:   hostID,
+				operationMode: scyllaclient.OperationalModeLeaving,
+				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
+				nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
+				ringTokens:    []string{"-1", "0", "1"},
+			},
+			expectedAnnotations: map[string]string{
+				naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
+				naming.HostIDAnnotation:                    hostID,
+			},
+			expectedTokenRingHashOf: []string{"-1", "0", "1"},
+		}),
 	)
 
 	g.DescribeTable("annotates the HostID", syncsAnnotations,
 		g.Entry("when the host ID mapping can't be fetched", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode:     scyllaclient.OperationalModeNormal,
 				localHostID:       hostID,
 				failIPToHostIDMap: true,
 				ringTokens:        []string{"-1", "0", "1"},
@@ -175,7 +214,8 @@ var _ = g.Describe("SidecarController", func() {
 		}),
 		g.Entry("when the node's tokens can't be fetched", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
-				localHostID: hostID,
+				operationMode: scyllaclient.OperationalModeNormal,
+				localHostID:   hostID,
 				// The node is present in the cluster's token metadata, but its tokens can't be read.
 				ipToHostIDMap:  []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				failNodeTokens: true,
@@ -191,7 +231,8 @@ var _ = g.Describe("SidecarController", func() {
 	g.DescribeTable("leaves the annotations untouched", syncsAnnotations,
 		g.Entry("when the node is absent from the cluster's token metadata", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
-				localHostID: hostID,
+				operationMode: scyllaclient.OperationalModeNormal,
+				localHostID:   hostID,
 				// The node's own host ID is absent from the mapping, so its membership can't be determined.
 				ipToHostIDMap: []scyllaNodeResponse{{Key: "10.0.0.2", Value: "ffffffff-ffff-ffff-ffff-ffffffffffff"}},
 				ringTokens:    []string{"-1", "0", "1"},
@@ -208,6 +249,7 @@ var _ = g.Describe("SidecarController", func() {
 				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
 			},
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode:     scyllaclient.OperationalModeNormal,
 				localHostID:       hostID,
 				failIPToHostIDMap: true,
 				ringTokens:        []string{"-1", "0", "1"},
@@ -217,8 +259,46 @@ var _ = g.Describe("SidecarController", func() {
 				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
 			},
 		}),
+		// A drained node's gossiper is down too, but it still owns its tokens and is restarted eventually.
+		g.Entry("when the node is drained and its token metadata can't be fetched", annotationTestCase{
+			existingAnnotations: map[string]string{
+				naming.HostIDAnnotation:                    hostID,
+				naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
+				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
+			},
+			fake: fakeScyllaDBTokenMetadata{
+				localHostID:       hostID,
+				operationMode:     scyllaclient.OperationalModeDrained,
+				failIPToHostIDMap: true,
+				failRingTokens:    true,
+			},
+			expectedAnnotations: map[string]string{
+				naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
+				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
+			},
+		}),
+		g.Entry("when the operation mode can't be fetched and a membership was already observed", annotationTestCase{
+			existingAnnotations: map[string]string{
+				naming.HostIDAnnotation:                    hostID,
+				naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
+				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
+			},
+			fake: fakeScyllaDBTokenMetadata{
+				operationMode:     scyllaclient.OperationalModeNormal,
+				localHostID:       hostID,
+				failOperationMode: true,
+				ipToHostIDMap:     []scyllaNodeResponse{{Key: localIP, Value: hostID}},
+				nodeTokens:        map[string][]string{localIP: {"-1", "0", "1"}},
+				ringTokens:        []string{"-1", "0", "1"},
+			},
+			expectedAnnotations: map[string]string{
+				naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue,
+				naming.CurrentTokenRingHashAnnotation:      "previous-hash",
+			},
+		}),
 		g.Entry("when the local HostID can't be fetched", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode:   scyllaclient.OperationalModeNormal,
 				failLocalHostID: true,
 				ipToHostIDMap:   []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:      map[string][]string{localIP: {"-1", "0", "1"}},
@@ -231,6 +311,7 @@ var _ = g.Describe("SidecarController", func() {
 	g.DescribeTable("annotates the token ring hash", syncsAnnotations,
 		g.Entry("when the cluster has a token ring", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
@@ -242,6 +323,7 @@ var _ = g.Describe("SidecarController", func() {
 		// Expecting the hash of the reordered ring asserts exactly that: the in-order hash would not match.
 		g.Entry("when the same tokens are returned in a different order", annotationTestCase{
 			fake: fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
@@ -259,6 +341,7 @@ var _ = g.Describe("SidecarController", func() {
 
 		g.By("Running the SidecarController against a ScyllaDB owning normal tokens")
 		newScyllaClient := newFakeScyllaDBClientFactory(newFakeScyllaDBTokenMetadataHandler(fakeScyllaDBTokenMetadata{
+			operationMode: scyllaclient.OperationalModeNormal,
 			localHostID:   hostID,
 			ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 			nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
@@ -332,6 +415,7 @@ var _ = g.Describe("SidecarController", func() {
 	},
 		g.Entry("when the node finishes bootstrapping", transitionTestCase{
 			firstFake: fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				// A bootstrapping node holds only pending tokens, which the endpoint doesn't report.
@@ -339,6 +423,7 @@ var _ = g.Describe("SidecarController", func() {
 				ringTokens: []string{},
 			},
 			secondFake: fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
@@ -354,12 +439,14 @@ var _ = g.Describe("SidecarController", func() {
 		}),
 		g.Entry("when the node shows up in the cluster's token metadata", transitionTestCase{
 			firstFake: fakeScyllaDBTokenMetadata{
-				localHostID: hostID,
+				operationMode: scyllaclient.OperationalModeNormal,
+				localHostID:   hostID,
 				// The node's own host ID is absent from the mapping, so its membership can't be determined.
 				ipToHostIDMap: []scyllaNodeResponse{{Key: "10.0.0.2", Value: "ffffffff-ffff-ffff-ffff-ffffffffffff"}},
 				ringTokens:    []string{"-1", "0", "1"},
 			},
 			secondFake: fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
@@ -385,12 +472,14 @@ var _ = g.Describe("SidecarController", func() {
 		g.By("Running the SidecarController against a ScyllaDB owning normal tokens")
 		switcher, newScyllaClient := newSwitchableFakeScyllaDBClientFactory(
 			newFakeScyllaDBTokenMetadataHandler(fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeNormal,
 				localHostID:   hostID,
 				ipToHostIDMap: []scyllaNodeResponse{{Key: localIP, Value: hostID}},
 				nodeTokens:    map[string][]string{localIP: {"-1", "0", "1"}},
 				ringTokens:    ringTokens,
 			}),
 			newFakeScyllaDBTokenMetadataHandler(fakeScyllaDBTokenMetadata{
+				operationMode:     scyllaclient.OperationalModeNormal,
 				localHostID:       hostID,
 				failIPToHostIDMap: true,
 				ringTokens:        ringTokens,
@@ -445,8 +534,8 @@ func createNodeService(ctx context.Context, env *envtest.Environment, name strin
 	return svc
 }
 
-// fakeScyllaDBTokenMetadata describes the fake ScyllaDB API responses for the token metadata surface the sidecar
-// controller reads.
+// fakeScyllaDBTokenMetadata describes the fake ScyllaDB API responses for the token metadata and operation mode surface
+// the sidecar controller reads.
 type fakeScyllaDBTokenMetadata struct {
 	// localHostID is returned for the local host ID request.
 	localHostID string
@@ -464,6 +553,10 @@ type fakeScyllaDBTokenMetadata struct {
 	failNodeTokens bool
 	// failRingTokens makes the token ring request fail.
 	failRingTokens bool
+	// operationMode is the node's operational mode. It must be set.
+	operationMode scyllaclient.OperationalMode
+	// failOperationMode makes the operation mode request fail.
+	failOperationMode bool
 }
 
 // newFakeScyllaDBTokenMetadataHandler returns a handler serving the given fake ScyllaDB API responses.
@@ -485,6 +578,17 @@ func newFakeScyllaDBTokenMetadataHandler(fake fakeScyllaDBTokenMetadata) http.Ha
 				return
 			}
 			encodeJSON(w, r, fake.localHostID)
+
+		case r.URL.Path == "/storage_service/operation_mode":
+			if fake.failOperationMode {
+				failWith("operation mode is unavailable")
+				return
+			}
+			if len(fake.operationMode) == 0 {
+				failWith("operation mode is not set in the fake, the test case is incomplete")
+				return
+			}
+			encodeJSON(w, r, string(fake.operationMode))
 
 		case r.URL.Path == "/storage_service/host_id":
 			if fake.failIPToHostIDMap {

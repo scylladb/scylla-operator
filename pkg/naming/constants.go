@@ -61,12 +61,14 @@ const (
 	// (the actual ScyllaDB cluster, not the Kubernetes abstraction). Membership is determined by whether the node
 	// owns normal tokens in the cluster's token metadata, so it is unaffected by the node restarting - a bootstrapped
 	// node has its token metadata restored from disk before gossip starts and never stops owning normal tokens while
-	// it boots. It is set to "false" when the node owns no normal tokens, which covers a node that is bootstrapping
-	// for the first time, a node that has lost its state, and a node undergoing a replacement procedure.
+	// it boots. It is set to "false" when the node owns no normal tokens, which covers a node that has not completed its
+	// bootstrap yet, a node that has lost its state, and a node undergoing a replacement procedure. It is also set
+	// to "false" once the node has been decommissioned: it has left the token ring and its gossiper is stopped, so it
+	// can neither answer the membership queries nor report a status of its own.
 	// The value is only ever written from a successful observation and is left untouched when membership can't be
-	// determined. Since the ScyllaDB API is unreachable for as long as the node is down, the annotation retains the
-	// last observed value throughout - a node that has lost its state keeps "true" from before the loss until its
-	// sidecar can query the API again.
+	// determined. Since the ScyllaDB API is unreachable for as long as the node is down, and its token metadata can't
+	// be queried while it is drained, the annotation retains the last observed value throughout - a node that has lost
+	// its state keeps "true" from before the loss until its sidecar can query the API again.
 	NodeJoinedScyllaDBClusterAnnotation = "internal.scylla-operator.scylladb.com/node-joined-scylladb-cluster"
 )
 

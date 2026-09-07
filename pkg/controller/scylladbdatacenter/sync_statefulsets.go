@@ -246,12 +246,12 @@ func (sdcc *Controller) beforeNodeUpgrade(ctx context.Context, sdc *scyllav1alph
 		return true, err
 	}
 
-	if om.IsDraining() {
+	if om == scyllaclient.OperationalModeDraining {
 		klog.V(4).InfoS("Waiting for scylla node to finish draining", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
 		return false, nil
 	}
 
-	if !om.IsDrained() {
+	if om != scyllaclient.OperationalModeDrained {
 		klog.V(4).InfoS("Draining scylla node", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
 		err = scyllaClient.Drain(ctx, host)
 		if err != nil {

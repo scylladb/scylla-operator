@@ -39,8 +39,8 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 
 	klog.V(4).InfoS("Scylla operation mode", "Mode", opMode)
 	switch opMode {
-	case scyllaclient.OperationalModeLeaving, scyllaclient.OperationalModeDecommissioning, scyllaclient.OperationalModeDraining:
-		// If node is leaving/draining/decommissioning, keep retrying.
+	case scyllaclient.OperationalModeLeaving, scyllaclient.OperationalModeDraining:
+		// If node is leaving/draining, keep retrying.
 		klog.V(2).InfoS("Waiting for scylla to finish the operation, requeuing", "Mode", opMode)
 		c.queue.AddAfter(c.key, requeueWaitDuration)
 		return nil
@@ -77,7 +77,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 			// Decommission is long running task, so request fails due to the timeout in most cases.
 			// To not raise an error, when it is in progress, we check opMode.
 			opMode, err := scyllaClient.OperationMode(ctx, c.localhostAddress)
-			if err == nil && (opMode.IsDecommissioned() || opMode.IsLeaving() || opMode.IsDecommissioning()) {
+			if err == nil && (opMode == scyllaclient.OperationalModeDecommissioned || opMode == scyllaclient.OperationalModeLeaving) {
 				klog.V(2).InfoS("Decommissioning is in progress. Waiting a bit.", "Mode", opMode)
 				c.queue.AddAfter(c.key, requeueWaitDuration)
 				return nil
@@ -86,9 +86,9 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 			return fmt.Errorf("can't decommission the node: %w", decommissionErr)
 		}
 
-	case scyllaclient.OperationalModeJoining:
-		// If node is joining we need to wait till it reaches Normal state and then decommission it
-		klog.V(2).InfoS("Can't decommission a joining node. Waiting a bit.")
+	case scyllaclient.OperationalModeStarting, scyllaclient.OperationalModeJoining, scyllaclient.OperationalModeBootstrap:
+		// The node has to reach the NORMAL mode before it can be decommissioned.
+		klog.V(2).InfoS("Can't decommission a node which hasn't reached the NORMAL mode yet. Requeuing.", "Mode", opMode)
 		c.queue.AddAfter(c.key, requeueWaitDuration)
 		return nil
 

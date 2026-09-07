@@ -13,6 +13,7 @@ back-up-and-restore
 restore-from-backup
 perform-rolling-restart
 migrate-rack-to-new-node-pool
+decommission-a-datacenter
 pass-scylladb-arguments
 configure-io-properties
 :::

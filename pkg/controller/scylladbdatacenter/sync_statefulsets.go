@@ -346,37 +346,20 @@ func (sdcc *Controller) pruneStatefulSets(
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
 ) ([]metav1.Condition, error) {
-	var errs []error
 	var progressingConditions []metav1.Condition
-	for _, sts := range statefulSets {
-		if sts.DeletionTimestamp != nil {
-			continue
-		}
 
-		isRequired := false
-		for _, req := range requiredStatefulSets {
-			if sts.Name == req.Name {
-				isRequired = true
-			}
-		}
-		if isRequired {
-			continue
-		}
-
-		// TODO: Decommission the rack before removal.
-
-		propagationPolicy := metav1.DeletePropagationBackground
+	// TODO: Decommission the rack before removal.
+	prunedStatefulSets, err := controllerhelpers.PruneObjects(
+		ctx,
+		requiredStatefulSets,
+		statefulSets,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: sdcc.kubeClient.AppsV1().StatefulSets(sdc.Namespace).Delete,
+		},
+		sdcc.eventRecorder,
+	)
+	for _, sts := range prunedStatefulSets {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, sts, "delete", sdc.Generation)
-		err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Delete(ctx, sts.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &sts.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
-		if err != nil {
-			errs = append(errs, err)
-			continue
-		}
 
 		rackName, found := sts.Labels[naming.RackNameLabel]
 		if !found {
@@ -390,7 +373,8 @@ func (sdcc *Controller) pruneStatefulSets(
 			return rackStatus.Name == rackName
 		})
 	}
-	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
+
+	return progressingConditions, err
 }
 
 // checkExistingStatefulSetsRolloutStatus returns progressing conditions for existing StatefulSets that haven't rolled out yet.

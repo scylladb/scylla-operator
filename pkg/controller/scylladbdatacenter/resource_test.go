@@ -25,6 +25,7 @@ import (
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	corev1listers "k8s.io/client-go/listers/core/v1"
@@ -7623,6 +7624,114 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 				},
 			},
 			expectedErr: nil,
+		},
+		{
+			// Services of the datacenter which aren't member Services, like the identity Service, don't represent
+			// nodes and must not be reported.
+			name: "non-member service is not reported",
+			sdc:  basicScyllaDBDatacenter(),
+			services: map[string]*corev1.Service{
+				"basic-dc-a-0": newMemberService("basic-dc-a-0", "a", "host-id-0"),
+				"basic-dc-client": {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-dc-client",
+						Namespace: "default",
+						Labels: map[string]string{
+							naming.ScyllaServiceTypeLabel: string(naming.ScyllaServiceTypeIdentity),
+						},
+					},
+				},
+			},
+			pods: []*corev1.Pod{
+				newPod(t, "basic-dc-a-0", &internalapi.NodeStatusReport{
+					ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+						{
+							HostID: "host-id-0",
+							Status: scyllav1alpha1.NodeStatusUp,
+						},
+					},
+				}),
+			},
+			expected: &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "basic-12wmr",
+					Namespace: "default",
+					Labels: map[string]string{
+						"default-sc-label":              "foo",
+						"app":                           naming.AppName,
+						naming.KubernetesManagedByLabel: naming.OperatorAppName,
+						naming.KubernetesNameLabel:      naming.AppName,
+						naming.ScyllaDBDatacenterNodesStatusReportSelectorLabel: "basic",
+						naming.ClusterNameLabel:                                 "basic",
+					},
+					Annotations: map[string]string{
+						"default-sc-annotation": "bar",
+					},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion:         "scylla.scylladb.com/v1alpha1",
+							Kind:               "ScyllaDBDatacenter",
+							Name:               "basic",
+							UID:                "uid",
+							Controller:         pointer.Ptr(true),
+							BlockOwnerDeletion: pointer.Ptr(true),
+						},
+					},
+				},
+				DatacenterName: "dc",
+				Racks: []scyllav1alpha1.RackNodesStatusReport{
+					{
+						Name: "a",
+						Nodes: []scyllav1alpha1.NodeStatusReport{
+							{
+								Ordinal: 0,
+								HostID:  pointer.Ptr("host-id-0"),
+								ObservedNodes: []scyllav1alpha1.ObservedNodeStatus{
+									{
+										HostID: "host-id-0",
+										Status: scyllav1alpha1.NodeStatusUp,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			// A member Service can't be attributed to a rack without the rack name label, so it's an error rather
+			// than a silently dropped node.
+			name: "member service missing the rack label is an error",
+			sdc:  basicScyllaDBDatacenter(),
+			services: map[string]*corev1.Service{
+				"basic-dc-a-0": func() *corev1.Service {
+					svc := newMemberService("basic-dc-a-0", "a", "host-id-0")
+					delete(svc.Labels, naming.RackNameLabel)
+					return svc
+				}(),
+			},
+			pods:     []*corev1.Pod{},
+			expected: nil,
+			expectedErr: fmt.Errorf(`can't group member Services by rack for ScyllaDBDatacenter "default/basic": %w`, apimachineryutilerrors.NewAggregate([]error{
+				fmt.Errorf("member Service %q is missing %q label", "default/basic-dc-a-0", naming.RackNameLabel),
+			})),
+		},
+		{
+			// A member Service without an ordinal suffix can't be attributed to a node, so it's an error rather than
+			// a silently dropped node.
+			name: "member service without an ordinal suffix is an error",
+			sdc:  basicScyllaDBDatacenter(),
+			services: map[string]*corev1.Service{
+				"basic-dc-a-foo": newMemberService("basic-dc-a-foo", "a", "host-id-0"),
+			},
+			pods:     []*corev1.Pod{},
+			expected: nil,
+			expectedErr: apimachineryutilerrors.NewAggregate([]error{
+				fmt.Errorf(`can't make rack nodes status report for rack %q of ScyllaDBDatacenter %q: %w`, "a", "default/basic", apimachineryutilerrors.NewAggregate([]error{
+					fmt.Errorf(`can't make node status report for member Service %q of rack %q of ScyllaDBDatacenter %q: %w`, "default/basic-dc-a-foo", "a", "default/basic", fmt.Errorf(`can't get ordinal from member Service %q: %w`, "default/basic-dc-a-foo", fmt.Errorf("couldn't convert '%s' to a number", "foo"))),
+				})),
+			}),
 		},
 	}
 

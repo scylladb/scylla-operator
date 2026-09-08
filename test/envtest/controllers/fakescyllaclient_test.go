@@ -33,12 +33,29 @@ func newFakeScyllaDBClientFactory(handler http.Handler) func() (*scyllaclient.Cl
 		}
 
 		return scyllaclient.NewClient(&scyllaclient.Config{
-			Hosts:   []string{parsedURL.Hostname()},
-			Port:    parsedURL.Port(),
-			Scheme:  "http",
-			Timeout: 5 * time.Second,
+			Hosts:  []string{parsedURL.Hostname()},
+			Port:   parsedURL.Port(),
+			Scheme: "http",
+			// The client sends every request to the node it targets, which is one of the hosts above or the one a
+			// caller names explicitly, e.g. a member Service ClusterIP; the transport sends them all to the fake
+			// server instead. The targeted host stays in the Host header, so a handler can tell the nodes apart.
+			Transport: &redirectingTransport{target: parsedURL.Host},
+			Timeout:   5 * time.Second,
 		})
 	}
+}
+
+// redirectingTransport sends every request to target, whatever host it is addressed to.
+type redirectingTransport struct {
+	target string
+}
+
+func (t *redirectingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	redirected := req.Clone(req.Context())
+	redirected.URL.Scheme = "http"
+	redirected.URL.Host = t.target
+
+	return http.DefaultTransport.RoundTrip(redirected)
 }
 
 // newSwitchableFakeScyllaDBClientFactory returns a switcher and a ScyllaDB client factory, both backed by a single

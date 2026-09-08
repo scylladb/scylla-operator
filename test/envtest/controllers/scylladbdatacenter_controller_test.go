@@ -1203,17 +1203,24 @@ func markStatefulSetNodesAsNotReady(ctx context.Context, statefulSets appsv1clie
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// markStatefulSetAsRolledOut reports the StatefulSet as rolled out in place of the StatefulSet controller. A rolling
+// update only updates the Pods at or above the partition, so a partitioned rollout is complete with that many Pods
+// updated.
 func markStatefulSetAsRolledOut(ctx context.Context, statefulSets appsv1client.StatefulSetInterface, name string) {
 	g.GinkgoHelper()
 
 	statefulSet, err := statefulSets.Get(ctx, name, metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	replicas := *statefulSet.Spec.Replicas
+	partition := int32(0)
+	if statefulSet.Spec.UpdateStrategy.RollingUpdate != nil && statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+		partition = *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
+	}
 	statefulSet.Status.ObservedGeneration = statefulSet.Generation
 	statefulSet.Status.Replicas = replicas
 	statefulSet.Status.ReadyReplicas = replicas
 	statefulSet.Status.AvailableReplicas = replicas
-	statefulSet.Status.UpdatedReplicas = replicas
+	statefulSet.Status.UpdatedReplicas = replicas - partition
 	statefulSet.Status.CurrentRevision = "envtest-revision"
 	statefulSet.Status.UpdateRevision = statefulSet.Status.CurrentRevision
 	_, err = statefulSets.UpdateStatus(ctx, statefulSet, metav1.UpdateOptions{})

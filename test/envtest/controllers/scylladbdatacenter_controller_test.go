@@ -32,6 +32,7 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"k8s.io/client-go/util/retry"
@@ -374,7 +375,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 			waitForServiceDecommissionedLabel(ctx, env, leavingServiceName, naming.LabelValueFalse)
 
 			g.By("Wiping the list from the rack status")
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			err := retry.RetryOnConflict(scyllaDBDatacenterUpdateBackoff, func() error {
 				sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
 				if err != nil {
 					return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(env.Namespace(), sdc.Name), err)
@@ -778,21 +779,9 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 					markStatefulSetAsNotRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), existingRackStatefulSetName)
 
 					g.By("Adding a new rack")
-					err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						sdc, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
-						if err != nil {
-							return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(env.Namespace(), sdc.Name), err)
-						}
-
+					updateScyllaDBDatacenter(ctx, env, sdc.Name, func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
 						sdc.Spec.Racks = makeRackSpecs(updatedRacks...)
-						_, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Update(ctx, sdc, metav1.UpdateOptions{})
-						if err != nil {
-							return fmt.Errorf("can't update ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
-						}
-
-						return nil
 					})
-					o.Expect(err).NotTo(o.HaveOccurred())
 
 					g.By("Verifying the new rack StatefulSet is not created")
 					newRackStatefulSetName := naming.StatefulSetNameForRack(makeRackSpec(newRack), sdc)
@@ -956,7 +945,7 @@ func getDecommissioningNodes(ctx context.Context, e *envtest.Environment, sdcNam
 func removeRacks(ctx context.Context, e *envtest.Environment, sdcName string) error {
 	g.GinkgoHelper()
 
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(scyllaDBDatacenterUpdateBackoff, func() error {
 		sdc, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Get(ctx, sdcName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(e.Namespace(), sdcName), err)
@@ -1007,16 +996,27 @@ func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name s
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func scaleRackTemplate(ctx context.Context, e *envtest.Environment, sdcName string, nodes int32) {
+// scyllaDBDatacenterUpdateBackoff retries an optimistic update of a ScyllaDBDatacenter for longer than
+// retry.DefaultRetry does: the controller writes the status of the same object on every sync, so a busy one can
+// conflict with several attempts in a row.
+var scyllaDBDatacenterUpdateBackoff = apimachineryutilwait.Backoff{
+	Steps:    30,
+	Duration: 20 * time.Millisecond,
+	Factor:   1.2,
+	Jitter:   0.1,
+}
+
+// updateScyllaDBDatacenter applies mutateFunc to the named ScyllaDBDatacenter, retrying on conflict.
+func updateScyllaDBDatacenter(ctx context.Context, e *envtest.Environment, sdcName string, mutateFunc func(*scyllav1alpha1.ScyllaDBDatacenter)) {
 	g.GinkgoHelper()
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	err := retry.RetryOnConflict(scyllaDBDatacenterUpdateBackoff, func() error {
 		sdc, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Get(ctx, sdcName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(e.Namespace(), sdcName), err)
 		}
 
-		sdc.Spec.RackTemplate.Nodes = new(nodes)
+		mutateFunc(sdc)
 		_, err = e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Update(ctx, sdc, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("can't update ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
@@ -1025,6 +1025,14 @@ func scaleRackTemplate(ctx context.Context, e *envtest.Environment, sdcName stri
 		return nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func scaleRackTemplate(ctx context.Context, e *envtest.Environment, sdcName string, nodes int32) {
+	g.GinkgoHelper()
+
+	updateScyllaDBDatacenter(ctx, e, sdcName, func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+		sdc.Spec.RackTemplate.Nodes = new(nodes)
+	})
 }
 
 // scaleRack sets the node count of the named rack, overriding the rack template.

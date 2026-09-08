@@ -962,22 +962,23 @@ func removeRacks(ctx context.Context, e *envtest.Environment, sdcName string) er
 func addServiceFinalizer(ctx context.Context, e *envtest.Environment, name string) {
 	g.GinkgoHelper()
 
-	updateServiceFinalizers(ctx, e, name, func(finalizers []string) []string {
-		return append(finalizers, envtestServiceFinalizer)
+	updateService(ctx, e, name, func(svc *corev1.Service) {
+		svc.Finalizers = append(svc.Finalizers, envtestServiceFinalizer)
 	})
 }
 
 func removeServiceFinalizer(ctx context.Context, e *envtest.Environment, name string) {
 	g.GinkgoHelper()
 
-	updateServiceFinalizers(ctx, e, name, func(finalizers []string) []string {
-		return oslices.Filter(finalizers, func(finalizer string) bool {
+	updateService(ctx, e, name, func(svc *corev1.Service) {
+		svc.Finalizers = oslices.Filter(svc.Finalizers, func(finalizer string) bool {
 			return finalizer != envtestServiceFinalizer
 		})
 	})
 }
 
-func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name string, mutateFunc func([]string) []string) {
+// updateService applies mutateFunc to the named Service, retrying on conflict.
+func updateService(ctx context.Context, e *envtest.Environment, name string, mutateFunc func(*corev1.Service)) {
 	g.GinkgoHelper()
 
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -986,7 +987,7 @@ func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name s
 			return fmt.Errorf("can't get Service %q: %w", naming.ManualRef(e.Namespace(), name), err)
 		}
 
-		svc.Finalizers = mutateFunc(svc.Finalizers)
+		mutateFunc(svc)
 		_, err = e.TypedKubeClient().CoreV1().Services(e.Namespace()).Update(ctx, svc, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("can't update Service %q: %w", naming.ObjRef(svc), err)
@@ -995,6 +996,17 @@ func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name s
 		return nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func setServiceLabel(ctx context.Context, e *envtest.Environment, name, key, value string) {
+	g.GinkgoHelper()
+
+	updateService(ctx, e, name, func(svc *corev1.Service) {
+		if svc.Labels == nil {
+			svc.Labels = map[string]string{}
+		}
+		svc.Labels[key] = value
+	})
 }
 
 // scyllaDBDatacenterUpdateBackoff retries an optimistic update of a ScyllaDBDatacenter for longer than
@@ -1063,21 +1075,7 @@ func scaleRack(ctx context.Context, e *envtest.Environment, sdcName, rackName st
 func setServiceDecommissionedLabel(ctx context.Context, e *envtest.Environment, name, value string) {
 	g.GinkgoHelper()
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		svc, err := e.TypedKubeClient().CoreV1().Services(e.Namespace()).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("can't get Service %q: %w", naming.ManualRef(e.Namespace(), name), err)
-		}
-
-		svc.Labels[naming.DecommissionedLabel] = value
-		_, err = e.TypedKubeClient().CoreV1().Services(e.Namespace()).Update(ctx, svc, metav1.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("can't update Service %q: %w", naming.ObjRef(svc), err)
-		}
-
-		return nil
-	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	setServiceLabel(ctx, e, name, naming.DecommissionedLabel, value)
 }
 
 func waitForServiceDecommissionedLabel(ctx context.Context, e *envtest.Environment, name, value string) {

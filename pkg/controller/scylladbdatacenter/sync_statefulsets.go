@@ -781,13 +781,6 @@ func (sdcc *Controller) syncStatefulSets(
 		statefulSets,
 	)
 	progressingConditions = append(progressingConditions, createProgressingConditions...)
-	defer func() {
-		if len(createProgressingConditions) > 0 {
-			// Wait for the informers to catch up.
-			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(sdcc.statefulSetCachePropagationDelay)
-		}
-	}()
 	var createErrs []error
 	if err != nil {
 		createErrs = append(createErrs, fmt.Errorf("can't create StatefulSet(s): %w", err))
@@ -955,7 +948,6 @@ func (sdcc *Controller) syncStatefulSets(
 		case internalapi.RolloutInitUpgradePhase:
 			// Partition all StatefulSet at once to block changes but no Pod update is done yet.
 			var errs []error
-			anyStsChanged := false
 			for _, required := range requiredStatefulSets {
 				existing, ok := statefulSets[required.Name]
 				if !ok {
@@ -976,8 +968,6 @@ func (sdcc *Controller) syncStatefulSets(
 				}
 
 				if changed {
-					anyStsChanged = true
-
 					rackName, ok := updatedSts.Labels[naming.RackNameLabel]
 					if !ok {
 						errs = append(errs, fmt.Errorf(
@@ -998,10 +988,6 @@ func (sdcc *Controller) syncStatefulSets(
 
 					status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts, services)
 				}
-			}
-			if anyStsChanged {
-				// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-				time.Sleep(sdcc.statefulSetCachePropagationDelay)
 			}
 			err = apimachineryutilerrors.NewAggregate(errs)
 			if err != nil {
@@ -1175,13 +1161,6 @@ func (sdcc *Controller) syncStatefulSets(
 	}
 
 	// Begin the update.
-	anyStsChanged := false
-	defer func() {
-		if anyStsChanged {
-			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(sdcc.statefulSetCachePropagationDelay)
-		}
-	}()
 	for _, required := range requiredStatefulSets {
 		// Check for version upgrades first.
 		existing, existingFound := statefulSets[required.Name]
@@ -1245,8 +1224,6 @@ func (sdcc *Controller) syncStatefulSets(
 		}
 
 		if changed {
-			anyStsChanged = true
-
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, required, "apply", sdc.Generation)
 
 			rackName, ok := updatedSts.Labels[naming.RackNameLabel]

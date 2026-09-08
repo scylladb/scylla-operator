@@ -35,6 +35,13 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing ScyllaCluster", "ScyllaDBDatacenter", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
+	// Decide from state that reflects the controller's own writes: wait for the informer caches to catch up with
+	// everything written by the previous syncs before reading anything from them.
+	err = sdcc.waitForCacheConsistency(ctx)
+	if err != nil {
+		return fmt.Errorf("can't wait for caches to observe previous writes: %w", err)
+	}
+
 	sdc, err := sdcc.scyllaDBDatacenterLister.ScyllaDBDatacenters(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaDBDatacenter", klog.KObj(sdc))
@@ -377,4 +384,11 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 	}
 
 	return apimachineryutilerrors.NewAggregate(errs)
+}
+
+func (sdcc *Controller) waitForCacheConsistency(ctx context.Context) error {
+	waitCtx, cancel := context.WithTimeout(ctx, cacheConsistencyTimeout)
+	defer cancel()
+
+	return sdcc.consistencyStore.WaitReady(waitCtx)
 }

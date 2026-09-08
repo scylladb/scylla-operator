@@ -2,11 +2,13 @@ package scylladbdatacenter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/cacheconsistency"
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
@@ -24,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -50,9 +53,9 @@ import (
 const (
 	ControllerName = "ScyllaDBDatacenterController"
 
-	// defaultStatefulSetCachePropagationDelay is the default value for the delay after applying StatefulSet changes
-	// to let informer caches observe the update.
-	defaultStatefulSetCachePropagationDelay = 10 * time.Second
+	// cacheConsistencyTimeout bounds how long a sync waits for the informer caches to observe the controller's own
+	// writes before it gives up and requeues.
+	cacheConsistencyTimeout = 1 * time.Minute
 )
 
 var (
@@ -90,18 +93,12 @@ type Controller struct {
 
 	keyGetter crypto.KeyGenerator
 
-	statefulSetCachePropagationDelay time.Duration
+	// consistencyStore records the writes the clients make, so that a sync only proceeds once the informer caches
+	// reflect them. See package cacheconsistency.
+	consistencyStore *cacheconsistency.ConsistencyStore
 }
 
 type ControllerOption func(ctrl *Controller)
-
-// WithStatefulSetCachePropagationDelay overrides the delay after applying StatefulSet changes to let informer caches
-// observe the update.
-func WithStatefulSetCachePropagationDelay(delay time.Duration) ControllerOption {
-	return func(c *Controller) {
-		c.statefulSetCachePropagationDelay = delay
-	}
-}
 
 func NewController(
 	kubeClient kubernetes.Interface,
@@ -176,12 +173,41 @@ func NewController(
 
 		keyGetter: keyGetter,
 
-		statefulSetCachePropagationDelay: defaultStatefulSetCachePropagationDelay,
+		consistencyStore: cacheconsistency.NewConsistencyStore(),
 	}
 
 	for _, option := range options {
 		option(sdcc)
 	}
+
+	for _, recorded := range []struct {
+		gvk      schema.GroupVersionKind
+		informer cache.SharedIndexInformer
+	}{
+		{gvk: corev1.SchemeGroupVersion.WithKind("Pod"), informer: podInformer.Informer()},
+		{gvk: corev1.SchemeGroupVersion.WithKind("Service"), informer: serviceInformer.Informer()},
+		{gvk: corev1.SchemeGroupVersion.WithKind("Secret"), informer: secretInformer.Informer()},
+		{gvk: corev1.SchemeGroupVersion.WithKind("ConfigMap"), informer: configMapInformer.Informer()},
+		{gvk: corev1.SchemeGroupVersion.WithKind("ServiceAccount"), informer: serviceAccountInformer.Informer()},
+		{gvk: rbacv1.SchemeGroupVersion.WithKind("RoleBinding"), informer: roleBindingInformer.Informer()},
+		{gvk: statefulSetControllerGVK, informer: statefulSetInformer.Informer()},
+		{gvk: policyv1.SchemeGroupVersion.WithKind("PodDisruptionBudget"), informer: pdbInformer.Informer()},
+		{gvk: networkingv1.SchemeGroupVersion.WithKind("Ingress"), informer: ingressInformer.Informer()},
+		{gvk: batchv1.SchemeGroupVersion.WithKind("Job"), informer: jobInformer.Informer()},
+		{gvk: scyllav1alpha1.ScyllaDBDatacenterGVK, informer: scyllaDBDatacenterInformer.Informer()},
+		{gvk: scyllav1alpha1.GroupVersion.WithKind("ScyllaDBDatacenterNodesStatusReport"), informer: scyllaDBDatacenterNodesStatusReportInformer.Informer()},
+	} {
+		err := sdcc.consistencyStore.Register(recorded.gvk, recorded.informer)
+		if err != nil {
+			return nil, fmt.Errorf("can't register %s in the consistency store: %w", recorded.gvk.Kind, err)
+		}
+	}
+	sdcc.cachesToSync = append(sdcc.cachesToSync, sdcc.consistencyStore.HasSynced)
+
+	// Every write the controller makes goes through the recording clients, so the sync can wait for the caches to
+	// observe all of them before deciding.
+	sdcc.kubeClient = cacheconsistency.NewRecordingKubeClient(kubeClient, sdcc.consistencyStore)
+	sdcc.scyllaClient = cacheconsistency.NewRecordingScyllaV1alpha1Client(scyllaClient, sdcc.consistencyStore)
 
 	var err error
 	sdcc.handlers, err = controllerhelpers.NewHandlers[*scyllav1alpha1.ScyllaDBDatacenter](
@@ -306,6 +332,9 @@ func (sdcc *Controller) processNextItem(ctx context.Context) bool {
 
 	case apierrors.IsAlreadyExists(err):
 		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
+
+	case errors.As(err, new(*cacheconsistency.ConsistencyError)):
+		klog.V(2).InfoS("Caches have not observed previous writes yet, will retry in a bit", "Key", key, "Error", err)
 
 	default:
 		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))

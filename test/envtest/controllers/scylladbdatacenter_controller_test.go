@@ -39,11 +39,6 @@ import (
 )
 
 const (
-	// scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay disables the production cache-propagation
-	// wait in envtests. Envtest runs the controller and API server in-process, so the default delay only slows tests down.
-	// Tests that need to exercise cache lag should override this.
-	scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay = 0 * time.Second
-
 	scyllaDBDatacenterControllerResyncPeriod = 12 * time.Hour
 
 	// scyllaDBDatacenterControllerDefaultInformerLag is how far behind the API server every informer of the
@@ -920,11 +915,6 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	)
 	keyGenerator := newStaticKeyGenerator()
 
-	options := []scylladbdatacenter.ControllerOption{
-		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
-		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
-	}
-
 	sdcc, err := scylladbdatacenter.NewController(
 		kubeClient,
 		scyllaClient.ScyllaV1alpha1(),
@@ -944,7 +934,6 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 		"scylla/operator:envtest",
 		scylla.DefaultNativeTransportPort,
 		keyGenerator,
-		options...,
 	)
 	o.Expect(err).NotTo(o.HaveOccurred())
 

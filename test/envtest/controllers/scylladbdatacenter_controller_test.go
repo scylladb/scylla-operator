@@ -35,6 +35,7 @@ import (
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -47,13 +48,13 @@ const (
 	scyllaDBDatacenterControllerResyncPeriod = 12 * time.Hour
 
 	// scyllaDBDatacenterControllerDefaultEventuallyTimeout is the default timeout for async envtest assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Eventually may time out before
-	// the controller resumes reconciliation.
+	// Pad accordingly when a test uses a non-zero cache-propagation delay or lags an informer, otherwise Eventually
+	// may time out before the controller resumes reconciliation.
 	scyllaDBDatacenterControllerDefaultEventuallyTimeout = 15 * time.Second
 
 	// scyllaDBDatacenterControllerDefaultConsistentlyTimeout is the default window for stability assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Consistently may pass while the
-	// controller is delayed instead of observing real steady state.
+	// Pad accordingly when a test uses a non-zero cache-propagation delay or lags an informer, otherwise Consistently
+	// may pass while the controller is delayed instead of observing real steady state.
 	scyllaDBDatacenterControllerDefaultConsistentlyTimeout = 5 * time.Second
 
 	// envtestServiceFinalizer holds a member Service in a terminating state, so that specs can freeze the window
@@ -1240,7 +1241,44 @@ func (g *staticKeyGenerator) GetKeyType() crypto.KeyType {
 	return crypto.ECDSAKeyType
 }
 
+// informerLagTransform returns an informer transform that delays every event of the objects selected by lags before
+// it reaches the informer cache, keeping the cache behind the API server by lag. The objects are not modified.
+// Informer caches give no read-your-writes and in envtest they catch up within microseconds; a lagging informer
+// widens the window in which the controller decides from a cache that hasn't observed its own writes yet.
+func informerLagTransform(lag time.Duration, lags func(obj any) bool) cache.TransformFunc {
+	return func(obj any) (any, error) {
+		selected := obj
+		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+			selected = tombstone.Obj
+		}
+		if lags(selected) {
+			time.Sleep(lag)
+		}
+
+		return obj, nil
+	}
+}
+
+// scyllaDBDatacenterControllerRunOptions tunes how a spec runs the controller.
+type scyllaDBDatacenterControllerRunOptions struct {
+	// kubeInformerOptions are applied to the informers of the Kubernetes objects, e.g. to lag one kind behind the API
+	// server.
+	kubeInformerOptions []informers.SharedInformerOption
+	// scyllaInformerOptions are applied to the namespaced informers of the Scylla objects.
+	scyllaInformerOptions []scyllainformers.SharedInformerOption
+	// controllerOptions are passed to the controller on top of the defaults of every spec.
+	controllerOptions []scylladbdatacenter.ControllerOption
+}
+
+// runScyllaDBDatacenterController runs the controller until the context is done.
 func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment) {
+	g.GinkgoHelper()
+
+	runScyllaDBDatacenterControllerWithOptions(ctx, e, scyllaDBDatacenterControllerRunOptions{})
+}
+
+// runScyllaDBDatacenterControllerWithOptions is runScyllaDBDatacenterController with the given options applied.
+func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.Environment, runOptions scyllaDBDatacenterControllerRunOptions) {
 	g.GinkgoHelper()
 
 	kubeClient := e.TypedKubeClient()
@@ -1248,12 +1286,16 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		scyllaDBDatacenterControllerResyncPeriod,
-		informers.WithNamespace(e.Namespace()),
+		append([]informers.SharedInformerOption{
+			informers.WithNamespace(e.Namespace()),
+		}, runOptions.kubeInformerOptions...)...,
 	)
 	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		scyllaClient,
 		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(e.Namespace()),
+		append([]scyllainformers.SharedInformerOption{
+			scyllainformers.WithNamespace(e.Namespace()),
+		}, runOptions.scyllaInformerOptions...)...,
 	)
 	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		scyllaClient,
@@ -1262,10 +1304,10 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	)
 	keyGenerator := newStaticKeyGenerator()
 
-	options := []scylladbdatacenter.ControllerOption{
+	options := append([]scylladbdatacenter.ControllerOption{
 		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
 		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
-	}
+	}, runOptions.controllerOptions...)
 
 	sdcc, err := scylladbdatacenter.NewController(
 		kubeClient,

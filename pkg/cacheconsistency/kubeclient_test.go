@@ -60,10 +60,10 @@ func newRecordingKubeClientTestEnv(t *testing.T, services []*corev1.Service, sta
 	statefulSetInformer, statefulSetWatcher := newTestSharedInformer(t, &appsv1.StatefulSet{}, statefulSetList)
 
 	store := NewConsistencyStore()
-	if err := store.Register(serviceGVK, serviceInformer); err != nil {
+	if err := store.Register(&corev1.Service{}, serviceInformer); err != nil {
 		t.Fatalf("can't register services: %v", err)
 	}
-	if err := store.Register(statefulSetGVK, statefulSetInformer); err != nil {
+	if err := store.Register(&appsv1.StatefulSet{}, statefulSetInformer); err != nil {
 		t.Fatalf("can't register statefulsets: %v", err)
 	}
 	runTestInformer(t, serviceInformer)
@@ -165,7 +165,7 @@ func TestKubeClient_DeleteOfAnObjectMissingFromTheAPIServerIsRecorded(t *testing
 
 	// Recording the recreated instance as a write makes the wait return only once the cache holds it.
 	env.serviceWatcher.Add(newService("40", "uid-2"))
-	env.store.WroteAt(serviceGVK, testNamespace, testName, "40")
+	env.store.WroteAt(corev1.SchemeGroupVersion.WithKind("Service"), testNamespace, testName, "40")
 	expectStoreWaitReturns(t, env.store)
 
 	err = env.client.CoreV1().Services(testNamespace).Delete(t.Context(), testName, metav1.DeleteOptions{})
@@ -307,7 +307,7 @@ func TestKubeClient_EvictionIsRecordedAsDelete(t *testing.T) {
 	podInformer, podWatcher := newTestSharedInformer(t, &corev1.Pod{}, podList)
 
 	store := NewConsistencyStore()
-	if err := store.Register(podGVK, podInformer); err != nil {
+	if err := store.Register(&corev1.Pod{}, podInformer); err != nil {
 		t.Fatalf("can't register pods: %v", err)
 	}
 	runTestInformer(t, podInformer, store.HasSynced)
@@ -341,7 +341,7 @@ func TestScyllaClient_UpdateStatusIsRecorded(t *testing.T) {
 	sdcInformer, sdcWatcher := newTestSharedInformer(t, &scyllav1alpha1.ScyllaDBDatacenter{}, sdcList)
 
 	store := NewConsistencyStore()
-	if err := store.Register(scyllaDBDatacenterGVK, sdcInformer); err != nil {
+	if err := store.Register(&scyllav1alpha1.ScyllaDBDatacenter{}, sdcInformer); err != nil {
 		t.Fatalf("can't register ScyllaDBDatacenters: %v", err)
 	}
 	runTestInformer(t, sdcInformer, store.HasSynced)

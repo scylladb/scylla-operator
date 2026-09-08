@@ -2,9 +2,14 @@ package cacheconsistency
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	"github.com/scylladb/scylla-operator/pkg/resource"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
@@ -12,7 +17,7 @@ import (
 
 // Client is the method set client-gen gives every typed client, over the object type T and the list type L.
 // It mirrors k8s.io/client-go/gentype, so the generated typed client interfaces satisfy it structurally.
-type Client[T metav1.Object, L any] interface {
+type Client[T kubeinterfaces.ObjectInterface, L any] interface {
 	Create(ctx context.Context, obj T, opts metav1.CreateOptions) (T, error)
 	Update(ctx context.Context, obj T, opts metav1.UpdateOptions) (T, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
@@ -24,35 +29,35 @@ type Client[T metav1.Object, L any] interface {
 }
 
 // StatusClient is the verb client-gen adds for kinds with a status subresource.
-type StatusClient[T metav1.Object] interface {
+type StatusClient[T kubeinterfaces.ObjectInterface] interface {
 	UpdateStatus(ctx context.Context, obj T, opts metav1.UpdateOptions) (T, error)
 }
 
 // ApplyClient is the verb client-gen adds when apply configurations are generated, over the apply configuration
 // type AC.
-type ApplyClient[T metav1.Object, AC any] interface {
+type ApplyClient[T kubeinterfaces.ObjectInterface, AC any] interface {
 	Apply(ctx context.Context, obj AC, opts metav1.ApplyOptions) (T, error)
 }
 
 // ApplyStatusClient is the verb client-gen adds for kinds with both a status subresource and apply configurations.
-type ApplyStatusClient[T metav1.Object, AC any] interface {
+type ApplyStatusClient[T kubeinterfaces.ObjectInterface, AC any] interface {
 	ApplyStatus(ctx context.Context, obj AC, opts metav1.ApplyOptions) (T, error)
 }
 
 // ClientWithStatus is a Client of a kind with a status subresource.
-type ClientWithStatus[T metav1.Object, L any] interface {
+type ClientWithStatus[T kubeinterfaces.ObjectInterface, L any] interface {
 	Client[T, L]
 	StatusClient[T]
 }
 
 // ClientWithApply is a Client of a kind with apply configurations.
-type ClientWithApply[T metav1.Object, L, AC any] interface {
+type ClientWithApply[T kubeinterfaces.ObjectInterface, L, AC any] interface {
 	Client[T, L]
 	ApplyClient[T, AC]
 }
 
 // ClientWithApplyAndStatus is a Client of a kind with both a status subresource and apply configurations.
-type ClientWithApplyAndStatus[T metav1.Object, L, AC any] interface {
+type ClientWithApplyAndStatus[T kubeinterfaces.ObjectInterface, L, AC any] interface {
 	Client[T, L]
 	StatusClient[T]
 	ApplyClient[T, AC]
@@ -64,6 +69,28 @@ type recorder struct {
 	gvk       schema.GroupVersionKind
 	namespace string
 	store     *ConsistencyStore
+}
+
+// newRecorder resolves the kind of T through the scheme, so that no kind name has to be spelled out for a client.
+// T has to be a pointer to a type registered in the scheme, which holds for every type a typed client is generated
+// for; anything else is a programming error and panics.
+func newRecorder[T kubeinterfaces.ObjectInterface](namespace string, store *ConsistencyStore) *recorder {
+	var zero T
+	obj, ok := reflect.New(reflect.TypeOf(zero).Elem()).Interface().(runtime.Object)
+	if !ok {
+		panic(fmt.Sprintf("cacheconsistency: %T is not a runtime.Object", zero))
+	}
+
+	gvk, err := resource.GetObjectGVK(obj)
+	if err != nil {
+		panic(fmt.Sprintf("cacheconsistency: can't determine the kind of %T: %v", zero, err))
+	}
+
+	return &recorder{
+		gvk:       *gvk,
+		namespace: namespace,
+		store:     store,
+	}
 }
 
 // observeWrite records a successful write of obj.
@@ -84,7 +111,7 @@ func (t *recorder) observeDelete(name string, err error) error {
 }
 
 // observeWrite records a successful write of obj and returns the write's results unchanged.
-func observeWrite[T metav1.Object](t *recorder, obj T, err error) (T, error) {
+func observeWrite[T kubeinterfaces.ObjectInterface](t *recorder, obj T, err error) (T, error) {
 	if err != nil {
 		return obj, err
 	}
@@ -97,22 +124,17 @@ func observeWrite[T metav1.Object](t *recorder, obj T, err error) (T, error) {
 // RecordingClient is a Client that records its writes in the ConsistencyStore it was created with, so that WaitReady
 // on the store covers them. Reads pass through untouched. DeleteCollection passes through unrecorded, as its response
 // doesn't tell what was deleted; the operator doesn't use it.
-type RecordingClient[T metav1.Object, L any] struct {
+type RecordingClient[T kubeinterfaces.ObjectInterface, L any] struct {
 	Client[T, L]
 	recorder *recorder
 }
 
-// NewRecordingClient wraps client, a typed client of the kind gvk scoped to namespace, so that its writes are
-// recorded in store.
-func NewRecordingClient[T metav1.Object, L any](client Client[T, L], gvk schema.GroupVersionKind, namespace string, store *ConsistencyStore) *RecordingClient[T, L] {
-	return newRecordingClient(client, &recorder{
-		gvk:       gvk,
-		namespace: namespace,
-		store:     store,
-	})
+// NewRecordingClient wraps client, a typed client of T scoped to namespace, so that its writes are recorded in store.
+func NewRecordingClient[T kubeinterfaces.ObjectInterface, L any](client Client[T, L], namespace string, store *ConsistencyStore) *RecordingClient[T, L] {
+	return newRecordingClient(client, newRecorder[T](namespace, store))
 }
 
-func newRecordingClient[T metav1.Object, L any](client Client[T, L], t *recorder) *RecordingClient[T, L] {
+func newRecordingClient[T kubeinterfaces.ObjectInterface, L any](client Client[T, L], t *recorder) *RecordingClient[T, L] {
 	return &RecordingClient[T, L]{
 		Client:   client,
 		recorder: t,
@@ -138,7 +160,7 @@ func (c *RecordingClient[T, L]) Delete(ctx context.Context, name string, opts me
 	return c.recorder.observeDelete(name, c.Client.Delete(ctx, name, opts))
 }
 
-type recordingStatusClient[T metav1.Object] struct {
+type recordingStatusClient[T kubeinterfaces.ObjectInterface] struct {
 	StatusClient[T]
 	recorder *recorder
 }
@@ -148,7 +170,7 @@ func (c *recordingStatusClient[T]) UpdateStatus(ctx context.Context, obj T, opts
 	return observeWrite(c.recorder, updated, err)
 }
 
-type recordingApplyClient[T metav1.Object, AC any] struct {
+type recordingApplyClient[T kubeinterfaces.ObjectInterface, AC any] struct {
 	ApplyClient[T, AC]
 	recorder *recorder
 }
@@ -158,7 +180,7 @@ func (c *recordingApplyClient[T, AC]) Apply(ctx context.Context, obj AC, opts me
 	return observeWrite(c.recorder, applied, err)
 }
 
-type recordingApplyStatusClient[T metav1.Object, AC any] struct {
+type recordingApplyStatusClient[T kubeinterfaces.ObjectInterface, AC any] struct {
 	ApplyStatusClient[T, AC]
 	recorder *recorder
 }
@@ -169,19 +191,15 @@ func (c *recordingApplyStatusClient[T, AC]) ApplyStatus(ctx context.Context, obj
 }
 
 // RecordingClientWithStatus is a RecordingClient of a kind with a status subresource.
-type RecordingClientWithStatus[T metav1.Object, L any] struct {
+type RecordingClientWithStatus[T kubeinterfaces.ObjectInterface, L any] struct {
 	*RecordingClient[T, L]
 	*recordingStatusClient[T]
 	recorder *recorder
 }
 
 // NewRecordingClientWithStatus is NewRecordingClient for a kind with a status subresource.
-func NewRecordingClientWithStatus[T metav1.Object, L any](client ClientWithStatus[T, L], gvk schema.GroupVersionKind, namespace string, store *ConsistencyStore) *RecordingClientWithStatus[T, L] {
-	t := &recorder{
-		gvk:       gvk,
-		namespace: namespace,
-		store:     store,
-	}
+func NewRecordingClientWithStatus[T kubeinterfaces.ObjectInterface, L any](client ClientWithStatus[T, L], namespace string, store *ConsistencyStore) *RecordingClientWithStatus[T, L] {
+	t := newRecorder[T](namespace, store)
 	return &RecordingClientWithStatus[T, L]{
 		RecordingClient:       newRecordingClient(client, t),
 		recordingStatusClient: &recordingStatusClient[T]{StatusClient: client, recorder: t},
@@ -190,19 +208,15 @@ func NewRecordingClientWithStatus[T metav1.Object, L any](client ClientWithStatu
 }
 
 // RecordingClientWithApply is a RecordingClient of a kind with apply configurations.
-type RecordingClientWithApply[T metav1.Object, L, AC any] struct {
+type RecordingClientWithApply[T kubeinterfaces.ObjectInterface, L, AC any] struct {
 	*RecordingClient[T, L]
 	*recordingApplyClient[T, AC]
 	recorder *recorder
 }
 
 // NewRecordingClientWithApply is NewRecordingClient for a kind with apply configurations.
-func NewRecordingClientWithApply[T metav1.Object, L, AC any](client ClientWithApply[T, L, AC], gvk schema.GroupVersionKind, namespace string, store *ConsistencyStore) *RecordingClientWithApply[T, L, AC] {
-	t := &recorder{
-		gvk:       gvk,
-		namespace: namespace,
-		store:     store,
-	}
+func NewRecordingClientWithApply[T kubeinterfaces.ObjectInterface, L, AC any](client ClientWithApply[T, L, AC], namespace string, store *ConsistencyStore) *RecordingClientWithApply[T, L, AC] {
+	t := newRecorder[T](namespace, store)
 	return &RecordingClientWithApply[T, L, AC]{
 		RecordingClient:      newRecordingClient(client, t),
 		recordingApplyClient: &recordingApplyClient[T, AC]{ApplyClient: client, recorder: t},
@@ -212,7 +226,7 @@ func NewRecordingClientWithApply[T metav1.Object, L, AC any](client ClientWithAp
 
 // RecordingClientWithApplyAndStatus is a RecordingClient of a kind with both a status subresource and apply
 // configurations.
-type RecordingClientWithApplyAndStatus[T metav1.Object, L, AC any] struct {
+type RecordingClientWithApplyAndStatus[T kubeinterfaces.ObjectInterface, L, AC any] struct {
 	*RecordingClient[T, L]
 	*recordingStatusClient[T]
 	*recordingApplyClient[T, AC]
@@ -222,12 +236,8 @@ type RecordingClientWithApplyAndStatus[T metav1.Object, L, AC any] struct {
 
 // NewRecordingClientWithApplyAndStatus is NewRecordingClient for a kind with both a status subresource and apply
 // configurations.
-func NewRecordingClientWithApplyAndStatus[T metav1.Object, L, AC any](client ClientWithApplyAndStatus[T, L, AC], gvk schema.GroupVersionKind, namespace string, store *ConsistencyStore) *RecordingClientWithApplyAndStatus[T, L, AC] {
-	t := &recorder{
-		gvk:       gvk,
-		namespace: namespace,
-		store:     store,
-	}
+func NewRecordingClientWithApplyAndStatus[T kubeinterfaces.ObjectInterface, L, AC any](client ClientWithApplyAndStatus[T, L, AC], namespace string, store *ConsistencyStore) *RecordingClientWithApplyAndStatus[T, L, AC] {
+	t := newRecorder[T](namespace, store)
 	return &RecordingClientWithApplyAndStatus[T, L, AC]{
 		RecordingClient:            newRecordingClient(client, t),
 		recordingStatusClient:      &recordingStatusClient[T]{StatusClient: client, recorder: t},

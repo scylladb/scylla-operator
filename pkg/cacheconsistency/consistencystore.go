@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/scylladb/scylla-operator/pkg/resource"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
@@ -27,9 +29,15 @@ func NewConsistencyStore() *ConsistencyStore {
 	}
 }
 
-// Register makes the store record writes of the kind and wait for the informer to observe them.
-func (ts *ConsistencyStore) Register(gvk schema.GroupVersionKind, informer cache.SharedIndexInformer) error {
-	if _, exists := ts.handlers[gvk]; exists {
+// Register makes the store record writes of the kind of obj and wait for the informer to observe them. obj is an
+// example object of the kind, e.g. &corev1.Pod{}, whose kind is resolved through the scheme.
+func (ts *ConsistencyStore) Register(obj runtime.Object, informer cache.SharedIndexInformer) error {
+	gvk, err := resource.GetObjectGVK(obj)
+	if err != nil {
+		return fmt.Errorf("can't determine the kind of %T: %w", obj, err)
+	}
+
+	if _, exists := ts.handlers[*gvk]; exists {
 		return fmt.Errorf("%s is already registered", gvk)
 	}
 
@@ -37,7 +45,7 @@ func (ts *ConsistencyStore) Register(gvk schema.GroupVersionKind, informer cache
 	if err != nil {
 		return fmt.Errorf("can't create consistency handler for %s: %w", gvk, err)
 	}
-	ts.handlers[gvk] = handler
+	ts.handlers[*gvk] = handler
 
 	return nil
 }

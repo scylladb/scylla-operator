@@ -5,12 +5,6 @@ import (
 	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
 )
 
-// Kinds the recording Scylla client records writes for.
-var (
-	scyllaDBDatacenterGVK                  = scyllav1alpha1.ScyllaDBDatacenterGVK
-	scyllaDBDatacenterNodesStatusReportGVK = scyllav1alpha1.GroupVersion.WithKind("ScyllaDBDatacenterNodesStatusReport")
-)
-
 // NewRecordingScyllaV1alpha1Client returns a ScyllaV1alpha1Interface that records every write it makes to the kinds registered
 // in store, so that WaitReady on the store covers them. See NewRecordingKubeClient for what passes through unrecorded.
 //
@@ -28,9 +22,9 @@ type scyllaV1alpha1Client struct {
 }
 
 func (c *scyllaV1alpha1Client) ScyllaDBDatacenters(namespace string) scyllav1alpha1client.ScyllaDBDatacenterInterface {
-	return NewRecordingClientWithStatus[*scyllav1alpha1.ScyllaDBDatacenter, *scyllav1alpha1.ScyllaDBDatacenterList](c.ScyllaV1alpha1Interface.ScyllaDBDatacenters(namespace), scyllaDBDatacenterGVK, namespace, c.store)
+	return NewRecordingClientWithStatus[*scyllav1alpha1.ScyllaDBDatacenter, *scyllav1alpha1.ScyllaDBDatacenterList](c.ScyllaV1alpha1Interface.ScyllaDBDatacenters(namespace), namespace, c.store)
 }
 
 func (c *scyllaV1alpha1Client) ScyllaDBDatacenterNodesStatusReports(namespace string) scyllav1alpha1client.ScyllaDBDatacenterNodesStatusReportInterface {
-	return NewRecordingClient[*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport, *scyllav1alpha1.ScyllaDBDatacenterNodesStatusReportList](c.ScyllaV1alpha1Interface.ScyllaDBDatacenterNodesStatusReports(namespace), scyllaDBDatacenterNodesStatusReportGVK, namespace, c.store)
+	return NewRecordingClient[*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport, *scyllav1alpha1.ScyllaDBDatacenterNodesStatusReportList](c.ScyllaV1alpha1Interface.ScyllaDBDatacenterNodesStatusReports(namespace), namespace, c.store)
 }

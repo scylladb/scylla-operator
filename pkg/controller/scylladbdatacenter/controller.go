@@ -26,7 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -180,26 +180,28 @@ func NewController(
 		option(sdcc)
 	}
 
+	// The kinds the controller reads from its listers and writes: their writes are recorded by the recording
+	// clients below, and every sync waits for the caches to observe them.
 	for _, recorded := range []struct {
-		gvk      schema.GroupVersionKind
+		obj      runtime.Object
 		informer cache.SharedIndexInformer
 	}{
-		{gvk: corev1.SchemeGroupVersion.WithKind("Pod"), informer: podInformer.Informer()},
-		{gvk: corev1.SchemeGroupVersion.WithKind("Service"), informer: serviceInformer.Informer()},
-		{gvk: corev1.SchemeGroupVersion.WithKind("Secret"), informer: secretInformer.Informer()},
-		{gvk: corev1.SchemeGroupVersion.WithKind("ConfigMap"), informer: configMapInformer.Informer()},
-		{gvk: corev1.SchemeGroupVersion.WithKind("ServiceAccount"), informer: serviceAccountInformer.Informer()},
-		{gvk: rbacv1.SchemeGroupVersion.WithKind("RoleBinding"), informer: roleBindingInformer.Informer()},
-		{gvk: statefulSetControllerGVK, informer: statefulSetInformer.Informer()},
-		{gvk: policyv1.SchemeGroupVersion.WithKind("PodDisruptionBudget"), informer: pdbInformer.Informer()},
-		{gvk: networkingv1.SchemeGroupVersion.WithKind("Ingress"), informer: ingressInformer.Informer()},
-		{gvk: batchv1.SchemeGroupVersion.WithKind("Job"), informer: jobInformer.Informer()},
-		{gvk: scyllav1alpha1.ScyllaDBDatacenterGVK, informer: scyllaDBDatacenterInformer.Informer()},
-		{gvk: scyllav1alpha1.GroupVersion.WithKind("ScyllaDBDatacenterNodesStatusReport"), informer: scyllaDBDatacenterNodesStatusReportInformer.Informer()},
+		{obj: &corev1.Pod{}, informer: podInformer.Informer()},
+		{obj: &corev1.Service{}, informer: serviceInformer.Informer()},
+		{obj: &corev1.Secret{}, informer: secretInformer.Informer()},
+		{obj: &corev1.ConfigMap{}, informer: configMapInformer.Informer()},
+		{obj: &corev1.ServiceAccount{}, informer: serviceAccountInformer.Informer()},
+		{obj: &rbacv1.RoleBinding{}, informer: roleBindingInformer.Informer()},
+		{obj: &appsv1.StatefulSet{}, informer: statefulSetInformer.Informer()},
+		{obj: &policyv1.PodDisruptionBudget{}, informer: pdbInformer.Informer()},
+		{obj: &networkingv1.Ingress{}, informer: ingressInformer.Informer()},
+		{obj: &batchv1.Job{}, informer: jobInformer.Informer()},
+		{obj: &scyllav1alpha1.ScyllaDBDatacenter{}, informer: scyllaDBDatacenterInformer.Informer()},
+		{obj: &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, informer: scyllaDBDatacenterNodesStatusReportInformer.Informer()},
 	} {
-		err := sdcc.consistencyStore.Register(recorded.gvk, recorded.informer)
+		err := sdcc.consistencyStore.Register(recorded.obj, recorded.informer)
 		if err != nil {
-			return nil, fmt.Errorf("can't register %s in the consistency store: %w", recorded.gvk.Kind, err)
+			return nil, fmt.Errorf("can't register %T in the consistency store: %w", recorded.obj, err)
 		}
 	}
 	sdcc.cachesToSync = append(sdcc.cachesToSync, sdcc.consistencyStore.HasSynced)
@@ -208,7 +210,6 @@ func NewController(
 	// observe all of them before deciding.
 	sdcc.kubeClient = cacheconsistency.NewRecordingKubeClient(kubeClient, sdcc.consistencyStore)
 	sdcc.scyllaClient = cacheconsistency.NewRecordingScyllaV1alpha1Client(scyllaClient, sdcc.consistencyStore)
-
 	var err error
 	sdcc.handlers, err = controllerhelpers.NewHandlers[*scyllav1alpha1.ScyllaDBDatacenter](
 		sdcc.queue,

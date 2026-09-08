@@ -30,20 +30,6 @@ import (
 	rbacv1client "k8s.io/client-go/kubernetes/typed/rbac/v1"
 )
 
-// Kinds the recording Kubernetes client records writes for.
-var (
-	podGVK                 = corev1.SchemeGroupVersion.WithKind("Pod")
-	serviceGVK             = corev1.SchemeGroupVersion.WithKind("Service")
-	secretGVK              = corev1.SchemeGroupVersion.WithKind("Secret")
-	configMapGVK           = corev1.SchemeGroupVersion.WithKind("ConfigMap")
-	serviceAccountGVK      = corev1.SchemeGroupVersion.WithKind("ServiceAccount")
-	statefulSetGVK         = appsv1.SchemeGroupVersion.WithKind("StatefulSet")
-	jobGVK                 = batchv1.SchemeGroupVersion.WithKind("Job")
-	ingressGVK             = networkingv1.SchemeGroupVersion.WithKind("Ingress")
-	podDisruptionBudgetGVK = policyv1.SchemeGroupVersion.WithKind("PodDisruptionBudget")
-	roleBindingGVK         = rbacv1.SchemeGroupVersion.WithKind("RoleBinding")
-)
-
 // NewRecordingKubeClient returns a kubernetes.Interface that records every write it makes to the kinds registered in store,
 // so that WaitReady on the store covers them. Kinds not registered in the store, and kinds this client doesn't wrap, pass
 // through unrecorded, and so does DeleteCollection.
@@ -112,7 +98,7 @@ type coreV1Client struct {
 func (c *coreV1Client) Pods(namespace string) corev1client.PodInterface {
 	pods := c.CoreV1Interface.Pods(namespace)
 	return &recordingPods{
-		RecordingClientWithApplyAndStatus: NewRecordingClientWithApplyAndStatus[*corev1.Pod, *corev1.PodList, *corev1ac.PodApplyConfiguration](pods, podGVK, namespace, c.store),
+		RecordingClientWithApplyAndStatus: NewRecordingClientWithApplyAndStatus[*corev1.Pod, *corev1.PodList, *corev1ac.PodApplyConfiguration](pods, namespace, c.store),
 		PodExpansion:                      pods,
 		pods:                              pods,
 	}
@@ -143,11 +129,15 @@ func (c *recordingPods) EvictV1(ctx context.Context, eviction *policyv1.Eviction
 	return c.recorder.observeDelete(eviction.Name, c.PodExpansion.EvictV1(ctx, eviction))
 }
 
+func (c *recordingPods) EvictV1beta1(ctx context.Context, eviction *policyv1beta1.Eviction) error {
+	return c.recorder.observeDelete(eviction.Name, c.PodExpansion.EvictV1beta1(ctx, eviction))
+}
+
 func (c *coreV1Client) Services(namespace string) corev1client.ServiceInterface {
 	services := c.CoreV1Interface.Services(namespace)
 	return &recordingServices{
 		RecordingClientWithApplyAndStatus: NewRecordingClientWithApplyAndStatus[*corev1.Service, *corev1.ServiceList, *corev1ac.ServiceApplyConfiguration](
-			serviceClient{ServiceInterface: services}, serviceGVK, namespace, c.store,
+			serviceClient{ServiceInterface: services}, namespace, c.store,
 		),
 		ServiceExpansion: services,
 	}
@@ -170,17 +160,17 @@ type recordingServices struct {
 }
 
 func (c *coreV1Client) Secrets(namespace string) corev1client.SecretInterface {
-	return NewRecordingClientWithApply[*corev1.Secret, *corev1.SecretList, *corev1ac.SecretApplyConfiguration](c.CoreV1Interface.Secrets(namespace), secretGVK, namespace, c.store)
+	return NewRecordingClientWithApply[*corev1.Secret, *corev1.SecretList, *corev1ac.SecretApplyConfiguration](c.CoreV1Interface.Secrets(namespace), namespace, c.store)
 }
 
 func (c *coreV1Client) ConfigMaps(namespace string) corev1client.ConfigMapInterface {
-	return NewRecordingClientWithApply[*corev1.ConfigMap, *corev1.ConfigMapList, *corev1ac.ConfigMapApplyConfiguration](c.CoreV1Interface.ConfigMaps(namespace), configMapGVK, namespace, c.store)
+	return NewRecordingClientWithApply[*corev1.ConfigMap, *corev1.ConfigMapList, *corev1ac.ConfigMapApplyConfiguration](c.CoreV1Interface.ConfigMaps(namespace), namespace, c.store)
 }
 
 func (c *coreV1Client) ServiceAccounts(namespace string) corev1client.ServiceAccountInterface {
 	serviceAccounts := c.CoreV1Interface.ServiceAccounts(namespace)
 	return &recordingServiceAccounts{
-		RecordingClientWithApply: NewRecordingClientWithApply[*corev1.ServiceAccount, *corev1.ServiceAccountList, *corev1ac.ServiceAccountApplyConfiguration](serviceAccounts, serviceAccountGVK, namespace, c.store),
+		RecordingClientWithApply: NewRecordingClientWithApply[*corev1.ServiceAccount, *corev1.ServiceAccountList, *corev1ac.ServiceAccountApplyConfiguration](serviceAccounts, namespace, c.store),
 		serviceAccounts:          serviceAccounts,
 	}
 }
@@ -204,7 +194,7 @@ type appsV1Client struct {
 func (c *appsV1Client) StatefulSets(namespace string) appsv1client.StatefulSetInterface {
 	statefulSets := c.AppsV1Interface.StatefulSets(namespace)
 	return &recordingStatefulSets{
-		RecordingClientWithApplyAndStatus: NewRecordingClientWithApplyAndStatus[*appsv1.StatefulSet, *appsv1.StatefulSetList, *appsv1ac.StatefulSetApplyConfiguration](statefulSets, statefulSetGVK, namespace, c.store),
+		RecordingClientWithApplyAndStatus: NewRecordingClientWithApplyAndStatus[*appsv1.StatefulSet, *appsv1.StatefulSetList, *appsv1ac.StatefulSetApplyConfiguration](statefulSets, namespace, c.store),
 		statefulSets:                      statefulSets,
 	}
 }
@@ -236,7 +226,7 @@ type batchV1Client struct {
 }
 
 func (c *batchV1Client) Jobs(namespace string) batchv1client.JobInterface {
-	return NewRecordingClientWithApplyAndStatus[*batchv1.Job, *batchv1.JobList, *batchv1ac.JobApplyConfiguration](c.BatchV1Interface.Jobs(namespace), jobGVK, namespace, c.store)
+	return NewRecordingClientWithApplyAndStatus[*batchv1.Job, *batchv1.JobList, *batchv1ac.JobApplyConfiguration](c.BatchV1Interface.Jobs(namespace), namespace, c.store)
 }
 
 type networkingV1Client struct {
@@ -245,7 +235,7 @@ type networkingV1Client struct {
 }
 
 func (c *networkingV1Client) Ingresses(namespace string) networkingv1client.IngressInterface {
-	return NewRecordingClientWithApplyAndStatus[*networkingv1.Ingress, *networkingv1.IngressList, *networkingv1ac.IngressApplyConfiguration](c.NetworkingV1Interface.Ingresses(namespace), ingressGVK, namespace, c.store)
+	return NewRecordingClientWithApplyAndStatus[*networkingv1.Ingress, *networkingv1.IngressList, *networkingv1ac.IngressApplyConfiguration](c.NetworkingV1Interface.Ingresses(namespace), namespace, c.store)
 }
 
 type policyV1Client struct {
@@ -254,7 +244,7 @@ type policyV1Client struct {
 }
 
 func (c *policyV1Client) PodDisruptionBudgets(namespace string) policyv1client.PodDisruptionBudgetInterface {
-	return NewRecordingClientWithApplyAndStatus[*policyv1.PodDisruptionBudget, *policyv1.PodDisruptionBudgetList, *policyv1ac.PodDisruptionBudgetApplyConfiguration](c.PolicyV1Interface.PodDisruptionBudgets(namespace), podDisruptionBudgetGVK, namespace, c.store)
+	return NewRecordingClientWithApplyAndStatus[*policyv1.PodDisruptionBudget, *policyv1.PodDisruptionBudgetList, *policyv1ac.PodDisruptionBudgetApplyConfiguration](c.PolicyV1Interface.PodDisruptionBudgets(namespace), namespace, c.store)
 }
 
 type rbacV1Client struct {
@@ -263,5 +253,5 @@ type rbacV1Client struct {
 }
 
 func (c *rbacV1Client) RoleBindings(namespace string) rbacv1client.RoleBindingInterface {
-	return NewRecordingClientWithApply[*rbacv1.RoleBinding, *rbacv1.RoleBindingList, *rbacv1ac.RoleBindingApplyConfiguration](c.RbacV1Interface.RoleBindings(namespace), roleBindingGVK, namespace, c.store)
+	return NewRecordingClientWithApply[*rbacv1.RoleBinding, *rbacv1.RoleBindingList, *rbacv1ac.RoleBindingApplyConfiguration](c.RbacV1Interface.RoleBindings(namespace), namespace, c.store)
 }

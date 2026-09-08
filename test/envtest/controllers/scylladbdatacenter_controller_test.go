@@ -1178,6 +1178,7 @@ func markStatefulSetAsNotRolledOut(ctx context.Context, statefulSets appsv1clien
 	statefulSet.Status.ObservedGeneration = statefulSet.Generation - 1
 	statefulSet.Status.Replicas = 1
 	statefulSet.Status.ReadyReplicas = 0
+	statefulSet.Status.AvailableReplicas = 0
 	statefulSet.Status.UpdatedReplicas = 0
 	_, err = statefulSets.UpdateStatus(ctx, statefulSet, metav1.UpdateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())

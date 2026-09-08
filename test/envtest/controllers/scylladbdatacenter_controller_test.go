@@ -151,7 +151,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 				target = int32(1)
 			)
 
-			sdc := setupDecommissioningRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 
 			var leavingServiceNames, stayingServiceNames []string
@@ -313,7 +313,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should drain the rack above a node with a stale decommissioned label and bootstrap it anew", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			staleServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 0)
 
@@ -409,7 +409,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission a multi-node scale-down one node at a time from the highest ordinal", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
 			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
@@ -466,7 +466,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission nodes of several racks one rack at a time", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -509,7 +509,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should wait for a rack's decommissioning node before scaling another rack", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -544,7 +544,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should extend an ongoing scale-down when the node count is lowered further", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
 			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
@@ -590,7 +590,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission a multi-node scale-down at once", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			lowerLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
 			higherLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
@@ -639,7 +639,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission nodes of several racks at once", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -684,7 +684,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should keep scaling another rack while a rack has a node decommissioning", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -718,7 +718,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should extend an ongoing scale-down when the node count is lowered further", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
 			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
@@ -824,8 +824,8 @@ func leavingOrdinals(enableParallelNodeOperations bool, nodes, target int32) []i
 	return ordinals
 }
 
-// setupDecommissioningRacks runs the controller and brings up rolled-out racks with the given number of nodes each.
-func setupDecommissioningRacks(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
+// setupRolledOutRacks runs the controller and brings up rolled-out racks with the given number of nodes each.
+func setupRolledOutRacks(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
 	g.GinkgoHelper()
 
 	g.By("Running ScyllaDBDatacenter controller")
@@ -867,7 +867,7 @@ func setupDecommissioningRacks(ctx g.SpecContext, env *envtest.Environment, enab
 func setupDecommissioningRack(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool) (*scyllav1alpha1.ScyllaDBDatacenter, string, string) {
 	g.GinkgoHelper()
 
-	sdc := setupDecommissioningRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, decommissioningInitialNodes)
+	sdc := setupRolledOutRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, decommissioningInitialNodes)
 	rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 	leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 

@@ -16,14 +16,31 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// rackLayout is the number of racks of a ScyllaCluster and the number of members in each of them.
+// rackLayout is the racks of a ScyllaCluster, named explicitly, and the number of members in each of them,
+// mirroring how ScyllaDBDatacenter itself layers a per-rack override (RackSpec.Nodes) under a datacenter-wide
+// default (RackTemplate.Nodes): every named rack has defaultMemberCount members, unless memberCounts overrides it for
+// that rack specifically.
 type rackLayout struct {
-	rackCount      int32
-	membersPerRack int32
+	racks              []string
+	defaultMemberCount int32
+	// memberCounts overrides defaultMemberCount for the named racks. A key not present in racks is an error.
+	memberCounts map[string]int32
 }
 
 func (rl rackLayout) String() string {
-	return fmt.Sprintf("%d rack(s) of %d member(s)", rl.rackCount, rl.membersPerRack)
+	if len(rl.memberCounts) != 0 {
+		return fmt.Sprintf("racks %v, %d member(s) each except %v", rl.racks, rl.defaultMemberCount, rl.memberCounts)
+	}
+	return fmt.Sprintf("racks %v, %d member(s) each", rl.racks, rl.defaultMemberCount)
+}
+
+// membersOfRack returns the member count of the named rack: its override from memberCounts if it has one, else
+// defaultMemberCount.
+func (rl rackLayout) membersOfRack(name string) int32 {
+	if members, ok := rl.memberCounts[name]; ok {
+		return members
+	}
+	return rl.defaultMemberCount
 }
 
 // createClusterAndWaitForRollout creates a ScyllaCluster with the given rack layout and waits for rollout.
@@ -47,6 +64,7 @@ func createClusterAndWaitForRollout(
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+	scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 	return sc
 }
@@ -77,6 +95,7 @@ func scaleClusterAndWaitForRollout(
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+	scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 	return sc
 }
@@ -84,14 +103,18 @@ func scaleClusterAndWaitForRollout(
 // replicateRackSpecs fans the ScyllaCluster's first rack out into the given rack layout.
 func replicateRackSpecs(sc *scyllav1.ScyllaCluster, rl rackLayout) []scyllav1.RackSpec {
 	o.Expect(sc.Spec.Datacenter.Racks).NotTo(o.BeEmpty())
-	o.Expect(rl.rackCount).NotTo(o.BeZero())
+	o.Expect(rl.racks).NotTo(o.BeEmpty())
 
-	rackSpecs := make([]scyllav1.RackSpec, 0, rl.rackCount)
-	for i := range rl.rackCount {
+	rackSpecs := make([]scyllav1.RackSpec, 0, len(rl.racks))
+	for _, name := range rl.racks {
 		rackSpec := sc.Spec.Datacenter.Racks[0].DeepCopy()
-		rackSpec.Name = fmt.Sprintf("rack-%d", i)
-		rackSpec.Members = rl.membersPerRack
+		rackSpec.Name = name
+		rackSpec.Members = rl.membersOfRack(name)
 		rackSpecs = append(rackSpecs, *rackSpec)
+	}
+
+	for name := range rl.memberCounts {
+		o.Expect(rl.racks).To(o.ContainElement(name), "memberCounts names rack %q, which isn't among the layout's rack names %v", name, rl.racks)
 	}
 
 	return rackSpecs
@@ -99,8 +122,8 @@ func replicateRackSpecs(sc *scyllav1.ScyllaCluster, rl rackLayout) []scyllav1.Ra
 
 // expectRackLayout asserts that the ScyllaCluster has the given rack layout.
 func expectRackLayout(sc *scyllav1.ScyllaCluster, rl rackLayout) {
-	o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(int(rl.rackCount)))
+	o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(len(rl.racks)))
 	for _, rackSpec := range sc.Spec.Datacenter.Racks {
-		o.Expect(rackSpec.Members).To(o.BeEquivalentTo(rl.membersPerRack))
+		o.Expect(rackSpec.Members).To(o.BeEquivalentTo(rl.membersOfRack(rackSpec.Name)))
 	}
 }

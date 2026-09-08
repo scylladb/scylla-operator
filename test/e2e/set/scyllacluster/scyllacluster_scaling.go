@@ -41,19 +41,24 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 
 	type horizontalScalingEntry struct {
 		initialRackLayout rackLayout
-		steps             []scalingStep
+		// replication, when set, overrides the keyspace's default replication strategy.
+		replication *utils.Replication
+		steps       []scalingStep
 	}
 
 	g.DescribeTable("should support horizontal scaling", func(ctx g.SpecContext, e *horizontalScalingEntry) {
 		sc := createClusterAndWaitForRollout(ctx, f, e.initialRackLayout)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(hosts).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 		o.Expect(hostIDs).To(o.HaveLen(int(utils.GetMemberCount(sc))))
 
-		di := verification.InsertAndVerifyCQLData(ctx, hosts)
+		var dataInserterOptions []utils.DataInserterOption
+		if e.replication != nil {
+			dataInserterOptions = append(dataInserterOptions, utils.WithReplication(*e.replication))
+		}
+		di := verification.InsertAndVerifyCQLData(ctx, hosts, dataInserterOptions...)
 		defer di.Close()
 
 		// Host IDs of nodes that have left the cluster. None of them may be resurrected - a node scaled back up has to
@@ -68,7 +73,6 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 			previousHostIDs := hostIDs
 
 			sc = scaleClusterAndWaitForRollout(ctx, f, sc, step.rackLayout)
-			scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
 
 			hosts, hostIDs, err = utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -89,33 +93,33 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		// Scaling by more than a single node at a time is what distinguishes parallel node operations from sequential
 		// ones - a step moving a single node is indistinguishable between the two.
 		g.Entry("out", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 1},
+			initialRackLayout: rackLayout{racks: []string{"a"}, defaultMemberCount: 1},
 			steps: []scalingStep{
-				{rackCount: 1, membersPerRack: 3, verifyFunc: verifyScaledOut},
+				{racks: []string{"a"}, defaultMemberCount: 3, verifyFunc: verifyScaledOut},
 			},
 		}),
 		g.Entry("out, into new racks", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 1},
+			initialRackLayout: rackLayout{racks: []string{"a"}, defaultMemberCount: 1},
 			steps: []scalingStep{
-				{rackCount: 3, membersPerRack: 1, verifyFunc: verifyScaledOut},
+				{racks: []string{"a", "b", "c"}, defaultMemberCount: 1, verifyFunc: verifyScaledOut},
 			},
 		}),
 		g.Entry("out, across multiple racks", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 3, membersPerRack: 1},
+			initialRackLayout: rackLayout{racks: []string{"a", "b", "c"}, defaultMemberCount: 1},
 			steps: []scalingStep{
-				{rackCount: 3, membersPerRack: 2, verifyFunc: verifyScaledOut},
+				{racks: []string{"a", "b", "c"}, defaultMemberCount: 2, verifyFunc: verifyScaledOut},
 			},
 		}),
 		g.Entry("in", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
+			initialRackLayout: rackLayout{racks: []string{"a"}, defaultMemberCount: 3},
 			steps: []scalingStep{
-				{rackCount: 1, membersPerRack: 1, verifyFunc: verifyScaledIn},
+				{racks: []string{"a"}, defaultMemberCount: 1, verifyFunc: verifyScaledIn},
 			},
 		}),
 		g.Entry("in, across multiple racks", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 3, membersPerRack: 2},
+			initialRackLayout: rackLayout{racks: []string{"a", "b", "c"}, defaultMemberCount: 2},
 			steps: []scalingStep{
-				{rackCount: 3, membersPerRack: 1, verifyFunc: verifyScaledIn},
+				{racks: []string{"a", "b", "c"}, defaultMemberCount: 1, verifyFunc: verifyScaledIn},
 			},
 		}),
 		// Draining a node leaves it in ScyllaDB's DRAINED operational mode, which no longer accepts writes and cannot be
@@ -126,17 +130,32 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		// Scaling in from here therefore exercises a different code path than an ordinary decommission. The drain targets
 		// the highest ordinal node, so this entry deliberately scales in by a single node.
 		g.Entry("in, when the node has been drained in maintenance mode", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
+			initialRackLayout: rackLayout{racks: []string{"a"}, defaultMemberCount: 3},
 			steps: []scalingStep{
-				{rackCount: 1, membersPerRack: 2, beforeFunc: markHighestOrdinalForMaintenanceAndDrain, verifyFunc: verifyScaledIn},
+				{racks: []string{"a"}, defaultMemberCount: 2, beforeFunc: markHighestOrdinalForMaintenanceAndDrain, verifyFunc: verifyScaledIn},
 			},
 		}),
 		// Scaling back out verifies that a decommissioned node's storage isn't left in place and reused.
 		g.Entry("out, with new storage after decommissioning", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
+			initialRackLayout: rackLayout{racks: []string{"a"}, defaultMemberCount: 3},
 			steps: []scalingStep{
-				{rackCount: 1, membersPerRack: 1, verifyFunc: verifyScaledIn},
-				{rackCount: 1, membersPerRack: 3, verifyFunc: verifyScaledOutWithNewNodes},
+				{racks: []string{"a"}, defaultMemberCount: 1, verifyFunc: verifyScaledIn},
+				{racks: []string{"a"}, defaultMemberCount: 3, verifyFunc: verifyScaledOutWithNewNodes},
+			},
+		}),
+		// Regression test verifying that decommission can be unblocked by a scale-out.
+		// With RF=4 on a 2x3 cluster, decommissioning rack "a" down to 0 while adding rack "c" lets the first two
+		// decommissions complete normally, but the third blocks until rack "c" has enough nodes to hold a valid
+		// replica placement for RF=4.
+		// Rack "c" needs at least 2 nodes to hold its share - with only 1, the last node of rack "a" could never find
+		// a legal replica placement and decommission would stall forever.
+		// The balancer refuses to raise a rack's replica count above the maximum any other rack already holds,
+		// so it won't place a tablet's 4th replica back in rack "b" (already at 2).
+		g.Entry("in and out simultaneously, with replication blocking decommissioning until the new node joins", &horizontalScalingEntry{
+			initialRackLayout: rackLayout{racks: []string{"a", "b"}, defaultMemberCount: 3},
+			replication:       new(utils.NetworkTopologyStrategyReplication(map[string]int{"replication_factor": 4})),
+			steps: []scalingStep{
+				{racks: []string{"a", "b", "c"}, defaultMemberCount: 3, memberCounts: map[string]int32{"a": 0, "c": 2}, verifyFunc: verifyScaledSimultaneouslyInAndOut},
 			},
 		}),
 	)
@@ -156,14 +175,11 @@ func verifyScaledIn(previousHostIDs, hostIDs, _ []string) {
 	o.Expect(previousHostIDs).To(o.ContainElements(hostIDs))
 }
 
-// verifyScaledOutWithNewNodes asserts that scaling out preserved the existing nodes and bootstrapped genuinely new
-// ones, instead of resurrecting a node which has left the cluster from storage left behind after it.
-func verifyScaledOutWithNewNodes(previousHostIDs, hostIDs, leftHostIDs []string) {
+// verifyNoneResurrected asserts that none of the given left host IDs have reappeared among the current ones.
+func verifyNoneResurrected(hostIDs, leftHostIDs []string) {
 	g.GinkgoHelper()
 
-	verifyScaledOut(previousHostIDs, hostIDs, leftHostIDs)
-
-	// Guard against the assertion below passing vacuously before any node has left the cluster.
+	// Guard against the loop below passing vacuously before any node has left the cluster.
 	o.Expect(leftHostIDs).NotTo(o.BeEmpty())
 	for _, leftHostID := range leftHostIDs {
 		o.Expect(hostIDs).NotTo(
@@ -171,6 +187,33 @@ func verifyScaledOutWithNewNodes(previousHostIDs, hostIDs, leftHostIDs []string)
 			"host ID %q of a node which has left the cluster must not be resurrected", leftHostID,
 		)
 	}
+}
+
+// verifyScaledSimultaneouslyInAndOut asserts that no departed node was resurrected, and that at least one current
+// node is genuinely new - unlike verifyScaledOut/verifyScaledIn, it makes no assumption about whether every previous
+// node survived or every current node already existed, since a step where nodes leave and join at once satisfies
+// neither.
+func verifyScaledSimultaneouslyInAndOut(previousHostIDs, hostIDs, leftHostIDs []string) {
+	g.GinkgoHelper()
+
+	verifyNoneResurrected(hostIDs, leftHostIDs)
+
+	var newHostIDs []string
+	for _, hostID := range hostIDs {
+		if !slices.Contains(previousHostIDs, hostID) {
+			newHostIDs = append(newHostIDs, hostID)
+		}
+	}
+	o.Expect(newHostIDs).NotTo(o.BeEmpty(), "scaling out should have bootstrapped at least one genuinely new node")
+}
+
+// verifyScaledOutWithNewNodes asserts that scaling out preserved the existing nodes and bootstrapped genuinely new
+// ones, instead of resurrecting a node which has left the cluster from storage left behind after it.
+func verifyScaledOutWithNewNodes(previousHostIDs, hostIDs, leftHostIDs []string) {
+	g.GinkgoHelper()
+
+	verifyScaledOut(previousHostIDs, hostIDs, leftHostIDs)
+	verifyNoneResurrected(hostIDs, leftHostIDs)
 }
 
 // markHighestOrdinalForMaintenanceAndDrain puts the highest ordinal node of the first rack into maintenance mode and drains it.

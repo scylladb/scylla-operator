@@ -5,6 +5,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -25,10 +26,34 @@ const (
 )
 
 type DataInserter struct {
-	session  *gocqlx.Session
-	keyspace string
-	table    *table.Table
-	data     []*TestData
+	session     *gocqlx.Session
+	keyspace    string
+	table       *table.Table
+	data        []*TestData
+	replication Replication
+}
+
+// Replication describes a keyspace's replication strategy as a CQL 'replication' map value, e.g.
+// "{'class': 'NetworkTopologyStrategy', 'us-east-1': 4}". Build one with NetworkTopologyStrategyReplication - the
+// only class this repo's keyspaces use - which only accepts the options that class actually supports, rather than
+// an arbitrary class/options pair that could describe an invalid combination.
+// See https://docs.scylladb.com/manual/stable/cql/ddl.html.
+type Replication struct {
+	cql string
+}
+
+// NetworkTopologyStrategyReplication describes a NetworkTopologyStrategy keyspace, replicating to the given number
+// of nodes in each named datacenter. The special key "replication_factor" sets the default for every datacenter not
+// given its own entry. A nil or empty map is ScyllaDB's own default of one replica per rack of every datacenter, which is
+// RF-rack-valid by construction.
+// See https://docs.scylladb.com/manual/stable/cql/ddl.html#networktopologystrategy.
+func NetworkTopologyStrategyReplication(datacenterReplicationFactors map[string]int) Replication {
+	parts := []string{`'class': 'NetworkTopologyStrategy'`}
+	for _, dc := range slices.Sorted(maps.Keys(datacenterReplicationFactors)) {
+		parts = append(parts, fmt.Sprintf(`'%s': %d`, dc, datacenterReplicationFactors[dc]))
+	}
+
+	return Replication{cql: "{" + strings.Join(parts, ", ") + "}"}
 }
 
 type TestData struct {
@@ -41,6 +66,13 @@ type DataInserterOption func(*DataInserter)
 func WithSession(session *gocqlx.Session) func(*DataInserter) {
 	return func(di *DataInserter) {
 		di.session = session
+	}
+}
+
+// WithReplication overrides the keyspace's default replication strategy.
+func WithReplication(replication Replication) DataInserterOption {
+	return func(di *DataInserter) {
+		di.replication = replication
 	}
 }
 
@@ -57,9 +89,10 @@ func NewDataInserter(hosts []string, options ...DataInserterOption) (*DataInsert
 	}
 
 	di := &DataInserter{
-		keyspace: keyspace,
-		table:    table,
-		data:     data,
+		keyspace:    keyspace,
+		table:       table,
+		data:        data,
+		replication: NetworkTopologyStrategyReplication(nil),
 	}
 
 	for _, option := range options {
@@ -111,14 +144,8 @@ func (di *DataInserter) SetClientEndpoints(hosts []string) error {
 }
 
 func (di *DataInserter) Insert(ctx context.Context) error {
-	// The replication factor is deliberately left unset. With neither datacenters nor a replication factor
-	// specified, ScyllaDB places a replica on every rack of every datacenter, which is RF-rack-valid by
-	// construction.
-	framework.Infof("Creating keyspace %q", di.keyspace)
-	err := di.session.ExecStmt(fmt.Sprintf(
-		`CREATE KEYSPACE %q WITH replication = {'class': 'NetworkTopologyStrategy'}`,
-		di.keyspace,
-	))
+	framework.Infof("Creating keyspace %q with replication %s", di.keyspace, di.replication.cql)
+	err := di.session.ExecStmt(fmt.Sprintf(`CREATE KEYSPACE %q WITH replication = %s`, di.keyspace, di.replication.cql))
 	if err != nil {
 		return fmt.Errorf("can't create keyspace: %w", err)
 	}

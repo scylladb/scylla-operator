@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
+	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -91,7 +92,12 @@ type Controller struct {
 	keyGetter crypto.KeyGenerator
 
 	statefulSetCachePropagationDelay time.Duration
+
+	newScyllaClientFunc NewScyllaClientFunc
 }
+
+// NewScyllaClientFunc creates a ScyllaDB API client for the given hosts, authenticating with authToken.
+type NewScyllaClientFunc func(hosts []string, authToken string) (*scyllaclient.Client, error)
 
 type ControllerOption func(ctrl *Controller)
 
@@ -100,6 +106,14 @@ type ControllerOption func(ctrl *Controller)
 func WithStatefulSetCachePropagationDelay(delay time.Duration) ControllerOption {
 	return func(c *Controller) {
 		c.statefulSetCachePropagationDelay = delay
+	}
+}
+
+// WithNewScyllaClientFunc overrides how the controller creates the ScyllaDB API clients it runs the upgrade hooks
+// with.
+func WithNewScyllaClientFunc(newScyllaClientFunc NewScyllaClientFunc) ControllerOption {
+	return func(c *Controller) {
+		c.newScyllaClientFunc = newScyllaClientFunc
 	}
 }
 
@@ -177,6 +191,8 @@ func NewController(
 		keyGetter: keyGetter,
 
 		statefulSetCachePropagationDelay: defaultStatefulSetCachePropagationDelay,
+
+		newScyllaClientFunc: controllerhelpers.NewScyllaClientFromToken,
 	}
 
 	for _, option := range options {

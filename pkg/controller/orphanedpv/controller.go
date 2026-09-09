@@ -4,39 +4,41 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
-	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/scheme"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
 	ControllerName = "OrphanedPVController"
-	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
-	// but rather use the queue.
-	maxSyncDuration = 30 * time.Second
-)
+	// controllerRuntimeName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	controllerRuntimeName = "orphanedpv"
 
-var (
-	keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
+	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
+	// but rather requeue.
+	maxSyncDuration = 30 * time.Second
+
+	// resyncPeriod is how often every ScyllaDBDatacenter is re-synced, to make sure to reconcile if we were to miss any
+	// event given the current architecture of this controller.
+	resyncPeriod = 30 * time.Minute
 )
 
 // Controller watches all PVs actively belonging to a ScyllaDBDatacenter and replace scylla node
@@ -52,275 +54,147 @@ var (
 //	It would also process PVs instead of ScyllaDBDatacenter which is currently complicating the logic
 //	that has to handle multiple PVs at once, artificial requeues / not watching PVs and different error paths.
 type Controller struct {
-	kubeClient kubernetes.Interface
-
-	pvLister                 corev1listers.PersistentVolumeLister
-	pvcLister                corev1listers.PersistentVolumeClaimLister
-	nodeLister               corev1listers.NodeLister
-	scyllaDBDatacenterLister scyllav1alpha1listers.ScyllaDBDatacenterLister
-
-	cachesToSync []cache.InformerSynced
+	// client reads from the manager's cache, waiting for it to observe this controller's writes, and writes to the
+	// API server.
+	client client.Client
+	// apiReader reads live from the API server, for the decisions that must not be made from a cache: verifying a
+	// Node is gone before replacing the node on its volume.
+	apiReader client.Reader
 
 	eventRecorder record.EventRecorder
 
-	queue workqueue.TypedRateLimitingInterface[string]
-
-	wg sync.WaitGroup
+	// resyncCh carries the ScyllaDBDatacenters enqueued outside their watch: the periodic resync.
+	resyncCh chan event.GenericEvent
 }
+
+var _ reconcile.Reconciler = &Controller{}
 
 func NewController(
-	kubeClient kubernetes.Interface,
-	pvInformer corev1informers.PersistentVolumeInformer,
-	pvcInformer corev1informers.PersistentVolumeClaimInformer,
-	nodeInformer corev1informers.NodeInformer,
-	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
-) (*Controller, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
-	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	c client.Client,
+	apiReader client.Reader,
+	eventRecorder record.EventRecorder,
+) *Controller {
+	return &Controller{
+		client:        c,
+		apiReader:     apiReader,
+		eventRecorder: eventRecorder,
 
-	opc := &Controller{
-		kubeClient:               kubeClient,
-		pvLister:                 pvInformer.Lister(),
-		pvcLister:                pvcInformer.Lister(),
-		nodeLister:               nodeInformer.Lister(),
-		scyllaDBDatacenterLister: scyllaDBDatacenterInformer.Lister(),
-
-		cachesToSync: []cache.InformerSynced{
-			pvInformer.Informer().HasSynced,
-			pvcInformer.Informer().HasSynced,
-			nodeInformer.Informer().HasSynced,
-			scyllaDBDatacenterInformer.Informer().HasSynced,
-		},
-
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "orphanedpv-controller"}),
-
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{
-				Name: "orphanedpv",
-			},
-		),
+		resyncCh: make(chan event.GenericEvent),
 	}
-
-	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: opc.updateNode,
-		DeleteFunc: opc.deleteNode,
-	})
-
-	scyllaDBDatacenterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    opc.addScyllaDBDatacenter,
-		UpdateFunc: opc.updateScyllaDBDatacenter,
-		DeleteFunc: opc.deleteScyllaDBDatacenter,
-	})
-
-	return opc, nil
 }
 
-func (opc *Controller) processNextItem(ctx context.Context) bool {
-	key, quit := opc.queue.Get()
-	if quit {
-		return false
+// ControllerOptions returns the controller options the controller runs with on top of the caller's concurrency: a
+// bounded sync duration.
+func ControllerOptions(maxConcurrentReconciles int) controller.Options {
+	return controller.Options{
+		MaxConcurrentReconciles: maxConcurrentReconciles,
+		ReconciliationTimeout:   maxSyncDuration,
 	}
-	defer opc.queue.Done(key)
+}
 
-	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
-	defer cancel()
-	syncErr := opc.sync(ctx, key)
+// SetupWithManager registers the controller with the manager: every ScyllaDBDatacenter event re-runs its sync, a Node
+// going away re-runs every ScyllaDBDatacenter, and so does the periodic resync.
+func (opc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	cache := mgr.GetCache()
+
+	err := ctrlbuilder.ControllerManagedBy(mgr).
+		Named(controllerRuntimeName).
+		For(&scyllav1alpha1.ScyllaDBDatacenter{}).
+		// Only a Node going away, or being replaced under the same name, can orphan a volume.
+		Watches(&corev1.Node{}, handler.EnqueueRequestsFromMapFunc(mapToAllScyllaDBDatacenters(cache)), ctrlbuilder.WithPredicates(predicate.Funcs{
+			CreateFunc:  func(event.CreateEvent) bool { return false },
+			UpdateFunc:  func(e event.UpdateEvent) bool { return e.ObjectOld.GetUID() != e.ObjectNew.GetUID() },
+			DeleteFunc:  func(event.DeleteEvent) bool { return true },
+			GenericFunc: func(event.GenericEvent) bool { return false },
+		})).
+		WatchesRawSource(source.Channel(opc.resyncCh, &handler.EnqueueRequestForObject{})).
+		WithOptions(options).
+		Complete(opc)
+	if err != nil {
+		return fmt.Errorf("can't build controller: %w", err)
+	}
+
+	err = mgr.Add(ctrlmanager.RunnableFunc(func(ctx context.Context) error {
+		opc.runPeriodicResync(ctx, cache)
+		return nil
+	}))
+	if err != nil {
+		return fmt.Errorf("can't add periodic resync: %w", err)
+	}
+
+	return nil
+}
+
+// runPeriodicResync enqueues every ScyllaDBDatacenter every resyncPeriod until ctx is done.
+func (opc *Controller) runPeriodicResync(ctx context.Context, cache client.Reader) {
+	ticker := time.NewTicker(resyncPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		klog.V(4).InfoS("Periodically enqueuing all ScyllaDBDatacenters")
+
+		sdcs, err := ctrlclient.List[scyllav1alpha1.ScyllaDBDatacenter](ctx, cache, corev1.NamespaceAll, labels.Everything())
+		if err != nil {
+			apimachineryutilruntime.HandleError(err)
+			continue
+		}
+
+		for _, sdc := range sdcs {
+			select {
+			case <-ctx.Done():
+				return
+			case opc.resyncCh <- event.GenericEvent{Object: sdc}:
+			}
+		}
+	}
+}
+
+func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	syncErr := opc.sync(ctx, req.NamespacedName)
 	if syncErr == nil {
-		opc.queue.Forget(key)
-		return true
+		return reconcile.Result{}, nil
 	}
 
 	// Make sure we always have an aggregate to process and all nested errors are flattened.
 	allErrors := apimachineryutilerrors.Flatten(apimachineryutilerrors.NewAggregate([]error{syncErr}))
-	var remainingErrors []error
 	for _, err := range allErrors.Errors() {
 		switch {
 		case errors.Is(err, &controllerhelpers.RequeueError{}):
-			klog.V(2).InfoS("Re-queuing for recheck", "Key", key, "Reason", err)
+			klog.V(2).InfoS("Re-queuing for recheck", "Key", req.NamespacedName, "Reason", err)
 
 		case apierrors.IsConflict(err):
-			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
+			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
 
 		case apierrors.IsAlreadyExists(err):
-			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
-
-		default:
-			remainingErrors = append(remainingErrors, err)
+			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
 		}
 	}
 
-	err := apimachineryutilerrors.NewAggregate(remainingErrors)
-	if err != nil {
-		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
-	}
-
-	opc.queue.AddRateLimited(key)
-
-	return true
+	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, syncErr)
 }
 
-func (opc *Controller) runWorker(ctx context.Context) {
-	for opc.processNextItem(ctx) {
-	}
-}
+// mapToAllScyllaDBDatacenters enqueues every ScyllaDBDatacenter.
+func mapToAllScyllaDBDatacenters(cache client.Reader) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		klog.V(4).InfoS("Observed deletion of Node, enqueuing all ScyllaDBDatacenters", "Node", klog.KObj(obj))
 
-func (opc *Controller) Run(ctx context.Context, workers int) {
-	defer apimachineryutilruntime.HandleCrash()
-
-	klog.InfoS("Starting controller", "controller", "OrphanedPV")
-
-	defer func() {
-		klog.InfoS("Shutting down controller", "controller", "OrphanedPV")
-		opc.queue.ShutDown()
-		opc.wg.Wait()
-		klog.InfoS("Shut down controller", "controller", "OrphanedPV")
-	}()
-
-	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), opc.cachesToSync...) {
-		return
-	}
-
-	for range workers {
-		opc.wg.Add(1)
-		go func() {
-			defer opc.wg.Done()
-			apimachineryutilwait.UntilWithContext(ctx, opc.runWorker, time.Second)
-		}()
-	}
-
-	// Make sure to reconcile if we were to miss any event given the current architecture of this controller.
-	opc.wg.Add(1)
-	go func() {
-		defer opc.wg.Done()
-		apimachineryutilwait.UntilWithContext(ctx, func(ctx context.Context) {
-			klog.V(4).InfoS("Periodically enqueuing all ScyllaClusters")
-
-			sdcs, err := opc.scyllaDBDatacenterLister.ScyllaDBDatacenters(corev1.NamespaceAll).List(labels.Everything())
-			if err != nil {
-				apimachineryutilruntime.HandleError(err)
-				return
-			}
-
-			for _, sdc := range sdcs {
-				opc.enqueue(sdc)
-			}
-		}, 30*time.Minute)
-	}()
-
-	<-ctx.Done()
-}
-
-func (opc *Controller) enqueue(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
-	key, err := keyFunc(sdc)
-	if err != nil {
-		apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", sdc, err))
-		return
-	}
-
-	klog.V(4).InfoS("Enqueuing", "ScyllaDBDatacenter", klog.KObj(sdc))
-	opc.queue.Add(key)
-}
-
-func (opc *Controller) enqueueAllScyllaDBDatacentersOnBackground() {
-	opc.wg.Add(1)
-	go func() {
-		klog.V(4).InfoS("Enqueuing all ScyllaDBDatacenters")
-
-		// This gets called from an informer handler which doesn't wait for cache sync,
-		// but any ScyllaDBDatacenter that won't list here is gonna be queued later on addition
-		// by the ScyllaDBDatacenter handler.
-		sdcs, err := opc.scyllaDBDatacenterLister.ScyllaDBDatacenters(corev1.NamespaceAll).List(labels.Everything())
+		sdcs, err := ctrlclient.List[scyllav1alpha1.ScyllaDBDatacenter](ctx, cache, corev1.NamespaceAll, labels.Everything())
 		if err != nil {
 			apimachineryutilruntime.HandleError(err)
-			return
+			return nil
 		}
 
+		requests := make([]reconcile.Request, 0, len(sdcs))
 		for _, sdc := range sdcs {
-			opc.enqueue(sdc)
+			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(sdc)})
 		}
-	}()
-}
 
-func (opc *Controller) updateNode(old, cur interface{}) {
-	oldNode := old.(*corev1.Node)
-	currentNode := cur.(*corev1.Node)
-
-	if currentNode.UID != oldNode.UID {
-		key, err := keyFunc(oldNode)
-		if err != nil {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNode, err))
-			return
-		}
-		opc.deleteNode(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldNode,
-		})
+		return requests
 	}
-}
-
-func (opc *Controller) deleteNode(obj interface{}) {
-	node, ok := obj.(*corev1.Node)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		node, ok = tombstone.Obj.(*corev1.Node)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Node %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of Node", "Node", klog.KObj(node))
-
-	// We can't run a long running task in the handler because it'd block the informer.
-	// Add on background.
-	opc.enqueueAllScyllaDBDatacentersOnBackground()
-}
-
-func (opc *Controller) addScyllaDBDatacenter(obj interface{}) {
-	sdc := obj.(*scyllav1alpha1.ScyllaDBDatacenter)
-	klog.V(4).InfoS("Observed addition of ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KObj(sdc))
-	opc.enqueue(sdc)
-}
-
-func (opc *Controller) updateScyllaDBDatacenter(old, cur interface{}) {
-	oldSDC := old.(*scyllav1alpha1.ScyllaDBDatacenter)
-	currentSDC := cur.(*scyllav1alpha1.ScyllaDBDatacenter)
-
-	if currentSDC.UID != oldSDC.UID {
-		key, err := keyFunc(oldSDC)
-		if err != nil {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldSDC, err))
-			return
-		}
-		opc.deleteScyllaDBDatacenter(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldSDC,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KObj(oldSDC))
-	opc.enqueue(currentSDC)
-}
-
-func (opc *Controller) deleteScyllaDBDatacenter(obj interface{}) {
-	sdc, ok := obj.(*scyllav1alpha1.ScyllaDBDatacenter)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		sdc, ok = tombstone.Obj.(*scyllav1alpha1.ScyllaDBDatacenter)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ScyllaDBDatacenter %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KObj(sdc))
-	opc.enqueue(sdc)
 }

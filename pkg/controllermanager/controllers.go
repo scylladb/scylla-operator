@@ -62,9 +62,6 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	secrets := informerFor(f, &corev1.Secret{}, corev1listers.NewSecretLister)
 	configMaps := informerFor(f, &corev1.ConfigMap{}, corev1listers.NewConfigMapLister)
 	serviceAccounts := informerFor(f, &corev1.ServiceAccount{}, corev1listers.NewServiceAccountLister)
-	nodes := informerFor(f, &corev1.Node{}, corev1listers.NewNodeLister)
-	persistentVolumes := informerFor(f, &corev1.PersistentVolume{}, corev1listers.NewPersistentVolumeLister)
-	persistentVolumeClaims := informerFor(f, &corev1.PersistentVolumeClaim{}, corev1listers.NewPersistentVolumeClaimLister)
 	endpoints := informerFor(f, &corev1.Endpoints{}, corev1listers.NewEndpointsLister)
 	endpointSlices := informerFor(f, &discoveryv1.EndpointSlice{}, discoveryv1listers.NewEndpointSliceLister)
 	roleBindings := informerFor(f, &rbacv1.RoleBinding{}, rbacv1listers.NewRoleBindingLister)
@@ -161,17 +158,15 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	}
 	m.addRunnable(scc.Run, o.ConcurrentSyncs)
 
-	opc, err := orphanedpv.NewController(
-		o.KubeClient,
-		persistentVolumes,
-		persistentVolumeClaims,
-		nodes,
-		scyllaDBDatacenters,
+	opc := orphanedpv.NewController(
+		m.mgr.GetClient(),
+		m.mgr.GetAPIReader(),
+		m.mgr.GetEventRecorderFor("orphanedpv-controller"),
 	)
+	err = opc.SetupWithManager(m.mgr, orphanedpv.ControllerOptions(o.ConcurrentSyncs))
 	if err != nil {
-		return fmt.Errorf("can't create orphanpv controller: %w", err)
+		return fmt.Errorf("can't set up orphanedpv controller: %w", err)
 	}
-	m.addRunnable(opc.Run, o.ConcurrentSyncs)
 
 	ncc := nodeconfig.NewController(
 		m.mgr.GetClient(),

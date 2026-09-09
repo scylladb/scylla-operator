@@ -9,6 +9,8 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -17,16 +19,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (smtc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (smtc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaDBManagerTask", "ScyllaDBManagerTask", klog.KRef(namespace, name), "startTime", startTime)
@@ -34,7 +32,7 @@ func (smtc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing ScyllaDBManagerTask", "ScyllaDBManagerTask", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	smt, err := smtc.scyllaDBManagerTaskLister.ScyllaDBManagerTasks(namespace).Get(name)
+	smt, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBManagerTask](ctx, smtc.client, namespace, name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			klog.V(2).InfoS("ScyllaDBManagerTask has been deleted", "ScyllaDBManagerTask", klog.KRef(namespace, name))
@@ -136,11 +134,21 @@ func (smtc *Controller) addFinalizer(ctx context.Context, smt *scyllav1alpha1.Sc
 		return fmt.Errorf("can't create add finalizer patch: %w", err)
 	}
 
-	_, err = smtc.scyllaClient.ScyllaDBManagerTasks(smt.Namespace).Patch(ctx, smt.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	err = smtc.patch(ctx, smt, patch)
 	if err != nil {
 		return fmt.Errorf("can't patch ScyllaDBManagerTask %q: %w", naming.ObjRef(smt), err)
 	}
 
 	klog.V(2).InfoS("Added finalizer to ScyllaDBManagerTask", "ScyllaDBManagerTask", klog.KObj(smt))
 	return nil
+}
+
+// patch applies a merge patch to the ScyllaDBManagerTask, without touching the cached object.
+func (smtc *Controller) patch(ctx context.Context, smt *scyllav1alpha1.ScyllaDBManagerTask, patch []byte) error {
+	return smtc.client.Patch(ctx, &scyllav1alpha1.ScyllaDBManagerTask{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: smt.Namespace,
+			Name:      smt.Name,
+		},
+	}, client.RawPatch(types.MergePatchType, patch))
 }

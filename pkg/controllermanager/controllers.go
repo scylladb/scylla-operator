@@ -518,16 +518,15 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		return fmt.Errorf("can't set up ScyllaDBManagerClusterRegistration controller: %w", err)
 	}
 
-	smtc, err := scylladbmanagertask.NewController(
-		o.KubeClient,
-		o.ScyllaClient.ScyllaV1alpha1(),
-		scyllaDBManagerTasks,
-		scyllaDBManagerClusterRegistrations,
+	smtc := scylladbmanagertask.NewController(
+		m.mgr.GetClient(),
+		m.mgr.GetAPIReader(),
+		m.mgr.GetEventRecorderFor("scylladbmanagertask-controller"),
 	)
+	err = smtc.SetupWithManager(m.mgr, scylladbmanagertask.ControllerOptions(o.ConcurrentSyncs))
 	if err != nil {
-		return fmt.Errorf("can't create ScyllaDBManagerTask controller: %w", err)
+		return fmt.Errorf("can't set up ScyllaDBManagerTask controller: %w", err)
 	}
-	m.addRunnable(smtc.Run, o.ConcurrentSyncs)
 
 	return nil
 }

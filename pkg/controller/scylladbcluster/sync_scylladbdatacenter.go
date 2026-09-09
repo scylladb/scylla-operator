@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 		return progressingConditions, fmt.Errorf("can't make remote ScyllaDBDatacenters: %w", err)
 	}
 
-	clusterClient, err := scc.scyllaRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -46,7 +47,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 		[]*scyllav1alpha1.ScyllaDBDatacenter{requiredScyllaDBDatacenter},
 		remoteScyllaDBDatacenters[dc.RemoteKubernetesClusterName],
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.ScyllaV1alpha1().ScyllaDBDatacenters(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[scyllav1alpha1.ScyllaDBDatacenter](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -138,7 +139,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenters(
 		return progressingConditions, nil
 	}
 
-	sdc, changed, err := resourceapply.ApplyScyllaDBDatacenter(ctx, clusterClient.ScyllaV1alpha1(), scc.remoteScyllaDBDatacenterLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, requiredScyllaDBDatacenter, resourceapply.ApplyOptions{})
+	sdc, changed, err := resourceapply.ApplyScyllaDBDatacenterWithControl(ctx, ctrlclient.ApplyControl[scyllav1alpha1.ScyllaDBDatacenter](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, requiredScyllaDBDatacenter, resourceapply.ApplyOptions{})
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't apply scylladbdatacenter: %w", err)
 	}

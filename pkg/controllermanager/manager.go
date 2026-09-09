@@ -5,7 +5,6 @@ package controllermanager
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -17,7 +16,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,12 +58,6 @@ type Options struct {
 type Manager struct {
 	options Options
 	mgr     ctrlmanager.Manager
-
-	// starters are started right before the manager and stopped with it. The remote cluster informer factories
-	// live here until the multi-DC controllers are migrated.
-	starters []func(stopCh <-chan struct{})
-	// runnables are the legacy controllers' Run functions.
-	runnables []func(ctx context.Context)
 }
 
 // NewManager creates a controller-runtime manager the way every binary of the operator runs one: with the operator's
@@ -123,49 +115,15 @@ func New(options Options) (*Manager, error) {
 	}, nil
 }
 
-// Run registers the controllers, starts the cache, the remote informer factories and the controllers,
-// and blocks until ctx is done.
+// Run registers the controllers, starts the manager and blocks until ctx is done.
 func (m *Manager) Run(ctx context.Context) error {
 	err := m.registerControllers(ctx)
 	if err != nil {
 		return fmt.Errorf("can't register controllers: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
-	for _, start := range m.starters {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			start(ctx.Done())
-		}()
-	}
-
-	mgrErrCh := make(chan error, 1)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer cancel()
-		mgrErrCh <- m.mgr.Start(ctx)
-	}()
-
-	for _, run := range m.runnables {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			run(ctx)
-		}()
-	}
-
-	<-ctx.Done()
-
-	err = <-mgrErrCh
+	err = m.mgr.Start(ctx)
 	if err != nil {
-		klog.ErrorS(err, "Controller-runtime manager failed")
 		return fmt.Errorf("controller-runtime manager failed: %w", err)
 	}
 

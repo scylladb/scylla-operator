@@ -5,299 +5,157 @@ package remotekubernetescluster
 import (
 	"context"
 	"fmt"
-	"sync"
-	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
-	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
-	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
-	"github.com/scylladb/scylla-operator/pkg/scheme"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
 	ControllerName = "RemoteKubernetesClusterController"
+	// controllerRuntimeName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	controllerRuntimeName = "remotekubernetescluster"
 )
 
-var (
-	keyFunc                              = cache.DeletionHandlingMetaNamespaceKeyFunc
-	remoteKubernetesClusterControllerGVK = scyllav1alpha1.GroupVersion.WithKind("RemoteKubernetesCluster")
-)
-
+// Controller keeps the remote cluster handlers (clients, caches) registered for every RemoteKubernetesCluster whose
+// kubeconfig Secret is present, and reports the health of the connections into its status.
 type Controller struct {
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface
-
-	remoteKubernetesClusterLister scyllav1alpha1listers.RemoteKubernetesClusterLister
-	scyllaDBClusterLister         scyllav1alpha1listers.ScyllaDBClusterLister
-	secretLister                  corev1listers.SecretLister
+	// client reads from the manager's cache, waiting for it to observe this controller's writes, and writes to the
+	// API server.
+	client client.Client
+	// apiReader reads live from the API server, for the decisions that must not be made from a cache: the last
+	// check before a finalizer is removed.
+	apiReader client.Reader
 
 	clusterKubeClient      remoteclient.ClusterClientInterface[kubernetes.Interface]
 	clusterScyllaClient    remoteclient.ClusterClientInterface[scyllaclient.Interface]
 	dynamicClusterHandlers []remoteclient.DynamicClusterInterface
 
-	cachesToSync []cache.InformerSynced
-
 	eventRecorder record.EventRecorder
-
-	queue    workqueue.TypedRateLimitingInterface[string]
-	handlers *controllerhelpers.Handlers[*scyllav1alpha1.RemoteKubernetesCluster]
 }
 
+var _ reconcile.Reconciler = &Controller{}
+
 func NewController(
-	kubeClient kubernetes.Interface,
-	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
-	remoteKubernetesClusterInformer scyllav1alpha1informers.RemoteKubernetesClusterInformer,
-	scyllaDBClusterInformer scyllav1alpha1informers.ScyllaDBClusterInformer,
-	secretInformer corev1informers.SecretInformer,
+	c client.Client,
+	apiReader client.Reader,
+	eventRecorder record.EventRecorder,
 	dynamicClusterHandlers []remoteclient.DynamicClusterInterface,
 	clusterKubeClient remoteclient.ClusterClientInterface[kubernetes.Interface],
 	clusterScyllaClient remoteclient.ClusterClientInterface[scyllaclient.Interface],
-) (*Controller, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
-	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+) *Controller {
+	return &Controller{
+		client:    c,
+		apiReader: apiReader,
 
-	rkcc := &Controller{
-		kubeClient:   kubeClient,
-		scyllaClient: scyllaClient,
-
-		remoteKubernetesClusterLister: remoteKubernetesClusterInformer.Lister(),
-		scyllaDBClusterLister:         scyllaDBClusterInformer.Lister(),
-		secretLister:                  secretInformer.Lister(),
-
+		clusterKubeClient:      clusterKubeClient,
+		clusterScyllaClient:    clusterScyllaClient,
 		dynamicClusterHandlers: dynamicClusterHandlers,
 
-		clusterKubeClient:   clusterKubeClient,
-		clusterScyllaClient: clusterScyllaClient,
-
-		cachesToSync: []cache.InformerSynced{
-			remoteKubernetesClusterInformer.Informer().HasSynced,
-			scyllaDBClusterInformer.Informer().HasSynced,
-			secretInformer.Informer().HasSynced,
-		},
-
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "remotekubernetescluster-controller"}),
-
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{
-				Name: "remotekubernetescluster",
-			},
-		),
+		eventRecorder: eventRecorder,
 	}
-
-	var err error
-	rkcc.handlers, err = controllerhelpers.NewHandlers[*scyllav1alpha1.RemoteKubernetesCluster](
-		rkcc.queue,
-		keyFunc,
-		scheme.Scheme,
-		remoteKubernetesClusterControllerGVK,
-		kubeinterfaces.NamespacedGetList[*scyllav1alpha1.RemoteKubernetesCluster]{
-			GetFunc: func(namespace, name string) (*scyllav1alpha1.RemoteKubernetesCluster, error) {
-				return rkcc.remoteKubernetesClusterLister.Get(name)
-			},
-			ListFunc: func(namespace string, selector labels.Selector) (ret []*scyllav1alpha1.RemoteKubernetesCluster, err error) {
-				return rkcc.remoteKubernetesClusterLister.List(selector)
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("can't create handlers: %w", err)
-	}
-
-	remoteKubernetesClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    rkcc.addRemoteKubernetesCluster,
-		UpdateFunc: rkcc.updateRemoteKubernetesCluster,
-		DeleteFunc: rkcc.deleteRemoteKubernetesCluster,
-	})
-
-	scyllaDBClusterInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    rkcc.addScyllaDBCluster,
-		UpdateFunc: rkcc.updateScyllaDBCluster,
-		DeleteFunc: rkcc.deleteScyllaDBCluster,
-	})
-
-	secretInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    rkcc.addSecret,
-		UpdateFunc: rkcc.updateSecret,
-		DeleteFunc: rkcc.deleteSecret,
-	})
-
-	return rkcc, nil
 }
 
-func (rkcc *Controller) processNextItem(ctx context.Context) bool {
-	key, quit := rkcc.queue.Get()
-	if quit {
-		return false
-	}
-	defer rkcc.queue.Done(key)
+// SetupWithManager registers the controller with the manager: its RemoteKubernetesClusters, the Secrets they take
+// their kubeconfig from and the ScyllaDBClusters referring to them re-run the sync.
+func (rkcc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	cache := mgr.GetCache()
 
-	err := rkcc.sync(ctx, key)
+	return ctrlbuilder.ControllerManagedBy(mgr).
+		Named(controllerRuntimeName).
+		For(&scyllav1alpha1.RemoteKubernetesCluster{}).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(mapSecretToRemoteKubernetesClusters(cache))).
+		Watches(&scyllav1alpha1.ScyllaDBCluster{}, handler.EnqueueRequestsFromMapFunc(mapScyllaDBClusterToRemoteKubernetesClusters(cache))).
+		WithOptions(options).
+		Complete(rkcc)
+}
+
+func (rkcc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	rq := &controllertools.Requeue{}
+	err := rkcc.sync(ctx, req.Name, rq)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
-		rkcc.queue.Forget(key)
-		return true
+		return rq.Result(), nil
 
 	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
+		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
 
 	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
-
-	default:
-		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
+		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
 	}
 
-	rkcc.queue.AddRateLimited(key)
-
-	return true
+	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, err)
 }
 
-func (rkcc *Controller) runWorker(ctx context.Context) {
-	for rkcc.processNextItem(ctx) {
+func requestFor(name string) reconcile.Request {
+	return reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Name: name,
+		},
 	}
 }
 
-func (rkcc *Controller) Run(ctx context.Context, workers int) {
-	defer apimachineryutilruntime.HandleCrash()
-
-	klog.InfoS("Starting controller", "controller", ControllerName)
-
-	var wg sync.WaitGroup
-	defer func() {
-		klog.InfoS("Shutting down controller", "controller", ControllerName)
-		rkcc.queue.ShutDown()
-		wg.Wait()
-		klog.InfoS("Shut down controller", "controller", ControllerName)
-	}()
-
-	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), rkcc.cachesToSync...) {
-		return
-	}
-
-	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			apimachineryutilwait.UntilWithContext(ctx, rkcc.runWorker, time.Second)
-		}()
-	}
-
-	<-ctx.Done()
-}
-
-func (rkcc *Controller) addRemoteKubernetesCluster(obj interface{}) {
-	rkcc.handlers.HandleAdd(
-		obj.(*scyllav1alpha1.RemoteKubernetesCluster),
-		rkcc.handlers.Enqueue,
-	)
-}
-
-func (rkcc *Controller) updateRemoteKubernetesCluster(old, cur interface{}) {
-	rkcc.handlers.HandleUpdate(
-		old.(*scyllav1alpha1.RemoteKubernetesCluster),
-		cur.(*scyllav1alpha1.RemoteKubernetesCluster),
-		rkcc.handlers.Enqueue,
-		rkcc.deleteRemoteKubernetesCluster,
-	)
-}
-
-func (rkcc *Controller) deleteRemoteKubernetesCluster(obj interface{}) {
-	rkcc.handlers.HandleDelete(
-		obj,
-		rkcc.handlers.Enqueue,
-	)
-}
-
-func (rkcc *Controller) addSecret(obj interface{}) {
-	secret := obj.(*corev1.Secret)
-
-	rkcc.handlers.HandleAdd(
-		obj.(*corev1.Secret),
-		rkcc.enqueueRemoteKubernetesClusterUsingSecret(secret),
-	)
-}
-
-func (rkcc *Controller) updateSecret(old, cur interface{}) {
-	secret := cur.(*corev1.Secret)
-
-	rkcc.handlers.HandleUpdate(
-		old.(*corev1.Secret),
-		cur.(*corev1.Secret),
-		rkcc.enqueueRemoteKubernetesClusterUsingSecret(secret),
-		rkcc.deleteSecret,
-	)
-}
-
-func (rkcc *Controller) deleteSecret(obj interface{}) {
-	secret := obj.(*corev1.Secret)
-
-	rkcc.handlers.HandleDelete(
-		obj,
-		rkcc.enqueueRemoteKubernetesClusterUsingSecret(secret),
-	)
-}
-
-func (rkcc *Controller) enqueueRemoteKubernetesClusterUsingSecret(secret *corev1.Secret) controllerhelpers.EnqueueFuncType {
-	return rkcc.handlers.EnqueueAllFunc(rkcc.handlers.EnqueueWithFilterFunc(func(rkc *scyllav1alpha1.RemoteKubernetesCluster) bool {
-		return rkc.Spec.KubeconfigSecretRef.Namespace == secret.Namespace && rkc.Spec.KubeconfigSecretRef.Name == secret.Name
-	}))
-}
-
-func (rkcc *Controller) addScyllaDBCluster(obj interface{}) {
-	rkcc.handlers.HandleAdd(
-		obj.(*scyllav1alpha1.ScyllaDBCluster),
-		rkcc.enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster,
-	)
-}
-
-func (rkcc *Controller) updateScyllaDBCluster(old, cur interface{}) {
-	rkcc.handlers.HandleUpdate(
-		old.(*scyllav1alpha1.ScyllaDBCluster),
-		cur.(*scyllav1alpha1.ScyllaDBCluster),
-		rkcc.enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster,
-		rkcc.deleteScyllaDBCluster,
-	)
-}
-
-func (rkcc *Controller) deleteScyllaDBCluster(obj interface{}) {
-	rkcc.handlers.HandleDelete(
-		obj,
-		rkcc.enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster,
-	)
-}
-
-func (rkcc *Controller) enqueueRemoteKubernetesClustersReferencedByScyllaDBCluster(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
-	sc := obj.(*scyllav1alpha1.ScyllaDBCluster)
-
-	for _, dc := range sc.Spec.Datacenters {
-		rkc, err := rkcc.remoteKubernetesClusterLister.Get(dc.RemoteKubernetesClusterName)
+// mapSecretToRemoteKubernetesClusters enqueues the RemoteKubernetesClusters taking their kubeconfig from the Secret.
+func mapSecretToRemoteKubernetesClusters(cache client.Reader) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		rkcs, err := ctrlclient.List[scyllav1alpha1.RemoteKubernetesCluster](ctx, cache, "", labels.Everything())
 		if err != nil {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get RemoteKubernetesCluster %q: %w", dc.RemoteKubernetesClusterName, err))
-			continue
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't list RemoteKubernetesClusters: %w", err))
+			return nil
 		}
-		rkcc.handlers.Enqueue(depth+1, rkc, op)
+
+		var requests []reconcile.Request
+		for _, rkc := range rkcs {
+			if rkc.Spec.KubeconfigSecretRef.Namespace == obj.GetNamespace() && rkc.Spec.KubeconfigSecretRef.Name == obj.GetName() {
+				requests = append(requests, requestFor(rkc.Name))
+			}
+		}
+
+		return requests
+	}
+}
+
+// mapScyllaDBClusterToRemoteKubernetesClusters enqueues the RemoteKubernetesClusters the ScyllaDBCluster's
+// datacenters refer to.
+func mapScyllaDBClusterToRemoteKubernetesClusters(cache client.Reader) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		sc, ok := obj.(*scyllav1alpha1.ScyllaDBCluster)
+		if !ok {
+			apimachineryutilruntime.HandleError(fmt.Errorf("expected a ScyllaDBCluster, got %T", obj))
+			return nil
+		}
+
+		var requests []reconcile.Request
+		for _, dc := range sc.Spec.Datacenters {
+			_, err := ctrlclient.Get[scyllav1alpha1.RemoteKubernetesCluster](ctx, cache, "", dc.RemoteKubernetesClusterName)
+			if err != nil {
+				apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get RemoteKubernetesCluster %q: %w", dc.RemoteKubernetesClusterName, err))
+				continue
+			}
+
+			klog.V(4).InfoS("Enqueuing RemoteKubernetesCluster referenced by ScyllaDBCluster", "ScyllaDBCluster", klog.KObj(sc), "RemoteKubernetesCluster", dc.RemoteKubernetesClusterName)
+			requests = append(requests, requestFor(dc.RemoteKubernetesClusterName))
+		}
+
+		return requests
 	}
 }

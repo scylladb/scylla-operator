@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -25,7 +26,7 @@ func (scc *Controller) syncRemoteEndpointSlices(
 	remoteNamespaces map[string]*corev1.Namespace,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredEndpointSlices, err := MakeRemoteEndpointSlices(sc, dc, remoteNamespace, remoteController, remoteNamespaces, scc.remoteServiceLister, scc.remotePodLister, managingClusterDomain)
+	progressingConditions, requiredEndpointSlices, err := MakeRemoteEndpointSlices(sc, dc, remoteNamespace, remoteController, remoteNamespaces, scc.remoteServiceLister(ctx), scc.remotePodLister(ctx), managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make endpointslices: %w", err)
 	}
@@ -33,7 +34,7 @@ func (scc *Controller) syncRemoteEndpointSlices(
 		return progressingConditions, nil
 	}
 
-	clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -44,7 +45,7 @@ func (scc *Controller) syncRemoteEndpointSlices(
 		requiredEndpointSlices,
 		remoteEndpointSlices,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.DiscoveryV1().EndpointSlices(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[discoveryv1.EndpointSlice](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -53,7 +54,7 @@ func (scc *Controller) syncRemoteEndpointSlices(
 	}
 
 	for _, es := range requiredEndpointSlices {
-		_, changed, err := resourceapply.ApplyEndpointSlice(ctx, clusterClient.DiscoveryV1(), scc.remoteEndpointSliceLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, es, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyEndpointSliceWithControl(ctx, ctrlclient.ApplyControl[discoveryv1.EndpointSlice](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, es, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteEndpointSliceControllerDatacenterProgressingCondition(dc.Name), es, "apply", sc.Generation)
 		}
@@ -71,7 +72,7 @@ func (scc *Controller) syncLocalEndpointSlices(
 	endpointSlices map[string]*discoveryv1.EndpointSlice,
 	remoteNamespaces map[string]*corev1.Namespace,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredEndpointSlices, err := makeLocalEndpointSlices(sc, remoteNamespaces, scc.remoteServiceLister, scc.remotePodLister)
+	progressingConditions, requiredEndpointSlices, err := makeLocalEndpointSlices(sc, remoteNamespaces, scc.remoteServiceLister(ctx), scc.remotePodLister(ctx))
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make endpointslices: %w", err)
 	}
@@ -84,7 +85,7 @@ func (scc *Controller) syncLocalEndpointSlices(
 		requiredEndpointSlices,
 		endpointSlices,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: scc.kubeClient.DiscoveryV1().EndpointSlices(sc.Namespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[discoveryv1.EndpointSlice](scc.client, sc.Namespace),
 		},
 		scc.eventRecorder,
 	)
@@ -93,7 +94,7 @@ func (scc *Controller) syncLocalEndpointSlices(
 	}
 
 	for _, es := range requiredEndpointSlices {
-		_, changed, err := resourceapply.ApplyEndpointSlice(ctx, scc.kubeClient.DiscoveryV1(), scc.endpointSliceLister, scc.eventRecorder, es, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyEndpointSliceWithControl(ctx, ctrlclient.ApplyControl[discoveryv1.EndpointSlice](ctx, scc.client, sc.Namespace), scc.eventRecorder, es, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, endpointSliceControllerProgressingCondition, es, "apply", sc.Generation)
 		}

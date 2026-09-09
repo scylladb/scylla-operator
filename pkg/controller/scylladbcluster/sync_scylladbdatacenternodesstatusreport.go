@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -25,12 +26,12 @@ func (scc *Controller) syncRemoteScyllaDBDatacenterNodesStatusReports(
 	remoteScyllaDBDatacenters map[string]map[string]*scyllav1alpha1.ScyllaDBDatacenter,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredScyllaDBDatacenterNodesStatusReports, err := makeRemoteScyllaDBDatacenterNodesStatusReports(sc, dc, remoteNamespace, remoteController, remoteNamespaces, remoteScyllaDBDatacenters, scc.remoteScyllaDBDatacenterNodesStatusReportLister, managingClusterDomain)
+	progressingConditions, requiredScyllaDBDatacenterNodesStatusReports, err := makeRemoteScyllaDBDatacenterNodesStatusReports(sc, dc, remoteNamespace, remoteController, remoteNamespaces, remoteScyllaDBDatacenters, scc.remoteScyllaDBDatacenterNodesStatusReportLister(ctx), managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make scyllaDBDatacenterNodesStatusReports: %w", err)
 	}
 
-	clusterClient, err := scc.scyllaRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -40,7 +41,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenterNodesStatusReports(
 		requiredScyllaDBDatacenterNodesStatusReports,
 		remoteScyllaDBDatacenterNodesStatusReports,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.ScyllaV1alpha1().ScyllaDBDatacenterNodesStatusReports(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -49,7 +50,7 @@ func (scc *Controller) syncRemoteScyllaDBDatacenterNodesStatusReports(
 	}
 
 	for _, ssr := range requiredScyllaDBDatacenterNodesStatusReports {
-		_, changed, err := resourceapply.ApplyScyllaDBDatacenterNodesStatusReport(ctx, clusterClient.ScyllaV1alpha1(), scc.remoteScyllaDBDatacenterNodesStatusReportLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, ssr, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyScyllaDBDatacenterNodesStatusReportWithControl(ctx, ctrlclient.ApplyControl[scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, ssr, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteScyllaDBDatacenterNodesStatusReportControllerDatacenterProgressingCondition(dc.Name), ssr, "apply", sc.Generation)
 		}

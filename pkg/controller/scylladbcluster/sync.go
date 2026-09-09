@@ -8,9 +8,9 @@ import (
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -19,18 +19,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func (scc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (scc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaDBCluster", "ScyllaDBCluster", klog.KRef(namespace, name), "startTime", startTime)
@@ -38,7 +33,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing ScyllaDBCluster", "ScyllaDBCluster", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	sc, err := scc.scyllaDBClusterLister.ScyllaDBClusters(namespace).Get(name)
+	sc, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBCluster](ctx, scc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaDBCluster has been deleted", "ScyllaDBCluster", klog.KRef(namespace, name))
 		return nil
@@ -47,7 +42,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't get ScyllaDBCluster %q: %w", naming.ManualRef(namespace, name), err)
 	}
 
-	soc, err := scc.scyllaOperatorConfigLister.Get(naming.SingletonName)
+	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, scc.client, "", naming.SingletonName)
 	if err != nil {
 		return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
 	}
@@ -67,11 +62,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllav1alpha1.ScyllaDBClusterGVK,
 		scLocalSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Service]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.serviceLister.Services(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.CoreV1().Services(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBCluster, corev1.Service](ctx, scc.client, scc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local services: %w", err))
@@ -82,11 +73,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllav1alpha1.ScyllaDBClusterGVK,
 		scLocalEndpointsSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *discoveryv1.EndpointSlice]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.endpointSliceLister.EndpointSlices(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.DiscoveryV1().EndpointSlices(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBCluster, discoveryv1.EndpointSlice](ctx, scc.client, scc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local endpointslices: %w", err))
@@ -97,11 +84,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllav1alpha1.ScyllaDBClusterGVK,
 		scLocalEndpointsSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Endpoints]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.endpointsLister.Endpoints(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.CoreV1().Endpoints(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBCluster, corev1.Endpoints](ctx, scc.client, scc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local endpoints: %w", err))
@@ -116,11 +99,7 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllav1alpha1.ScyllaDBClusterGVK,
 		scLocalSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[localCT, *corev1.Secret]{
-			GetControllerUncachedFunc: scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scc.secretLister.Secrets(sc.Namespace).List,
-			PatchObjectFunc:           scc.kubeClient.CoreV1().Secrets(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBCluster, corev1.Secret](ctx, scc.client, scc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		localObjectErrs = append(localObjectErrs, fmt.Errorf("can't get local secrets: %w", err))
@@ -154,14 +133,14 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 		return dc.RemoteKubernetesClusterName
 	})
 
-	remoteNamespaceMap, errMap := scc.getRemoteNamespacesMap(sc)
+	remoteNamespaceMap, errMap := scc.getRemoteNamespacesMap(ctx, sc)
 	for remoteClusterName, err := range errMap {
 		objectErrMaps[remoteClusterName] = append(objectErrMaps[remoteClusterName], fmt.Errorf("cant get remote namespaces for %q remote cluster: %w", remoteClusterName, err))
 	}
 
 	remoteNamespaces := scc.chooseRemoteNamespaces(sc, remoteNamespaceMap)
 
-	remoteRemoteOwnerMap, errMap := scc.getRemoteRemoteOwners(sc, remoteNamespaces)
+	remoteRemoteOwnerMap, errMap := scc.getRemoteRemoteOwners(ctx, sc, remoteNamespaces)
 	for remoteClusterName, err := range errMap {
 		objectErrMaps[remoteClusterName] = append(objectErrMaps[remoteClusterName], fmt.Errorf("can't get remote remoteowners for %q remote cluster: %w", remoteClusterName, err))
 	}
@@ -175,16 +154,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				return nil, nil
 			}
 
-			kubeClusterClient, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			remoteCluster, err := scc.remoteCluster(clusterName)
 			if err != nil {
-				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+				return nil, fmt.Errorf("can't get cluster %q: %w", clusterName, err)
 			}
 
-			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *corev1.Service]{
-				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
-				ListObjectsFunc:           scc.remoteServiceLister.Cluster(clusterName).Services(ns.Name).List,
-				PatchObjectFunc:           kubeClusterClient.CoreV1().Services(ns.Name).Patch,
-			}, nil
+			return ctrlclient.GetObjectsControl[scyllav1alpha1.RemoteOwner, corev1.Service](ctx, remoteCluster.GetClient(), remoteCluster.GetAPIReader(), ns.Name), nil
 		},
 	})
 	for remoteClusterName, err := range errMap {
@@ -198,16 +173,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				return nil, nil
 			}
 
-			kubeClusterClient, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			remoteCluster, err := scc.remoteCluster(clusterName)
 			if err != nil {
-				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+				return nil, fmt.Errorf("can't get cluster %q: %w", clusterName, err)
 			}
 
-			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *discoveryv1.EndpointSlice]{
-				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
-				ListObjectsFunc:           scc.remoteEndpointSliceLister.Cluster(clusterName).EndpointSlices(ns.Name).List,
-				PatchObjectFunc:           kubeClusterClient.DiscoveryV1().EndpointSlices(ns.Name).Patch,
-			}, nil
+			return ctrlclient.GetObjectsControl[scyllav1alpha1.RemoteOwner, discoveryv1.EndpointSlice](ctx, remoteCluster.GetClient(), remoteCluster.GetAPIReader(), ns.Name), nil
 		},
 	})
 	for remoteClusterName, err := range errMap {
@@ -223,16 +194,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				return nil, nil
 			}
 
-			kubeClusterClient, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			remoteCluster, err := scc.remoteCluster(clusterName)
 			if err != nil {
-				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+				return nil, fmt.Errorf("can't get cluster %q: %w", clusterName, err)
 			}
 
-			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *corev1.Endpoints]{
-				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
-				ListObjectsFunc:           scc.remoteEndpointsLister.Cluster(clusterName).Endpoints(ns.Name).List,
-				PatchObjectFunc:           kubeClusterClient.CoreV1().Endpoints(ns.Name).Patch,
-			}, nil
+			return ctrlclient.GetObjectsControl[scyllav1alpha1.RemoteOwner, corev1.Endpoints](ctx, remoteCluster.GetClient(), remoteCluster.GetAPIReader(), ns.Name), nil
 		},
 	})
 	for remoteClusterName, err := range errMap {
@@ -246,16 +213,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				return nil, nil
 			}
 
-			kubeClusterClient, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			remoteCluster, err := scc.remoteCluster(clusterName)
 			if err != nil {
-				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+				return nil, fmt.Errorf("can't get cluster %q: %w", clusterName, err)
 			}
 
-			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *corev1.ConfigMap]{
-				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
-				ListObjectsFunc:           scc.remoteConfigMapLister.Cluster(clusterName).ConfigMaps(ns.Name).List,
-				PatchObjectFunc:           kubeClusterClient.CoreV1().ConfigMaps(ns.Name).Patch,
-			}, nil
+			return ctrlclient.GetObjectsControl[scyllav1alpha1.RemoteOwner, corev1.ConfigMap](ctx, remoteCluster.GetClient(), remoteCluster.GetAPIReader(), ns.Name), nil
 		},
 	})
 	for remoteClusterName, err := range errMap {
@@ -269,16 +232,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				return nil, nil
 			}
 
-			kubeClusterClient, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			remoteCluster, err := scc.remoteCluster(clusterName)
 			if err != nil {
-				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+				return nil, fmt.Errorf("can't get cluster %q: %w", clusterName, err)
 			}
 
-			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *corev1.Secret]{
-				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
-				ListObjectsFunc:           scc.remoteSecretLister.Cluster(clusterName).Secrets(ns.Name).List,
-				PatchObjectFunc:           kubeClusterClient.CoreV1().Secrets(ns.Name).Patch,
-			}, nil
+			return ctrlclient.GetObjectsControl[scyllav1alpha1.RemoteOwner, corev1.Secret](ctx, remoteCluster.GetClient(), remoteCluster.GetAPIReader(), ns.Name), nil
 		},
 	})
 	for remoteClusterName, err := range errMap {
@@ -292,16 +251,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				return nil, nil
 			}
 
-			_, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			remoteCluster, err := scc.remoteCluster(clusterName)
 			if err != nil {
-				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+				return nil, fmt.Errorf("can't get cluster %q: %w", clusterName, err)
 			}
 
-			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *scyllav1alpha1.ScyllaDBDatacenter]{
-				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
-				ListObjectsFunc:           scc.remoteScyllaDBDatacenterLister.Cluster(clusterName).ScyllaDBDatacenters(ns.Name).List,
-				PatchObjectFunc:           scyllaClusterClient.ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Patch,
-			}, nil
+			return ctrlclient.GetObjectsControl[scyllav1alpha1.RemoteOwner, scyllav1alpha1.ScyllaDBDatacenter](ctx, remoteCluster.GetClient(), remoteCluster.GetAPIReader(), ns.Name), nil
 		},
 	})
 	for remoteClusterName, err := range errMap {
@@ -315,16 +270,12 @@ func (scc *Controller) sync(ctx context.Context, key string) error {
 				return nil, nil
 			}
 
-			_, scyllaClusterClient, err := scc.getClusterClients(clusterName)
+			remoteCluster, err := scc.remoteCluster(clusterName)
 			if err != nil {
-				return nil, fmt.Errorf("can't get cluster %q clients: %w", clusterName, err)
+				return nil, fmt.Errorf("can't get cluster %q: %w", clusterName, err)
 			}
 
-			return &controllerhelpers.ControlleeManagerGetObjectsFuncs[remoteCT, *scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]{
-				GetControllerUncachedFunc: scyllaClusterClient.ScyllaV1alpha1().RemoteOwners(ns.Name).Get,
-				ListObjectsFunc:           scc.remoteScyllaDBDatacenterNodesStatusReportLister.Cluster(clusterName).ScyllaDBDatacenterNodesStatusReports(ns.Name).List,
-				PatchObjectFunc:           scyllaClusterClient.ScyllaV1alpha1().ScyllaDBDatacenterNodesStatusReports(ns.Name).Patch,
-			}, nil
+			return ctrlclient.GetObjectsControl[scyllav1alpha1.RemoteOwner, scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](ctx, remoteCluster.GetClient(), remoteCluster.GetAPIReader(), ns.Name), nil
 		},
 	})
 	for remoteClusterName, err := range errMap {
@@ -598,7 +549,7 @@ func (scc *Controller) chooseRemoteControllers(sc *scyllav1alpha1.ScyllaDBCluste
 	return remoteControllers
 }
 
-func (scc *Controller) getRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace) (map[string]map[string]*scyllav1alpha1.RemoteOwner, map[string]error) {
+func (scc *Controller) getRemoteRemoteOwners(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace) (map[string]map[string]*scyllav1alpha1.RemoteOwner, map[string]error) {
 	remoteOwnerMap := make(map[string]map[string]*scyllav1alpha1.RemoteOwner, len(sc.Spec.Datacenters))
 	errMap := make(map[string]error, len(sc.Spec.Datacenters))
 	for _, dc := range sc.Spec.Datacenters {
@@ -609,7 +560,7 @@ func (scc *Controller) getRemoteRemoteOwners(sc *scyllav1alpha1.ScyllaDBCluster,
 		}
 
 		selector := labels.SelectorFromSet(naming.RemoteOwnerSelectorLabels(sc, &dc))
-		remoteOwners, err := scc.remoteRemoteOwnerLister.Cluster(dc.RemoteKubernetesClusterName).RemoteOwners(ns.Name).List(selector)
+		remoteOwners, err := scc.remoteRemoteOwnerLister(ctx).Cluster(dc.RemoteKubernetesClusterName).RemoteOwners(ns.Name).List(selector)
 		if err != nil {
 			errMap[dc.RemoteKubernetesClusterName] = fmt.Errorf("can't list remote remoteowners in %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 			continue
@@ -656,12 +607,12 @@ func (scc *Controller) chooseRemoteNamespaces(sc *scyllav1alpha1.ScyllaDBCluster
 }
 
 // getRemoteNamespacesMap returns a map of remote namespaces matching provided selector.
-func (scc *Controller) getRemoteNamespacesMap(sc *scyllav1alpha1.ScyllaDBCluster) (map[string]map[string]*corev1.Namespace, map[string]error) {
+func (scc *Controller) getRemoteNamespacesMap(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster) (map[string]map[string]*corev1.Namespace, map[string]error) {
 	namespacesMap := make(map[string]map[string]*corev1.Namespace, len(sc.Spec.Datacenters))
 	errMap := make(map[string]error, len(sc.Spec.Datacenters))
 	for _, dc := range sc.Spec.Datacenters {
 		selector := labels.SelectorFromSet(naming.ScyllaDBClusterDatacenterSelectorLabels(sc, &dc))
-		remoteNamespaces, err := scc.remoteNamespaceLister.Cluster(dc.RemoteKubernetesClusterName).List(selector)
+		remoteNamespaces, err := scc.remoteNamespaceLister(ctx).Cluster(dc.RemoteKubernetesClusterName).List(selector)
 		if err != nil {
 			errMap[dc.RemoteKubernetesClusterName] = fmt.Errorf("can't list remote namespaces in %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 			continue
@@ -681,18 +632,4 @@ func (scc *Controller) getRemoteNamespacesMap(sc *scyllav1alpha1.ScyllaDBCluster
 	}
 
 	return namespacesMap, errMap
-}
-
-func (scc *Controller) getClusterClients(clusterName string) (kubernetes.Interface, scyllaclient.Interface, error) {
-	kubeClusterClient, err := scc.kubeRemoteClient.Cluster(clusterName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("can't get kube cluster %q client: %w", clusterName, err)
-	}
-
-	scyllaClusterClient, err := scc.scyllaRemoteClient.Cluster(clusterName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("can't get scylla cluster %q client: %w", clusterName, err)
-	}
-
-	return kubeClusterClient, scyllaClusterClient, nil
 }

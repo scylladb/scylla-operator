@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -28,7 +29,7 @@ func (scc *Controller) syncRemoteNamespaces(
 		return progressingConditions, fmt.Errorf("can't make required namespaces: %w", err)
 	}
 
-	clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -39,9 +40,7 @@ func (scc *Controller) syncRemoteNamespaces(
 		requiredNamespaces,
 		remoteNamespaces,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: func(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-				return clusterClient.CoreV1().Namespaces().Delete(ctx, name, opts)
-			},
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.Namespace](remoteCluster.GetClient(), ""),
 		},
 		scc.eventRecorder,
 	)
@@ -49,9 +48,8 @@ func (scc *Controller) syncRemoteNamespaces(
 		return progressingConditions, fmt.Errorf("can't prune namespace(s) in %q Datacenter of %q ScyllaDBCluster: %w", dc.Name, naming.ObjRef(sc), err)
 	}
 
-	lister := scc.remoteNamespaceLister.Cluster(dc.RemoteKubernetesClusterName)
 	for _, rns := range requiredNamespaces {
-		_, changed, err := resourceapply.ApplyNamespace(ctx, clusterClient.CoreV1(), lister, scc.eventRecorder, rns, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyNamespaceWithControl(ctx, ctrlclient.ApplyControl[corev1.Namespace](ctx, remoteCluster.GetClient(), ""), scc.eventRecorder, rns, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
 		if changed {

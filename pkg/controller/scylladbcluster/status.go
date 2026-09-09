@@ -9,7 +9,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -22,7 +21,7 @@ func (scc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1alph
 	sc.Status = *status
 
 	klog.V(2).InfoS("Updating status", "ScyllaDBCluster", klog.KObj(sc))
-	_, err := scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).UpdateStatus(ctx, sc, metav1.UpdateOptions{})
+	err := scc.client.Status().Update(ctx, sc)
 	if err != nil {
 		return err
 	}

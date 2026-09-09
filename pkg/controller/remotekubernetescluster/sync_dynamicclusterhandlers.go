@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -15,7 +17,7 @@ import (
 func (rkcc *Controller) syncDynamicClusterHandlers(ctx context.Context, rkc *scyllav1alpha1.RemoteKubernetesCluster) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	kubeConfigSecret, err := rkcc.secretLister.Secrets(rkc.Spec.KubeconfigSecretRef.Namespace).Get(rkc.Spec.KubeconfigSecretRef.Name)
+	kubeConfigSecret, err := ctrlclient.Get[corev1.Secret](ctx, rkcc.client, rkc.Spec.KubeconfigSecretRef.Namespace, rkc.Spec.KubeconfigSecretRef.Name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			klog.V(4).InfoS("Secret referenced by RemoteKubernetesCluster doesn't exists", "Secret", naming.ManualRef(rkc.Spec.KubeconfigSecretRef.Namespace, rkc.Spec.KubeconfigSecretRef.Name), "RemoteKubernetesCluster", rkc.Name)

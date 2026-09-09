@@ -7,22 +7,19 @@ import (
 	"fmt"
 	"time"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func (rkcc *Controller) sync(ctx context.Context, key string) error {
-	_, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (rkcc *Controller) sync(ctx context.Context, name string, rq *controllertools.Requeue) error {
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing remote kubernetes cluster", "RemoteKubernetesCluster", name, "startTime", startTime)
@@ -30,7 +27,7 @@ func (rkcc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing remote kubernetes cluster", "RemoteKubernetesCluster", name, "duration", time.Since(startTime))
 	}()
 
-	rkc, err := rkcc.remoteKubernetesClusterLister.Get(name)
+	rkc, err := ctrlclient.Get[scyllav1alpha1.RemoteKubernetesCluster](ctx, rkcc.client, "", name)
 	if apierrors.IsNotFound(err) {
 		for _, clusterHandler := range rkcc.dynamicClusterHandlers {
 			clusterHandler.DeleteCluster(name)
@@ -89,7 +86,7 @@ func (rkcc *Controller) sync(ctx context.Context, key string) error {
 		clientHealthcheckControllerDegradedCondition,
 		rkc.Generation,
 		func() ([]metav1.Condition, error) {
-			return rkcc.syncClientHealthchecks(ctx, key, rkc, status)
+			return rkcc.syncClientHealthchecks(ctx, rq, rkc, status)
 		},
 	)
 	if err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/c9s/goprocinfo/linux"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -27,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpec *corev1.PodSpec, optimizablePods []*corev1.Pod, scyllaContainerIDs []string) (*batchv1.Job, error) {
@@ -86,7 +88,7 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 	// Sort paths to have stable representation for the same set host paths.
 	slices.Sort(dataHostPaths)
 
-	cr, err := ncdc.newOwningDSControllerRef()
+	cr, err := ncdc.newOwningDSControllerRef(ctx, ncdc.client)
 	if err != nil {
 		return nil, fmt.Errorf("can't get controller ref: %w", err)
 	}
@@ -129,7 +131,7 @@ func (ncdc *Controller) makePerftuneJobForContainers(ctx context.Context, podSpe
 }
 
 func (ncdc *Controller) makeResourceLimitJobsForContainers(ctx context.Context, podSpec *corev1.PodSpec, scyllaPods []*corev1.Pod) ([]*batchv1.Job, error) {
-	cr, err := ncdc.newOwningDSControllerRef()
+	cr, err := ncdc.newOwningDSControllerRef(ctx, ncdc.client)
 	if err != nil {
 		return nil, fmt.Errorf("can't get controller ref: %w", err)
 	}
@@ -164,7 +166,7 @@ func (ncdc *Controller) makeResourceLimitJobsForContainers(ctx context.Context, 
 }
 
 func (ncdc *Controller) makeJobsForContainers(ctx context.Context, nc *scyllav1alpha1.NodeConfig) ([]*batchv1.Job, error) {
-	localScyllaPods, err := ncdc.localScyllaPodsLister.List(naming.ScyllaSelector())
+	localScyllaPods, err := ctrlclient.List[corev1.Pod](ctx, ncdc.client, corev1.NamespaceAll, naming.ScyllaSelector())
 	if err != nil {
 		return nil, fmt.Errorf("can't list local scylla pods: %w", err)
 	}
@@ -212,7 +214,7 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context, nc *scyllav1a
 		optimizableScyllaContainerIDs = append(optimizableScyllaContainerIDs, containerID)
 	}
 
-	selfPod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
+	selfPod, err := ctrlclient.Get[corev1.Pod](ctx, ncdc.client, ncdc.namespace, ncdc.podName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
 	}
@@ -246,12 +248,12 @@ func (ncdc *Controller) makeJobsForContainers(ctx context.Context, nc *scyllav1a
 func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeConfig, jobs map[string]*batchv1.Job, nodeStatus *scyllav1alpha1.NodeConfigNodeStatus) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	selfPod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
+	selfPod, err := ctrlclient.Get[corev1.Pod](ctx, ncdc.client, ncdc.namespace, ncdc.podName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get self Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
 	}
 
-	cr, err := ncdc.newOwningDSControllerRef()
+	cr, err := ncdc.newOwningDSControllerRef(ctx, ncdc.client)
 	if err != nil {
 		return nil, fmt.Errorf("can't get controller ref: %w", err)
 	}
@@ -261,7 +263,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		return nil, fmt.Errorf("can't get sysctl config map name: %w", err)
 	}
 
-	systlConfigMap, err := ncdc.namespacedConfigMapLister.ConfigMaps(ncdc.namespace).Get(sysctlConfigMapName)
+	systlConfigMap, err := ctrlclient.Get[corev1.ConfigMap](ctx, ncdc.client, ncdc.namespace, sysctlConfigMapName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get sysctl config map %q: %w", naming.ManualRef(ncdc.namespace, sysctlConfigMapName), err)
 	}
@@ -294,7 +296,7 @@ func (ncdc *Controller) syncJobs(ctx context.Context, nc *scyllav1alpha1.NodeCon
 
 	klog.V(4).InfoS("Required jobs", "Count", len(requiredJobs))
 	for _, j := range requiredJobs {
-		fresh, _, err := resourceapply.ApplyJob(ctx, ncdc.kubeClient.BatchV1(), ncdc.namespacedJobLister, ncdc.eventRecorder, j, resourceapply.ApplyOptions{})
+		fresh, _, err := resourceapply.ApplyJobWithControl(ctx, ctrlclient.ApplyControl[batchv1.Job](ctx, ncdc.client, ncdc.namespace), ncdc.eventRecorder, j, resourceapply.ApplyOptions{})
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't create job %s: %w", naming.ObjRef(j), err)
 		}
@@ -390,12 +392,7 @@ func (ncdc *Controller) pruneJobs(ctx context.Context, jobs map[string]*batchv1.
 
 		klog.InfoS("Removing stale Job", "Job", klog.KObj(j))
 		propagationPolicy := metav1.DeletePropagationBackground
-		err := ncdc.kubeClient.BatchV1().Jobs(j.Namespace).Delete(ctx, j.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &j.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err := ncdc.client.Delete(ctx, j, client.Preconditions{UID: &j.UID}, client.PropagationPolicy(propagationPolicy))
 		if err != nil {
 			errs = append(errs, err)
 			continue

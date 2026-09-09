@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,7 +29,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		klog.V(4).InfoS("Finished sync", "duration", time.Since(startTime))
 	}()
 
-	nc, err := ncdc.nodeConfigLister.Get(ncdc.nodeConfigName)
+	nc, err := ctrlclient.Get[scyllav1alpha1.NodeConfig](ctx, ncdc.client, "", ncdc.nodeConfigName)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("can't get current nodeconfig %q: %w", ncdc.nodeConfigName, err)
@@ -54,7 +55,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 	type CT = *appsv1.DaemonSet
 	var objectErrs []error
 
-	dsControllerRef, err := ncdc.newOwningDSControllerRef()
+	dsControllerRef, err := ncdc.newOwningDSControllerRef(ctx, ncdc.client)
 	if err != nil {
 		return fmt.Errorf("can't get controller ref: %w", err)
 	}
@@ -75,11 +76,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		func(job *batchv1.Job) bool {
 			return job.Spec.Template.Spec.NodeName == ncdc.nodeName
 		},
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
-			GetControllerUncachedFunc: ncdc.kubeClient.AppsV1().DaemonSets(ncdc.namespace).Get,
-			ListObjectsFunc:           ncdc.namespacedJobLister.Jobs(ncdc.namespace).List,
-			PatchObjectFunc:           ncdc.kubeClient.BatchV1().Jobs(ncdc.namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[appsv1.DaemonSet, batchv1.Job](ctx, ncdc.client, ncdc.apiReader, ncdc.namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)

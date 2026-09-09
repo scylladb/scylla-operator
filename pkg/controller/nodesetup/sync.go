@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -24,7 +25,7 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		klog.V(4).InfoS("Finished syncing NodeConfig", "NodeConfig", nsc.nodeConfigName, "duration", time.Since(startTime))
 	}()
 
-	nc, err := nsc.nodeConfigLister.Get(nsc.nodeConfigName)
+	nc, err := ctrlclient.Get[scyllav1alpha1.NodeConfig](ctx, nsc.client, "", nsc.nodeConfigName)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("NodeConfig has been deleted", "NodeConfig", klog.KObj(nc))
 		return nil

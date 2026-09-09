@@ -1,0 +1,17 @@
+name: PR
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check-required:
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+      run: |
+        echo "Some jobs failed or were cancelled."
+        exit 1

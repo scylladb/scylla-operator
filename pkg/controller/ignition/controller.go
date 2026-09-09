@@ -10,21 +10,30 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-type Controller struct {
-	*controllertools.Observer
+const (
+	// ControllerName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	ControllerName = "scylladb-ignition"
+)
 
+// Controller is an observer: it re-derives from the member's Service, Pod and tuning ConfigMap whether the ScyllaDB
+// node may start, and reports it through IsIgnited and the signal file.
+type Controller struct {
 	namespace                   string
 	serviceName                 string
 	nodesBroadcastAddressType   scyllav1alpha1.BroadcastAddressType
@@ -32,9 +41,7 @@ type Controller struct {
 
 	ignited atomic.Bool
 
-	configMapLister corev1listers.ConfigMapLister
-	serviceLister   corev1listers.ServiceLister
-	podLister       corev1listers.PodLister
+	client client.Reader
 }
 
 func NewController(
@@ -42,57 +49,60 @@ func NewController(
 	serviceName string,
 	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType,
 	nodesBroadcastAddressType scyllav1alpha1.BroadcastAddressType,
-	kubeClient kubernetes.Interface,
-	configMapInformer corev1informers.ConfigMapInformer,
-	serviceInformer corev1informers.ServiceInformer,
-	podInformer corev1informers.PodInformer,
-) (*Controller, error) {
-	controller := &Controller{
+	c client.Reader,
+) *Controller {
+	return &Controller{
 		namespace:                   namespace,
 		serviceName:                 serviceName,
 		clientsBroadcastAddressType: clientsBroadcastAddressType,
 		nodesBroadcastAddressType:   nodesBroadcastAddressType,
 		ignited:                     atomic.Bool{},
-		configMapLister:             configMapInformer.Lister(),
-		serviceLister:               serviceInformer.Lister(),
-		podLister:                   podInformer.Lister(),
+		client:                      c,
 	}
+}
 
-	observer := controllertools.NewObserver(
-		"scylladb-ignition",
-		kubeClient.CoreV1().Events(corev1.NamespaceAll),
-		controller.Sync,
-	)
+// CacheOptions restricts the manager's cache to the member's Service and Pod, which share the name, and to the
+// NodeConfig data ConfigMaps, all in namespace.
+func CacheOptions(namespace, serviceName string) cache.Options {
+	identity := fields.OneTermEqualSelector("metadata.name", serviceName)
 
-	configMapHandler, err := configMapInformer.Informer().AddEventHandler(observer.GetGenericHandlers())
-	if err != nil {
-		return nil, fmt.Errorf("can't add ConfigMap event handler: %w", err)
+	return cache.Options{
+		DefaultNamespaces: map[string]cache.Config{
+			namespace: {},
+		},
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.Service{}: {
+				Field: identity,
+			},
+			&corev1.Pod{}: {
+				Field: identity,
+			},
+			&corev1.ConfigMap{}: {
+				Label: labels.Set{
+					naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
+				}.AsSelector(),
+			},
+		},
 	}
-	observer.AddCachesToSync(configMapHandler.HasSynced)
+}
 
-	serviceHandler, err := serviceInformer.Informer().AddEventHandler(observer.GetGenericHandlers())
-	if err != nil {
-		return nil, fmt.Errorf("can't add Service event handler: %w", err)
-	}
-	observer.AddCachesToSync(serviceHandler.HasSynced)
-
-	podHandler, err := podInformer.Informer().AddEventHandler(observer.GetGenericHandlers())
-	if err != nil {
-		return nil, fmt.Errorf("can't add Pod event handler: %w", err)
-	}
-	observer.AddCachesToSync(podHandler.HasSynced)
-
-	controller.Observer = observer
-
-	return controller, nil
+// SetupWithManager registers the controller with the manager. Every event of the watched kinds re-runs the sync.
+func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	return ctrlbuilder.ControllerManagedBy(mgr).
+		Named(ControllerName).
+		Watches(&corev1.ConfigMap{}, controllertools.EnqueueSingleton(ControllerName)).
+		Watches(&corev1.Service{}, controllertools.EnqueueSingleton(ControllerName)).
+		Watches(&corev1.Pod{}, controllertools.EnqueueSingleton(ControllerName)).
+		WithOptions(options).
+		Complete(controllertools.NewObserverReconciler(ControllerName, c.Sync))
 }
 
 func (c *Controller) IsIgnited() bool {
 	return c.ignited.Load()
 }
 
-func (c *Controller) evaluateIgnitionState() (bool, error) {
-	svc, err := c.serviceLister.Services(c.namespace).Get(c.serviceName)
+func (c *Controller) evaluateIgnitionState(ctx context.Context) (bool, error) {
+	svc, err := ctrlclient.Get[corev1.Service](ctx, c.client, c.namespace, c.serviceName)
 	if err != nil {
 		return false, fmt.Errorf("can't get service %q: %w", c.serviceName, err)
 	}
@@ -115,7 +125,7 @@ func (c *Controller) evaluateIgnitionState() (bool, error) {
 		)
 	}
 
-	pod, err := c.podLister.Pods(c.namespace).Get(c.serviceName)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, c.client, c.namespace, c.serviceName)
 	if err != nil {
 		return false, fmt.Errorf("can't get pod %q: %w", c.serviceName, err)
 	}
@@ -143,7 +153,7 @@ func (c *Controller) evaluateIgnitionState() (bool, error) {
 		naming.OwnerUIDLabel:      string(pod.UID),
 		naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
 	}.AsSelector()
-	configMaps, err := c.configMapLister.ConfigMaps(c.namespace).List(cmLabelSelector)
+	configMaps, err := ctrlclient.List[corev1.ConfigMap](ctx, c.client, c.namespace, cmLabelSelector)
 	if err != nil {
 		return false, fmt.Errorf("can't list tuning configmap: %w", err)
 	}
@@ -189,12 +199,12 @@ func (c *Controller) evaluateIgnitionState() (bool, error) {
 }
 func (c *Controller) Sync(ctx context.Context) error {
 	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing observer", "Name", c.Observer.Name(), "startTime", startTime)
+	klog.V(4).InfoS("Started syncing observer", "Name", ControllerName, "startTime", startTime)
 	defer func() {
-		klog.V(4).InfoS("Finished syncing observer", "Name", c.Observer.Name(), "duration", time.Since(startTime))
+		klog.V(4).InfoS("Finished syncing observer", "Name", ControllerName, "duration", time.Since(startTime))
 	}()
 
-	svc, err := c.serviceLister.Services(c.namespace).Get(c.serviceName)
+	svc, err := ctrlclient.Get[corev1.Service](ctx, c.client, c.namespace, c.serviceName)
 	if err != nil {
 		return fmt.Errorf("can't get service %q: %w", c.serviceName, err)
 	}
@@ -220,7 +230,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 		ignited = *ignitionOverride
 		klog.InfoS("Forcing ignition state", "Ignited", ignited, "Annotation", naming.ForceIgnitionValueAnnotation)
 	} else {
-		ignited, err = c.evaluateIgnitionState()
+		ignited, err = c.evaluateIgnitionState(ctx)
 		if err != nil {
 			return fmt.Errorf("can't evaluate ignition state: %w", err)
 		}

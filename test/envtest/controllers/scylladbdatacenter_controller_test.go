@@ -17,24 +17,39 @@ import (
 	o "github.com/onsi/gomega"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
+	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/scylla"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/informers"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	appsv1listers "k8s.io/client-go/listers/apps/v1"
+	batchv1listers "k8s.io/client-go/listers/batch/v1"
+	corev1listers "k8s.io/client-go/listers/core/v1"
+	networkingv1listers "k8s.io/client-go/listers/networking/v1"
+	policyv1listers "k8s.io/client-go/listers/policy/v1"
+	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/ptr"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -1236,21 +1251,17 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 
 	kubeClient := e.TypedKubeClient()
 	scyllaClient := e.ScyllaClient()
-	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		kubeClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		informers.WithNamespace(e.Namespace()),
-	)
-	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		scyllaClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(e.Namespace()),
-	)
-	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		scyllaClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(corev1.NamespaceAll),
-	)
+
+	// The controller reads from a controller-runtime cache through the informer bridge, the same way the operator
+	// binary wires it. The cache watches all namespaces: every spec gets its own API server, and restricting the
+	// cache to a namespace would make controller-runtime wrap the informers in a multi-namespace layer that the
+	// bridge can't get the indexers from.
+	c, err := ctrlcache.New(e.Config(), ctrlcache.Options{
+		Scheme:     scheme.Scheme,
+		SyncPeriod: ptr.To(scyllaDBDatacenterControllerResyncPeriod),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
 	keyGenerator := newStaticKeyGenerator()
 
 	options := []scylladbdatacenter.ControllerOption{
@@ -1261,19 +1272,19 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	sdcc, err := scylladbdatacenter.NewController(
 		kubeClient,
 		scyllaClient.ScyllaV1alpha1(),
-		kubeInformers.Core().V1().Pods(),
-		kubeInformers.Core().V1().Services(),
-		kubeInformers.Core().V1().Secrets(),
-		kubeInformers.Core().V1().ConfigMaps(),
-		kubeInformers.Core().V1().ServiceAccounts(),
-		kubeInformers.Rbac().V1().RoleBindings(),
-		kubeInformers.Apps().V1().StatefulSets(),
-		kubeInformers.Policy().V1().PodDisruptionBudgets(),
-		kubeInformers.Networking().V1().Ingresses(),
-		kubeInformers.Batch().V1().Jobs(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
-		scyllaGlobalInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
+		mustInformerFor(ctx, c, &corev1.Pod{}, corev1listers.NewPodLister),
+		mustInformerFor(ctx, c, &corev1.Service{}, corev1listers.NewServiceLister),
+		mustInformerFor(ctx, c, &corev1.Secret{}, corev1listers.NewSecretLister),
+		mustInformerFor(ctx, c, &corev1.ConfigMap{}, corev1listers.NewConfigMapLister),
+		mustInformerFor(ctx, c, &corev1.ServiceAccount{}, corev1listers.NewServiceAccountLister),
+		mustInformerFor(ctx, c, &rbacv1.RoleBinding{}, rbacv1listers.NewRoleBindingLister),
+		mustInformerFor(ctx, c, &appsv1.StatefulSet{}, appsv1listers.NewStatefulSetLister),
+		mustInformerFor(ctx, c, &policyv1.PodDisruptionBudget{}, policyv1listers.NewPodDisruptionBudgetLister),
+		mustInformerFor(ctx, c, &networkingv1.Ingress{}, networkingv1listers.NewIngressLister),
+		mustInformerFor(ctx, c, &batchv1.Job{}, batchv1listers.NewJobLister),
+		mustInformerFor(ctx, c, &scyllav1alpha1.ScyllaDBDatacenter{}, scyllav1alpha1listers.NewScyllaDBDatacenterLister),
+		mustInformerFor(ctx, c, &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, scyllav1alpha1listers.NewScyllaDBDatacenterNodesStatusReportLister),
+		mustInformerFor(ctx, c, &scyllav1alpha1.ScyllaOperatorConfig{}, scyllav1alpha1listers.NewScyllaOperatorConfigLister),
 		"scylla/operator:envtest",
 		scylla.DefaultNativeTransportPort,
 		keyGenerator,
@@ -1281,11 +1292,17 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	kubeInformers.Start(ctx.Done())
-	scyllaInformers.Start(ctx.Done())
-	scyllaGlobalInformers.Start(ctx.Done())
+	ctx, cancel := context.WithCancel(ctx)
 
 	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer g.GinkgoRecover()
+		err := c.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -1293,9 +1310,16 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	}()
 
 	g.DeferCleanup(func() {
-		kubeInformers.Shutdown()
-		scyllaInformers.Shutdown()
-		scyllaGlobalInformers.Shutdown()
+		cancel()
 		wg.Wait()
 	})
+}
+
+func mustInformerFor[L any](ctx context.Context, c ctrlcache.Cache, obj client.Object, newLister func(cache.Indexer) L) controllermanager.Informer[L] {
+	g.GinkgoHelper()
+
+	informer, err := controllermanager.InformerFor(ctx, c, obj, newLister)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return informer
 }

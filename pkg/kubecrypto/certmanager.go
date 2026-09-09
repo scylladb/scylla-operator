@@ -8,6 +8,7 @@ import (
 
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
+	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -113,15 +114,93 @@ func (configs CertChainConfigs) GetMetaConfigMaps() []*corev1.ConfigMap {
 	return configMaps
 }
 
-type CertificateManager struct {
-	keyGetter       ocrypto.KeyGenerator
-	secretsClient   corev1client.SecretsGetter
-	secretLister    corev1listers.SecretLister
-	configMapClient corev1client.ConfigMapsGetter
-	configMapLister corev1listers.ConfigMapLister
-	eventRecorder   record.EventRecorder
+// ObjectControl is what the CertificateManager needs for one kind of object it manages: the reads and writes the
+// apply goes through, and a read fresh enough to decide from when the object is missing from the caller's cache.
+type ObjectControl[T kubeinterfaces.ObjectInterface] interface {
+	GetCached(namespace, name string) (T, error)
+	Get(ctx context.Context, namespace, name string) (T, error)
+	Create(ctx context.Context, obj T, opts metav1.CreateOptions) (T, error)
+	Update(ctx context.Context, obj T, opts metav1.UpdateOptions) (T, error)
+	Delete(ctx context.Context, namespace, name string, opts metav1.DeleteOptions) error
 }
 
+type secretControl struct {
+	client corev1client.SecretsGetter
+	lister corev1listers.SecretLister
+}
+
+var _ ObjectControl[*corev1.Secret] = secretControl{}
+
+func (c secretControl) GetCached(namespace, name string) (*corev1.Secret, error) {
+	return c.lister.Secrets(namespace).Get(name)
+}
+
+func (c secretControl) Get(ctx context.Context, namespace, name string) (*corev1.Secret, error) {
+	return c.client.Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+func (c secretControl) Create(ctx context.Context, obj *corev1.Secret, opts metav1.CreateOptions) (*corev1.Secret, error) {
+	return c.client.Secrets(obj.Namespace).Create(ctx, obj, opts)
+}
+
+func (c secretControl) Update(ctx context.Context, obj *corev1.Secret, opts metav1.UpdateOptions) (*corev1.Secret, error) {
+	return c.client.Secrets(obj.Namespace).Update(ctx, obj, opts)
+}
+
+func (c secretControl) Delete(ctx context.Context, namespace, name string, opts metav1.DeleteOptions) error {
+	return c.client.Secrets(namespace).Delete(ctx, name, opts)
+}
+
+type configMapControl struct {
+	client corev1client.ConfigMapsGetter
+	lister corev1listers.ConfigMapLister
+}
+
+var _ ObjectControl[*corev1.ConfigMap] = configMapControl{}
+
+func (c configMapControl) GetCached(namespace, name string) (*corev1.ConfigMap, error) {
+	return c.lister.ConfigMaps(namespace).Get(name)
+}
+
+func (c configMapControl) Get(ctx context.Context, namespace, name string) (*corev1.ConfigMap, error) {
+	return c.client.ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+func (c configMapControl) Create(ctx context.Context, obj *corev1.ConfigMap, opts metav1.CreateOptions) (*corev1.ConfigMap, error) {
+	return c.client.ConfigMaps(obj.Namespace).Create(ctx, obj, opts)
+}
+
+func (c configMapControl) Update(ctx context.Context, obj *corev1.ConfigMap, opts metav1.UpdateOptions) (*corev1.ConfigMap, error) {
+	return c.client.ConfigMaps(obj.Namespace).Update(ctx, obj, opts)
+}
+
+func (c configMapControl) Delete(ctx context.Context, namespace, name string, opts metav1.DeleteOptions) error {
+	return c.client.ConfigMaps(namespace).Delete(ctx, name, opts)
+}
+
+// applyControl binds an ObjectControl to a namespace for resourceapply.
+func applyControl[T kubeinterfaces.ObjectInterface](control ObjectControl[T], namespace string) resourceapply.ApplyControlFuncs[T] {
+	return resourceapply.ApplyControlFuncs[T]{
+		GetCachedFunc: func(name string) (T, error) {
+			return control.GetCached(namespace, name)
+		},
+		CreateFunc: control.Create,
+		UpdateFunc: control.Update,
+		DeleteFunc: func(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+			return control.Delete(ctx, namespace, name, opts)
+		},
+	}
+}
+
+type CertificateManager struct {
+	keyGetter        ocrypto.KeyGenerator
+	secretControl    ObjectControl[*corev1.Secret]
+	configMapControl ObjectControl[*corev1.ConfigMap]
+	eventRecorder    record.EventRecorder
+}
+
+// NewCertificateManager creates a CertificateManager reading Secrets and ConfigMaps from the listers and writing
+// them through the typed clients. See NewCertificateManagerWithControl for other clients.
 func NewCertificateManager(
 	keyGetter ocrypto.KeyGenerator,
 	secretsClient corev1client.SecretsGetter,
@@ -130,13 +209,27 @@ func NewCertificateManager(
 	configMapLister corev1listers.ConfigMapLister,
 	eventRecorder record.EventRecorder,
 ) *CertificateManager {
+	return NewCertificateManagerWithControl(
+		keyGetter,
+		secretControl{client: secretsClient, lister: secretLister},
+		configMapControl{client: configMapClient, lister: configMapLister},
+		eventRecorder,
+	)
+}
+
+// NewCertificateManagerWithControl creates a CertificateManager reading and writing Secrets and ConfigMaps through
+// the given controls.
+func NewCertificateManagerWithControl(
+	keyGetter ocrypto.KeyGenerator,
+	secretControl ObjectControl[*corev1.Secret],
+	configMapControl ObjectControl[*corev1.ConfigMap],
+	eventRecorder record.EventRecorder,
+) *CertificateManager {
 	return &CertificateManager{
-		keyGetter:       keyGetter,
-		secretsClient:   secretsClient,
-		secretLister:    secretLister,
-		configMapClient: configMapClient,
-		configMapLister: configMapLister,
-		eventRecorder:   eventRecorder,
+		keyGetter:        keyGetter,
+		secretControl:    secretControl,
+		configMapControl: configMapControl,
+		eventRecorder:    eventRecorder,
 	}
 }
 
@@ -144,7 +237,7 @@ func NewCertificateManager(
 // recreated when their desired config changes. Certificates are automatically refreshed when they reach their refresh
 // interval, or 80% of their lifetime, whichever comes sooner.
 func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc func() time.Time, controller *metav1.ObjectMeta, controllerGVK schema.GroupVersionKind, caConfig *CAConfig, caBundleConfig *CABundleConfig, certConfigs []*CertificateConfig, existingSecrets map[string]*corev1.Secret, existingConfigMaps map[string]*corev1.ConfigMap) error {
-	existingCASecret, err := getSecretWithCache(ctx, cm.secretsClient, controller.GetNamespace(), caConfig.Name, existingSecrets)
+	existingCASecret, err := getWithCache(ctx, cm.secretControl, controller.GetNamespace(), caConfig.Name, existingSecrets)
 	if err != nil {
 		return fmt.Errorf("can't get CA secret %q: %w", caConfig.Name, err)
 	}
@@ -163,7 +256,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 	caSecret.Annotations = helpers.MergeMaps(caSecret.Annotations, caConfig.Annotations)
 	caSecret.Labels = helpers.MergeMaps(caSecret.Labels, caConfig.Labels)
 
-	updatedCASecret, caSecretChanged, err := resourceapply.ApplySecret(ctx, cm.secretsClient, cm.secretLister, cm.eventRecorder, caSecret, resourceapply.ApplyOptions{})
+	updatedCASecret, caSecretChanged, err := resourceapply.ApplySecretWithControl(ctx, applyControl(cm.secretControl, controller.GetNamespace()), cm.eventRecorder, caSecret, resourceapply.ApplyOptions{})
 	if err != nil {
 		return fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(caSecret), err)
 	}
@@ -171,7 +264,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 		caTLSSecret.Refresh(updatedCASecret)
 	}
 
-	existingBundleCM, err := getConfigMapWithCache(ctx, cm.configMapClient, controller.GetNamespace(), caBundleConfig.Name, existingConfigMaps)
+	existingBundleCM, err := getWithCache(ctx, cm.configMapControl, controller.GetNamespace(), caBundleConfig.Name, existingConfigMaps)
 	if err != nil {
 		return fmt.Errorf("can't get CA bundle ConfigMap %q: %w", caBundleConfig.Name, err)
 	}
@@ -184,13 +277,13 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 	caBundleCM.Annotations = helpers.MergeMaps(caBundleCM.Annotations, caBundleConfig.Annotations)
 	caBundleCM.Labels = helpers.MergeMaps(caBundleCM.Labels, caBundleConfig.Labels)
 
-	_, _, err = resourceapply.ApplyConfigMap(ctx, cm.configMapClient, cm.configMapLister, cm.eventRecorder, caBundleCM, resourceapply.ApplyOptions{})
+	_, _, err = resourceapply.ApplyConfigMapWithControl(ctx, applyControl(cm.configMapControl, controller.GetNamespace()), cm.eventRecorder, caBundleCM, resourceapply.ApplyOptions{})
 	if err != nil {
 		return fmt.Errorf("can't apply ConfigMap %q: %w", naming.ObjRef(caBundleCM), err)
 	}
 
 	for _, cc := range certConfigs {
-		existingCertSecret, err := getSecretWithCache(ctx, cm.secretsClient, controller.GetNamespace(), cc.Name, existingSecrets)
+		existingCertSecret, err := getWithCache(ctx, cm.secretControl, controller.GetNamespace(), cc.Name, existingSecrets)
 		if err != nil {
 			return fmt.Errorf("can't get certificate secret %q: %w", cc.Name, err)
 		}
@@ -204,7 +297,7 @@ func (cm *CertificateManager) ManageCertificates(ctx context.Context, nowFunc fu
 		secret.Annotations = helpers.MergeMaps(secret.Annotations, cc.Annotations)
 		secret.Labels = helpers.MergeMaps(secret.Labels, cc.Labels)
 
-		_, _, err = resourceapply.ApplySecret(ctx, cm.secretsClient, cm.secretLister, cm.eventRecorder, secret, resourceapply.ApplyOptions{})
+		_, _, err = resourceapply.ApplySecretWithControl(ctx, applyControl(cm.secretControl, controller.GetNamespace()), cm.eventRecorder, secret, resourceapply.ApplyOptions{})
 		if err != nil {
 			return fmt.Errorf("can't apply secret %q: %w", naming.ObjRef(secret), err)
 		}
@@ -217,30 +310,17 @@ func (cm *CertificateManager) ManageCertificateChain(ctx context.Context, nowFun
 	return cm.ManageCertificates(ctx, nowFunc, controller, controllerGVK, certChainConfig.CAConfig, certChainConfig.CABundleConfig, certChainConfig.CertConfigs, existingSecrets, existingConfigMaps)
 }
 
-// getSecretWithCache returns the named Secret from cache, falling back to a live GET on a cache miss.
-// Returns nil, nil if the Secret does not exist.
-func getSecretWithCache(ctx context.Context, client corev1client.SecretsGetter, namespace, name string, cache map[string]*corev1.Secret) (*corev1.Secret, error) {
-	return getWithCache(ctx, namespace, name, cache, func(ctx context.Context, name string) (*corev1.Secret, error) {
-		return client.Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
-	})
-}
-
-// getConfigMapWithCache returns the named ConfigMap from cache, falling back to a live GET on a cache miss.
-// Returns nil, nil if the ConfigMap does not exist.
-func getConfigMapWithCache(ctx context.Context, client corev1client.ConfigMapsGetter, namespace, name string, cache map[string]*corev1.ConfigMap) (*corev1.ConfigMap, error) {
-	return getWithCache(ctx, namespace, name, cache, func(ctx context.Context, name string) (*corev1.ConfigMap, error) {
-		return client.ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
-	})
-}
-
-// getWithCache returns the named object from cache, falling back to a live GET on a cache miss.
+// getWithCache returns the named object from cache, falling back to a read through the control on a cache miss.
 // Returns nil, nil if the object does not exist.
-func getWithCache[T any](ctx context.Context, namespace, name string, cache map[string]*T, get func(context.Context, string) (*T, error)) (*T, error) {
+func getWithCache[T any, PT interface {
+	*T
+	kubeinterfaces.ObjectInterface
+}](ctx context.Context, control ObjectControl[PT], namespace, name string, cache map[string]PT) (PT, error) {
 	if obj, ok := cache[name]; ok {
 		return obj, nil
 	}
 
-	obj, err := get(ctx, name)
+	obj, err := control.Get(ctx, namespace, name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, nil

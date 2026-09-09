@@ -3,9 +3,9 @@ package scylladbdatacenter
 import (
 	"context"
 	"fmt"
-	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -110,27 +110,14 @@ func (sdcc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options contro
 		Complete(sdcc)
 }
 
-// requeue collects the delay after which a sync wants to run again, for the steps that poll an external state
-// (upgrade hooks) instead of waiting for a watch event.
-type requeue struct {
-	after time.Duration
-}
-
-// After requeues the object after d, or sooner if an earlier requeue was requested.
-func (r *requeue) After(d time.Duration) {
-	if r.after == 0 || d < r.after {
-		r.after = d
-	}
-}
-
 func (sdcc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	rq := &requeue{}
+	rq := &controllertools.Requeue{}
 	err := sdcc.sync(ctx, req.NamespacedName, rq)
 	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
 	err = apimachineryutilerrors.Reduce(err)
 	switch {
 	case err == nil:
-		return reconcile.Result{RequeueAfter: rq.after}, nil
+		return rq.Result(), nil
 
 	case apierrors.IsConflict(err):
 		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)

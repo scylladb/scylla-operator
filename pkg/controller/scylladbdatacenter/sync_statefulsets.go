@@ -12,6 +12,7 @@ import (
 	"github.com/blang/semver"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -775,7 +776,7 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 
 func (sdcc *Controller) syncStatefulSets(
 	ctx context.Context,
-	rq *requeue,
+	rq *controllertools.Requeue,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	soc *scyllav1alpha1.ScyllaOperatorConfig,
 	status *scyllav1alpha1.ScyllaDBDatacenterStatus,

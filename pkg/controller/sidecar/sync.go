@@ -7,13 +7,14 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
@@ -25,7 +26,7 @@ const (
 	requeueWaitDuration = 5 * time.Second
 )
 
-func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) error {
+func (c *Controller) decommissionNode(ctx context.Context, rq *controllertools.Requeue, svc *corev1.Service) error {
 	scyllaClient, err := c.newScyllaClient()
 	if err != nil {
 		return fmt.Errorf("can't create a new ScyllaClient: %w", err)
@@ -42,7 +43,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	case scyllaclient.OperationalModeLeaving, scyllaclient.OperationalModeDraining:
 		// If node is leaving/draining, keep retrying.
 		klog.V(2).InfoS("Waiting for scylla to finish the operation, requeuing", "Mode", opMode)
-		c.queue.AddAfter(c.key, requeueWaitDuration)
+		rq.After(requeueWaitDuration)
 		return nil
 
 	case scyllaclient.OperationalModeDrained:
@@ -53,7 +54,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 			return fmt.Errorf("can't restart scylla node: %w", err)
 		}
 		klog.InfoS("Successfully restarted scylla.")
-		c.queue.AddAfter(c.key, requeueWaitDuration)
+		rq.After(requeueWaitDuration)
 		return nil
 
 	case scyllaclient.OperationalModeNormal:
@@ -67,7 +68,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 
 		if !nativeUp {
 			klog.V(2).InfoS("Node native transport is down, it is sign that node is starting up. Waiting a bit.")
-			c.queue.AddAfter(c.key, requeueWaitDuration)
+			rq.After(requeueWaitDuration)
 			return nil
 		}
 
@@ -79,7 +80,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 			opMode, err := scyllaClient.OperationMode(ctx, c.localhostAddress)
 			if err == nil && (opMode == scyllaclient.OperationalModeDecommissioned || opMode == scyllaclient.OperationalModeLeaving) {
 				klog.V(2).InfoS("Decommissioning is in progress. Waiting a bit.", "Mode", opMode)
-				c.queue.AddAfter(c.key, requeueWaitDuration)
+				rq.After(requeueWaitDuration)
 				return nil
 			}
 
@@ -89,7 +90,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	case scyllaclient.OperationalModeStarting, scyllaclient.OperationalModeJoining, scyllaclient.OperationalModeBootstrap:
 		// The node has to reach the NORMAL mode before it can be decommissioned.
 		klog.V(2).InfoS("Can't decommission a node which hasn't reached the NORMAL mode yet. Requeuing.", "Mode", opMode)
-		c.queue.AddAfter(c.key, requeueWaitDuration)
+		rq.After(requeueWaitDuration)
 		return nil
 
 	case scyllaclient.OperationalModeDecommissioned:
@@ -102,7 +103,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	// Update Label to signal that decommission has completed
 	svcCopy := svc.DeepCopy()
 	svcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueTrue
-	_, err = c.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
+	err = c.client.Update(ctx, svcCopy)
 	if err != nil {
 		return err
 	}
@@ -110,7 +111,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 	return nil
 }
 
-func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) error {
+func (c *Controller) syncAnnotations(ctx context.Context, rq *controllertools.Requeue, svc *corev1.Service) error {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing Service annotation", "Service", klog.KObj(svc), "startTime", startTime)
 	defer func() {
@@ -131,7 +132,7 @@ func (c *Controller) syncAnnotations(ctx context.Context, svc *corev1.Service) e
 
 	if requeue {
 		klog.V(4).InfoS("Requeuing to sync Service annotations later", "Service", klog.KObj(svc), "After", requeueWaitDuration.String())
-		c.queue.AddAfter(c.key, requeueWaitDuration)
+		rq.After(requeueWaitDuration)
 	}
 
 	err = c.updateServiceAnnotations(ctx, svc, annotations)
@@ -286,7 +287,7 @@ func (c *Controller) updateServiceAnnotations(ctx context.Context, svc *corev1.S
 		return nil
 	}
 
-	_, err := c.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
+	err := c.client.Update(ctx, svcCopy)
 	if err != nil {
 		return fmt.Errorf("can't update Service %q: %w", naming.ObjRef(svc), err)
 	}
@@ -296,14 +297,14 @@ func (c *Controller) updateServiceAnnotations(ctx context.Context, svc *corev1.S
 	return nil
 }
 
-func (c *Controller) sync(ctx context.Context) error {
+func (c *Controller) sync(ctx context.Context, rq *controllertools.Requeue) error {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing Service", "Service", klog.KRef(c.namespace, c.serviceName), "startTime", startTime)
 	defer func() {
 		klog.V(4).InfoS("Finished syncing Service", "Service", klog.KRef(c.namespace, c.serviceName), "duration", time.Since(startTime))
 	}()
 
-	svc, err := c.singleServiceLister.Services(c.namespace).Get(c.serviceName)
+	svc, err := ctrlclient.Get[corev1.Service](ctx, c.client, c.namespace, c.serviceName)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("Service has been deleted", "Service", klog.KObj(svc))
 		return nil
@@ -318,14 +319,14 @@ func (c *Controller) sync(ctx context.Context) error {
 
 	var errs []error
 
-	err = c.syncAnnotations(ctx, svc)
+	err = c.syncAnnotations(ctx, rq, svc)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("can't sync the HostID annotation: %w", err))
 	}
 
 	decommissionValue, hasDecommissionLabel := svc.Labels[naming.DecommissionedLabel]
 	if hasDecommissionLabel && decommissionValue != "true" {
-		err := c.decommissionNode(ctx, svc)
+		err := c.decommissionNode(ctx, rq, svc)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't decommision a node: %w", err))
 		}

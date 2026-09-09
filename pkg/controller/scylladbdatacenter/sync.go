@@ -7,6 +7,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,7 +24,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (sdcc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *requeue) error {
+func (sdcc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()

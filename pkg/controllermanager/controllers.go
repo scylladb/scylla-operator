@@ -214,16 +214,15 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	}
 	m.addRunnable(ncpc.Run, o.ConcurrentSyncs)
 
-	socc, err := scyllaoperatorconfig.NewController(
-		o.KubeClient,
-		o.ScyllaClient.ScyllaV1alpha1(),
-		scyllaOperatorConfigs,
+	socc := scyllaoperatorconfig.NewController(
+		m.mgr.GetClient(),
+		m.mgr.GetEventRecorderFor("scyllaoperatorconfig-controller"),
 		o.ClusterDomainGetter,
 	)
+	err = socc.SetupWithManager(m.mgr, scyllaoperatorconfig.ControllerOptions())
 	if err != nil {
-		return fmt.Errorf("can't create scyllaoperatorconfig controller: %w", err)
+		return fmt.Errorf("can't set up scyllaoperatorconfig controller: %w", err)
 	}
-	m.addRunnable(socc.Run, o.ConcurrentSyncs)
 
 	if o.MonitoringCRDsInstalled {
 		prometheuses := informerFor(f, &monitoringv1.Prometheus{}, monitoringv1listers.NewPrometheusLister)

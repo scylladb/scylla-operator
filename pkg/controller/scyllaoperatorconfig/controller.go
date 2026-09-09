@@ -4,141 +4,116 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
-	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
-	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
-	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/scheme"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
 	ControllerName = "ScyllaOperatorConfigController"
+	// controllerRuntimeName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	controllerRuntimeName = "scyllaoperatorconfig"
+
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
-	// but rather use the queue.
+	// but rather requeue.
 	maxSyncDuration           = 30 * time.Second
 	clusterDomainPollInterval = 5 * time.Minute
 )
 
-var (
-	keyFunc                           = cache.DeletionHandlingMetaNamespaceKeyFunc
-	scyllaOperatorConfigControllerGVK = scyllav1.GroupVersion.WithKind("ScyllaOperatorConfig")
-)
-
 type GetClusterDomainFunc func(context.Context) (string, error)
 
+// Controller keeps the singleton ScyllaOperatorConfig present and its status current, re-resolving the cluster
+// domain periodically. It is a single-key controller for the singleton.
 type Controller struct {
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface
-
-	scyllaOperatorConfigLister scyllav1alpha1listers.ScyllaOperatorConfigLister
-
-	cachesToSync []cache.InformerSynced
+	client client.Client
 
 	getClusterDomainFunc GetClusterDomainFunc
 
 	eventRecorder record.EventRecorder
 
-	queue    workqueue.TypedRateLimitingInterface[string]
-	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaOperatorConfig]
-
-	wg sync.WaitGroup
+	// trigger enqueues the singleton outside its watch: once at start, so the object is created when missing, and
+	// periodically, to re-resolve the cluster domain.
+	trigger *controllertools.Trigger
 }
 
+var _ reconcile.Reconciler = &Controller{}
+
 func NewController(
-	kubeClient kubernetes.Interface,
-	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
-	scyllaOperatorConfigInformer scyllav1alpha1informers.ScyllaOperatorConfigInformer,
+	c client.Client,
+	eventRecorder record.EventRecorder,
 	getClusterDomain GetClusterDomainFunc,
-) (*Controller, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
-	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-
-	opc := &Controller{
-		kubeClient:   kubeClient,
-		scyllaClient: scyllaClient,
-
-		scyllaOperatorConfigLister: scyllaOperatorConfigInformer.Lister(),
-
-		cachesToSync: []cache.InformerSynced{
-			scyllaOperatorConfigInformer.Informer().HasSynced,
-		},
+) *Controller {
+	return &Controller{
+		client: c,
 
 		getClusterDomainFunc: getClusterDomain,
 
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllaoperatorconfig-controller"}),
+		eventRecorder: eventRecorder,
 
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{
-				Name: "scyllaoperatorconfig",
-			},
-		),
+		trigger: controllertools.NewTrigger(),
 	}
-
-	var err error
-	opc.handlers, err = controllerhelpers.NewHandlers[*scyllav1alpha1.ScyllaOperatorConfig](
-		opc.queue,
-		keyFunc,
-		scheme.Scheme,
-		scyllaOperatorConfigControllerGVK,
-		kubeinterfaces.GlobalGetList[*scyllav1alpha1.ScyllaOperatorConfig]{
-			GetFunc: func(name string) (*scyllav1alpha1.ScyllaOperatorConfig, error) {
-				return opc.scyllaOperatorConfigLister.Get(name)
-			},
-			ListFunc: func(selector labels.Selector) (ret []*scyllav1alpha1.ScyllaOperatorConfig, err error) {
-				return opc.scyllaOperatorConfigLister.List(selector)
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("can't create handlers: %w", err)
-	}
-
-	scyllaOperatorConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    opc.addScyllaOperatorConfig,
-		UpdateFunc: opc.updateScyllaOperatorConfig,
-		DeleteFunc: opc.deleteScyllaOperatorConfig,
-	})
-
-	opc.queue.Add(naming.SingletonName)
-
-	return opc, nil
 }
 
-func (opc *Controller) processNextItem(ctx context.Context) bool {
-	key, quit := opc.queue.Get()
-	if quit {
-		return false
+// ControllerOptions returns the controller options the controller runs with: a bounded sync duration.
+func ControllerOptions() controller.Options {
+	return controller.Options{
+		MaxConcurrentReconciles: 1,
+		ReconciliationTimeout:   maxSyncDuration,
 	}
-	defer opc.queue.Done(key)
+}
 
-	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
-	defer cancel()
-	syncErr := opc.sync(ctx)
+// SetupWithManager registers the controller with the manager: every event of the singleton ScyllaOperatorConfig
+// re-runs the sync, and so does the trigger, once at start and every clusterDomainPollInterval.
+func (opc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	if options.ReconciliationTimeout == 0 {
+		options.ReconciliationTimeout = maxSyncDuration
+	}
+
+	err := ctrlbuilder.ControllerManagedBy(mgr).
+		Named(controllerRuntimeName).
+		Watches(
+			&scyllav1alpha1.ScyllaOperatorConfig{},
+			controllertools.EnqueueSingleton(controllerRuntimeName),
+			ctrlbuilder.WithPredicates(predicate.NewPredicateFuncs(func(obj client.Object) bool {
+				return obj.GetName() == naming.SingletonName
+			})),
+		).
+		WatchesRawSource(opc.trigger.Source(controllerRuntimeName)).
+		WithOptions(options).
+		Complete(opc)
+	if err != nil {
+		return fmt.Errorf("can't build controller: %w", err)
+	}
+
+	err = mgr.Add(controllertools.PeriodicTrigger(opc.trigger, clusterDomainPollInterval))
+	if err != nil {
+		return fmt.Errorf("can't add periodic trigger: %w", err)
+	}
+
+	// Sync right away: the singleton is created by the sync when it is missing, so there may be no event to wait for.
+	opc.trigger.Enqueue()
+
+	return nil
+}
+
+func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	rq := &controllertools.Requeue{}
+	syncErr := opc.sync(ctx, rq)
 	if syncErr == nil {
-		opc.queue.Forget(key)
-		return true
+		return rq.Result(), nil
 	}
 
 	// Make sure we always have an aggregate to process and all nested errors are flattened.
@@ -147,99 +122,19 @@ func (opc *Controller) processNextItem(ctx context.Context) bool {
 	for _, err := range allErrors.Errors() {
 		switch {
 		case errors.Is(err, &controllerhelpers.RequeueError{}):
-			klog.V(2).InfoS("Re-queuing for recheck", "Key", key, "Reason", err)
+			klog.V(2).InfoS("Re-queuing for recheck", "Key", req.NamespacedName, "Reason", err)
 
 		case apierrors.IsConflict(err):
-			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
+			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
 
 		case apierrors.IsAlreadyExists(err):
-			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
+			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
 
 		default:
 			remainingErrors = append(remainingErrors, err)
 		}
 	}
 
-	err := apimachineryutilerrors.NewAggregate(remainingErrors)
-	if err != nil {
-		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
-	}
-
-	opc.queue.AddRateLimited(key)
-
-	return true
-}
-
-func (opc *Controller) runWorker(ctx context.Context) {
-	for opc.processNextItem(ctx) {
-	}
-}
-
-func (opc *Controller) Run(ctx context.Context, workers int) {
-	defer apimachineryutilruntime.HandleCrash()
-
-	klog.InfoS("Starting controller", "controller", ControllerName)
-
-	defer func() {
-		klog.InfoS("Shutting down controller", "controller", ControllerName)
-		opc.queue.ShutDown()
-		opc.wg.Wait()
-		klog.InfoS("Shut down controller", "controller", ControllerName)
-	}()
-
-	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), opc.cachesToSync...) {
-		return
-	}
-
-	for range workers {
-		opc.wg.Add(1)
-		go func() {
-			defer opc.wg.Done()
-			apimachineryutilwait.UntilWithContext(ctx, opc.runWorker, time.Second)
-		}()
-	}
-
-	opc.wg.Add(1)
-	go func() {
-		defer opc.wg.Done()
-		apimachineryutilwait.UntilWithContext(ctx, func(ctx context.Context) {
-			klog.V(4).InfoS("Periodically enqueuing %q ScyllaOperatorConfig", naming.SingletonName)
-
-			key, err := keyFunc(&metav1.ObjectMeta{
-				Namespace: "",
-				Name:      naming.SingletonName,
-			})
-			if err != nil {
-				apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object name %#v: %v", naming.SingletonName, err))
-				return
-			}
-
-			opc.queue.Add(key)
-		}, clusterDomainPollInterval)
-	}()
-
-	<-ctx.Done()
-}
-
-func (opc *Controller) addScyllaOperatorConfig(obj interface{}) {
-	opc.handlers.HandleAdd(
-		obj.(*scyllav1alpha1.ScyllaOperatorConfig),
-		opc.handlers.Enqueue,
-	)
-}
-
-func (opc *Controller) updateScyllaOperatorConfig(old, cur interface{}) {
-	opc.handlers.HandleUpdate(
-		old.(*scyllav1alpha1.ScyllaOperatorConfig),
-		cur.(*scyllav1alpha1.ScyllaOperatorConfig),
-		opc.handlers.Enqueue,
-		opc.deleteScyllaOperatorConfig,
-	)
-}
-
-func (opc *Controller) deleteScyllaOperatorConfig(obj interface{}) {
-	opc.handlers.HandleDelete(
-		obj,
-		opc.handlers.Enqueue,
-	)
+	// The quiet errors still retry with the rate limiter, like they did in the client-go controller.
+	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, apimachineryutilerrors.NewAggregate(append(remainingErrors, syncErr)))
 }

@@ -6,7 +6,6 @@ import (
 	configassests "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -20,7 +19,7 @@ func (opc *Controller) updateStatus(ctx context.Context, currentSOC *scyllav1alp
 
 	klog.V(2).InfoS("Updating status", "ScyllaOperatorConfig", klog.KObj(soc))
 
-	_, err := opc.scyllaClient.ScyllaOperatorConfigs().UpdateStatus(ctx, soc, metav1.UpdateOptions{})
+	err := opc.client.Status().Update(ctx, soc)
 	if err != nil {
 		return err
 	}

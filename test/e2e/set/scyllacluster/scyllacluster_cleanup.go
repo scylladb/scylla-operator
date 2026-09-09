@@ -56,12 +56,12 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		o.Expect(err).NotTo(o.HaveOccurred())
 	},
 		g.Entry("after scaling the cluster out", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 1},
-			targetRackLayout:  rackLayout{rackCount: 1, membersPerRack: 3},
+			initialRackLayout: rackLayout{racks: []string{"a"}, defaultMemberCount: 1},
+			targetRackLayout:  rackLayout{racks: []string{"a"}, defaultMemberCount: 3},
 		}),
 		g.Entry("after scaling the cluster in", &horizontalScalingEntry{
-			initialRackLayout: rackLayout{rackCount: 1, membersPerRack: 3},
-			targetRackLayout:  rackLayout{rackCount: 1, membersPerRack: 1},
+			initialRackLayout: rackLayout{racks: []string{"a"}, defaultMemberCount: 3},
+			targetRackLayout:  rackLayout{racks: []string{"a"}, defaultMemberCount: 1},
 		}),
 	)
 
@@ -71,7 +71,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 		err := jobObserver.Start(ctx)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		sc := createClusterAndWaitForRollout(ctx, f, rackLayout{rackCount: 1, membersPerRack: 3})
+		sc := createClusterAndWaitForRollout(ctx, f, rackLayout{racks: []string{"a"}, defaultMemberCount: 3})
 
 		verifyCleanupJobsCreatedEventually(ctx, f, sc, &jobObserver)
 

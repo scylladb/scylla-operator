@@ -48,66 +48,42 @@ func (s NodeState) String() string {
 
 type OperationalMode string
 
+// The modes ScyllaDB's storage service reports.
+// NONE is reported as STARTING.
 const (
-	OperationalModeClient          OperationalMode = "CLIENT"
-	OperationalModeDecommissioned  OperationalMode = "DECOMMISSIONED"
-	OperationalModeDecommissioning OperationalMode = "DECOMMISSIONING"
-	OperationalModeJoining         OperationalMode = "JOINING"
-	OperationalModeLeaving         OperationalMode = "LEAVING"
-	OperationalModeNormal          OperationalMode = "NORMAL"
-	OperationalModeDrained         OperationalMode = "DRAINED"
-	OperationalModeDraining        OperationalMode = "DRAINING"
-	OperationalModeUnknown         OperationalMode = "UNKNOWN"
+	OperationalModeStarting       OperationalMode = "STARTING"
+	OperationalModeJoining        OperationalMode = "JOINING"
+	OperationalModeBootstrap      OperationalMode = "BOOTSTRAP"
+	OperationalModeNormal         OperationalMode = "NORMAL"
+	OperationalModeLeaving        OperationalMode = "LEAVING"
+	OperationalModeDecommissioned OperationalMode = "DECOMMISSIONED"
+	OperationalModeMoving         OperationalMode = "MOVING"
+	OperationalModeDraining       OperationalMode = "DRAINING"
+	OperationalModeDrained        OperationalMode = "DRAINED"
+	OperationalModeMaintenance    OperationalMode = "MAINTENANCE"
+	OperationalModeUnknown        OperationalMode = "UNKNOWN"
 )
 
 var (
 	operationalModeMap = map[string]OperationalMode{
-		"CLIENT":          OperationalModeClient,
-		"DECOMMISSIONED":  OperationalModeDecommissioned,
-		"DECOMMISSIONING": OperationalModeDecommissioning,
-		"JOINING":         OperationalModeJoining,
-		"LEAVING":         OperationalModeLeaving,
-		"DRAINED":         OperationalModeDrained,
-		"DRAINING":        OperationalModeDraining,
-		"NORMAL":          OperationalModeNormal,
+		"STARTING":       OperationalModeStarting,
+		"JOINING":        OperationalModeJoining,
+		"BOOTSTRAP":      OperationalModeBootstrap,
+		"NORMAL":         OperationalModeNormal,
+		"LEAVING":        OperationalModeLeaving,
+		"DECOMMISSIONED": OperationalModeDecommissioned,
+		"MOVING":         OperationalModeMoving,
+		"DRAINING":       OperationalModeDraining,
+		"DRAINED":        OperationalModeDrained,
+		"MAINTENANCE":    OperationalModeMaintenance,
 	}
 )
 
 func (o OperationalMode) String() string {
-	switch o {
-	case "CLIENT", "DECOMMISSIONED", "DECOMMISSIONING", "JOINING", "LEAVING", "NORMAL", "DRAINED", "DRAINING":
+	if _, ok := operationalModeMap[string(o)]; ok {
 		return string(o)
-	default:
-		return "UNKNOWN"
 	}
-}
-
-func (o OperationalMode) IsDecommissioned() bool {
-	return o == OperationalModeDecommissioned
-}
-
-func (o OperationalMode) IsDecommissioning() bool {
-	return o == OperationalModeDecommissioning
-}
-
-func (o OperationalMode) IsLeaving() bool {
-	return o == OperationalModeLeaving
-}
-
-func (o OperationalMode) IsNormal() bool {
-	return o == OperationalModeNormal
-}
-
-func (o OperationalMode) IsJoining() bool {
-	return o == OperationalModeJoining
-}
-
-func (o OperationalMode) IsDrained() bool {
-	return o == OperationalModeDrained
-}
-
-func (o OperationalMode) IsDraining() bool {
-	return o == OperationalModeDraining
+	return "UNKNOWN"
 }
 
 func operationalModeFromString(str string) OperationalMode {

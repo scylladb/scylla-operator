@@ -39,8 +39,8 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 
 	klog.V(4).InfoS("Scylla operation mode", "Mode", opMode)
 	switch opMode {
-	case scyllaclient.OperationalModeLeaving, scyllaclient.OperationalModeDecommissioning, scyllaclient.OperationalModeDraining:
-		// If node is leaving/draining/decommissioning, keep retrying.
+	case scyllaclient.OperationalModeLeaving, scyllaclient.OperationalModeDraining:
+		// If node is leaving/draining, keep retrying.
 		klog.V(2).InfoS("Waiting for scylla to finish the operation, requeuing", "Mode", opMode)
 		c.queue.AddAfter(c.key, requeueWaitDuration)
 		return nil
@@ -77,7 +77,7 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 			// Decommission is long running task, so request fails due to the timeout in most cases.
 			// To not raise an error, when it is in progress, we check opMode.
 			opMode, err := scyllaClient.OperationMode(ctx, c.localhostAddress)
-			if err == nil && (opMode.IsDecommissioned() || opMode.IsLeaving() || opMode.IsDecommissioning()) {
+			if err == nil && (opMode == scyllaclient.OperationalModeDecommissioned || opMode == scyllaclient.OperationalModeLeaving) {
 				klog.V(2).InfoS("Decommissioning is in progress. Waiting a bit.", "Mode", opMode)
 				c.queue.AddAfter(c.key, requeueWaitDuration)
 				return nil
@@ -86,9 +86,9 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 			return fmt.Errorf("can't decommission the node: %w", decommissionErr)
 		}
 
-	case scyllaclient.OperationalModeJoining:
-		// If node is joining we need to wait till it reaches Normal state and then decommission it
-		klog.V(2).InfoS("Can't decommission a joining node. Waiting a bit.")
+	case scyllaclient.OperationalModeStarting, scyllaclient.OperationalModeJoining, scyllaclient.OperationalModeBootstrap:
+		// The node has to reach the NORMAL mode before it can be decommissioned.
+		klog.V(2).InfoS("Can't decommission a node which hasn't reached the NORMAL mode yet. Requeuing.", "Mode", opMode)
 		c.queue.AddAfter(c.key, requeueWaitDuration)
 		return nil
 
@@ -156,43 +156,81 @@ func (c *Controller) getRequiredServiceAnnotations(ctx context.Context, scyllaCl
 
 	annotations[naming.HostIDAnnotation] = hostID
 
-	isMember, isKnown, err := nodeIsScyllaDBClusterMember(ctx, scyllaClient, c.localhostAddress, hostID)
+	membership, err := getScyllaDBClusterMembership(ctx, scyllaClient, c.localhostAddress, hostID)
 	if err != nil {
-		return annotations, false, fmt.Errorf("can't determine ScyllaDB cluster membership: %w", err)
+		return annotations, false, fmt.Errorf("can't get ScyllaDB cluster membership: %w", err)
 	}
 
-	if !isKnown {
-		klog.V(4).InfoS("Node hasn't joined the ScyllaDB cluster yet", "HostID", hostID)
+	switch membership {
+	case scyllaDBClusterMembershipUnknown:
+		// Retain the last observed membership status in the annotation.
+		klog.V(4).InfoS("Node's ScyllaDB cluster membership can't be determined", "HostID", hostID)
 		return annotations, true, nil
-	}
 
-	if !isMember {
-		klog.V(4).InfoS("Node doesn't own any tokens yet", "HostID", hostID)
+	case scyllaDBClusterMembershipNotMember:
+		// Requeue to pick up the node joining. A decommissioned node never does, so its sidecar keeps polling until
+		// its Pod is deleted, but its member Service is pruned shortly after the decommission anyway.
+		klog.V(4).InfoS("Node doesn't own any tokens in the ScyllaDB cluster", "HostID", hostID)
 		annotations[naming.NodeJoinedScyllaDBClusterAnnotation] = naming.LabelValueFalse
 		return annotations, true, nil
-	}
 
-	annotations[naming.NodeJoinedScyllaDBClusterAnnotation] = naming.LabelValueTrue
+	case scyllaDBClusterMembershipMember:
+		annotations[naming.NodeJoinedScyllaDBClusterAnnotation] = naming.LabelValueTrue
+
+	default:
+		return annotations, false, fmt.Errorf("unexpected ScyllaDB cluster membership: %d", membership)
+	}
 
 	currentTokenRingHash, err := getTokenRingHash(ctx, scyllaClient, c.localhostAddress)
 	if err != nil {
 		return annotations, false, fmt.Errorf("can't get current token ring hash: %w", err)
 	}
+
 	annotations[naming.CurrentTokenRingHashAnnotation] = currentTokenRingHash
 
 	return annotations, false, nil
 }
 
-// nodeIsScyllaDBClusterMember reports whether the node is a member of the ScyllaDB cluster, i.e. whether it owns normal
+type scyllaDBClusterMembership int
+
+const (
+	// scyllaDBClusterMembershipUnknown means the membership can't be determined: the node is absent from the cluster's
+	// token metadata, or its gossiper is down (starting, drained, in maintenance mode) so the token metadata can't be queried.
+	scyllaDBClusterMembershipUnknown scyllaDBClusterMembership = iota
+	// scyllaDBClusterMembershipNotMember means the node owns no normal tokens: it is bootstrapping, has lost its state,
+	// or has been decommissioned and left the ring for good.
+	scyllaDBClusterMembershipNotMember
+	// scyllaDBClusterMembershipMember means the node owns normal tokens.
+	scyllaDBClusterMembershipMember
+)
+
+// getScyllaDBClusterMembership reports whether the node is a member of the ScyllaDB cluster, i.e. whether it owns normal
 // tokens in the cluster's token metadata. Unlike the node's operation mode, this survives a restart: a bootstrapped node
 // has its token metadata restored from disk before gossip starts, so it never stops owning normal tokens while it boots.
 // A node that is bootstrapping holds only pending tokens and is not a member until the operation completes.
-// The second return value reports whether membership could be determined at all. When it is false, the caller must not act
-// on the first one.
-func nodeIsScyllaDBClusterMember(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string, hostID string) (bool, bool, error) {
+// The operation mode is consulted first, because the host ID map can only be served while the gossiper is up: it is
+// stopped for good once a node is decommissioned, and it is down while a node is starting, drained or in maintenance mode.
+func getScyllaDBClusterMembership(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string, hostID string) (scyllaDBClusterMembership, error) {
+	opMode, err := scyllaClient.OperationMode(ctx, localhostAddr)
+	if err != nil {
+		return scyllaDBClusterMembershipUnknown, fmt.Errorf("can't get operation mode: %w", err)
+	}
+
+	switch opMode {
+	case scyllaclient.OperationalModeDecommissioned:
+		// The node has left the ring for good. Its gossiper is stopped, so the token metadata can't be asked.
+		klog.V(4).InfoS("Node has been decommissioned")
+		return scyllaDBClusterMembershipNotMember, nil
+
+	case scyllaclient.OperationalModeStarting, scyllaclient.OperationalModeDraining, scyllaclient.OperationalModeDrained, scyllaclient.OperationalModeMaintenance:
+		// The node may still own tokens, but its gossiper is down (not started yet, or stopped) so the token metadata
+		// can't be queried.
+		return scyllaDBClusterMembershipUnknown, nil
+	}
+
 	ipToHostIDMap, err := scyllaClient.GetIPToHostIDMap(ctx, localhostAddr)
 	if err != nil {
-		return false, false, fmt.Errorf("can't get host id to ip mapping: %w", err)
+		return scyllaDBClusterMembershipUnknown, fmt.Errorf("can't get host id to ip mapping: %w", err)
 	}
 	klog.V(4).InfoS("Got IP to HostID mapping", "IPToHostIDMap", ipToHostIDMap)
 
@@ -206,16 +244,20 @@ func nodeIsScyllaDBClusterMember(ctx context.Context, scyllaClient *scyllaclient
 
 	if len(localIP) == 0 {
 		// The node is not present in the cluster's token metadata, so its membership can't be determined.
-		return false, false, nil
+		return scyllaDBClusterMembershipUnknown, nil
 	}
 
 	// Only normal tokens are reported for the endpoint, pending tokens of a bootstrapping or replacing node are not.
 	nodeTokens, err := scyllaClient.GetNodeTokens(ctx, localhostAddr, localIP)
 	if err != nil {
-		return false, false, fmt.Errorf("can't get node tokens: %w", err)
+		return scyllaDBClusterMembershipUnknown, fmt.Errorf("can't get node tokens: %w", err)
 	}
 
-	return len(nodeTokens) != 0, true, nil
+	if len(nodeTokens) == 0 {
+		return scyllaDBClusterMembershipNotMember, nil
+	}
+
+	return scyllaDBClusterMembershipMember, nil
 }
 
 func getTokenRingHash(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string) (string, error) {

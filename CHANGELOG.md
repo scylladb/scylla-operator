@@ -22,6 +22,19 @@
   could be removed after the last node's `StatefulSet` was scaled down but before its member `Service` and `PVC` were
   removed, after which the operator could no longer resolve their rack and never cleaned them up.
   [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
+- Fixed nodes being decommissioned dropping out of `ScyllaDBDatacenterNodesStatusReport` and blocking bootstrapping new nodes for the duration of the decommission.
+  The report enumerated a rack's nodes from the desired node count, so a decommissioning node
+  disappeared from it as soon as the count shrank, while its peers kept reporting it until the decommission
+  completed. The bootstrap barrier requires every observed host ID to have a report entry of its own, so a node joining
+  during a scale down waited for the decommission to finish.
+  This could additionally prevent unblocking decommissioning by adding new nodes.
+  The report is now built from the existing member Services, and a node which has finished decommissioning is dropped
+  from it as soon as it has left the ring, rather than when its Service is removed, since it can no longer report a
+  status of its own.
+  [#3615](https://github.com/scylladb/scylla-operator/pull/3615)
+- Fixed decommissioning a node which hasn't finished bootstrapping failing with an unexpected operation mode error
+  instead of waiting for the node to reach the normal mode.
+  [#3615](https://github.com/scylladb/scylla-operator/pull/3615)
 
 - Fixed a rack getting stuck forever when its node count was changed while one of its nodes was being decommissioned.
   A node whose decommission has started must now finish leaving, together with its Service and PVC, before the rack

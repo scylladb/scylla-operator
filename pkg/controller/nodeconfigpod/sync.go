@@ -8,21 +8,18 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func (ncpc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (ncpc *Controller) sync(ctx context.Context, key types.NamespacedName) error {
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing Pod", "Pod", klog.KRef(namespace, name), "startTime", startTime)
@@ -30,7 +27,7 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing Pod", "Pod", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	pod, err := ncpc.podLister.Pods(namespace).Get(name)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, ncpc.client, namespace, name)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("Pod has been deleted", "Pod", klog.KObj(pod))
 		return nil
@@ -61,11 +58,7 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		pod,
 		podControllerGVK,
 		podSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
-			GetControllerUncachedFunc: ncpc.kubeClient.CoreV1().Pods(pod.Namespace).Get,
-			ListObjectsFunc:           ncpc.configMapLister.ConfigMaps(pod.Namespace).List,
-			PatchObjectFunc:           ncpc.kubeClient.CoreV1().ConfigMaps(pod.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[corev1.Pod, corev1.ConfigMap](ctx, ncpc.client, ncpc.apiReader, pod.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)

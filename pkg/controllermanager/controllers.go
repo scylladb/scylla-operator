@@ -58,7 +58,6 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	o := m.options
 	f := newInformers(ctx, m.mgr.GetCache())
 
-	pods := informerFor(f, &corev1.Pod{}, corev1listers.NewPodLister)
 	services := informerFor(f, &corev1.Service{}, corev1listers.NewServiceLister)
 	secrets := informerFor(f, &corev1.Secret{}, corev1listers.NewSecretLister)
 	configMaps := informerFor(f, &corev1.ConfigMap{}, corev1listers.NewConfigMapLister)
@@ -201,18 +200,15 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	}
 	m.addRunnable(ncc.Run, o.ConcurrentSyncs)
 
-	ncpc, err := nodeconfigpod.NewController(
-		o.KubeClient,
-		o.ScyllaClient.ScyllaV1alpha1(),
-		pods,
-		configMaps,
-		nodes,
-		nodeConfigs,
+	ncpc := nodeconfigpod.NewController(
+		m.mgr.GetClient(),
+		m.mgr.GetAPIReader(),
+		m.mgr.GetEventRecorderFor("NodeConfigCM-controller"),
 	)
+	err = ncpc.SetupWithManager(m.mgr, nodeconfigpod.ControllerOptions(o.ConcurrentSyncs))
 	if err != nil {
-		return fmt.Errorf("can't create nodeconfigpod controller: %w", err)
+		return fmt.Errorf("can't set up nodeconfigpod controller: %w", err)
 	}
-	m.addRunnable(ncpc.Run, o.ConcurrentSyncs)
 
 	socc := scyllaoperatorconfig.NewController(
 		m.mgr.GetClient(),

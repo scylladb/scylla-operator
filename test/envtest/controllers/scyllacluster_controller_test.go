@@ -14,8 +14,8 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/scyllacluster"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -25,7 +25,9 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
+	"k8s.io/utils/ptr"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 var _ = g.Describe("ScyllaClusterController condition aggregation", func() {
@@ -466,51 +468,34 @@ func newCondition(condType string, status metav1.ConditionStatus, reason, messag
 func runScyllaClusterController(ctx context.Context, e *envtest.Environment) {
 	g.GinkgoHelper()
 
-	const resyncPeriod = 12 * time.Hour
+	mgr, err := controllermanager.NewManager(e.Config(), g.GinkgoLogr, ctrlcache.Options{}, controllermanager.MetricsDisabledBindAddress)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller manager")
 
-	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		e.TypedKubeClient(),
-		resyncPeriod,
-		informers.WithNamespace(e.Namespace()),
+	scc := scyllacluster.NewController(
+		mgr.GetClient(),
+		mgr.GetAPIReader(),
+		mgr.GetEventRecorderFor("scyllacluster-controller"),
 	)
-	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		e.ScyllaClient(),
-		resyncPeriod,
-		scyllainformers.WithNamespace(e.Namespace()),
-	)
+	err = scc.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+		// Every spec runs its own manager in this process; controller names are only unique within one.
+		SkipNameValidation: ptr.To(true),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to set up ScyllaCluster controller")
 
-	scc, err := scyllacluster.NewController(
-		e.TypedKubeClient(),
-		e.ScyllaClient(),
-		kubeInformers.Core().V1().Services(),
-		kubeInformers.Core().V1().Secrets(),
-		kubeInformers.Core().V1().ConfigMaps(),
-		kubeInformers.Core().V1().ServiceAccounts(),
-		kubeInformers.Rbac().V1().RoleBindings(),
-		kubeInformers.Apps().V1().StatefulSets(),
-		kubeInformers.Policy().V1().PodDisruptionBudgets(),
-		kubeInformers.Networking().V1().Ingresses(),
-		kubeInformers.Batch().V1().Jobs(),
-		scyllaInformers.Scylla().V1().ScyllaClusters(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
-	)
-	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create ScyllaCluster controller")
-
-	kubeInformers.Start(ctx.Done())
-	scyllaInformers.Start(ctx.Done())
+	ctx, cancel := context.WithCancel(ctx)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		scc.Run(ctx, 1)
+		defer g.GinkgoRecover()
+		err := mgr.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
 	}()
 
 	g.DeferCleanup(func() {
-		kubeInformers.Shutdown()
-		scyllaInformers.Shutdown()
+		cancel()
 		wg.Wait()
 	})
 }

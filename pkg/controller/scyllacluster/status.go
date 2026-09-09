@@ -30,7 +30,7 @@ func (scmc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1.Sc
 
 	klog.V(2).InfoS("Updating status", "ScyllaCluster", klog.KObj(sc))
 
-	_, err := scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).UpdateStatus(ctx, sc, metav1.UpdateOptions{})
+	err := scmc.client.Status().Update(ctx, sc)
 	if err != nil {
 		return err
 	}

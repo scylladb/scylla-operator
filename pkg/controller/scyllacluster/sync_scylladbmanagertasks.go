@@ -9,6 +9,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -27,7 +28,7 @@ func (scmc *Controller) syncScyllaDBManagerTasks(ctx context.Context, sc *scylla
 		requiredScyllaDBManagerTasks,
 		smts,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: scmc.scyllaClient.ScyllaV1alpha1().ScyllaDBManagerTasks(sc.Namespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[scyllav1alpha1.ScyllaDBManagerTask](scmc.client, sc.Namespace),
 		},
 		scmc.eventRecorder,
 	)
@@ -37,7 +38,7 @@ func (scmc *Controller) syncScyllaDBManagerTasks(ctx context.Context, sc *scylla
 
 	var errs []error
 	for _, smt := range requiredScyllaDBManagerTasks {
-		_, changed, err := resourceapply.ApplyScyllaDBManagerTask(ctx, scmc.scyllaClient.ScyllaV1alpha1(), scmc.scyllaDBManagerTaskLister, scmc.eventRecorder, smt, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyScyllaDBManagerTaskWithControl(ctx, ctrlclient.ApplyControl[scyllav1alpha1.ScyllaDBManagerTask](ctx, scmc.client, sc.Namespace), scmc.eventRecorder, smt, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, scyllaDBManagerTaskControllerProgressingCondition, smt, "apply", smt.Generation)
 		}

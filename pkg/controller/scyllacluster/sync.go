@@ -11,6 +11,8 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -26,16 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func (scmc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (scmc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "startTime", startTime)
@@ -43,7 +40,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	sc, err := scmc.scyllaClusterLister.ScyllaClusters(namespace).Get(name)
+	sc, err := ctrlclient.Get[scyllav1.ScyllaCluster](ctx, scmc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KObj(sc))
 		return nil
@@ -64,11 +61,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.StatefulSet]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.statefulSetLister.StatefulSets(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.AppsV1().StatefulSets(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, appsv1.StatefulSet](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -79,11 +72,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Service]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.serviceLister.Services(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.CoreV1().Services(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, corev1.Service](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -94,11 +83,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Secret]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.secretLister.Secrets(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.CoreV1().Secrets(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, corev1.Secret](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -109,11 +94,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.configMapLister.ConfigMaps(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.CoreV1().ConfigMaps(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, corev1.ConfigMap](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -124,11 +105,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ServiceAccount]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.serviceAccountLister.ServiceAccounts(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.CoreV1().ServiceAccounts(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, corev1.ServiceAccount](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -139,11 +116,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *rbacv1.RoleBinding]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.roleBindingLister.RoleBindings(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.RbacV1().RoleBindings(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, rbacv1.RoleBinding](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -154,11 +127,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *policyv1.PodDisruptionBudget]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.pdbLister.PodDisruptionBudgets(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.PolicyV1().PodDisruptionBudgets(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, policyv1.PodDisruptionBudget](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -169,11 +138,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *networkingv1.Ingress]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.ingressLister.Ingresses(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.NetworkingV1().Ingresses(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, networkingv1.Ingress](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -184,11 +149,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.jobLister.Jobs(sc.Namespace).List,
-			PatchObjectFunc:           scmc.kubeClient.BatchV1().Jobs(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, batchv1.Job](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		releaseErrs = append(releaseErrs, err)
@@ -206,11 +167,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *scyllav1alpha1.ScyllaDBDatacenter]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.scyllaDBDatacenterLister.ScyllaDBDatacenters(sc.Namespace).List,
-			PatchObjectFunc:           scmc.scyllaClient.ScyllaV1alpha1().ScyllaDBDatacenters(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, scyllav1alpha1.ScyllaDBDatacenter](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -221,23 +178,19 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		sc,
 		scyllaClusterControllerGVK,
 		scSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *scyllav1alpha1.ScyllaDBManagerTask]{
-			GetControllerUncachedFunc: scmc.scyllaClient.ScyllaV1().ScyllaClusters(sc.Namespace).Get,
-			ListObjectsFunc:           scmc.scyllaDBManagerTaskLister.ScyllaDBManagerTasks(sc.Namespace).List,
-			PatchObjectFunc:           scmc.scyllaClient.ScyllaV1alpha1().ScyllaDBManagerTasks(sc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1.ScyllaCluster, scyllav1alpha1.ScyllaDBManagerTask](ctx, scmc.client, scmc.apiReader, sc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get ScyllaDBManagerTasks: %w", err))
 	}
 
 	// List objects matching our cluster selector and owned either by ScyllaCluster or already migrated ScyllaDBDatacenter
-	configMaps, err := scmc.configMapLister.ConfigMaps(sc.Namespace).List(labels.SelectorFromSet(naming.ClusterLabelsForScyllaCluster(sc)))
+	configMaps, err := ctrlclient.List[corev1.ConfigMap](ctx, scmc.client, sc.Namespace, labels.SelectorFromSet(naming.ClusterLabelsForScyllaCluster(sc)))
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't list ConfigMaps: %w", err))
 	}
 
-	services, err := scmc.serviceLister.Services(sc.Namespace).List(labels.SelectorFromSet(naming.ClusterLabelsForScyllaCluster(sc)))
+	services, err := ctrlclient.List[corev1.Service](ctx, scmc.client, sc.Namespace, labels.SelectorFromSet(naming.ClusterLabelsForScyllaCluster(sc)))
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't list Services: %w", err))
 	}
@@ -254,7 +207,7 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 	services = oslices.Filter(services, isOwnedByAnyFunc[*corev1.Service](allowedOwnerUIDs))
 
 	// ScyllaDBManagerClusterRegistrations are not owned by ScyllaCluster or ScyllaDBDatacenter, so we list all.
-	scyllaDBManagerClusterRegistrations, err := scmc.scyllaDBManagerClusterRegistrationLister.ScyllaDBManagerClusterRegistrations(sc.Namespace).List(labels.Everything())
+	scyllaDBManagerClusterRegistrations, err := ctrlclient.List[scyllav1alpha1.ScyllaDBManagerClusterRegistration](ctx, scmc.client, sc.Namespace, labels.Everything())
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't list ScyllaDBManagerClusterRegistrations: %w", err))
 	}

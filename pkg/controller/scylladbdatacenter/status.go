@@ -29,7 +29,7 @@ func (sdcc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1alp
 
 	klog.V(2).InfoS("Updating status", "ScyllaDBDatacenter", klog.KObj(sdc))
 
-	_, err := sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).UpdateStatus(ctx, sdc, metav1.UpdateOptions{})
+	err := sdcc.client.Status().Update(ctx, sdc)
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func updateAggregatedStatusFields(status *scyllav1alpha1.ScyllaDBDatacenterStatu
 // calculateStatus calculates the ScyllaCluster status.
 // This function should always succeed. Do not return an error.
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
-func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1alpha1.ScyllaDBDatacenterStatus {
+func (sdcc *Controller) calculateStatus(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1alpha1.ScyllaDBDatacenterStatus {
 	status := sdc.Status.DeepCopy()
 	status.ObservedGeneration = new(sdc.Generation)
 
@@ -163,7 +163,7 @@ func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, 
 	// Calculate the status for racks.
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		status.Racks = append(status.Racks, *calculateRackStatus(sdcc.podLister, sdc, rack.Name, statefulSetMap[stsName], serviceMap))
+		status.Racks = append(status.Racks, *calculateRackStatus(sdcc.podLister(ctx), sdc, rack.Name, statefulSetMap[stsName], serviceMap))
 	}
 
 	updateAggregatedStatusFields(status)

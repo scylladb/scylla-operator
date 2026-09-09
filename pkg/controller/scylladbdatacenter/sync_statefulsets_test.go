@@ -12,18 +12,20 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
 	corev1listers "k8s.io/client-go/listers/core/v1"
-	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 const (
@@ -1196,24 +1198,30 @@ func Test_syncRackDecommission(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			objects := []runtime.Object{tc.sts}
+			objects := []client.Object{tc.sts}
 			for _, svc := range tc.rackServices {
 				objects = append(objects, svc)
 			}
-			client := fake.NewSimpleClientset(objects...)
 
+			// The fake client doesn't serve the scale subresource, so record the scale it is asked to update.
 			var scaledReplicas *int32
-			client.PrependReactor("update", "statefulsets", func(action clienttesting.Action) (bool, runtime.Object, error) {
-				updateAction := action.(clienttesting.UpdateAction)
-				if updateAction.GetSubresource() != "scale" {
-					return false, nil, nil
-				}
-				scaledReplicas = new(updateAction.GetObject().(*autoscalingv1.Scale).Spec.Replicas)
-				return true, updateAction.GetObject(), nil
-			})
+			c := fake.NewClientBuilder().
+				WithScheme(scheme.Scheme).
+				WithObjects(objects...).
+				WithInterceptorFuncs(interceptor.Funcs{
+					SubResourceUpdate: func(ctx context.Context, c client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+						if subResourceName != "scale" {
+							return c.SubResource(subResourceName).Update(ctx, obj, opts...)
+						}
+						scale := (&client.SubResourceUpdateOptions{}).ApplyOptions(opts).SubResourceBody.(*autoscalingv1.Scale)
+						scaledReplicas = new(scale.Spec.Replicas)
+						return nil
+					},
+				}).
+				Build()
 
 			sdcc := &Controller{
-				kubeClient: client,
+				client: c,
 			}
 
 			gotConditions, err := sdcc.syncRackDecommission(t.Context(), tc.sdc, tc.rackName, tc.sts, tc.rackServices)
@@ -1233,7 +1241,7 @@ func Test_syncRackDecommission(t *testing.T) {
 			// only ever sets the label to false.
 			var decommissionRequestedServiceNames []string
 			for name := range tc.rackServices {
-				svc, err := client.CoreV1().Services(testNamespace).Get(t.Context(), name, metav1.GetOptions{})
+				svc, err := ctrlclient.Get[corev1.Service](t.Context(), c, testNamespace, name)
 				if err != nil {
 					t.Fatal(err)
 				}

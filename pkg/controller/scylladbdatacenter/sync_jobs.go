@@ -10,6 +10,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -26,7 +27,7 @@ func (sdcc *Controller) syncJobs(
 	services map[string]*corev1.Service,
 	jobs map[string]*batchv1.Job,
 ) ([]metav1.Condition, error) {
-	requiredJobs, progressingConditions, err := MakeJobs(sdc, services, sdcc.podLister, sdcc.operatorImage)
+	requiredJobs, progressingConditions, err := MakeJobs(sdc, services, sdcc.podLister(ctx), sdcc.operatorImage)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make jobs: %w", err)
 	}
@@ -39,7 +40,7 @@ func (sdcc *Controller) syncJobs(
 
 	err = controllerhelpers.Prune(ctx, requiredJobs, jobs,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: sdcc.kubeClient.BatchV1().Jobs(sdc.Namespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[batchv1.Job](sdcc.client, sdc.Namespace),
 		},
 		sdcc.eventRecorder,
 	)
@@ -72,7 +73,7 @@ func (sdcc *Controller) syncJobs(
 	}
 
 	for _, job := range requiredJobs {
-		fresh, changed, err := resourceapply.ApplyJob(ctx, sdcc.kubeClient.BatchV1(), sdcc.jobLister, sdcc.eventRecorder, job, resourceapply.ApplyOptions{})
+		fresh, changed, err := resourceapply.ApplyJobWithControl(ctx, ctrlclient.ApplyControl[batchv1.Job](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, job, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, jobControllerProgressingCondition, job, "apply", sdc.Generation)
 		}

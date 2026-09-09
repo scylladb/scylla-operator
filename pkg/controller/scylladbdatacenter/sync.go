@@ -7,6 +7,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -17,17 +18,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
-func (sdcc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (sdcc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *requeue) error {
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaCluster", "ScyllaDBDatacenter", klog.KRef(namespace, name), "startTime", startTime)
@@ -35,7 +32,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing ScyllaCluster", "ScyllaDBDatacenter", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	sdc, err := sdcc.scyllaDBDatacenterLister.ScyllaDBDatacenters(namespace).Get(name)
+	sdc, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBDatacenter](ctx, sdcc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaDBDatacenter", klog.KObj(sdc))
 		return nil
@@ -44,7 +41,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
-	soc, err := sdcc.scyllaOperatorConfigLister.Get(naming.SingletonName)
+	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, sdcc.client, "", naming.SingletonName)
 	if err != nil {
 		return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
 	}
@@ -61,11 +58,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.StatefulSet]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.statefulSetLister.StatefulSets(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.AppsV1().StatefulSets(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, appsv1.StatefulSet](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -76,11 +69,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Service]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.serviceLister.Services(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.CoreV1().Services(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, corev1.Service](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -91,11 +80,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Secret]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.secretLister.Secrets(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.CoreV1().Secrets(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, corev1.Secret](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -106,11 +91,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.configMapLister.ConfigMaps(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, corev1.ConfigMap](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -121,11 +102,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ServiceAccount]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.serviceAccountLister.ServiceAccounts(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.CoreV1().ServiceAccounts(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, corev1.ServiceAccount](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -136,11 +113,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *rbacv1.RoleBinding]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.roleBindingLister.RoleBindings(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.RbacV1().RoleBindings(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, rbacv1.RoleBinding](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -151,11 +124,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *policyv1.PodDisruptionBudget]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.pdbLister.PodDisruptionBudgets(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.PolicyV1().PodDisruptionBudgets(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, policyv1.PodDisruptionBudget](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -166,11 +135,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *networkingv1.Ingress]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.ingressLister.Ingresses(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.NetworkingV1().Ingresses(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, networkingv1.Ingress](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -181,11 +146,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.jobLister.Jobs(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.kubeClient.BatchV1().Jobs(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, batchv1.Job](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -196,11 +157,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		sdc,
 		scyllav1alpha1.ScyllaDBDatacenterGVK,
 		sdcSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]{
-			GetControllerUncachedFunc: sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).Get,
-			ListObjectsFunc:           sdcc.scyllaDBDatacenterNodesStatusReportLister.ScyllaDBDatacenterNodesStatusReports(sdc.Namespace).List,
-			PatchObjectFunc:           sdcc.scyllaClient.ScyllaDBDatacenterNodesStatusReports(sdc.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBDatacenter, scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](ctx, sdcc.client, sdcc.apiReader, sdc.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -211,7 +168,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		return objectErr
 	}
 
-	status := sdcc.calculateStatus(sdc, statefulSetMap, serviceMap)
+	status := sdcc.calculateStatus(ctx, sdc, statefulSetMap, serviceMap)
 
 	if sdc.DeletionTimestamp != nil {
 		return sdcc.updateStatus(ctx, sdc, status)
@@ -303,7 +260,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		statefulSetControllerDegradedCondition,
 		sdc.Generation,
 		func() ([]metav1.Condition, error) {
-			return sdcc.syncStatefulSets(ctx, key, sdc, soc, status, statefulSetMap, serviceMap, configMapMap)
+			return sdcc.syncStatefulSets(ctx, rq, sdc, soc, status, statefulSetMap, serviceMap, configMapMap)
 		},
 	)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -21,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var serviceOrdinalRegex = regexp.MustCompile("^.*-([0-9]+)$")
@@ -143,7 +145,7 @@ func (sdcc *Controller) pruneServices(
 		// Because we also delete the PVC, we need to recheck the service state with a live call.
 		// We can't delete the PVC after the service because the deletion wouldn't be retried.
 		{
-			freshSvc, err := sdcc.kubeClient.CoreV1().Services(svc.Namespace).Get(ctx, svc.Name, metav1.GetOptions{})
+			freshSvc, err := ctrlclient.Get[corev1.Service](ctx, sdcc.apiReader, svc.Namespace, svc.Name)
 			if err != nil {
 				errs = append(errs, err)
 				continue
@@ -178,22 +180,22 @@ func (sdcc *Controller) pruneServices(
 
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, &corev1.PersistentVolumeClaim{}, "delete", sdc.Generation)
 		pvcName := naming.PVCNameForService(svc.Name)
-		err = sdcc.kubeClient.CoreV1().PersistentVolumeClaims(svc.Namespace).Delete(ctx, pvcName, metav1.DeleteOptions{
-			PropagationPolicy: &backgroundPropagationPolicy,
-		})
+		err = sdcc.client.Delete(ctx, &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: svc.Namespace,
+				Name:      pvcName,
+			},
+		}, client.PropagationPolicy(backgroundPropagationPolicy))
 		if err != nil && !apierrors.IsNotFound(err) {
 			errs = append(errs, err)
 			continue
 		}
 
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "delete", sdc.Generation)
-		err = sdcc.kubeClient.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID:             &svc.UID,
-				ResourceVersion: &svc.ResourceVersion,
-			},
-			PropagationPolicy: &backgroundPropagationPolicy,
-		})
+		err = sdcc.client.Delete(ctx, svc, client.Preconditions{
+			UID:             &svc.UID,
+			ResourceVersion: &svc.ResourceVersion,
+		}, client.PropagationPolicy(backgroundPropagationPolicy))
 		if err != nil && !apierrors.IsNotFound(err) {
 			errs = append(errs, err)
 			continue
@@ -224,7 +226,7 @@ func (sdcc *Controller) syncServices(
 
 	// We need to first propagate ReplaceAddressFirstBoot from status for the new service.
 	for _, svc := range requiredServices {
-		_, changed, err := resourceapply.ApplyService(ctx, sdcc.kubeClient.CoreV1(), sdcc.serviceLister, sdcc.eventRecorder, svc, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyServiceWithControl(ctx, ctrlclient.ApplyControl[corev1.Service](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, svc, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "apply", sdc.Generation)
 		}
@@ -316,7 +318,7 @@ func (sdcc *Controller) initializeReplaceNodeUsingHostID(ctx context.Context, sd
 	svcCopy.Labels[naming.ReplacingNodeHostIDLabel] = nodeHostID
 
 	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svcCopy, "update", sdc.Generation)
-	_, err = sdcc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
+	err = sdcc.client.Update(ctx, svcCopy)
 	resourceapply.ReportUpdateEvent(sdcc.eventRecorder, svc, err)
 	if err != nil {
 		return progressingConditions, err
@@ -338,7 +340,7 @@ func (sdcc *Controller) finishOngoingReplaceNodeUsingHostID(ctx context.Context,
 
 	var progressingConditions []metav1.Condition
 
-	pod, err := sdcc.podLister.Pods(svc.Namespace).Get(svc.Name)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, sdcc.client, svc.Namespace, svc.Name)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return progressingConditions, err
@@ -375,13 +377,13 @@ func (sdcc *Controller) finishOngoingReplaceNodeUsingHostID(ctx context.Context,
 		return progressingConditions, nil
 	}
 
-	sdc = sdcc.resolveScyllaDBDatacenterControllerThroughStatefulSet(pod)
+	sdc = resolveScyllaDBDatacenterControllerThroughStatefulSet(ctx, sdcc.client, pod)
 	if sdc == nil {
 		return progressingConditions, fmt.Errorf("pod %q is not owned by us anymore", naming.ObjRef(pod))
 	}
 
 	// We could still see an old pod in the caches - verify with a live call.
-	podReady, pod, err := controllerhelpers.IsPodReadyWithPositiveLiveCheck(ctx, sdcc.kubeClient.CoreV1(), pod)
+	podReady, pod, err := sdcc.isPodReadyWithPositiveLiveCheck(ctx, pod)
 	if err != nil {
 		return progressingConditions, err
 	}
@@ -405,7 +407,7 @@ func (sdcc *Controller) finishOngoingReplaceNodeUsingHostID(ctx context.Context,
 	delete(svcCopy.Labels, naming.ReplaceLabel)
 	delete(svcCopy.Labels, naming.ReplacingNodeHostIDLabel)
 	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svcCopy, "update", sdc.Generation)
-	_, err = sdcc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
+	err = sdcc.client.Update(ctx, svcCopy)
 	resourceapply.ReportUpdateEvent(sdcc.eventRecorder, svc, err)
 	if err != nil {
 		return progressingConditions, err
@@ -433,9 +435,7 @@ func (sdcc *Controller) removePodAndAssociatedPVC(ctx context.Context, sdc *scyl
 		"PVC", klog.KObj(pvcMeta),
 	)
 	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, pvcMeta, "delete", sdc.Generation)
-	err := sdcc.kubeClient.CoreV1().PersistentVolumeClaims(pvcMeta.Namespace).Delete(ctx, pvcMeta.Name, metav1.DeleteOptions{
-		PropagationPolicy: &backgroundPropagationPolicy,
-	})
+	err := sdcc.client.Delete(ctx, pvcMeta, client.PropagationPolicy(backgroundPropagationPolicy))
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			resourceapply.ReportDeleteEvent(sdcc.eventRecorder, pvcMeta, err)
@@ -472,7 +472,12 @@ func (sdcc *Controller) removePodAndAssociatedPVC(ctx context.Context, sdc *scyl
 		"Pod", klog.KObj(podMeta),
 	)
 	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, podMeta, "delete", sdc.Generation)
-	err = sdcc.kubeClient.CoreV1().Pods(podMeta.Namespace).EvictV1(ctx, &policyv1.Eviction{
+	err = sdcc.client.SubResource("eviction").Create(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: podMeta.Namespace,
+			Name:      podMeta.Name,
+		},
+	}, &policyv1.Eviction{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podMeta.Name,
 		},
@@ -490,4 +495,18 @@ func (sdcc *Controller) removePodAndAssociatedPVC(ctx context.Context, sdc *scyl
 	resourceapply.ReportDeleteEvent(sdcc.eventRecorder, podMeta, nil)
 
 	return progressingConditions, nil
+}
+
+// isPodReadyWithPositiveLiveCheck confirms the readiness of a Pod reported ready by the cache with a live read.
+func (sdcc *Controller) isPodReadyWithPositiveLiveCheck(ctx context.Context, pod *corev1.Pod) (bool, *corev1.Pod, error) {
+	if !controllerhelpers.IsPodReady(pod) {
+		return false, pod, nil
+	}
+
+	fresh, err := ctrlclient.Get[corev1.Pod](ctx, sdcc.apiReader, pod.Namespace, pod.Name)
+	if err != nil {
+		return false, pod, err
+	}
+
+	return controllerhelpers.IsPodReady(fresh), fresh, nil
 }

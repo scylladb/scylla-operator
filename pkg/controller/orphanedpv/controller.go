@@ -2,17 +2,13 @@ package orphanedpv
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -155,29 +151,7 @@ func (opc *Controller) runPeriodicResync(ctx context.Context, cache client.Reade
 	}
 }
 
-func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	syncErr := opc.sync(ctx, req.NamespacedName)
-	if syncErr == nil {
-		return reconcile.Result{}, nil
-	}
-
-	// Make sure we always have an aggregate to process and all nested errors are flattened.
-	allErrors := apimachineryutilerrors.Flatten(apimachineryutilerrors.NewAggregate([]error{syncErr}))
-	for _, err := range allErrors.Errors() {
-		switch {
-		case errors.Is(err, &controllerhelpers.RequeueError{}):
-			klog.V(2).InfoS("Re-queuing for recheck", "Key", req.NamespacedName, "Reason", err)
-
-		case apierrors.IsConflict(err):
-			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-		case apierrors.IsAlreadyExists(err):
-			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-		}
-	}
-
-	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, syncErr)
-}
+// Make sure we always have an aggregate to process and all nested errors are flattened.
 
 // mapToAllScyllaDBDatacenters enqueues every ScyllaDBDatacenter.
 func mapToAllScyllaDBDatacenters(cache client.Reader) handler.MapFunc {

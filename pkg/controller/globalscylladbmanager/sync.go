@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 	})
 )
 
-func (gsmc *Controller) sync(ctx context.Context) error {
+func (gsmc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing observer", "Name", ControllerName, "startTime", startTime)
 	defer func() {
@@ -32,21 +33,21 @@ func (gsmc *Controller) sync(ctx context.Context) error {
 
 	scyllaDBDatacenters, err := ctrlclient.List[scyllav1alpha1.ScyllaDBDatacenter](ctx, gsmc.client, corev1.NamespaceAll, globalScyllaDBManagerSelector)
 	if err != nil {
-		return fmt.Errorf("can't list ScyllaDBDatacenters: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't list ScyllaDBDatacenters: %w", err)
 	}
 
 	scyllaDBDatacenters = oslices.FilterOut(scyllaDBDatacenters, isObjectBeingDeleted)
 
 	scyllaDBClusters, err := ctrlclient.List[scyllav1alpha1.ScyllaDBCluster](ctx, gsmc.client, corev1.NamespaceAll, globalScyllaDBManagerSelector)
 	if err != nil {
-		return fmt.Errorf("can't list ScyllaDBClusters: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't list ScyllaDBClusters: %w", err)
 	}
 
 	scyllaDBClusters = oslices.FilterOut(scyllaDBClusters, isObjectBeingDeleted)
 
 	scyllaDBManagerClusterRegistrations, err := gsmc.getScyllaDBManagerClusterRegistrations(ctx)
 	if err != nil {
-		return fmt.Errorf("can't list ScyllaDBManagerClusterRegistration objects: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't list ScyllaDBManagerClusterRegistration objects: %w", err)
 	}
 
 	err = gsmc.syncScyllaDBManagerClusterRegistrations(
@@ -56,10 +57,10 @@ func (gsmc *Controller) sync(ctx context.Context) error {
 		scyllaDBManagerClusterRegistrations,
 	)
 	if err != nil {
-		return fmt.Errorf("can't sync ScyllaDBManagerClusterRegistrations: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't sync ScyllaDBManagerClusterRegistrations: %w", err)
 	}
 
-	return nil
+	return reconcile.Result{}, nil
 }
 
 func (gsmc *Controller) getScyllaDBManagerClusterRegistrations(ctx context.Context) (map[string]map[string]*scyllav1alpha1.ScyllaDBManagerClusterRegistration, error) {

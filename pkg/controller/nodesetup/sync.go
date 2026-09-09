@@ -16,9 +16,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (nsc *Controller) sync(ctx context.Context) error {
+func (nsc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing NodeConfig", "NodeConfig", nsc.nodeConfigName, "startTime", startTime)
 	defer func() {
@@ -28,20 +29,20 @@ func (nsc *Controller) sync(ctx context.Context) error {
 	nc, err := ctrlclient.Get[scyllav1alpha1.NodeConfig](ctx, nsc.client, "", nsc.nodeConfigName)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("NodeConfig has been deleted", "NodeConfig", klog.KObj(nc))
-		return nil
+		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		return fmt.Errorf("can't list nodeconfigs: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't list nodeconfigs: %w", err)
 	}
 
 	if nc.UID != nsc.nodeConfigUID {
-		return fmt.Errorf("nodeConfig UID %q doesn't match the expected UID %q", nc.UID, nc.UID)
+		return reconcile.Result{}, fmt.Errorf("nodeConfig UID %q doesn't match the expected UID %q", nc.UID, nc.UID)
 	}
 
 	status := nsc.calculateStatus(nc)
 
 	if nc.DeletionTimestamp != nil {
-		return nsc.updateStatus(ctx, nc, status)
+		return reconcile.Result{}, nsc.updateStatus(ctx, nc, status)
 	}
 
 	statusConditions := status.Conditions.ToMetaV1Conditions()
@@ -148,7 +149,7 @@ func (nsc *Controller) sync(ctx context.Context) error {
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return apimachineryutilerrors.NewAggregate(errs)
+		return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	apimeta.SetStatusCondition(&statusConditions, nodeSetupAvailableCondition)
@@ -161,5 +162,5 @@ func (nsc *Controller) sync(ctx context.Context) error {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 }

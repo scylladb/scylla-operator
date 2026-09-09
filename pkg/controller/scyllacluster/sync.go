@@ -29,9 +29,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (scmc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+func (scmc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+	rq := &controllertools.Requeue{}
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -43,10 +47,10 @@ func (scmc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 	sc, err := ctrlclient.Get[scyllav1.ScyllaCluster](ctx, scmc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaCluster", klog.KObj(sc))
-		return nil
+		return rq.Result(), nil
 	}
 	if err != nil {
-		return err
+		return rq.Result(), err
 	}
 
 	type CT = *scyllav1.ScyllaCluster
@@ -157,7 +161,7 @@ func (scmc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 
 	releaseErr := apimachineryutilerrors.NewAggregate(releaseErrs)
 	if releaseErr != nil {
-		return releaseErr
+		return rq.Result(), releaseErr
 	}
 
 	var objectErrs []error
@@ -218,13 +222,13 @@ func (scmc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return rq.Result(), objectErr
 	}
 
 	status := scmc.calculateStatus(sc, scyllaDBDatacenterMap, configMaps, services, scyllaDBManagerClusterRegistrations, scyllaDBManagerTaskMap)
 
 	if sc.DeletionTimestamp != nil {
-		return scmc.updateStatus(ctx, sc, status)
+		return rq.Result(), scmc.updateStatus(ctx, sc, status)
 	}
 
 	// Some SC spec changes don't bump SDC's generation (e.g. spec fields translated to annotations),
@@ -309,7 +313,7 @@ func (scmc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return apimachineryutilerrors.NewAggregate(errs)
+		return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	// Merge the raw SDC conditions into the final set first, then overwrite Progressing and Degraded with the aggregated values computed above.
@@ -323,7 +327,7 @@ func (scmc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 	err = scmc.updateStatus(ctx, sc, status)
 	errs = append(errs, err)
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }
 
 func filterScyllaDBManagerClusterRegistrations(

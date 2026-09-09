@@ -21,9 +21,13 @@ import (
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (smcrc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+func (smcrc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+	rq := &controllertools.Requeue{}
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -36,15 +40,15 @@ func (smcrc *Controller) sync(ctx context.Context, key types.NamespacedName, rq 
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.V(2).InfoS("ScyllaDBManagerClusterRegistration has been deleted", "ScyllaDBManagerClusterRegistration", klog.KRef(namespace, name))
-			return nil
+			return rq.Result(), nil
 		}
 
-		return fmt.Errorf("can't get ScyllaDBManagerClusterRegistration %q: %w", naming.ManualRef(namespace, name), err)
+		return rq.Result(), fmt.Errorf("can't get ScyllaDBManagerClusterRegistration %q: %w", naming.ManualRef(namespace, name), err)
 	}
 
 	// Sanity check.
 	if !controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(smcr) {
-		return controllertools.NewNonRetriable(fmt.Sprintf("ScyllaDBManagerClusterRegistration %q is not supported as it is not managed by the global ScyllaDB Manager instance", naming.ObjRef(smcr)))
+		return rq.Result(), controllertools.NewNonRetriable(fmt.Sprintf("ScyllaDBManagerClusterRegistration %q is not supported as it is not managed by the global ScyllaDB Manager instance", naming.ObjRef(smcr)))
 	}
 
 	status := smcrc.calculateStatus(smcr)
@@ -60,18 +64,18 @@ func (smcrc *Controller) sync(ctx context.Context, key types.NamespacedName, rq 
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("can't finalize: %w", err)
+			return rq.Result(), fmt.Errorf("can't finalize: %w", err)
 		}
 
-		return smcrc.updateStatus(ctx, smcr, status)
+		return rq.Result(), smcrc.updateStatus(ctx, smcr, status)
 	}
 
 	if !smcrc.hasFinalizer(smcr.GetFinalizers()) {
 		err = smcrc.addFinalizer(ctx, smcr)
 		if err != nil {
-			return fmt.Errorf("can't add finalizer: %w", err)
+			return rq.Result(), fmt.Errorf("can't add finalizer: %w", err)
 		}
-		return nil
+		return rq.Result(), nil
 	}
 
 	var errs []error
@@ -119,7 +123,7 @@ func (smcrc *Controller) sync(ctx context.Context, key types.NamespacedName, rq 
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return apimachineryutilerrors.NewAggregate(errs)
+		return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
@@ -130,7 +134,7 @@ func (smcrc *Controller) sync(ctx context.Context, key types.NamespacedName, rq 
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (smcrc *Controller) hasFinalizer(finalizers []string) bool {

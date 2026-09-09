@@ -10,11 +10,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -152,25 +149,6 @@ func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controlle
 // Enqueue requests a sync outside the Service's watch.
 func (c *Controller) Enqueue() {
 	c.trigger.Enqueue()
-}
-
-func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	rq := &controllertools.Requeue{}
-	err := c.sync(ctx, rq)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		return rq.Result(), nil
-
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-	}
-
-	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, err)
 }
 
 func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string) (string, error) {

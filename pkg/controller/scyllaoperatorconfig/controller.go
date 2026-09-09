@@ -2,18 +2,13 @@ package scyllaoperatorconfig
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog/v2"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -109,32 +104,6 @@ func (opc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options control
 	return nil
 }
 
-func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	rq := &controllertools.Requeue{}
-	syncErr := opc.sync(ctx, rq)
-	if syncErr == nil {
-		return rq.Result(), nil
-	}
+// Make sure we always have an aggregate to process and all nested errors are flattened.
 
-	// Make sure we always have an aggregate to process and all nested errors are flattened.
-	allErrors := apimachineryutilerrors.Flatten(apimachineryutilerrors.NewAggregate([]error{syncErr}))
-	var remainingErrors []error
-	for _, err := range allErrors.Errors() {
-		switch {
-		case errors.Is(err, &controllerhelpers.RequeueError{}):
-			klog.V(2).InfoS("Re-queuing for recheck", "Key", req.NamespacedName, "Reason", err)
-
-		case apierrors.IsConflict(err):
-			klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-		case apierrors.IsAlreadyExists(err):
-			klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-		default:
-			remainingErrors = append(remainingErrors, err)
-		}
-	}
-
-	// The quiet errors still retry with the rate limiter, like they did in the client-go controller.
-	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, apimachineryutilerrors.NewAggregate(append(remainingErrors, syncErr)))
-}
+// The quiet errors still retry with the rate limiter, like they did in the client-go controller.

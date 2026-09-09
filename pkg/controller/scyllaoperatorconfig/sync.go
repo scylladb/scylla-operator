@@ -13,13 +13,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (opc *Controller) sync(ctx context.Context, rq *controllertools.Requeue) error {
+func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	rq := &controllertools.Requeue{}
+
 	soc, socGetErr := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, opc.client, "", naming.SingletonName)
 	if socGetErr != nil {
 		if !apierrors.IsNotFound(socGetErr) {
-			return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, socGetErr)
+			return rq.Result(), fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, socGetErr)
 		}
 
 		klog.V(2).InfoS("ScyllaOperatorConfig missing, creating a default one")
@@ -34,19 +37,19 @@ func (opc *Controller) sync(ctx context.Context, rq *controllertools.Requeue) er
 		}
 		createErr := opc.client.Create(ctx, soc)
 		if createErr != nil {
-			return fmt.Errorf("can't create scyllaoperatorconfig %q: %w", naming.SingletonName, createErr)
+			return rq.Result(), fmt.Errorf("can't create scyllaoperatorconfig %q: %w", naming.SingletonName, createErr)
 		}
 
 		klog.V(2).InfoS("Create ScyllaOperatorConfig", "ScyllaOperatorConfig", klog.KObj(soc))
 
 		// We need to wait for caches to see the new object.
-		return nil
+		return rq.Result(), nil
 	}
 
 	status := opc.calculateStatus(soc)
 
 	if soc.DeletionTimestamp != nil {
-		return opc.updateStatus(ctx, soc, status)
+		return rq.Result(), opc.updateStatus(ctx, soc, status)
 	}
 
 	var errs []error
@@ -75,5 +78,5 @@ func (opc *Controller) sync(ctx context.Context, rq *controllertools.Requeue) er
 		}
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }

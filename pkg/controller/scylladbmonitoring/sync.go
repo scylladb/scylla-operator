@@ -18,9 +18,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func getLabels(sm *scyllav1alpha1.ScyllaDBMonitoring) labels.Set {
@@ -33,7 +33,10 @@ func getSelector(sm *scyllav1alpha1.ScyllaDBMonitoring) labels.Selector {
 	return labels.SelectorFromSet(getLabels(sm))
 }
 
-func (smc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+func (smc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+	rq := &controllertools.Requeue{}
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -45,20 +48,20 @@ func (smc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 	sm, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBMonitoring](ctx, smc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaDBMonitoring has been deleted", "ScyllaDBMonitoring", klog.KObj(sm))
-		return nil
+		return rq.Result(), nil
 	}
 	if err != nil {
-		return fmt.Errorf("can't get object %q from cache: %w", naming.ManualRef(namespace, name), err)
+		return rq.Result(), fmt.Errorf("can't get object %q from cache: %w", naming.ManualRef(namespace, name), err)
 	}
 
 	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, smc.client, "", naming.SingletonName)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("can't get scyllaoperatorconfig %q from cache: %w", naming.SingletonName, err)
+			return rq.Result(), fmt.Errorf("can't get scyllaoperatorconfig %q from cache: %w", naming.SingletonName, err)
 		}
 
 		klog.V(4).InfoS("Waiting for ScyllaOperatorConfig to be available", "Name", naming.SingletonName)
-		return nil
+		return rq.Result(), nil
 	}
 
 	smSelector := getSelector(sm)
@@ -178,7 +181,7 @@ func (smc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return rq.Result(), objectErr
 	}
 
 	prometheusSelector := getPrometheusSelector(sm)
@@ -187,7 +190,7 @@ func (smc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 	status := smc.calculateStatus(sm)
 
 	if sm.DeletionTimestamp != nil {
-		return smc.updateStatus(ctx, sm, status)
+		return rq.Result(), smc.updateStatus(ctx, sm, status)
 	}
 
 	var errs []error
@@ -255,5 +258,5 @@ func (smc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 		errs = append(errs, err)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }

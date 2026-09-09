@@ -4,18 +4,15 @@ package scylladbmanagerclusterregistration
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -89,29 +86,6 @@ func (smcrc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options contr
 		Watches(&corev1.Namespace{}, handler.EnqueueRequestsFromMapFunc(mapGlobalScyllaDBManagerNamespaceToRegistrations(cache))).
 		WithOptions(options).
 		Complete(smcrc)
-}
-
-func (smcrc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	rq := &controllertools.Requeue{}
-	err := smcrc.sync(ctx, req.NamespacedName, rq)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		return rq.Result(), nil
-
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-	case controllertools.IsNonRetriable(err):
-		klog.InfoS("Hit non-retriable error. Dropping the item from the queue.", "Key", req.NamespacedName, "Error", err)
-		return reconcile.Result{}, reconcile.TerminalError(err)
-	}
-
-	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, err)
 }
 
 func requestFor(namespace, name string) reconcile.Request {

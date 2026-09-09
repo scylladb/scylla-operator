@@ -17,9 +17,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (rkcc *Controller) sync(ctx context.Context, name string, rq *controllertools.Requeue) error {
+func (rkcc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	name := req.Name
+	rq := &controllertools.Requeue{}
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing remote kubernetes cluster", "RemoteKubernetesCluster", name, "startTime", startTime)
@@ -33,10 +36,10 @@ func (rkcc *Controller) sync(ctx context.Context, name string, rq *controllertoo
 			clusterHandler.DeleteCluster(name)
 		}
 
-		return nil
+		return rq.Result(), nil
 	}
 	if err != nil {
-		return err
+		return rq.Result(), err
 	}
 
 	status := rkcc.calculateStatus(rkc)
@@ -51,18 +54,18 @@ func (rkcc *Controller) sync(ctx context.Context, name string, rq *controllertoo
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("can't finalize: %w", err)
+			return rq.Result(), fmt.Errorf("can't finalize: %w", err)
 		}
 
-		return rkcc.updateStatus(ctx, rkc, status)
+		return rq.Result(), rkcc.updateStatus(ctx, rkc, status)
 	}
 
 	if !oslices.ContainsItem(rkc.GetFinalizers(), naming.RemoteKubernetesClusterFinalizer) {
 		err = rkcc.addFinalizer(ctx, rkc)
 		if err != nil {
-			return fmt.Errorf("can't add finalizer: %w", err)
+			return rq.Result(), fmt.Errorf("can't add finalizer: %w", err)
 		}
-		return nil
+		return rq.Result(), nil
 	}
 
 	var errs []error
@@ -102,5 +105,5 @@ func (rkcc *Controller) sync(ctx context.Context, name string, rq *controllertoo
 		errs = append(errs, err)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }

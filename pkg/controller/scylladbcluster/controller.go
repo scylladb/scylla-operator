@@ -8,7 +8,6 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	remotelister "github.com/scylladb/scylla-operator/pkg/remoteclient/lister"
@@ -16,7 +15,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resource"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -149,25 +147,6 @@ func (scc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options control
 
 		return apimachineryutilerrors.NewAggregate(errs)
 	})
-}
-
-func (scc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	rq := &controllertools.Requeue{}
-	err := scc.sync(ctx, req.NamespacedName, rq)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		return rq.Result(), nil
-
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-	}
-
-	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, err)
 }
 
 // remoteCluster returns the cluster of the datacenter's RemoteKubernetesCluster.

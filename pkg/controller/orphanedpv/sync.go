@@ -17,6 +17,7 @@ import (
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type PVItem struct {
@@ -72,7 +73,9 @@ func (opc *Controller) getPVsForScyllaDBDatacenter(ctx context.Context, sdc *scy
 	return pis, requeueReasons, apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (opc *Controller) sync(ctx context.Context, key types.NamespacedName) error {
+func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -84,24 +87,24 @@ func (opc *Controller) sync(ctx context.Context, key types.NamespacedName) error
 	sdc, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBDatacenter](ctx, opc.client, namespace, name)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaDBDatacenter has been deleted", "ScyllaDBDatacenter", klog.KRef(namespace, name))
-		return nil
+		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		return err
+		return reconcile.Result{}, err
 	}
 
 	if sdc.DeletionTimestamp != nil {
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	if sdc.Spec.DisableAutomaticOrphanedNodeReplacement == nil || *sdc.Spec.DisableAutomaticOrphanedNodeReplacement {
 		klog.V(4).InfoS("ScyllaDBDatacenter has AutomaticOrphanedNodeReplacement disabled", "ScyllaDBDatacenter", klog.KObj(sdc))
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	nodes, err := ctrlclient.List[corev1.Node](ctx, opc.client, corev1.NamespaceAll, labels.Everything())
 	if err != nil {
-		return err
+		return reconcile.Result{}, err
 	}
 
 	var errs []error
@@ -160,12 +163,12 @@ func (opc *Controller) sync(ctx context.Context, key types.NamespacedName) error
 
 	err = apimachineryutilerrors.NewAggregate(errs)
 	if err != nil {
-		return err
+		return reconcile.Result{}, err
 	}
 
 	if len(requeueReasons) > 0 {
-		return controllerhelpers.NewRequeueError(requeueReasons...)
+		return reconcile.Result{}, controllerhelpers.NewRequeueError(requeueReasons...)
 	}
 
-	return nil
+	return reconcile.Result{}, nil
 }

@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -87,10 +88,10 @@ func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controlle
 		Watches(&corev1.Service{}, controllertools.EnqueueSingleton(ControllerName)).
 		Watches(&scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, controllertools.EnqueueSingleton(ControllerName)).
 		WithOptions(options).
-		Complete(controllertools.NewObserverReconciler(ControllerName, c.Sync))
+		Complete(c)
 }
 
-func (c *Controller) Sync(ctx context.Context) error {
+func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing observer", "Name", ControllerName, "startTime", startTime)
 	defer func() {
@@ -99,19 +100,19 @@ func (c *Controller) Sync(ctx context.Context) error {
 
 	svc, err := ctrlclient.Get[corev1.Service](ctx, c.client, c.namespace, c.serviceName)
 	if err != nil {
-		return fmt.Errorf("can't get service %q: %w", c.serviceName, err)
+		return reconcile.Result{}, fmt.Errorf("can't get service %q: %w", c.serviceName, err)
 	}
 
 	scyllaDBDatacenterNodesStatusReports, err := ctrlclient.List[scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](ctx, c.client, c.namespace, labels.SelectorFromSet(labels.Set{
 		naming.ScyllaDBDatacenterNodesStatusReportSelectorLabel: c.selectorLabelValue,
 	}))
 	if err != nil {
-		return fmt.Errorf("can't list ScyllaDBDatacenterNodesStatusReports: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't list ScyllaDBDatacenterNodesStatusReports: %w", err)
 	}
 
 	proceedWithBootstrap, err := shouldProceedWithBootstrap(svc, scyllaDBDatacenterNodesStatusReports, isBootstrapPreconditionSatisfiedFn(c.singleReportAllowNonReportingHostIDs))
 	if err != nil {
-		return fmt.Errorf("can't determine if bootstrap should proceed: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't determine if bootstrap should proceed: %w", err)
 	}
 	if proceedWithBootstrap {
 		// The sync can run again after the channel was closed, e.g. on a watch event racing the shutdown.
@@ -120,7 +121,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 		})
 	}
 
-	return nil
+	return reconcile.Result{}, nil
 }
 
 func shouldProceedWithBootstrap(

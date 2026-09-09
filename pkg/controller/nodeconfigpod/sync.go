@@ -13,12 +13,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (ncpc *Controller) sync(ctx context.Context, key types.NamespacedName) error {
+func (ncpc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -30,19 +32,19 @@ func (ncpc *Controller) sync(ctx context.Context, key types.NamespacedName) erro
 	pod, err := ctrlclient.Get[corev1.Pod](ctx, ncpc.client, namespace, name)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("Pod has been deleted", "Pod", klog.KObj(pod))
-		return nil
+		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		return fmt.Errorf("can't list pods: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't list pods: %w", err)
 	}
 
 	if !controllerhelpers.IsScyllaPod(pod) {
 		klog.Warningf("Non-Scylla Pod %q enqueued for sync by NodeConfigPod controller", klog.KObj(pod))
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	if pod.DeletionTimestamp != nil {
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	podSelector := labels.SelectorFromSet(labels.Set{
@@ -66,7 +68,7 @@ func (ncpc *Controller) sync(ctx context.Context, key types.NamespacedName) erro
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return reconcile.Result{}, objectErr
 	}
 
 	var errs []error
@@ -76,5 +78,5 @@ func (ncpc *Controller) sync(ctx context.Context, key types.NamespacedName) erro
 		errs = append(errs, err)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 }

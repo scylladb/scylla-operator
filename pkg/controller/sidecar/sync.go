@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -297,7 +298,10 @@ func (c *Controller) updateServiceAnnotations(ctx context.Context, svc *corev1.S
 	return nil
 }
 
-func (c *Controller) sync(ctx context.Context, rq *controllertools.Requeue) error {
+func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	rq := &controllertools.
+		Requeue{}
+
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing Service", "Service", klog.KRef(c.namespace, c.serviceName), "startTime", startTime)
 	defer func() {
@@ -307,14 +311,14 @@ func (c *Controller) sync(ctx context.Context, rq *controllertools.Requeue) erro
 	svc, err := ctrlclient.Get[corev1.Service](ctx, c.client, c.namespace, c.serviceName)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("Service has been deleted", "Service", klog.KObj(svc))
-		return nil
+		return rq.Result(), nil
 	}
 	if err != nil {
-		return err
+		return rq.Result(), err
 	}
 
 	if svc.DeletionTimestamp != nil {
-		return nil
+		return rq.Result(), nil
 	}
 
 	var errs []error
@@ -332,5 +336,5 @@ func (c *Controller) sync(ctx context.Context, rq *controllertools.Requeue) erro
 		}
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }

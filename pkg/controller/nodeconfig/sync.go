@@ -20,12 +20,14 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (ncc *Controller) sync(ctx context.Context, key types.NamespacedName) error {
+func (ncc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -37,15 +39,15 @@ func (ncc *Controller) sync(ctx context.Context, key types.NamespacedName) error
 	nc, err := ctrlclient.Get[scyllav1alpha1.NodeConfig](ctx, ncc.client, "", name)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("NodeConfig has been deleted", "NodeConfig", klog.KObj(nc))
-		return nil
+		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		return fmt.Errorf("can't get NodeConfig %q: %w", key, err)
+		return reconcile.Result{}, fmt.Errorf("can't get NodeConfig %q: %w", key, err)
 	}
 
 	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, ncc.client, "", naming.SingletonName)
 	if err != nil {
-		return fmt.Errorf("can't get ScyllaOperatorConfig: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't get ScyllaOperatorConfig: %w", err)
 	}
 
 	ncSelector := labels.SelectorFromSet(labels.Set{
@@ -109,18 +111,18 @@ func (ncc *Controller) sync(ctx context.Context, key types.NamespacedName) error
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return reconcile.Result{}, objectErr
 	}
 
 	matchingNodes, err := ncc.getMatchingNodes(ctx, nc)
 	if err != nil {
-		return fmt.Errorf("can't get matching Nodes: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't get matching Nodes: %w", err)
 	}
 
 	status := ncc.calculateStatus(nc, matchingNodes)
 
 	if nc.DeletionTimestamp != nil {
-		return ncc.updateStatus(ctx, nc, status)
+		return reconcile.Result{}, ncc.updateStatus(ctx, nc, status)
 	}
 
 	statusConditions := status.Conditions.ToMetaV1Conditions()
@@ -373,7 +375,7 @@ func (ncc *Controller) sync(ctx context.Context, key types.NamespacedName) error
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return apimachineryutilerrors.NewAggregate(errs)
+		return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	for _, c := range nodeAvailableConditions {
@@ -401,7 +403,7 @@ func (ncc *Controller) sync(ctx context.Context, key types.NamespacedName) error
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (ncc *Controller) getNamespaces(ctx context.Context) (map[string]*corev1.Namespace, error) {

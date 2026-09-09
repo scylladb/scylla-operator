@@ -8,7 +8,6 @@ import (
 
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,13 +16,10 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog/v2"
 	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -94,25 +90,6 @@ func (scmc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options contro
 		Watches(&scyllav1alpha1.ScyllaDBManagerClusterRegistration{}, handler.EnqueueRequestsFromMapFunc(mapScyllaDBManagerClusterRegistrationToScyllaClusters(cache))).
 		WithOptions(options).
 		Complete(scmc)
-}
-
-func (scmc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	rq := &controllertools.Requeue{}
-	err := scmc.sync(ctx, req.NamespacedName, rq)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		return rq.Result(), nil
-
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", req.NamespacedName, "Error", err)
-	}
-
-	return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, err)
 }
 
 func requestFor(namespace, name string) reconcile.Request {

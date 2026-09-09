@@ -21,9 +21,13 @@ import (
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (smtc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+func (smtc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+	rq := &controllertools.Requeue{}
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -36,10 +40,10 @@ func (smtc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			klog.V(2).InfoS("ScyllaDBManagerTask has been deleted", "ScyllaDBManagerTask", klog.KRef(namespace, name))
-			return nil
+			return rq.Result(), nil
 		}
 
-		return fmt.Errorf("can't get ScyllaDBManagerTask %q: %w", naming.ManualRef(namespace, name), err)
+		return rq.Result(), fmt.Errorf("can't get ScyllaDBManagerTask %q: %w", naming.ManualRef(namespace, name), err)
 	}
 
 	status := smtc.calculateStatus(smt)
@@ -54,15 +58,15 @@ func (smtc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 				return smtc.syncFinalizer(ctx, smt)
 			},
 		)
-		return smtc.updateStatus(ctx, smt, status)
+		return rq.Result(), smtc.updateStatus(ctx, smt, status)
 	}
 
 	if !smtc.hasFinalizer(smt.GetFinalizers()) {
 		err = smtc.addFinalizer(ctx, smt)
 		if err != nil {
-			return fmt.Errorf("can't add finalizer: %w", err)
+			return rq.Result(), fmt.Errorf("can't add finalizer: %w", err)
 		}
-		return nil
+		return rq.Result(), nil
 	}
 
 	var errs []error
@@ -110,7 +114,7 @@ func (smtc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return apimachineryutilerrors.NewAggregate(errs)
+		return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	apimeta.SetStatusCondition(&status.Conditions, progressingCondition)
@@ -121,7 +125,7 @@ func (smtc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (smtc *Controller) hasFinalizer(finalizers []string) bool {

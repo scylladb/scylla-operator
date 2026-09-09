@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -88,7 +89,7 @@ func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controlle
 		Watches(&corev1.Pod{}, controllertools.EnqueueSingleton(ControllerName)).
 		WatchesRawSource(c.trigger.Source(ControllerName)).
 		WithOptions(options).
-		Complete(controllertools.NewObserverReconciler(ControllerName, c.Sync))
+		Complete(c)
 }
 
 // Enqueue requests a sync outside the Pod's watch.
@@ -101,7 +102,7 @@ func (c *Controller) Trigger() *controllertools.Trigger {
 	return c.trigger
 }
 
-func (c *Controller) Sync(ctx context.Context) error {
+func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing observer", "Name", ControllerName, "startTime", startTime)
 	defer func() {
@@ -110,26 +111,26 @@ func (c *Controller) Sync(ctx context.Context) error {
 
 	pod, err := ctrlclient.Get[corev1.Pod](ctx, c.client, c.namespace, c.podName)
 	if err != nil {
-		return fmt.Errorf("can't get Pod %q: %v", naming.ManualRef(c.namespace, c.podName), err)
+		return reconcile.Result{}, fmt.Errorf("can't get Pod %q: %v", naming.ManualRef(c.namespace, c.podName), err)
 	}
 
 	nodeStatusReport := c.getNodeStatusReport(ctx)
 	encodedNodeStatusReport, err := nodeStatusReport.Encode()
 	if err != nil {
-		return fmt.Errorf("can't encode node status report: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't encode node status report: %w", err)
 	}
 
 	encodedNodeStatusReportString := string(encodedNodeStatusReport)
 
 	if controllerhelpers.HasMatchingAnnotation(pod, naming.NodeStatusReportAnnotation, encodedNodeStatusReportString) {
 		klog.V(5).InfoS("Pod already has up-to-date node status report annotation", "Pod", naming.ObjRef(pod))
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	klog.V(4).InfoS("Patching Pod with new node status report annotation", "Pod", naming.ObjRef(pod), "NodeStatusReport", nodeStatusReport)
 	patch, err := controllerhelpers.PrepareSetAnnotationPatch(pod, naming.NodeStatusReportAnnotation, pointer.Ptr[string](string(encodedNodeStatusReport)))
 	if err != nil {
-		return fmt.Errorf("can't prepare annotation patch: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't prepare annotation patch: %w", err)
 	}
 
 	err = c.client.Patch(ctx, &corev1.Pod{
@@ -139,12 +140,12 @@ func (c *Controller) Sync(ctx context.Context) error {
 		},
 	}, client.RawPatch(types.StrategicMergePatchType, patch))
 	if err != nil {
-		return fmt.Errorf("can't patch pod %q: %w", naming.ObjRef(pod), err)
+		return reconcile.Result{}, fmt.Errorf("can't patch pod %q: %w", naming.ObjRef(pod), err)
 	}
 
 	klog.V(4).InfoS("Finished patching Pod with new node status report annotation", "Pod", naming.ObjRef(pod))
 
-	return nil
+	return reconcile.Result{}, nil
 }
 
 func (c *Controller) getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {

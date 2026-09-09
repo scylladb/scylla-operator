@@ -19,12 +19,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (scc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+func (scc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+	rq := &controllertools.Requeue{}
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -36,15 +39,15 @@ func (scc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 	sc, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBCluster](ctx, scc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaDBCluster has been deleted", "ScyllaDBCluster", klog.KRef(namespace, name))
-		return nil
+		return rq.Result(), nil
 	}
 	if err != nil {
-		return fmt.Errorf("can't get ScyllaDBCluster %q: %w", naming.ManualRef(namespace, name), err)
+		return rq.Result(), fmt.Errorf("can't get ScyllaDBCluster %q: %w", naming.ManualRef(namespace, name), err)
 	}
 
 	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, scc.client, "", naming.SingletonName)
 	if err != nil {
-		return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
+		return rq.Result(), fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
 	}
 
 	scLocalSelector := naming.ScyllaDBClusterLocalSelector(sc)
@@ -91,7 +94,7 @@ func (scc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 	}
 
 	if err = apimachineryutilerrors.NewAggregate(localObjectErrs); err != nil {
-		return err
+		return rq.Result(), err
 	}
 
 	localSecretMap, err := controllerhelpers.GetObjects[localCT, *corev1.Secret](
@@ -107,7 +110,7 @@ func (scc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 
 	localObjectErr := apimachineryutilerrors.NewAggregate(localObjectErrs)
 	if localObjectErr != nil {
-		return localObjectErr
+		return rq.Result(), localObjectErr
 	}
 
 	scRemoteSelector := naming.ScyllaDBClusterRemoteSelector(sc)
@@ -295,23 +298,23 @@ func (scc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("can't finalize: %w", err)
+			return rq.Result(), fmt.Errorf("can't finalize: %w", err)
 		}
-		return scc.updateStatus(ctx, sc, status)
+		return rq.Result(), scc.updateStatus(ctx, sc, status)
 	}
 
 	if soc.Status.ClusterDomain == nil || len(*soc.Status.ClusterDomain) == 0 {
 		scc.eventRecorder.Event(sc, corev1.EventTypeNormal, "MissingClusterDomain", "ScyllaOperatorConfig doesn't yet have clusterDomain available in the status.")
-		return controllertools.NewNonRetriable("ScyllaOperatorConfig doesn't yet have clusterDomain available in the status")
+		return rq.Result(), controllertools.NewNonRetriable("ScyllaOperatorConfig doesn't yet have clusterDomain available in the status")
 	}
 	managingClusterDomain := *soc.Status.ClusterDomain
 
 	if !scc.hasFinalizer(sc.GetFinalizers()) {
 		err = scc.addFinalizer(ctx, sc)
 		if err != nil {
-			return fmt.Errorf("can't add finalizer: %w", err)
+			return rq.Result(), fmt.Errorf("can't add finalizer: %w", err)
 		}
-		return nil
+		return rq.Result(), nil
 	}
 
 	type remoteNamespacedOwnedResourceSyncParameters struct {
@@ -524,7 +527,7 @@ func (scc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *c
 		errs = append(errs, err)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }
 
 func (scc *Controller) chooseRemoteControllers(sc *scyllav1alpha1.ScyllaDBCluster, remoteRemoteOwnersMap map[string]map[string]*scyllav1alpha1.RemoteOwner) map[string]metav1.Object {

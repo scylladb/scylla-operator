@@ -4,14 +4,10 @@ package controllertools
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -37,45 +33,6 @@ func EnqueueSingleton(name string) handler.EventHandler {
 	return handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 		return []reconcile.Request{request}
 	})
-}
-
-type observerReconciler struct {
-	name     string
-	syncFunc ObserverSyncFunc
-}
-
-var _ reconcile.Reconciler = observerReconciler{}
-
-// NewObserverReconciler adapts an observer's sync function to a reconciler. Every request is the singleton one, so the
-// sync is run for any of them. Conflicts and already-exists errors are retried quietly, and a NonRetriable error is
-// dropped instead of retried.
-func NewObserverReconciler(name string, syncFunc ObserverSyncFunc) reconcile.Reconciler {
-	return observerReconciler{
-		name:     name,
-		syncFunc: syncFunc,
-	}
-}
-
-func (r observerReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	err := r.syncFunc(ctx)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		return reconcile.Result{}, nil
-
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Observer", r.name, "Error", err)
-
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Observer", r.name, "Error", err)
-
-	case IsNonRetriable(err):
-		klog.InfoS("Hit non-retriable error. Dropping the item from the queue.", "Observer", r.name, "Error", err)
-		return reconcile.Result{}, reconcile.TerminalError(err)
-	}
-
-	return reconcile.Result{}, fmt.Errorf("sync loop has failed: %w", err)
 }
 
 // Requeue collects the delay after which a reconciliation wants to run again, for the steps that poll an external

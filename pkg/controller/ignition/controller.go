@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -94,7 +95,7 @@ func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controlle
 		Watches(&corev1.Service{}, controllertools.EnqueueSingleton(ControllerName)).
 		Watches(&corev1.Pod{}, controllertools.EnqueueSingleton(ControllerName)).
 		WithOptions(options).
-		Complete(controllertools.NewObserverReconciler(ControllerName, c.Sync))
+		Complete(c)
 }
 
 func (c *Controller) IsIgnited() bool {
@@ -197,7 +198,7 @@ func (c *Controller) evaluateIgnitionState(ctx context.Context) (bool, error) {
 
 	return true, nil
 }
-func (c *Controller) Sync(ctx context.Context) error {
+func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing observer", "Name", ControllerName, "startTime", startTime)
 	defer func() {
@@ -206,7 +207,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 
 	svc, err := ctrlclient.Get[corev1.Service](ctx, c.client, c.namespace, c.serviceName)
 	if err != nil {
-		return fmt.Errorf("can't get service %q: %w", c.serviceName, err)
+		return reconcile.Result{}, fmt.Errorf("can't get service %q: %w", c.serviceName, err)
 	}
 
 	var ignitionOverride *bool
@@ -232,7 +233,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 	} else {
 		ignited, err = c.evaluateIgnitionState(ctx)
 		if err != nil {
-			return fmt.Errorf("can't evaluate ignition state: %w", err)
+			return reconcile.Result{}, fmt.Errorf("can't evaluate ignition state: %w", err)
 		}
 	}
 
@@ -240,7 +241,7 @@ func (c *Controller) Sync(ctx context.Context) error {
 		klog.V(2).InfoS("Ignition successful", "SignalFile", naming.ScyllaDBIgnitionDonePath)
 		err = helpers.TouchFile(naming.ScyllaDBIgnitionDonePath)
 		if err != nil {
-			return fmt.Errorf("can't touch signal file %q: %w", naming.ScyllaDBIgnitionDonePath, err)
+			return reconcile.Result{}, fmt.Errorf("can't touch signal file %q: %w", naming.ScyllaDBIgnitionDonePath, err)
 		}
 	} else {
 		klog.V(2).InfoS("Waiting for ignition to complete.", "SignalFile", naming.ScyllaDBIgnitionDonePath)
@@ -254,5 +255,5 @@ func (c *Controller) Sync(ctx context.Context) error {
 	}
 	c.ignited.Store(ignited)
 
-	return nil
+	return reconcile.Result{}, nil
 }

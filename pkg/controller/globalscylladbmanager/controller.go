@@ -65,7 +65,7 @@ func (gsmc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options contro
 		}))).
 		WatchesRawSource(gsmc.trigger.Source(ControllerName)).
 		WithOptions(options).
-		Complete(controllertools.NewObserverReconciler(ControllerName, gsmc.sync))
+		Complete(gsmc)
 	if err != nil {
 		return fmt.Errorf("can't build controller: %w", err)
 	}

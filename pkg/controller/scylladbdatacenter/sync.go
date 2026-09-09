@@ -19,12 +19,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (sdcc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+func (sdcc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+	rq := &controllertools.Requeue{}
+
 	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
@@ -36,15 +39,15 @@ func (sdcc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 	sdc, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBDatacenter](ctx, sdcc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaCluster has been deleted", "ScyllaDBDatacenter", klog.KObj(sdc))
-		return nil
+		return rq.Result(), nil
 	}
 	if err != nil {
-		return err
+		return rq.Result(), err
 	}
 
 	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, sdcc.client, "", naming.SingletonName)
 	if err != nil {
-		return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
+		return rq.Result(), fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
 	}
 
 	sdcSelector := labels.SelectorFromSet(labels.Set{
@@ -166,13 +169,13 @@ func (sdcc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return rq.Result(), objectErr
 	}
 
 	status := sdcc.calculateStatus(ctx, sdc, statefulSetMap, serviceMap)
 
 	if sdc.DeletionTimestamp != nil {
-		return sdcc.updateStatus(ctx, sdc, status)
+		return rq.Result(), sdcc.updateStatus(ctx, sdc, status)
 	}
 
 	var errs []error
@@ -334,5 +337,5 @@ func (sdcc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *
 		errs = append(errs, err)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }

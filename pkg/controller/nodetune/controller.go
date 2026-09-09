@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
@@ -177,17 +176,6 @@ func (ncdc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options contro
 	ncdc.trigger.Enqueue()
 
 	return nil
-}
-
-func (ncdc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	err := ncdc.sync(ctx)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("syncing key '%v' failed: %w", req.NamespacedName, err)
-	}
-
-	return reconcile.Result{}, nil
 }
 
 func isScyllaDBPod(obj client.Object) bool {

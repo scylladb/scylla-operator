@@ -18,11 +18,39 @@ import (
 )
 
 // ScyllaDBMonitoringInformer provides access to a shared informer and lister for
-// ScyllaDBMonitorings.
+// ScyllaDBMonitorings. Prefer using the type-safe variant (see [TypedScyllaDBMonitoringInformer]).
 type ScyllaDBMonitoringInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.ScyllaDBMonitoringLister
 }
+
+// TypedScyllaDBMonitoringInformer provides access to a shared informer and lister for
+// ScyllaDBMonitorings, including the type-safe TypedInformer variant.
+// It is a superset of ScyllaDBMonitoringInformer.
+type TypedScyllaDBMonitoringInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ScyllaDBMonitoringIndexInformer
+	Lister() scyllav1alpha1.ScyllaDBMonitoringLister
+}
+
+// ScyllaDBMonitoringIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ScyllaDBMonitoringIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBMonitoring]
+
+// ScyllaDBMonitoringHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ScyllaDBMonitoring.
+type ScyllaDBMonitoringHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.ScyllaDBMonitoring]
+
+// ScyllaDBMonitoringDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ScyllaDBMonitoring.
+type ScyllaDBMonitoringDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.ScyllaDBMonitoring]
+
+// ScyllaDBMonitoringFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ScyllaDBMonitoring.
+type ScyllaDBMonitoringFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.ScyllaDBMonitoring]
+
+// ScyllaDBMonitoringIndexers is a specialization of [cache.TypedIndexers] for ScyllaDBMonitoring.
+type ScyllaDBMonitoringIndexers = cache.TypedIndexers[*apiscyllav1alpha1.ScyllaDBMonitoring]
+
+// DeletedScyllaDBMonitoring is a specialization of [cache.DeletedObject] for ScyllaDBMonitoring.
+type DeletedScyllaDBMonitoring = cache.DeletedObject[*apiscyllav1alpha1.ScyllaDBMonitoring]
 
 type scyllaDBMonitoringInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -33,25 +61,49 @@ type scyllaDBMonitoringInformer struct {
 // NewScyllaDBMonitoringInformer constructs a new informer for ScyllaDBMonitoring type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBMonitoringInformer]).
 func NewScyllaDBMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewScyllaDBMonitoringInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedScyllaDBMonitoringInformer constructs a new informer for ScyllaDBMonitoring type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBMonitoringIndexers) ScyllaDBMonitoringIndexInformer {
+	return NewTypedScyllaDBMonitoringInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredScyllaDBMonitoringInformer constructs a new informer for ScyllaDBMonitoring type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredScyllaDBMonitoringInformer]).
 func NewFilteredScyllaDBMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewScyllaDBMonitoringInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedScyllaDBMonitoringInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredScyllaDBMonitoringInformer constructs a new informer for ScyllaDBMonitoring type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredScyllaDBMonitoringInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBMonitoringIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ScyllaDBMonitoringIndexInformer {
+	return NewTypedScyllaDBMonitoringInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewScyllaDBMonitoringInformerWithOptions constructs a new informer for ScyllaDBMonitoring type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBMonitoringInformerWithOptions]).
 func NewScyllaDBMonitoringInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedScyllaDBMonitoringInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedScyllaDBMonitoringInformerWithOptions constructs a new informer for ScyllaDBMonitoring type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBMonitoringInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ScyllaDBMonitoringIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "scylladbmonitorings"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBMonitoring](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -84,17 +136,57 @@ func NewScyllaDBMonitoringInformerWithOptions(client versioned.Interface, namesp
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *scyllaDBMonitoringInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewScyllaDBMonitoringInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedScyllaDBMonitoringInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *scyllaDBMonitoringInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBMonitoring{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *scyllaDBMonitoringInformer) TypedInformer() ScyllaDBMonitoringIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBMonitoring](f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBMonitoring{}, f.defaultInformer))
 }
 
 func (f *scyllaDBMonitoringInformer) Lister() scyllav1alpha1.ScyllaDBMonitoringLister {
 	return scyllav1alpha1.NewScyllaDBMonitoringLister(f.Informer().GetIndexer())
+}
+
+// ToTypedScyllaDBMonitoringInformer converts an untyped informer into a TypedScyllaDBMonitoringInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBMonitoring. If that is not the case, calling type-safe methods of the returned
+// TypedScyllaDBMonitoringInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedScyllaDBMonitoringInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedScyllaDBMonitoringInformer(informer ScyllaDBMonitoringInformer) TypedScyllaDBMonitoringInformer {
+	if informer, ok := informer.(TypedScyllaDBMonitoringInformer); ok {
+		return informer
+	}
+	return &scyllaDBMonitoringTypedInformerAdapter{informer}
+}
+
+type scyllaDBMonitoringTypedInformerAdapter struct {
+	ScyllaDBMonitoringInformer
+}
+
+func (a *scyllaDBMonitoringTypedInformerAdapter) TypedInformer() ScyllaDBMonitoringIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBMonitoring](a.Informer())
+}
+
+// ToScyllaDBMonitoringIndexInformer converts an untyped informer into a ScyllaDBMonitoringIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBMonitoring. If that is not the case, calling type-safe methods of the returned
+// ScyllaDBMonitoringIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ScyllaDBMonitoringIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToScyllaDBMonitoringIndexInformer(informer cache.SharedIndexInformer) ScyllaDBMonitoringIndexInformer {
+	if informer, ok := informer.(ScyllaDBMonitoringIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBMonitoring](informer)
 }

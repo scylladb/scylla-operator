@@ -18,11 +18,39 @@ import (
 )
 
 // ScyllaClusterInformer provides access to a shared informer and lister for
-// ScyllaClusters.
+// ScyllaClusters. Prefer using the type-safe variant (see [TypedScyllaClusterInformer]).
 type ScyllaClusterInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1.ScyllaClusterLister
 }
+
+// TypedScyllaClusterInformer provides access to a shared informer and lister for
+// ScyllaClusters, including the type-safe TypedInformer variant.
+// It is a superset of ScyllaClusterInformer.
+type TypedScyllaClusterInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ScyllaClusterIndexInformer
+	Lister() scyllav1.ScyllaClusterLister
+}
+
+// ScyllaClusterIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ScyllaClusterIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1.ScyllaCluster]
+
+// ScyllaClusterHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ScyllaCluster.
+type ScyllaClusterHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1.ScyllaCluster]
+
+// ScyllaClusterDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ScyllaCluster.
+type ScyllaClusterDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1.ScyllaCluster]
+
+// ScyllaClusterFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ScyllaCluster.
+type ScyllaClusterFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1.ScyllaCluster]
+
+// ScyllaClusterIndexers is a specialization of [cache.TypedIndexers] for ScyllaCluster.
+type ScyllaClusterIndexers = cache.TypedIndexers[*apiscyllav1.ScyllaCluster]
+
+// DeletedScyllaCluster is a specialization of [cache.DeletedObject] for ScyllaCluster.
+type DeletedScyllaCluster = cache.DeletedObject[*apiscyllav1.ScyllaCluster]
 
 type scyllaClusterInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -33,25 +61,49 @@ type scyllaClusterInformer struct {
 // NewScyllaClusterInformer constructs a new informer for ScyllaCluster type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaClusterInformer]).
 func NewScyllaClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewScyllaClusterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedScyllaClusterInformer constructs a new informer for ScyllaCluster type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaClusterIndexers) ScyllaClusterIndexInformer {
+	return NewTypedScyllaClusterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredScyllaClusterInformer constructs a new informer for ScyllaCluster type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredScyllaClusterInformer]).
 func NewFilteredScyllaClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewScyllaClusterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedScyllaClusterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredScyllaClusterInformer constructs a new informer for ScyllaCluster type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredScyllaClusterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaClusterIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ScyllaClusterIndexInformer {
+	return NewTypedScyllaClusterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewScyllaClusterInformerWithOptions constructs a new informer for ScyllaCluster type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaClusterInformerWithOptions]).
 func NewScyllaClusterInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedScyllaClusterInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedScyllaClusterInformerWithOptions constructs a new informer for ScyllaCluster type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaClusterInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ScyllaClusterIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1", Resource: "scyllaclusters"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1.ScyllaCluster](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -84,17 +136,57 @@ func NewScyllaClusterInformerWithOptions(client versioned.Interface, namespace s
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *scyllaClusterInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewScyllaClusterInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedScyllaClusterInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *scyllaClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1.ScyllaCluster{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *scyllaClusterInformer) TypedInformer() ScyllaClusterIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1.ScyllaCluster](f.factory.InformerFor(&apiscyllav1.ScyllaCluster{}, f.defaultInformer))
 }
 
 func (f *scyllaClusterInformer) Lister() scyllav1.ScyllaClusterLister {
 	return scyllav1.NewScyllaClusterLister(f.Informer().GetIndexer())
+}
+
+// ToTypedScyllaClusterInformer converts an untyped informer into a TypedScyllaClusterInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaCluster. If that is not the case, calling type-safe methods of the returned
+// TypedScyllaClusterInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedScyllaClusterInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedScyllaClusterInformer(informer ScyllaClusterInformer) TypedScyllaClusterInformer {
+	if informer, ok := informer.(TypedScyllaClusterInformer); ok {
+		return informer
+	}
+	return &scyllaClusterTypedInformerAdapter{informer}
+}
+
+type scyllaClusterTypedInformerAdapter struct {
+	ScyllaClusterInformer
+}
+
+func (a *scyllaClusterTypedInformerAdapter) TypedInformer() ScyllaClusterIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1.ScyllaCluster](a.Informer())
+}
+
+// ToScyllaClusterIndexInformer converts an untyped informer into a ScyllaClusterIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaCluster. If that is not the case, calling type-safe methods of the returned
+// ScyllaClusterIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ScyllaClusterIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToScyllaClusterIndexInformer(informer cache.SharedIndexInformer) ScyllaClusterIndexInformer {
+	if informer, ok := informer.(ScyllaClusterIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1.ScyllaCluster](informer)
 }

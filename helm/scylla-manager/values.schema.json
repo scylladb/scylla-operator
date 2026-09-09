@@ -689,8 +689,16 @@
                 "items": {
                   "description": "VolumeMount describes a mounting of a Volume within a container.",
                   "properties": {
+                    "bindMountOptions": {
+                      "description": "bindMountOptions is the list of additional bind mount options to apply when\nmounting this volume into the container. Allowed values are noexec,\nnodev, and nosuid. These are Linux mount options and have no effect on\nWindows nodes.\nThis field is not supported with image volumes.\nThis is an alpha field and requires enabling the VolumeBindMountOptions feature gate.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array",
+                      "x-kubernetes-list-type": "set"
+                    },
                     "mountPath": {
-                      "description": "Path within the container at which the volume should be mounted.  Must\nnot contain ':'.",
+                      "description": "Path within the container at which the volume should be mounted.",
                       "type": "string"
                     },
                     "mountPropagation": {
@@ -1657,8 +1665,16 @@
                 "items": {
                   "description": "VolumeMount describes a mounting of a Volume within a container.",
                   "properties": {
+                    "bindMountOptions": {
+                      "description": "bindMountOptions is the list of additional bind mount options to apply when\nmounting this volume into the container. Allowed values are noexec,\nnodev, and nosuid. These are Linux mount options and have no effect on\nWindows nodes.\nThis field is not supported with image volumes.\nThis is an alpha field and requires enabling the VolumeBindMountOptions feature gate.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array",
+                      "x-kubernetes-list-type": "set"
+                    },
                     "mountPath": {
-                      "description": "Path within the container at which the volume should be mounted.  Must\nnot contain ':'.",
+                      "description": "Path within the container at which the volume should be mounted.",
                       "type": "string"
                     },
                     "mountPropagation": {
@@ -1869,6 +1885,11 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "defaultUser": {
+                          "description": "defaultUser is Optional: The owner UID of the created files by default.\nThe defaultUser field is only used as a fallback when the item-level user field is unset.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "items": {
                           "description": "items if unspecified, each key-value pair in the Data field of the referenced\nConfigMap will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the ConfigMap,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
                           "items": {
@@ -1886,6 +1907,11 @@
                               "path": {
                                 "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
                                 "type": "string"
+                              },
+                              "user": {
+                                "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                "format": "int64",
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -1958,6 +1984,11 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "defaultUser": {
+                          "description": "defaultUser is Optional: The owner UID of the created files by default.\nThe defaultUser field is only used as a fallback when the item-level user field is unset.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "items": {
                           "description": "Items is a list of downward API volume file",
                           "items": {
@@ -2020,6 +2051,11 @@
                                 ],
                                 "type": "object",
                                 "x-kubernetes-map-type": "atomic"
+                              },
+                              "user": {
+                                "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                "format": "int64",
+                                "type": "integer"
                               }
                             },
                             "required": [
@@ -2039,6 +2075,11 @@
                         "medium": {
                           "description": "medium represents what type of storage medium should back this directory.\nThe default is \"\" which means to use the node's default medium.\nMust be an empty string (default) or Memory.\nMore info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir",
                           "type": "string"
+                        },
+                        "mode": {
+                          "description": "mode specifies the permission bits for the emptyDir directory, in numeric\nnotation (e.g., 0755, 01777). Must be a value between 0000 and 01777.\nIf not specified, defaults to 0777.\nThis might be in conflict with other options that affect the file\nmode, like fsGroup. If fsGroup is specified, the fsGroup permissions\nwill override the mode specified here.\nThis field has no effect on Windows.\nThis field is alpha and requires EmptyDirVolumeMode featuregate to be enabled.",
+                          "format": "int32",
+                          "type": "integer"
                         },
                         "sizeLimit": {
                           "anyOf": [
@@ -2078,7 +2119,7 @@
                                   "x-kubernetes-list-type": "atomic"
                                 },
                                 "dataSource": {
-                                  "description": "dataSource field can be used to specify either:\n* An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)\n* An existing PVC (PersistentVolumeClaim)\nIf the provisioner or an external controller can support the specified data source,\nit will create a new volume based on the contents of the specified data source.\nWhen the AnyVolumeDataSource feature gate is enabled, dataSource contents will be copied to dataSourceRef,\nand dataSourceRef contents will be copied to dataSource when dataSourceRef.namespace is not specified.\nIf the namespace is specified, then dataSourceRef will not be copied to dataSource.",
+                                  "description": "dataSource field can be used to specify either:\n* An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)\n* An existing PVC (PersistentVolumeClaim)\nIf the provisioner or an external controller can support the specified data source,\nit will create a new volume based on the contents of the specified data source.\ndataSource contents will be copied to dataSourceRef, and dataSourceRef contents will be\ncopied to dataSource when dataSourceRef.namespace is not specified.\nIf the namespace is specified, then dataSourceRef will not be copied to dataSource.",
                                   "properties": {
                                     "apiGroup": {
                                       "description": "APIGroup is the group for the resource being referenced.\nIf APIGroup is not specified, the specified Kind must be in the core API group.\nFor any other third-party types, APIGroup is required.",
@@ -2101,7 +2142,7 @@
                                   "x-kubernetes-map-type": "atomic"
                                 },
                                 "dataSourceRef": {
-                                  "description": "dataSourceRef specifies the object from which to populate the volume with data, if a non-empty\nvolume is desired. This may be any object from a non-empty API group (non\ncore object) or a PersistentVolumeClaim object.\nWhen this field is specified, volume binding will only succeed if the type of\nthe specified object matches some installed volume populator or dynamic\nprovisioner.\nThis field will replace the functionality of the dataSource field and as such\nif both fields are non-empty, they must have the same value. For backwards\ncompatibility, when namespace isn't specified in dataSourceRef,\nboth fields (dataSource and dataSourceRef) will be set to the same\nvalue automatically if one of them is empty and the other is non-empty.\nWhen namespace is specified in dataSourceRef,\ndataSource isn't set to the same value and must be empty.\nThere are three important differences between dataSource and dataSourceRef:\n* While dataSource only allows two specific types of objects, dataSourceRef\n  allows any non-core object, as well as PersistentVolumeClaim objects.\n* While dataSource ignores disallowed values (dropping them), dataSourceRef\n  preserves all values, and generates an error if a disallowed value is\n  specified.\n* While dataSource only allows local objects, dataSourceRef allows objects\n  in any namespaces.\n(Beta) Using this field requires the AnyVolumeDataSource feature gate to be enabled.\n(Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.",
+                                  "description": "dataSourceRef specifies the object from which to populate the volume with data, if a non-empty\nvolume is desired. This may be any object from a non-empty API group (non\ncore object) or a PersistentVolumeClaim object.\nWhen this field is specified, volume binding will only succeed if the type of\nthe specified object matches some installed volume populator or dynamic\nprovisioner.\nThis field will replace the functionality of the dataSource field and as such\nif both fields are non-empty, they must have the same value. For backwards\ncompatibility, when namespace isn't specified in dataSourceRef,\nboth fields (dataSource and dataSourceRef) will be set to the same\nvalue automatically if one of them is empty and the other is non-empty.\nWhen namespace is specified in dataSourceRef,\ndataSource isn't set to the same value and must be empty.\nThere are three important differences between dataSource and dataSourceRef:\n* While dataSource only allows two specific types of objects, dataSourceRef\n  allows any non-core object, as well as PersistentVolumeClaim objects.\n* While dataSource ignores disallowed values (dropping them), dataSourceRef\n  preserves all values, and generates an error if a disallowed value is\n  specified.\n* While dataSource only allows local objects, dataSourceRef allows objects\n  in any namespaces.\n(Alpha) Using the namespace field of dataSourceRef requires the CrossNamespaceVolumeDataSource feature gate to be enabled.",
                                   "properties": {
                                     "apiGroup": {
                                       "description": "APIGroup is the group for the resource being referenced.\nIf APIGroup is not specified, the specified Kind must be in the core API group.\nFor any other third-party types, APIGroup is required.",
@@ -2584,6 +2625,11 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "defaultUser": {
+                          "description": "defaultUser is Optional: The owner UID of the created files by default.\nThe defaultUser field is only used as a fallback when the item-level user field is unset.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "sources": {
                           "description": "sources is the list of volume projections. Each entry in this list\nhandles one source.",
                           "items": {
@@ -2652,6 +2698,11 @@
                                   "signerName": {
                                     "description": "Select all ClusterTrustBundles that match this signer name.\nMutually-exclusive with name.  The contents of all selected\nClusterTrustBundles will be unified and deduplicated.",
                                     "type": "string"
+                                  },
+                                  "user": {
+                                    "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                    "format": "int64",
+                                    "type": "integer"
                                   }
                                 },
                                 "required": [
@@ -2679,6 +2730,11 @@
                                         "path": {
                                           "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
                                           "type": "string"
+                                        },
+                                        "user": {
+                                          "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                          "format": "int64",
+                                          "type": "integer"
                                         }
                                       },
                                       "required": [
@@ -2768,6 +2824,11 @@
                                           ],
                                           "type": "object",
                                           "x-kubernetes-map-type": "atomic"
+                                        },
+                                        "user": {
+                                          "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                          "format": "int64",
+                                          "type": "integer"
                                         }
                                       },
                                       "required": [
@@ -2809,6 +2870,11 @@
                                     "description": "Kubelet's generated CSRs will be addressed to this signer.",
                                     "type": "string"
                                   },
+                                  "user": {
+                                    "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
                                   "userAnnotations": {
                                     "additionalProperties": {
                                       "type": "string"
@@ -2843,6 +2909,11 @@
                                         "path": {
                                           "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
                                           "type": "string"
+                                        },
+                                        "user": {
+                                          "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                          "format": "int64",
+                                          "type": "integer"
                                         }
                                       },
                                       "required": [
@@ -2882,6 +2953,11 @@
                                   "path": {
                                     "description": "path is the path relative to the mount point of the file to project the\ntoken into.",
                                     "type": "string"
+                                  },
+                                  "user": {
+                                    "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                    "format": "int64",
+                                    "type": "integer"
                                   }
                                 },
                                 "required": [
@@ -3058,6 +3134,11 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "defaultUser": {
+                          "description": "defaultUser is Optional: The owner UID of the created files by default.\nThe defaultUser field is only used as a fallback when the item-level user field is unset.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                          "format": "int64",
+                          "type": "integer"
+                        },
                         "items": {
                           "description": "items If unspecified, each key-value pair in the Data field of the referenced\nSecret will be projected into the volume as a file whose name is the\nkey and content is the value. If specified, the listed keys will be\nprojected into the specified paths, and unlisted keys will not be\npresent. If a key is specified which is not present in the Secret,\nthe volume setup will error unless it is marked optional. Paths must be\nrelative and may not contain the '..' path or start with '..'.",
                           "items": {
@@ -3075,6 +3156,11 @@
                               "path": {
                                 "description": "path is the relative path of the file to map the key to.\nMay not be an absolute path.\nMay not contain the path element '..'.\nMay not start with the string '..'.",
                                 "type": "string"
+                              },
+                              "user": {
+                                "description": "user is Optional: The owner UID of the created file.\nIf specified, the item-level user field takes precedence over defaultUser.\n(Alpha) This field requires the AtomicWriteVolumeUserFields feature gate to be enabled.",
+                                "format": "int64",
+                                "type": "integer"
                               }
                             },
                             "required": [

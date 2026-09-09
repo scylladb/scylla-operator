@@ -18,11 +18,39 @@ import (
 )
 
 // ScyllaDBManagerClusterRegistrationInformer provides access to a shared informer and lister for
-// ScyllaDBManagerClusterRegistrations.
+// ScyllaDBManagerClusterRegistrations. Prefer using the type-safe variant (see [TypedScyllaDBManagerClusterRegistrationInformer]).
 type ScyllaDBManagerClusterRegistrationInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.ScyllaDBManagerClusterRegistrationLister
 }
+
+// TypedScyllaDBManagerClusterRegistrationInformer provides access to a shared informer and lister for
+// ScyllaDBManagerClusterRegistrations, including the type-safe TypedInformer variant.
+// It is a superset of ScyllaDBManagerClusterRegistrationInformer.
+type TypedScyllaDBManagerClusterRegistrationInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ScyllaDBManagerClusterRegistrationIndexInformer
+	Lister() scyllav1alpha1.ScyllaDBManagerClusterRegistrationLister
+}
+
+// ScyllaDBManagerClusterRegistrationIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ScyllaDBManagerClusterRegistrationIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration]
+
+// ScyllaDBManagerClusterRegistrationHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ScyllaDBManagerClusterRegistration.
+type ScyllaDBManagerClusterRegistrationHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration]
+
+// ScyllaDBManagerClusterRegistrationDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ScyllaDBManagerClusterRegistration.
+type ScyllaDBManagerClusterRegistrationDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration]
+
+// ScyllaDBManagerClusterRegistrationFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ScyllaDBManagerClusterRegistration.
+type ScyllaDBManagerClusterRegistrationFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration]
+
+// ScyllaDBManagerClusterRegistrationIndexers is a specialization of [cache.TypedIndexers] for ScyllaDBManagerClusterRegistration.
+type ScyllaDBManagerClusterRegistrationIndexers = cache.TypedIndexers[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration]
+
+// DeletedScyllaDBManagerClusterRegistration is a specialization of [cache.DeletedObject] for ScyllaDBManagerClusterRegistration.
+type DeletedScyllaDBManagerClusterRegistration = cache.DeletedObject[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration]
 
 type scyllaDBManagerClusterRegistrationInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -33,25 +61,49 @@ type scyllaDBManagerClusterRegistrationInformer struct {
 // NewScyllaDBManagerClusterRegistrationInformer constructs a new informer for ScyllaDBManagerClusterRegistration type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBManagerClusterRegistrationInformer]).
 func NewScyllaDBManagerClusterRegistrationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewScyllaDBManagerClusterRegistrationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedScyllaDBManagerClusterRegistrationInformer constructs a new informer for ScyllaDBManagerClusterRegistration type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBManagerClusterRegistrationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBManagerClusterRegistrationIndexers) ScyllaDBManagerClusterRegistrationIndexInformer {
+	return NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredScyllaDBManagerClusterRegistrationInformer constructs a new informer for ScyllaDBManagerClusterRegistration type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredScyllaDBManagerClusterRegistrationInformer]).
 func NewFilteredScyllaDBManagerClusterRegistrationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewScyllaDBManagerClusterRegistrationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredScyllaDBManagerClusterRegistrationInformer constructs a new informer for ScyllaDBManagerClusterRegistration type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredScyllaDBManagerClusterRegistrationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBManagerClusterRegistrationIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ScyllaDBManagerClusterRegistrationIndexInformer {
+	return NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewScyllaDBManagerClusterRegistrationInformerWithOptions constructs a new informer for ScyllaDBManagerClusterRegistration type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions]).
 func NewScyllaDBManagerClusterRegistrationInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions constructs a new informer for ScyllaDBManagerClusterRegistration type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ScyllaDBManagerClusterRegistrationIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "scylladbmanagerclusterregistrations"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -84,17 +136,57 @@ func NewScyllaDBManagerClusterRegistrationInformerWithOptions(client versioned.I
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *scyllaDBManagerClusterRegistrationInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewScyllaDBManagerClusterRegistrationInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedScyllaDBManagerClusterRegistrationInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *scyllaDBManagerClusterRegistrationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBManagerClusterRegistration{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *scyllaDBManagerClusterRegistrationInformer) TypedInformer() ScyllaDBManagerClusterRegistrationIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration](f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBManagerClusterRegistration{}, f.defaultInformer))
 }
 
 func (f *scyllaDBManagerClusterRegistrationInformer) Lister() scyllav1alpha1.ScyllaDBManagerClusterRegistrationLister {
 	return scyllav1alpha1.NewScyllaDBManagerClusterRegistrationLister(f.Informer().GetIndexer())
+}
+
+// ToTypedScyllaDBManagerClusterRegistrationInformer converts an untyped informer into a TypedScyllaDBManagerClusterRegistrationInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBManagerClusterRegistration. If that is not the case, calling type-safe methods of the returned
+// TypedScyllaDBManagerClusterRegistrationInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedScyllaDBManagerClusterRegistrationInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedScyllaDBManagerClusterRegistrationInformer(informer ScyllaDBManagerClusterRegistrationInformer) TypedScyllaDBManagerClusterRegistrationInformer {
+	if informer, ok := informer.(TypedScyllaDBManagerClusterRegistrationInformer); ok {
+		return informer
+	}
+	return &scyllaDBManagerClusterRegistrationTypedInformerAdapter{informer}
+}
+
+type scyllaDBManagerClusterRegistrationTypedInformerAdapter struct {
+	ScyllaDBManagerClusterRegistrationInformer
+}
+
+func (a *scyllaDBManagerClusterRegistrationTypedInformerAdapter) TypedInformer() ScyllaDBManagerClusterRegistrationIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration](a.Informer())
+}
+
+// ToScyllaDBManagerClusterRegistrationIndexInformer converts an untyped informer into a ScyllaDBManagerClusterRegistrationIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBManagerClusterRegistration. If that is not the case, calling type-safe methods of the returned
+// ScyllaDBManagerClusterRegistrationIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ScyllaDBManagerClusterRegistrationIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToScyllaDBManagerClusterRegistrationIndexInformer(informer cache.SharedIndexInformer) ScyllaDBManagerClusterRegistrationIndexInformer {
+	if informer, ok := informer.(ScyllaDBManagerClusterRegistrationIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerClusterRegistration](informer)
 }

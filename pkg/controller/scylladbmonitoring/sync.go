@@ -8,6 +8,8 @@ import (
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -16,8 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
 
@@ -31,11 +33,8 @@ func getSelector(sm *scyllav1alpha1.ScyllaDBMonitoring) labels.Selector {
 	return labels.SelectorFromSet(getLabels(sm))
 }
 
-func (smc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return fmt.Errorf("can't split meta namespace cache key %q: %w", key, err)
-	}
+func (smc *Controller) sync(ctx context.Context, key types.NamespacedName, rq *controllertools.Requeue) error {
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaDBMonitoring", "ScyllaDBMonitoring", klog.KRef(namespace, name), "startTime", startTime)
@@ -43,7 +42,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing ScyllaDBMonitoring", "ScyllaDBMonitoring", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	sm, err := smc.scyllaDBMonitoringInformer.Lister().ScyllaDBMonitorings(namespace).Get(name)
+	sm, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBMonitoring](ctx, smc.client, namespace, name)
 	if errors.IsNotFound(err) {
 		klog.V(2).InfoS("ScyllaDBMonitoring has been deleted", "ScyllaDBMonitoring", klog.KObj(sm))
 		return nil
@@ -52,7 +51,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't get object %q from cache: %w", naming.ManualRef(namespace, name), err)
 	}
 
-	soc, err := smc.scyllaOperatorConfigLister.Get(naming.SingletonName)
+	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, smc.client, "", naming.SingletonName)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("can't get scyllaoperatorconfig %q from cache: %w", naming.SingletonName, err)
@@ -72,11 +71,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.configMapLister.ConfigMaps(sm.Namespace).List,
-			PatchObjectFunc:           smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, corev1.ConfigMap](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get config maps: %w", err))
@@ -87,11 +82,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Secret]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.secretLister.Secrets(sm.Namespace).List,
-			PatchObjectFunc:           smc.kubeClient.CoreV1().Secrets(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, corev1.Secret](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get secrets: %w", err))
@@ -102,11 +93,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.Service]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.serviceLister.Services(sm.Namespace).List,
-			PatchObjectFunc:           smc.kubeClient.CoreV1().Services(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, corev1.Service](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get services: %w", err))
@@ -117,11 +104,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ServiceAccount]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.serviceAccountLister.ServiceAccounts(sm.Namespace).List,
-			PatchObjectFunc:           smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, corev1.ServiceAccount](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get service accounts: %w", err))
@@ -132,11 +115,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *rbacv1.RoleBinding]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.roleBindingLister.RoleBindings(sm.Namespace).List,
-			PatchObjectFunc:           smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, rbacv1.RoleBinding](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get role bindings: %w", err))
@@ -147,11 +126,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.Deployment]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.deploymentLister.Deployments(sm.Namespace).List,
-			PatchObjectFunc:           smc.kubeClient.AppsV1().Deployments(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, appsv1.Deployment](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get deployments: %w", err))
@@ -162,11 +137,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *networkingv1.Ingress]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.ingressLister.Ingresses(sm.Namespace).List,
-			PatchObjectFunc:           smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, networkingv1.Ingress](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get ingresses: %w", err))
@@ -177,11 +148,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *monitoringv1.Prometheus]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.prometheusLister.Prometheuses(sm.Namespace).List,
-			PatchObjectFunc:           smc.monitoringClient.Prometheuses(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, monitoringv1.Prometheus](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get prometheuses: %w", err))
@@ -192,11 +159,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *monitoringv1.PrometheusRule]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.prometheusRuleLister.PrometheusRules(sm.Namespace).List,
-			PatchObjectFunc:           smc.monitoringClient.PrometheusRules(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, monitoringv1.PrometheusRule](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get prometheus rules: %w", err))
@@ -207,11 +170,7 @@ func (smc *Controller) sync(ctx context.Context, key string) error {
 		sm,
 		scylladbMonitoringControllerGVK,
 		smSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *monitoringv1.ServiceMonitor]{
-			GetControllerUncachedFunc: smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).Get,
-			ListObjectsFunc:           smc.serviceMonitorLister.ServiceMonitors(sm.Namespace).List,
-			PatchObjectFunc:           smc.monitoringClient.ServiceMonitors(sm.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.ScyllaDBMonitoring, monitoringv1.ServiceMonitor](ctx, smc.client, smc.apiReader, sm.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get service monitors: %w", err))

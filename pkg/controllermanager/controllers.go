@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	monitoringv1listers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
@@ -26,23 +24,15 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
 	remoteinformers "github.com/scylladb/scylla-operator/pkg/remoteclient/informers"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	policyv1 "k8s.io/api/policy/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	discoveryv1listers "k8s.io/client-go/listers/discovery/v1"
-	networkingv1listers "k8s.io/client-go/listers/networking/v1"
-	policyv1listers "k8s.io/client-go/listers/policy/v1"
-	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
@@ -57,16 +47,10 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	services := informerFor(f, &corev1.Service{}, corev1listers.NewServiceLister)
 	secrets := informerFor(f, &corev1.Secret{}, corev1listers.NewSecretLister)
 	configMaps := informerFor(f, &corev1.ConfigMap{}, corev1listers.NewConfigMapLister)
-	serviceAccounts := informerFor(f, &corev1.ServiceAccount{}, corev1listers.NewServiceAccountLister)
 	endpoints := informerFor(f, &corev1.Endpoints{}, corev1listers.NewEndpointsLister)
 	endpointSlices := informerFor(f, &discoveryv1.EndpointSlice{}, discoveryv1listers.NewEndpointSliceLister)
-	roleBindings := informerFor(f, &rbacv1.RoleBinding{}, rbacv1listers.NewRoleBindingLister)
-	deployments := informerFor(f, &appsv1.Deployment{}, appsv1listers.NewDeploymentLister)
-	podDisruptionBudgets := informerFor(f, &policyv1.PodDisruptionBudget{}, policyv1listers.NewPodDisruptionBudgetLister)
-	ingresses := informerFor(f, &networkingv1.Ingress{}, networkingv1listers.NewIngressLister)
 
 	scyllaDBClusters := informerFor(f, &scyllav1alpha1.ScyllaDBCluster{}, scyllav1alpha1listers.NewScyllaDBClusterLister)
-	scyllaDBMonitorings := informerFor(f, &scyllav1alpha1.ScyllaDBMonitoring{}, scyllav1alpha1listers.NewScyllaDBMonitoringLister)
 	remoteKubernetesClusters := informerFor(f, &scyllav1alpha1.RemoteKubernetesCluster{}, scyllav1alpha1listers.NewRemoteKubernetesClusterLister)
 	// ScyllaOperatorConfig is a singleton, so the name-filtered informer the operator used to keep next to the
 	// unfiltered one is not needed with a single cache.
@@ -180,37 +164,18 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	}
 
 	if o.MonitoringCRDsInstalled {
-		prometheuses := informerFor(f, &monitoringv1.Prometheus{}, monitoringv1listers.NewPrometheusLister)
-		prometheusRules := informerFor(f, &monitoringv1.PrometheusRule{}, monitoringv1listers.NewPrometheusRuleLister)
-		serviceMonitors := informerFor(f, &monitoringv1.ServiceMonitor{}, monitoringv1listers.NewServiceMonitorLister)
-		err = f.Err()
-		if err != nil {
-			return fmt.Errorf("can't get monitoring informers: %w", err)
-		}
-
-		mc, err := scylladbmonitoring.NewController(
-			o.KubeClient,
-			o.ScyllaClient.ScyllaV1alpha1(),
-			o.MonitoringClient.MonitoringV1(),
-			scyllaOperatorConfigs,
-			configMaps,
-			secrets,
-			services,
-			serviceAccounts,
-			roleBindings,
-			podDisruptionBudgets,
-			deployments,
-			ingresses,
-			scyllaDBMonitorings,
-			prometheuses,
-			prometheusRules,
-			serviceMonitors,
+		mc := scylladbmonitoring.NewController(
+			m.mgr.GetClient(),
+			m.mgr.GetAPIReader(),
+			m.mgr.GetEventRecorderFor("scylladbmonitoring-controller"),
 			o.KeyGenerator,
 		)
+		err = mc.SetupWithManager(m.mgr, controller.Options{
+			MaxConcurrentReconciles: o.ConcurrentSyncs,
+		})
 		if err != nil {
-			return fmt.Errorf("can't create scylladbmonitoring controller: %w", err)
+			return fmt.Errorf("can't set up scylladbmonitoring controller: %w", err)
 		}
-		m.addRunnable(mc.Run, o.ConcurrentSyncs)
 	}
 
 	rkcc, err := remotekubernetescluster.NewController(

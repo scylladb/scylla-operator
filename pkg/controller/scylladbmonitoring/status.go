@@ -6,7 +6,6 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -30,7 +29,7 @@ func (smc *Controller) updateStatus(ctx context.Context, currentSM *scyllav1alph
 
 	klog.V(2).InfoS("Updating status", "ScyllaDBMonitoring", klog.KObj(sm))
 
-	_, err := smc.scyllaV1alpha1Client.ScyllaDBMonitorings(sm.Namespace).UpdateStatus(ctx, sm, metav1.UpdateOptions{})
+	err := smc.client.Status().Update(ctx, sm)
 	if err != nil {
 		return err
 	}

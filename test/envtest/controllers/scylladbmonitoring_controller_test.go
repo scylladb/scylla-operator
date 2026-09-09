@@ -11,11 +11,9 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	monitoringinformers "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
-	monitoringversionedclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbmonitoring"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -25,7 +23,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
+	"k8s.io/utils/ptr"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 var _ = g.Describe("ScyllaDBMonitoringController", func() {
@@ -496,60 +496,29 @@ func newManagedScyllaDBMonitoring(name, namespace string) *scyllav1alpha1.Scylla
 func runScyllaDBMonitoringController(ctx context.Context, e *envtest.Environment) {
 	g.GinkgoHelper()
 
-	const resyncPeriod = 12 * time.Hour
-
-	monitoringClient, err := monitoringversionedclient.NewForConfig(e.Config())
-	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create monitoring versioned client")
-
-	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		e.TypedKubeClient(),
-		resyncPeriod,
-		informers.WithNamespace(e.Namespace()),
-	)
-	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		e.ScyllaClient(),
-		resyncPeriod,
-		scyllainformers.WithNamespace(e.Namespace()),
-	)
-	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactory(
-		e.ScyllaClient(),
-		resyncPeriod,
-	)
-	monitoringInformers := monitoringinformers.NewSharedInformerFactoryWithOptions(
-		monitoringClient,
-		resyncPeriod,
-		monitoringinformers.WithNamespace(e.Namespace()),
-	)
+	// The controller runs under a controller-runtime manager like in the operator binary, reading through the
+	// manager's read-your-writes client. The cache watches all namespaces: every spec gets its own API server.
+	mgr, err := controllermanager.NewManager(e.Config(), g.GinkgoLogr, ctrlcache.Options{}, controllermanager.MetricsDisabledBindAddress)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller manager")
 
 	// RSA key generator: min=1, max=1, small key size for fast tests.
 	keyGenerator, err := crypto.NewRSAKeyGenerator(1, 1, 1024, 42*time.Hour)
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create RSA key generator")
 
-	mc, err := scylladbmonitoring.NewController(
-		e.TypedKubeClient(),
-		e.ScyllaClient().ScyllaV1alpha1(),
-		monitoringClient.MonitoringV1(),
-		scyllaGlobalInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
-		kubeInformers.Core().V1().ConfigMaps(),
-		kubeInformers.Core().V1().Secrets(),
-		kubeInformers.Core().V1().Services(),
-		kubeInformers.Core().V1().ServiceAccounts(),
-		kubeInformers.Rbac().V1().RoleBindings(),
-		kubeInformers.Policy().V1().PodDisruptionBudgets(),
-		kubeInformers.Apps().V1().Deployments(),
-		kubeInformers.Networking().V1().Ingresses(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBMonitorings(),
-		monitoringInformers.Monitoring().V1().Prometheuses(),
-		monitoringInformers.Monitoring().V1().PrometheusRules(),
-		monitoringInformers.Monitoring().V1().ServiceMonitors(),
+	mc := scylladbmonitoring.NewController(
+		mgr.GetClient(),
+		mgr.GetAPIReader(),
+		mgr.GetEventRecorderFor("scylladbmonitoring-controller"),
 		keyGenerator,
 	)
-	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create ScyllaDBMonitoring controller")
+	err = mc.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+		// Every spec runs its own manager in this process; controller names are only unique within one.
+		SkipNameValidation: ptr.To(true),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to set up ScyllaDBMonitoring controller")
 
-	kubeInformers.Start(ctx.Done())
-	scyllaInformers.Start(ctx.Done())
-	scyllaGlobalInformers.Start(ctx.Done())
-	monitoringInformers.Start(ctx.Done())
+	ctx, cancel := context.WithCancel(ctx)
 
 	var wg sync.WaitGroup
 
@@ -562,14 +531,13 @@ func runScyllaDBMonitoringController(ctx context.Context, e *envtest.Environment
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		mc.Run(ctx, 1)
+		defer g.GinkgoRecover()
+		err := mgr.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
 	}()
 
 	g.DeferCleanup(func() {
-		kubeInformers.Shutdown()
-		scyllaInformers.Shutdown()
-		scyllaGlobalInformers.Shutdown()
-		monitoringInformers.Shutdown()
+		cancel()
 		wg.Wait()
 	})
 }

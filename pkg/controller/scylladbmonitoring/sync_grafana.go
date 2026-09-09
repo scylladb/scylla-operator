@@ -14,6 +14,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
@@ -277,7 +278,7 @@ func (smc *Controller) syncGrafana(
 	deployments map[string]*appsv1.Deployment,
 	ingresses map[string]*networkingv1.Ingress,
 ) ([]metav1.Condition, error) {
-	referencedObjects, progressingConditions, err := smc.resolveGrafanaReferencedObjects(sm)
+	referencedObjects, progressingConditions, err := smc.resolveGrafanaReferencedObjects(ctx, sm)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't resolve referenced objects required by Grafana: %w", err)
 	}
@@ -395,9 +396,7 @@ func (smc *Controller) syncGrafana(
 		ctx,
 		oslices.ToSlice(requiredGrafanaSA),
 		serviceAccounts,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.ServiceAccount](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -406,9 +405,7 @@ func (smc *Controller) syncGrafana(
 		ctx,
 		oslices.ToSlice(requiredGrafanaRoleBinding),
 		roleBindings,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[rbacv1.RoleBinding](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -423,9 +420,7 @@ func (smc *Controller) syncGrafana(
 		ctx,
 		allCMs,
 		configMaps,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.ConfigMap](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -434,9 +429,7 @@ func (smc *Controller) syncGrafana(
 		ctx,
 		append([]*corev1.Secret{requiredAdminCredentialsSecret}, certChainConfigs.GetMetaSecrets()...),
 		secrets,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().Secrets(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.Secret](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -445,9 +438,7 @@ func (smc *Controller) syncGrafana(
 		ctx,
 		oslices.ToSlice(requiredService),
 		services,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.Service](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -456,9 +447,7 @@ func (smc *Controller) syncGrafana(
 		ctx,
 		oslices.ToSlice(requiredDeployment),
 		deployments,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.AppsV1().Deployments(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[appsv1.Deployment](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -467,9 +456,7 @@ func (smc *Controller) syncGrafana(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredIngress)),
 		ingresses,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[networkingv1.Ingress](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -484,66 +471,31 @@ func (smc *Controller) syncGrafana(
 	applyConfigurations := []resourceapply.ApplyConfigUntyped{
 		resourceapply.ApplyConfig[*corev1.ServiceAccount]{
 			Required: requiredGrafanaSA,
-			Control: resourceapply.ApplyControlFuncs[*corev1.ServiceAccount]{
-				GetCachedFunc: smc.serviceAccountLister.ServiceAccounts(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[corev1.ServiceAccount](ctx, smc.client, sm.Namespace),
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*rbacv1.RoleBinding]{
 			Required: requiredGrafanaRoleBinding,
-			Control: resourceapply.ApplyControlFuncs[*rbacv1.RoleBinding]{
-				GetCachedFunc: smc.roleBindingLister.RoleBindings(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[rbacv1.RoleBinding](ctx, smc.client, sm.Namespace),
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*corev1.ConfigMap]{
 			Required: requiredConfigsCM,
-			Control: resourceapply.ApplyControlFuncs[*corev1.ConfigMap]{
-				GetCachedFunc: smc.configMapLister.ConfigMaps(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[corev1.ConfigMap](ctx, smc.client, sm.Namespace),
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*corev1.ConfigMap]{
 			Required: requiredProvisioningsCM,
-			Control: resourceapply.ApplyControlFuncs[*corev1.ConfigMap]{
-				GetCachedFunc: smc.configMapLister.ConfigMaps(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[corev1.ConfigMap](ctx, smc.client, sm.Namespace),
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*corev1.Secret]{
 			Required: requiredAdminCredentialsSecret,
-			Control: resourceapply.ApplyControlFuncs[*corev1.Secret]{
-				GetCachedFunc: smc.secretLister.Secrets(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().Secrets(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().Secrets(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.CoreV1().Secrets(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[corev1.Secret](ctx, smc.client, sm.Namespace),
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*appsv1.Deployment]{
 			Required: requiredDeployment,
-			Control: resourceapply.ApplyControlFuncs[*appsv1.Deployment]{
-				GetCachedFunc: smc.deploymentLister.Deployments(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.AppsV1().Deployments(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.AppsV1().Deployments(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.AppsV1().Deployments(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[appsv1.Deployment](ctx, smc.client, sm.Namespace),
 		}.ToUntyped(),
 		resourceapply.ApplyConfig[*corev1.Service]{
 			Required: requiredService,
-			Control: resourceapply.ApplyControlFuncs[*corev1.Service]{
-				GetCachedFunc: smc.serviceLister.Services(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[corev1.Service](ctx, smc.client, sm.Namespace),
 		}.ToUntyped(),
 	}
 	for _, cm := range requiredDahsboardsCMs {
@@ -551,12 +503,7 @@ func (smc *Controller) syncGrafana(
 			applyConfigurations,
 			resourceapply.ApplyConfig[*corev1.ConfigMap]{
 				Required: cm,
-				Control: resourceapply.ApplyControlFuncs[*corev1.ConfigMap]{
-					GetCachedFunc: smc.configMapLister.ConfigMaps(sm.Namespace).Get,
-					CreateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Create,
-					UpdateFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Update,
-					DeleteFunc:    smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
-				},
+				Control:  ctrlclient.ApplyControl[corev1.ConfigMap](ctx, smc.client, sm.Namespace),
 			}.ToUntyped(),
 		)
 	}
@@ -564,12 +511,7 @@ func (smc *Controller) syncGrafana(
 	if requiredIngress != nil {
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*networkingv1.Ingress]{
 			Required: requiredIngress,
-			Control: resourceapply.ApplyControlFuncs[*networkingv1.Ingress]{
-				GetCachedFunc: smc.ingressLister.Ingresses(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[networkingv1.Ingress](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 
@@ -607,12 +549,10 @@ func (smc *Controller) syncGrafana(
 		}
 	}
 
-	cm := okubecrypto.NewCertificateManager(
+	cm := okubecrypto.NewCertificateManagerWithControl(
 		smc.keyGetter,
-		smc.kubeClient.CoreV1(),
-		smc.secretLister,
-		smc.kubeClient.CoreV1(),
-		smc.configMapLister,
+		ctrlclient.NewObjectControl[corev1.Secret](ctx, smc.client),
+		ctrlclient.NewObjectControl[corev1.ConfigMap](ctx, smc.client),
 		smc.eventRecorder,
 	)
 	for _, ccc := range certChainConfigs {
@@ -638,7 +578,7 @@ func (smc *Controller) syncGrafana(
 	return progressingConditions, nil
 }
 
-func (smc *Controller) resolveGrafanaReferencedObjects(sm *scyllav1alpha1.ScyllaDBMonitoring) (
+func (smc *Controller) resolveGrafanaReferencedObjects(ctx context.Context, sm *scyllav1alpha1.ScyllaDBMonitoring) (
 	referencedObjects []runtime.Object,
 	progressingConditions []metav1.Condition,
 	err error,
@@ -646,7 +586,7 @@ func (smc *Controller) resolveGrafanaReferencedObjects(sm *scyllav1alpha1.Scylla
 	var objectErrs []error
 
 	for _, cmName := range getScyllaDBMonitoringGrafanaConfigMapReferences(sm) {
-		cm, err := smc.configMapLister.ConfigMaps(sm.Namespace).Get(cmName)
+		cm, err := ctrlclient.Get[corev1.ConfigMap](ctx, smc.client, sm.Namespace, cmName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				progressingConditions = append(progressingConditions, metav1.Condition{
@@ -666,7 +606,7 @@ func (smc *Controller) resolveGrafanaReferencedObjects(sm *scyllav1alpha1.Scylla
 	}
 
 	for _, secretName := range getScyllaDBMonitoringGrafanaSecretReferences(sm) {
-		secret, err := smc.secretLister.Secrets(sm.Namespace).Get(secretName)
+		secret, err := ctrlclient.Get[corev1.Secret](ctx, smc.client, sm.Namespace, secretName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				progressingConditions = append(progressingConditions, metav1.Condition{

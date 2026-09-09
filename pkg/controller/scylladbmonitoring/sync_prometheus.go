@@ -11,6 +11,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
@@ -318,9 +319,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredResources.ServiceAccount)),
 		serviceAccounts,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.ServiceAccount](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -329,9 +328,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredResources.Service)),
 		services,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().Services(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.Service](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -340,9 +337,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredResources.RoleBinding)),
 		roleBindings,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[rbacv1.RoleBinding](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -351,9 +346,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredResources.Prometheus)),
 		prometheuses,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.monitoringClient.Prometheuses(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[monitoringv1.Prometheus](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -362,9 +355,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredResources.Ingress)),
 		ingresses,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[networkingv1.Ingress](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -373,9 +364,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredResources.AlertsPrometheusRule, requiredResources.LatencyPrometheusRule, requiredResources.TablePrometheusRule)),
 		prometheusRules,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[monitoringv1.PrometheusRule](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -384,9 +373,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(oslices.ToSlice(requiredResources.ScyllaDBServiceMonitor)),
 		serviceMonitors,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.monitoringClient.ServiceMonitors(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[monitoringv1.ServiceMonitor](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -395,9 +382,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(certChainConfigs.GetMetaSecrets()),
 		secrets,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().Secrets(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.Secret](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -406,9 +391,7 @@ func (smc *Controller) syncPrometheus(
 		ctx,
 		oslices.FilterOutNil(certChainConfigs.GetMetaConfigMaps()),
 		configMaps,
-		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: smc.kubeClient.CoreV1().ConfigMaps(sm.Namespace).Delete,
-		},
+		ctrlclient.PruneControl[corev1.ConfigMap](smc.client, sm.Namespace),
 		smc.eventRecorder,
 	)
 	pruneErrors = append(pruneErrors, err)
@@ -424,106 +407,62 @@ func (smc *Controller) syncPrometheus(
 	if requiredResources.ServiceAccount != nil {
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*corev1.ServiceAccount]{
 			Required: requiredResources.ServiceAccount,
-			Control: resourceapply.ApplyControlFuncs[*corev1.ServiceAccount]{
-				GetCachedFunc: smc.serviceAccountLister.ServiceAccounts(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.CoreV1().ServiceAccounts(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[corev1.ServiceAccount](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.Service != nil {
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*corev1.Service]{
 			Required: requiredResources.Service,
-			Control: resourceapply.ApplyControlFuncs[*corev1.Service]{
-				GetCachedFunc: smc.serviceLister.Services(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.CoreV1().Services(sm.Namespace).Update,
-			},
+			Control:  ctrlclient.ApplyControl[corev1.Service](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.RoleBinding != nil {
 		requiredPrometheusRoleBinding := requiredResources.RoleBinding
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*rbacv1.RoleBinding]{
 			Required: requiredPrometheusRoleBinding,
-			Control: resourceapply.ApplyControlFuncs[*rbacv1.RoleBinding]{
-				GetCachedFunc: smc.roleBindingLister.RoleBindings(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.RbacV1().RoleBindings(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[rbacv1.RoleBinding](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.Prometheus != nil {
 		requiredPrometheus := requiredResources.Prometheus
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.Prometheus]{
 			Required: requiredPrometheus,
-			Control: resourceapply.ApplyControlFuncs[*monitoringv1.Prometheus]{
-				GetCachedFunc: smc.prometheusLister.Prometheuses(sm.Namespace).Get,
-				CreateFunc:    smc.monitoringClient.Prometheuses(sm.Namespace).Create,
-				UpdateFunc:    smc.monitoringClient.Prometheuses(sm.Namespace).Update,
-				DeleteFunc:    smc.monitoringClient.Prometheuses(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[monitoringv1.Prometheus](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.ScyllaDBServiceMonitor != nil {
 		requiredScyllaDBServiceMonitor := requiredResources.ScyllaDBServiceMonitor
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.ServiceMonitor]{
 			Required: requiredScyllaDBServiceMonitor,
-			Control: resourceapply.ApplyControlFuncs[*monitoringv1.ServiceMonitor]{
-				GetCachedFunc: smc.serviceMonitorLister.ServiceMonitors(sm.Namespace).Get,
-				CreateFunc:    smc.monitoringClient.ServiceMonitors(sm.Namespace).Create,
-				UpdateFunc:    smc.monitoringClient.ServiceMonitors(sm.Namespace).Update,
-				DeleteFunc:    smc.monitoringClient.ServiceMonitors(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[monitoringv1.ServiceMonitor](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.LatencyPrometheusRule != nil {
 		requiredLatencyPrometheusRule := requiredResources.LatencyPrometheusRule
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
 			Required: requiredLatencyPrometheusRule,
-			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
-				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
-				CreateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Create,
-				UpdateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Update,
-				DeleteFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[monitoringv1.PrometheusRule](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.AlertsPrometheusRule != nil {
 		requiredAlertsPrometheusRule := requiredResources.AlertsPrometheusRule
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
 			Required: requiredAlertsPrometheusRule,
-			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
-				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
-				CreateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Create,
-				UpdateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Update,
-				DeleteFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[monitoringv1.PrometheusRule](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.TablePrometheusRule != nil {
 		requiredTablePrometheusRule := requiredResources.TablePrometheusRule
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*monitoringv1.PrometheusRule]{
 			Required: requiredTablePrometheusRule,
-			Control: resourceapply.ApplyControlFuncs[*monitoringv1.PrometheusRule]{
-				GetCachedFunc: smc.prometheusRuleLister.PrometheusRules(sm.Namespace).Get,
-				CreateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Create,
-				UpdateFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Update,
-				DeleteFunc:    smc.monitoringClient.PrometheusRules(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[monitoringv1.PrometheusRule](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 	if requiredResources.Ingress != nil {
 		requiredIngress := requiredResources.Ingress
 		applyConfigurations = append(applyConfigurations, resourceapply.ApplyConfig[*networkingv1.Ingress]{
 			Required: requiredIngress,
-			Control: resourceapply.ApplyControlFuncs[*networkingv1.Ingress]{
-				GetCachedFunc: smc.ingressLister.Ingresses(sm.Namespace).Get,
-				CreateFunc:    smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Create,
-				UpdateFunc:    smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Update,
-				DeleteFunc:    smc.kubeClient.NetworkingV1().Ingresses(sm.Namespace).Delete,
-			},
+			Control:  ctrlclient.ApplyControl[networkingv1.Ingress](ctx, smc.client, sm.Namespace),
 		}.ToUntyped())
 	}
 
@@ -561,12 +500,10 @@ func (smc *Controller) syncPrometheus(
 		}
 	}
 
-	cm := okubecrypto.NewCertificateManager(
+	cm := okubecrypto.NewCertificateManagerWithControl(
 		smc.keyGetter,
-		smc.kubeClient.CoreV1(),
-		smc.secretLister,
-		smc.kubeClient.CoreV1(),
-		smc.configMapLister,
+		ctrlclient.NewObjectControl[corev1.Secret](ctx, smc.client),
+		ctrlclient.NewObjectControl[corev1.ConfigMap](ctx, smc.client),
 		smc.eventRecorder,
 	)
 	for _, ccc := range certChainConfigs {

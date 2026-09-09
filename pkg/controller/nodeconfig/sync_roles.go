@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -31,7 +32,7 @@ func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		requiredRoles,
 		roles,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.kubeClient.RbacV1().Roles(naming.ScyllaOperatorNodeTuningNamespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[rbacv1.Role](ncc.client, naming.ScyllaOperatorNodeTuningNamespace),
 		},
 		ncc.eventRecorder)
 	if err != nil {
@@ -40,7 +41,7 @@ func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeCon
 
 	var errs []error
 	for _, r := range requiredRoles {
-		_, changed, err := resourceapply.ApplyRole(ctx, ncc.kubeClient.RbacV1(), ncc.roleLister, ncc.eventRecorder, r, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyRoleWithControl(ctx, ctrlclient.ApplyControl[rbacv1.Role](ctx, ncc.client, naming.ScyllaOperatorNodeTuningNamespace), ncc.eventRecorder, r, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
 		if changed {

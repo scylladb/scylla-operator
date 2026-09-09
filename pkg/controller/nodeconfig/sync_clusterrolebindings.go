@@ -8,10 +8,13 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (ncc *Controller) makeClusterRoleBindings() []*rbacv1.ClusterRoleBinding {
@@ -41,12 +44,7 @@ func (ncc *Controller) pruneClusterRoleBindings(ctx context.Context, requiredClu
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		err := ncc.kubeClient.RbacV1().ClusterRoleBindings().Delete(ctx, cr.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &cr.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err := ncc.client.Delete(ctx, cr, client.Preconditions{UID: &cr.UID}, client.PropagationPolicy(propagationPolicy))
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -68,7 +66,7 @@ func (ncc *Controller) syncClusterRoleBindings(ctx context.Context, nc *scyllav1
 
 	var errs []error
 	for _, crb := range requiredClusterRoleBindings {
-		_, changed, err := resourceapply.ApplyClusterRoleBinding(ctx, ncc.kubeClient.RbacV1(), ncc.clusterRoleBindingLister, ncc.eventRecorder, crb, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyClusterRoleBindingWithControl(ctx, ctrlclient.ApplyControl[rbacv1.ClusterRoleBinding](ctx, ncc.client, corev1.NamespaceAll), ncc.eventRecorder, crb, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
 		if changed {

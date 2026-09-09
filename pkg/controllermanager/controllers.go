@@ -62,19 +62,14 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	secrets := informerFor(f, &corev1.Secret{}, corev1listers.NewSecretLister)
 	configMaps := informerFor(f, &corev1.ConfigMap{}, corev1listers.NewConfigMapLister)
 	serviceAccounts := informerFor(f, &corev1.ServiceAccount{}, corev1listers.NewServiceAccountLister)
-	namespaces := informerFor(f, &corev1.Namespace{}, corev1listers.NewNamespaceLister)
 	nodes := informerFor(f, &corev1.Node{}, corev1listers.NewNodeLister)
 	persistentVolumes := informerFor(f, &corev1.PersistentVolume{}, corev1listers.NewPersistentVolumeLister)
 	persistentVolumeClaims := informerFor(f, &corev1.PersistentVolumeClaim{}, corev1listers.NewPersistentVolumeClaimLister)
 	endpoints := informerFor(f, &corev1.Endpoints{}, corev1listers.NewEndpointsLister)
 	endpointSlices := informerFor(f, &discoveryv1.EndpointSlice{}, discoveryv1listers.NewEndpointSliceLister)
-	roles := informerFor(f, &rbacv1.Role{}, rbacv1listers.NewRoleLister)
 	roleBindings := informerFor(f, &rbacv1.RoleBinding{}, rbacv1listers.NewRoleBindingLister)
-	clusterRoles := informerFor(f, &rbacv1.ClusterRole{}, rbacv1listers.NewClusterRoleLister)
-	clusterRoleBindings := informerFor(f, &rbacv1.ClusterRoleBinding{}, rbacv1listers.NewClusterRoleBindingLister)
 	statefulSets := informerFor(f, &appsv1.StatefulSet{}, appsv1listers.NewStatefulSetLister)
 	deployments := informerFor(f, &appsv1.Deployment{}, appsv1listers.NewDeploymentLister)
-	daemonSets := informerFor(f, &appsv1.DaemonSet{}, appsv1listers.NewDaemonSetLister)
 	podDisruptionBudgets := informerFor(f, &policyv1.PodDisruptionBudget{}, policyv1listers.NewPodDisruptionBudgetLister)
 	ingresses := informerFor(f, &networkingv1.Ingress{}, networkingv1listers.NewIngressLister)
 	jobs := informerFor(f, &batchv1.Job{}, batchv1listers.NewJobLister)
@@ -85,7 +80,6 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	scyllaDBMonitorings := informerFor(f, &scyllav1alpha1.ScyllaDBMonitoring{}, scyllav1alpha1listers.NewScyllaDBMonitoringLister)
 	scyllaDBManagerClusterRegistrations := informerFor(f, &scyllav1alpha1.ScyllaDBManagerClusterRegistration{}, scyllav1alpha1listers.NewScyllaDBManagerClusterRegistrationLister)
 	scyllaDBManagerTasks := informerFor(f, &scyllav1alpha1.ScyllaDBManagerTask{}, scyllav1alpha1listers.NewScyllaDBManagerTaskLister)
-	nodeConfigs := informerFor(f, &scyllav1alpha1.NodeConfig{}, scyllav1alpha1listers.NewNodeConfigLister)
 	remoteKubernetesClusters := informerFor(f, &scyllav1alpha1.RemoteKubernetesCluster{}, scyllav1alpha1listers.NewRemoteKubernetesClusterLister)
 	// ScyllaOperatorConfig is a singleton, so the name-filtered informer the operator used to keep next to the
 	// unfiltered one is not needed with a single cache.
@@ -179,26 +173,16 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	}
 	m.addRunnable(opc.Run, o.ConcurrentSyncs)
 
-	ncc, err := nodeconfig.NewController(
-		o.KubeClient,
-		o.ScyllaClient.ScyllaV1alpha1(),
-		nodeConfigs,
-		scyllaOperatorConfigs,
-		clusterRoles,
-		clusterRoleBindings,
-		roles,
-		roleBindings,
-		daemonSets,
-		namespaces,
-		nodes,
-		serviceAccounts,
-		configMaps,
+	ncc := nodeconfig.NewController(
+		m.mgr.GetClient(),
+		m.mgr.GetAPIReader(),
+		m.mgr.GetEventRecorderFor("NodeConfig-controller"),
 		o.OperatorImage,
 	)
+	err = ncc.SetupWithManager(m.mgr, nodeconfig.ControllerOptions(o.ConcurrentSyncs))
 	if err != nil {
-		return fmt.Errorf("can't create nodeconfig controller: %w", err)
+		return fmt.Errorf("can't set up nodeconfig controller: %w", err)
 	}
-	m.addRunnable(ncc.Run, o.ConcurrentSyncs)
 
 	ncpc := nodeconfigpod.NewController(
 		m.mgr.GetClient(),

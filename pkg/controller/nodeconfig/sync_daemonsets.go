@@ -9,6 +9,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,7 +41,7 @@ func (ncc *Controller) syncDaemonSet(
 		requiredDaemonSets,
 		daemonSets,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.kubeClient.AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[appsv1.DaemonSet](ncc.client, naming.ScyllaOperatorNodeTuningNamespace),
 		},
 		ncc.eventRecorder)
 	if err != nil {
@@ -53,7 +54,7 @@ func (ncc *Controller) syncDaemonSet(
 			continue
 		}
 
-		updated, changed, err := resourceapply.ApplyDaemonSet(ctx, ncc.kubeClient.AppsV1(), ncc.daemonSetLister, ncc.eventRecorder, ds, resourceapply.ApplyOptions{})
+		updated, changed, err := resourceapply.ApplyDaemonSetWithControl(ctx, ctrlclient.ApplyControl[appsv1.DaemonSet](ctx, ncc.client, naming.ScyllaOperatorNodeTuningNamespace), ncc.eventRecorder, ds, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, daemonSetControllerProgressingCondition, ds, "apply", nc.Generation)
 		}

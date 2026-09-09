@@ -8,10 +8,11 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 )
 
@@ -31,7 +32,7 @@ func (smcrc *Controller) syncFinalizer(ctx context.Context, smcr *scyllav1alpha1
 	// We treat the `scylla-manager` namespace as the umbrella resource for the global ScyllaDB Manager instance.
 	// Clusters are considered deleted from global ScyllaDB Manager instance's state when `scylla-manager` namespace is not present.
 	if controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(smcr) {
-		_, err = smcrc.namespaceLister.Get(naming.ScyllaManagerNamespace)
+		_, err = ctrlclient.Get[corev1.Namespace](ctx, smcrc.client, "", naming.ScyllaManagerNamespace)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return progressingConditions, fmt.Errorf("can't get namespace %q: %w", naming.ScyllaManagerNamespace, err)
@@ -90,7 +91,7 @@ func (smcrc *Controller) removeFinalizer(ctx context.Context, smcr *scyllav1alph
 		return fmt.Errorf("can't create remove finalizer patch: %w", err)
 	}
 
-	_, err = smcrc.scyllaClient.ScyllaV1alpha1().ScyllaDBManagerClusterRegistrations(smcr.Namespace).Patch(ctx, smcr.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	err = smcrc.patch(ctx, smcr, patch)
 	if err != nil {
 		return fmt.Errorf("can't patch ScyllaDBManagerClusterRegistration %q: %w", naming.ObjRef(smcr), err)
 	}

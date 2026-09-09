@@ -10,11 +10,13 @@ import (
 	"github.com/scylladb/scylla-manager/v3/swagger/gen/scylla-manager/models"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
@@ -29,7 +31,7 @@ func (smcrc *Controller) syncManager(
 	var host, authTokenSecretName string
 	switch smcr.Spec.ScyllaDBClusterRef.Kind {
 	case scyllav1alpha1.ScyllaDBDatacenterGVK.Kind:
-		sdc, err := smcrc.scyllaDBDatacenterLister.ScyllaDBDatacenters(smcr.Namespace).Get(smcr.Spec.ScyllaDBClusterRef.Name)
+		sdc, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBDatacenter](ctx, smcrc.client, smcr.Namespace, smcr.Spec.ScyllaDBClusterRef.Name)
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(smcr.Namespace, smcr.Spec.ScyllaDBClusterRef.Name), err)
 		}
@@ -51,7 +53,7 @@ func (smcrc *Controller) syncManager(
 		authTokenSecretName = naming.AgentAuthTokenSecretName(sdc)
 
 	case scyllav1alpha1.ScyllaDBClusterGVK.Kind:
-		sc, err := smcrc.scyllaDBClusterLister.ScyllaDBClusters(smcr.Namespace).Get(smcr.Spec.ScyllaDBClusterRef.Name)
+		sc, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBCluster](ctx, smcrc.client, smcr.Namespace, smcr.Spec.ScyllaDBClusterRef.Name)
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't get ScyllaDBCluster %q: %w", naming.ManualRef(smcr.Namespace, smcr.Spec.ScyllaDBClusterRef.Name), err)
 		}
@@ -183,7 +185,7 @@ func (smcrc *Controller) syncManager(
 }
 
 func (smcrc *Controller) getAuthToken(ctx context.Context, authTokenSecretNamespace, authTokenSecretName string) (string, error) {
-	authTokenSecret, err := smcrc.secretLister.Secrets(authTokenSecretNamespace).Get(authTokenSecretName)
+	authTokenSecret, err := ctrlclient.Get[corev1.Secret](ctx, smcrc.client, authTokenSecretNamespace, authTokenSecretName)
 	if err != nil {
 		return "", fmt.Errorf("can't get secret %q: %w", naming.ManualRef(authTokenSecretNamespace, authTokenSecretName), err)
 	}

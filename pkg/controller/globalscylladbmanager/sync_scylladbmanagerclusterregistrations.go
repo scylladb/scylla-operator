@@ -10,8 +10,10 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
@@ -26,7 +28,7 @@ func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(
 	var requiredScyllaDBManagerClusterRegistrations map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration
 	var errs []error
 
-	globalScyllaDBManagerNamespace, err := gsmc.namespaceLister.Get(naming.ScyllaManagerNamespace)
+	globalScyllaDBManagerNamespace, err := ctrlclient.Get[corev1.Namespace](ctx, gsmc.client, "", naming.ScyllaManagerNamespace)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("can't get namespace %q: %w", naming.ScyllaManagerNamespace, err)
@@ -47,10 +49,8 @@ func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(
 			ctx,
 			requiredScyllaDBManagerClusterRegistrations[ns],
 			existing,
-			&controllerhelpers.PruneControlFuncs{
-				DeleteFunc: gsmc.scyllaClient.ScyllaV1alpha1().ScyllaDBManagerClusterRegistrations(ns).Delete,
-			},
-			gsmc.EventRecorder(),
+			ctrlclient.PruneControl[scyllav1alpha1.ScyllaDBManagerClusterRegistration](gsmc.client, ns),
+			gsmc.eventRecorder,
 		)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't prune ScyllaDBManagerClusterRegistration(s) in Namespace %q: %w", ns, err))
@@ -62,7 +62,7 @@ func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(
 	}
 
 	for _, smcr := range slices.Concat(slices.Collect(maps.Values(requiredScyllaDBManagerClusterRegistrations))...) {
-		_, _, err = resourceapply.ApplyScyllaDBManagerClusterRegistration(ctx, gsmc.scyllaClient.ScyllaV1alpha1(), gsmc.scyllaDBManagerClusterRegistrationLister, gsmc.EventRecorder(), smcr, resourceapply.ApplyOptions{
+		_, _, err = resourceapply.ApplyScyllaDBManagerClusterRegistrationWithControl(ctx, ctrlclient.ApplyControl[scyllav1alpha1.ScyllaDBManagerClusterRegistration](ctx, gsmc.client, smcr.Namespace), gsmc.eventRecorder, smcr, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
 		if err != nil {

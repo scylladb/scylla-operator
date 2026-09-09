@@ -497,18 +497,16 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	}
 	m.addRunnable(sdbcc.Run, o.ConcurrentSyncs)
 
-	gsmc, err := globalscylladbmanager.NewController(
-		o.KubeClient,
-		o.ScyllaClient,
-		scyllaDBManagerClusterRegistrations,
-		scyllaDBDatacenters,
-		scyllaDBClusters,
-		namespaces,
+	gsmc := globalscylladbmanager.NewController(
+		m.mgr.GetClient(),
+		m.mgr.GetEventRecorderFor("globalscylladbmanager-controller"),
 	)
+	err = gsmc.SetupWithManager(m.mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+	})
 	if err != nil {
-		return fmt.Errorf("can't create global ScyllaDB Manager controller: %w", err)
+		return fmt.Errorf("can't set up global ScyllaDB Manager controller: %w", err)
 	}
-	m.runnables = append(m.runnables, gsmc.Run)
 
 	smcrc, err := scylladbmanagerclusterregistration.NewController(
 		o.KubeClient,

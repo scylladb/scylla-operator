@@ -10,12 +10,15 @@ import (
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/bootstrapbarrier"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 var _ = g.Describe("BootstrapBarrierController", func() {
@@ -163,31 +166,36 @@ type controllerOpts struct {
 }
 
 func runBoostrapBarrierController(ctx context.Context, envTest *envtest.Environment, opts controllerOpts) {
-	informerFactory := bootstrapbarrier.NewInformerFactory(
-		envTest.TypedKubeClient(),
-		envTest.ScyllaClient(),
-		bootstrapbarrier.InformerFactoryOptions{
-			ServiceName:        opts.nodeServiceName,
-			SelectorLabelValue: opts.nodesStatusReportSelector,
-			Namespace:          envTest.Namespace(),
-		},
-	)
+	g.GinkgoHelper()
 
-	bootstrapBarrierController, err := bootstrapbarrier.NewController(
+	mgr, err := controllermanager.NewManager(
+		envTest.Config(),
+		g.GinkgoLogr,
+		bootstrapbarrier.CacheOptions(envTest.Namespace(), opts.nodeServiceName, opts.nodesStatusReportSelector),
+		controllermanager.MetricsDisabledBindAddress,
+	)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller manager")
+
+	bootstrapBarrierController := bootstrapbarrier.NewController(
 		envTest.Namespace(),
 		opts.nodeServiceName,
 		opts.nodesStatusReportSelector,
 		opts.singleReportAllowNonReportingHostIDs,
 		opts.bootstrapPreconditionSatisfiedCh,
-		envTest.TypedKubeClient(),
-		informerFactory,
+		mgr.GetClient(),
 	)
-	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create bootstrap barrier controller")
+	err = bootstrapBarrierController.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+		// Every spec runs its own manager in this process; controller names are only unique within one.
+		SkipNameValidation: ptr.To(true),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to set up bootstrap barrier controller")
 
-	go informerFactory.Start(ctx.Done())
-	g.GinkgoWriter.Println("Started informers")
-
-	go bootstrapBarrierController.Run(ctx)
+	go func() {
+		defer g.GinkgoRecover()
+		err := mgr.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
+	}()
 	g.GinkgoWriter.Println("Started bootstrap barrier controller")
 }
 

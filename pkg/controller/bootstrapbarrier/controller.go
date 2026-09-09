@@ -5,31 +5,41 @@ package bootstrapbarrier
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/kubernetes"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-type Controller struct {
-	*controllertools.Observer
+const (
+	// ControllerName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	ControllerName = "scylladb-bootstrap-barrier"
+)
 
+// Controller is an observer: it re-derives from the member's Service and the ScyllaDBDatacenterNodesStatusReports
+// whether the node may proceed with its bootstrap, and closes bootstrapPreconditionCh once it may.
+type Controller struct {
 	namespace                            string
 	serviceName                          string
 	selectorLabelValue                   string
 	singleReportAllowNonReportingHostIDs bool
 	bootstrapPreconditionCh              chan struct{}
+	closeBootstrapPreconditionCh         sync.Once
 
-	serviceLister                             corev1listers.ServiceLister
-	scyllaDBDatacenterNodesStatusReportLister scyllav1alpha1listers.ScyllaDBDatacenterNodesStatusReportLister
+	client client.Reader
 }
 
 func NewController(
@@ -38,58 +48,61 @@ func NewController(
 	selectorLabelValue string,
 	singleReportAllowNonReportingHostIDs bool,
 	bootstrapPreconditionCh chan struct{},
-	kubeClient kubernetes.Interface,
-	informerFactory *InformerFactory,
-) (*Controller, error) {
-	serviceInformer := informerFactory.Services()
-	scyllaDBDatacenterNodesStatusReportInformer := informerFactory.ScyllaDBDatacenterNodesStatusReports()
-
-	c := &Controller{
+	c client.Reader,
+) *Controller {
+	return &Controller{
 		namespace:                            namespace,
 		serviceName:                          serviceName,
 		selectorLabelValue:                   selectorLabelValue,
 		singleReportAllowNonReportingHostIDs: singleReportAllowNonReportingHostIDs,
 		bootstrapPreconditionCh:              bootstrapPreconditionCh,
-		serviceLister:                        serviceInformer.Lister(),
-		scyllaDBDatacenterNodesStatusReportLister: scyllaDBDatacenterNodesStatusReportInformer.Lister(),
+		client:                               c,
 	}
+}
 
-	observer := controllertools.NewObserver(
-		"scylladb-bootstrap-barrier",
-		kubeClient.CoreV1().Events(corev1.NamespaceAll),
-		c.Sync,
-	)
-
-	serviceHandler, err := serviceInformer.Informer().AddEventHandler(observer.GetGenericHandlers())
-	if err != nil {
-		return nil, fmt.Errorf("can't add Service event handler: %w", err)
+// CacheOptions restricts the manager's cache to what the controller watches: the member's Service and the
+// ScyllaDBDatacenterNodesStatusReports selected by selectorLabelValue, both in namespace.
+func CacheOptions(namespace, serviceName, selectorLabelValue string) cache.Options {
+	return cache.Options{
+		DefaultNamespaces: map[string]cache.Config{
+			namespace: {},
+		},
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.Service{}: {
+				Field: fields.OneTermEqualSelector("metadata.name", serviceName),
+			},
+			&scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}: {
+				Label: labels.SelectorFromSet(labels.Set{
+					naming.ScyllaDBDatacenterNodesStatusReportSelectorLabel: selectorLabelValue,
+				}),
+			},
+		},
 	}
-	observer.AddCachesToSync(serviceHandler.HasSynced)
+}
 
-	scyllaDBDatacenterNodesStatusReportHandler, err := scyllaDBDatacenterNodesStatusReportInformer.Informer().AddEventHandler(observer.GetGenericHandlers())
-	if err != nil {
-		return nil, fmt.Errorf("can't add ScyllaDBDatacenterNodesStatusReport event handler: %w", err)
-	}
-	observer.AddCachesToSync(scyllaDBDatacenterNodesStatusReportHandler.HasSynced)
-
-	c.Observer = observer
-
-	return c, nil
+// SetupWithManager registers the controller with the manager. Every event of the watched kinds re-runs the sync.
+func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	return ctrlbuilder.ControllerManagedBy(mgr).
+		Named(ControllerName).
+		Watches(&corev1.Service{}, controllertools.EnqueueSingleton(ControllerName)).
+		Watches(&scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, controllertools.EnqueueSingleton(ControllerName)).
+		WithOptions(options).
+		Complete(controllertools.NewObserverReconciler(ControllerName, c.Sync))
 }
 
 func (c *Controller) Sync(ctx context.Context) error {
 	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing observer", "Name", c.Observer.Name(), "startTime", startTime)
+	klog.V(4).InfoS("Started syncing observer", "Name", ControllerName, "startTime", startTime)
 	defer func() {
-		klog.V(4).InfoS("Finished syncing observer", "Name", c.Observer.Name(), "duration", time.Since(startTime))
+		klog.V(4).InfoS("Finished syncing observer", "Name", ControllerName, "duration", time.Since(startTime))
 	}()
 
-	svc, err := c.serviceLister.Services(c.namespace).Get(c.serviceName)
+	svc, err := ctrlclient.Get[corev1.Service](ctx, c.client, c.namespace, c.serviceName)
 	if err != nil {
 		return fmt.Errorf("can't get service %q: %w", c.serviceName, err)
 	}
 
-	scyllaDBDatacenterNodesStatusReports, err := c.scyllaDBDatacenterNodesStatusReportLister.ScyllaDBDatacenterNodesStatusReports(c.namespace).List(labels.SelectorFromSet(labels.Set{
+	scyllaDBDatacenterNodesStatusReports, err := ctrlclient.List[scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](ctx, c.client, c.namespace, labels.SelectorFromSet(labels.Set{
 		naming.ScyllaDBDatacenterNodesStatusReportSelectorLabel: c.selectorLabelValue,
 	}))
 	if err != nil {
@@ -101,7 +114,10 @@ func (c *Controller) Sync(ctx context.Context) error {
 		return fmt.Errorf("can't determine if bootstrap should proceed: %w", err)
 	}
 	if proceedWithBootstrap {
-		close(c.bootstrapPreconditionCh)
+		// The sync can run again after the channel was closed, e.g. on a watch event racing the shutdown.
+		c.closeBootstrapPreconditionCh.Do(func() {
+			close(c.bootstrapPreconditionCh)
+		})
 	}
 
 	return nil

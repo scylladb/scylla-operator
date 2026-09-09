@@ -68,32 +68,53 @@ type Manager struct {
 	runnables []func(ctx context.Context)
 }
 
-// New creates the controller-runtime manager. Controllers are registered in Run because they take the context
-// their informers' list and watch calls run under.
-func New(options Options) (*Manager, error) {
-	mgr, err := ctrlmanager.New(options.RestConfig, ctrlmanager.Options{
+// NewManager creates a controller-runtime manager the way every binary of the operator runs one: with the operator's
+// scheme, a read-your-writes client, no leader election of its own, no health probes, and the metrics server only
+// where asked for. cacheOptions restrict what the cache watches, e.g. to a namespace or to selected objects.
+func NewManager(restConfig *rest.Config, logger logr.Logger, cacheOptions cache.Options, metricsBindAddress string) (ctrlmanager.Manager, error) {
+	if cacheOptions.Scheme == nil {
+		cacheOptions.Scheme = scheme.Scheme
+	}
+
+	mgr, err := ctrlmanager.New(restConfig, ctrlmanager.Options{
 		Scheme: scheme.Scheme,
-		Logger: options.Logger,
-		Cache: cache.Options{
-			SyncPeriod: ptr.To(options.ResyncPeriod),
-		},
+		Logger: logger,
+		Cache:  cacheOptions,
 		Client: client.Options{
 			Cache: &client.CacheOptions{
 				EnableReadYourWritesConsistency: ptr.To(true),
 			},
 		},
 		Metrics: metricsserver.Options{
-			BindAddress: options.MetricsBindAddress,
+			BindAddress: metricsBindAddress,
 		},
-		// The operator has never served health probes, and swapping the binary must not change what a running
-		// deployment can observe.
+		// The operator's binaries have never served health probes, and swapping a binary must not change what a
+		// running deployment can observe.
 		HealthProbeBindAddress: "0",
-		// Leader election stays with pkg/leaderelection around Run, so that the standby replicas don't start
-		// the cache and the lease name and identity are unchanged.
+		// Leader election stays with pkg/leaderelection around the manager where a binary needs it, so that the
+		// standby replicas don't start the cache and the lease name and identity are unchanged.
 		LeaderElection: false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("can't create controller-runtime manager: %w", err)
+	}
+
+	return mgr, nil
+}
+
+// New creates the controller-runtime manager of the operator binary. Controllers are registered in Run because they
+// take the context their informers' list and watch calls run under.
+func New(options Options) (*Manager, error) {
+	mgr, err := NewManager(
+		options.RestConfig,
+		options.Logger,
+		cache.Options{
+			SyncPeriod: ptr.To(options.ResyncPeriod),
+		},
+		options.MetricsBindAddress,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Manager{

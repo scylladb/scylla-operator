@@ -60,14 +60,20 @@ const (
 
 	scyllaDBDatacenterControllerResyncPeriod = 12 * time.Hour
 
+	// scyllaDBDatacenterControllerDefaultInformerLag is how far behind the API server every informer of the
+	// controller is kept in all specs. Informer caches give no read-your-writes and in envtest they would otherwise
+	// catch up within microseconds, hiding any decision the controller makes from a cache that has not observed its
+	// own writes yet. A lagging informer is only a slower informer, so every behavior has to hold with it.
+	scyllaDBDatacenterControllerDefaultInformerLag = 500 * time.Millisecond
+
 	// scyllaDBDatacenterControllerDefaultEventuallyTimeout is the default timeout for async envtest assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Eventually may time out before
-	// the controller resumes reconciliation.
+	// Pad accordingly when a test runs the controller with informer lag, otherwise Eventually may time out before
+	// the controller observes its own writes and resumes reconciliation.
 	scyllaDBDatacenterControllerDefaultEventuallyTimeout = 15 * time.Second
 
 	// scyllaDBDatacenterControllerDefaultConsistentlyTimeout is the default window for stability assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Consistently may pass while the
-	// controller is delayed instead of observing real steady state.
+	// Pad accordingly when a test runs the controller with informer lag, otherwise Consistently may pass while the
+	// controller is waiting for its caches instead of observing real steady state.
 	scyllaDBDatacenterControllerDefaultConsistentlyTimeout = 5 * time.Second
 
 	// envtestServiceFinalizer holds a member Service in a terminating state, so that specs can freeze the window
@@ -1246,7 +1252,20 @@ func (g *staticKeyGenerator) GetKeyType() crypto.KeyType {
 	return crypto.ECDSAKeyType
 }
 
-func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment) {
+// informerLagTransform returns an informer transform that delays every event before it reaches the informer cache,
+// keeping the cache behind the API server by lag. The objects are not modified.
+func informerLagTransform(lag time.Duration) cache.TransformFunc {
+	return func(obj any) (any, error) {
+		time.Sleep(lag)
+
+		return obj, nil
+	}
+}
+
+// runScyllaDBDatacenterController runs the controller until the context is done. All its informers lag behind the
+// API server by scyllaDBDatacenterControllerDefaultInformerLag; cacheOptions are applied on top, e.g. to lag one
+// kind further.
+func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment, cacheOptions ...func(*ctrlcache.Options)) {
 	g.GinkgoHelper()
 
 	kubeClient := e.TypedKubeClient()
@@ -1256,10 +1275,16 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	// binary wires it. The cache watches all namespaces: every spec gets its own API server, and restricting the
 	// cache to a namespace would make controller-runtime wrap the informers in a multi-namespace layer that the
 	// bridge can't get the indexers from.
-	c, err := ctrlcache.New(e.Config(), ctrlcache.Options{
-		Scheme:     scheme.Scheme,
-		SyncPeriod: ptr.To(scyllaDBDatacenterControllerResyncPeriod),
-	})
+	cacheOpts := ctrlcache.Options{
+		Scheme:           scheme.Scheme,
+		SyncPeriod:       ptr.To(scyllaDBDatacenterControllerResyncPeriod),
+		DefaultTransform: informerLagTransform(scyllaDBDatacenterControllerDefaultInformerLag),
+	}
+	for _, opt := range cacheOptions {
+		opt(&cacheOpts)
+	}
+
+	c, err := ctrlcache.New(e.Config(), cacheOpts)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	keyGenerator := newStaticKeyGenerator()

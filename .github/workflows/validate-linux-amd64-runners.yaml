@@ -1,0 +1,21 @@
+name: Validate linux-amd64 self-hosted runners
+
+on:
+  push:
+    branches:
+      - validate-gha-linux-amd64-runners
+
+jobs:
+  validate:
+    name: Validate runner
+    runs-on: linux-amd64
+    timeout-minutes: 15
+    steps:
+      - name: Print runner facts
+        run: |
+          set -x
+          uname -a
+          nproc
+          free -h
+          cat /etc/os-release
+          echo "runner name: ${RUNNER_NAME}"

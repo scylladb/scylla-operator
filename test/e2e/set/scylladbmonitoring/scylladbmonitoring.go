@@ -536,10 +536,26 @@ func getExpectedPlatformDashboards() (expectedDashboards []grafana.Dashboard, ho
 }
 
 type grafanaDashboard struct {
-	Title string   `json:"title"`
-	Tags  []string `json:"tags"`
-	UID   string   `json:"uid"`
+	Title string
+	Tags  []string
+	UID   string
 }
+
+// grafanaDashboardV2Resource represents a dashboard in the Grafana dashboard v2 resource format
+// (apiVersion dashboard.grafana.app/v2), where the UID is carried by metadata.name.
+type grafanaDashboardV2Resource struct {
+	APIVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Metadata   struct {
+		Name string `json:"name"`
+	} `json:"metadata"`
+	Spec struct {
+		Title string   `json:"title"`
+		Tags  []string `json:"tags"`
+	} `json:"spec"`
+}
+
+const grafanaDashboardAPIGroup = "dashboard.grafana.app"
 
 func decodeGrafanaDashboardFromGZBase64String(s string) (*grafanaDashboard, error) {
 	b64Reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(s))
@@ -559,13 +575,21 @@ func decodeGrafanaDashboardFromGZBase64String(s string) (*grafanaDashboard, erro
 		return nil, fmt.Errorf("can't read data from gzip reader: %w", err)
 	}
 
-	res := &grafanaDashboard{}
-	err = json.Unmarshal(data, &res)
+	v2Resource := &grafanaDashboardV2Resource{}
+	err = json.Unmarshal(data, v2Resource)
 	if err != nil {
 		return nil, fmt.Errorf("can't unmarshal grafana dashboard: %w", err)
 	}
 
-	return res, nil
+	if v2Resource.Kind != "Dashboard" || !strings.HasPrefix(v2Resource.APIVersion, grafanaDashboardAPIGroup+"/") {
+		return nil, fmt.Errorf("unsupported grafana dashboard format: apiVersion %q, kind %q", v2Resource.APIVersion, v2Resource.Kind)
+	}
+
+	return &grafanaDashboard{
+		Title: v2Resource.Spec.Title,
+		Tags:  v2Resource.Spec.Tags,
+		UID:   v2Resource.Metadata.Name,
+	}, nil
 }
 
 func prepareExternalPrometheusWithoutTLS(ctx context.Context, f *framework.Framework, smName string) {

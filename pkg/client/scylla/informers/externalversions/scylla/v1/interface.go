@@ -9,7 +9,7 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// ScyllaClusters returns a ScyllaClusterInformer.
-	ScyllaClusters() ScyllaClusterInformer
+	ScyllaClusters() TypedScyllaClusterInformer
 }
 
 type version struct {
@@ -23,7 +23,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// ScyllaClusters returns a ScyllaClusterInformer.
-func (v *version) ScyllaClusters() ScyllaClusterInformer {
+// ScyllaClusters returns a TypedScyllaClusterInformer.
+func (v *version) ScyllaClusters() TypedScyllaClusterInformer {
 	return &scyllaClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

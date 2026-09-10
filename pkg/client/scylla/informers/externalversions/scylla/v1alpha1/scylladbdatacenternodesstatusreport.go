@@ -18,11 +18,39 @@ import (
 )
 
 // ScyllaDBDatacenterNodesStatusReportInformer provides access to a shared informer and lister for
-// ScyllaDBDatacenterNodesStatusReports.
+// ScyllaDBDatacenterNodesStatusReports. Prefer using the type-safe variant (see [TypedScyllaDBDatacenterNodesStatusReportInformer]).
 type ScyllaDBDatacenterNodesStatusReportInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.ScyllaDBDatacenterNodesStatusReportLister
 }
+
+// TypedScyllaDBDatacenterNodesStatusReportInformer provides access to a shared informer and lister for
+// ScyllaDBDatacenterNodesStatusReports, including the type-safe TypedInformer variant.
+// It is a superset of ScyllaDBDatacenterNodesStatusReportInformer.
+type TypedScyllaDBDatacenterNodesStatusReportInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ScyllaDBDatacenterNodesStatusReportIndexInformer
+	Lister() scyllav1alpha1.ScyllaDBDatacenterNodesStatusReportLister
+}
+
+// ScyllaDBDatacenterNodesStatusReportIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ScyllaDBDatacenterNodesStatusReportIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]
+
+// ScyllaDBDatacenterNodesStatusReportHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ScyllaDBDatacenterNodesStatusReport.
+type ScyllaDBDatacenterNodesStatusReportHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]
+
+// ScyllaDBDatacenterNodesStatusReportDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ScyllaDBDatacenterNodesStatusReport.
+type ScyllaDBDatacenterNodesStatusReportDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]
+
+// ScyllaDBDatacenterNodesStatusReportFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ScyllaDBDatacenterNodesStatusReport.
+type ScyllaDBDatacenterNodesStatusReportFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]
+
+// ScyllaDBDatacenterNodesStatusReportIndexers is a specialization of [cache.TypedIndexers] for ScyllaDBDatacenterNodesStatusReport.
+type ScyllaDBDatacenterNodesStatusReportIndexers = cache.TypedIndexers[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]
+
+// DeletedScyllaDBDatacenterNodesStatusReport is a specialization of [cache.DeletedObject] for ScyllaDBDatacenterNodesStatusReport.
+type DeletedScyllaDBDatacenterNodesStatusReport = cache.DeletedObject[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport]
 
 type scyllaDBDatacenterNodesStatusReportInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -33,25 +61,49 @@ type scyllaDBDatacenterNodesStatusReportInformer struct {
 // NewScyllaDBDatacenterNodesStatusReportInformer constructs a new informer for ScyllaDBDatacenterNodesStatusReport type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBDatacenterNodesStatusReportInformer]).
 func NewScyllaDBDatacenterNodesStatusReportInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedScyllaDBDatacenterNodesStatusReportInformer constructs a new informer for ScyllaDBDatacenterNodesStatusReport type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBDatacenterNodesStatusReportInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBDatacenterNodesStatusReportIndexers) ScyllaDBDatacenterNodesStatusReportIndexInformer {
+	return NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredScyllaDBDatacenterNodesStatusReportInformer constructs a new informer for ScyllaDBDatacenterNodesStatusReport type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredScyllaDBDatacenterNodesStatusReportInformer]).
 func NewFilteredScyllaDBDatacenterNodesStatusReportInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredScyllaDBDatacenterNodesStatusReportInformer constructs a new informer for ScyllaDBDatacenterNodesStatusReport type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredScyllaDBDatacenterNodesStatusReportInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBDatacenterNodesStatusReportIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ScyllaDBDatacenterNodesStatusReportIndexInformer {
+	return NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewScyllaDBDatacenterNodesStatusReportInformerWithOptions constructs a new informer for ScyllaDBDatacenterNodesStatusReport type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions]).
 func NewScyllaDBDatacenterNodesStatusReportInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions constructs a new informer for ScyllaDBDatacenterNodesStatusReport type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ScyllaDBDatacenterNodesStatusReportIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "scylladbdatacenternodesstatusreports"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -84,17 +136,57 @@ func NewScyllaDBDatacenterNodesStatusReportInformerWithOptions(client versioned.
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *scyllaDBDatacenterNodesStatusReportInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedScyllaDBDatacenterNodesStatusReportInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *scyllaDBDatacenterNodesStatusReportInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *scyllaDBDatacenterNodesStatusReportInformer) TypedInformer() ScyllaDBDatacenterNodesStatusReportIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, f.defaultInformer))
 }
 
 func (f *scyllaDBDatacenterNodesStatusReportInformer) Lister() scyllav1alpha1.ScyllaDBDatacenterNodesStatusReportLister {
 	return scyllav1alpha1.NewScyllaDBDatacenterNodesStatusReportLister(f.Informer().GetIndexer())
+}
+
+// ToTypedScyllaDBDatacenterNodesStatusReportInformer converts an untyped informer into a TypedScyllaDBDatacenterNodesStatusReportInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBDatacenterNodesStatusReport. If that is not the case, calling type-safe methods of the returned
+// TypedScyllaDBDatacenterNodesStatusReportInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedScyllaDBDatacenterNodesStatusReportInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedScyllaDBDatacenterNodesStatusReportInformer(informer ScyllaDBDatacenterNodesStatusReportInformer) TypedScyllaDBDatacenterNodesStatusReportInformer {
+	if informer, ok := informer.(TypedScyllaDBDatacenterNodesStatusReportInformer); ok {
+		return informer
+	}
+	return &scyllaDBDatacenterNodesStatusReportTypedInformerAdapter{informer}
+}
+
+type scyllaDBDatacenterNodesStatusReportTypedInformerAdapter struct {
+	ScyllaDBDatacenterNodesStatusReportInformer
+}
+
+func (a *scyllaDBDatacenterNodesStatusReportTypedInformerAdapter) TypedInformer() ScyllaDBDatacenterNodesStatusReportIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](a.Informer())
+}
+
+// ToScyllaDBDatacenterNodesStatusReportIndexInformer converts an untyped informer into a ScyllaDBDatacenterNodesStatusReportIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBDatacenterNodesStatusReport. If that is not the case, calling type-safe methods of the returned
+// ScyllaDBDatacenterNodesStatusReportIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ScyllaDBDatacenterNodesStatusReportIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToScyllaDBDatacenterNodesStatusReportIndexInformer(informer cache.SharedIndexInformer) ScyllaDBDatacenterNodesStatusReportIndexInformer {
+	if informer, ok := informer.(ScyllaDBDatacenterNodesStatusReportIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](informer)
 }

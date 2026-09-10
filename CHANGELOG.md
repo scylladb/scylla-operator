@@ -65,6 +65,14 @@
   nodes have finished decommissioning and been removed.
   [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
 
+### Dependencies
+
+- Updated `k8s.io/*` modules from `v0.36.4` to `v0.37.0`, moving the Kubernetes client libraries the Operator uses to talk
+  to the Kubernetes API from Kubernetes 1.36 to 1.37.
+  [#3653](https://github.com/scylladb/scylla-operator/pull/3653)
+- `sigs.k8s.io/controller-runtime` from `v0.24.1` to `v0.25.0` and `controller-gen` from `v0.21.0` to `v0.22.0`.
+  [#3653](https://github.com/scylladb/scylla-operator/pull/3653)
+
 ## [1.22.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.22.0)
 
 Release date: 2026-09-02

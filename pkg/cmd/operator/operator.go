@@ -32,7 +32,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
-	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type OperatorOptions struct {
@@ -277,9 +276,6 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 			"ScyllaDBMonitoring controller will not be started. " +
 			"To enable monitoring, install Prometheus Operator and restart the ScyllaDB Operator.")
 	}
-
-	// controller-runtime logs through logr; route it to klog so the log flags keep applying to everything.
-	ctrllog.SetLogger(klog.NewKlogr())
 
 	cm, err := controllermanager.New(controllermanager.Options{
 		RestConfig:              o.RestConfig,

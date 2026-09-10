@@ -5,6 +5,7 @@ package controllermanager
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -19,12 +20,16 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 // MetricsDisabledBindAddress is the metrics bind address that disables the metrics server.
 const MetricsDisabledBindAddress = "0"
+
+// setControllerRuntimeLogger guards ctrllog.SetLogger, which is neither idempotent nor safe to call concurrently.
+var setControllerRuntimeLogger sync.Once
 
 type Options struct {
 	RestConfig *rest.Config
@@ -64,6 +69,12 @@ type Manager struct {
 // scheme, a read-your-writes client, no leader election of its own, no health probes, and the metrics server only
 // where asked for. cacheOptions restrict what the cache watches, e.g. to a namespace or to selected objects.
 func NewManager(restConfig *rest.Config, logger logr.Logger, cacheOptions cache.Options, metricsBindAddress string) (ctrlmanager.Manager, error) {
+	// controller-runtime's packages (the cache above all) log through the package-level logger, not the manager's;
+	// route it to the same place, once per process, so no binary drops those logs.
+	setControllerRuntimeLogger.Do(func() {
+		ctrllog.SetLogger(logger)
+	})
+
 	if cacheOptions.Scheme == nil {
 		cacheOptions.Scheme = scheme.Scheme
 	}

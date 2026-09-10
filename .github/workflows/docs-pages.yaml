@@ -1,0 +1,98 @@
+name: "Docs / Publish"
+
+# The push trigger is expected to stay limited to master. Release branches don't belong there:
+# GitHub resolves workflow files from the ref of the push event, so this file's copy on master never
+# runs for a push to a release branch. Those are picked up by docs-pages-trigger.yaml,
+# which calls back into this workflow.
+on:
+  push:
+    branches:
+      - master
+    # The docs build reads more than docs/: literalinclude pulls from examples/ (e.g.
+    # docs/source/deploy-scylladb/set-up-monitoring/setup.md), and the version_context_substitutions
+    # extension reads assets/config/config.yaml, assets/metadata/metadata.yaml and .gitmodules.
+    paths:
+      - "docs/**"
+      - "examples/**"
+      - "assets/**"
+      - ".gitmodules"
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build multiversion docs
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:uv-0.10
+    timeout-minutes: 60
+
+    steps:
+      # actions/checkout clones as the runner user, but this container image declares no USER, so the job runs as root
+      # and every git invocation outside the action trips safe.directory. sphinx-multiversion shells out to git to
+      # enumerate remote branches, so this is needed for the build itself, not just for the verification steps.
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: master
+          persist-credentials: false
+          fetch-depth: 0
+
+      # A release branch's conf.py pins an older BRANCHES and smv_latest_version, so building its tree would publish a regressed site.
+      - name: Verify checkout is master
+        run: |
+          [[ "$( git rev-parse --abbrev-ref HEAD )" == 'master' ]]
+          [[ "$( git rev-parse HEAD )" == "$( git rev-parse refs/remotes/origin/master )" ]]
+
+      - name: Set up env
+        run: make -C docs setup
+
+      - name: Build docs
+        run: make --warn-undefined-variables -C docs multiversion SPHINXOPTS="--keep-going"
+
+      - name: Build redirects
+        run: make --warn-undefined-variables -C docs redirects
+
+      # Make sure the stable branch has been created from the remote.
+      - name: Verify site
+        run: '[[ -d docs/_build/dirhtml/stable ]]'
+
+      # Hidden files are kept because sphinx.ext.githubpages emits .nojekyll into every version's output.
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs/_build/dirhtml/
+          include-hidden-files: "true"
+
+  release:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

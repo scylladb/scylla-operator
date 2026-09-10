@@ -1,0 +1,208 @@
+# Upgrading ScyllaDB Operator
+
+ScyllaDB Operator supports N+1 upgrades only.
+That means to you can only update by 1 minor version at the time and wait for it to successfully roll out and then update
+all ScyllaClusters that also run using the image that’s being updated. (ScyllaDB Operator injects it as a sidecar to help run and manage ScyllaDB.)
+
+We value the stability of our APIs and all API changes are backwards compatible.
+
+## Upgrade via GitOps (kubectl)
+
+A typical upgrade flow using GitOps (kubectl) requires re-applying the manifests using ones from the release you want to upgrade to.
+
+If ScyllaDB Manager is installed, you need to upgrade it manually by re-applying its manifests using ones from the release you want to upgrade to.
+Please refer to the [ScyllaDB Manager installation instructions](https://operator.docs.scylladb.com/master/deploy-scylladb/install-scylladb-manager.md) for details.
+
+Note that ScyllaDB Operator’s dependencies also need to be updated to the versions compatible with the target ScyllaDB Operator version.
+
+Please refer to the [GitOps installation instructions](https://operator.docs.scylladb.com/master/install-operator/install-with-gitops.md) for details.
+
+## Upgrade via Helm
+
+### Prerequisites
+
+- Update ScyllaDB Operator dependencies to the versions compatible with the target ScyllaDB Operator version.
+  Refer to the [Helm installation instructions](https://operator.docs.scylladb.com/master/install-operator/install-with-helm.md) for details.
+- Make sure Helm chart repository is up-to-date:
+  ```default
+  helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable
+  helm repo update
+  ```
+
+### Upgrade ScyllaDB Manager
+
+Replace `<release_name>` with the name of your Helm release for ScyllaDB Manager and replace `<version>` with the version number you want to install:
+
+```default
+helm upgrade --version <version> <release_name> scylla/scylla-manager
+```
+
+### Upgrade ScyllaDB Operator
+
+Replace `<release_name>` with the name of your Helm release for ScyllaDB Operator and replace `<version>` with the version number you want to install:
+
+1. Update CRD resources. We recommend using `--server-side` flag for `kubectl apply`, if your version supports it.
+   ```default
+   tmpdir=$( mktemp -d ) \
+     && helm pull scylla-operator/scylla-operator --version <version> --untar --untardir "${tmpdir}" \
+     && find "${tmpdir}"/scylla-operator/crds/ -name '*.yaml' -printf '-f=%p ' \
+     | xargs kubectl apply
+   ```
+2. Update ScyllaDB Operator.
+   ```default
+   helm upgrade --version <version> <release_name> scylla/scylla-operator
+   ```
+
+## Upgrade steps for specific versions
+
+### 1.22 to 1.23
+
+#### Ensure no healthy node carries a leftover decommissioned label
+
+A stale `scylla/decommissioned=true` label makes the upgraded Operator delete a healthy node’s data, so check before upgrading.
+List the member Services that carry the label in all namespaces:
+
+```bash
+kubectl get services --all-namespaces -l scylla/decommissioned=true
+```
+
+If the command prints `No resources found`, your clusters are unaffected.
+Otherwise, for every Service listed, check whether the node of the same name is healthy: its Pod is ready, and `nodetool status` run on another node of the cluster lists its host ID as `UN`.
+The host ID is in the `internal.scylla-operator.scylladb.com/host-id` annotation of the Service.
+
+If the node is healthy, the label is stale. Remove it before upgrading:
+
+```bash
+kubectl -n <namespace> label service <service-name> scylla/decommissioned-
+```
+
+If the node was in fact decommissioned, meaning its Pod isn’t ready and its host ID is no longer in `nodetool status`, leave the label in place. The upgraded Operator removes the node.
+
+#### NOTE
+**Why is this necessary?**
+Starting with v1.23, the Operator treats a member Service labelled `scylla/decommissioned=true` as a node that has left the cluster.
+It removes the node together with its PVC before the rack reconciles to the requested node count.
+Previous versions only acted on the label during a scale-down, so a stale label could sit on a healthy node without consequences.
+On a rack whose node at ordinal N carries a stale label, the upgraded Operator decommissions every node above N, one at a time or all at once with `enableParallelNodeOperations` enabled.
+It then removes node N together with its PVC without decommissioning it, and bootstraps the rack back to the requested count with new, empty nodes.
+A healthy node N loses its data this way, and the Operator rebuilds every node above it.
+Previous versions could leave the label behind when you reverted a scale-down before the Operator removed the node’s Service, or when you recovered a decommissioned node by hand.
+
+### 1.20 to 1.21
+
+#### Ensure ScyllaCluster repair and backup task names are RFC 1123 compliant
+
+Before upgrading, ensure that all `ScyllaCluster` repair (`.spec.repairs[].name`) and backup (`.spec.backups[].name`) task names conform to [RFC 1123 subdomain](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names) requirements:
+
+- contain no more than 253 characters,
+- contain only lowercase alphanumeric characters, ‘-’ or ‘.’,
+- start with an alphanumeric character,
+- end with an alphanumeric character.
+
+You can run the following snippet to check for such `ScyllaClusters`:
+
+```bash
+output=$(kubectl get scyllaclusters --all-namespaces -o json | jq -r '
+  def is_rfc1123_subdomain_invalid:
+    (length <= 253) and test("^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$") | not;
+  .items[] |
+  {
+    namespace: .metadata.namespace,
+    name: .metadata.name,
+    invalid_repairs: [(.spec.repairs // [] | .[].name | select(is_rfc1123_subdomain_invalid))],
+    invalid_backups: [(.spec.backups // [] | .[].name | select(is_rfc1123_subdomain_invalid))]
+  } |
+  select((.invalid_repairs | length > 0) or (.invalid_backups | length > 0)) |
+  "\(.namespace)/\(.name)\n  Invalid repairs: \(if (.invalid_repairs | length) > 0 then (.invalid_repairs | join(", ")) else "(none)" end)\n  Invalid backups: \(if (.invalid_backups | length) > 0 then (.invalid_backups | join(", ")) else "(none)" end)\n"
+') && if [ -z "$output" ]; then echo "All ScyllaCluster repair and backup task names are RFC 1123 compliant."; else echo "$output"; fi
+```
+
+You should get an output similar to the following if there are any `ScyllaClusters` with invalid repair or backup task names:
+
+```console
+scylla/example
+  Invalid repairs: invalid_repair
+  Invalid backups: invalid_backup
+```
+
+or the following if all `ScyllaCluster` repair and backup task names are compliant:
+
+```console
+All ScyllaCluster repair and backup task names are RFC 1123 compliant.
+```
+
+#### NOTE
+**Why is this necessary?**
+Starting with v1.20.1, ScyllaDB Operator emitted warnings for `ScyllaCluster` repair and backup task names not conforming to RFC 1123 subdomain requirements.
+In v1.21, these warnings have been replaced with hard validation errors, and the operator will refuse to start if any existing `ScyllaClusters` have non-conforming task names.
+
+#### Ensure ScyllaCluster spec.version is not empty
+
+`ScyllaCluster` `spec.version` is now a required field. Any create or update request with an empty value will be rejected by the admission webhook.
+You can run the following snippet to check whether any of your existing `ScyllaClusters` have an empty `spec.version`:
+
+```bash
+kubectl get scyllaclusters --all-namespaces -o json | jq -r '
+  .items[] | select((.spec.version // "") == "") |
+  "\(.metadata.namespace)/\(.metadata.name)"
+'
+```
+
+If the command returns no output, all your `ScyllaClusters` are unaffected. If any are listed, set their `spec.version` to a valid ScyllaDB image tag before upgrading.
+
+#### NOTE
+**Why is this not a breaking change?**
+A `ScyllaCluster` with an empty `spec.version` was never functional. The migration controller would fail to reconcile it, leaving the cluster in a permanently degraded state. Making the field required only prevents new broken clusters from being created.
+
+#### Review ScyllaDBMonitoring spec.type default change
+
+The default value of `ScyllaDBMonitoring` `spec.type` has changed from `SaaS` to `Platform`. Any existing `ScyllaDBMonitoring`
+object that omits `spec.type` will render `Platform` dashboards after the upgrade instead of `SaaS`. The `SaaS` value is
+also now deprecated and will be removed in a future release; the admission webhook will emit a warning when it is set explicitly.
+
+You can run the following snippet to list `ScyllaDBMonitoring` objects that will be affected by the default change or that
+still use the deprecated `SaaS` value:
+
+```bash
+output=$(kubectl get scylladbmonitorings --all-namespaces -o json | jq -r '
+  .items[] |
+  select((.spec.type // "SaaS") == "SaaS") |
+  "\(.metadata.namespace)/\(.metadata.name)\t(spec.type=\(.spec.type // "<unset, defaults to SaaS>"))"
+') && if [ -z "$output" ]; then echo "No ScyllaDBMonitoring objects rely on the SaaS type."; else echo "$output"; fi
+```
+
+If the command returns no output, none of your `ScyllaDBMonitoring` objects are affected. Otherwise, for each listed object,
+decide whether you want to:
+
+- keep the previous behavior by setting `spec.type: SaaS` explicitly before upgrading (the admission webhook will emit a
+  deprecation warning, and you will need to migrate to `Platform` before a future release removes `SaaS`), or
+- adopt the new default by either setting `spec.type: Platform` explicitly or leaving `spec.type` unset.
+
+#### NOTE
+**Why is this not a breaking change?**
+The `Platform` dashboards are a superset of the `SaaS` dashboards, so switching from `SaaS` to `Platform` does not remove
+functionality.
+
+### 1.17 to 1.18
+
+Upgrading from v1.17.x requires extra actions due to the removal of the standalone ScyllaDB Manager controller.
+The controller becomes an integral part of ScyllaDB Operator. As a result, the standalone ScyllaDB Manager controller deployment and its related resources
+need to be removed before upgrading ScyllaDB Operator.
+
+#### Upgrade via GitOps (kubectl)
+
+```default
+kubectl delete -n scylla-manager \
+    clusterrole/scylladb:controller:aggregate-to-manager-controller \
+    clusterrole/scylladb:controller:manager-controller \
+    poddisruptionbudgets.policy/scylla-manager-controller \
+    serviceaccounts/scylla-manager-controller \
+    clusterrolebindings.rbac.authorization.k8s.io/scylladb:controller:manager-controller \
+    deployments.apps/scylla-manager-controller
+```
+
+#### Upgrade via Helm
+
+ScyllaDB Manager Helm installation has to be upgraded before upgrading ScyllaDB Operator Helm installation, following
+the standard [Helm upgrade procedure](). This will ensure that the ScyllaDB Manager Controller
+is removed before upgrading the ScyllaDB Operator.

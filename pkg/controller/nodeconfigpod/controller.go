@@ -149,7 +149,7 @@ func scyllaPodsOnNode(ctx context.Context, cache client.Reader, nodeName string)
 
 	var pods []*corev1.Pod
 	for _, pod := range allPods {
-		if pod.Spec.NodeName == nodeName {
+		if pod.Spec.NodeName == nodeName && controllerhelpers.IsScyllaPod(pod) {
 			pods = append(pods, pod)
 		}
 	}

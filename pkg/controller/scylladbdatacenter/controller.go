@@ -190,7 +190,7 @@ func mapPodToOwnerThroughStatefulSet(cache client.Reader) handler.MapFunc {
 			return nil
 		}
 
-		klog.V(4).InfoS("Enqueuing owner of StatefulSet", "Pod", klog.KObj(obj), "ScyllaDBDatacenter", klog.KObj(sdc))
+		klog.V(4).InfoS("Enqueuing owner of the Pod's StatefulSet", "Pod", klog.KObj(obj), "ScyllaDBDatacenter", klog.KObj(sdc))
 		return []reconcile.Request{requestFor(sdc.Namespace, sdc.Name)}
 	}
 }

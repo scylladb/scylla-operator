@@ -2,7 +2,7 @@
     "apiVersion": "dashboard.grafana.app/v2",
     "kind": "Dashboard",
     "metadata": {
-        "name": "OS-2025-3"
+        "name": "OS-2026-3"
     },
     "spec": {
         "annotations": [
@@ -2383,32 +2383,214 @@
                     "data": {
                         "kind": "QueryGroup",
                         "spec": {
-                            "queries": [],
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "sum(rate(node_ethtool_bw_out_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
                             "queryOptions": {},
                             "transformations": []
                         }
                     },
-                    "description": "",
-                    "id": 32,
+                    "description": "Outbound bandwidth allowance exceed events per second \u2014 the rate at which the NIC attempts to transmit above its allowed egress bandwidth limit (often indicating throttling/shaping).",
+                    "id": 28,
                     "links": [],
-                    "title": "",
-                    "transparent": true,
+                    "title": "Bandwidth-Out allowance exceeded",
                     "vizConfig": {
-                        "group": "text",
+                        "group": "timeseries",
                         "kind": "VizConfig",
                         "spec": {
                             "fieldConfig": {
-                                "defaults": {},
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": ""
+                                },
                                 "overrides": []
                             },
                             "options": {
-                                "code": {
-                                    "language": "plaintext",
-                                    "showLineNumbers": false,
-                                    "showMiniMap": false
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
                                 },
-                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
-                                "mode": "html"
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-29": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "sum(rate(node_ethtool_bw_in_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Inbound bandwidth allowance exceed events per second \u2014 the rate at which the NIC receives above its allowed ingress bandwidth limit (often indicating ingress shaping/throttling).",
+                    "id": 29,
+                    "links": [],
+                    "title": "Bandwidth-In allowance exceeded",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": ""
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
                             }
                         },
                         "version": "13.0.1"
@@ -2574,6 +2756,264 @@
                             "options": {
                                 "cellHeight": "sm",
                                 "showHeader": true
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-30": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "sum(rate(node_ethtool_conntrack_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Conntrack allowance exceed events per second \u2014 the rate at which the system/NIC exceeds its allowed connection-tracking (conntrack) limit, often indicating connection pressure and potential drops or throttling.",
+                    "id": 30,
+                    "links": [],
+                    "title": "Conntrack allowance exceed",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": ""
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-31": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "sum(rate(node_ethtool_linklocal_allowance_exceeded{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Link-local allowance exceed events per second \u2014 the rate at which the NIC exceeds its allowed link-local traffic limit (e.g., ARP/ND or other local control traffic), often indicating local-network chatter and possible throttling",
+                    "id": 31,
+                    "links": [],
+                    "title": "Link-local allowance exceed",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": ""
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-32": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "",
+                    "id": 32,
+                    "links": [],
+                    "title": "",
+                    "transparent": true,
+                    "vizConfig": {
+                        "group": "text",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {},
+                                "overrides": []
+                            },
+                            "options": {
+                                "code": {
+                                    "language": "plaintext",
+                                    "showLineNumbers": false,
+                                    "showMiniMap": false
+                                },
+                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                                "mode": "html"
                             }
                         },
                         "version": "13.0.1"
@@ -3807,7 +4247,6 @@
                                             "kind": "RowsLayoutRow",
                                             "spec": {
                                                 "collapse": false,
-                                                "hideHeader": true,
                                                 "layout": {
                                                     "kind": "GridLayout",
                                                     "spec": {
@@ -3818,6 +4257,73 @@
                                                                     "element": {
                                                                         "kind": "ElementReference",
                                                                         "name": "panel-28"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-29"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 6,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-30"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 12,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-31"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 18,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "title": ""
+                                            }
+                                        },
+                                        {
+                                            "kind": "RowsLayoutRow",
+                                            "spec": {
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-32"
                                                                     },
                                                                     "height": 2,
                                                                     "width": 24,
@@ -3858,7 +4364,7 @@
         "liveNow": false,
         "preload": false,
         "tags": [
-            "2025.3"
+            "2026.3"
         ],
         "timeSettings": {
             "autoRefresh": "5m",
@@ -4185,8 +4691,8 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "2025.3",
-                        "value": "2025.3"
+                        "text": "2026.3",
+                        "value": "2026.3"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
@@ -4195,11 +4701,11 @@
                     "options": [
                         {
                             "selected": true,
-                            "text": "2025.3",
-                            "value": "2025.3"
+                            "text": "2026.3",
+                            "value": "2026.3"
                         }
                     ],
-                    "query": "2025.3",
+                    "query": "2026.3",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

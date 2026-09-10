@@ -2,7 +2,7 @@
     "apiVersion": "dashboard.grafana.app/v2",
     "kind": "Dashboard",
     "metadata": {
-        "name": "advanced-2024-2"
+        "name": "advanced-2026-3"
     },
     "spec": {
         "annotations": [
@@ -399,6 +399,116 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
+                                                "expr": "$func(rate(scylla_io_queue_consumption{iogroup=~\"$iogroup\", class=~\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) by (instance, iogroup, stream)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "Group {{iogroup}} {{stream}} {{dc}} {{instance}} ",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "This graph shows how IO queue consumption is distributed between io-groups and streams.\n\nscylla_io_queue_consumption",
+                    "id": 10,
+                    "links": [],
+                    "title": "I/O Group consumption by instance",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "percentunit"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-11": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
                                                 "expr": "$topbottom([[filter_limit]], scylla_io_queue_flow_ratio{iogroup=~\"$iogroup\", instance=~\"[[node]]\", cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"})",
                                                 "instant": false,
                                                 "intervalFactor": 1,
@@ -485,7 +595,7 @@
                     }
                 }
             },
-            "panel-11": {
+            "panel-12": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -595,7 +705,7 @@
                     }
                 }
             },
-            "panel-12": {
+            "panel-13": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -705,7 +815,7 @@
                     }
                 }
             },
-            "panel-13": {
+            "panel-14": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -815,7 +925,7 @@
                     }
                 }
             },
-            "panel-14": {
+            "panel-15": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -925,7 +1035,7 @@
                     }
                 }
             },
-            "panel-15": {
+            "panel-16": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1035,7 +1145,7 @@
                     }
                 }
             },
-            "panel-16": {
+            "panel-17": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1145,7 +1255,7 @@
                     }
                 }
             },
-            "panel-17": {
+            "panel-18": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1255,7 +1365,7 @@
                     }
                 }
             },
-            "panel-18": {
+            "panel-19": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1293,7 +1403,90 @@
                     }
                 }
             },
-            "panel-19": {
+            "panel-2": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "sum(avg(rate(scylla_scheduler_runtime_ms{group=~\"sl:.*|commitlog\",cluster=\"$cluster\", dc=~\"$dc\"}[1m])) by (group)/10)",
+                                                "legendFormat": ""
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "The percentage of the time during which Scylla utilized the CPU. Note that because Scylla does busy polling for some time before going idle, CPU utilization as seen by the operating system may be much higher. Your system is not yet CPU-bottlenecked until this metric is high.",
+                    "id": 2,
+                    "links": [],
+                    "title": "Load",
+                    "vizConfig": {
+                        "group": "stat",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "decimals": 0,
+                                    "max": 100,
+                                    "min": 0,
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": 0
+                                            },
+                                            {
+                                                "color": "red",
+                                                "value": 80
+                                            }
+                                        ]
+                                    },
+                                    "unit": "percent"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "colorMode": "value",
+                                "graphMode": "area",
+                                "justifyMode": "auto",
+                                "orientation": "auto",
+                                "percentChangeColorMode": "standard",
+                                "reduceOptions": {
+                                    "calcs": [
+                                        "lastNotNull"
+                                    ],
+                                    "fields": "",
+                                    "values": false
+                                },
+                                "showPercentChange": false,
+                                "textMode": "auto",
+                                "wideLayout": true
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-20": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1403,90 +1596,7 @@
                     }
                 }
             },
-            "panel-2": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "sum(avg(rate(scylla_scheduler_runtime_ms{group=~\"sl:.*|commitlog\",cluster=\"$cluster\", dc=~\"$dc\"}[1m])) by (group)/10)",
-                                                "legendFormat": ""
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "The percentage of the time during which Scylla utilized the CPU. Note that because Scylla does busy polling for some time before going idle, CPU utilization as seen by the operating system may be much higher. Your system is not yet CPU-bottlenecked until this metric is high.",
-                    "id": 2,
-                    "links": [],
-                    "title": "Load",
-                    "vizConfig": {
-                        "group": "stat",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "decimals": 0,
-                                    "max": 100,
-                                    "min": 0,
-                                    "thresholds": {
-                                        "mode": "absolute",
-                                        "steps": [
-                                            {
-                                                "color": "green",
-                                                "value": 0
-                                            },
-                                            {
-                                                "color": "red",
-                                                "value": 80
-                                            }
-                                        ]
-                                    },
-                                    "unit": "percent"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "colorMode": "value",
-                                "graphMode": "area",
-                                "justifyMode": "auto",
-                                "orientation": "auto",
-                                "percentChangeColorMode": "standard",
-                                "reduceOptions": {
-                                    "calcs": [
-                                        "lastNotNull"
-                                    ],
-                                    "fields": "",
-                                    "values": false
-                                },
-                                "showPercentChange": false,
-                                "textMode": "auto",
-                                "wideLayout": true
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-20": {
+            "panel-21": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1596,7 +1706,7 @@
                     }
                 }
             },
-            "panel-21": {
+            "panel-22": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1706,7 +1816,7 @@
                     }
                 }
             },
-            "panel-22": {
+            "panel-23": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1816,7 +1926,7 @@
                     }
                 }
             },
-            "panel-23": {
+            "panel-24": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1854,7 +1964,7 @@
                     }
                 }
             },
-            "panel-24": {
+            "panel-25": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1964,7 +2074,7 @@
                     }
                 }
             },
-            "panel-25": {
+            "panel-26": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -2074,7 +2184,7 @@
                     }
                 }
             },
-            "panel-26": {
+            "panel-27": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -2184,7 +2294,7 @@
                     }
                 }
             },
-            "panel-27": {
+            "panel-28": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -2294,7 +2404,7 @@
                     }
                 }
             },
-            "panel-28": {
+            "panel-29": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -2378,116 +2488,6 @@
                                     },
                                     "thresholds": {},
                                     "unit": "wps"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-29": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "$topbottom([[filter_limit]], avg(rate(scylla_storage_proxy_coordinator_range_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "Number of write requests that failed on a local Node",
-                    "id": 30,
-                    "links": [],
-                    "title": "Range Unavailable Error by [[by]]",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "ops"
                                 },
                                 "overrides": []
                             },
@@ -2675,6 +2675,116 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
+                                                "expr": "$topbottom([[filter_limit]], avg(rate(scylla_storage_proxy_coordinator_range_unavailable{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Number of write requests that failed on a local Node",
+                    "id": 30,
+                    "links": [],
+                    "title": "Range Unavailable Error by [[by]]",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "ops"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-31": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
                                                 "expr": "$topbottom([[filter_limit]], avg(rate(scylla_reactor_aio_errors{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
@@ -2767,7 +2877,227 @@
                     }
                 }
             },
-            "panel-31": {
+            "panel-32": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "$topbottom([[filter_limit]], $func(rate(scylla_reactor_aio_retries{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Number of IOCB-s re-submitted via thread-pool",
+                    "id": 32,
+                    "links": [],
+                    "title": "AIO Retries $func by [[by]]",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "ops"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-33": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "$topbottom([[filter_limit]], $func(rate(scylla_reactor_aio_retries{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])/$func(rate(scylla_reactor_aio_writes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]) + rate(scylla_reactor_aio_reads{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "% of IOCB-s re-submitted via thread-pool",
+                    "id": 33,
+                    "links": [],
+                    "title": "Percent of AIO operations with Retries $func by [[by]]",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "percentunit"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-34": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -2877,7 +3207,7 @@
                     }
                 }
             },
-            "panel-32": {
+            "panel-35": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -2987,7 +3317,7 @@
                     }
                 }
             },
-            "panel-33": {
+            "panel-36": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -3025,7 +3355,7 @@
                     }
                 }
             },
-            "panel-34": {
+            "panel-37": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -3135,7 +3465,7 @@
                     }
                 }
             },
-            "panel-35": {
+            "panel-38": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -3245,7 +3575,7 @@
                     }
                 }
             },
-            "panel-36": {
+            "panel-39": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -3283,336 +3613,6 @@
                     "id": 39,
                     "links": [],
                     "title": "$func flush by [[by]]",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "ops"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-37": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "Holds the current number of commit log segments",
-                    "id": 40,
-                    "links": [],
-                    "title": "$func Segments by [[by]]",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "ops"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-38": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "$topbottom([[filter_limit]], $func(rate(scylla_commitlog_flush_limit_exceeded{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "Counts a number of times a flush limit was exceeded. A non-zero value indicates that there are too many pending flush operations (see pending_flushes) and some of them will be blocked till the total amount of pending flush operations drops below 5.",
-                    "id": 41,
-                    "links": [],
-                    "title": "$func flush limit exceeded by [[by]]",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "ops"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-39": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_pending_allocations{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "Holds the number of currently pending allocations. A non-zero value indicates that we have a bottleneck in the disk write flow.",
-                    "id": 42,
-                    "links": [],
-                    "title": "$func Pending allocations by [[by]]",
                     "vizConfig": {
                         "group": "timeseries",
                         "kind": "VizConfig",
@@ -3781,6 +3781,336 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
+                                                "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_segments{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Holds the current number of commit log segments",
+                    "id": 40,
+                    "links": [],
+                    "title": "$func Segments by [[by]]",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "ops"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-41": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "$topbottom([[filter_limit]], $func(rate(scylla_commitlog_flush_limit_exceeded{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Counts a number of times a flush limit was exceeded. A non-zero value indicates that there are too many pending flush operations (see pending_flushes) and some of them will be blocked till the total amount of pending flush operations drops below 5.",
+                    "id": 41,
+                    "links": [],
+                    "title": "$func flush limit exceeded by [[by]]",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "ops"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-42": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_pending_allocations{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Holds the number of currently pending allocations. A non-zero value indicates that we have a bottleneck in the disk write flow.",
+                    "id": 42,
+                    "links": [],
+                    "title": "$func Pending allocations by [[by]]",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {},
+                                    "unit": "ops"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-43": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
                                                 "expr": "$topbottom([[filter_limit]], $func(scylla_commitlog_pending_flushes{instance=~\"[[node]]\" ,cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
@@ -3873,7 +4203,7 @@
                     }
                 }
             },
-            "panel-41": {
+            "panel-44": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -3983,7 +4313,7 @@
                     }
                 }
             },
-            "panel-42": {
+            "panel-45": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4093,7 +4423,7 @@
                     }
                 }
             },
-            "panel-43": {
+            "panel-46": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4203,7 +4533,7 @@
                     }
                 }
             },
-            "panel-44": {
+            "panel-47": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4313,7 +4643,7 @@
                     }
                 }
             },
-            "panel-45": {
+            "panel-48": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4423,7 +4753,7 @@
                     }
                 }
             },
-            "panel-46": {
+            "panel-49": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4533,7 +4863,87 @@
                     }
                 }
             },
-            "panel-47": {
+            "panel-5": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "1-sum(scylla_column_family_total_disk_space{cluster=\"$cluster\", ks!~\"system.*\"})/sum(scylla_column_family_total_disk_space_before_compression{cluster=\"$cluster\", ks!~\"system.*\"})",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Data Reduction Ratio, percentage of disk space saved due to compression",
+                    "id": 5,
+                    "links": [],
+                    "title": "DRR",
+                    "vizConfig": {
+                        "group": "stat",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "decimals": 0,
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "dark-blue",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
+                                    "unit": "percentunit"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "colorMode": "background_solid",
+                                "graphMode": "none",
+                                "justifyMode": "auto",
+                                "orientation": "auto",
+                                "percentChangeColorMode": "standard",
+                                "reduceOptions": {
+                                    "calcs": [
+                                        "last"
+                                    ],
+                                    "fields": "",
+                                    "values": false
+                                },
+                                "showPercentChange": false,
+                                "textMode": "auto",
+                                "wideLayout": true
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-50": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4643,7 +5053,7 @@
                     }
                 }
             },
-            "panel-48": {
+            "panel-51": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4753,7 +5163,7 @@
                     }
                 }
             },
-            "panel-49": {
+            "panel-52": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -4863,45 +5273,7 @@
                     }
                 }
             },
-            "panel-5": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "",
-                    "id": 9,
-                    "links": [],
-                    "title": "",
-                    "transparent": true,
-                    "vizConfig": {
-                        "group": "text",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {},
-                                "overrides": []
-                            },
-                            "options": {
-                                "code": {
-                                    "language": "plaintext",
-                                    "showLineNumbers": false,
-                                    "showMiniMap": false
-                                },
-                                "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">IO Queue Information</h1>",
-                                "mode": "html"
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-50": {
+            "panel-53": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -5011,7 +5383,7 @@
                     }
                 }
             },
-            "panel-51": {
+            "panel-54": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -5412,104 +5784,32 @@
                     "data": {
                         "kind": "QueryGroup",
                         "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "$func(rate(scylla_io_queue_consumption{iogroup=~\"$iogroup\", class=~\"$classes\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) by (instance, iogroup, stream)",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "Group {{iogroup}} {{stream}} {{dc}} {{instance}} ",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
+                            "queries": [],
                             "queryOptions": {},
                             "transformations": []
                         }
                     },
-                    "description": "This graph shows how IO queue consumption is distributed between io-groups and streams.\n\nscylla_io_queue_consumption",
-                    "id": 10,
+                    "description": "",
+                    "id": 9,
                     "links": [],
-                    "title": "I/O Group consumption by instance",
+                    "title": "",
+                    "transparent": true,
                     "vizConfig": {
-                        "group": "timeseries",
+                        "group": "text",
                         "kind": "VizConfig",
                         "spec": {
                             "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "percentunit"
-                                },
+                                "defaults": {},
                                 "overrides": []
                             },
                             "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
+                                "code": {
+                                    "language": "plaintext",
+                                    "showLineNumbers": false,
+                                    "showMiniMap": false
                                 },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
+                                "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">IO Queue Information</h1>",
+                                "mode": "html"
                             }
                         },
                         "version": "13.0.1"
@@ -5587,7 +5887,7 @@
                                             "spec": {
                                                 "element": {
                                                     "kind": "ElementReference",
-                                                    "name": "panel-6"
+                                                    "name": "panel-5"
                                                 },
                                                 "height": 6,
                                                 "width": 2,
@@ -5600,11 +5900,24 @@
                                             "spec": {
                                                 "element": {
                                                     "kind": "ElementReference",
+                                                    "name": "panel-6"
+                                                },
+                                                "height": 6,
+                                                "width": 2,
+                                                "x": 10,
+                                                "y": 0
+                                            }
+                                        },
+                                        {
+                                            "kind": "GridLayoutItem",
+                                            "spec": {
+                                                "element": {
+                                                    "kind": "ElementReference",
                                                     "name": "panel-7"
                                                 },
                                                 "height": 6,
                                                 "width": 6,
-                                                "x": 10,
+                                                "x": 12,
                                                 "y": 0
                                             }
                                         },
@@ -5617,7 +5930,7 @@
                                                 },
                                                 "height": 6,
                                                 "width": 6,
-                                                "x": 16,
+                                                "x": 18,
                                                 "y": 0
                                             }
                                         }
@@ -5649,7 +5962,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-5"
+                                                                        "name": "panel-9"
                                                                     },
                                                                     "height": 2,
                                                                     "width": 24,
@@ -5677,7 +5990,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-9"
+                                                                        "name": "panel-10"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5690,7 +6003,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-10"
+                                                                        "name": "panel-11"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5732,24 +6045,11 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-11"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 6,
-                                                                    "x": 0,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
                                                                         "name": "panel-12"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
-                                                                    "x": 6,
+                                                                    "x": 0,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -5762,7 +6062,7 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
-                                                                    "x": 12,
+                                                                    "x": 6,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -5775,7 +6075,7 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
-                                                                    "x": 18,
+                                                                    "x": 12,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -5788,6 +6088,19 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
+                                                                    "x": 18,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-16"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
                                                                     "x": 0,
                                                                     "y": 6
                                                                 }
@@ -5797,7 +6110,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-16"
+                                                                        "name": "panel-17"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5810,7 +6123,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-17"
+                                                                        "name": "panel-18"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5856,7 +6169,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-18"
+                                                                        "name": "panel-19"
                                                                     },
                                                                     "height": 2,
                                                                     "width": 24,
@@ -5884,7 +6197,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-19"
+                                                                        "name": "panel-20"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5897,7 +6210,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-20"
+                                                                        "name": "panel-21"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5910,7 +6223,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-21"
+                                                                        "name": "panel-22"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5923,7 +6236,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-22"
+                                                                        "name": "panel-23"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -5969,7 +6282,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-23"
+                                                                        "name": "panel-24"
                                                                     },
                                                                     "height": 2,
                                                                     "width": 24,
@@ -5997,24 +6310,11 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-24"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 8,
-                                                                    "x": 0,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
                                                                         "name": "panel-25"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 8,
-                                                                    "x": 8,
+                                                                    "x": 0,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -6027,6 +6327,19 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 8,
+                                                                    "x": 8,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-27"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 8,
                                                                     "x": 16,
                                                                     "y": 0
                                                                 }
@@ -6051,24 +6364,11 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-27"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 8,
-                                                                    "x": 0,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
                                                                         "name": "panel-28"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 8,
-                                                                    "x": 8,
+                                                                    "x": 0,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -6081,6 +6381,19 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 8,
+                                                                    "x": 8,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-30"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 8,
                                                                     "x": 16,
                                                                     "y": 0
                                                                 }
@@ -6105,7 +6418,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-30"
+                                                                        "name": "panel-31"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 8,
@@ -6118,7 +6431,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-31"
+                                                                        "name": "panel-32"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 8,
@@ -6131,12 +6444,38 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-32"
+                                                                        "name": "panel-33"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 8,
                                                                     "x": 16,
                                                                     "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-34"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 8,
+                                                                    "x": 0,
+                                                                    "y": 6
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-35"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 8,
+                                                                    "x": 8,
+                                                                    "y": 6
                                                                 }
                                                             }
                                                         ]
@@ -6173,7 +6512,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-33"
+                                                                        "name": "panel-36"
                                                                     },
                                                                     "height": 2,
                                                                     "width": 24,
@@ -6200,50 +6539,11 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-34"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 6,
-                                                                    "x": 0,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
-                                                                        "name": "panel-35"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 6,
-                                                                    "x": 6,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
-                                                                        "name": "panel-36"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 6,
-                                                                    "x": 12,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
                                                                         "name": "panel-37"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
-                                                                    "x": 18,
+                                                                    "x": 0,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -6256,6 +6556,45 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
+                                                                    "x": 6,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-39"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 12,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-40"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 18,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-41"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
                                                                     "x": 0,
                                                                     "y": 6
                                                                 }
@@ -6265,7 +6604,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-39"
+                                                                        "name": "panel-42"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -6278,7 +6617,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-40"
+                                                                        "name": "panel-43"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -6291,7 +6630,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-41"
+                                                                        "name": "panel-44"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -6304,7 +6643,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-42"
+                                                                        "name": "panel-45"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 6,
@@ -6345,50 +6684,11 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-43"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 4,
-                                                                    "x": 0,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
-                                                                        "name": "panel-44"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 4,
-                                                                    "x": 4,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
-                                                                        "name": "panel-45"
-                                                                    },
-                                                                    "height": 6,
-                                                                    "width": 4,
-                                                                    "x": 8,
-                                                                    "y": 0
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "GridLayoutItem",
-                                                                "spec": {
-                                                                    "element": {
-                                                                        "kind": "ElementReference",
                                                                         "name": "panel-46"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 4,
-                                                                    "x": 12,
+                                                                    "x": 0,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -6401,7 +6701,7 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 4,
-                                                                    "x": 16,
+                                                                    "x": 4,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -6414,7 +6714,7 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 4,
-                                                                    "x": 20,
+                                                                    "x": 8,
                                                                     "y": 0
                                                                 }
                                                             },
@@ -6427,6 +6727,45 @@
                                                                     },
                                                                     "height": 6,
                                                                     "width": 4,
+                                                                    "x": 12,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-50"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 4,
+                                                                    "x": 16,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-51"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 4,
+                                                                    "x": 20,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-52"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 4,
                                                                     "x": 0,
                                                                     "y": 6
                                                                 }
@@ -6436,7 +6775,7 @@
                                                                 "spec": {
                                                                     "element": {
                                                                         "kind": "ElementReference",
-                                                                        "name": "panel-50"
+                                                                        "name": "panel-53"
                                                                     },
                                                                     "height": 6,
                                                                     "width": 4,
@@ -6474,7 +6813,7 @@
                                             "spec": {
                                                 "element": {
                                                     "kind": "ElementReference",
-                                                    "name": "panel-51"
+                                                    "name": "panel-54"
                                                 },
                                                 "height": 2,
                                                 "width": 24,
@@ -6509,7 +6848,7 @@
         "liveNow": false,
         "preload": false,
         "tags": [
-            "2024.2"
+            "2026.3"
         ],
         "timeSettings": {
             "autoRefresh": "5m",
@@ -6907,8 +7246,8 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "2024.2",
-                        "value": "2024.2"
+                        "text": "2026.3",
+                        "value": "2026.3"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
@@ -6917,11 +7256,11 @@
                     "options": [
                         {
                             "selected": true,
-                            "text": "2024.2",
-                            "value": "2024.2"
+                            "text": "2026.3",
+                            "value": "2026.3"
                         }
                     ],
-                    "query": "2024.2",
+                    "query": "2026.3",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

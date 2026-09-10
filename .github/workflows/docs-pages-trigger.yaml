@@ -1,0 +1,29 @@
+name: "Docs / Publish (trigger)"
+
+# GitHub reads workflow files from the ref that a push event targets, so a workflow living only on master never runs for
+# a push to a release branch and its branches. This stub is the branch-resident part: it carries no logic of its own
+# and delegates to master's implementation, which rebuilds every version listed in master's docs/source/conf.py.
+
+on:
+  push:
+    branches:
+      - 'v[0-9]+.[0-9]+'
+    # The docs build reads more than docs/: literalinclude pulls from examples/ (e.g.
+    # docs/source/deploy-scylladb/set-up-monitoring/setup.md), and the version_context_substitutions
+    # extension reads assets/config/config.yaml, assets/metadata/metadata.yaml and .gitmodules.
+    paths:
+      - "docs/**"
+      - "examples/**"
+      - "assets/**"
+      - ".gitmodules"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: scylladb/scylla-operator/.github/workflows/docs-pages.yaml@master

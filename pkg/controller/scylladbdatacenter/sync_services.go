@@ -472,6 +472,8 @@ func (sdcc *Controller) removePodAndAssociatedPVC(ctx context.Context, sdc *scyl
 		"Pod", klog.KObj(podMeta),
 	)
 	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, podMeta, "delete", sdc.Generation)
+	// The eviction response is a Status, not the Pod, so the read-your-writes client can't take a resource version
+	// from it and fails the call after the eviction went through. Nothing reads the eviction back; opt out.
 	err = sdcc.client.SubResource("eviction").Create(ctx, &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: podMeta.Namespace,
@@ -484,7 +486,7 @@ func (sdcc *Controller) removePodAndAssociatedPVC(ctx context.Context, sdc *scyl
 		DeleteOptions: &metav1.DeleteOptions{
 			PropagationPolicy: &backgroundPropagationPolicy,
 		},
-	})
+	}, client.DisableReadYourWritesConsistency)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			resourceapply.ReportDeleteEvent(sdcc.eventRecorder, podMeta, err)

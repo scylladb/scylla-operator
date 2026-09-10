@@ -73,6 +73,10 @@ func (opc *Controller) getPVsForScyllaDBDatacenter(ctx context.Context, sdc *scy
 	return pis, requeueReasons, apimachineryutilerrors.NewAggregate(errs)
 }
 
+// pvcRecheckInterval is how long the controller waits before it looks again at the PVCs it found missing or unbound.
+// It doesn't watch PVCs, so it has to come back on its own.
+const pvcRecheckInterval = 5 * time.Second
+
 func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	key := req.NamespacedName
 
@@ -167,7 +171,8 @@ func (opc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (re
 	}
 
 	if len(requeueReasons) > 0 {
-		return reconcile.Result{}, controllerhelpers.NewRequeueError(requeueReasons...)
+		klog.V(2).InfoS("Re-queuing for recheck", "ScyllaDBDatacenter", klog.KObj(sdc), "Reasons", requeueReasons)
+		return reconcile.Result{RequeueAfter: pvcRecheckInterval}, nil
 	}
 
 	return reconcile.Result{}, nil

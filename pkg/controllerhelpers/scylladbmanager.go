@@ -18,8 +18,8 @@ import (
 
 var httpDefaultTransport = http.DefaultTransport.(*http.Transport).Clone()
 
-func GetScyllaDBManagerClient(_ context.Context, _ *scyllav1alpha1.ScyllaDBManagerClusterRegistration) (*managerclient.Client, error) {
-	url := fmt.Sprintf("http://%s.%s.svc/api/v1", naming.ScyllaManagerServiceName, naming.ScyllaManagerNamespace)
+func GetScyllaDBManagerClient(_ context.Context, _ *scyllav1alpha1.ScyllaDBManagerClusterRegistration, globalScyllaDBManagerNamespace string) (*managerclient.Client, error) {
+	url := fmt.Sprintf("http://%s.%s.svc/api/v1", naming.ScyllaManagerServiceName, globalScyllaDBManagerNamespace)
 	managerClient, err := managerclient.NewClient(url, func(httpClient *http.Client) {
 		httpClient.Transport = httpDefaultTransport
 		// Limit manager calls by default to a higher bound.

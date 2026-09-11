@@ -11,6 +11,15 @@
 
 ## Unreleased
 
+### Features & Enhancements
+
+- The ScyllaDB Operator and ScyllaDB Manager namespaces are now configurable. The operator accepts a
+  `--global-scylladb-manager-namespace` flag (default: `scylla-manager`) pointing at the namespace holding the global
+  ScyllaDB Manager instance, the Helm charts template namespaces from the release namespace (with new
+  `scyllaDBManagerNamespace` and `scyllaOperatorNamespace` values), and `must-gather` accepts `--collect-namespaces`.
+  Both components can also be installed into a single shared namespace. Defaults are unchanged.
+  [#3660](https://github.com/scylladb/scylla-operator/pull/3660)
+
 ### Bug fixes
 
 - Fixed the `ScyllaDBDatacenter` controller updating the status in a loop while any member Service was missing its

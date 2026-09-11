@@ -155,6 +155,7 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		serviceAccounts,
 		configMaps,
 		o.OperatorImage,
+		o.OperatorNamespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create nodeconfig controller: %w", err)

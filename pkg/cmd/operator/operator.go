@@ -244,6 +244,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		ConcurrentSyncs:     o.ConcurrentSyncs,
 		ResyncPeriod:        resyncPeriod,
 
+		OperatorNamespace:              o.Namespace,
 		GlobalScyllaDBManagerNamespace: o.GlobalScyllaDBManagerNamespace,
 	})
 	if err != nil {

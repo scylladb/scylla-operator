@@ -94,6 +94,7 @@ func runControllerManager(ctx context.Context, e *envtest.Environment, adjust ..
 		ConcurrentSyncs: 1,
 		ResyncPeriod:    12 * time.Hour,
 
+		OperatorNamespace:              e.Namespace(),
 		GlobalScyllaDBManagerNamespace: naming.ScyllaManagerNamespace,
 	}
 	for _, f := range adjust {

@@ -8,7 +8,6 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,9 +18,9 @@ func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeCon
 	var progressingConditions []metav1.Condition
 
 	requiredRoles := []*rbacv1.Role{
-		makePerftuneRole(),
-		makeSysctlsRole(),
-		makeRlimitsRole(),
+		makePerftuneRole(ncc.namespace),
+		makeSysctlsRole(ncc.namespace),
+		makeRlimitsRole(ncc.namespace),
 	}
 
 	// Delete any excessive Roles.
@@ -31,7 +30,7 @@ func (ncc *Controller) syncRoles(ctx context.Context, nc *scyllav1alpha1.NodeCon
 		requiredRoles,
 		roles,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.kubeClient.RbacV1().Roles(naming.ScyllaOperatorNodeTuningNamespace).Delete,
+			DeleteFunc: ncc.kubeClient.RbacV1().Roles(ncc.namespace).Delete,
 		},
 		ncc.eventRecorder)
 	if err != nil {

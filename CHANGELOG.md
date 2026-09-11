@@ -33,6 +33,11 @@ Please refer to the [1.22 to 1.23 upgrade guide](https://operator.docs.scylladb.
   `scyllaDBManagerNamespace` and `scyllaOperatorNamespace` values), and `must-gather` accepts `--collect-namespaces`.
   Both components can also be installed into a single shared namespace. Defaults are unchanged.
   [#3660](https://github.com/scylladb/scylla-operator/pull/3660)
+- Node tuning resources (DaemonSets, Jobs, and their RBAC) created by the NodeConfig controller now run in the
+  operator's own namespace instead of the dedicated `scylla-operator-node-tuning` namespace, so no component depends on
+  a fixed namespace name anymore. On upgrade, the operator automatically removes the legacy
+  `scylla-operator-node-tuning` namespace and recreates the tuning resources in its own namespace.
+  [#3660](https://github.com/scylladb/scylla-operator/pull/3660)
 
 ### Bug fixes
 

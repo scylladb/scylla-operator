@@ -52,6 +52,7 @@ type Options struct {
 	CQLSIngressPort                int
 	ConcurrentSyncs                int
 	ResyncPeriod                   time.Duration
+	OperatorNamespace              string
 	GlobalScyllaDBManagerNamespace string
 }
 

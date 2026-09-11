@@ -131,6 +131,15 @@ The `--namespace` flag affects only ScyllaClusters.
 Other resources related to the Operator installation or cluster state are still collected from other namespaces.
 :::
 
+## Collect from custom installation namespaces
+
+By default, must-gather collects the `scylla-operator` and `scylla-manager` namespaces, plus the legacy `scylla-operator-node-tuning` namespace used by older Operator versions.
+If you installed ScyllaDB Operator or ScyllaDB Manager into custom namespaces, override the list with the `--collect-namespaces` flag:
+
+```bash
+scylla-operator must-gather --collect-namespaces="<operator-namespace>,<manager-namespace>"
+```
+
 ## Collect every resource in the cluster
 
 By default, must-gather collects only a predefined subset of resources.

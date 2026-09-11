@@ -10,7 +10,6 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -26,15 +25,15 @@ func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(
 	var requiredScyllaDBManagerClusterRegistrations map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration
 	var errs []error
 
-	globalScyllaDBManagerNamespace, err := gsmc.namespaceLister.Get(naming.ScyllaManagerNamespace)
+	globalScyllaDBManagerNamespace, err := gsmc.namespaceLister.Get(gsmc.globalScyllaDBManagerNamespace)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("can't get namespace %q: %w", naming.ScyllaManagerNamespace, err)
+			return fmt.Errorf("can't get namespace %q: %w", gsmc.globalScyllaDBManagerNamespace, err)
 		}
 
-		klog.V(4).InfoS("Global ScyllaDB Manager namespace does not exist, not creating any ScyllaDBManagerClusterRegistration objects for global ScyllaDB Manager instance.", "Namespace", naming.ScyllaManagerNamespace)
+		klog.V(4).InfoS("Global ScyllaDB Manager namespace does not exist, not creating any ScyllaDBManagerClusterRegistration objects for global ScyllaDB Manager instance.", "Namespace", gsmc.globalScyllaDBManagerNamespace)
 	} else if globalScyllaDBManagerNamespace.DeletionTimestamp != nil {
-		klog.V(4).InfoS("Global ScyllaDB Manager namespace is being deleted, not creating any ScyllaDBManagerClusterRegistration objects for global ScyllaDB Manager instance.", "Namespace", naming.ScyllaManagerNamespace)
+		klog.V(4).InfoS("Global ScyllaDB Manager namespace is being deleted, not creating any ScyllaDBManagerClusterRegistration objects for global ScyllaDB Manager instance.", "Namespace", gsmc.globalScyllaDBManagerNamespace)
 	} else {
 		requiredScyllaDBManagerClusterRegistrations, err = makeScyllaDBManagerClusterRegistrations(scyllaDBDatacenters, scyllaDBClusters)
 		if err != nil {

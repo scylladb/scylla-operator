@@ -15,11 +15,10 @@ import (
 )
 
 func (ncc *Controller) makeNamespaces() []*corev1.Namespace {
-	namespaces := []*corev1.Namespace{
-		makeScyllaOperatorNodeTuningNamespace(),
-	}
-
-	return namespaces
+	// Node tuning runs in the operator namespace, so no dedicated Namespace is required.
+	// Returning none makes the pruner below clean up the legacy dedicated namespace
+	// (labeled with NodeConfigNameLabel) left behind by older operator versions.
+	return nil
 }
 
 func (ncc *Controller) pruneNamespaces(ctx context.Context, requiredNamespaces []*corev1.Namespace, namespaces map[string]*corev1.Namespace) error {

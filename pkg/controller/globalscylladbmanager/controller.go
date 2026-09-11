@@ -11,7 +11,6 @@ import (
 	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1informers "k8s.io/client-go/informers/core/v1"
@@ -35,6 +34,8 @@ type Controller struct {
 	scyllaDBDatacenterLister                 scyllav1alpha1listers.ScyllaDBDatacenterLister
 	scyllaDBClusterLister                    scyllav1alpha1listers.ScyllaDBClusterLister
 	namespaceLister                          corev1listers.NamespaceLister
+
+	globalScyllaDBManagerNamespace string
 }
 
 func NewController(
@@ -44,6 +45,7 @@ func NewController(
 	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
 	scyllaDBClusterInformer scyllav1alpha1informers.ScyllaDBClusterInformer,
 	namespaceInformer corev1informers.NamespaceInformer,
+	globalScyllaDBManagerNamespace string,
 ) (*Controller, error) {
 	gsmc := &Controller{
 		kubeClient:   kubeClient,
@@ -53,6 +55,8 @@ func NewController(
 		scyllaDBDatacenterLister:                 scyllaDBDatacenterInformer.Lister(),
 		scyllaDBClusterLister:                    scyllaDBClusterInformer.Lister(),
 		namespaceLister:                          namespaceInformer.Lister(),
+
+		globalScyllaDBManagerNamespace: globalScyllaDBManagerNamespace,
 	}
 
 	observer := controllertools.NewObserver(
@@ -310,7 +314,7 @@ func (gsmc *Controller) deleteScyllaDBCluster(obj interface{}) {
 func (gsmc *Controller) addNamespace(obj interface{}) {
 	ns := obj.(*corev1.Namespace)
 
-	if !isGlobalScyllaDBManagerNamespace(ns) {
+	if !gsmc.isGlobalScyllaDBManagerNamespace(ns) {
 		return
 	}
 
@@ -339,7 +343,7 @@ func (gsmc *Controller) updateNamespace(old, cur interface{}) {
 		})
 	}
 
-	if !isGlobalScyllaDBManagerNamespace(currentNS) {
+	if !gsmc.isGlobalScyllaDBManagerNamespace(currentNS) {
 		return
 	}
 
@@ -368,7 +372,7 @@ func (gsmc *Controller) deleteNamespace(obj interface{}) {
 		}
 	}
 
-	if !isGlobalScyllaDBManagerNamespace(ns) {
+	if !gsmc.isGlobalScyllaDBManagerNamespace(ns) {
 		return
 	}
 
@@ -380,6 +384,6 @@ func (gsmc *Controller) deleteNamespace(obj interface{}) {
 	gsmc.Enqueue()
 }
 
-func isGlobalScyllaDBManagerNamespace(ns *corev1.Namespace) bool {
-	return ns.Name == naming.ScyllaManagerNamespace
+func (gsmc *Controller) isGlobalScyllaDBManagerNamespace(ns *corev1.Namespace) bool {
+	return ns.Name == gsmc.globalScyllaDBManagerNamespace
 }

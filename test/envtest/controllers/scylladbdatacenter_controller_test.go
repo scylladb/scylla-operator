@@ -32,8 +32,10 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -46,13 +48,13 @@ const (
 	scyllaDBDatacenterControllerResyncPeriod = 12 * time.Hour
 
 	// scyllaDBDatacenterControllerDefaultEventuallyTimeout is the default timeout for async envtest assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Eventually may time out before
-	// the controller resumes reconciliation.
+	// Pad accordingly when a test uses a non-zero cache-propagation delay or lags an informer, otherwise Eventually
+	// may time out before the controller resumes reconciliation.
 	scyllaDBDatacenterControllerDefaultEventuallyTimeout = 15 * time.Second
 
 	// scyllaDBDatacenterControllerDefaultConsistentlyTimeout is the default window for stability assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Consistently may pass while the
-	// controller is delayed instead of observing real steady state.
+	// Pad accordingly when a test uses a non-zero cache-propagation delay or lags an informer, otherwise Consistently
+	// may pass while the controller is delayed instead of observing real steady state.
 	scyllaDBDatacenterControllerDefaultConsistentlyTimeout = 5 * time.Second
 
 	// envtestServiceFinalizer holds a member Service in a terminating state, so that specs can freeze the window
@@ -150,7 +152,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 				target = int32(1)
 			)
 
-			sdc := setupDecommissioningRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 
 			var leavingServiceNames, stayingServiceNames []string
@@ -312,7 +314,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should drain the rack above a node with a stale decommissioned label and bootstrap it anew", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			staleServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 0)
 
@@ -374,7 +376,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 			waitForServiceDecommissionedLabel(ctx, env, leavingServiceName, naming.LabelValueFalse)
 
 			g.By("Wiping the list from the rack status")
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			err := retry.RetryOnConflict(scyllaDBDatacenterUpdateBackoff, func() error {
 				sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
 				if err != nil {
 					return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(env.Namespace(), sdc.Name), err)
@@ -408,7 +410,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission a multi-node scale-down one node at a time from the highest ordinal", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
 			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
@@ -465,7 +467,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission nodes of several racks one rack at a time", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -508,7 +510,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should wait for a rack's decommissioning node before scaling another rack", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -543,7 +545,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should extend an ongoing scale-down when the node count is lowered further", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, false, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
 			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
@@ -589,7 +591,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission a multi-node scale-down at once", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			lowerLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
 			higherLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
@@ -638,7 +640,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should decommission nodes of several racks at once", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -683,7 +685,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should keep scaling another rack while a rack has a node decommissioning", func(ctx g.SpecContext) {
 			const otherRackName = "rack-b"
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName, otherRackName}, decommissioningInitialNodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 			otherRackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[1], sdc)
@@ -717,7 +719,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 		g.It("should extend an ongoing scale-down when the node count is lowered further", func(ctx g.SpecContext) {
 			const nodes = int32(3)
 
-			sdc := setupDecommissioningRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
+			sdc := setupRolledOutRacks(ctx, env, true, []string{decommissioningRackName}, nodes)
 			rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 			firstLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 2)
 			secondLeavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, 1)
@@ -778,21 +780,9 @@ var _ = g.Describe("ScyllaDBDatacenter controller", func() {
 					markStatefulSetAsNotRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), existingRackStatefulSetName)
 
 					g.By("Adding a new rack")
-					err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						sdc, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
-						if err != nil {
-							return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(env.Namespace(), sdc.Name), err)
-						}
-
+					updateScyllaDBDatacenter(ctx, env, sdc.Name, func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
 						sdc.Spec.Racks = makeRackSpecs(updatedRacks...)
-						_, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Update(ctx, sdc, metav1.UpdateOptions{})
-						if err != nil {
-							return fmt.Errorf("can't update ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
-						}
-
-						return nil
 					})
-					o.Expect(err).NotTo(o.HaveOccurred())
 
 					g.By("Verifying the new rack StatefulSet is not created")
 					newRackStatefulSetName := naming.StatefulSetNameForRack(makeRackSpec(newRack), sdc)
@@ -835,8 +825,8 @@ func leavingOrdinals(enableParallelNodeOperations bool, nodes, target int32) []i
 	return ordinals
 }
 
-// setupDecommissioningRacks runs the controller and brings up rolled-out racks with the given number of nodes each.
-func setupDecommissioningRacks(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
+// setupRolledOutRacks runs the controller and brings up rolled-out racks with the given number of nodes each.
+func setupRolledOutRacks(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
 	g.GinkgoHelper()
 
 	g.By("Running ScyllaDBDatacenter controller")
@@ -878,7 +868,7 @@ func setupDecommissioningRacks(ctx g.SpecContext, env *envtest.Environment, enab
 func setupDecommissioningRack(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool) (*scyllav1alpha1.ScyllaDBDatacenter, string, string) {
 	g.GinkgoHelper()
 
-	sdc := setupDecommissioningRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, decommissioningInitialNodes)
+	sdc := setupRolledOutRacks(ctx, env, enableParallelNodeOperations, []string{decommissioningRackName}, decommissioningInitialNodes)
 	rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
 	leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
 
@@ -956,7 +946,7 @@ func getDecommissioningNodes(ctx context.Context, e *envtest.Environment, sdcNam
 func removeRacks(ctx context.Context, e *envtest.Environment, sdcName string) error {
 	g.GinkgoHelper()
 
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(scyllaDBDatacenterUpdateBackoff, func() error {
 		sdc, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Get(ctx, sdcName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(e.Namespace(), sdcName), err)
@@ -972,22 +962,23 @@ func removeRacks(ctx context.Context, e *envtest.Environment, sdcName string) er
 func addServiceFinalizer(ctx context.Context, e *envtest.Environment, name string) {
 	g.GinkgoHelper()
 
-	updateServiceFinalizers(ctx, e, name, func(finalizers []string) []string {
-		return append(finalizers, envtestServiceFinalizer)
+	updateService(ctx, e, name, func(svc *corev1.Service) {
+		svc.Finalizers = append(svc.Finalizers, envtestServiceFinalizer)
 	})
 }
 
 func removeServiceFinalizer(ctx context.Context, e *envtest.Environment, name string) {
 	g.GinkgoHelper()
 
-	updateServiceFinalizers(ctx, e, name, func(finalizers []string) []string {
-		return oslices.Filter(finalizers, func(finalizer string) bool {
+	updateService(ctx, e, name, func(svc *corev1.Service) {
+		svc.Finalizers = oslices.Filter(svc.Finalizers, func(finalizer string) bool {
 			return finalizer != envtestServiceFinalizer
 		})
 	})
 }
 
-func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name string, mutateFunc func([]string) []string) {
+// updateService applies mutateFunc to the named Service, retrying on conflict.
+func updateService(ctx context.Context, e *envtest.Environment, name string, mutateFunc func(*corev1.Service)) {
 	g.GinkgoHelper()
 
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -996,7 +987,7 @@ func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name s
 			return fmt.Errorf("can't get Service %q: %w", naming.ManualRef(e.Namespace(), name), err)
 		}
 
-		svc.Finalizers = mutateFunc(svc.Finalizers)
+		mutateFunc(svc)
 		_, err = e.TypedKubeClient().CoreV1().Services(e.Namespace()).Update(ctx, svc, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("can't update Service %q: %w", naming.ObjRef(svc), err)
@@ -1007,16 +998,38 @@ func updateServiceFinalizers(ctx context.Context, e *envtest.Environment, name s
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func scaleRackTemplate(ctx context.Context, e *envtest.Environment, sdcName string, nodes int32) {
+func setServiceLabel(ctx context.Context, e *envtest.Environment, name, key, value string) {
 	g.GinkgoHelper()
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	updateService(ctx, e, name, func(svc *corev1.Service) {
+		if svc.Labels == nil {
+			svc.Labels = map[string]string{}
+		}
+		svc.Labels[key] = value
+	})
+}
+
+// scyllaDBDatacenterUpdateBackoff retries an optimistic update of a ScyllaDBDatacenter for longer than
+// retry.DefaultRetry does: the controller writes the status of the same object on every sync, so a busy one can
+// conflict with several attempts in a row.
+var scyllaDBDatacenterUpdateBackoff = apimachineryutilwait.Backoff{
+	Steps:    30,
+	Duration: 20 * time.Millisecond,
+	Factor:   1.2,
+	Jitter:   0.1,
+}
+
+// updateScyllaDBDatacenter applies mutateFunc to the named ScyllaDBDatacenter, retrying on conflict.
+func updateScyllaDBDatacenter(ctx context.Context, e *envtest.Environment, sdcName string, mutateFunc func(*scyllav1alpha1.ScyllaDBDatacenter)) {
+	g.GinkgoHelper()
+
+	err := retry.RetryOnConflict(scyllaDBDatacenterUpdateBackoff, func() error {
 		sdc, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Get(ctx, sdcName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("can't get ScyllaDBDatacenter %q: %w", naming.ManualRef(e.Namespace(), sdcName), err)
 		}
 
-		sdc.Spec.RackTemplate.Nodes = new(nodes)
+		mutateFunc(sdc)
 		_, err = e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Update(ctx, sdc, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("can't update ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
@@ -1025,6 +1038,14 @@ func scaleRackTemplate(ctx context.Context, e *envtest.Environment, sdcName stri
 		return nil
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+func scaleRackTemplate(ctx context.Context, e *envtest.Environment, sdcName string, nodes int32) {
+	g.GinkgoHelper()
+
+	updateScyllaDBDatacenter(ctx, e, sdcName, func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+		sdc.Spec.RackTemplate.Nodes = new(nodes)
+	})
 }
 
 // scaleRack sets the node count of the named rack, overriding the rack template.
@@ -1054,21 +1075,7 @@ func scaleRack(ctx context.Context, e *envtest.Environment, sdcName, rackName st
 func setServiceDecommissionedLabel(ctx context.Context, e *envtest.Environment, name, value string) {
 	g.GinkgoHelper()
 
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		svc, err := e.TypedKubeClient().CoreV1().Services(e.Namespace()).Get(ctx, name, metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("can't get Service %q: %w", naming.ManualRef(e.Namespace(), name), err)
-		}
-
-		svc.Labels[naming.DecommissionedLabel] = value
-		_, err = e.TypedKubeClient().CoreV1().Services(e.Namespace()).Update(ctx, svc, metav1.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("can't update Service %q: %w", naming.ObjRef(svc), err)
-		}
-
-		return nil
-	})
-	o.Expect(err).NotTo(o.HaveOccurred())
+	setServiceLabel(ctx, e, name, naming.DecommissionedLabel, value)
 }
 
 func waitForServiceDecommissionedLabel(ctx context.Context, e *envtest.Environment, name, value string) {
@@ -1170,6 +1177,7 @@ func markStatefulSetAsNotRolledOut(ctx context.Context, statefulSets appsv1clien
 	statefulSet.Status.ObservedGeneration = statefulSet.Generation - 1
 	statefulSet.Status.Replicas = 1
 	statefulSet.Status.ReadyReplicas = 0
+	statefulSet.Status.AvailableReplicas = 0
 	statefulSet.Status.UpdatedReplicas = 0
 	_, err = statefulSets.UpdateStatus(ctx, statefulSet, metav1.UpdateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -1195,17 +1203,24 @@ func markStatefulSetNodesAsNotReady(ctx context.Context, statefulSets appsv1clie
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
+// markStatefulSetAsRolledOut reports the StatefulSet as rolled out in place of the StatefulSet controller. A rolling
+// update only updates the Pods at or above the partition, so a partitioned rollout is complete with that many Pods
+// updated.
 func markStatefulSetAsRolledOut(ctx context.Context, statefulSets appsv1client.StatefulSetInterface, name string) {
 	g.GinkgoHelper()
 
 	statefulSet, err := statefulSets.Get(ctx, name, metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	replicas := *statefulSet.Spec.Replicas
+	partition := int32(0)
+	if statefulSet.Spec.UpdateStrategy.RollingUpdate != nil && statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+		partition = *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
+	}
 	statefulSet.Status.ObservedGeneration = statefulSet.Generation
 	statefulSet.Status.Replicas = replicas
 	statefulSet.Status.ReadyReplicas = replicas
 	statefulSet.Status.AvailableReplicas = replicas
-	statefulSet.Status.UpdatedReplicas = replicas
+	statefulSet.Status.UpdatedReplicas = replicas - partition
 	statefulSet.Status.CurrentRevision = "envtest-revision"
 	statefulSet.Status.UpdateRevision = statefulSet.Status.CurrentRevision
 	_, err = statefulSets.UpdateStatus(ctx, statefulSet, metav1.UpdateOptions{})
@@ -1231,7 +1246,44 @@ func (g *staticKeyGenerator) GetKeyType() crypto.KeyType {
 	return crypto.ECDSAKeyType
 }
 
+// informerLagTransform returns an informer transform that delays every event of the objects selected by lags before
+// it reaches the informer cache, keeping the cache behind the API server by lag. The objects are not modified.
+// Informer caches give no read-your-writes and in envtest they catch up within microseconds; a lagging informer
+// widens the window in which the controller decides from a cache that hasn't observed its own writes yet.
+func informerLagTransform(lag time.Duration, lags func(obj any) bool) cache.TransformFunc {
+	return func(obj any) (any, error) {
+		selected := obj
+		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+			selected = tombstone.Obj
+		}
+		if lags(selected) {
+			time.Sleep(lag)
+		}
+
+		return obj, nil
+	}
+}
+
+// scyllaDBDatacenterControllerRunOptions tunes how a spec runs the controller.
+type scyllaDBDatacenterControllerRunOptions struct {
+	// kubeInformerOptions are applied to the informers of the Kubernetes objects, e.g. to lag one kind behind the API
+	// server.
+	kubeInformerOptions []informers.SharedInformerOption
+	// scyllaInformerOptions are applied to the namespaced informers of the Scylla objects.
+	scyllaInformerOptions []scyllainformers.SharedInformerOption
+	// controllerOptions are passed to the controller on top of the defaults of every spec.
+	controllerOptions []scylladbdatacenter.ControllerOption
+}
+
+// runScyllaDBDatacenterController runs the controller until the context is done.
 func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment) {
+	g.GinkgoHelper()
+
+	runScyllaDBDatacenterControllerWithOptions(ctx, e, scyllaDBDatacenterControllerRunOptions{})
+}
+
+// runScyllaDBDatacenterControllerWithOptions is runScyllaDBDatacenterController with the given options applied.
+func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.Environment, runOptions scyllaDBDatacenterControllerRunOptions) {
 	g.GinkgoHelper()
 
 	kubeClient := e.TypedKubeClient()
@@ -1239,12 +1291,16 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		scyllaDBDatacenterControllerResyncPeriod,
-		informers.WithNamespace(e.Namespace()),
+		append([]informers.SharedInformerOption{
+			informers.WithNamespace(e.Namespace()),
+		}, runOptions.kubeInformerOptions...)...,
 	)
 	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		scyllaClient,
 		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(e.Namespace()),
+		append([]scyllainformers.SharedInformerOption{
+			scyllainformers.WithNamespace(e.Namespace()),
+		}, runOptions.scyllaInformerOptions...)...,
 	)
 	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		scyllaClient,
@@ -1253,10 +1309,10 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 	)
 	keyGenerator := newStaticKeyGenerator()
 
-	options := []scylladbdatacenter.ControllerOption{
+	options := append([]scylladbdatacenter.ControllerOption{
 		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
 		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
-	}
+	}, runOptions.controllerOptions...)
 
 	sdcc, err := scylladbdatacenter.NewController(
 		kubeClient,

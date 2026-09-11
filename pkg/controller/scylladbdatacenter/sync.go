@@ -49,9 +49,7 @@ func (sdcc *Controller) sync(ctx context.Context, key string) error {
 		return fmt.Errorf("can't get ScyllaOperatorConfig %q: %w", naming.SingletonName, err)
 	}
 
-	sdcSelector := labels.SelectorFromSet(labels.Set{
-		naming.ClusterNameLabel: sdc.Name,
-	})
+	sdcSelector := labels.SelectorFromSet(naming.ScyllaDBDatacenterSelectorLabels(sdc))
 
 	type CT = *scyllav1alpha1.ScyllaDBDatacenter
 	var objectErrs []error

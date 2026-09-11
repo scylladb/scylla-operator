@@ -20,6 +20,13 @@ func ClusterLabels(sdc *scyllav1alpha1.ScyllaDBDatacenter) map[string]string {
 	return labels
 }
 
+// ScyllaDBDatacenterSelectorLabels returns the labels the ScyllaDBDatacenter controller selects its objects by.
+func ScyllaDBDatacenterSelectorLabels(sdc *scyllav1alpha1.ScyllaDBDatacenter) map[string]string {
+	return map[string]string{
+		ClusterNameLabel: sdc.Name,
+	}
+}
+
 func ClusterLabelsForScyllaCluster(sc *scyllav1.ScyllaCluster) map[string]string {
 	labels := ScyllaLabels()
 	labels[ClusterNameLabel] = sc.Name

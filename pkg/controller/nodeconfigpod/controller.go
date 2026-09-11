@@ -5,331 +5,217 @@ package nodeconfigpod
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllav1alpha1client "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned/typed/scylla/v1alpha1"
-	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
-	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/kubeinterfaces"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
 	ControllerName = "NodeConfigPodController"
+	// controllerRuntimeName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	controllerRuntimeName = "nodeconfigpod"
+
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
-	// but rather use the queue.
+	// but rather requeue.
 	maxSyncDuration = 30 * time.Second
 )
 
 var (
-	keyFunc          = cache.DeletionHandlingMetaNamespaceKeyFunc
 	podControllerGVK = corev1.SchemeGroupVersion.WithKind("Pod")
 )
 
+// Controller keeps the runtime ConfigMap of every ScyllaDB Pod in sync with the NodeConfigs selecting its Node.
 type Controller struct {
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface
-
-	podLister        corev1listers.PodLister
-	configMapLister  corev1listers.ConfigMapLister
-	nodeLister       corev1listers.NodeLister
-	nodeConfigLister scyllav1alpha1listers.NodeConfigLister
-
-	cachesToSync []cache.InformerSynced
+	// client reads from the manager's cache, waiting for it to observe this controller's writes, and writes to the
+	// API server.
+	client client.Client
+	// apiReader reads live from the API server, for the decisions that must not be made from a cache: adoption.
+	apiReader client.Reader
 
 	eventRecorder record.EventRecorder
-
-	queue    workqueue.TypedRateLimitingInterface[string]
-	handlers *controllerhelpers.Handlers[*corev1.Pod]
 }
+
+var _ reconcile.Reconciler = &Controller{}
 
 func NewController(
-	kubeClient kubernetes.Interface,
-	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
-	podInformer corev1informers.PodInformer,
-	configMapInformer corev1informers.ConfigMapInformer,
-	nodeInformer corev1informers.NodeInformer,
-	nodeConfigInformer scyllav1alpha1informers.NodeConfigInformer,
-) (*Controller, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
-	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-
-	ncpc := &Controller{
-		kubeClient:   kubeClient,
-		scyllaClient: scyllaClient,
-
-		podLister:        podInformer.Lister(),
-		configMapLister:  configMapInformer.Lister(),
-		nodeLister:       nodeInformer.Lister(),
-		nodeConfigLister: nodeConfigInformer.Lister(),
-
-		cachesToSync: []cache.InformerSynced{
-			podInformer.Informer().HasSynced,
-			configMapInformer.Informer().HasSynced,
-			nodeInformer.Informer().HasSynced,
-			nodeConfigInformer.Informer().HasSynced,
-		},
-
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "NodeConfigCM-controller"}),
-
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{
-				Name: "NodeConfigCM",
-			},
-		),
+	c client.Client,
+	apiReader client.Reader,
+	eventRecorder record.EventRecorder,
+) *Controller {
+	return &Controller{
+		client:        c,
+		apiReader:     apiReader,
+		eventRecorder: eventRecorder,
 	}
-
-	var err error
-	ncpc.handlers, err = controllerhelpers.NewHandlers[*corev1.Pod](
-		ncpc.queue,
-		keyFunc,
-		scheme.Scheme,
-		podControllerGVK,
-		kubeinterfaces.NamespacedGetList[*corev1.Pod]{
-			GetFunc: func(namespace, name string) (*corev1.Pod, error) {
-				return ncpc.podLister.Pods(namespace).Get(name)
-			},
-			ListFunc: func(namespace string, selector labels.Selector) (ret []*corev1.Pod, err error) {
-				return ncpc.podLister.Pods(namespace).List(selector)
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("can't create handlers: %w", err)
-	}
-
-	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ncpc.addPod,
-		UpdateFunc: ncpc.updatePod,
-	})
-
-	configMapInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ncpc.addConfigMap,
-		UpdateFunc: ncpc.updateConfigMap,
-		DeleteFunc: ncpc.deleteConfigMap,
-	})
-
-	nodeConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    ncpc.addNodeConfig,
-		UpdateFunc: ncpc.updateNodeConfig,
-		DeleteFunc: ncpc.deleteNodeConfig,
-	})
-
-	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: ncpc.updateNode,
-	})
-
-	return ncpc, nil
 }
 
-func (ncpc *Controller) enqueueScyllaPodFunc() controllerhelpers.EnqueueFuncType {
-	return ncpc.handlers.EnqueueWithFilterFunc(controllerhelpers.IsScyllaPod)
+// ControllerOptions returns the controller options the controller runs with on top of the caller's concurrency: a
+// bounded sync duration.
+func ControllerOptions(maxConcurrentReconciles int) controller.Options {
+	return controller.Options{
+		MaxConcurrentReconciles: maxConcurrentReconciles,
+		ReconciliationTimeout:   maxSyncDuration,
+	}
 }
 
-func (ncpc *Controller) enqueueAllScyllaPodsOnNode(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
-	node := obj.(*corev1.Node)
+// SetupWithManager registers the controller with the manager. The event handlers resolve the Pods to sync through
+// the manager's cache directly: waiting there for the controller's own writes would only delay the enqueue.
+func (ncpc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	cache := mgr.GetCache()
 
-	allPods, err := ncpc.podLister.List(naming.ScyllaSelector())
+	return ctrlbuilder.ControllerManagedBy(mgr).
+		Named(controllerRuntimeName).
+		For(&corev1.Pod{}, ctrlbuilder.WithPredicates(
+			predicate.NewPredicateFuncs(isScyllaPod),
+			// Deletions of Pods don't re-run the sync: the ConfigMap is owned and goes with the Pod.
+			predicate.Funcs{DeleteFunc: func(event.DeleteEvent) bool { return false }},
+		)).
+		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(mapConfigMapToScyllaPodOwner(cache))).
+		// Only updates of Nodes re-run the sync of the Pods on them.
+		Watches(&corev1.Node{}, handler.EnqueueRequestsFromMapFunc(mapNodeToScyllaPodsOnIt(cache)), ctrlbuilder.WithPredicates(predicate.Funcs{
+			CreateFunc:  func(event.CreateEvent) bool { return false },
+			UpdateFunc:  func(event.UpdateEvent) bool { return true },
+			DeleteFunc:  func(event.DeleteEvent) bool { return false },
+			GenericFunc: func(event.GenericEvent) bool { return false },
+		})).
+		Watches(&scyllav1alpha1.NodeConfig{}, handler.EnqueueRequestsFromMapFunc(mapNodeConfigToScyllaPodsOnSelectedNodes(cache))).
+		WithOptions(options).
+		Complete(ncpc)
+}
+
+func isScyllaPod(obj client.Object) bool {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		return false
+	}
+
+	return controllerhelpers.IsScyllaPod(pod)
+}
+
+func requestFor(pod *corev1.Pod) reconcile.Request {
+	return reconcile.Request{
+		NamespacedName: types.NamespacedName{
+			Namespace: pod.Namespace,
+			Name:      pod.Name,
+		},
+	}
+}
+
+// mapConfigMapToScyllaPodOwner enqueues the ScyllaDB Pod controlling the ConfigMap.
+func mapConfigMapToScyllaPodOwner(cache client.Reader) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		controllerRef := metav1.GetControllerOf(obj)
+		if controllerRef == nil || controllerRef.Kind != podControllerGVK.Kind {
+			return nil
+		}
+
+		pod, err := ctrlclient.Get[corev1.Pod](ctx, cache, obj.GetNamespace(), controllerRef.Name)
+		if err != nil {
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(obj.GetNamespace(), controllerRef.Name), err))
+			return nil
+		}
+
+		if pod.UID != controllerRef.UID || !controllerhelpers.IsScyllaPod(pod) {
+			return nil
+		}
+
+		return []reconcile.Request{requestFor(pod)}
+	}
+}
+
+func scyllaPodsOnNode(ctx context.Context, cache client.Reader, nodeName string) ([]*corev1.Pod, error) {
+	allPods, err := ctrlclient.List[corev1.Pod](ctx, cache, corev1.NamespaceAll, naming.ScyllaSelector())
 	if err != nil {
-		apimachineryutilruntime.HandleError(err)
-		return
+		return nil, fmt.Errorf("can't list ScyllaDB Pods: %w", err)
 	}
 
 	var pods []*corev1.Pod
 	for _, pod := range allPods {
-		if pod.Spec.NodeName == node.Name {
+		if pod.Spec.NodeName == nodeName && controllerhelpers.IsScyllaPod(pod) {
 			pods = append(pods, pod)
 		}
 	}
 
-	klog.V(4).InfoSDepth(depth, "Enqueuing all pods on Node", "Pods", len(pods), "Node", klog.KObj(node))
-	for _, pod := range pods {
-		ncpc.handlers.Enqueue(depth+1, pod, op)
-	}
-
-	return
+	return pods, nil
 }
 
-func (ncpc *Controller) enqueueAllScyllaPodsForNodeConfig(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
-	nodeConfig := obj.(*scyllav1alpha1.NodeConfig)
-
-	allNodes, err := ncpc.nodeLister.List(labels.Everything())
-	if err != nil {
-		apimachineryutilruntime.HandleError(err)
-		return
-	}
-
-	var nodes []*corev1.Node
-	for _, node := range allNodes {
-		matching, err := controllerhelpers.IsNodeConfigSelectingNode(nodeConfig, node)
+// mapNodeToScyllaPodsOnIt enqueues every ScyllaDB Pod scheduled on the Node.
+func mapNodeToScyllaPodsOnIt(cache client.Reader) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		pods, err := scyllaPodsOnNode(ctx, cache, obj.GetName())
 		if err != nil {
 			apimachineryutilruntime.HandleError(err)
-			return
+			return nil
 		}
 
-		if matching {
-			nodes = append(nodes, node)
+		klog.V(4).InfoS("Enqueuing all pods on Node", "Pods", len(pods), "Node", klog.KObj(obj))
+		requests := make([]reconcile.Request, 0, len(pods))
+		for _, pod := range pods {
+			requests = append(requests, requestFor(pod))
 		}
-	}
 
-	klog.V(4).InfoS("Enqueuing all Scylla Pods for NodeConfig", "NodeConfig", klog.KObj(nodeConfig), "NodeCount", len(nodes))
-	for _, node := range nodes {
-		ncpc.enqueueAllScyllaPodsOnNode(depth+1, node, op)
+		return requests
 	}
 }
 
-func (ncpc *Controller) addPod(obj interface{}) {
-	ncpc.handlers.HandleAdd(
-		obj.(*corev1.Pod),
-		ncpc.enqueueScyllaPodFunc(),
-	)
-}
+// mapNodeConfigToScyllaPodsOnSelectedNodes enqueues every ScyllaDB Pod scheduled on a Node the NodeConfig selects.
+func mapNodeConfigToScyllaPodsOnSelectedNodes(cache client.Reader) handler.MapFunc {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
+		nodeConfig, ok := obj.(*scyllav1alpha1.NodeConfig)
+		if !ok {
+			return nil
+		}
 
-func (ncpc *Controller) updatePod(old, cur interface{}) {
-	ncpc.handlers.HandleUpdate(
-		old.(*corev1.Pod),
-		cur.(*corev1.Pod),
-		ncpc.enqueueScyllaPodFunc(),
-		nil,
-	)
-}
+		allNodes, err := ctrlclient.List[corev1.Node](ctx, cache, corev1.NamespaceAll, labels.Everything())
+		if err != nil {
+			apimachineryutilruntime.HandleError(fmt.Errorf("can't list Nodes: %w", err))
+			return nil
+		}
 
-func (ncpc *Controller) addConfigMap(obj interface{}) {
-	ncpc.handlers.HandleAdd(
-		obj.(*corev1.ConfigMap),
-		ncpc.handlers.EnqueueOwnerFunc(ncpc.enqueueScyllaPodFunc()),
-	)
-}
+		var requests []reconcile.Request
+		nodeCount := 0
+		for _, node := range allNodes {
+			matching, err := controllerhelpers.IsNodeConfigSelectingNode(nodeConfig, node)
+			if err != nil {
+				apimachineryutilruntime.HandleError(err)
+				return nil
+			}
 
-func (ncpc *Controller) updateConfigMap(old, cur interface{}) {
-	ncpc.handlers.HandleUpdate(
-		old.(*corev1.ConfigMap),
-		cur.(*corev1.ConfigMap),
-		ncpc.handlers.EnqueueOwnerFunc(ncpc.enqueueScyllaPodFunc()),
-		ncpc.deleteConfigMap,
-	)
-}
+			if !matching {
+				continue
+			}
+			nodeCount++
 
-func (ncpc *Controller) deleteConfigMap(obj interface{}) {
-	ncpc.handlers.HandleDelete(
-		obj,
-		ncpc.handlers.EnqueueOwnerFunc(ncpc.enqueueScyllaPodFunc()),
-	)
-}
+			pods, err := scyllaPodsOnNode(ctx, cache, node.Name)
+			if err != nil {
+				apimachineryutilruntime.HandleError(err)
+				return nil
+			}
 
-func (ncpc *Controller) updateNode(old, cur interface{}) {
-	ncpc.handlers.HandleUpdate(
-		old.(*corev1.Node),
-		cur.(*corev1.Node),
-		ncpc.enqueueAllScyllaPodsOnNode,
-		nil,
-	)
-}
+			for _, pod := range pods {
+				requests = append(requests, requestFor(pod))
+			}
+		}
 
-func (ncpc *Controller) addNodeConfig(obj interface{}) {
-	ncpc.handlers.HandleAdd(
-		obj.(*scyllav1alpha1.NodeConfig),
-		ncpc.enqueueAllScyllaPodsForNodeConfig,
-	)
-}
-
-func (ncpc *Controller) updateNodeConfig(old, cur interface{}) {
-	ncpc.handlers.HandleUpdate(
-		old.(*scyllav1alpha1.NodeConfig),
-		cur.(*scyllav1alpha1.NodeConfig),
-		ncpc.enqueueAllScyllaPodsForNodeConfig,
-		ncpc.deleteNodeConfig,
-	)
-}
-
-func (ncpc *Controller) deleteNodeConfig(obj interface{}) {
-	ncpc.handlers.HandleDelete(
-		obj,
-		ncpc.enqueueAllScyllaPodsForNodeConfig,
-	)
-}
-
-func (ncpc *Controller) processNextItem(ctx context.Context) bool {
-	key, quit := ncpc.queue.Get()
-	if quit {
-		return false
+		klog.V(4).InfoS("Enqueuing all Scylla Pods for NodeConfig", "NodeConfig", klog.KObj(nodeConfig), "NodeCount", nodeCount)
+		return requests
 	}
-	defer ncpc.queue.Done(key)
-
-	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
-	defer cancel()
-	err := ncpc.sync(ctx, key)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		ncpc.queue.Forget(key)
-		return true
-
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
-
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
-
-	default:
-		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
-	}
-
-	ncpc.queue.AddRateLimited(key)
-
-	return true
-}
-
-func (ncpc *Controller) runWorker(ctx context.Context) {
-	for ncpc.processNextItem(ctx) {
-	}
-}
-
-func (ncpc *Controller) Run(ctx context.Context, workers int) {
-	defer apimachineryutilruntime.HandleCrash()
-
-	klog.InfoS("Starting controller", "controller", ControllerName)
-
-	var wg sync.WaitGroup
-	defer func() {
-		klog.InfoS("Shutting down controller", "controller", ControllerName)
-		ncpc.queue.ShutDown()
-		wg.Wait()
-		klog.InfoS("Shut down controller", "controller", ControllerName)
-	}()
-
-	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), ncpc.cachesToSync...) {
-		return
-	}
-
-	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			apimachineryutilwait.UntilWithContext(ctx, ncpc.runWorker, time.Second)
-		}()
-	}
-
-	<-ctx.Done()
 }

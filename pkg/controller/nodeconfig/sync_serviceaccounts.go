@@ -8,10 +8,13 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (ncc *Controller) makeServiceAccounts() []*corev1.ServiceAccount {
@@ -44,12 +47,7 @@ func (ncc *Controller) pruneServiceAccounts(ctx context.Context, requiredService
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		err := ncc.kubeClient.CoreV1().ServiceAccounts(sa.Namespace).Delete(ctx, sa.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &sa.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err := ncc.client.Delete(ctx, sa, client.Preconditions{UID: &sa.UID}, client.PropagationPolicy(propagationPolicy))
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -71,7 +69,7 @@ func (ncc *Controller) syncServiceAccounts(ctx context.Context, nc *scyllav1alph
 
 	var errs []error
 	for _, sa := range requiredServiceAccounts {
-		_, changed, err := resourceapply.ApplyServiceAccount(ctx, ncc.kubeClient.CoreV1(), ncc.serviceAccountLister, ncc.eventRecorder, sa, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyServiceAccountWithControl(ctx, ctrlclient.ApplyControl[corev1.ServiceAccount](ctx, ncc.client, naming.ScyllaOperatorNodeTuningNamespace), ncc.eventRecorder, sa, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
 		if changed {

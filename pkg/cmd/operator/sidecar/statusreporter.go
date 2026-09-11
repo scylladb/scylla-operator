@@ -3,17 +3,17 @@
 package sidecar
 
 import (
-	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controller/statusreport"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/spf13/cobra"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
@@ -42,6 +42,7 @@ func (o *statusReporterOptions) Complete() error {
 	return nil
 }
 
+// StatusReporter runs the status report controller and re-runs it every interval.
 type StatusReporter struct {
 	controller *statusreport.Controller
 
@@ -52,59 +53,31 @@ func NewStatusReporter(
 	namespace string,
 	podName string,
 	interval time.Duration,
-	kubeClient kubernetes.Interface,
-	podInformer corev1informers.PodInformer,
+	c client.Client,
 	newScyllaClient func() (*scyllaclient.Client, error),
-) (*StatusReporter, error) {
-	sr := &StatusReporter{
+) *StatusReporter {
+	return &StatusReporter{
+		controller: statusreport.NewController(
+			namespace,
+			podName,
+			c,
+			newScyllaClient,
+		),
 		interval: interval,
 	}
-
-	c, err := statusreport.NewController(
-		namespace,
-		podName,
-		kubeClient,
-		podInformer,
-		newScyllaClient,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("can't create status report controller: %w", err)
-	}
-
-	sr.controller = c
-
-	return sr, nil
 }
 
-func (sr *StatusReporter) Run(ctx context.Context) {
-	var wg sync.WaitGroup
-	defer wg.Wait()
+// SetupWithManager registers the status report controller and its periodic trigger with the manager.
+func (sr *StatusReporter) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	err := sr.controller.SetupWithManager(mgr, options)
+	if err != nil {
+		return fmt.Errorf("can't set up status report controller: %w", err)
+	}
 
-	// Run status report controller.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sr.controller.Run(ctx)
-	}()
+	err = mgr.Add(controllertools.PeriodicTrigger(sr.controller.Trigger(), sr.interval))
+	if err != nil {
+		return fmt.Errorf("can't add periodic trigger: %w", err)
+	}
 
-	// Enqueue periodically.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ticker := time.NewTicker(sr.interval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-
-			case <-ticker.C:
-				sr.controller.Enqueue()
-
-			}
-		}
-	}()
-
-	<-ctx.Done()
+	return nil
 }

@@ -2,24 +2,20 @@ package controllertools
 
 import (
 	"errors"
+
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type NonRetriableError struct {
-	error
-}
-
-func (e NonRetriableError) Unwrap() error {
-	return e.error
-}
-
+// NonRetriable marks err as one that retrying won't fix: controller-runtime logs it and drops the request instead of
+// requeuing it.
 func NonRetriable(err error) error {
-	return NonRetriableError{err}
+	return reconcile.TerminalError(err)
 }
 
 func NewNonRetriable(message string) error {
-	return NonRetriableError{errors.New(message)}
+	return NonRetriable(errors.New(message))
 }
 
 func IsNonRetriable(err error) bool {
-	return errors.As(err, &NonRetriableError{})
+	return errors.Is(err, reconcile.TerminalError(nil))
 }

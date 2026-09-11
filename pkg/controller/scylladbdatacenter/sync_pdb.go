@@ -6,10 +6,12 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (sdcc *Controller) syncPodDisruptionBudgets(
@@ -36,12 +38,7 @@ func (sdcc *Controller) syncPodDisruptionBudgets(
 
 		propagationPolicy := metav1.DeletePropagationBackground
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, pdbControllerProgressingCondition, pdb, "delete", sdc.Generation)
-		err = sdcc.kubeClient.PolicyV1().PodDisruptionBudgets(pdb.Namespace).Delete(ctx, pdb.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &pdb.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err = sdcc.client.Delete(ctx, pdb, client.Preconditions{UID: &pdb.UID}, client.PropagationPolicy(propagationPolicy))
 		deletionErrors = append(deletionErrors, err)
 	}
 	err = apimachineryutilerrors.NewAggregate(deletionErrors)
@@ -50,7 +47,7 @@ func (sdcc *Controller) syncPodDisruptionBudgets(
 	}
 
 	// TODO: Remove forced ownership in v1.5 (#672)
-	_, changed, err := resourceapply.ApplyPodDisruptionBudget(ctx, sdcc.kubeClient.PolicyV1(), sdcc.pdbLister, sdcc.eventRecorder, requiredPDB, resourceapply.ApplyOptions{
+	_, changed, err := resourceapply.ApplyPodDisruptionBudgetWithControl(ctx, ctrlclient.ApplyControl[policyv1.PodDisruptionBudget](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, requiredPDB, resourceapply.ApplyOptions{
 		ForceOwnership: true,
 	})
 	if changed {

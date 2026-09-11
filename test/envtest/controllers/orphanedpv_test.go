@@ -11,8 +11,8 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/orphanedpv"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
@@ -20,7 +20,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/utils/ptr"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,31 +47,33 @@ var _ = g.Describe("OrphanedPVController", func() {
 	})
 
 	runOrphanedPVController := func(ctx context.Context, env *envtest.Environment) {
-		kubeInformers := kubeinformers.NewSharedInformerFactory(env.TypedKubeClient(), 0)
-		scyllaInformers := scyllainformers.NewSharedInformerFactory(env.ScyllaClient(), 0)
+		mgr, err := controllermanager.NewManager(env.Config(), g.GinkgoLogr, ctrlcache.Options{}, controllermanager.MetricsDisabledBindAddress)
+		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller manager")
 
-		controller, err := orphanedpv.NewController(
-			env.TypedKubeClient(),
-			kubeInformers.Core().V1().PersistentVolumes(),
-			kubeInformers.Core().V1().PersistentVolumeClaims(),
-			kubeInformers.Core().V1().Nodes(),
-			scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		opc := orphanedpv.NewController(
+			mgr.GetClient(),
+			mgr.GetAPIReader(),
+			mgr.GetEventRecorderFor("orphanedpv-controller"),
 		)
-		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create orphaned PV controller")
+		options := orphanedpv.ControllerOptions(1)
+		// Every spec runs its own manager in this process; controller names are only unique within one.
+		options.SkipNameValidation = ptr.To(true)
+		err = opc.SetupWithManager(mgr, options)
+		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to set up orphaned PV controller")
 
-		kubeInformers.Start(ctx.Done())
-		scyllaInformers.Start(ctx.Done())
+		ctx, cancel := context.WithCancel(ctx)
 
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			controller.Run(ctx, 1)
+			defer g.GinkgoRecover()
+			err := mgr.Start(ctx)
+			o.Expect(err).NotTo(o.HaveOccurred())
 		}()
 
 		g.DeferCleanup(func() {
-			kubeInformers.Shutdown()
-			scyllaInformers.Shutdown()
+			cancel()
 			wg.Wait()
 		})
 	}

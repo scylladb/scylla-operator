@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,7 @@ func (ncc *Controller) syncConfigMaps(
 		requiredConfigMaps,
 		configMaps,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.kubeClient.CoreV1().ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.ConfigMap](ncc.client, naming.ScyllaOperatorNodeTuningNamespace),
 		},
 		ncc.eventRecorder)
 	if err != nil {
@@ -41,7 +42,7 @@ func (ncc *Controller) syncConfigMaps(
 
 	var errs []error
 	for _, cm := range requiredConfigMaps {
-		_, changed, err := resourceapply.ApplyConfigMap(ctx, ncc.kubeClient.CoreV1(), ncc.configMapLister, ncc.eventRecorder, cm, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, ncc.client, naming.ScyllaOperatorNodeTuningNamespace), ncc.eventRecorder, cm, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, configMapControllerProgressingCondition, cm, "apply", nc.Generation)
 		}

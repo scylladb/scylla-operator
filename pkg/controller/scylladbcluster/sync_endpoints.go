@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +25,7 @@ func (scc *Controller) syncRemoteEndpoints(
 	remoteNamespaces map[string]*corev1.Namespace,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredEndpointSlices, err := MakeRemoteEndpointSlices(sc, dc, remoteNamespace, remoteController, remoteNamespaces, scc.remoteServiceLister, scc.remotePodLister, managingClusterDomain)
+	progressingConditions, requiredEndpointSlices, err := MakeRemoteEndpointSlices(sc, dc, remoteNamespace, remoteController, remoteNamespaces, scc.remoteServiceLister(ctx), scc.remotePodLister(ctx), managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make endpointslices: %w", err)
 	}
@@ -38,7 +39,7 @@ func (scc *Controller) syncRemoteEndpoints(
 
 	requiredEndpoints = append(requiredEndpoints, re...)
 
-	clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -49,7 +50,7 @@ func (scc *Controller) syncRemoteEndpoints(
 		requiredEndpoints,
 		remoteEndpoints,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.CoreV1().Endpoints(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.Endpoints](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -58,7 +59,7 @@ func (scc *Controller) syncRemoteEndpoints(
 	}
 
 	for _, e := range requiredEndpoints {
-		_, changed, err := resourceapply.ApplyEndpoints(ctx, clusterClient.CoreV1(), scc.remoteEndpointsLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, e, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyEndpointsWithControl(ctx, ctrlclient.ApplyControl[corev1.Endpoints](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, e, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteEndpointsControllerDatacenterProgressingCondition(dc.Name), e, "apply", sc.Generation)
 		}
@@ -76,7 +77,7 @@ func (scc *Controller) syncLocalEndpoints(
 	endpoints map[string]*corev1.Endpoints,
 	remoteNamespaces map[string]*corev1.Namespace,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredEndpointSlices, err := makeLocalEndpointSlices(sc, remoteNamespaces, scc.remoteServiceLister, scc.remotePodLister)
+	progressingConditions, requiredEndpointSlices, err := makeLocalEndpointSlices(sc, remoteNamespaces, scc.remoteServiceLister(ctx), scc.remotePodLister(ctx))
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make endpointslices: %w", err)
 	}
@@ -94,7 +95,7 @@ func (scc *Controller) syncLocalEndpoints(
 		requiredEndpoints,
 		endpoints,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: scc.kubeClient.CoreV1().Endpoints(sc.Namespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.Endpoints](scc.client, sc.Namespace),
 		},
 		scc.eventRecorder,
 	)
@@ -103,7 +104,7 @@ func (scc *Controller) syncLocalEndpoints(
 	}
 
 	for _, e := range requiredEndpoints {
-		_, changed, err := resourceapply.ApplyEndpoints(ctx, scc.kubeClient.CoreV1(), scc.endpointsLister, scc.eventRecorder, e, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyEndpointsWithControl(ctx, ctrlclient.ApplyControl[corev1.Endpoints](ctx, scc.client, sc.Namespace), scc.eventRecorder, e, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, endpointsControllerProgressingCondition, e, "apply", sc.Generation)
 		}

@@ -8,21 +8,20 @@ import (
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (ncpc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (ncpc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing Pod", "Pod", klog.KRef(namespace, name), "startTime", startTime)
@@ -30,22 +29,22 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing Pod", "Pod", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	pod, err := ncpc.podLister.Pods(namespace).Get(name)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, ncpc.client, namespace, name)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("Pod has been deleted", "Pod", klog.KObj(pod))
-		return nil
+		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		return fmt.Errorf("can't list pods: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't list pods: %w", err)
 	}
 
 	if !controllerhelpers.IsScyllaPod(pod) {
 		klog.Warningf("Non-Scylla Pod %q enqueued for sync by NodeConfigPod controller", klog.KObj(pod))
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	if pod.DeletionTimestamp != nil {
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	podSelector := labels.SelectorFromSet(labels.Set{
@@ -61,11 +60,7 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		pod,
 		podControllerGVK,
 		podSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
-			GetControllerUncachedFunc: ncpc.kubeClient.CoreV1().Pods(pod.Namespace).Get,
-			ListObjectsFunc:           ncpc.configMapLister.ConfigMaps(pod.Namespace).List,
-			PatchObjectFunc:           ncpc.kubeClient.CoreV1().ConfigMaps(pod.Namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[corev1.Pod, corev1.ConfigMap](ctx, ncpc.client, ncpc.apiReader, pod.Namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -73,7 +68,7 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return reconcile.Result{}, objectErr
 	}
 
 	var errs []error
@@ -83,5 +78,5 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, err)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 }

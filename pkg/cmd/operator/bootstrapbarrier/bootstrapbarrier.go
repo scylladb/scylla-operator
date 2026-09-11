@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"sync"
 
-	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controller/bootstrapbarrier"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
@@ -17,9 +17,9 @@ import (
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 // Options holds the options for running the bootstrap barrier controller.
@@ -32,9 +32,6 @@ type Options struct {
 	ServiceName                          string
 	SelectorLabelValue                   string
 	SingleReportAllowNonReportingHostIDs bool
-
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllaversionedclient.Interface
 }
 
 func NewOptions(streams genericclioptions.IOStreams) *Options {
@@ -133,16 +130,6 @@ func (o *Options) Complete() error {
 		return err
 	}
 
-	o.kubeClient, err = kubernetes.NewForConfig(o.ProtoConfig)
-	if err != nil {
-		return fmt.Errorf("can't build kubernetes clientset: %w", err)
-	}
-
-	o.scyllaClient, err = scyllaversionedclient.NewForConfig(o.RestConfig)
-	if err != nil {
-		return fmt.Errorf("can't build scylla clientset: %w", err)
-	}
-
 	return nil
 }
 
@@ -173,28 +160,30 @@ func (o *Options) Run(originalStreams genericclioptions.IOStreams, cmd *cobra.Co
 }
 
 func (o *Options) Execute(cmdCtx context.Context, originalStreams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	informerFactory := bootstrapbarrier.NewInformerFactory(
-		o.kubeClient,
-		o.scyllaClient,
-		bootstrapbarrier.InformerFactoryOptions{
-			ServiceName:        o.ServiceName,
-			SelectorLabelValue: o.SelectorLabelValue,
-			Namespace:          o.Namespace,
-		},
+	mgr, err := controllermanager.NewManager(
+		o.RestConfig,
+		klog.NewKlogr(),
+		bootstrapbarrier.CacheOptions(o.Namespace, o.ServiceName, o.SelectorLabelValue),
+		controllermanager.MetricsDisabledBindAddress,
 	)
+	if err != nil {
+		return fmt.Errorf("can't create controller manager: %w", err)
+	}
 
 	boostrapPreconditionCh := make(chan struct{})
-	boostrapBarrierController, err := bootstrapbarrier.NewController(
+	boostrapBarrierController := bootstrapbarrier.NewController(
 		o.Namespace,
 		o.ServiceName,
 		o.SelectorLabelValue,
 		o.SingleReportAllowNonReportingHostIDs,
 		boostrapPreconditionCh,
-		o.kubeClient,
-		informerFactory,
+		mgr.GetClient(),
 	)
+	err = boostrapBarrierController.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+	})
 	if err != nil {
-		return fmt.Errorf("can't create bootstrap barrier controller: %w", err)
+		return fmt.Errorf("can't set up bootstrap barrier controller: %w", err)
 	}
 
 	var wg sync.WaitGroup
@@ -207,21 +196,19 @@ func (o *Options) Execute(cmdCtx context.Context, originalStreams genericcliopti
 	ctx, taskCtxCancel := context.WithCancel(cmdCtx)
 	defer taskCtxCancel()
 
+	mgrErrCh := make(chan error, 1)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		informerFactory.Start(ctx.Done())
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		boostrapBarrierController.Run(ctx)
+		mgrErrCh <- mgr.Start(ctx)
 	}()
 
 	select {
 	case <-cmdCtx.Done():
 		return fmt.Errorf("stopped before bootstrap barrier precondition was met: %w", cmdCtx.Err())
+
+	case err := <-mgrErrCh:
+		return fmt.Errorf("controller manager stopped before bootstrap barrier precondition was met: %w", err)
 
 	case <-boostrapPreconditionCh:
 		return nil

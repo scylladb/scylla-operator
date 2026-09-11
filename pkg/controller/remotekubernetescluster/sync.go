@@ -7,22 +7,22 @@ import (
 	"fmt"
 	"time"
 
+	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (rkcc *Controller) sync(ctx context.Context, key string) error {
-	_, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
-		return err
-	}
+func (rkcc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	name := req.Name
+	rq := &controllertools.Requeue{}
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing remote kubernetes cluster", "RemoteKubernetesCluster", name, "startTime", startTime)
@@ -30,16 +30,16 @@ func (rkcc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing remote kubernetes cluster", "RemoteKubernetesCluster", name, "duration", time.Since(startTime))
 	}()
 
-	rkc, err := rkcc.remoteKubernetesClusterLister.Get(name)
+	rkc, err := ctrlclient.Get[scyllav1alpha1.RemoteKubernetesCluster](ctx, rkcc.client, "", name)
 	if apierrors.IsNotFound(err) {
 		for _, clusterHandler := range rkcc.dynamicClusterHandlers {
 			clusterHandler.DeleteCluster(name)
 		}
 
-		return nil
+		return rq.Result(), nil
 	}
 	if err != nil {
-		return err
+		return rq.Result(), err
 	}
 
 	status := rkcc.calculateStatus(rkc)
@@ -54,18 +54,18 @@ func (rkcc *Controller) sync(ctx context.Context, key string) error {
 			},
 		)
 		if err != nil {
-			return fmt.Errorf("can't finalize: %w", err)
+			return rq.Result(), fmt.Errorf("can't finalize: %w", err)
 		}
 
-		return rkcc.updateStatus(ctx, rkc, status)
+		return rq.Result(), rkcc.updateStatus(ctx, rkc, status)
 	}
 
 	if !oslices.ContainsItem(rkc.GetFinalizers(), naming.RemoteKubernetesClusterFinalizer) {
 		err = rkcc.addFinalizer(ctx, rkc)
 		if err != nil {
-			return fmt.Errorf("can't add finalizer: %w", err)
+			return rq.Result(), fmt.Errorf("can't add finalizer: %w", err)
 		}
-		return nil
+		return rq.Result(), nil
 	}
 
 	var errs []error
@@ -89,7 +89,7 @@ func (rkcc *Controller) sync(ctx context.Context, key string) error {
 		clientHealthcheckControllerDegradedCondition,
 		rkc.Generation,
 		func() ([]metav1.Condition, error) {
-			return rkcc.syncClientHealthchecks(ctx, key, rkc, status)
+			return rkcc.syncClientHealthchecks(ctx, rq, rkc, status)
 		},
 	)
 	if err != nil {
@@ -105,5 +105,5 @@ func (rkcc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, err)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return rq.Result(), apimachineryutilerrors.NewAggregate(errs)
 }

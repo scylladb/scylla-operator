@@ -5,30 +5,26 @@ package operator
 import (
 	"context"
 	"fmt"
-	"sync"
 
-	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodesetup"
 	"github.com/scylladb/scylla-operator/pkg/controller/nodetune"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/cri"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	"github.com/scylladb/scylla-operator/pkg/kubelet"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 type NodeSetupDaemonOptions struct {
@@ -45,8 +41,7 @@ type NodeSetupDaemonOptions struct {
 	CRIEndpoints                []string
 	KubeletPodResourcesEndpoint string
 
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllaversionedclient.Interface
+	kubeClient kubernetes.Interface
 }
 
 func NewNodeSetupOptions(streams genericclioptions.IOStreams) *NodeSetupDaemonOptions {
@@ -160,11 +155,6 @@ func (o *NodeSetupDaemonOptions) Complete() error {
 		return fmt.Errorf("can't build kubernetes clientset: %w", err)
 	}
 
-	o.scyllaClient, err = scyllaversionedclient.NewForConfig(o.RestConfig)
-	if err != nil {
-		return fmt.Errorf("can't build scylla clientset: %w", err)
-	}
-
 	return nil
 }
 
@@ -192,20 +182,6 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 	}
 	defer kubeletPodResourcesClient.Close()
 
-	scyllaInformers := scyllainformers.NewSharedInformerFactory(o.scyllaClient, resyncPeriod)
-	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, resyncPeriod, informers.WithNamespace(o.Namespace))
-	localNodeScyllaCoreInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, resyncPeriod, informers.WithTweakListOptions(
-		func(options *metav1.ListOptions) {
-			options.LabelSelector = naming.ScyllaSelector().String()
-			options.FieldSelector = fields.OneTermEqualSelector("spec.nodeName", o.NodeName).String()
-		},
-	))
-	selfPodInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, resyncPeriod, informers.WithNamespace(o.Namespace), informers.WithTweakListOptions(
-		func(options *metav1.ListOptions) {
-			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", o.PodName).String()
-		},
-	))
-
 	var node *corev1.Node
 	err = apimachineryutilwait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(fCtx context.Context) (bool, error) {
 		node, err = o.kubeClient.CoreV1().Nodes().Get(fCtx, o.NodeName, metav1.GetOptions{})
@@ -220,11 +196,20 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 		return fmt.Errorf("can't get node %q: %w", o.NodeName, err)
 	}
 
+	mgr, err := controllermanager.NewManager(
+		o.RestConfig,
+		klog.NewKlogr(),
+		nodetune.CacheOptions(o.Namespace, node.Name),
+		controllermanager.MetricsDisabledBindAddress,
+	)
+	if err != nil {
+		return fmt.Errorf("can't create controller manager: %w", err)
+	}
+
 	nsc, err := nodesetup.NewController(
 		ctx,
-		o.kubeClient,
-		o.scyllaClient.ScyllaV1alpha1(),
-		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),
+		mgr.GetClient(),
+		mgr.GetEventRecorderFor("nodesetup-controller"),
 		node.Name,
 		node.UID,
 		o.NodeConfigName,
@@ -235,17 +220,19 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 	}
 	defer nsc.Close()
 
-	ntc, err := nodetune.NewController(
-		o.kubeClient,
-		o.scyllaClient,
+	err = nsc.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+	})
+	if err != nil {
+		return fmt.Errorf("can't set up node setup controller: %w", err)
+	}
+
+	ntc := nodetune.NewController(
+		mgr.GetClient(),
+		mgr.GetAPIReader(),
+		mgr.GetEventRecorderFor("nodeconfigdaemon-controller"),
 		criClient,
 		kubeletPodResourcesClient,
-		scyllaInformers.Scylla().V1alpha1().NodeConfigs(),
-		localNodeScyllaCoreInformers.Core().V1().Pods(),
-		namespacedKubeInformers.Apps().V1().DaemonSets(),
-		namespacedKubeInformers.Batch().V1().Jobs(),
-		namespacedKubeInformers.Core().V1().ConfigMaps(),
-		selfPodInformers.Core().V1().Pods(),
 		o.Namespace,
 		o.PodName,
 		node.Name,
@@ -255,31 +242,15 @@ func (o *NodeSetupDaemonOptions) Run(streams genericclioptions.IOStreams, cmd *c
 		o.ScyllaImage,
 		o.OperatorImage,
 	)
+	err = ntc.SetupWithManager(mgr, nodetune.ControllerOptions())
 	if err != nil {
-		return fmt.Errorf("can't create node config instance controller: %w", err)
+		return fmt.Errorf("can't set up node tune controller: %w", err)
 	}
 
-	scyllaInformers.Start(ctx.Done())
-	namespacedKubeInformers.Start(ctx.Done())
-	localNodeScyllaCoreInformers.Start(ctx.Done())
-	selfPodInformers.Start(ctx.Done())
-
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		nsc.Run(ctx)
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ntc.Run(ctx)
-	}()
-
-	wg.Wait()
+	err = mgr.Start(ctx)
+	if err != nil {
+		return fmt.Errorf("controller manager failed: %w", err)
+	}
 
 	return nil
 }

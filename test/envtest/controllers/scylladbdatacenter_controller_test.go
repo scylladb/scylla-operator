@@ -17,12 +17,12 @@ import (
 	o "github.com/onsi/gomega"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/scylla"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
@@ -32,27 +32,34 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/informers"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/utils/ptr"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 const (
-	// scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay disables the production cache-propagation
-	// wait in envtests. Envtest runs the controller and API server in-process, so the default delay only slows tests down.
-	// Tests that need to exercise cache lag should override this.
-	scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay = 0 * time.Second
-
 	scyllaDBDatacenterControllerResyncPeriod = 12 * time.Hour
 
+	// scyllaDBDatacenterControllerDefaultInformerLag is how far behind the API server every informer of the
+	// controller is kept in all specs. Informer caches give no read-your-writes and in envtest they would otherwise
+	// catch up within microseconds, hiding any decision the controller makes from a cache that has not observed its
+	// own writes yet. A lagging informer is only a slower informer, so every behavior has to hold with it.
+	scyllaDBDatacenterControllerDefaultInformerLag = 500 * time.Millisecond
+
 	// scyllaDBDatacenterControllerDefaultEventuallyTimeout is the default timeout for async envtest assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Eventually may time out before
-	// the controller resumes reconciliation.
+	// Pad accordingly when a test runs the controller with informer lag, otherwise Eventually may time out before
+	// the controller observes its own writes and resumes reconciliation.
 	scyllaDBDatacenterControllerDefaultEventuallyTimeout = 15 * time.Second
 
 	// scyllaDBDatacenterControllerDefaultConsistentlyTimeout is the default window for stability assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Consistently may pass while the
-	// controller is delayed instead of observing real steady state.
+	// Pad accordingly when a test runs the controller with informer lag, otherwise Consistently may pass while the
+	// controller is waiting for its caches instead of observing real steady state.
 	scyllaDBDatacenterControllerDefaultConsistentlyTimeout = 5 * time.Second
 
 	// envtestServiceFinalizer holds a member Service in a terminating state, so that specs can freeze the window
@@ -1231,71 +1238,76 @@ func (g *staticKeyGenerator) GetKeyType() crypto.KeyType {
 	return crypto.ECDSAKeyType
 }
 
-func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment) {
+// informerLagTransform returns an informer transform that delays every event before it reaches the informer cache,
+// keeping the cache behind the API server by lag. The objects are not modified.
+func informerLagTransform(lag time.Duration) cache.TransformFunc {
+	return func(obj any) (any, error) {
+		time.Sleep(lag)
+
+		return obj, nil
+	}
+}
+
+// runScyllaDBDatacenterController runs the controller until the context is done. All its informers lag behind the
+// API server by scyllaDBDatacenterControllerDefaultInformerLag; cacheOptions are applied on top, e.g. to lag one
+// kind further.
+func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment, cacheOptions ...func(*ctrlcache.Options)) {
 	g.GinkgoHelper()
 
-	kubeClient := e.TypedKubeClient()
-	scyllaClient := e.ScyllaClient()
-	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		kubeClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		informers.WithNamespace(e.Namespace()),
-	)
-	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		scyllaClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(e.Namespace()),
-	)
-	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		scyllaClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(corev1.NamespaceAll),
-	)
-	keyGenerator := newStaticKeyGenerator()
-
-	options := []scylladbdatacenter.ControllerOption{
-		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
-		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
+	// The controller runs under a controller-runtime manager like in the operator binary, reading through the
+	// manager's read-your-writes client. The cache watches all namespaces: every spec gets its own API server.
+	cacheOpts := ctrlcache.Options{
+		SyncPeriod:       ptr.To(scyllaDBDatacenterControllerResyncPeriod),
+		DefaultTransform: informerLagTransform(scyllaDBDatacenterControllerDefaultInformerLag),
+	}
+	for _, opt := range cacheOptions {
+		opt(&cacheOpts)
 	}
 
-	sdcc, err := scylladbdatacenter.NewController(
-		kubeClient,
-		scyllaClient.ScyllaV1alpha1(),
-		kubeInformers.Core().V1().Pods(),
-		kubeInformers.Core().V1().Services(),
-		kubeInformers.Core().V1().Secrets(),
-		kubeInformers.Core().V1().ConfigMaps(),
-		kubeInformers.Core().V1().ServiceAccounts(),
-		kubeInformers.Rbac().V1().RoleBindings(),
-		kubeInformers.Apps().V1().StatefulSets(),
-		kubeInformers.Policy().V1().PodDisruptionBudgets(),
-		kubeInformers.Networking().V1().Ingresses(),
-		kubeInformers.Batch().V1().Jobs(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
-		scyllaGlobalInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
-		"scylla/operator:envtest",
-		scylla.DefaultNativeTransportPort,
-		keyGenerator,
-		options...,
-	)
+	mgr, err := ctrlmanager.New(e.Config(), ctrlmanager.Options{
+		Scheme: scheme.Scheme,
+		Logger: g.GinkgoLogr,
+		Cache:  cacheOpts,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				EnableReadYourWritesConsistency: ptr.To(true),
+			},
+		},
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
+		HealthProbeBindAddress: "0",
+	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	kubeInformers.Start(ctx.Done())
-	scyllaInformers.Start(ctx.Done())
-	scyllaGlobalInformers.Start(ctx.Done())
+	sdcc := scylladbdatacenter.NewController(
+		mgr.GetClient(),
+		mgr.GetAPIReader(),
+		mgr.GetEventRecorderFor("scylladbdatacenter-controller"),
+		"scylla/operator:envtest",
+		scylla.DefaultNativeTransportPort,
+		newStaticKeyGenerator(),
+	)
+	err = sdcc.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+		// Every spec runs its own manager in this process; controller names are only unique within one.
+		SkipNameValidation: ptr.To(true),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	ctx, cancel := context.WithCancel(ctx)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sdcc.Run(ctx, 1)
+		defer g.GinkgoRecover()
+		err := mgr.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
 	}()
 
 	g.DeferCleanup(func() {
-		kubeInformers.Shutdown()
-		scyllaInformers.Shutdown()
-		scyllaGlobalInformers.Shutdown()
+		cancel()
 		wg.Wait()
 	})
 }

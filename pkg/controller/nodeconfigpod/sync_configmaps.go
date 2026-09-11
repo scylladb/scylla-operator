@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (ncpc *Controller) makeConfigMap(ctx context.Context, pod *corev1.Pod) (*corev1.ConfigMap, error) {
@@ -28,12 +30,12 @@ func (ncpc *Controller) makeConfigMap(ctx context.Context, pod *corev1.Pod) (*co
 		return nil, nil
 	}
 
-	node, err := ncpc.nodeLister.Get(pod.Spec.NodeName)
+	node, err := ctrlclient.Get[corev1.Node](ctx, ncpc.client, corev1.NamespaceAll, pod.Spec.NodeName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get node: %w", err)
 	}
 
-	allNodeConfigs, err := ncpc.nodeConfigLister.List(labels.Everything())
+	allNodeConfigs, err := ctrlclient.List[scyllav1alpha1.NodeConfig](ctx, ncpc.client, corev1.NamespaceAll, labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("can't list nodeconfigs: %w", err)
 	}
@@ -108,12 +110,7 @@ func (ncpc *Controller) pruneConfigMaps(ctx context.Context, required *corev1.Co
 		}
 
 		propagationPolicy := metav1.DeletePropagationBackground
-		err := ncpc.kubeClient.CoreV1().ConfigMaps(cm.Namespace).Delete(ctx, cm.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &cm.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err := ncpc.client.Delete(ctx, cm, client.Preconditions{UID: &cm.UID}, client.PropagationPolicy(propagationPolicy))
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -141,7 +138,7 @@ func (ncpc *Controller) syncConfigMaps(
 	}
 
 	if required != nil {
-		_, _, err := resourceapply.ApplyConfigMap(ctx, ncpc.kubeClient.CoreV1(), ncpc.configMapLister, ncpc.eventRecorder, required, resourceapply.ApplyOptions{})
+		_, _, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, ncpc.client, required.Namespace), ncpc.eventRecorder, required, resourceapply.ApplyOptions{})
 		if err != nil {
 			return fmt.Errorf("can't apply configmap: %w", err)
 		}

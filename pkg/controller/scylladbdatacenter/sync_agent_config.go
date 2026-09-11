@@ -6,6 +6,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -23,8 +24,8 @@ func (sdcc *Controller) syncAgentToken(
 	var progressingConditions []metav1.Condition
 
 	agentAuthTokenProgressingConditions, agentAuthToken, err := controllerhelpers.GetScyllaDBManagerAgentAuthToken(
-		getOptionalAgentAuthTokenFromCustomConfigFunc(sdc, sdcc.secretLister),
-		getOptionalAgentAuthTokenOverrideFunc(sdc, sdcc.secretLister),
+		getOptionalAgentAuthTokenFromCustomConfigFunc(sdc, sdcc.secretLister(ctx)),
+		getOptionalAgentAuthTokenOverrideFunc(sdc, sdcc.secretLister(ctx)),
 		getOptionalExistingAgentAuthTokenFunc(sdc, secrets),
 	)
 	progressingConditions = append(progressingConditions, agentAuthTokenProgressingConditions...)
@@ -41,7 +42,7 @@ func (sdcc *Controller) syncAgentToken(
 	}
 
 	// TODO: Remove forced ownership in v1.5 (#672)
-	_, changed, err := resourceapply.ApplySecret(ctx, sdcc.kubeClient.CoreV1(), sdcc.secretLister, sdcc.eventRecorder, secret, resourceapply.ApplyOptions{
+	_, changed, err := resourceapply.ApplySecretWithControl(ctx, ctrlclient.ApplyControl[corev1.Secret](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, secret, resourceapply.ApplyOptions{
 		ForceOwnership: true,
 	})
 	if changed {

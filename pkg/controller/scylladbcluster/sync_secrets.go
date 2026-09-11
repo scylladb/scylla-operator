@@ -6,6 +6,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
@@ -23,7 +24,7 @@ func (scc *Controller) syncRemoteSecrets(
 	remoteSecrets map[string]*corev1.Secret,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredRemoteSecrets, err := MakeRemoteSecrets(sc, dc, remoteNamespace, remoteController, scc.secretLister, managingClusterDomain)
+	progressingConditions, requiredRemoteSecrets, err := MakeRemoteSecrets(sc, dc, remoteNamespace, remoteController, ctrlclient.NewSecretLister(ctx, scc.client), managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make remote secrets: %w", err)
 	}
@@ -32,7 +33,7 @@ func (scc *Controller) syncRemoteSecrets(
 		return progressingConditions, nil
 	}
 
-	clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -42,7 +43,7 @@ func (scc *Controller) syncRemoteSecrets(
 		requiredRemoteSecrets,
 		remoteSecrets,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.CoreV1().Secrets(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.Secret](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -52,7 +53,7 @@ func (scc *Controller) syncRemoteSecrets(
 
 	var errs []error
 	for _, rs := range requiredRemoteSecrets {
-		_, changed, err := resourceapply.ApplySecret(ctx, clusterClient.CoreV1(), scc.remoteSecretLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, rs, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplySecretWithControl(ctx, ctrlclient.ApplyControl[corev1.Secret](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, rs, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteSecretControllerDatacenterProgressingCondition(dc.Name), rs, "apply", sc.Generation)
 		}
@@ -98,7 +99,7 @@ func (scc *Controller) syncLocalSecrets(
 		requiredSecrets,
 		localSecrets,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: scc.kubeClient.CoreV1().Secrets(sc.Namespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.Secret](scc.client, sc.Namespace),
 		},
 		scc.eventRecorder,
 	)
@@ -107,7 +108,7 @@ func (scc *Controller) syncLocalSecrets(
 	}
 
 	for _, s := range requiredSecrets {
-		_, changed, err := resourceapply.ApplySecret(ctx, scc.kubeClient.CoreV1(), scc.secretLister, scc.eventRecorder, s, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplySecretWithControl(ctx, ctrlclient.ApplyControl[corev1.Secret](ctx, scc.client, sc.Namespace), scc.eventRecorder, s, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, secretControllerProgressingCondition, s, "apply", sc.Generation)
 		}

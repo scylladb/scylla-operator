@@ -14,14 +14,14 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/util/hash"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/utils/ptr"
 )
 
 var _ = g.Describe("SidecarController", func() {
@@ -628,36 +628,42 @@ func newFakeScyllaDBTokenMetadataHandler(fake fakeScyllaDBTokenMetadata) http.Ha
 func runSidecarController(ctx context.Context, env *envtest.Environment, serviceName, localhostAddress string, newScyllaClient func() (*scyllaclient.Client, error)) *sidecarcontroller.Controller {
 	g.GinkgoHelper()
 
-	kubeInformers := kubeinformers.NewSharedInformerFactoryWithOptions(
-		env.TypedKubeClient(),
-		0,
-		kubeinformers.WithNamespace(env.Namespace()),
-		kubeinformers.WithTweakListOptions(func(options *metav1.ListOptions) {
-			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", serviceName).String()
-		}),
+	mgr, err := controllermanager.NewManager(
+		env.Config(),
+		g.GinkgoLogr,
+		sidecarcontroller.CacheOptions(env.Namespace(), serviceName),
+		controllermanager.MetricsDisabledBindAddress,
 	)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller manager")
 
 	c, err := sidecarcontroller.NewController(
 		env.Namespace(),
 		serviceName,
 		localhostAddress,
-		env.TypedKubeClient(),
-		kubeInformers.Core().V1().Services(),
+		mgr.GetClient(),
 		newScyllaClient,
 	)
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create sidecar controller")
 
-	kubeInformers.Start(ctx.Done())
+	options := sidecarcontroller.ControllerOptions()
+	// Every spec runs its own manager in this process; controller names are only unique within one.
+	options.SkipNameValidation = ptr.To(true)
+	err = c.SetupWithManager(mgr, options)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to set up sidecar controller")
+
+	ctx, cancel := context.WithCancel(ctx)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.Run(ctx)
+		defer g.GinkgoRecover()
+		err := mgr.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
 	}()
 
 	g.DeferCleanup(func() {
-		kubeInformers.Shutdown()
+		cancel()
 		wg.Wait()
 	})
 

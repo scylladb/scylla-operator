@@ -5,68 +5,60 @@ package nodetune
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllaclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
-	scyllav1alpha1informers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions/scylla/v1alpha1"
-	scyllav1alpha1listers "github.com/scylladb/scylla-operator/pkg/client/scylla/listers/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/cri"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/kubelet"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/scheme"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	appsv1informers "k8s.io/client-go/informers/apps/v1"
-	batchv1informers "k8s.io/client-go/informers/batch/v1"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	appsv1listers "k8s.io/client-go/listers/apps/v1"
-	batchv1listers "k8s.io/client-go/listers/batch/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
 	ControllerName = "NodeConfigDaemonController"
+	// controllerRuntimeName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	controllerRuntimeName = "nodeconfigdaemon"
 
 	maxSyncDuration = 30 * time.Second
 )
 
 var (
-	controllerKey = "key"
-	keyFunc       = cache.DeletionHandlingMetaNamespaceKeyFunc
-
 	nodeConfigGVK          = scyllav1alpha1.GroupVersion.WithKind("NodeConfig")
 	daemonSetControllerGVK = appsv1.SchemeGroupVersion.WithKind("DaemonSet")
 )
 
+// Controller tunes the node for the ScyllaDB Pods scheduled on it through Jobs owned by its DaemonSet, and reports the
+// node's status into the NodeConfig. It is a single-key controller for its node.
 type Controller struct {
-	kubeClient   kubernetes.Interface
-	scyllaClient scyllaclient.Interface
+	// client reads from the manager's cache, waiting for it to observe this controller's writes, and writes to the
+	// API server.
+	client client.Client
+	// apiReader reads live from the API server, for the decisions that must not be made from a cache: adoption.
+	apiReader client.Reader
 
 	criClient                 cri.Client
 	kubeletPodResourcesClient kubelet.PodResourcesClient
-
-	nodeConfigLister          scyllav1alpha1listers.NodeConfigLister
-	localScyllaPodsLister     corev1listers.PodLister
-	namespacedDaemonSetLister appsv1listers.DaemonSetLister
-	namespacedJobLister       batchv1listers.JobLister
-	selfPodLister             corev1listers.PodLister
-	namespacedConfigMapLister corev1listers.ConfigMapLister
 
 	namespace      string
 	podName        string
@@ -77,24 +69,21 @@ type Controller struct {
 	scyllaImage    string
 	operatorImage  string
 
-	cachesToSync []cache.InformerSynced
-
 	eventRecorder record.EventRecorder
 
-	queue workqueue.TypedRateLimitingInterface[string]
+	// trigger enqueues the node outside the watches: once at start, Scylla might not be scheduled yet but the Node
+	// can already be tuned.
+	trigger *controllertools.Trigger
 }
 
+var _ reconcile.Reconciler = &Controller{}
+
 func NewController(
-	kubeClient kubernetes.Interface,
-	scyllaClient scyllaclient.Interface,
+	c client.Client,
+	apiReader client.Reader,
+	eventRecorder record.EventRecorder,
 	criClient cri.Client,
 	kubeletPodResourcesClient kubelet.PodResourcesClient,
-	nodeConfigInformer scyllav1alpha1informers.NodeConfigInformer,
-	localScyllaPodsInformer corev1informers.PodInformer,
-	namespacedDaemonSetInformer appsv1informers.DaemonSetInformer,
-	namespacedJobInformer batchv1informers.JobInformer,
-	namespacedConfigMapInformer corev1informers.ConfigMapInformer,
-	selfPodInformer corev1informers.PodInformer,
 	namespace string,
 	podName string,
 	nodeName string,
@@ -103,23 +92,13 @@ func NewController(
 	nodeConfigUID types.UID,
 	scyllaImage string,
 	operatorImage string,
-) (*Controller, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
-	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+) *Controller {
+	return &Controller{
+		client:    c,
+		apiReader: apiReader,
 
-	snc := &Controller{
-		kubeClient:                kubeClient,
-		scyllaClient:              scyllaClient,
 		criClient:                 criClient,
 		kubeletPodResourcesClient: kubeletPodResourcesClient,
-
-		nodeConfigLister:          nodeConfigInformer.Lister(),
-		localScyllaPodsLister:     localScyllaPodsInformer.Lister(),
-		namespacedDaemonSetLister: namespacedDaemonSetInformer.Lister(),
-		namespacedJobLister:       namespacedJobInformer.Lister(),
-		namespacedConfigMapLister: namespacedConfigMapInformer.Lister(),
-		selfPodLister:             selfPodInformer.Lister(),
 
 		namespace:      namespace,
 		podName:        podName,
@@ -130,366 +109,97 @@ func NewController(
 		scyllaImage:    scyllaImage,
 		operatorImage:  operatorImage,
 
-		cachesToSync: []cache.InformerSynced{
-			nodeConfigInformer.Informer().HasSynced,
-			localScyllaPodsInformer.Informer().HasSynced,
-			namespacedDaemonSetInformer.Informer().HasSynced,
-			namespacedJobInformer.Informer().HasSynced,
-			namespacedConfigMapInformer.Informer().HasSynced,
-			selfPodInformer.Informer().HasSynced,
-		},
+		eventRecorder: eventRecorder,
 
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "nodeconfigdaemon-controller"}),
-
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.DefaultTypedControllerRateLimiter[string](),
-			workqueue.TypedRateLimitingQueueConfig[string]{
-				Name: "nodeconfigdaemon",
-			},
-		),
+		trigger: controllertools.NewTrigger(),
 	}
+}
 
-	nodeConfigInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    snc.addNodeConfig,
-		UpdateFunc: snc.updateNodeConfig,
-		DeleteFunc: snc.deleteNodeConfig,
-	})
+// CacheOptions restricts the manager's cache to what the node setup daemon watches: the DaemonSets, Jobs and
+// ConfigMaps of its namespace, and, in every namespace, the Pods scheduled on its node. The daemon's own Pod runs on
+// that node too, so one Pod informer serves both the ScyllaDB Pods to tune and the daemon's identity. NodeConfigs are
+// cluster-scoped and served cluster-wide regardless of the namespace restriction.
+func CacheOptions(namespace, nodeName string) cache.Options {
+	return cache.Options{
+		DefaultNamespaces: map[string]cache.Config{
+			namespace: {},
+		},
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.Pod{}: {
+				Namespaces: map[string]cache.Config{
+					cache.AllNamespaces: {
+						FieldSelector: fields.OneTermEqualSelector("spec.nodeName", nodeName),
+					},
+				},
+			},
+		},
+	}
+}
 
-	localScyllaPodsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    snc.addPod,
-		UpdateFunc: snc.updatePod,
-	})
+// ControllerOptions returns the controller options the node tune controller runs with: a single worker and a bounded
+// sync duration.
+func ControllerOptions() controller.Options {
+	return controller.Options{
+		MaxConcurrentReconciles: 1,
+		ReconciliationTimeout:   maxSyncDuration,
+	}
+}
 
-	namespacedJobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    snc.addJob,
-		UpdateFunc: snc.updateJob,
-		DeleteFunc: snc.deleteJob,
-	})
+// SetupWithManager registers the controller with the manager: its NodeConfig, the ScyllaDB Pods on its node, and
+// the Jobs and ConfigMaps controlled by its DaemonSet and NodeConfig re-run the sync, and so does the trigger.
+func (ncdc *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	cacheReader := mgr.GetCache()
+	enqueue := controllertools.EnqueueSingleton(controllerRuntimeName)
 
-	namespacedConfigMapInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    snc.addConfigMap,
-		UpdateFunc: snc.updateConfigMap,
-		DeleteFunc: snc.deleteConfigMap,
-	})
+	err := ctrlbuilder.ControllerManagedBy(mgr).
+		Named(controllerRuntimeName).
+		Watches(&scyllav1alpha1.NodeConfig{}, enqueue, ctrlbuilder.WithPredicates(predicate.NewPredicateFuncs(ncdc.isNodeConfigControlled))).
+		// Deletions of Pods don't re-run the sync: the tuning follows the Pods that run on the node.
+		Watches(&corev1.Pod{}, enqueue, ctrlbuilder.WithPredicates(predicate.Funcs{
+			CreateFunc:  func(e event.CreateEvent) bool { return isScyllaDBPod(e.Object) },
+			UpdateFunc:  func(e event.UpdateEvent) bool { return isScyllaDBPod(e.ObjectNew) },
+			DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+			GenericFunc: func(e event.GenericEvent) bool { return false },
+		})).
+		Watches(&batchv1.Job{}, enqueue, ctrlbuilder.WithPredicates(predicate.NewPredicateFuncs(func(obj client.Object) bool {
+			return ncdc.ownsObject(cacheReader, obj)
+		}))).
+		Watches(&corev1.ConfigMap{}, enqueue, ctrlbuilder.WithPredicates(predicate.NewPredicateFuncs(ncdc.isControlledByNodeConfig))).
+		WatchesRawSource(ncdc.trigger.Source(controllerRuntimeName)).
+		WithOptions(options).
+		Complete(ncdc)
+	if err != nil {
+		return fmt.Errorf("can't build controller: %w", err)
+	}
 
 	// Start right away, Scylla might not be scheduled yet, but Node can already be tuned.
-	snc.enqueue()
+	ncdc.trigger.Enqueue()
 
-	return snc, nil
+	return nil
 }
 
-func (ncdc *Controller) processNextItem(ctx context.Context) bool {
-	key, quit := ncdc.queue.Get()
-	if quit {
-		return false
-	}
-	defer ncdc.queue.Done(key)
-
-	ctx, cancel := context.WithTimeoutCause(ctx, maxSyncDuration, fmt.Errorf("exceeded max sync duration (%v)", maxSyncDuration))
-	defer cancel()
-	err := ncdc.sync(ctx)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		ncdc.queue.Forget(key)
-		return true
-	default:
-		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
-	}
-
-	ncdc.queue.AddRateLimited(key)
-
-	return true
+func isScyllaDBPod(obj client.Object) bool {
+	return naming.ScyllaSelector().Matches(labels.Set(obj.GetLabels()))
 }
 
-func (ncdc *Controller) runWorker(ctx context.Context) {
-	for ncdc.processNextItem(ctx) {
-	}
-}
-
-func (ncdc *Controller) Run(ctx context.Context) {
-	defer apimachineryutilruntime.HandleCrash()
-
-	klog.InfoS("Starting controller", "controller", ControllerName)
-
-	var wg sync.WaitGroup
-	defer func() {
-		klog.InfoS("Shutting down controller", "controller", ControllerName)
-		ncdc.queue.ShutDown()
-		wg.Wait()
-		klog.InfoS("Shut down controller", "controller", ControllerName)
-	}()
-
-	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), ncdc.cachesToSync...) {
-		return
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		apimachineryutilwait.UntilWithContext(ctx, ncdc.runWorker, time.Second)
-	}()
-
-	<-ctx.Done()
-}
-
-func (ncdc *Controller) enqueue() {
-	ncdc.queue.Add(controllerKey)
-}
-
-func (ncdc *Controller) addNodeConfig(obj interface{}) {
-	nc := obj.(*scyllav1alpha1.NodeConfig)
-
-	if !ncdc.isNodeConfigControlled(nc) {
-		klog.V(5).InfoS("Not enqueueing NodeConfig not controlled by us", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
-		return
-	}
-
-	klog.V(4).InfoS("Observed addition of NodeConfig", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) updateNodeConfig(old, cur interface{}) {
-	oldNC := old.(*scyllav1alpha1.NodeConfig)
-	currentNC := cur.(*scyllav1alpha1.NodeConfig)
-
-	if currentNC.UID != oldNC.UID {
-		key, err := keyFunc(oldNC)
-		if err != nil {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldNC, err))
-			return
-		}
-		ncdc.deleteNodeConfig(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldNC,
-		})
-	}
-
-	controlled := ncdc.isNodeConfigControlled(currentNC)
-	if !controlled {
-		klog.V(5).InfoS("Not enqueueing NodeConfig not controlled by us", "NodeConfig", klog.KObj(currentNC), "RV", currentNC.ResourceVersion)
-		return
-	}
-
-	klog.V(4).InfoS(
-		"Observed update of NodeConfig",
-		"NodeConfig", klog.KObj(currentNC),
-		"RV", fmt.Sprintf("%s->%s", oldNC.ResourceVersion, currentNC.ResourceVersion),
-		"UID", fmt.Sprintf("%s->%s", oldNC.UID, currentNC.UID),
-	)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) deleteNodeConfig(obj interface{}) {
-	nc, ok := obj.(*scyllav1alpha1.NodeConfig)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		nc, ok = tombstone.Obj.(*scyllav1alpha1.NodeConfig)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a NodeConfig %#v", obj))
-			return
-		}
-	}
-
-	controlled := ncdc.isNodeConfigControlled(nc)
-	if !controlled {
-		klog.V(5).InfoS("Not enqueueing NodeConfig not controlled by us", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
-		return
-	}
-
-	klog.V(4).InfoS("Observed deletion of NodeConfig", "NodeConfig", klog.KObj(nc), "RV", nc.ResourceVersion)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) addPod(obj interface{}) {
-	pod := obj.(*corev1.Pod)
-	klog.V(4).InfoS("Observed addition of Pod", "Pod", klog.KObj(pod))
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) updatePod(old, cur interface{}) {
-	oldPod := old.(*corev1.Pod)
-	currentPod := cur.(*corev1.Pod)
-
-	klog.V(4).InfoS(
-		"Observed update of Pod",
-		"Pod", klog.KObj(currentPod),
-		"RV", fmt.Sprintf("%s-%s", oldPod.ResourceVersion, currentPod.ResourceVersion),
-		"UID", fmt.Sprintf("%s-%s", oldPod.UID, currentPod.UID),
-	)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) ownsObject(obj metav1.Object) (bool, error) {
-	selfRef, err := ncdc.newOwningDSControllerRef()
+// ownsObject tells whether obj is controlled by the daemon's DaemonSet. It reads the daemon's Pod through r; the event
+// handlers pass the cache, not to wait there for the controller's writes.
+func (ncdc *Controller) ownsObject(r client.Reader, obj metav1.Object) bool {
+	selfRef, err := ncdc.newOwningDSControllerRef(context.Background(), r)
 	if err != nil {
-		return false, fmt.Errorf("can't get self controller ref: %w", err)
+		apimachineryutilruntime.HandleError(fmt.Errorf("can't get self controller ref: %w", err))
+		return false
 	}
 
 	objControllerRef := metav1.GetControllerOfNoCopy(obj)
-
 	klog.V(5).InfoS("checking object owner", "ObjectRef", objControllerRef, "SelfRef", selfRef)
-
-	return apiequality.Semantic.DeepEqual(objControllerRef, selfRef), nil
+	return apiequality.Semantic.DeepEqual(objControllerRef, selfRef)
 }
 
-func (ncdc *Controller) addJob(obj interface{}) {
-	job := obj.(*batchv1.Job)
-
-	owned, err := ncdc.ownsObject(job)
-	if err != nil {
-		apimachineryutilruntime.HandleError(err)
-		return
-	}
-
-	if !owned {
-		klog.V(5).InfoS("Not enqueueing Job not owned by us", "Job", klog.KObj(job), "RV", job.ResourceVersion)
-		return
-	}
-
-	klog.V(4).InfoS("Observed addition of Job", "Job", klog.KObj(job), "RV", job.ResourceVersion)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) updateJob(old, cur interface{}) {
-	oldJob := old.(*batchv1.Job)
-	currentJob := cur.(*batchv1.Job)
-
-	if currentJob.UID != oldJob.UID {
-		key, err := keyFunc(oldJob)
-		if err != nil {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldJob, err))
-			return
-		}
-		ncdc.deleteJob(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldJob,
-		})
-	}
-
-	owned, err := ncdc.ownsObject(currentJob)
-	if err != nil {
-		apimachineryutilruntime.HandleError(err)
-		return
-	}
-
-	if !owned {
-		klog.V(5).InfoS("Not enqueueing Job not owned by us", "Job", klog.KObj(currentJob), "RV", currentJob.ResourceVersion)
-		return
-	}
-
-	klog.V(4).InfoS(
-		"Observed update of Job",
-		"Job", klog.KObj(currentJob),
-		"RV", fmt.Sprintf("%s->%s", oldJob.ResourceVersion, currentJob.ResourceVersion),
-		"UID", fmt.Sprintf("%s->%s", oldJob.UID, currentJob.UID),
-	)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) deleteJob(obj interface{}) {
-	job, ok := obj.(*batchv1.Job)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		job, ok = tombstone.Obj.(*batchv1.Job)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Job %#v", obj))
-			return
-		}
-	}
-
-	owned, err := ncdc.ownsObject(job)
-	if err != nil {
-		apimachineryutilruntime.HandleError(err)
-		return
-	}
-
-	if !owned {
-		klog.V(5).InfoS("Not enqueueing Job not owned by us", "Job", klog.KObj(job), "RV", job.ResourceVersion)
-		return
-	}
-
-	klog.V(4).InfoS("Observed deletion of Job", "Job", klog.KObj(job), "RV", job.ResourceVersion)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) addConfigMap(obj interface{}) {
-	cm, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		return
-	}
-
-	if !ncdc.isControlledByNodeConfig(cm) {
-		return
-	}
-
-	klog.V(4).InfoS("Observed addition of ConfigMap", "ConfigMap", klog.KObj(cm), "RV", cm.ResourceVersion)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) updateConfigMap(old, cur interface{}) {
-	oldCM := old.(*corev1.ConfigMap)
-	currentCM := cur.(*corev1.ConfigMap)
-
-	if currentCM.UID != oldCM.UID {
-		key, err := keyFunc(oldCM)
-		if err != nil {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldCM, err))
-			return
-		}
-		ncdc.deleteConfigMap(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldCM,
-		})
-	}
-
-	if !ncdc.isControlledByNodeConfig(currentCM) {
-		return
-	}
-
-	klog.V(4).InfoS(
-		"Observed update of ConfigMap",
-		"ConfigMap", klog.KObj(currentCM),
-		"RV", fmt.Sprintf("%s->%s", oldCM.ResourceVersion, currentCM.ResourceVersion),
-		"UID", fmt.Sprintf("%s->%s", oldCM.UID, currentCM.UID),
-	)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) deleteConfigMap(obj interface{}) {
-	cm, ok := obj.(*corev1.ConfigMap)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		cm, ok = tombstone.Obj.(*corev1.ConfigMap)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ConfigMap %#v", obj))
-			return
-		}
-	}
-
-	if !ncdc.isControlledByNodeConfig(cm) {
-		return
-	}
-
-	klog.V(4).InfoS("Observed deletion of ConfigMap", "ConfigMap", klog.KObj(cm), "RV", cm.ResourceVersion)
-	ncdc.enqueue()
-}
-
-func (ncdc *Controller) newOwningDSControllerRef() (*metav1.OwnerReference, error) {
-	pod, err := ncdc.selfPodLister.Pods(ncdc.namespace).Get(ncdc.podName)
+// newOwningDSControllerRef returns the controller reference to the daemon's DaemonSet, from the daemon's Pod read
+// through r.
+func (ncdc *Controller) newOwningDSControllerRef(ctx context.Context, r client.Reader) (*metav1.OwnerReference, error) {
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, r, ncdc.namespace, ncdc.podName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get self Pod %q: %w", naming.ManualRef(ncdc.namespace, ncdc.podName), err)
 	}
@@ -526,11 +236,11 @@ func (ncdc *Controller) newNodeConfigObjectRef() *corev1.ObjectReference {
 	}
 }
 
-func (ncdc *Controller) isNodeConfigControlled(nc *scyllav1alpha1.NodeConfig) bool {
-	return nc.Name == ncdc.nodeConfigName && nc.UID == ncdc.nodeConfigUID
+func (ncdc *Controller) isNodeConfigControlled(nc client.Object) bool {
+	return nc.GetName() == ncdc.nodeConfigName && nc.GetUID() == ncdc.nodeConfigUID
 }
 
-func (ncdc *Controller) isControlledByNodeConfig(obj metav1.Object) bool {
+func (ncdc *Controller) isControlledByNodeConfig(obj client.Object) bool {
 	ref := metav1.GetControllerOfNoCopy(obj)
 	if ref == nil {
 		return false

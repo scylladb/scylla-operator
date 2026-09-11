@@ -11,13 +11,15 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	"github.com/scylladb/scylla-operator/pkg/controller/statusreport"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 type scyllaNodeResponse struct {
@@ -307,28 +309,40 @@ func newFakeScyllaDBNodeStatusHandler(fake fakeScyllaDBNodeStatus) http.Handler 
 func runStatusReportController(ctx context.Context, env *envtest.Environment, podName string, newScyllaClient func() (*scyllaclient.Client, error)) *statusreport.Controller {
 	g.GinkgoHelper()
 
-	kubeInformers := kubeinformers.NewSharedInformerFactoryWithOptions(env.TypedKubeClient(), 0, kubeinformers.WithNamespace(env.Namespace()))
+	mgr, err := controllermanager.NewManager(
+		env.Config(),
+		g.GinkgoLogr,
+		statusreport.CacheOptions(env.Namespace(), podName),
+		controllermanager.MetricsDisabledBindAddress,
+	)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create controller manager")
 
-	c, err := statusreport.NewController(
+	c := statusreport.NewController(
 		env.Namespace(),
 		podName,
-		env.TypedKubeClient(),
-		kubeInformers.Core().V1().Pods(),
+		mgr.GetClient(),
 		newScyllaClient,
 	)
-	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create status report controller")
+	err = c.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+		// Every spec runs its own manager in this process; controller names are only unique within one.
+		SkipNameValidation: ptr.To(true),
+	})
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to set up status report controller")
 
-	kubeInformers.Start(ctx.Done())
+	ctx, cancel := context.WithCancel(ctx)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		c.Run(ctx)
+		defer g.GinkgoRecover()
+		err := mgr.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
 	}()
 
 	g.DeferCleanup(func() {
-		kubeInformers.Shutdown()
+		cancel()
 		wg.Wait()
 	})
 

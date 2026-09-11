@@ -8,7 +8,6 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -21,7 +20,7 @@ func (rkcc *Controller) updateStatus(ctx context.Context, currentRKC *scyllav1al
 	rkc.Status = *status
 
 	klog.V(2).InfoS("Updating status", "RemoteKubernetesCluster", klog.KObj(rkc))
-	_, err := rkcc.scyllaClient.RemoteKubernetesClusters().UpdateStatus(ctx, rkc, metav1.UpdateOptions{})
+	err := rkcc.client.Status().Update(ctx, rkc)
 	if err != nil {
 		return err
 	}

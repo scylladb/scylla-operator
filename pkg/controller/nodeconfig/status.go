@@ -115,7 +115,7 @@ func (ncc *Controller) updateStatus(ctx context.Context, currentNodeConfig *scyl
 
 	klog.V(2).InfoS("Updating status", "NodeConfig", klog.KObj(nc))
 
-	_, err := ncc.scyllaClient.NodeConfigs().UpdateStatus(ctx, nc, metav1.UpdateOptions{})
+	err := ncc.client.Status().Update(ctx, nc)
 	if err != nil {
 		return err
 	}

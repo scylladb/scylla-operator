@@ -6,35 +6,28 @@ import (
 	"sync"
 	"time"
 
-	"github.com/scylladb/scylla-operator/pkg/scheme"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	"golang.org/x/time/rate"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
 	ControllerName = "SidecarController"
+	// controllerRuntimeName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	controllerRuntimeName = "scyllasidecar"
 	// maxSyncDuration enforces preemption. Do not raise the value! Controllers shouldn't actively wait,
-	// but rather use the queue.
+	// but rather requeue.
 	maxSyncDuration          = 30 * time.Second
 	scyllaAPIPollingInterval = 30 * time.Second
-)
-
-var (
-	keyFunc = cache.DeletionHandlingMetaNamespaceKeyFunc
 )
 
 type hostID struct {
@@ -42,38 +35,33 @@ type hostID struct {
 	sync.RWMutex
 }
 
+// Controller keeps the member Service of the ScyllaDB node the sidecar runs next to in sync with the node: it projects
+// the node's identity from the ScyllaDB API into the Service's annotations and carries out the decommission the
+// Service asks for. It is a single-key controller for its own Service.
 type Controller struct {
 	namespace        string
 	serviceName      string
 	localhostAddress string
 
-	kubeClient          kubernetes.Interface
-	singleServiceLister corev1listers.ServiceLister
+	client client.Client
 
 	newScyllaClient func() (*scyllaclient.Client, error)
 
-	cachesToSync []cache.InformerSynced
-
-	eventRecorder record.EventRecorder
-
-	queue workqueue.TypedRateLimitingInterface[string]
-	key   string
+	// trigger enqueues the Service outside its watch: periodically, to re-project the ScyllaDB API values.
+	trigger *controllertools.Trigger
 
 	hostID hostID
 }
+
+var _ reconcile.Reconciler = &Controller{}
 
 func NewController(
 	namespace,
 	serviceName string,
 	localhostAddress string,
-	kubeClient kubernetes.Interface,
-	singleServiceInformer corev1informers.ServiceInformer,
+	c client.Client,
 	newScyllaClient func() (*scyllaclient.Client, error),
 ) (*Controller, error) {
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartStructuredLogging(0)
-	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-
 	// Sanity check.
 	if len(namespace) == 0 {
 		return nil, fmt.Errorf("service namespace can't be empty")
@@ -86,193 +74,81 @@ func NewController(
 		return nil, fmt.Errorf("localhost address can't be empty")
 	}
 
-	// This is a singleton controller.
-	key, err := keyFunc(&metav1.ObjectMeta{
-		Namespace: namespace,
-		Name:      serviceName,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("can't get key: %w", err)
-	}
-
-	scc := &Controller{
+	return &Controller{
 		namespace:        namespace,
 		serviceName:      serviceName,
 		localhostAddress: localhostAddress,
 
-		kubeClient:          kubeClient,
-		singleServiceLister: singleServiceInformer.Lister(),
+		client: c,
 
 		newScyllaClient: newScyllaClient,
 
-		cachesToSync: []cache.InformerSynced{
-			singleServiceInformer.Informer().HasSynced,
+		trigger: controllertools.NewTrigger(),
+	}, nil
+}
+
+// CacheOptions restricts the manager's cache to the member's Service and Pod, which share the name, in namespace.
+func CacheOptions(namespace, serviceName string) cache.Options {
+	identity := fields.OneTermEqualSelector("metadata.name", serviceName)
+
+	return cache.Options{
+		DefaultNamespaces: map[string]cache.Config{
+			namespace: {},
 		},
-
-		eventRecorder: eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "scyllasidecar-controller"}),
-
-		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
-			workqueue.NewTypedMaxOfRateLimiter[string](
-				workqueue.NewTypedItemExponentialFailureRateLimiter[string](
-					5*time.Millisecond,
-					// This is a single key controller just for its node, the upper bound should be fairly low.
-					10*time.Second,
-				),
-				&workqueue.TypedBucketRateLimiter[string]{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
-			),
-			workqueue.TypedRateLimitingQueueConfig[string]{
-				Name: "scyllasidecar",
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.Service{}: {
+				Field: identity,
 			},
+			&corev1.Pod{}: {
+				Field: identity,
+			},
+		},
+	}
+}
+
+// ControllerOptions returns the controller options the sidecar runs with: a single worker with a tight retry bound,
+// and a bounded sync duration.
+func ControllerOptions() controller.Options {
+	return controller.Options{
+		MaxConcurrentReconciles: 1,
+		RateLimiter: workqueue.NewTypedMaxOfRateLimiter[reconcile.Request](
+			workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
+				5*time.Millisecond,
+				// This is a single key controller just for its node, the upper bound should be fairly low.
+				10*time.Second,
+			),
+			&workqueue.TypedBucketRateLimiter[reconcile.Request]{Limiter: rate.NewLimiter(rate.Limit(10), 100)},
 		),
-		key: key,
-	}
-
-	singleServiceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    scc.addService,
-		UpdateFunc: scc.updateService,
-		DeleteFunc: scc.deleteService,
-	})
-
-	return scc, nil
-}
-func (c *Controller) processNextItem(ctx context.Context) bool {
-	key, quit := c.queue.Get()
-	if quit {
-		return false
-	}
-	defer c.queue.Done(key)
-
-	if key != c.key {
-		apimachineryutilruntime.HandleError(fmt.Errorf("got unsupported key %q (singleton key is %q)", key, c.key))
-		return true
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, maxSyncDuration)
-	defer cancel()
-	err := c.sync(ctx)
-	// TODO: Do smarter filtering then just Reduce to handle cases like 2 conflict errors.
-	err = apimachineryutilerrors.Reduce(err)
-	switch {
-	case err == nil:
-		c.queue.Forget(key)
-		return true
-
-	case apierrors.IsConflict(err):
-		klog.V(2).InfoS("Hit conflict, will retry in a bit", "Key", key, "Error", err)
-
-	case apierrors.IsAlreadyExists(err):
-		klog.V(2).InfoS("Hit already exists, will retry in a bit", "Key", key, "Error", err)
-
-	default:
-		apimachineryutilruntime.HandleError(fmt.Errorf("syncing key '%v' failed: %v", key, err))
-	}
-
-	c.queue.AddRateLimited(key)
-
-	return true
-}
-
-func (c *Controller) runWorker(ctx context.Context) {
-	for c.processNextItem(ctx) {
+		// Enforces preemption. Do not raise the value! Controllers shouldn't actively wait, but rather requeue.
+		ReconciliationTimeout: maxSyncDuration,
 	}
 }
 
-func (c *Controller) Run(ctx context.Context) {
-	defer apimachineryutilruntime.HandleCrash()
-
-	klog.InfoS("Starting controller", "Controller", ControllerName)
-
-	var wg sync.WaitGroup
-	defer func() {
-		klog.InfoS("Shutting down controller", "Controller", ControllerName)
-		c.queue.ShutDown()
-		wg.Wait()
-		klog.InfoS("Shut down controller", "Controller", ControllerName)
-	}()
-
-	if !cache.WaitForNamedCacheSync(ControllerName, ctx.Done(), c.cachesToSync...) {
-		return
+// SetupWithManager registers the controller with the manager, and the periodic sync that keeps the values projected
+// from the ScyllaDB API up to date.
+func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	err := ctrlbuilder.ControllerManagedBy(mgr).
+		Named(controllerRuntimeName).
+		Watches(&corev1.Service{}, controllertools.EnqueueSingleton(controllerRuntimeName)).
+		WatchesRawSource(c.trigger.Source(controllerRuntimeName)).
+		WithOptions(options).
+		Complete(c)
+	if err != nil {
+		return fmt.Errorf("can't build controller: %w", err)
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		apimachineryutilwait.UntilWithContext(ctx, c.runWorker, time.Second)
-	}()
 
 	// Periodically reconcile Member Service to make sure values projected from Scylla API are up-to-date.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		apimachineryutilwait.UntilWithContext(ctx, func(ctx context.Context) {
-			klog.V(4).InfoS("Periodically enqueuing Member Service")
-
-			svc, err := c.singleServiceLister.Services(c.namespace).Get(c.serviceName)
-			if err != nil {
-				apimachineryutilruntime.HandleError(err)
-				return
-			}
-
-			c.enqueue(svc)
-		}, scyllaAPIPollingInterval)
-	}()
-
-	<-ctx.Done()
-}
-
-func (c *Controller) enqueue(svc *corev1.Service) {
-	key, err := keyFunc(svc)
+	err = mgr.Add(controllertools.PeriodicTrigger(c.trigger, scyllaAPIPollingInterval))
 	if err != nil {
-		apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", svc, err))
-		return
+		return fmt.Errorf("can't add periodic trigger: %w", err)
 	}
 
-	klog.V(4).InfoS("Enqueuing", "Service", klog.KObj(svc))
-	c.queue.Add(key)
+	return nil
 }
 
-func (c *Controller) addService(obj interface{}) {
-	svc := obj.(*corev1.Service)
-	klog.V(4).InfoS("Observed addition of Service", "Service", klog.KObj(svc))
-	c.enqueue(svc)
-}
-
-func (c *Controller) updateService(old, cur interface{}) {
-	oldService := old.(*corev1.Service)
-	currentService := cur.(*corev1.Service)
-
-	if currentService.UID != oldService.UID {
-		key, err := keyFunc(oldService)
-		if err != nil {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", oldService, err))
-			return
-		}
-		c.deleteService(cache.DeletedFinalStateUnknown{
-			Key: key,
-			Obj: oldService,
-		})
-	}
-
-	klog.V(4).InfoS("Observed update of Service", "Service", klog.KObj(oldService))
-	c.enqueue(currentService)
-}
-
-func (c *Controller) deleteService(obj interface{}) {
-	svc, ok := obj.(*corev1.Service)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		svc, ok = tombstone.Obj.(*corev1.Service)
-		if !ok {
-			apimachineryutilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a Service %#v", obj))
-			return
-		}
-	}
-	klog.V(4).InfoS("Observed deletion of Service", "Service", klog.KObj(svc))
-	c.enqueue(svc)
+// Enqueue requests a sync outside the Service's watch.
+func (c *Controller) Enqueue() {
+	c.trigger.Enqueue()
 }
 
 func (c *Controller) getHostID(ctx context.Context, scyllaClient *scyllaclient.Client, localhostAddr string) (string, error) {

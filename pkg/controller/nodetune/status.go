@@ -8,7 +8,6 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -28,7 +27,7 @@ func (ncdc *Controller) updateStatus(ctx context.Context, currentNC *scyllav1alp
 
 	klog.V(2).InfoS("Updating status", "NodeConfig", klog.KObj(currentNC), "Node", ncdc.nodeName)
 
-	_, err := ncdc.scyllaClient.ScyllaV1alpha1().NodeConfigs().UpdateStatus(ctx, nc, metav1.UpdateOptions{})
+	err := ncdc.client.Status().Update(ctx, nc)
 	if err != nil {
 		return fmt.Errorf("can't update node config status %q: %w", ncdc.nodeConfigName, err)
 	}

@@ -13,6 +13,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	ocrypto "github.com/scylladb/scylla-operator/pkg/crypto"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
@@ -170,12 +171,10 @@ func (sdcc *Controller) syncCerts(
 	var errs []error
 	var progressingConditions []metav1.Condition
 
-	cm := okubecrypto.NewCertificateManager(
+	cm := okubecrypto.NewCertificateManagerWithControl(
 		sdcc.keyGetter,
-		sdcc.kubeClient.CoreV1(),
-		sdcc.secretLister,
-		sdcc.kubeClient.CoreV1(),
-		sdcc.configMapLister,
+		ctrlclient.NewObjectControl[corev1.Secret](ctx, sdcc.client),
+		ctrlclient.NewObjectControl[corev1.ConfigMap](ctx, sdcc.client),
 		sdcc.eventRecorder,
 	)
 
@@ -288,7 +287,7 @@ func (sdcc *Controller) syncCerts(
 				continue
 			}
 
-			pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(svc.Name)
+			pod, err := ctrlclient.Get[corev1.Pod](ctx, sdcc.client, sdc.Namespace, svc.Name)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					progressingConditions = append(progressingConditions, metav1.Condition{
@@ -409,7 +408,7 @@ func (sdcc *Controller) syncCerts(
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			_, changed, err := resourceapply.ApplySecret(ctx, sdcc.kubeClient.CoreV1(), sdcc.secretLister, sdcc.eventRecorder, scyllaConnectionConfigSecret, resourceapply.ApplyOptions{})
+			_, changed, err := resourceapply.ApplySecretWithControl(ctx, ctrlclient.ApplyControl[corev1.Secret](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, scyllaConnectionConfigSecret, resourceapply.ApplyOptions{})
 			if changed {
 				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, certControllerProgressingCondition, scyllaConnectionConfigSecret, "apply", sdc.Generation)
 			}

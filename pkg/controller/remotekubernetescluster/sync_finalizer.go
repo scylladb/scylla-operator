@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (rkcc *Controller) syncFinalizer(ctx context.Context, rkc *scyllav1alpha1.RemoteKubernetesCluster) ([]metav1.Condition, error) {
@@ -61,7 +63,7 @@ func (rkcc *Controller) addFinalizer(ctx context.Context, rkc *scyllav1alpha1.Re
 		return fmt.Errorf("can't create add finalizer patch: %w", err)
 	}
 
-	_, err = rkcc.scyllaClient.RemoteKubernetesClusters().Patch(ctx, rkc.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	err = rkcc.client.Patch(ctx, &scyllav1alpha1.RemoteKubernetesCluster{ObjectMeta: metav1.ObjectMeta{Name: rkc.Name}}, client.RawPatch(types.MergePatchType, patch))
 	if err != nil {
 		return fmt.Errorf("can't patch RemoteKubernetesCluster %q: %w", naming.ObjRef(rkc), err)
 	}
@@ -76,7 +78,7 @@ func (rkcc *Controller) removeFinalizer(ctx context.Context, rkc *scyllav1alpha1
 		return fmt.Errorf("can't create remove finalizer patch: %w", err)
 	}
 
-	_, err = rkcc.scyllaClient.RemoteKubernetesClusters().Patch(ctx, rkc.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	err = rkcc.client.Patch(ctx, &scyllav1alpha1.RemoteKubernetesCluster{ObjectMeta: metav1.ObjectMeta{Name: rkc.Name}}, client.RawPatch(types.MergePatchType, patch))
 	if err != nil {
 		return fmt.Errorf("can't patch RemoteKubernetesCluster %q: %w", naming.ObjRef(rkc), err)
 	}
@@ -86,7 +88,7 @@ func (rkcc *Controller) removeFinalizer(ctx context.Context, rkc *scyllav1alpha1
 }
 
 func (rkcc *Controller) isBeingUsed(ctx context.Context, rkc *scyllav1alpha1.RemoteKubernetesCluster) (bool, []string, error) {
-	scs, err := rkcc.scyllaDBClusterLister.List(labels.Everything())
+	scs, err := ctrlclient.List[scyllav1alpha1.ScyllaDBCluster](ctx, rkcc.client, corev1.NamespaceAll, labels.Everything())
 	if err != nil {
 		return false, nil, fmt.Errorf("can't list all ScyllaClusters using lister: %w", err)
 	}
@@ -108,18 +110,16 @@ func (rkcc *Controller) isBeingUsed(ctx context.Context, rkc *scyllav1alpha1.Rem
 	klog.V(4).InfoS("No ScyllaClusters referencing RemoteKubernetesCluster found in the Informer cache", "RemoteKubernetesCluster", klog.KObj(rkc))
 
 	// Live list ScyllaClusters to be 100% sure before we delete. Informer cache might not be updated yet.
-	scList, err := rkcc.scyllaClient.ScyllaDBClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.Everything().String(),
-	})
+	scList, err := ctrlclient.List[scyllav1alpha1.ScyllaDBCluster](ctx, rkcc.apiReader, corev1.NamespaceAll, labels.Everything())
 	if err != nil {
 		return false, nil, fmt.Errorf("list all ScyllaClusters using lister: %w", err)
 	}
 
 	scyllaDBClusterReferents = scyllaDBClusterReferents[:0]
-	for _, sc := range scList.Items {
+	for _, sc := range scList {
 		for _, dc := range sc.Spec.Datacenters {
 			if dc.RemoteKubernetesClusterName == rkc.Name {
-				scyllaDBClusterReferents = append(scyllaDBClusterReferents, naming.ObjRef(&sc))
+				scyllaDBClusterReferents = append(scyllaDBClusterReferents, naming.ObjRef(sc))
 			}
 		}
 	}

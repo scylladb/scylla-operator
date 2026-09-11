@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -28,7 +29,7 @@ func (scc *Controller) syncRemoteRemoteOwners(
 		return progressingConditions, fmt.Errorf("can't make remote owners: %w", err)
 	}
 
-	clusterClient, err := scc.scyllaRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -39,7 +40,7 @@ func (scc *Controller) syncRemoteRemoteOwners(
 		requiredRemoteOwners,
 		remoteRemoteOwners,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.ScyllaV1alpha1().RemoteOwners(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[scyllav1alpha1.RemoteOwner](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -48,7 +49,7 @@ func (scc *Controller) syncRemoteRemoteOwners(
 	}
 
 	for _, ro := range requiredRemoteOwners {
-		_, changed, err := resourceapply.ApplyRemoteOwner(ctx, clusterClient.ScyllaV1alpha1(), scc.remoteRemoteOwnerLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, ro, resourceapply.ApplyOptions{
+		_, changed, err := resourceapply.ApplyRemoteOwnerWithControl(ctx, ctrlclient.ApplyControl[scyllav1alpha1.RemoteOwner](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, ro, resourceapply.ApplyOptions{
 			AllowMissingControllerRef: true,
 		})
 		if changed {

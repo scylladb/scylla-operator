@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +28,7 @@ func (scc *Controller) syncRemoteServices(
 
 	requiredServices := MakeRemoteServices(sc, dc, remoteNamespace, remoteController, managingClusterDomain)
 
-	clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q region: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -38,7 +39,7 @@ func (scc *Controller) syncRemoteServices(
 		requiredServices,
 		remoteServices,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.CoreV1().Services(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.Service](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -47,7 +48,7 @@ func (scc *Controller) syncRemoteServices(
 	}
 
 	for _, svc := range requiredServices {
-		_, changed, err := resourceapply.ApplyService(ctx, clusterClient.CoreV1(), scc.remoteServiceLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, svc, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyServiceWithControl(ctx, ctrlclient.ApplyControl[corev1.Service](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, svc, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteServiceControllerDatacenterProgressingCondition(dc.Name), svc, "apply", sc.Generation)
 		}
@@ -76,7 +77,7 @@ func (scc *Controller) syncLocalServices(
 		requiredServices,
 		localServices,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: scc.kubeClient.CoreV1().Services(sc.Namespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.Service](scc.client, sc.Namespace),
 		},
 		scc.eventRecorder,
 	)
@@ -85,7 +86,7 @@ func (scc *Controller) syncLocalServices(
 	}
 
 	for _, svc := range requiredServices {
-		_, changed, err := resourceapply.ApplyService(ctx, scc.kubeClient.CoreV1(), scc.serviceLister, scc.eventRecorder, svc, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyServiceWithControl(ctx, ctrlclient.ApplyControl[corev1.Service](ctx, scc.client, sc.Namespace), scc.eventRecorder, svc, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceControllerProgressingCondition, svc, "apply", sc.Generation)
 		}

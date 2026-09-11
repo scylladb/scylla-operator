@@ -14,6 +14,8 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	sidecarcontroller "github.com/scylladb/scylla-operator/pkg/controller/sidecar"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
@@ -24,13 +26,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 type Options struct {
@@ -198,59 +198,41 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		cancel()
 	}()
 
-	identityKubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		o.kubeClient,
-		12*time.Hour,
-		informers.WithNamespace(o.Namespace),
-		informers.WithTweakListOptions(
-			func(options *metav1.ListOptions) {
-				options.FieldSelector = fields.OneTermEqualSelector("metadata.name", o.ServiceName).String()
-			},
-		),
-	)
-
-	namespacedKubeInformers := informers.NewSharedInformerFactoryWithOptions(o.kubeClient, 12*time.Hour, informers.WithNamespace(o.Namespace))
-
-	singleServiceInformer := identityKubeInformers.Core().V1().Services()
-
-	newScyllaClient := func() (*scyllaclient.Client, error) {
-		return controllerhelpers.NewScyllaClientForLocalhost(o.ipFamily)
-	}
-
-	sc, err := sidecarcontroller.NewController(
-		o.Namespace,
-		o.ServiceName,
-		o.scyllaLocalhostAddress,
-		o.kubeClient,
-		singleServiceInformer,
-		newScyllaClient,
+	// The manager's cache is restricted to the member's Service and Pod. It starts first so that the identity can be
+	// read from it; the controllers are registered once ScyllaDB is configured, right before it starts, and are
+	// started by the running manager then.
+	mgr, err := controllermanager.NewManager(
+		o.RestConfig,
+		klog.NewKlogr(),
+		sidecarcontroller.CacheOptions(o.Namespace, o.ServiceName),
+		controllermanager.MetricsDisabledBindAddress,
 	)
 	if err != nil {
-		return fmt.Errorf("can't create sidecar controller: %w", err)
+		return fmt.Errorf("can't create controller manager: %w", err)
 	}
 
-	sr, err := NewStatusReporter(
-		o.Namespace,
-		o.ServiceName,
-		o.statusReportInterval,
-		o.kubeClient,
-		identityKubeInformers.Core().V1().Pods(),
-		newScyllaClient,
-	)
-	if err != nil {
-		return fmt.Errorf("can't create status reporter: %w", err)
-	}
+	var wg sync.WaitGroup
+	defer wg.Wait()
 
-	// Start informers.
-	identityKubeInformers.Start(ctx.Done())
-	namespacedKubeInformers.Start(ctx.Done())
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 
-	klog.V(2).InfoS("Waiting for single service informer caches to sync")
-	if !cache.WaitForCacheSync(ctx.Done(), singleServiceInformer.Informer().HasSynced) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer cancel()
+		err := mgr.Start(ctx)
+		if err != nil {
+			klog.ErrorS(err, "Controller manager failed")
+		}
+	}()
+
+	klog.V(2).InfoS("Waiting for caches to sync")
+	if !mgr.GetCache().WaitForCacheSync(ctx) {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	service, err := singleServiceInformer.Lister().Services(o.Namespace).Get(o.ServiceName)
+	service, err := ctrlclient.Get[corev1.Service](ctx, mgr.GetClient(), o.Namespace, o.ServiceName)
 	if err != nil {
 		return fmt.Errorf("can't get service %q: %w", o.ServiceName, err)
 	}
@@ -277,22 +259,40 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		Pdeathsig: syscall.SIGKILL,
 	}
 
-	var wg sync.WaitGroup
-	defer wg.Wait()
+	newScyllaClient := func() (*scyllaclient.Client, error) {
+		return controllerhelpers.NewScyllaClientForLocalhost(o.ipFamily)
+	}
 
 	// Run sidecar controller.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sc.Run(ctx)
-	}()
+	sc, err := sidecarcontroller.NewController(
+		o.Namespace,
+		o.ServiceName,
+		o.scyllaLocalhostAddress,
+		mgr.GetClient(),
+		newScyllaClient,
+	)
+	if err != nil {
+		return fmt.Errorf("can't create sidecar controller: %w", err)
+	}
+	err = sc.SetupWithManager(mgr, sidecarcontroller.ControllerOptions())
+	if err != nil {
+		return fmt.Errorf("can't set up sidecar controller: %w", err)
+	}
 
 	// Run status reporter.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sr.Run(ctx)
-	}()
+	sr := NewStatusReporter(
+		o.Namespace,
+		o.ServiceName,
+		o.statusReportInterval,
+		mgr.GetClient(),
+		newScyllaClient,
+	)
+	err = sr.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+	})
+	if err != nil {
+		return fmt.Errorf("can't set up status reporter: %w", err)
+	}
 
 	// Run scylla in a new process.
 	err = scyllaCmd.Start()

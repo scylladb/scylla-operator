@@ -36,3 +36,16 @@ func NewClusterLister[T any](factory func(cache.Indexer) T, clusterIndexer func(
 func (l *genericClusterLister[T]) Cluster(name string) T {
 	return l.factory(l.clusterIndexer(name))
 }
+
+type funcClusterLister[T any] struct {
+	clusterFunc func(string) T
+}
+
+// NewGenericClusterLister returns a GenericClusterLister backed by clusterFunc.
+func NewGenericClusterLister[T any](clusterFunc func(string) T) GenericClusterLister[T] {
+	return &funcClusterLister[T]{clusterFunc: clusterFunc}
+}
+
+func (l *funcClusterLister[T]) Cluster(name string) T {
+	return l.clusterFunc(name)
+}

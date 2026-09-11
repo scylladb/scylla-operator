@@ -5,27 +5,23 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"time"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	"github.com/scylladb/scylla-operator/pkg/cmd/operator/probeserver"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controller/ignition"
+	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/spf13/cobra"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 type IgnitionOptions struct {
@@ -36,11 +32,9 @@ type IgnitionOptions struct {
 	ServiceName                       string
 	NodesBroadcastAddressTypeString   string
 	ClientsBroadcastAddressTypeString string
-
-	kubeClient                  kubernetes.Interface
-	mux                         *http.ServeMux
-	nodesBroadcastAddressType   scyllav1alpha1.BroadcastAddressType
-	clientsBroadcastAddressType scyllav1alpha1.BroadcastAddressType
+	mux                               *http.ServeMux
+	nodesBroadcastAddressType         scyllav1alpha1.BroadcastAddressType
+	clientsBroadcastAddressType       scyllav1alpha1.BroadcastAddressType
 }
 
 func NewIgnitionOptions(streams genericclioptions.IOStreams) *IgnitionOptions {
@@ -141,11 +135,6 @@ func (o *IgnitionOptions) Complete(args []string) error {
 		return err
 	}
 
-	o.kubeClient, err = kubernetes.NewForConfig(o.ProtoConfig)
-	if err != nil {
-		return fmt.Errorf("can't build kubernetes clientset: %w", err)
-	}
-
 	o.nodesBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.NodesBroadcastAddressTypeString)
 	o.clientsBroadcastAddressType = scyllav1alpha1.BroadcastAddressType(o.ClientsBroadcastAddressTypeString)
 
@@ -168,41 +157,28 @@ func (o *IgnitionOptions) Run(originalStreams genericclioptions.IOStreams, cmd *
 }
 
 func (o *IgnitionOptions) Execute(cmdCtx context.Context, originalStreams genericclioptions.IOStreams, cmd *cobra.Command) error {
-	identityKubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		o.kubeClient,
-		12*time.Hour,
-		informers.WithNamespace(o.Namespace),
-		informers.WithTweakListOptions(
-			func(options *metav1.ListOptions) {
-				options.FieldSelector = fields.OneTermEqualSelector("metadata.name", o.ServiceName).String()
-			},
-		),
+	mgr, err := controllermanager.NewManager(
+		o.RestConfig,
+		klog.NewKlogr(),
+		ignition.CacheOptions(o.Namespace, o.ServiceName),
+		controllermanager.MetricsDisabledBindAddress,
 	)
-	nodeconfigDataCMKubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		o.kubeClient,
-		12*time.Hour,
-		informers.WithNamespace(o.Namespace),
-		informers.WithTweakListOptions(
-			func(options *metav1.ListOptions) {
-				options.LabelSelector = labels.Set{
-					naming.ConfigMapTypeLabel: string(naming.NodeConfigDataConfigMapType),
-				}.String()
-			},
-		),
-	)
+	if err != nil {
+		return fmt.Errorf("can't create controller manager: %w", err)
+	}
 
-	ignitionController, err := ignition.NewController(
+	ignitionController := ignition.NewController(
 		o.Namespace,
 		o.ServiceName,
 		o.nodesBroadcastAddressType,
 		o.nodesBroadcastAddressType,
-		o.kubeClient,
-		nodeconfigDataCMKubeInformers.Core().V1().ConfigMaps(),
-		identityKubeInformers.Core().V1().Services(),
-		identityKubeInformers.Core().V1().Pods(),
+		mgr.GetClient(),
 	)
+	err = ignitionController.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+	})
 	if err != nil {
-		return fmt.Errorf("can't create ignition controller: %w", err)
+		return fmt.Errorf("can't set up ignition controller: %w", err)
 	}
 
 	readyzFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -228,13 +204,12 @@ func (o *IgnitionOptions) Execute(cmdCtx context.Context, originalStreams generi
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		identityKubeInformers.Start(ctx.Done())
-	}()
+		defer taskCtxCancel()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		nodeconfigDataCMKubeInformers.Start(ctx.Done())
+		err := mgr.Start(ctx)
+		if err != nil {
+			klog.ErrorS(err, "Controller manager failed")
+		}
 	}()
 
 	wg.Add(1)
@@ -247,13 +222,7 @@ func (o *IgnitionOptions) Execute(cmdCtx context.Context, originalStreams generi
 		}
 	}()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		ignitionController.Run(ctx)
-	}()
-
-	<-cmdCtx.Done()
+	<-ctx.Done()
 
 	return nil
 }

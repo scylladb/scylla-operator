@@ -50,7 +50,7 @@ func (nsc *Controller) updateStatus(ctx context.Context, currentNC *scyllav1alph
 
 	klog.V(2).InfoS("Updating status", "NodeConfig", klog.KObj(currentNC), "Node", nsc.nodeName)
 
-	_, err := nsc.scyllaClient.NodeConfigs().UpdateStatus(ctx, nc, metav1.UpdateOptions{})
+	err := nsc.client.Status().Update(ctx, nc)
 	if err != nil {
 		return fmt.Errorf("can't update node config status %q: %w", nsc.nodeConfigName, err)
 	}

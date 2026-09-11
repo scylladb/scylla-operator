@@ -6,11 +6,13 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (sdcc *Controller) syncIngresses(
@@ -44,12 +46,7 @@ func (sdcc *Controller) syncIngresses(
 
 		propagationPolicy := metav1.DeletePropagationBackground
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, ingress, "delete", sdc.Generation)
-		err = sdcc.kubeClient.NetworkingV1().Ingresses(ingress.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &ingress.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err = sdcc.client.Delete(ctx, ingress, client.Preconditions{UID: &ingress.UID}, client.PropagationPolicy(propagationPolicy))
 		deletionErrors = append(deletionErrors, err)
 	}
 	err = apimachineryutilerrors.NewAggregate(deletionErrors)
@@ -58,7 +55,7 @@ func (sdcc *Controller) syncIngresses(
 	}
 
 	for _, requiredIngress := range requiredIngresses {
-		_, changed, err := resourceapply.ApplyIngress(ctx, sdcc.kubeClient.NetworkingV1(), sdcc.ingressLister, sdcc.eventRecorder, requiredIngress, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyIngressWithControl(ctx, ctrlclient.ApplyControl[networkingv1.Ingress](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, requiredIngress, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, requiredIngress, "apply", sdc.Generation)
 		}

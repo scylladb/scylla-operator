@@ -12,106 +12,140 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
-	corev1informers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+	ctrlbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
 	localhost = "localhost"
 )
 
-type Controller struct {
-	*controllertools.Observer
+const (
+	// ControllerName names the controller within controller-runtime: in its logs, metrics and the workqueue.
+	ControllerName = "status-report"
+)
 
+// Controller is an observer: it reports what the local ScyllaDB node sees of the cluster in an annotation on the node's
+// Pod, on every Pod event and whenever it is triggered.
+type Controller struct {
 	namespace string
 	podName   string
 
-	kubeClient      kubernetes.Interface
-	podLister       corev1listers.PodLister
+	client          client.Client
 	newScyllaClient func() (*scyllaclient.Client, error)
+
+	trigger *controllertools.Trigger
 }
 
 func NewController(
 	namespace string,
 	podName string,
-	kubeClient kubernetes.Interface,
-	podInformer corev1informers.PodInformer,
+	c client.Client,
 	newScyllaClient func() (*scyllaclient.Client, error),
-) (*Controller, error) {
-	c := &Controller{
+) *Controller {
+	return &Controller{
 		namespace: namespace,
 		podName:   podName,
 
-		kubeClient:      kubeClient,
-		podLister:       podInformer.Lister(),
+		client:          c,
 		newScyllaClient: newScyllaClient,
+
+		trigger: controllertools.NewTrigger(),
 	}
-
-	observer := controllertools.NewObserver(
-		"status-report",
-		kubeClient.CoreV1().Events(corev1.NamespaceAll),
-		c.Sync,
-	)
-
-	podHandler, err := podInformer.Informer().AddEventHandler(observer.GetGenericHandlers())
-	if err != nil {
-		return nil, fmt.Errorf("can't add event handler to Pod informer: %w", err)
-	}
-	observer.AddCachesToSync(podHandler.HasSynced)
-
-	c.Observer = observer
-
-	return c, nil
 }
 
-func (c *Controller) Sync(ctx context.Context) error {
+// CacheOptions restricts the manager's cache to the node's Pod in namespace.
+func CacheOptions(namespace, podName string) cache.Options {
+	return cache.Options{
+		DefaultNamespaces: map[string]cache.Config{
+			namespace: {},
+		},
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.Pod{}: {
+				Field: fields.OneTermEqualSelector("metadata.name", podName),
+			},
+		},
+	}
+}
+
+// SetupWithManager registers the controller with the manager. Every Pod event and every Enqueue re-runs the sync.
+func (c *Controller) SetupWithManager(mgr ctrlmanager.Manager, options controller.Options) error {
+	return ctrlbuilder.ControllerManagedBy(mgr).
+		Named(ControllerName).
+		Watches(&corev1.Pod{}, controllertools.EnqueueSingleton(ControllerName)).
+		WatchesRawSource(c.trigger.Source(ControllerName)).
+		WithOptions(options).
+		Complete(c)
+}
+
+// Enqueue requests a sync outside the Pod's watch.
+func (c *Controller) Enqueue() {
+	c.trigger.Enqueue()
+}
+
+// Trigger returns the trigger that requests a sync outside the Pod's watch.
+func (c *Controller) Trigger() *controllertools.Trigger {
+	return c.trigger
+}
+
+func (c *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	startTime := time.Now()
-	klog.V(4).InfoS("Started syncing observer", "Name", c.Observer.Name(), "startTime", startTime)
+	klog.V(4).InfoS("Started syncing observer", "Name", ControllerName, "startTime", startTime)
 	defer func() {
-		klog.V(4).InfoS("Finished syncing observer", "Name", c.Observer.Name(), "duration", time.Since(startTime))
+		klog.V(4).InfoS("Finished syncing observer", "Name", ControllerName, "duration", time.Since(startTime))
 	}()
 
-	pod, err := c.podLister.Pods(c.namespace).Get(c.podName)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, c.client, c.namespace, c.podName)
 	if err != nil {
-		return fmt.Errorf("can't get Pod %q: %v", naming.ManualRef(c.namespace, c.podName), err)
+		return reconcile.Result{}, fmt.Errorf("can't get Pod %q: %v", naming.ManualRef(c.namespace, c.podName), err)
 	}
 
 	nodeStatusReport := c.getNodeStatusReport(ctx)
 	encodedNodeStatusReport, err := nodeStatusReport.Encode()
 	if err != nil {
-		return fmt.Errorf("can't encode node status report: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't encode node status report: %w", err)
 	}
 
 	encodedNodeStatusReportString := string(encodedNodeStatusReport)
 
 	if controllerhelpers.HasMatchingAnnotation(pod, naming.NodeStatusReportAnnotation, encodedNodeStatusReportString) {
 		klog.V(5).InfoS("Pod already has up-to-date node status report annotation", "Pod", naming.ObjRef(pod))
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	klog.V(4).InfoS("Patching Pod with new node status report annotation", "Pod", naming.ObjRef(pod), "NodeStatusReport", nodeStatusReport)
 	patch, err := controllerhelpers.PrepareSetAnnotationPatch(pod, naming.NodeStatusReportAnnotation, pointer.Ptr[string](string(encodedNodeStatusReport)))
 	if err != nil {
-		return fmt.Errorf("can't prepare annotation patch: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't prepare annotation patch: %w", err)
 	}
 
-	_, err = c.kubeClient.CoreV1().Pods(c.namespace).Patch(ctx, c.podName, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	err = c.client.Patch(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: c.namespace,
+			Name:      c.podName,
+		},
+	}, client.RawPatch(types.StrategicMergePatchType, patch))
 	if err != nil {
-		return fmt.Errorf("can't patch pod %q: %w", naming.ObjRef(pod), err)
+		return reconcile.Result{}, fmt.Errorf("can't patch pod %q: %w", naming.ObjRef(pod), err)
 	}
 
 	klog.V(4).InfoS("Finished patching Pod with new node status report annotation", "Pod", naming.ObjRef(pod))
 
-	return nil
+	return reconcile.Result{}, nil
 }
 
 func (c *Controller) getNodeStatusReport(ctx context.Context) *internalapi.NodeStatusReport {

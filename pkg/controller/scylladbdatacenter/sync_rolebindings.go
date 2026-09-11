@@ -6,10 +6,12 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (sdcc *Controller) syncRoleBindings(
@@ -36,12 +38,7 @@ func (sdcc *Controller) syncRoleBindings(
 
 		propagationPolicy := metav1.DeletePropagationBackground
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, roleBindingControllerProgressingCondition, rb, "delete", sdc.Generation)
-		err = sdcc.kubeClient.RbacV1().RoleBindings(rb.Namespace).Delete(ctx, rb.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &rb.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err = sdcc.client.Delete(ctx, rb, client.Preconditions{UID: &rb.UID}, client.PropagationPolicy(propagationPolicy))
 		deletionErrors = append(deletionErrors, err)
 	}
 	err = apimachineryutilerrors.NewAggregate(deletionErrors)
@@ -49,7 +46,7 @@ func (sdcc *Controller) syncRoleBindings(
 		return progressingConditions, fmt.Errorf("can't delete role binding(s): %w", err)
 	}
 
-	_, changed, err := resourceapply.ApplyRoleBinding(ctx, sdcc.kubeClient.RbacV1(), sdcc.roleBindingLister, sdcc.eventRecorder, requiredRoleBinding, resourceapply.ApplyOptions{
+	_, changed, err := resourceapply.ApplyRoleBindingWithControl(ctx, ctrlclient.ApplyControl[rbacv1.RoleBinding](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, requiredRoleBinding, resourceapply.ApplyOptions{
 		ForceOwnership: true,
 	})
 	if changed {

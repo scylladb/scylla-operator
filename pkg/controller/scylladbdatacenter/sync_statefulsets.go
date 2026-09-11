@@ -12,6 +12,8 @@ import (
 	"github.com/blang/semver"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
@@ -33,6 +35,7 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var systemKeyspaces = []string{"system", "system_schema"}
@@ -57,7 +60,7 @@ func (sdcc *Controller) makeRacks(sdc *scyllav1alpha1.ScyllaDBDatacenter, statef
 
 func (sdcc *Controller) getScyllaManagerAgentToken(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
 	secretName := naming.AgentAuthTokenSecretName(sdc)
-	secret, err := sdcc.secretLister.Secrets(sdc.Namespace).Get(secretName)
+	secret, err := ctrlclient.Get[corev1.Secret](ctx, sdcc.client, sdc.Namespace, secretName)
 	if err != nil {
 		return "", fmt.Errorf("can't get manager agent auth secret %s/%s: %w", sdc.Namespace, secretName, err)
 	}
@@ -139,7 +142,7 @@ func (sdcc *Controller) beforeUpgrade(ctx context.Context, sdc *scyllav1alpha1.S
 	klog.V(2).InfoS("Running pre-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 	defer klog.V(2).InfoS("Finished running pre-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sdc, services, sdcc.podLister)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sdc, services, sdcc.podLister(ctx))
 	if err != nil {
 		return true, err
 	}
@@ -178,7 +181,7 @@ func (sdcc *Controller) afterUpgrade(ctx context.Context, sdc *scyllav1alpha1.Sc
 	klog.V(2).InfoS("Running post-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 	defer klog.V(2).InfoS("Finished running post-upgrade hook", "ScyllaDBDatacenter", klog.KObj(sdc))
 
-	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sdc, services, sdcc.podLister)
+	hosts, err := controllerhelpers.GetRequiredScyllaHosts(sdc, services, sdcc.podLister(ctx))
 	if err != nil {
 		return err
 	}
@@ -212,20 +215,19 @@ func (sdcc *Controller) beforeNodeUpgrade(ctx context.Context, sdc *scyllav1alph
 	}
 
 	// Enable maintenance mode to make sure liveness checks won't fail.
-	_, err := sdcc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
-		ctx,
-		svc.Name,
-		types.StrategicMergePatchType,
-		[]byte(fmt.Sprintf(`{"metadata": {"labels":{"%s": ""}}}`, naming.NodeMaintenanceLabel)),
-		metav1.PatchOptions{},
-	)
+	err := sdcc.client.Patch(ctx, &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: svc.Namespace,
+			Name:      svc.Name,
+		},
+	}, client.RawPatch(types.StrategicMergePatchType, []byte(fmt.Sprintf(`{"metadata": {"labels":{"%s": ""}}}`, naming.NodeMaintenanceLabel))))
 	if err != nil {
 		return true, err
 	}
 
 	// Drain the node.
 	podName := naming.PodNameFromService(svc)
-	pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(podName)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, sdcc.client, sdc.Namespace, podName)
 	if err != nil {
 		return false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
 	}
@@ -277,13 +279,12 @@ func (sdcc *Controller) beforeNodeUpgrade(ctx context.Context, sdc *scyllav1alph
 	klog.V(4).InfoS("Backed up data keyspaces", "ScyllaDBDatacenter", klog.KObj(sdc), "Host", host)
 
 	// Disable maintenance mode.
-	_, err = sdcc.kubeClient.CoreV1().Services(svc.Namespace).Patch(
-		ctx,
-		svc.Name,
-		types.StrategicMergePatchType,
-		[]byte(fmt.Sprintf(`{"metadata": {"labels":{"%s": null}}}`, naming.NodeMaintenanceLabel)),
-		metav1.PatchOptions{},
-	)
+	err = sdcc.client.Patch(ctx, &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: svc.Namespace,
+			Name:      svc.Name,
+		},
+	}, client.RawPatch(types.StrategicMergePatchType, []byte(fmt.Sprintf(`{"metadata": {"labels":{"%s": null}}}`, naming.NodeMaintenanceLabel))))
 	if err != nil {
 		return true, err
 	}
@@ -294,7 +295,12 @@ func (sdcc *Controller) beforeNodeUpgrade(ctx context.Context, sdc *scyllav1alph
 	// Kubernetes can't evict pods when DesiredHealthy == 0 and it's already down, so we need to use DELETE
 	// to succeed even when having just one replica.
 	klog.V(2).InfoS("Deleting Pod", "ScyllaDBDatacenter", klog.KObj(sdc), "Pod", naming.ManualRef(sdc.Namespace, podName))
-	err = sdcc.kubeClient.CoreV1().Pods(sdc.Namespace).Delete(ctx, podName, metav1.DeleteOptions{})
+	err = sdcc.client.Delete(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: sdc.Namespace,
+			Name:      podName,
+		},
+	})
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return true, fmt.Errorf("can't delete pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
@@ -316,7 +322,7 @@ func (sdcc *Controller) afterNodeUpgrade(ctx context.Context, sdc *scyllav1alpha
 	}
 
 	podName := naming.PodNameFromService(svc)
-	pod, err := sdcc.podLister.Pods(sdc.Namespace).Get(podName)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, sdcc.client, sdc.Namespace, podName)
 	if err != nil {
 		return fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)
 	}
@@ -369,12 +375,7 @@ func (sdcc *Controller) pruneStatefulSets(
 
 		propagationPolicy := metav1.DeletePropagationBackground
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, sts, "delete", sdc.Generation)
-		err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Delete(ctx, sts.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &sts.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err := sdcc.client.Delete(ctx, sts, client.Preconditions{UID: &sts.UID}, client.PropagationPolicy(propagationPolicy))
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -738,7 +739,7 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 		svcCopy.Labels[naming.DecommissionedLabel] = naming.LabelValueFalse
 		klog.V(2).InfoS("Requesting the decommission of the node", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svcCopy))
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, svcCopy, "update", sdc.Generation)
-		_, err = sdcc.kubeClient.CoreV1().Services(svcCopy.Namespace).Update(ctx, svcCopy, metav1.UpdateOptions{})
+		err = sdcc.client.Update(ctx, svcCopy)
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't update service %q: %w", naming.ObjRef(svcCopy), err)
 		}
@@ -766,7 +767,7 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 	}
 	klog.V(2).InfoS("Scaling StatefulSet", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts), "CurrentReplicas", *sts.Spec.Replicas, "UpdatedReplicas", scale.Spec.Replicas)
 	controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, scale, "updateScale", sdc.Generation)
-	_, err = sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).UpdateScale(ctx, sts.Name, scale, metav1.UpdateOptions{})
+	err = sdcc.client.SubResource("scale").Update(ctx, sts, client.WithSubResourceBody(scale))
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't update scale: %w", err)
 	}
@@ -775,7 +776,7 @@ func (sdcc *Controller) syncRackDecommission(ctx context.Context, sdc *scyllav1a
 
 func (sdcc *Controller) syncStatefulSets(
 	ctx context.Context,
-	key string,
+	rq *controllertools.Requeue,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	soc *scyllav1alpha1.ScyllaOperatorConfig,
 	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
@@ -869,27 +870,20 @@ func (sdcc *Controller) syncStatefulSets(
 	createdStatefulSets, createProgressingConditions, err := createMissingStatefulSets(
 		ctx,
 		func(ctx context.Context, required *appsv1.StatefulSet) (*appsv1.StatefulSet, bool, error) {
-			return resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
+			return resourceapply.ApplyStatefulSetWithControl(ctx, ctrlclient.ApplyControl[appsv1.StatefulSet](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
 		},
 		sdc,
 		requiredStatefulSets,
 		statefulSets,
 	)
 	progressingConditions = append(progressingConditions, createProgressingConditions...)
-	defer func() {
-		if len(createProgressingConditions) > 0 {
-			// Wait for the informers to catch up.
-			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(sdcc.statefulSetCachePropagationDelay)
-		}
-	}()
 	var createErrs []error
 	if err != nil {
 		createErrs = append(createErrs, fmt.Errorf("can't create StatefulSet(s): %w", err))
 	}
 
 	// Record the statuses of the StatefulSets that were created, even if creating another one failed.
-	err = ensureRackNamesInRackStatuses(sdcc.podLister, sdc, status, createdStatefulSets, services)
+	err = ensureRackNamesInRackStatuses(sdcc.podLister(ctx), sdc, status, createdStatefulSets, services)
 	if err != nil {
 		createErrs = append(createErrs, fmt.Errorf("can't update status with rack statuses: %w", err))
 	}
@@ -959,7 +953,7 @@ func (sdcc *Controller) syncStatefulSets(
 
 		klog.V(2).InfoS("Scaling StatefulSet", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts), "CurrentReplicas", *sts.Spec.Replicas, "UpdatedReplicas", scale.Spec.Replicas)
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, scale, "updateScale", sdc.Generation)
-		_, err = sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).UpdateScale(ctx, sts.Name, scale, metav1.UpdateOptions{})
+		err = sdcc.client.SubResource("scale").Update(ctx, sts, client.WithSubResourceBody(scale))
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't update scale: %w", err)
 		}
@@ -1020,7 +1014,7 @@ func (sdcc *Controller) syncStatefulSets(
 			// We could still see an old status. Although hooks are mandated to be reentrant,
 			// they are pretty expensive to run so it's cheaper to recheck the partition with a live call.
 			// TODO: Remove the live call when the hooks are migrated to run as Jobs.
-			freshUpgradeContextConfigMap, err := sdcc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Get(ctx, naming.UpgradeContextConfigMapName(sdc), metav1.GetOptions{})
+			freshUpgradeContextConfigMap, err := ctrlclient.Get[corev1.ConfigMap](ctx, sdcc.apiReader, sdc.Namespace, naming.UpgradeContextConfigMapName(sdc))
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't get upgrade context ConfigMap %q: %w", naming.UpgradeContextConfigMapName(sdc), err)
 			}
@@ -1046,7 +1040,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, err
 			}
 			if !done {
-				sdcc.queue.AddAfter(key, 5*time.Second)
+				rq.After(5 * time.Second)
 				return progressingConditions, nil
 			}
 
@@ -1056,7 +1050,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
 
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			cm, changed, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
 			if changed {
 				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
 			}
@@ -1069,7 +1063,6 @@ func (sdcc *Controller) syncStatefulSets(
 		case internalapi.RolloutInitUpgradePhase:
 			// Partition all StatefulSet at once to block changes but no Pod update is done yet.
 			var errs []error
-			anyStsChanged := false
 			for _, required := range requiredStatefulSets {
 				existing, ok := statefulSets[required.Name]
 				if !ok {
@@ -1084,14 +1077,12 @@ func (sdcc *Controller) syncStatefulSets(
 				required.Spec.Replicas = pointer.Ptr(*existing.Spec.Replicas)
 				required.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(*existing.Spec.Replicas)
 				// Use apply to also update the spec.template
-				updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
+				updatedSts, changed, err := resourceapply.ApplyStatefulSetWithControl(ctx, ctrlclient.ApplyControl[appsv1.StatefulSet](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
 				if err != nil {
 					errs = append(errs, fmt.Errorf("can't apply statefulset to set partition: %w", err))
 				}
 
 				if changed {
-					anyStsChanged = true
-
 					rackName, ok := updatedSts.Labels[naming.RackNameLabel]
 					if !ok {
 						errs = append(errs, fmt.Errorf(
@@ -1110,12 +1101,8 @@ func (sdcc *Controller) syncStatefulSets(
 						continue
 					}
 
-					status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts, services)
+					status.Racks[idx] = *calculateRackStatus(sdcc.podLister(ctx), sdc, rackName, updatedSts, services)
 				}
-			}
-			if anyStsChanged {
-				// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-				time.Sleep(sdcc.statefulSetCachePropagationDelay)
 			}
 			err = apimachineryutilerrors.NewAggregate(errs)
 			if err != nil {
@@ -1128,7 +1115,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
 
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			cm, changed, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
 			if changed {
 				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
 			}
@@ -1147,7 +1134,7 @@ func (sdcc *Controller) syncStatefulSets(
 					// TODO: Remove the live call when hooks are migrated into Jobs.
 					// We could still see an old partition. Although hooks are mandated to be reentrant,
 					// they are pretty expensive to run so it's cheaper to recheck the partition with a live call.
-					freshSts, err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
+					freshSts, err := ctrlclient.Get[appsv1.StatefulSet](ctx, sdcc.apiReader, sts.Namespace, sts.Name)
 					if err != nil {
 						return progressingConditions, err
 					}
@@ -1185,7 +1172,7 @@ func (sdcc *Controller) syncStatefulSets(
 
 				if !done {
 					klog.V(4).InfoS("PreNodeUpgrade hook in progress. Waiting a bit.", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-					sdcc.queue.AddAfter(key, 5*time.Second)
+					rq.After(5 * time.Second)
 					return progressingConditions, nil
 				}
 				klog.V(2).InfoS("PreNodeUpgrade hook finished", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
@@ -1193,7 +1180,7 @@ func (sdcc *Controller) syncStatefulSets(
 				// TODO: Use bare update when hooks are extracted into Jobs.
 				//       But at this point rerunning them is expensive so we retry with condition check.
 				err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-					freshSts, err := sdcc.kubeClient.AppsV1().StatefulSets(sts.Namespace).Get(ctx, sts.Name, metav1.GetOptions{})
+					freshSts, err := ctrlclient.Get[appsv1.StatefulSet](ctx, sdcc.apiReader, sts.Namespace, sts.Name)
 					if err != nil {
 						return err
 					}
@@ -1210,7 +1197,7 @@ func (sdcc *Controller) syncStatefulSets(
 					}
 
 					freshSts.Spec.UpdateStrategy.RollingUpdate.Partition = pointer.Ptr(nextPartition)
-					_, err = sdcc.kubeClient.AppsV1().StatefulSets(freshSts.Namespace).Update(ctx, freshSts, metav1.UpdateOptions{})
+					err = sdcc.client.Update(ctx, freshSts)
 					if err != nil {
 						return err
 					}
@@ -1231,7 +1218,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
 
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			cm, changed, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
 			if changed {
 				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
 			}
@@ -1254,12 +1241,7 @@ func (sdcc *Controller) syncStatefulSets(
 			}
 
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "delete", sdc.Generation)
-			err = sdcc.kubeClient.CoreV1().ConfigMaps(sdc.Namespace).Delete(ctx, cmName, metav1.DeleteOptions{
-				Preconditions: &metav1.Preconditions{
-					UID: &cm.UID,
-				},
-				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationBackground),
-			})
+			err = sdcc.client.Delete(ctx, cm, client.Preconditions{UID: &cm.UID}, client.PropagationPolicy(metav1.DeletePropagationBackground))
 			if err != nil {
 				return progressingConditions, fmt.Errorf("can't delete upgrade context ConfigMap %q: %w", naming.ManualRef(sdc.Namespace, cmName), err)
 			}
@@ -1276,7 +1258,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 			}
 
-			cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+			cm, changed, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
 			if changed {
 				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
 			}
@@ -1289,13 +1271,6 @@ func (sdcc *Controller) syncStatefulSets(
 	}
 
 	// Begin the update.
-	anyStsChanged := false
-	defer func() {
-		if anyStsChanged {
-			// TODO: Add expectations, not to reconcile sooner then we see this new StatefulSet in our caches. (#682)
-			time.Sleep(sdcc.statefulSetCachePropagationDelay)
-		}
-	}()
 	for _, required := range requiredStatefulSets {
 		// Check for version upgrades first.
 		existing, existingFound := statefulSets[required.Name]
@@ -1340,7 +1315,7 @@ func (sdcc *Controller) syncStatefulSets(
 						return progressingConditions, fmt.Errorf("can't make upgrade context ConfigMap: %w", err)
 					}
 
-					cm, changed, err := resourceapply.ApplyConfigMap(ctx, sdcc.kubeClient.CoreV1(), sdcc.configMapLister, sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
+					cm, changed, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, cm, resourceapply.ApplyOptions{})
 					if changed {
 						controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, cm, "apply", sdc.Generation)
 					}
@@ -1353,14 +1328,12 @@ func (sdcc *Controller) syncStatefulSets(
 			}
 		}
 
-		updatedSts, changed, err := resourceapply.ApplyStatefulSet(ctx, sdcc.kubeClient.AppsV1(), sdcc.statefulSetLister, sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
+		updatedSts, changed, err := resourceapply.ApplyStatefulSetWithControl(ctx, ctrlclient.ApplyControl[appsv1.StatefulSet](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
 		if err != nil {
 			return progressingConditions, fmt.Errorf("can't apply statefulset update: %w", err)
 		}
 
 		if changed {
-			anyStsChanged = true
-
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, required, "apply", sdc.Generation)
 
 			rackName, ok := updatedSts.Labels[naming.RackNameLabel]
@@ -1378,7 +1351,7 @@ func (sdcc *Controller) syncStatefulSets(
 				return progressingConditions, fmt.Errorf("can't find rack %q status in %q ScyllaDBDatacenter", rackName, naming.ObjRef(sdc))
 			}
 
-			status.Racks[idx] = *calculateRackStatus(sdcc.podLister, sdc, rackName, updatedSts, services)
+			status.Racks[idx] = *calculateRackStatus(sdcc.podLister(ctx), sdc, rackName, updatedSts, services)
 		}
 
 		// Wait for the StatefulSet to roll out.

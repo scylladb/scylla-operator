@@ -8,6 +8,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,7 @@ func (sdcc *Controller) syncScyllaDBDatacenterNodesStatusReports(
 ) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	scyllaDBDatacenterNodesStatusReport, err := makeScyllaDBDatacenterNodesStatusReport(sdc, services, sdcc.podLister)
+	scyllaDBDatacenterNodesStatusReport, err := makeScyllaDBDatacenterNodesStatusReport(sdc, services, sdcc.podLister(ctx))
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get ScyllaDB Manager agent auth token config: %w", err)
 	}
@@ -31,7 +32,7 @@ func (sdcc *Controller) syncScyllaDBDatacenterNodesStatusReports(
 		[]*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{scyllaDBDatacenterNodesStatusReport},
 		scyllaDBDatacenterNodesStatusReports,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: sdcc.scyllaClient.ScyllaDBDatacenterNodesStatusReports(sdc.Namespace).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](sdcc.client, sdc.Namespace),
 		},
 		sdcc.eventRecorder,
 	)
@@ -39,7 +40,7 @@ func (sdcc *Controller) syncScyllaDBDatacenterNodesStatusReports(
 		return progressingConditions, fmt.Errorf("can't prune ScyllaDBDatacenterNodesStatusReport(s): %w", err)
 	}
 
-	_, changed, err := resourceapply.ApplyScyllaDBDatacenterNodesStatusReport(ctx, sdcc.scyllaClient, sdcc.scyllaDBDatacenterNodesStatusReportLister, sdcc.eventRecorder, scyllaDBDatacenterNodesStatusReport, resourceapply.ApplyOptions{})
+	_, changed, err := resourceapply.ApplyScyllaDBDatacenterNodesStatusReportWithControl(ctx, ctrlclient.ApplyControl[scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, scyllaDBDatacenterNodesStatusReport, resourceapply.ApplyOptions{})
 	if changed {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, scyllaDBDatacenterNodesStatusReportControllerProgressingCondition, scyllaDBDatacenterNodesStatusReport, "apply", sdc.Generation)
 	}

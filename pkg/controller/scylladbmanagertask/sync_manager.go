@@ -24,6 +24,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers/managerclienterrors"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -31,7 +32,6 @@ import (
 	hashutil "github.com/scylladb/scylla-operator/pkg/util/hash"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
@@ -48,7 +48,7 @@ func (smtc *Controller) syncManager(
 		return progressingConditions, fmt.Errorf("can't get ScyllaDBManagerClusterRegistration name: %w", err)
 	}
 
-	smcr, err := smtc.scyllaDBManagerClusterRegistrationLister.ScyllaDBManagerClusterRegistrations(smt.Namespace).Get(smcrName)
+	smcr, err := ctrlclient.Get[scyllav1alpha1.ScyllaDBManagerClusterRegistration](ctx, smtc.client, smt.Namespace, smcrName)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return progressingConditions, fmt.Errorf("can't get ScyllaDBManagerClusterRegistration: %w", err)
@@ -693,7 +693,7 @@ func (smtc *Controller) syncScyllaV1TaskStatusAnnotation(ctx context.Context, sm
 		return fmt.Errorf("can't prepare patch setting annotation: %w", err)
 	}
 
-	_, err = smtc.scyllaClient.ScyllaDBManagerTasks(smt.Namespace).Patch(ctx, smt.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	err = smtc.patch(ctx, smt, patch)
 	if err != nil {
 		return fmt.Errorf("can't patch ScyllaDBManagerTask: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -20,15 +21,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (ncc *Controller) sync(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return fmt.Errorf("can't split meta namespace cache key: %w", err)
-	}
+func (ncc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	key := req.NamespacedName
+
+	namespace, name := key.Namespace, key.Name
 
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing NodeConfig", "NodeConfig", klog.KRef(namespace, name), "startTime", startTime)
@@ -36,18 +36,18 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		klog.V(4).InfoS("Finished syncing NodeConfig", "NodeConfig", klog.KRef(namespace, name), "duration", time.Since(startTime))
 	}()
 
-	nc, err := ncc.nodeConfigLister.Get(name)
+	nc, err := ctrlclient.Get[scyllav1alpha1.NodeConfig](ctx, ncc.client, "", name)
 	if apierrors.IsNotFound(err) {
 		klog.V(2).InfoS("NodeConfig has been deleted", "NodeConfig", klog.KObj(nc))
-		return nil
+		return reconcile.Result{}, nil
 	}
 	if err != nil {
-		return fmt.Errorf("can't get NodeConfig %q: %w", key, err)
+		return reconcile.Result{}, fmt.Errorf("can't get NodeConfig %q: %w", key, err)
 	}
 
-	soc, err := ncc.scyllaOperatorConfigLister.Get(naming.SingletonName)
+	soc, err := ctrlclient.Get[scyllav1alpha1.ScyllaOperatorConfig](ctx, ncc.client, "", naming.SingletonName)
 	if err != nil {
-		return fmt.Errorf("can't get ScyllaOperatorConfig: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't get ScyllaOperatorConfig: %w", err)
 	}
 
 	ncSelector := labels.SelectorFromSet(labels.Set{
@@ -57,32 +57,32 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 	type CT = *scyllav1alpha1.NodeConfig
 	var objectErrs []error
 
-	namespaces, err := ncc.getNamespaces()
+	namespaces, err := ncc.getNamespaces(ctx)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
 
-	clusterRoles, err := ncc.getClusterRoles()
+	clusterRoles, err := ncc.getClusterRoles(ctx)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
 
-	roles, err := ncc.getRoles()
+	roles, err := ncc.getRoles(ctx)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
 
-	serviceAccounts, err := ncc.getServiceAccounts()
+	serviceAccounts, err := ncc.getServiceAccounts(ctx)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
 
-	clusterRoleBindings, err := ncc.getClusterRoleBindings()
+	clusterRoleBindings, err := ncc.getClusterRoleBindings(ctx)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
 
-	roleBindings, err := ncc.getRoleBindings()
+	roleBindings, err := ncc.getRoleBindings(ctx)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
 	}
@@ -92,11 +92,7 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		nc,
 		nodeConfigControllerGVK,
 		ncSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.DaemonSet]{
-			GetControllerUncachedFunc: ncc.scyllaClient.NodeConfigs().Get,
-			ListObjectsFunc:           ncc.daemonSetLister.DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List,
-			PatchObjectFunc:           ncc.kubeClient.AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.NodeConfig, appsv1.DaemonSet](ctx, ncc.client, ncc.apiReader, naming.ScyllaOperatorNodeTuningNamespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -107,11 +103,7 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		nc,
 		nodeConfigControllerGVK,
 		ncSelector,
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
-			GetControllerUncachedFunc: ncc.scyllaClient.NodeConfigs().Get,
-			ListObjectsFunc:           ncc.configMapLister.ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).List,
-			PatchObjectFunc:           ncc.kubeClient.CoreV1().ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[scyllav1alpha1.NodeConfig, corev1.ConfigMap](ctx, ncc.client, ncc.apiReader, naming.ScyllaOperatorNodeTuningNamespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, fmt.Errorf("can't get config maps: %w", err))
@@ -119,18 +111,18 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return reconcile.Result{}, objectErr
 	}
 
-	matchingNodes, err := ncc.getMatchingNodes(nc)
+	matchingNodes, err := ncc.getMatchingNodes(ctx, nc)
 	if err != nil {
-		return fmt.Errorf("can't get matching Nodes: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't get matching Nodes: %w", err)
 	}
 
 	status := ncc.calculateStatus(nc, matchingNodes)
 
 	if nc.DeletionTimestamp != nil {
-		return ncc.updateStatus(ctx, nc, status)
+		return reconcile.Result{}, ncc.updateStatus(ctx, nc, status)
 	}
 
 	statusConditions := status.Conditions.ToMetaV1Conditions()
@@ -383,7 +375,7 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return apimachineryutilerrors.NewAggregate(errs)
+		return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	for _, c := range nodeAvailableConditions {
@@ -411,11 +403,11 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 }
 
-func (ncc *Controller) getNamespaces() (map[string]*corev1.Namespace, error) {
-	nss, err := ncc.namespaceLister.List(labels.SelectorFromSet(map[string]string{
+func (ncc *Controller) getNamespaces(ctx context.Context) (map[string]*corev1.Namespace, error) {
+	nss, err := ctrlclient.List[corev1.Namespace](ctx, ncc.client, corev1.NamespaceAll, labels.SelectorFromSet(map[string]string{
 		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 	}))
 	if err != nil {
@@ -430,8 +422,8 @@ func (ncc *Controller) getNamespaces() (map[string]*corev1.Namespace, error) {
 	return nsMap, nil
 }
 
-func (ncc *Controller) getClusterRoles() (map[string]*rbacv1.ClusterRole, error) {
-	crs, err := ncc.clusterRoleLister.List(labels.SelectorFromSet(map[string]string{
+func (ncc *Controller) getClusterRoles(ctx context.Context) (map[string]*rbacv1.ClusterRole, error) {
+	crs, err := ctrlclient.List[rbacv1.ClusterRole](ctx, ncc.client, corev1.NamespaceAll, labels.SelectorFromSet(map[string]string{
 		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 	}))
 	if err != nil {
@@ -446,8 +438,8 @@ func (ncc *Controller) getClusterRoles() (map[string]*rbacv1.ClusterRole, error)
 	return crMap, nil
 }
 
-func (ncc *Controller) getClusterRoleBindings() (map[string]*rbacv1.ClusterRoleBinding, error) {
-	crbs, err := ncc.clusterRoleBindingLister.List(labels.SelectorFromSet(map[string]string{
+func (ncc *Controller) getClusterRoleBindings(ctx context.Context) (map[string]*rbacv1.ClusterRoleBinding, error) {
+	crbs, err := ctrlclient.List[rbacv1.ClusterRoleBinding](ctx, ncc.client, corev1.NamespaceAll, labels.SelectorFromSet(map[string]string{
 		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 	}))
 	if err != nil {
@@ -462,8 +454,8 @@ func (ncc *Controller) getClusterRoleBindings() (map[string]*rbacv1.ClusterRoleB
 	return crbMap, nil
 }
 
-func (ncc *Controller) getRoles() (map[string]*rbacv1.Role, error) {
-	roles, err := ncc.roleLister.List(labels.SelectorFromSet(map[string]string{
+func (ncc *Controller) getRoles(ctx context.Context) (map[string]*rbacv1.Role, error) {
+	roles, err := ctrlclient.List[rbacv1.Role](ctx, ncc.client, corev1.NamespaceAll, labels.SelectorFromSet(map[string]string{
 		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 	}))
 	if err != nil {
@@ -478,8 +470,8 @@ func (ncc *Controller) getRoles() (map[string]*rbacv1.Role, error) {
 	return res, nil
 }
 
-func (ncc *Controller) getRoleBindings() (map[string]*rbacv1.RoleBinding, error) {
-	roleBindings, err := ncc.roleBindingLister.List(labels.SelectorFromSet(map[string]string{
+func (ncc *Controller) getRoleBindings(ctx context.Context) (map[string]*rbacv1.RoleBinding, error) {
+	roleBindings, err := ctrlclient.List[rbacv1.RoleBinding](ctx, ncc.client, corev1.NamespaceAll, labels.SelectorFromSet(map[string]string{
 		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 	}))
 	if err != nil {
@@ -494,8 +486,8 @@ func (ncc *Controller) getRoleBindings() (map[string]*rbacv1.RoleBinding, error)
 	return res, nil
 }
 
-func (ncc *Controller) getServiceAccounts() (map[string]*corev1.ServiceAccount, error) {
-	sas, err := ncc.serviceAccountLister.List(labels.SelectorFromSet(map[string]string{
+func (ncc *Controller) getServiceAccounts(ctx context.Context) (map[string]*corev1.ServiceAccount, error) {
+	sas, err := ctrlclient.List[corev1.ServiceAccount](ctx, ncc.client, corev1.NamespaceAll, labels.SelectorFromSet(map[string]string{
 		naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 	}))
 	if err != nil {
@@ -510,8 +502,8 @@ func (ncc *Controller) getServiceAccounts() (map[string]*corev1.ServiceAccount, 
 	return sasMap, nil
 }
 
-func (ncc *Controller) getMatchingNodes(nc *scyllav1alpha1.NodeConfig) ([]*corev1.Node, error) {
-	nodes, err := ncc.nodeLister.List(labels.Everything())
+func (ncc *Controller) getMatchingNodes(ctx context.Context, nc *scyllav1alpha1.NodeConfig) ([]*corev1.Node, error) {
+	nodes, err := ctrlclient.List[corev1.Node](ctx, ncc.client, corev1.NamespaceAll, labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("can't list Nodes: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
@@ -19,34 +20,35 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (ncdc *Controller) sync(ctx context.Context) error {
+func (ncdc *Controller) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	startTime := time.Now()
 	klog.V(4).InfoS("Started sync", "startTime", startTime)
 	defer func() {
 		klog.V(4).InfoS("Finished sync", "duration", time.Since(startTime))
 	}()
 
-	nc, err := ncdc.nodeConfigLister.Get(ncdc.nodeConfigName)
+	nc, err := ctrlclient.Get[scyllav1alpha1.NodeConfig](ctx, ncdc.client, "", ncdc.nodeConfigName)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("can't get current nodeconfig %q: %w", ncdc.nodeConfigName, err)
+			return reconcile.Result{}, fmt.Errorf("can't get current nodeconfig %q: %w", ncdc.nodeConfigName, err)
 		}
 
 		klog.V(2).InfoS("NodeConfig has been deleted", "NodeConfig", klog.KRef("", ncdc.nodeConfigName))
-		return nil
+		return reconcile.Result{}, nil
 	}
 
 	if nc.UID != ncdc.nodeConfigUID {
 		// In normal circumstances we should be deleted first by GC because of an ownerRef to the NodeConfig.
-		return fmt.Errorf("nodeConfig UID %q doesn't match the expected UID %q", nc.UID, nc.UID)
+		return reconcile.Result{}, fmt.Errorf("nodeConfig UID %q doesn't match the expected UID %q", nc.UID, nc.UID)
 	}
 
 	status := ncdc.calculateStatus(nc)
 
 	if nc.DeletionTimestamp != nil {
-		return ncdc.updateStatus(ctx, nc, status)
+		return reconcile.Result{}, ncdc.updateStatus(ctx, nc, status)
 	}
 
 	statusConditions := status.Conditions.ToMetaV1Conditions()
@@ -54,9 +56,9 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 	type CT = *appsv1.DaemonSet
 	var objectErrs []error
 
-	dsControllerRef, err := ncdc.newOwningDSControllerRef()
+	dsControllerRef, err := ncdc.newOwningDSControllerRef(ctx, ncdc.client)
 	if err != nil {
-		return fmt.Errorf("can't get controller ref: %w", err)
+		return reconcile.Result{}, fmt.Errorf("can't get controller ref: %w", err)
 	}
 
 	selector := labels.SelectorFromSet(labels.Set{
@@ -75,11 +77,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		func(job *batchv1.Job) bool {
 			return job.Spec.Template.Spec.NodeName == ncdc.nodeName
 		},
-		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *batchv1.Job]{
-			GetControllerUncachedFunc: ncdc.kubeClient.AppsV1().DaemonSets(ncdc.namespace).Get,
-			ListObjectsFunc:           ncdc.namespacedJobLister.Jobs(ncdc.namespace).List,
-			PatchObjectFunc:           ncdc.kubeClient.BatchV1().Jobs(ncdc.namespace).Patch,
-		},
+		ctrlclient.GetObjectsControl[appsv1.DaemonSet, batchv1.Job](ctx, ncdc.client, ncdc.apiReader, ncdc.namespace),
 	)
 	if err != nil {
 		objectErrs = append(objectErrs, err)
@@ -87,7 +85,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 
 	objectErr := apimachineryutilerrors.NewAggregate(objectErrs)
 	if objectErr != nil {
-		return objectErr
+		return reconcile.Result{}, objectErr
 	}
 
 	nodeStatus := &scyllav1alpha1.NodeConfigNodeStatus{
@@ -157,7 +155,7 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 
 	if len(aggregationErrs) > 0 {
 		errs = append(errs, aggregationErrs...)
-		return apimachineryutilerrors.NewAggregate(errs)
+		return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 	}
 
 	apimeta.SetStatusCondition(&statusConditions, nodeTuneAvailableCondition)
@@ -172,5 +170,5 @@ func (ncdc *Controller) sync(ctx context.Context) error {
 		errs = append(errs, fmt.Errorf("can't update status: %w", err))
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return reconcile.Result{}, apimachineryutilerrors.NewAggregate(errs)
 }

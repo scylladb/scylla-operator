@@ -8,15 +8,16 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/pointer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (scc *Controller) syncFinalizer(ctx context.Context, sc *scyllav1alpha1.ScyllaDBCluster, remoteNamespaces map[string]*corev1.Namespace) ([]metav1.Condition, error) {
@@ -59,25 +60,23 @@ func (scc *Controller) syncFinalizer(ctx context.Context, sc *scyllav1alpha1.Scy
 	clientRemoteNamespaces := map[string][]*corev1.Namespace{}
 
 	for _, dc := range sc.Spec.Datacenters {
-		remoteClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+		remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't get remote kube client for %q cluster: %w", dc.RemoteKubernetesClusterName, err))
 			continue
 		}
 
-		rnss, err := remoteClient.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-			LabelSelector: labels.SelectorFromSet(naming.ScyllaDBClusterDatacenterSelectorLabels(sc, &dc)).String(),
-		})
+		rnss, err := ctrlclient.List[corev1.Namespace](ctx, remoteCluster.GetAPIReader(), "", labels.SelectorFromSet(naming.ScyllaDBClusterDatacenterSelectorLabels(sc, &dc)))
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't list remote Namespaces via %q cluster client: %w", dc.RemoteKubernetesClusterName, err))
 			continue
 		}
 
-		if len(rnss.Items) == 0 {
+		if len(rnss) == 0 {
 			continue
 		}
 
-		clientRemoteNamespaces[dc.RemoteKubernetesClusterName] = oslices.ConvertSlice(rnss.Items, pointer.Ptr[corev1.Namespace])
+		clientRemoteNamespaces[dc.RemoteKubernetesClusterName] = rnss
 	}
 
 	deletionProgressingCondition, err = scc.deleteRemoteNamespaces(ctx, sc, clientRemoteNamespaces)
@@ -106,7 +105,7 @@ func (scc *Controller) deleteRemoteNamespaces(ctx context.Context, sc *scyllav1a
 	var errs []error
 
 	for remoteCluster, remoteNamespaces := range namespacesToDelete {
-		remoteClient, err := scc.kubeRemoteClient.Cluster(remoteCluster)
+		remoteCluster, err := scc.remoteCluster(remoteCluster)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't get remote kube client for %q cluster: %w", remoteCluster, err))
 			continue
@@ -114,10 +113,7 @@ func (scc *Controller) deleteRemoteNamespaces(ctx context.Context, sc *scyllav1a
 
 		for _, remoteNamespace := range remoteNamespaces {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, scyllaDBClusterFinalizerProgressingCondition, remoteNamespace, "delete", sc.Generation)
-			err = remoteClient.CoreV1().Namespaces().Delete(ctx, remoteNamespace.Name, metav1.DeleteOptions{
-				Preconditions:     metav1.NewUIDPreconditions(string(remoteNamespace.UID)),
-				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
-			})
+			err = remoteCluster.GetClient().Delete(ctx, remoteNamespace, client.Preconditions{UID: &remoteNamespace.UID}, client.PropagationPolicy(metav1.DeletePropagationForeground))
 			if err != nil {
 				errs = append(errs, fmt.Errorf("can't delete remote Namespace %q from %q cluster: %w", naming.ObjRef(remoteNamespace), remoteCluster, err))
 				continue
@@ -147,7 +143,7 @@ func (scc *Controller) addFinalizer(ctx context.Context, sc *scyllav1alpha1.Scyl
 		return fmt.Errorf("can't create add finalizer patch: %w", err)
 	}
 
-	_, err = scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Patch(ctx, sc.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	err = scc.client.Patch(ctx, &scyllav1alpha1.ScyllaDBCluster{ObjectMeta: metav1.ObjectMeta{Namespace: sc.Namespace, Name: sc.Name}}, client.RawPatch(types.MergePatchType, patch))
 	if err != nil {
 		return fmt.Errorf("can't patch ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
 	}
@@ -162,7 +158,7 @@ func (scc *Controller) removeFinalizer(ctx context.Context, sc *scyllav1alpha1.S
 		return fmt.Errorf("can't create remove finalizer patch: %w", err)
 	}
 
-	_, err = scc.scyllaClient.ScyllaV1alpha1().ScyllaDBClusters(sc.Namespace).Patch(ctx, sc.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+	err = scc.client.Patch(ctx, &scyllav1alpha1.ScyllaDBCluster{ObjectMeta: metav1.ObjectMeta{Namespace: sc.Namespace, Name: sc.Name}}, client.RawPatch(types.MergePatchType, patch))
 	if err != nil {
 		return fmt.Errorf("can't patch ScyllaDBCluster %q: %w", naming.ObjRef(sc), err)
 	}

@@ -6,10 +6,12 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (sdcc *Controller) syncServiceAccounts(
@@ -36,12 +38,7 @@ func (sdcc *Controller) syncServiceAccounts(
 
 		propagationPolicy := metav1.DeletePropagationBackground
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, serviceAccountControllerProgressingCondition, sa, "delete", sdc.Generation)
-		err = sdcc.kubeClient.CoreV1().ServiceAccounts(sa.Namespace).Delete(ctx, sa.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &sa.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
+		err = sdcc.client.Delete(ctx, sa, client.Preconditions{UID: &sa.UID}, client.PropagationPolicy(propagationPolicy))
 		deletionErrors = append(deletionErrors, err)
 	}
 	err = apimachineryutilerrors.NewAggregate(deletionErrors)
@@ -49,7 +46,7 @@ func (sdcc *Controller) syncServiceAccounts(
 		return progressingConditions, fmt.Errorf("can't delete service account(s): %w", err)
 	}
 
-	_, changed, err := resourceapply.ApplyServiceAccount(ctx, sdcc.kubeClient.CoreV1(), sdcc.serviceAccountLister, sdcc.eventRecorder, requiredServiceAccount, resourceapply.ApplyOptions{
+	_, changed, err := resourceapply.ApplyServiceAccountWithControl(ctx, ctrlclient.ApplyControl[corev1.ServiceAccount](ctx, sdcc.client, sdc.Namespace), sdcc.eventRecorder, requiredServiceAccount, resourceapply.ApplyOptions{
 		ForceOwnership: true,
 	})
 	if changed {

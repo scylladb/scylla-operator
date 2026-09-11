@@ -6,6 +6,7 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +23,7 @@ func (scc *Controller) syncRemoteConfigMaps(
 	remoteConfigMaps map[string]*corev1.ConfigMap,
 	managingClusterDomain string,
 ) ([]metav1.Condition, error) {
-	progressingConditions, requiredConfigMaps, err := MakeRemoteConfigMaps(sc, dc, remoteNamespace, remoteController, scc.configMapLister, managingClusterDomain)
+	progressingConditions, requiredConfigMaps, err := MakeRemoteConfigMaps(sc, dc, remoteNamespace, remoteController, ctrlclient.NewConfigMapLister(ctx, scc.client), managingClusterDomain)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make required configmaps: %w", err)
 	}
@@ -31,7 +32,7 @@ func (scc *Controller) syncRemoteConfigMaps(
 		return progressingConditions, nil
 	}
 
-	clusterClient, err := scc.kubeRemoteClient.Cluster(dc.RemoteKubernetesClusterName)
+	remoteCluster, err := scc.remoteCluster(dc.RemoteKubernetesClusterName)
 	if err != nil {
 		return nil, fmt.Errorf("can't get client to %q cluster: %w", dc.RemoteKubernetesClusterName, err)
 	}
@@ -41,7 +42,7 @@ func (scc *Controller) syncRemoteConfigMaps(
 		requiredConfigMaps,
 		remoteConfigMaps,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: clusterClient.CoreV1().ConfigMaps(remoteNamespace.Name).Delete,
+			DeleteFunc: ctrlclient.DeleteFunc[corev1.ConfigMap](remoteCluster.GetClient(), remoteNamespace.Name),
 		},
 		scc.eventRecorder,
 	)
@@ -51,7 +52,7 @@ func (scc *Controller) syncRemoteConfigMaps(
 
 	var errs []error
 	for _, cm := range requiredConfigMaps {
-		_, changed, err := resourceapply.ApplyConfigMap(ctx, clusterClient.CoreV1(), scc.remoteConfigMapLister.Cluster(dc.RemoteKubernetesClusterName), scc.eventRecorder, cm, resourceapply.ApplyOptions{})
+		_, changed, err := resourceapply.ApplyConfigMapWithControl(ctx, ctrlclient.ApplyControl[corev1.ConfigMap](ctx, remoteCluster.GetClient(), remoteNamespace.Name), scc.eventRecorder, cm, resourceapply.ApplyOptions{})
 		if changed {
 			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, makeRemoteConfigMapControllerDatacenterProgressingCondition(dc.Name), cm, "apply", sc.Generation)
 		}

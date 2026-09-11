@@ -34,25 +34,27 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 const (
-	// scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay disables the production cache-propagation
-	// wait in envtests. Envtest runs the controller and API server in-process, so the default delay only slows tests down.
-	// Tests that need to exercise cache lag should override this.
-	scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay = 0 * time.Second
-
 	scyllaDBDatacenterControllerResyncPeriod = 12 * time.Hour
 
+	// scyllaDBDatacenterControllerDefaultInformerLag is how far behind the API server every informer of the
+	// controller is kept in all specs. Informer caches give no read-your-writes and in envtest they would otherwise
+	// catch up within microseconds, hiding any decision the controller makes from a cache that has not observed its
+	// own writes yet. A lagging informer is only a slower informer, so every behavior has to hold with it.
+	scyllaDBDatacenterControllerDefaultInformerLag = 500 * time.Millisecond
+
 	// scyllaDBDatacenterControllerDefaultEventuallyTimeout is the default timeout for async envtest assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Eventually may time out before
-	// the controller resumes reconciliation.
+	// Pad accordingly when a test runs the controller with informer lag, otherwise Eventually may time out before
+	// the controller observes its own writes and resumes reconciliation.
 	scyllaDBDatacenterControllerDefaultEventuallyTimeout = 15 * time.Second
 
 	// scyllaDBDatacenterControllerDefaultConsistentlyTimeout is the default window for stability assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay, otherwise Consistently may pass while the
-	// controller is delayed instead of observing real steady state.
+	// Pad accordingly when a test runs the controller with informer lag, otherwise Consistently may pass while the
+	// controller is waiting for its caches instead of observing real steady state.
 	scyllaDBDatacenterControllerDefaultConsistentlyTimeout = 5 * time.Second
 
 	// envtestServiceFinalizer holds a member Service in a terminating state, so that specs can freeze the window
@@ -1231,32 +1233,67 @@ func (g *staticKeyGenerator) GetKeyType() crypto.KeyType {
 	return crypto.ECDSAKeyType
 }
 
-func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment) {
+// informerLagTransform returns an informer transform that delays every event of the objects selected by lags before
+// it reaches the informer cache, keeping the cache behind the API server by lag. The objects are not modified.
+func informerLagTransform(lag time.Duration, lags func(obj any) bool) cache.TransformFunc {
+	return func(obj any) (any, error) {
+		selected := obj
+		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+			selected = tombstone.Obj
+		}
+		if lags(selected) {
+			time.Sleep(lag)
+		}
+
+		return obj, nil
+	}
+}
+
+func anyObject(any) bool {
+	return true
+}
+
+func isStatefulSet(obj any) bool {
+	_, ok := obj.(*appsv1.StatefulSet)
+	return ok
+}
+
+func isService(obj any) bool {
+	_, ok := obj.(*corev1.Service)
+	return ok
+}
+
+// runScyllaDBDatacenterController runs the controller until the context is done. All its informers lag behind the
+// API server by scyllaDBDatacenterControllerDefaultInformerLag; kubeInformerOptions are applied on top to the
+// informers of the Kubernetes objects, e.g. to lag one kind further.
+func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment, kubeInformerOptions ...informers.SharedInformerOption) {
 	g.GinkgoHelper()
+
+	defaultLag := informerLagTransform(scyllaDBDatacenterControllerDefaultInformerLag, anyObject)
 
 	kubeClient := e.TypedKubeClient()
 	scyllaClient := e.ScyllaClient()
 	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
 		kubeClient,
 		scyllaDBDatacenterControllerResyncPeriod,
-		informers.WithNamespace(e.Namespace()),
+		append([]informers.SharedInformerOption{
+			informers.WithNamespace(e.Namespace()),
+			informers.WithTransform(defaultLag),
+		}, kubeInformerOptions...)...,
 	)
 	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		scyllaClient,
 		scyllaDBDatacenterControllerResyncPeriod,
 		scyllainformers.WithNamespace(e.Namespace()),
+		scyllainformers.WithTransform(defaultLag),
 	)
 	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		scyllaClient,
 		scyllaDBDatacenterControllerResyncPeriod,
 		scyllainformers.WithNamespace(corev1.NamespaceAll),
+		scyllainformers.WithTransform(defaultLag),
 	)
 	keyGenerator := newStaticKeyGenerator()
-
-	options := []scylladbdatacenter.ControllerOption{
-		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
-		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
-	}
 
 	sdcc, err := scylladbdatacenter.NewController(
 		kubeClient,
@@ -1277,7 +1314,6 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 		"scylla/operator:envtest",
 		scylla.DefaultNativeTransportPort,
 		keyGenerator,
-		options...,
 	)
 	o.Expect(err).NotTo(o.HaveOccurred())
 

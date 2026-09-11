@@ -831,7 +831,7 @@ test-binary: build
 .PHONY: test-binary
 
 test-envtest:
-	ginkgo --tags=envtest -p './test/envtest/controllers/...'
+	ginkgo --tags=envtest -p './test/envtest/...'
 
 help:
 	$(info The following make targets are available:)

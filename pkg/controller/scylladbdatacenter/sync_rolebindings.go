@@ -9,7 +9,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (sdcc *Controller) syncRoleBindings(
@@ -24,27 +23,18 @@ func (sdcc *Controller) syncRoleBindings(
 
 	// Delete any excessive RoleBindings.
 	// Delete has to be the fist action to avoid getting stuck on quota.
-	var deletionErrors []error
-	for _, rb := range roleBindings {
-		if rb.DeletionTimestamp != nil {
-			continue
-		}
-
-		if rb.Name == requiredRoleBinding.Name {
-			continue
-		}
-
-		propagationPolicy := metav1.DeletePropagationBackground
+	prunedRoleBindings, err := controllerhelpers.PruneObjects(
+		ctx,
+		[]*rbacv1.RoleBinding{requiredRoleBinding},
+		roleBindings,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: sdcc.kubeClient.RbacV1().RoleBindings(sdc.Namespace).Delete,
+		},
+		sdcc.eventRecorder,
+	)
+	for _, rb := range prunedRoleBindings {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, roleBindingControllerProgressingCondition, rb, "delete", sdc.Generation)
-		err = sdcc.kubeClient.RbacV1().RoleBindings(rb.Namespace).Delete(ctx, rb.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &rb.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
-		deletionErrors = append(deletionErrors, err)
 	}
-	err = apimachineryutilerrors.NewAggregate(deletionErrors)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't delete role binding(s): %w", err)
 	}

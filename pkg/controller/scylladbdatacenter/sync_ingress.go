@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
 func (sdcc *Controller) syncIngresses(
@@ -26,33 +25,18 @@ func (sdcc *Controller) syncIngresses(
 
 	// Delete any excessive Ingresses.
 	// Delete has to be the fist action to avoid getting stuck on quota.
-	var deletionErrors []error
-	for _, ingress := range ingresses {
-		if ingress.DeletionTimestamp != nil {
-			continue
-		}
-
-		isRequired := false
-		for _, req := range requiredIngresses {
-			if ingress.Name == req.Name {
-				isRequired = true
-			}
-		}
-		if isRequired {
-			continue
-		}
-
-		propagationPolicy := metav1.DeletePropagationBackground
+	prunedIngresses, err := controllerhelpers.PruneObjects(
+		ctx,
+		requiredIngresses,
+		ingresses,
+		&controllerhelpers.PruneControlFuncs{
+			DeleteFunc: sdcc.kubeClient.NetworkingV1().Ingresses(sdc.Namespace).Delete,
+		},
+		sdcc.eventRecorder,
+	)
+	for _, ingress := range prunedIngresses {
 		controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, ingressControllerProgressingCondition, ingress, "delete", sdc.Generation)
-		err = sdcc.kubeClient.NetworkingV1().Ingresses(ingress.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{
-				UID: &ingress.UID,
-			},
-			PropagationPolicy: &propagationPolicy,
-		})
-		deletionErrors = append(deletionErrors, err)
 	}
-	err = apimachineryutilerrors.NewAggregate(deletionErrors)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't delete ingress(s): %w", err)
 	}

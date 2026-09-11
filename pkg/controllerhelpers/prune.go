@@ -26,8 +26,17 @@ func (pcf *PruneControlFuncs) Delete(ctx context.Context, name string, opts meta
 
 var _ PruneControlInterface = &PruneControlFuncs{}
 
+// Prune deletes the existing objects that are not required. See PruneObjects.
 func Prune[T kubeinterfaces.ObjectInterface](ctx context.Context, requiredObjects []T, existingObjects map[string]T, control PruneControlInterface, eventRecorder record.EventRecorder) error {
+	_, err := PruneObjects(ctx, requiredObjects, existingObjects, control, eventRecorder)
+	return err
+}
+
+// PruneObjects deletes the existing objects that are not required and are not being deleted already, and returns
+// the objects it deleted. Deletes are guarded by the UID of the existing object.
+func PruneObjects[T kubeinterfaces.ObjectInterface](ctx context.Context, requiredObjects []T, existingObjects map[string]T, control PruneControlInterface, eventRecorder record.EventRecorder) ([]T, error) {
 	var errs []error
+	var pruned []T
 
 	for _, existing := range existingObjects {
 		if existing.GetDeletionTimestamp() != nil {
@@ -59,7 +68,8 @@ func Prune[T kubeinterfaces.ObjectInterface](ctx context.Context, requiredObject
 			errs = append(errs, err)
 			continue
 		}
+		pruned = append(pruned, existing)
 	}
 
-	return apimachineryutilerrors.NewAggregate(errs)
+	return pruned, apimachineryutilerrors.NewAggregate(errs)
 }

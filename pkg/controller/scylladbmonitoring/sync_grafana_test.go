@@ -367,7 +367,8 @@ spec:
       - name: grafana
         image: "grafana-image"
         command:
-        - grafana-server
+        - grafana
+        - server
         - --packaging=docker
         - --homepath=/usr/share/grafana
         - --config=/var/run/configmaps/grafana-configs/grafana.ini
@@ -575,7 +576,8 @@ spec:
       - name: grafana
         image: "grafana-image"
         command:
-        - grafana-server
+        - grafana
+        - server
         - --packaging=docker
         - --homepath=/usr/share/grafana
         - --config=/var/run/configmaps/grafana-configs/grafana.ini
@@ -849,7 +851,8 @@ spec:
       - name: grafana
         image: "grafana-image"
         command:
-        - grafana-server
+        - grafana
+        - server
         - --packaging=docker
         - --homepath=/usr/share/grafana
         - --config=/var/run/configmaps/grafana-configs/grafana.ini

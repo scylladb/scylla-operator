@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/go-openapi/strfmt"
 	grafanaclient "github.com/grafana/grafana-openapi-client-go/client"
@@ -80,20 +81,42 @@ func (c *Client) Dashboards() ([]Dashboard, error) {
 	return dashboards, nil
 }
 
-func (c *Client) HomeDashboardUID() (string, error) {
+// HomeDashboardTitle returns the title of the dashboard Grafana serves as its home dashboard.
+// The title is used to identify the dashboard because Grafana no longer embeds the home dashboard
+// in the response; it redirects to a synthetic UID ("default-home-dashboard") instead,
+// hiding the UID of the configured dashboard file.
+func (c *Client) HomeDashboardTitle() (string, error) {
 	resp, err := c.c.Dashboards.GetHomeDashboard()
 	if err != nil {
 		return "", fmt.Errorf("failed to get home dashboard: %w", err)
 	}
 
-	if m, ok := resp.GetPayload().Dashboard.(map[string]interface{}); ok {
-		if uid, ok := m["uid"].(string); ok {
-			return uid, nil
-		}
-		return "", fmt.Errorf("home dashboard does not have a uid")
+	payload := resp.GetPayload()
+
+	if payload.RedirectURI == "" {
+		return "", fmt.Errorf("home dashboard response does not have a redirect URI")
 	}
 
-	return "", fmt.Errorf("unexpected type for dashboard payload")
+	// The redirect URI has the form "/d/{uid}/{slug}".
+	parts := strings.Split(strings.TrimPrefix(payload.RedirectURI, "/"), "/")
+	if len(parts) < 2 || parts[0] != "d" || parts[1] == "" {
+		return "", fmt.Errorf("unexpected home dashboard redirect URI %q", payload.RedirectURI)
+	}
+	uid := parts[1]
+
+	dashboardResp, err := c.c.Dashboards.GetDashboardByUID(uid)
+	if err != nil {
+		return "", fmt.Errorf("failed to get home dashboard with UID %q: %w", uid, err)
+	}
+
+	if m, ok := dashboardResp.GetPayload().Dashboard.(map[string]interface{}); ok {
+		if title, ok := m["title"].(string); ok {
+			return title, nil
+		}
+		return "", fmt.Errorf("home dashboard with UID %q does not have a title", uid)
+	}
+
+	return "", fmt.Errorf("unexpected type for dashboard payload of home dashboard with UID %q", uid)
 }
 
 type DatasourceHealth struct {

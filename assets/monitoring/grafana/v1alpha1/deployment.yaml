@@ -56,7 +56,8 @@ spec:
       - name: grafana
         image: "{{ .grafanaImage }}"
         command:
-        - grafana-server
+        - grafana
+        - server
         - --packaging=docker
         - --homepath=/usr/share/grafana
         - --config=/var/run/configmaps/grafana-configs/grafana.ini

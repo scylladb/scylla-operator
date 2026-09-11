@@ -4,6 +4,11 @@
     "config:recommended",
     ":semanticCommitTypeAll(chore)"
   ],
+  "baseBranchPatterns": [
+    "master",
+    "v1.20",
+    "v1.21"
+  ],
   "enabledManagers": [
     "custom.regex",
     "gomod"

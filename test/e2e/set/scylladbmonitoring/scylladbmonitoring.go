@@ -116,7 +116,7 @@ var _ = g.Describe("ScyllaDBMonitoring", func() {
 					Tags:        []string{},
 				},
 			},
-				"cql-overview",
+				"CQL Overview",
 			),
 		}, framework.SuiteParallel, framework.SuiteKindFast, framework.SuiteKindScyllaDBMonitoring),
 		// Not in SuiteParallelOpenShift: managed Prometheus is not supported on OpenShift.
@@ -406,7 +406,7 @@ func verifyPrometheusTargetsAndRules(ctx context.Context, promClient promeheusap
 
 func verifyManagedGrafanaWithDashboards(
 	expectedDashboards []grafana.Dashboard,
-	expectedHomeDashboardUID string,
+	expectedHomeDashboardTitle string,
 ) func(context.Context, *framework.Framework, *scyllav1alpha1.ScyllaDBMonitoring) {
 	return func(ctx context.Context, f *framework.Framework, sm *scyllav1alpha1.ScyllaDBMonitoring) {
 		g.GinkgoHelper()
@@ -448,12 +448,12 @@ func verifyManagedGrafanaWithDashboards(
 		// and configure the data source.
 		// This is expected to be eventually consistent and there's no programmatic way to know when it's ready
 		// other than querying its API.
-		verifyGrafanaDashboards(grafanaClient, expectedDashboards, expectedHomeDashboardUID)
+		verifyGrafanaDashboards(grafanaClient, expectedDashboards, expectedHomeDashboardTitle)
 		verifyPrometheusGrafanaDataSource(grafanaClient)
 	}
 }
 
-func verifyGrafanaDashboards(grafanaClient *grafana.Client, expectedDashboards []grafana.Dashboard, expectedHomeDashboardUID string) {
+func verifyGrafanaDashboards(grafanaClient *grafana.Client, expectedDashboards []grafana.Dashboard, expectedHomeDashboardTitle string) {
 	g.GinkgoHelper()
 
 	framework.By("Verifying Grafana dashboards")
@@ -467,10 +467,10 @@ func verifyGrafanaDashboards(grafanaClient *grafana.Client, expectedDashboards [
 	}).WithTimeout(10 * time.Minute).WithPolling(1 * time.Second).Should(o.Succeed())
 	o.Expect(dashboards).To(o.ConsistOf(expectedDashboards))
 
-	framework.By("Verifying Grafana home dashboard UID")
-	homeDashboardUID, err := grafanaClient.HomeDashboardUID()
+	framework.By("Verifying Grafana home dashboard")
+	homeDashboardTitle, err := grafanaClient.HomeDashboardTitle()
 	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(homeDashboardUID).To(o.Equal(expectedHomeDashboardUID))
+	o.Expect(homeDashboardTitle).To(o.Equal(expectedHomeDashboardTitle))
 }
 
 func verifyPrometheusGrafanaDataSource(grafanaClient *grafana.Client) {
@@ -490,7 +490,7 @@ func verifyPrometheusGrafanaDataSource(grafanaClient *grafana.Client) {
 // and given the size they are not feasible to be maintained as a duplicate.
 // Contrary to our testing practice, in this case we'll just make sure it's not empty and load
 // the expected values dynamically.
-func getExpectedPlatformDashboards() (expectedDashboards []grafana.Dashboard, homeDashboardUID string) {
+func getExpectedPlatformDashboards() (expectedDashboards []grafana.Dashboard, homeDashboardTitle string) {
 	g.GinkgoHelper()
 
 	var expectedPlatformFolderDashboardSearchResponse []grafana.Dashboard
@@ -530,9 +530,9 @@ func getExpectedPlatformDashboards() (expectedDashboards []grafana.Dashboard, ho
 	ghd, err := decodeGrafanaDashboardFromGZBase64String(homeDashboardString)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(ghd).NotTo(o.BeZero())
-	o.Expect(ghd.UID).NotTo(o.BeZero())
+	o.Expect(ghd.Title).NotTo(o.BeZero())
 
-	return expectedPlatformFolderDashboardSearchResponse, ghd.UID
+	return expectedPlatformFolderDashboardSearchResponse, ghd.Title
 }
 
 type grafanaDashboard struct {

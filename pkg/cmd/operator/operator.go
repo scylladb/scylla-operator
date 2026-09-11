@@ -404,6 +404,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().ServiceAccounts(),
 		kubeInformers.Core().V1().ConfigMaps(),
 		o.OperatorImage,
+		o.Namespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create nodeconfig controller: %w", err)

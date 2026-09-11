@@ -22,7 +22,7 @@ To make changes, always modify the custom resource spec.
 
 ## Deployments and namespaces
 
-ScyllaDB Operator installs into three namespaces by default (the Operator and Manager namespaces can be customized at installation time; see [Install with Helm](../install-operator/install-with-helm.md) and [Install ScyllaDB Manager](../deploy-scylladb/install-scylladb-manager.md)):
+ScyllaDB Operator installs into two namespaces by default (both can be customized at installation time; see [Install with Helm](../install-operator/install-with-helm.md) and [Install ScyllaDB Manager](../deploy-scylladb/install-scylladb-manager.md)):
 
 ```{list-table}
 :header-rows: 1
@@ -30,11 +30,9 @@ ScyllaDB Operator installs into three namespaces by default (the Operator and Ma
 * - Namespace
   - What runs there
 * - `scylla-operator`
-  - Two Deployments: the **controller manager** (`scylla-operator`) that runs all controllers, and the **webhook server** (`webhook-server`) that validates API requests. Both run with 2 replicas by default and are protected by PodDisruptionBudgets.
+  - Two Deployments: the **controller manager** (`scylla-operator`) that runs all controllers, and the **webhook server** (`webhook-server`) that validates API requests. Both run with 2 replicas by default and are protected by PodDisruptionBudgets. **Node tuning agents** — privileged DaemonSets and Jobs created by the NodeConfig controller to set up disks, filesystems, and performance tuning on Kubernetes nodes — also run here.
 * - `scylla-manager`
   - **ScyllaDB Manager** — a separate component that coordinates repair and backup tasks. It uses a small internal ScyllaDB cluster as its own database. Deployed optionally.
-* - `scylla-operator-node-tuning`
-  - **Node tuning agents** — privileged DaemonSets and Jobs created by the NodeConfig controller to set up disks, filesystems, and performance tuning on Kubernetes nodes.
 ```
 
 Your ScyllaDB clusters run in your own namespaces, separate from the Operator.

@@ -216,6 +216,9 @@ const (
 	ScyllaManagerServiceName                = "scylla-manager"
 	StandaloneScyllaDBManagerControllerName = "scylla-manager-controller"
 
+	// ScyllaOperatorNodeTuningNamespace is the legacy dedicated namespace that older operator versions
+	// created for node tuning resources. Node tuning now runs in the operator's own namespace;
+	// the constant is kept for collecting the legacy namespace in must-gather.
 	ScyllaOperatorNodeTuningNamespace = "scylla-operator-node-tuning"
 
 	ScyllaClusterMemberClusterRoleName = "scyllacluster-member"

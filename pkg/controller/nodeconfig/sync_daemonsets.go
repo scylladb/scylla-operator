@@ -32,7 +32,7 @@ func (ncc *Controller) syncDaemonSet(
 	scyllaDBUtilsImage := *soc.Status.ScyllaDBUtilsImage
 
 	requiredDaemonSets := []*appsv1.DaemonSet{
-		makeNodeSetupDaemonSet(nc, ncc.operatorImage, scyllaDBUtilsImage),
+		makeNodeSetupDaemonSet(ncc.namespace, nc, ncc.operatorImage, scyllaDBUtilsImage),
 	}
 
 	err := controllerhelpers.Prune(
@@ -40,7 +40,7 @@ func (ncc *Controller) syncDaemonSet(
 		requiredDaemonSets,
 		daemonSets,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.kubeClient.AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Delete,
+			DeleteFunc: ncc.kubeClient.AppsV1().DaemonSets(ncc.namespace).Delete,
 		},
 		ncc.eventRecorder)
 	if err != nil {

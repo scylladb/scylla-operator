@@ -234,6 +234,7 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		scyllaDBManagerClusterRegistrations,
 		scyllaDBDatacenters,
 		namespaces,
+		o.GlobalScyllaDBManagerNamespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create global ScyllaDB Manager controller: %w", err)
@@ -247,6 +248,7 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		scyllaDBDatacenters,
 		secrets,
 		namespaces,
+		o.GlobalScyllaDBManagerNamespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create ScyllaDBManagerClusterRegistration controller: %w", err)
@@ -258,6 +260,7 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		o.ScyllaClient.ScyllaV1alpha1(),
 		scyllaDBManagerTasks,
 		scyllaDBManagerClusterRegistrations,
+		o.GlobalScyllaDBManagerNamespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create ScyllaDBManagerTask controller: %w", err)

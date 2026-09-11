@@ -22,7 +22,7 @@ To make changes, always modify the custom resource spec.
 
 ## Deployments and namespaces
 
-ScyllaDB Operator installs into three namespaces:
+ScyllaDB Operator installs into three namespaces by default (the Operator and Manager namespaces can be customized at installation time; see [Install with Helm](../install-operator/install-with-helm.md) and [Install ScyllaDB Manager](../deploy-scylladb/install-scylladb-manager.md)):
 
 ```{list-table}
 :header-rows: 1

@@ -93,6 +93,8 @@ func runControllerManager(ctx context.Context, e *envtest.Environment, adjust ..
 		CQLSIngressPort: scylla.DefaultNativeTransportPort,
 		ConcurrentSyncs: 1,
 		ResyncPeriod:    12 * time.Hour,
+
+		GlobalScyllaDBManagerNamespace: naming.ScyllaManagerNamespace,
 	}
 	for _, f := range adjust {
 		f(&options)

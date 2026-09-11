@@ -60,6 +60,8 @@ type Controller struct {
 
 	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBManagerTask]
+
+	globalScyllaDBManagerNamespace string
 }
 
 func NewController(
@@ -67,6 +69,7 @@ func NewController(
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
 	scyllaDBManagerTaskInformer scyllav1alpha1informers.ScyllaDBManagerTaskInformer,
 	scylladbManagerClusterRegistrationInformer scyllav1alpha1informers.ScyllaDBManagerClusterRegistrationInformer,
+	globalScyllaDBManagerNamespace string,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -92,6 +95,8 @@ func NewController(
 				Name: "scylladbmanagertask",
 			},
 		),
+
+		globalScyllaDBManagerNamespace: globalScyllaDBManagerNamespace,
 	}
 
 	var err error

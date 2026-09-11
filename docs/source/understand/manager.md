@@ -5,11 +5,11 @@ ScyllaDB Operator integrates with Manager so that you can define repair and back
 
 ## Deployment model
 
-ScyllaDB Manager runs as a **single, shared Deployment** in the `scylla-manager` namespace.
+ScyllaDB Manager runs as a **single, shared Deployment** in the `scylla-manager` namespace (or a custom namespace configured via the Operator's `--global-scylladb-manager-namespace` flag; see [Install ScyllaDB Manager](../deploy-scylladb/install-scylladb-manager.md)).
 One Manager instance serves all ScyllaDB clusters in the Kubernetes cluster.
 
 Manager requires a small ScyllaDB database to store its own state (task definitions, run history, cluster metadata).
-This is provided by a dedicated `ScyllaCluster` resource named `scylla-manager-cluster` in the `scylla-manager` namespace, running in developer mode with minimal resources (1 node, 1 CPU, 200 MiB memory).
+This is provided by a dedicated `ScyllaCluster` resource named `scylla-manager-cluster` in the same namespace, running in developer mode with minimal resources (1 node, 1 CPU, 200 MiB memory).
 
 :::{note}
 The backing ScyllaCluster has the annotation `scylla-operator.scylladb.com/disable-global-scylladb-manager-integration: "true"` to prevent it from being registered with the very Manager instance it supports.

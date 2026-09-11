@@ -31,10 +31,10 @@ func (smcrc *Controller) syncFinalizer(ctx context.Context, smcr *scyllav1alpha1
 	// We treat the `scylla-manager` namespace as the umbrella resource for the global ScyllaDB Manager instance.
 	// Clusters are considered deleted from global ScyllaDB Manager instance's state when `scylla-manager` namespace is not present.
 	if controllerhelpers.IsManagedByGlobalScyllaDBManagerInstance(smcr) {
-		_, err = smcrc.namespaceLister.Get(naming.ScyllaManagerNamespace)
+		_, err = smcrc.namespaceLister.Get(smcrc.globalScyllaDBManagerNamespace)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
-				return progressingConditions, fmt.Errorf("can't get namespace %q: %w", naming.ScyllaManagerNamespace, err)
+				return progressingConditions, fmt.Errorf("can't get namespace %q: %w", smcrc.globalScyllaDBManagerNamespace, err)
 			}
 
 			err = smcrc.removeFinalizer(ctx, smcr)
@@ -46,7 +46,7 @@ func (smcrc *Controller) syncFinalizer(ctx context.Context, smcr *scyllav1alpha1
 		}
 	}
 
-	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr)
+	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr, smcrc.globalScyllaDBManagerNamespace)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get manager client: %w", err)
 	}

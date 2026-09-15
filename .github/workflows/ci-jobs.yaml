@@ -28,7 +28,7 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 30
     steps:
       # GIT_TAG_SHORT runs `git describe --tags` at Makefile parse time and errors out when it fails, so the tags
@@ -46,7 +46,7 @@ jobs:
     name: unit
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -62,7 +62,7 @@ jobs:
     name: binary
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -78,7 +78,7 @@ jobs:
     name: envtest
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -94,7 +94,7 @@ jobs:
     name: verify
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 45
     steps:
       # verify-monitoring re-embeds dashboards and rules out of the scylla-monitoring submodule, so it has to be
@@ -116,7 +116,7 @@ jobs:
     name: verify-deps
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -132,7 +132,7 @@ jobs:
     name: verify-vendorability
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -170,7 +170,7 @@ jobs:
     name: helm-build
     runs-on: ubuntu-latest
     container:
-      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+      image: quay.io/scylladb/scylla-operator-images:golang-1.26
     timeout-minutes: 30
     steps:
       # The chart version defaults to GIT_TAG_SHORT, so the tags have to be present here too.

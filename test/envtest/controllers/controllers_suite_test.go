@@ -15,6 +15,7 @@ import (
 const (
 	envtestScyllaDBImage             = "scylladb/scylla:envtest"
 	envtestScyllaDBManagerAgentImage = "scylladb/scylla-manager-agent:envtest"
+	envtestOperatorImage             = "scylla/operator:envtest"
 )
 
 func init() {

@@ -1,0 +1,263 @@
+name: CI jobs
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# The default shell is `bash -e {0}`, which leaves pipefail unset, and it silently falls back to sh in an image
+# without bash. Pinning it makes every step run under `bash --noprofile --norc -eo pipefail`, so a failing command
+# in a pipeline fails the step, and an image missing bash fails loudly instead of running the steps under sh.
+defaults:
+  run:
+    shell: bash
+
+# actions/checkout clones as the runner user, but these container images declare no USER, so the jobs run as root
+# and git refuses to operate on a tree it sees as foreign. safe.directory is only honoured from protected config
+# scopes, and GIT_CONFIG_COUNT/KEY/VALUE is the environment form of the command scope, so this covers every git
+# invocation in the job - including the ones make shells out to - without a step in each job.
+# GIT_CONFIG_COUNT is a single shared counter: anything else setting it would overwrite these rather than append.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 30
+    steps:
+      # GIT_TAG_SHORT runs `git describe --tags` at Makefile parse time and errors out when it fails, so the tags
+      # have to be present. A default shallow checkout fetches none.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Build
+        run: make --warn-undefined-variables build
+
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Run unit tests
+        run: make --warn-undefined-variables test-unit
+
+  binary:
+    name: binary
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify built binary
+        run: make --warn-undefined-variables test-binary
+
+  envtest:
+    name: envtest
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Run envtest suite
+        run: make --warn-undefined-variables test-envtest
+
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 45
+    steps:
+      # verify-monitoring re-embeds dashboards and rules out of the scylla-monitoring submodule, so it has to be
+      # checked out. Letting the action do it avoids a separate authenticated git fetch as root.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: recursive
+
+      # operator-sdk, which verify-bundle shells out to, switches to reading the bundle from stdin when stdin is not
+      # a terminal, and then rejects the --deploy-dir the Makefile passes. Steps get a pipe on stdin, so it has to
+      # be redirected from /dev/null for the flags to be honoured.
+      - name: Verify
+        run: make --warn-undefined-variables verify < /dev/null
+
+  verify-deps:
+    name: verify-deps
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify dependencies
+        run: make --warn-undefined-variables verify-deps
+
+  verify-vendorability:
+    name: verify-vendorability
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # Asserts a downstream module can vendor this one. The scheme package is imported because it pulls in the
+      # whole API surface transitively.
+      - name: Verify the module can be vendored by a consumer
+        run: |
+          repo_path="$( pwd )"
+
+          pushd "$( mktemp -d )"
+
+          cat > ./main.go <<EOF
+          package main
+          import _ "github.com/scylladb/scylla-operator/pkg/scheme"
+          func main() {}
+          EOF
+
+          go mod init foo.com
+          go mod edit -replace "github.com/scylladb/scylla-operator=${repo_path}"
+          cat go.mod
+
+          go mod tidy
+          cat go.{mod,sum}
+
+          go mod vendor
+
+          go build ./...
+
+  helm-build:
+    name: helm-build
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:golang-1.27
+    timeout-minutes: 30
+    steps:
+      # The chart version defaults to GIT_TAG_SHORT, so the tags have to be present here too.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Build Helm charts
+        run: make --warn-undefined-variables helm-build
+
+  build-docs:
+    name: build-docs
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:uv-0.10
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up env
+        run: make -C docs setup
+
+      - name: Build docs
+        run: make --warn-undefined-variables -C docs dirhtml SPHINXOPTS="--keep-going"
+
+      - name: Build redirects
+        run: make --warn-undefined-variables -C docs redirects
+
+  verify-docs:
+    name: verify-docs
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:uv-0.10
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up env
+        run: make -C docs setup
+
+      - name: Verify docs
+        run: make --warn-undefined-variables -C docs verify
+
+  build-docs-multiversion:
+    name: build-docs-multiversion
+    # Multiversion builds the whole set of released branches, and a release branch's conf.py pins an older
+    # BRANCHES and smv_latest_version, so this is only meaningful on master. A skipped job fails neither this
+    # workflow nor the caller's aggregate, so the check stays required on master without gating release branches.
+    if: github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:uv-0.10
+    timeout-minutes: 30
+    steps:
+      # Building every version needs the full history and all remote branches, not just the PR head.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # smv_remote_whitelist restricts the build to refs/remotes/origin/*, so multiversion renders the upstream
+      # branches and never the working tree. Without this the job would build an unmodified origin/master and pass
+      # without ever exercising the change under test. The release branch refs are left alone so the complete
+      # version set is still validated.
+      - name: Point origin/master at the commit under test
+        run: git update-ref refs/remotes/origin/master HEAD
+
+      - name: Set up env
+        run: make -C docs setup
+
+      - name: Build docs
+        run: make --warn-undefined-variables -C docs multiversion SPHINXOPTS="--keep-going"
+
+      - name: Build redirects
+        run: make --warn-undefined-variables -C docs redirects
+
+      # Make sure the stable branch has been created from the remote.
+      - name: Verify site
+        run: '[[ -d docs/_build/dirhtml/stable ]]'

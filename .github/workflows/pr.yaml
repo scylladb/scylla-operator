@@ -3,12 +3,38 @@ name: PR
 on:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci-jobs.yaml
+
+  verify-commits:
+    name: verify-commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify commit messages
+        run: ./hack/.ci/verify-commits.sh "${{ github.event.pull_request.base.sha }}"
+
+  # The merge automation gates on a fixed set of contexts it is configured with, so individual GitHub Actions
+  # checks are invisible to it. This aggregate is the single context it can be told to require once these jobs
+  # have matured, which keeps wiring further jobs into the merge gate a one-line change here.
   check-required:
     runs-on: ubuntu-latest
+    needs:
+    - ci
+    - verify-commits
     if: always()
     steps:
     - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')

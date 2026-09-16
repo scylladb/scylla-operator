@@ -28,8 +28,6 @@ Refer to the [support matrix](./../reference/releases.md#support-matrix) for inf
 
 To upgrade your ScyllaDB cluster using GitOps (kubectl), adjust the ScyllaDB image tag/reference to the target one in your ScyllaDB cluster specification and re-apply the manifest.
 
-:::::{tabs}
-::::{group-tab} ScyllaCluster
 :::{code-block} yaml
 :substitutions:
 
@@ -46,41 +44,13 @@ After reapplying the manifest, wait for your ScyllaCluster to roll out.
 :::{include} ./../.internal/wait-for-status-conditions.scyllacluster.code-block.md
 :::
 
-::::
-::::{group-tab} ScyllaDBCluster
-:::{code-block} yaml
-:substitutions:
-
-apiVersion: scylla.scylladb.com/v1alpha1
-kind: ScyllaDBCluster
-metadata:
-  name: dev-cluster
-spec:
-  scyllaDB:
-    image: {{imageRepository}}:{{scyllaDBImageTag}} # Specify the target ScyllaDB image reference.
-  # ...
-:::
-
-After reapplying the manifest, wait for your ScyllaDBCluster to roll out.
-:::{include} ./../.internal/wait-for-status-conditions.scylladbcluster.code-block.md
-:::
-
-::::
-:::::
-
 :::{include} ./../.internal/wait-for-all-nodes-un.md
 :::
 
 ## Upgrade via Helm
 
-:::{important}
-ScyllaDB Operator does not yet support Helm installation path for managed multi-datacenter ScyllaDB clusters.
-:::
-
 To upgrade your ScyllaDB cluster using Helm, upgrade your Helm release with the target ScyllaDB image tag/reference.
 
-:::::{tabs}
-::::{group-tab} ScyllaCluster
 :::{code-block} shell
 :substitutions:
 
@@ -90,9 +60,6 @@ helm upgrade scylla scylla/scylla --reuse-values --set=scyllaImage.tag={{scyllaD
 After upgrading the release, wait for your ScyllaCluster to roll out.
 :::{include} ./../.internal/wait-for-status-conditions.scyllacluster.code-block.md
 :::
-
-::::
-::::
 
 :::{include} ./../.internal/wait-for-all-nodes-un.md
 :::

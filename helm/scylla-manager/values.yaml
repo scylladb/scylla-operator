@@ -36,7 +36,7 @@ scylla:
     scylla-operator.scylladb.com/disable-global-scylladb-manager-integration: "true"
   developerMode: true
   scyllaImage:
-    tag: 2026.3.0
+    tag: 2026.3.1
   agentImage:
     tag: 3.12.1@sha256:f47697d38da94a1e367286d232783199abb7477db026febfd125ee3b2aded7b0
   datacenter: manager-dc

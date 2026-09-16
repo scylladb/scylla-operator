@@ -88,12 +88,6 @@ const (
 	ScyllaServiceTypeMember   ScyllaServiceType = "member"
 )
 
-type ScyllaDBClusterLocalServiceType string
-
-const (
-	ScyllaDBClusterLocalServiceTypeIdentity ScyllaDBClusterLocalServiceType = "identity"
-)
-
 type ScyllaIngressType string
 
 const (
@@ -270,48 +264,9 @@ const (
 )
 
 const (
-	ManagedByClusterLabel = "scylla-operator.scylladb.com/managed-by-cluster"
-)
-
-const (
-	ScyllaDBClusterNameLabel         = "scylla-operator.scylladb.com/scylladbcluster-name"
-	ParentClusterNameLabel           = "scylla-operator.scylladb.com/parent-scylladbcluster-name"
-	ParentClusterNamespaceLabel      = "scylla-operator.scylladb.com/parent-scylladbcluster-namespace"
-	ParentClusterDatacenterNameLabel = "scylla-operator.scylladb.com/parent-scylladbcluster-datacenter-name"
-
-	ScyllaDBClusterLocalServiceTypeLabel = "scylla-operator.scylladb.com/scylladbcluster-local-service-type"
-)
-
-const (
-	RemoteOwnerClusterLabel   = "internal.scylla-operator.scylladb.com/remote-owner-cluster"
-	RemoteOwnerNamespaceLabel = "internal.scylla-operator.scylladb.com/remote-owner-namespace"
-	RemoteOwnerNameLabel      = "internal.scylla-operator.scylladb.com/remote-owner-name"
-	RemoteOwnerGVR            = "internal.scylla-operator.scylladb.com/remote-owner-gvr"
-)
-
-const (
-	ClusterEndpointsLabel       = "scylla-operator.scylladb.com/cluster-endpoints"
-	RemoteClusterEndpointsLabel = "scylla-operator.scylladb.com/remote-cluster-endpoints"
-)
-
-const (
-	RemoteClusterScyllaDBDatacenterNodesStatusReportLabel = "scylla-operator.scylladb.com/remote-cluster-scylladb-datacenter-nodes-status-report"
-)
-
-const (
-	KubeConfigSecretKey string = "kubeconfig"
-)
-
-const (
 	AppNameWithDomain = "scylla.scylladb.com"
 
-	OperatorAppNameWithDomain       = "scylla-operator.scylladb.com"
-	RemoteOperatorAppNameWithDomain = "remote.scylla-operator.scylladb.com"
-)
-
-const (
-	RemoteKubernetesClusterFinalizer = "scylla-operator.scylladb.com/remotekubernetescluster-protection"
-	ScyllaDBClusterFinalizer         = "scylla-operator.scylladb.com/scylladbcluster-protection"
+	OperatorAppNameWithDomain = "scylla-operator.scylladb.com"
 )
 
 const (
@@ -326,7 +281,7 @@ const (
 	// DisableGlobalScyllaDBManagerIntegrationAnnotation can be set to `true` to disable v1.ScyllaCluster integration with the global ScyllaDB Manager which is enabled by default.
 	DisableGlobalScyllaDBManagerIntegrationAnnotation = "scylla-operator.scylladb.com/disable-global-scylladb-manager-integration"
 
-	// ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation is used to override the auth tokens generated for specific ScyllaDBDatacenters with a shared one, common for the entire ScyllaDBCluster.
+	// ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation is used to override the auth token generated for a ScyllaDBDatacenter with a shared one, common for all datacenters of a ScyllaDB cluster.
 	ScyllaDBManagerAgentAuthTokenOverrideSecretRefAnnotation = "internal.scylla-operator.scylladb.com/scylladb-manager-agent-auth-token-override-secret-ref"
 
 	ScyllaDBManagerClusterRegistrationFinalizer              = "scylla-operator.scylladb.com/scylladbmanagerclusterregistration-deletion"

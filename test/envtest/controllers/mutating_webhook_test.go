@@ -11,7 +11,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	operatorcmd "github.com/scylladb/scylla-operator/pkg/cmd/operator"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
@@ -181,28 +180,6 @@ var _ = g.Describe("Mutating admission webhook", func() {
 				return sdc
 			},
 			expectedDefaultedSpecFields: nil,
-		}),
-		// ScyllaDBClusters are deliberately left out of the shipped rules, as parallel bootstrap is not
-		// supported in automated multi-datacenter setups.
-		g.Entry("doesn't intercept a ScyllaDBCluster", &entry{
-			resource:            "scylladbclusters",
-			expectedIntercepted: false,
-			newObject: func(name, namespace string) client.Object {
-				return &scyllav1alpha1.ScyllaDBCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      name,
-						Namespace: namespace,
-					},
-					Spec: scyllav1alpha1.ScyllaDBClusterSpec{
-						ScyllaDB: scyllav1alpha1.ScyllaDB{
-							Image: envtestScyllaDBImage,
-						},
-						ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgent{
-							Image: new(envtestScyllaDBManagerAgentImage),
-						},
-					},
-				}
-			},
 		}),
 	)
 })

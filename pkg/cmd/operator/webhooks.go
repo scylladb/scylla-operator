@@ -65,12 +65,6 @@ var (
 			GetWarningsOnCreateFunc: validation.GetWarningsOnScyllaDBDatacenterCreate,
 			GetWarningsOnUpdateFunc: validation.GetWarningsOnScyllaDBDatacenterUpdate,
 		},
-		scyllav1alpha1.GroupVersion.WithResource("scylladbclusters"): &GenericValidator[*scyllav1alpha1.ScyllaDBCluster]{
-			ValidateCreateFunc:      validation.ValidateScyllaDBCluster,
-			ValidateUpdateFunc:      validation.ValidateScyllaDBClusterUpdate,
-			GetWarningsOnCreateFunc: validation.GetWarningsOnScyllaDBClusterCreate,
-			GetWarningsOnUpdateFunc: validation.GetWarningsOnScyllaDBClusterUpdate,
-		},
 		scyllav1alpha1.GroupVersion.WithResource("scylladbmanagerclusterregistrations"): &GenericValidator[*scyllav1alpha1.ScyllaDBManagerClusterRegistration]{
 			ValidateCreateFunc:      validation.ValidateScyllaDBManagerClusterRegistration,
 			ValidateUpdateFunc:      validation.ValidateScyllaDBManagerClusterRegistrationUpdate,

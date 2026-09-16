@@ -16,18 +16,6 @@ func (c *FakeScyllaV1alpha1) NodeConfigs() v1alpha1.NodeConfigInterface {
 	return newFakeNodeConfigs(c)
 }
 
-func (c *FakeScyllaV1alpha1) RemoteKubernetesClusters() v1alpha1.RemoteKubernetesClusterInterface {
-	return newFakeRemoteKubernetesClusters(c)
-}
-
-func (c *FakeScyllaV1alpha1) RemoteOwners(namespace string) v1alpha1.RemoteOwnerInterface {
-	return newFakeRemoteOwners(c, namespace)
-}
-
-func (c *FakeScyllaV1alpha1) ScyllaDBClusters(namespace string) v1alpha1.ScyllaDBClusterInterface {
-	return newFakeScyllaDBClusters(c, namespace)
-}
-
 func (c *FakeScyllaV1alpha1) ScyllaDBDatacenters(namespace string) v1alpha1.ScyllaDBDatacenterInterface {
 	return newFakeScyllaDBDatacenters(c, namespace)
 }

@@ -246,18 +246,6 @@ func Test_mutate_withDefaultDefaulters(t *testing.T) {
 			expectedError:   nil,
 		},
 		{
-			// ScyllaDBClusters are deliberately not registered, as parallel bootstrap is not supported in
-			// automated multi-datacenter setups.
-			name: "a ScyllaDBCluster is rejected as an unsupported GVR",
-			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
-				Group:    "scylla.scylladb.com",
-				Version:  "v1alpha1",
-				Resource: "scylladbclusters",
-			}, admissionv1.Create, []byte(`{"apiVersion":"scylla.scylladb.com/v1alpha1","kind":"ScyllaDBCluster","metadata":{"name":"basic","namespace":"test"}}`)),
-			expectedPatches: nil,
-			expectedError:   fmt.Errorf(`unsupported GVR "scylla.scylladb.com/v1alpha1, Resource=scylladbclusters"`),
-		},
-		{
 			name: "a resource outside of the ScyllaDB API group is rejected as an unsupported GVR",
 			req: newMutateAdmissionRequest(metav1.GroupVersionResource{
 				Group:    "",

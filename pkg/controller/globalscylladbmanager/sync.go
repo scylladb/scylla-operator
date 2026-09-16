@@ -36,13 +36,6 @@ func (gsmc *Controller) sync(ctx context.Context) error {
 
 	scyllaDBDatacenters = oslices.FilterOut(scyllaDBDatacenters, isObjectBeingDeleted)
 
-	scyllaDBClusters, err := gsmc.scyllaDBClusterLister.ScyllaDBClusters(corev1.NamespaceAll).List(globalScyllaDBManagerSelector)
-	if err != nil {
-		return fmt.Errorf("can't list ScyllaDBClusters: %w", err)
-	}
-
-	scyllaDBClusters = oslices.FilterOut(scyllaDBClusters, isObjectBeingDeleted)
-
 	scyllaDBManagerClusterRegistrations, err := gsmc.getScyllaDBManagerClusterRegistrations()
 	if err != nil {
 		return fmt.Errorf("can't list ScyllaDBManagerClusterRegistration objects: %w", err)
@@ -51,7 +44,6 @@ func (gsmc *Controller) sync(ctx context.Context) error {
 	err = gsmc.syncScyllaDBManagerClusterRegistrations(
 		ctx,
 		scyllaDBDatacenters,
-		scyllaDBClusters,
 		scyllaDBManagerClusterRegistrations,
 	)
 	if err != nil {

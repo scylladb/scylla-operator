@@ -20,7 +20,6 @@ import (
 func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(
 	ctx context.Context,
 	scyllaDBDatacenters []*scyllav1alpha1.ScyllaDBDatacenter,
-	scyllaDBClusters []*scyllav1alpha1.ScyllaDBCluster,
 	scyllaDBManagerClusterRegistrations map[string]map[string]*scyllav1alpha1.ScyllaDBManagerClusterRegistration,
 ) error {
 	var requiredScyllaDBManagerClusterRegistrations map[string][]*scyllav1alpha1.ScyllaDBManagerClusterRegistration
@@ -36,7 +35,7 @@ func (gsmc *Controller) syncScyllaDBManagerClusterRegistrations(
 	} else if globalScyllaDBManagerNamespace.DeletionTimestamp != nil {
 		klog.V(4).InfoS("Global ScyllaDB Manager namespace is being deleted, not creating any ScyllaDBManagerClusterRegistration objects for global ScyllaDB Manager instance.", "Namespace", naming.ScyllaManagerNamespace)
 	} else {
-		requiredScyllaDBManagerClusterRegistrations, err = makeScyllaDBManagerClusterRegistrations(scyllaDBDatacenters, scyllaDBClusters)
+		requiredScyllaDBManagerClusterRegistrations, err = makeScyllaDBManagerClusterRegistrations(scyllaDBDatacenters)
 		if err != nil {
 			return fmt.Errorf("can't make required ScyllaDBManagerClusterRegistration objects for global ScyllaDB Manager instance: %w", err)
 		}

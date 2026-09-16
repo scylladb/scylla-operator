@@ -21,11 +21,10 @@ import (
 )
 
 // DefaultDefaulters registers the create-time defaulters served on the /mutate endpoint.
-// ScyllaDBClusters are deliberately not registered. Registering ScyllaDBDatacenters is safe because
-// managed ScyllaDBDatacenters always arrive at admission with the defaulted fields explicitly set by
-// their parent controllers, so the defaulters only ever take effect for directly created objects.
-// The parent controllers' authoritative apply additionally overwrites any stray defaulted value on
-// managed objects.
+// Registering ScyllaDBDatacenters is safe because managed ScyllaDBDatacenters always arrive at
+// admission with the defaulted fields explicitly set by their parent controllers, so the defaulters
+// only ever take effect for directly created objects. The parent controllers' authoritative apply
+// additionally overwrites any stray defaulted value on managed objects.
 var DefaultDefaulters = map[schema.GroupVersionResource]Defaulter{
 	scyllav1.GroupVersion.WithResource("scyllaclusters"): &GenericDefaulter[*scyllav1.ScyllaCluster]{
 		DefaultOnCreateFunc: defaulting.SetDefaultsScyllaCluster,

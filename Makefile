@@ -394,8 +394,6 @@ define generate-operator-manifests
 	mv '$(3)'/scylla-operator/templates/operator.clusterrole.yaml '$(2)'/00_operator.clusterrole.yaml
 	mv '$(3)'/scylla-operator/templates/operator.clusterrole_def.yaml '$(2)'/00_operator.clusterrole_def.yaml
 	mv '$(3)'/scylla-operator/templates/operator.clusterrole_def_openshift.yaml '$(2)'/00_operator.clusterrole_def_openshift.yaml
-	mv '$(3)'/scylla-operator/templates/operator_remote.clusterrole.yaml '$(2)'/00_operator_remote.clusterrole.yaml
-	mv '$(3)'/scylla-operator/templates/operator_remote.clusterrole_def.yaml '$(2)'/00_operator_remote.clusterrole_def.yaml
 	mv '$(3)'/scylla-operator/templates/view_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_view.yaml
 	mv '$(3)'/scylla-operator/templates/edit_clusterrole.yaml '$(2)'/00_scyllacluster_clusterrole_edit.yaml
 	mv '$(3)'/scylla-operator/templates/scyllacluster_member_clusterrole.yaml '$(2)'/00_scyllacluster_member_clusterrole.yaml

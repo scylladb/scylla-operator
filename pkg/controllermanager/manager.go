@@ -16,7 +16,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -45,9 +44,6 @@ type Options struct {
 	KubeClient       kubernetes.Interface
 	ScyllaClient     scyllaversionedclient.Interface
 	MonitoringClient monitoringversionedclient.Interface
-
-	ClusterKubeClient   *remoteclient.ClusterClient[kubernetes.Interface]
-	ClusterScyllaClient *remoteclient.ClusterClient[scyllaversionedclient.Interface]
 
 	ClusterDomainGetter scyllaoperatorconfig.GetClusterDomainFunc
 	KeyGenerator        crypto.KeyGenerator

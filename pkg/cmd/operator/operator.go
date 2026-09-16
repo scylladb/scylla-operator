@@ -20,7 +20,6 @@ import (
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/leaderelection"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -28,7 +27,6 @@ import (
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
 )
@@ -42,9 +40,6 @@ type OperatorOptions struct {
 	scyllaClient               scyllaversionedclient.Interface
 	monitoringClient           monitoringversionedclient.Interface
 	dynamicClusterDomainGetter *clusterdomain.DynamicClusterDomain
-
-	clusterKubeClient   remoteclient.ClusterClient[kubernetes.Interface]
-	clusterScyllaClient remoteclient.ClusterClient[scyllaversionedclient.Interface]
 
 	ConcurrentSyncs  int
 	OperatorImage    string
@@ -168,34 +163,6 @@ func (o *OperatorOptions) Complete(cmd *cobra.Command) error {
 
 	o.dynamicClusterDomainGetter = clusterdomain.NewDynamicClusterDomain(net.DefaultResolver)
 
-	o.clusterKubeClient = *remoteclient.NewClusterClient(func(config []byte) (kubernetes.Interface, error) {
-		restConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
-		if err != nil {
-			return nil, fmt.Errorf("can't create REST config from kubeconfig: %w", err)
-		}
-
-		client, err := kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			return nil, fmt.Errorf("can't build kubernetes clientset: %w", err)
-		}
-
-		return client, nil
-	})
-
-	o.clusterScyllaClient = *remoteclient.NewClusterClient(func(config []byte) (scyllaversionedclient.Interface, error) {
-		restConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
-		if err != nil {
-			return nil, fmt.Errorf("can't create REST config from kubeconfig: %w", err)
-		}
-
-		client, err := scyllaversionedclient.NewForConfig(restConfig)
-		if err != nil {
-			return nil, fmt.Errorf("can't build scylla clientset: %w", err)
-		}
-
-		return client, nil
-	})
-
 	err = o.CryptoKeyOptions.Complete(cmd)
 	if err != nil {
 		return err
@@ -262,8 +229,6 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		KubeClient:          o.kubeClient,
 		ScyllaClient:        o.scyllaClient,
 		MonitoringClient:    o.monitoringClient,
-		ClusterKubeClient:   &o.clusterKubeClient,
-		ClusterScyllaClient: &o.clusterScyllaClient,
 		ClusterDomainGetter: o.dynamicClusterDomainGetter.GetClusterDomain,
 		KeyGenerator:        keyGenerator,
 		OperatorImage:       o.OperatorImage,

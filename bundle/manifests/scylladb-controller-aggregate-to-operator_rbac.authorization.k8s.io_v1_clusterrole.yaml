@@ -104,8 +104,6 @@ rules:
   - scyllaclusters
   - scylladbmonitorings
   - scylladbdatacenters
-  - remotekubernetesclusters
-  - scylladbclusters
   - scylladbmanagerclusterregistrations
   - scylladbmanagertasks
   - scylladbdatacenternodesstatusreports
@@ -123,8 +121,6 @@ rules:
   - scyllaclusters/status
   - scylladbmonitorings/status
   - scylladbdatacenters/status
-  - remotekubernetesclusters/status
-  - scylladbclusters/status
   - scylladbmanagerclusterregistrations/status
   - scylladbmanagertasks/status
   verbs:
@@ -265,8 +261,6 @@ rules:
   - scylla.scylladb.com
   resources:
   - scyllaclusters/finalizers
-  - scylladbclusters/finalizers
-  - remotekubernetesclusters/finalizers
   - scylladbdatacenters/finalizers
   - scylladbmonitorings/finalizers
   - scylladbmanagerclusterregistrations/finalizers

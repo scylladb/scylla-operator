@@ -23,7 +23,6 @@ var (
 
 var (
 	ScyllaDBDatacenterGVK = GroupVersion.WithKind("ScyllaDBDatacenter")
-	ScyllaDBClusterGVK    = GroupVersion.WithKind("ScyllaDBCluster")
 )
 
 // Resource generated code relies on this being here, but it logically belongs to the group
@@ -43,12 +42,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ScyllaDBMonitoringList{},
 		&ScyllaDBDatacenter{},
 		&ScyllaDBDatacenterList{},
-		&ScyllaDBCluster{},
-		&ScyllaDBClusterList{},
-		&RemoteKubernetesCluster{},
-		&RemoteKubernetesClusterList{},
-		&RemoteOwner{},
-		&RemoteOwnerList{},
 		&ScyllaDBManagerClusterRegistration{},
 		&ScyllaDBManagerClusterRegistrationList{},
 		&ScyllaDBManagerTask{},

@@ -98,6 +98,88 @@ A healthy node N loses its data this way, and the Operator rebuilds every node a
 Previous versions could leave the label behind when you reverted a scale-down before the Operator removed the node's Service, or when you recovered a decommissioned node by hand.
 :::
 
+#### Remove ScyllaDBCluster and RemoteKubernetesCluster objects and CRDs
+
+The experimental `ScyllaDBCluster` and `RemoteKubernetesCluster` APIs and their controllers are removed in v1.23, together with the internal `RemoteOwner` API.
+`ScyllaDBCluster` is also no longer a supported value of `spec.scyllaDBClusterRef.kind` in `ScyllaDBManagerTask` and `ScyllaDBManagerClusterRegistration`.
+Multi-datacenter ScyllaDB clusters remain supported as before, with one `ScyllaCluster` per datacenter, as described in [Deploy a multi-datacenter ScyllaDB cluster](../deploy-scylladb/deploy-multi-datacenter-cluster.md).
+
+Complete steps 1 to 4 below **before upgrading**, while the previous Operator version is still running.
+
+:::{note}
+**Why does this have to happen before the upgrade?**
+All of these objects carry a finalizer that only their controller removes, and the upgraded Operator no longer runs those controllers.
+If you upgrade with any of them left, the Operator no longer cleans up anything related to them, and you have to remove the objects, their finalizers and everything they created in the remote Kubernetes clusters by hand.
+:::
+
+##### 1. Delete the ScyllaDBManagerTask objects referencing a ScyllaDBCluster
+
+List the tasks together with the kind they reference:
+
+```bash
+kubectl get scylladbmanagertasks.scylla.scylladb.com --all-namespaces -o=custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,REF_KIND:.spec.scyllaDBClusterRef.kind,REF_NAME:.spec.scyllaDBClusterRef.name'
+```
+
+```console
+NAMESPACE   NAME            REF_KIND             REF_NAME
+scylla      daily-repair    ScyllaDBDatacenter   basic
+scylla      legacy-repair   ScyllaDBCluster      dev-cluster
+```
+
+Delete every task whose `REF_KIND` is `ScyllaDBCluster`, `legacy-repair` in the example above:
+
+```bash
+kubectl -n <namespace> delete scylladbmanagertask.scylla.scylladb.com <name>
+```
+
+Deleting them now also removes the corresponding tasks from ScyllaDB Manager.
+Tasks referencing a `ScyllaDBDatacenter` are unaffected and must be kept.
+
+##### 2. Delete the ScyllaDBCluster objects
+
+```bash
+kubectl delete scylladbclusters.scylla.scylladb.com --all --all-namespaces
+```
+
+:::{caution}
+Deleting a `ScyllaDBCluster` deletes the namespaces the Operator created for its datacenters in the remote Kubernetes clusters, together with the `ScyllaDBDatacenter`s, their PersistentVolumeClaims and the data on them.
+Back up the data first if you need to keep it.
+:::
+
+The Operator removes the `ScyllaDBManagerClusterRegistration` objects it created for these clusters and deregisters them from ScyllaDB Manager, so you don't need to delete those yourself.
+This happens asynchronously, after the `ScyllaDBCluster` is gone, and step 4 checks that it completed.
+
+##### 3. Delete the RemoteKubernetesCluster objects
+
+```bash
+kubectl delete remotekubernetesclusters.scylla.scylladb.com --all
+```
+
+##### 4. Verify that nothing is left, then upgrade
+
+```bash
+kubectl get scylladbclusters.scylla.scylladb.com,remotekubernetesclusters.scylla.scylladb.com --all-namespaces
+kubectl get scylladbmanagertasks.scylla.scylladb.com,scylladbmanagerclusterregistrations.scylla.scylladb.com --all-namespaces -o=custom-columns='NAMESPACE:.metadata.namespace,KIND:.kind,NAME:.metadata.name,REF_KIND:.spec.scyllaDBClusterRef.kind'
+```
+
+The first command must print `No resources found`, and no row of the second one may show `ScyllaDBCluster` in `REF_KIND`.
+
+##### 5. After upgrading, remove the CRDs
+
+Neither `kubectl apply` nor `helm upgrade` removes CRDs, so delete them explicitly in the cluster running the Operator:
+
+```bash
+kubectl delete crd scylladbclusters.scylla.scylladb.com remotekubernetesclusters.scylla.scylladb.com remoteowners.scylla.scylladb.com
+```
+
+Every Kubernetes cluster that was registered as a `RemoteKubernetesCluster` also has the `remoteowners.scylla.scylladb.com` CRD and the ClusterRoles the Operator used to access it.
+Remove them in each of those clusters:
+
+```bash
+kubectl --context="${REMOTE_CLUSTER_CONTEXT}" delete crd remoteowners.scylla.scylladb.com
+kubectl --context="${REMOTE_CLUSTER_CONTEXT}" delete clusterrole scylladb:controller:operator-remote scylladb:controller:aggregate-to-operator-remote
+```
+
 ### 1.20 to 1.21
 
 #### Ensure ScyllaCluster repair and backup task names are RFC 1123 compliant

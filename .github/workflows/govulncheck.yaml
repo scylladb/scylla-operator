@@ -1,0 +1,60 @@
+name: govulncheck
+
+on:
+  schedule:
+    - cron: '0 7 * * MON-FRI'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+# The bot image declares no USER, so the job runs as root and git refuses to operate on a tree it sees as
+# foreign. See the equivalent comment in ci-jobs.yaml.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  govulncheck:
+    name: govulncheck (${{ matrix.branch }})
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb-dev/soci-govulncheck-gh-bot:latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        branch:
+          - master
+          - v1.21
+          - v1.22
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ matrix.branch }}
+          persist-credentials: false
+
+      # Issues live in a private repo, which the job's GITHUB_TOKEN can't write to.
+      - name: Create a GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.GOVULNCHECK_GH_BOT_APP_ID }}
+          private-key: ${{ secrets.GOVULNCHECK_GH_BOT_APP_PRIVATE_KEY }}
+          owner: scylladb
+          repositories: scylla-operator-team
+
+      - name: Run govulncheck
+        run: govulncheck-gh-bot run
+        env:
+          GOVULNCHECK_GH_BOT_LOGLEVEL: "4"
+          GOVULNCHECK_GH_BOT_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GOVULNCHECK_GH_BOT_GITHUB_ISSUES_REPO: scylladb/scylla-operator-team
+          GOVULNCHECK_GH_BOT_GITHUB_VULNERABILITY_ISSUE_LABEL: kind/vulnerability
+          GOVULNCHECK_GH_BOT_SILENCED_VULNERABILITY_GITHUB_ISSUE_LABEL: vulnerability/silenced

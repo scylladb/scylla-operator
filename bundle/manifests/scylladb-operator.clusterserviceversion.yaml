@@ -9,7 +9,6 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     operators.operatorframework.io/internal-objects: |
       [
-        "remoteowners.scylla.scylladb.com",
         "scylladbdatacenternodesstatusreports.scylla.scylladb.com",
         "scylladbmanagerclusterregistrations.scylla.scylladb.com"
       ]
@@ -39,18 +38,9 @@ spec:
       - kind: NodeConfig
         name: nodeconfigs.scylla.scylladb.com
         version: v1alpha1
-      - kind: RemoteKubernetesCluster
-        name: remotekubernetesclusters.scylla.scylladb.com
-        version: v1alpha1
-      - kind: RemoteOwner
-        name: remoteowners.scylla.scylladb.com
-        version: v1alpha1
       - kind: ScyllaCluster
         name: scyllaclusters.scylla.scylladb.com
         version: v1
-      - kind: ScyllaDBCluster
-        name: scylladbclusters.scylla.scylladb.com
-        version: v1alpha1
       - kind: ScyllaDBDatacenterNodesStatusReport
         name: scylladbdatacenternodesstatusreports.scylla.scylladb.com
         version: v1alpha1
@@ -179,8 +169,6 @@ spec:
                 - scyllaclusters
                 - scylladbmonitorings
                 - scylladbdatacenters
-                - remotekubernetesclusters
-                - scylladbclusters
                 - scylladbmanagerclusterregistrations
                 - scylladbmanagertasks
                 - scylladbdatacenternodesstatusreports
@@ -198,8 +186,6 @@ spec:
                 - scyllaclusters/status
                 - scylladbmonitorings/status
                 - scylladbdatacenters/status
-                - remotekubernetesclusters/status
-                - scylladbclusters/status
                 - scylladbmanagerclusterregistrations/status
                 - scylladbmanagertasks/status
               verbs:
@@ -340,8 +326,6 @@ spec:
                 - scylla.scylladb.com
               resources:
                 - scyllaclusters/finalizers
-                - scylladbclusters/finalizers
-                - remotekubernetesclusters/finalizers
                 - scylladbdatacenters/finalizers
                 - scylladbmonitorings/finalizers
                 - scylladbmanagerclusterregistrations/finalizers
@@ -581,7 +565,6 @@ spec:
             - nodeconfigs
             - scyllaoperatorconfigs
             - scylladbdatacenters
-            - scylladbclusters
             - scylladbmanagerclusterregistrations
             - scylladbmanagertasks
             - scylladbmonitorings

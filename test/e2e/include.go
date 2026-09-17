@@ -9,6 +9,7 @@ import (
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/scyllacluster/multidatacenter"
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/scylladbdatacenter"
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/scylladbmanagertask"
+	_ "github.com/scylladb/scylla-operator/test/e2e/set/scylladbmanagertask/multidatacenter"
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/scylladbmonitoring"
 	_ "github.com/scylladb/scylla-operator/test/e2e/set/scyllaoperatorconfig"
 )

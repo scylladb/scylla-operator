@@ -3,9 +3,10 @@
 # Copyright (C) 2026 ScyllaDB
 #
 # Verifies that the commits in the given range follow the repository's commit policy:
-# no merge commits, no leftover autosquash or revert commits, and Conventional Commits messages.
+# no merge commits, no leftover autosquash or revert commits, Conventional Commits messages, and no
+# issue closing keywords.
 # Usage: verify-commits.sh <base-sha>
-#   base-sha: the commit (exclusive) from which to start checking (e.g. PULL_BASE_SHA in Prow).
+#   base-sha: the commit (exclusive) from which to start checking.
 
 set -euEo pipefail
 shopt -s inherit_errexit
@@ -17,12 +18,13 @@ fi
 
 command -v git >/dev/null || { echo "git is not available" >&2; exit 1; }
 
-# The fork point, not the argument itself: if the base branch has moved on since, its own commits
-# aren't this branch's to answer for.
 base_sha="$( git merge-base "${1}" HEAD )"
 
 types=(build chore ci docs feat fix perf refactor revert style test)
 types_re="$( IFS='|'; echo "${types[*]}" )"
+
+# Issue closing keywords, see CONTRIBUTING.md. Plain '#1234' references used as context are allowed.
+close_issue_re='(^|[^[:alnum:]_])(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed))[[:space:]:]+([[:alnum:]_.-]+/[[:alnum:]_.-]+)?#[0-9]+'
 
 rc=0
 
@@ -57,17 +59,28 @@ while read -r c; do
     continue
   fi
 
-  if [[ "${m}" =~ ^(${types_re})(\(.*\))?(!)?:\ .*$ ]]; then
-    echo "[OK]   ${m}"
+  if [[ ! "${m}" =~ ^(${types_re})(\(.*\))?(!)?:\ .*$ ]]; then
+    echo "[FAIL] ${m}"
+    echo "       Commit $( git log -1 --pretty=%h "${c}" ) doesn't follow the Conventional Commits format."
+    echo "       Expected '<type>[optional scope][!]: <description>', e.g. 'fix(scyllacluster): don't requeue on a missing Service'."
+    echo "       Allowed types: ${types[*]}."
+    echo "       Amend it with 'git commit --amend' or rewrite the history with 'git rebase -i ${base_sha}'."
+    rc=1
     continue
   fi
 
-  echo "[FAIL] ${m}"
-  echo "       Commit $( git log -1 --pretty=%h "${c}" ) doesn't follow the Conventional Commits format."
-  echo "       Expected '<type>[optional scope][!]: <description>', e.g. 'fix(scyllacluster): don't requeue on a missing Service'."
-  echo "       Allowed types: ${types[*]}."
-  echo "       Amend it with 'git commit --amend' or rewrite the history with 'git rebase -i ${base_sha}'."
-  rc=1
+  closing="$( git log -1 --pretty=%B "${c}" | grep -nEi -e "${close_issue_re}" || true )"
+  if [[ -n "${closing}" ]]; then
+    echo "[FAIL] ${m}"
+    echo "       Commit $( git log -1 --pretty=%h "${c}" ) contains an issue closing keyword:"
+    sed -e 's/^/         /' <<<"${closing}"
+    echo "       GitHub closes the referenced issue when the commit lands on the default branch, whichever PR carries it."
+    echo "       Move the keyword to the PR description, or reference the issue without one, e.g. 'see #1234'."
+    rc=1
+    continue
+  fi
+
+  echo "[OK]   ${m}"
 done <<<"$( git rev-list --no-merges --reverse "${base_sha}..HEAD" )"
 
 if [[ "${rc}" -ne 0 ]]; then

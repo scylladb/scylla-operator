@@ -48,6 +48,10 @@
   check for these labels with `kubectl get svc -A -l scylla/decommissioned=true` and remove the label from the
   Services of healthy nodes.**
   [#3629](https://github.com/scylladb/scylla-operator/pull/3629)
+- The ScyllaDB Manager Agent container's readiness is now probed with an HTTPS `GET /ping` against the agent API
+  instead of a TCP socket check. The TCP probe closed each connection without a TLS handshake, making the agent log
+  `http: TLS handshake error from <kubelet>: EOF` every 10 seconds on every node.
+  [#3673](https://github.com/scylladb/scylla-operator/pull/3673)
 
 ### Features & Enhancements
 - The `enableParallelNodeOperations` field of `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec` now also controls how

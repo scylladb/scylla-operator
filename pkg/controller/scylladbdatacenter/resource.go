@@ -1471,8 +1471,10 @@ exec scylla-manager-agent \
 		},
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: apimachineryutilintstr.FromInt32(10001),
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   "/ping",
+					Port:   apimachineryutilintstr.FromInt32(10001),
+					Scheme: corev1.URISchemeHTTPS,
 				},
 			},
 		},

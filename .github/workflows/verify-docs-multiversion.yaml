@@ -1,0 +1,43 @@
+name: verify-docs-multiversion
+
+on:
+  schedule:
+    - cron: '0 7 * * MON-FRI'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+# actions/checkout clones as the runner user, but these container images declare no USER, so the jobs run as root
+# and git refuses to operate on a tree it sees as foreign. safe.directory is only honoured from protected config
+# scopes, and GIT_CONFIG_COUNT/KEY/VALUE is the environment form of the command scope, so this covers every git
+# invocation in the job - including the ones make shells out to - without a step in each job.
+# GIT_CONFIG_COUNT is a single shared counter: anything else setting it would overwrite these rather than append.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  verify-docs-multiversion:
+    name: verify-docs-multiversion
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:uv-0.10
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up env
+        run: make -C docs setup
+
+      - name: Verify docs
+        run: make --warn-undefined-variables -C docs verify-multiversion

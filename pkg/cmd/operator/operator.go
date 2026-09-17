@@ -69,10 +69,11 @@ type OperatorOptions struct {
 	clusterKubeClient   remoteclient.ClusterClient[kubernetes.Interface]
 	clusterScyllaClient remoteclient.ClusterClient[scyllaversionedclient.Interface]
 
-	ConcurrentSyncs  int
-	OperatorImage    string
-	CQLSIngressPort  int
-	CryptoKeyOptions CryptoKeyOptions
+	ConcurrentSyncs                int
+	OperatorImage                  string
+	CQLSIngressPort                int
+	CryptoKeyOptions               CryptoKeyOptions
+	GlobalScyllaDBManagerNamespace string
 }
 
 func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
@@ -81,10 +82,11 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		InClusterReflection: genericclioptions.InClusterReflection{},
 		LeaderElection:      genericclioptions.NewLeaderElection(),
 
-		ConcurrentSyncs:  50,
-		OperatorImage:    "",
-		CQLSIngressPort:  0,
-		CryptoKeyOptions: DefaultCryptoKeyOptions(),
+		ConcurrentSyncs:                50,
+		OperatorImage:                  "",
+		CQLSIngressPort:                0,
+		CryptoKeyOptions:               DefaultCryptoKeyOptions(),
+		GlobalScyllaDBManagerNamespace: naming.ScyllaManagerNamespace,
 	}
 }
 
@@ -131,6 +133,7 @@ func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.ConcurrentSyncs, "concurrent-syncs", "", o.ConcurrentSyncs, "The number of ScyllaCluster objects that are allowed to sync concurrently.")
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
+	cmd.Flags().StringVarP(&o.GlobalScyllaDBManagerNamespace, "global-scylladb-manager-namespace", "", o.GlobalScyllaDBManagerNamespace, "Namespace in which the global ScyllaDB Manager instance is deployed.")
 	o.CryptoKeyOptions.AddFlags(cmd)
 }
 
@@ -153,6 +156,11 @@ func (o *OperatorOptions) Validate() error {
 	msg := apimachineryutilvalidation.IsInRange(o.CQLSIngressPort, 0, 65535)
 	if len(msg) != 0 {
 		errs = append(errs, fmt.Errorf("invalid secure cql ingress port %d: %s", o.CQLSIngressPort, msg))
+	}
+
+	nsValidationMsgs := apimachineryutilvalidation.IsDNS1123Label(o.GlobalScyllaDBManagerNamespace)
+	if len(nsValidationMsgs) != 0 {
+		errs = append(errs, fmt.Errorf("invalid global ScyllaDB Manager namespace %q: %v", o.GlobalScyllaDBManagerNamespace, nsValidationMsgs))
 	}
 
 	return apimachineryutilerrors.NewAggregate(errs)
@@ -396,6 +404,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		kubeInformers.Core().V1().ServiceAccounts(),
 		kubeInformers.Core().V1().ConfigMaps(),
 		o.OperatorImage,
+		o.Namespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create nodeconfig controller: %w", err)
@@ -693,6 +702,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		kubeInformers.Core().V1().Namespaces(),
+		o.GlobalScyllaDBManagerNamespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create global ScyllaDB Manager controller: %w", err)
@@ -706,6 +716,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBClusters(),
 		kubeInformers.Core().V1().Secrets(),
 		kubeInformers.Core().V1().Namespaces(),
+		o.GlobalScyllaDBManagerNamespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create ScyllaDBManagerClusterRegistration controller: %w", err)
@@ -716,6 +727,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		o.scyllaClient.ScyllaV1alpha1(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
+		o.GlobalScyllaDBManagerNamespace,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create ScyllaDBManagerTask controller: %w", err)

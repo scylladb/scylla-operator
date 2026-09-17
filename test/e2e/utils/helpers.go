@@ -331,7 +331,7 @@ func GetPodsForStatefulSet(ctx context.Context, client corev1client.CoreV1Interf
 }
 
 func GetDaemonSetsForNodeConfig(ctx context.Context, client appv1client.AppsV1Interface, nc *scyllav1alpha1.NodeConfig) ([]*appsv1.DaemonSet, error) {
-	daemonSetList, err := client.DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+	daemonSetList, err := client.DaemonSets(framework.OperatorNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.Set{
 			naming.NodeConfigNameLabel: nc.Name,
 		}.AsSelector().String(),

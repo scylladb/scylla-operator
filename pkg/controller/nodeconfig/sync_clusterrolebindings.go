@@ -16,7 +16,7 @@ import (
 
 func (ncc *Controller) makeClusterRoleBindings() []*rbacv1.ClusterRoleBinding {
 	clusterRoleBindings := []*rbacv1.ClusterRoleBinding{
-		makeNodeConfigClusterRoleBinding(),
+		makeNodeConfigClusterRoleBinding(ncc.namespace),
 	}
 
 	return clusterRoleBindings

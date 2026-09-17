@@ -34,6 +34,10 @@ const (
 	ServiceAccountTokenSecretName        = "e2e-user-token"
 	serviceAccountWaitTimeout            = 1 * time.Minute
 	serviceAccountTokenSecretWaitTimeout = 1 * time.Minute
+
+	// OperatorNamespace is the namespace the tests expect Scylla Operator to be deployed into.
+	// Node tuning resources created by the NodeConfig controller live in the same namespace.
+	OperatorNamespace = "scylla-operator"
 )
 
 type Framework struct {

@@ -16,10 +16,10 @@ import (
 
 func (ncc *Controller) makeServiceAccounts() []*corev1.ServiceAccount {
 	serviceAccounts := []*corev1.ServiceAccount{
-		makeNodeConfigServiceAccount(),
-		makePerftuneServiceAccount(),
-		makeSysctlsServiceAccount(),
-		makeRlimitsServiceAccount(),
+		makeNodeConfigServiceAccount(ncc.namespace),
+		makePerftuneServiceAccount(ncc.namespace),
+		makeSysctlsServiceAccount(ncc.namespace),
+		makeRlimitsServiceAccount(ncc.namespace),
 	}
 
 	return serviceAccounts

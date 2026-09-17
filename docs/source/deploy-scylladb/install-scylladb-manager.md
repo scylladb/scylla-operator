@@ -20,12 +20,18 @@ For details on how Manager integrates with the Operator, see [ScyllaDB Manager](
 
 ## Install ScyllaDB Manager
 
-ScyllaDB Manager deploys into the `scylla-manager` namespace.
+ScyllaDB Manager deploys into the `scylla-manager` namespace by default.
 It runs a small internal ScyllaCluster for its own state.
 
 :::{note}
-ScyllaDB Manager must be installed in the `scylla-manager` namespace.
-The Operator expects Manager in this namespace and will not discover it otherwise.
+The Operator expects Manager in the `scylla-manager` namespace by default and will not discover it in a different namespace unless you tell it where to look.
+To install Manager into a custom namespace, you must configure the Operator with the same namespace:
+
+- **Helm**: set the `scyllaDBManagerNamespace` value on the `scylla/scylla-operator` chart, e.g. `--set scyllaDBManagerNamespace=my-manager-namespace`.
+- **GitOps**: pass `--global-scylladb-manager-namespace=my-manager-namespace` to the `scylla-operator operator` command in the Operator Deployment.
+
+When installing the Manager chart into a custom namespace, also set its `scyllaOperatorNamespace` value to the namespace the Operator runs in (default: `scylla-operator`), so the bundled NetworkPolicy admits the Operator's traffic.
+Installing the Operator and Manager into a single shared namespace is also supported.
 :::
 
 ::::{tabs}

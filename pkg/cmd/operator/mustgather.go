@@ -7,6 +7,7 @@ import (
 
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -48,13 +49,15 @@ var (
 type MustGatherOptions struct {
 	*GatherBaseOptions
 
-	AllResources bool
+	AllResources        bool
+	CollectedNamespaces []string
 }
 
 func NewMustGatherOptions(streams genericclioptions.IOStreams) *MustGatherOptions {
 	options := &MustGatherOptions{
-		GatherBaseOptions: NewGatherBaseOptions("scylla-operator-must-gather"),
-		AllResources:      false,
+		GatherBaseOptions:   NewGatherBaseOptions("scylla-operator-must-gather"),
+		AllResources:        false,
+		CollectedNamespaces: defaultCollectedNamespaces,
 	}
 
 	return options
@@ -64,6 +67,7 @@ func (o *MustGatherOptions) AddFlags(flagset *pflag.FlagSet) {
 	o.GatherBaseOptions.AddFlags(flagset)
 
 	flagset.BoolVarP(&o.AllResources, "all-resources", "", o.AllResources, "Gather will discover preferred API resources from the apiserver.")
+	flagset.StringSliceVarP(&o.CollectedNamespaces, "collect-namespaces", "", o.CollectedNamespaces, "Namespaces holding the ScyllaDB Operator stack whose objects are always collected. Adjust when the operator or ScyllaDB Manager are deployed in custom namespaces.")
 }
 
 func NewMustGatherCmd(streams genericclioptions.IOStreams) *cobra.Command {
@@ -184,8 +188,8 @@ var defaultCollectedResourceGroups = []schema.GroupResource{
 
 var defaultCollectedNamespaces = []string{
 	"scylla-operator",
-	"scylla-manager",
-	"scylla-operator-node-tuning",
+	naming.ScyllaManagerNamespace,
+	naming.ScyllaOperatorNodeTuningNamespace,
 }
 
 func (o *MustGatherOptions) run(ctx context.Context) error {
@@ -238,7 +242,7 @@ func (o *MustGatherOptions) collectDefaultResources(ctx context.Context, collect
 		}
 	}
 
-	for _, ns := range defaultCollectedNamespaces {
+	for _, ns := range o.CollectedNamespaces {
 		if err := collector.CollectResourceObject(ctx, &collect.ResourceInfo{
 			Scope:    meta.RESTScopeRoot,
 			Resource: corev1.SchemeGroupVersion.WithResource("namespaces"),

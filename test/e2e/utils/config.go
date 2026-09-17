@@ -29,6 +29,15 @@ const (
 	multiDatacenterJoinClusterBuffer    = 15 * time.Minute
 	multiDatacenterMemberRolloutTimeout = memberRolloutTimeout + multiDatacenterJoinClusterBuffer
 
+	// MultiDatacenterScyllaClusterTerminationTimeout is the amount of time a datacenter of a multi-datacenter
+	// ScyllaDB cluster needs to be fully deleted, including ScyllaDB Manager deregistration and pod termination.
+	MultiDatacenterScyllaClusterTerminationTimeout = 15 * time.Minute
+
+	// ScyllaClusterCQLStabilizationTimeout is the maximum amount of time to wait for a newly provisioned
+	// ScyllaCluster to reach CQL-level stability, where all nodes participate in gossip and respond to
+	// CQL queries with correct protocol-level errors (as opposed to transport-level connection errors).
+	ScyllaClusterCQLStabilizationTimeout = 3 * time.Minute
+
 	ScyllaDBManagerTaskNumRetries = 3
 	ScyllaDBManagerTaskRetryWait  = 30 * time.Second
 

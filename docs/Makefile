@@ -96,5 +96,12 @@ verify-uv:
 	$(UV) lock --check
 .PHONY: verify-uv
 
+multiversionlinkcheck:
+	$(UV) run sphinx-multiversion -b=linkcheck $(SOURCEDIR) $(BUILDDIR)/linkcheck
+.PHONY: multiversionlinkcheck
+
 verify: verify-uv linkcheck
 .PHONY: verify
+
+verify-multiversion: verify-uv multiversionlinkcheck
+.PHONY: verify-multiversion

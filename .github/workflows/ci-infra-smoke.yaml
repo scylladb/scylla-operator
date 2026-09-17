@@ -1,0 +1,114 @@
+name: CI infra smoke test
+
+on:
+  push:
+    branches:
+      - ci-infra-smoke-test
+  workflow_dispatch: {}
+
+env:
+  PROVISIONERS_KUBECONFIG: /var/run/secrets/ci-provisioners/kubeconfig
+  CLUSTER_NAME: gha-smoke-${{ github.run_id }}
+
+jobs:
+  gke-smoke:
+    name: Provision a GKE cluster via cicm and run a workload
+    runs-on: hosted-runners-standard-pool
+    timeout-minutes: 45
+    steps:
+      - name: Runner smoke
+        run: |
+          set -euxo pipefail
+          hostname
+          uname -a
+          nproc
+          free -h
+          test -s "${PROVISIONERS_KUBECONFIG}"
+
+      - name: Install kubectl
+        run: |
+          set -euxo pipefail
+          version="$( curl -sSfL https://dl.k8s.io/release/stable.txt )"
+          mkdir -p "${HOME}/bin"
+          curl -sSfL -o /tmp/kubectl "https://dl.k8s.io/release/${version}/bin/linux/amd64/kubectl"
+          install -m 0755 /tmp/kubectl "${HOME}/bin/kubectl"
+          echo "${HOME}/bin" >> "${GITHUB_PATH}"
+          "${HOME}/bin/kubectl" version --client
+
+      - name: Verify provisioners cluster access
+        run: |
+          set -euxo pipefail
+          export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+          kubectl auth whoami
+          kubectl get kubernetesclusters.ci.scylladb.com
+
+      - name: Create KubernetesCluster CR
+        run: |
+          set -euxo pipefail
+          export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+          cat > /tmp/cluster.yaml <<EOF
+          apiVersion: ci.scylladb.com/v1alpha1
+          kind: KubernetesCluster
+          metadata:
+            name: "${CLUSTER_NAME}"
+          spec:
+            type: GKE
+            version: "1.35"
+            ttlSeconds: 7200
+            credentialsSecret:
+              name: "${CLUSTER_NAME}-kubeconfig"
+            gke:
+              location: us-central1
+              nodePools:
+                - name: default
+                  initialNodeCount: 1
+                  config:
+                    machineType: e2-standard-2
+          EOF
+          # The validating webhook fails closed; retry briefly in case the
+          # stack is still converging.
+          for i in $( seq 1 10 ); do
+            if kubectl create -f /tmp/cluster.yaml; then
+              exit 0
+            fi
+            sleep 15
+          done
+          exit 1
+
+      - name: Wait for the cluster to bootstrap
+        run: |
+          set -euxo pipefail
+          export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+          kubectl wait --timeout=30m --for=condition=ClusterBootstrapped=True "kubernetescluster/${CLUSTER_NAME}"
+          kubectl wait --timeout=5m --for=condition=Progressing=False "kubernetescluster/${CLUSTER_NAME}"
+          kubectl wait --timeout=5m --for=condition=Degraded=False "kubernetescluster/${CLUSTER_NAME}"
+          kubectl get "kubernetescluster/${CLUSTER_NAME}" -o yaml
+
+      - name: Get the ephemeral cluster's kubeconfig and inspect the cluster
+        run: |
+          set -euxo pipefail
+          export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+          kubectl get secret "${CLUSTER_NAME}-kubeconfig" -o jsonpath='{.data.kubeconfig}' | base64 -d > /tmp/e2e-kubeconfig
+          chmod 0600 /tmp/e2e-kubeconfig
+
+          export KUBECONFIG=/tmp/e2e-kubeconfig
+          kubectl version
+          kubectl get nodes -o wide
+
+      - name: Run a workload inside the ephemeral cluster
+        run: |
+          set -euxo pipefail
+          export KUBECONFIG=/tmp/e2e-kubeconfig
+          marker="ci-infra-smoke-${{ github.run_id }}"
+          kubectl create namespace smoke
+          kubectl run -n smoke smoke-pod --image=registry.k8s.io/e2e-test-images/busybox:1.36.1-1 --restart=Never -- sh -c "echo ${marker}"
+          kubectl wait -n smoke --timeout=5m --for=jsonpath='{.status.phase}'=Succeeded pod/smoke-pod
+          kubectl logs -n smoke smoke-pod | tee /tmp/smoke-pod.log
+          grep -q "${marker}" /tmp/smoke-pod.log
+
+      - name: Clean up the KubernetesCluster CR
+        if: always()
+        run: |
+          set -euxo pipefail
+          export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+          kubectl delete kubernetescluster "${CLUSTER_NAME}" --ignore-not-found --timeout=10m

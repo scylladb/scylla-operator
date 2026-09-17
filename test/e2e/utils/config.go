@@ -37,4 +37,8 @@ const (
 	// ScyllaDBManagerTaskSyncTimeout is the maximum amount of time it should take for a ScyllaDB Manager Agent to register/update a task with ScyllaDB Manager.
 	ScyllaDBManagerTaskSyncTimeout       = 3 * time.Minute
 	ScyllaDBManagerTaskCompletionTimeout = 10 * time.Minute
+	// ScyllaDBManagerMultiDatacenterTaskCompletionTimeout is the maximum amount of time a ScyllaDB Manager task
+	// running against a multi-datacenter ScyllaDB cluster should take to complete. It accounts for the
+	// inter-datacenter latencies the task's operations are subject to.
+	ScyllaDBManagerMultiDatacenterTaskCompletionTimeout = 15 * time.Minute
 )

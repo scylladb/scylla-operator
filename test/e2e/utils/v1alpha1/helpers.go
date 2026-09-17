@@ -212,6 +212,20 @@ func RolloutTimeoutForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter)
 	return SyncTimeout + time.Duration(GetNodeCount(sdc))*memberRolloutTimeout + cleanupJobTimeout
 }
 
+// ContextForMultiDatacenterRollout returns a context for the rollout of a ScyllaDBDatacenter that is part of a
+// multi-datacenter cluster, which is given extra time for the nodes to join over inter-datacenter links.
+func ContextForMultiDatacenterRollout(parent context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter) (context.Context, context.CancelFunc) {
+	return context.WithTimeoutCause(
+		parent,
+		RolloutTimeoutForMultiDatacenterScyllaDBDatacenter(sdc),
+		fmt.Errorf("ScyllaDBDatacenter %q has not rolled out in time", naming.ObjRef(sdc)),
+	)
+}
+
+func RolloutTimeoutForMultiDatacenterScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) time.Duration {
+	return SyncTimeout + time.Duration(GetNodeCount(sdc))*multiDatacenterMemberRolloutTimeout + cleanupJobTimeout
+}
+
 func GetNodeCount(sdc *scyllav1alpha1.ScyllaDBDatacenter) int32 {
 	nodes := int32(0)
 	rackTemplateNodes := int32(0)
@@ -350,6 +364,35 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 
 		return allSeeAllAsUN, nil
 	})
+}
+
+// WaitForFullMultiDCQuorum waits until every node of every given ScyllaDBDatacenter sees the nodes of all of them,
+// and only those, as up. dcClientMap maps datacenter names to clients for the Kubernetes clusters they run in.
+func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, sdcs []*scyllav1alpha1.ScyllaDBDatacenter) error {
+	var sortedAllHostIDs []string
+	for _, sdc := range sdcs {
+		client, ok := dcClientMap[naming.GetScyllaDBDatacenterGossipDatacenterName(sdc)]
+		if !ok {
+			return fmt.Errorf("client is missing for ScyllaDBDatacenter %q", naming.ObjRef(sdc))
+		}
+
+		hostIDs, err := GetHostIDs(ctx, client, sdc)
+		if err != nil {
+			return fmt.Errorf("can't get host IDs for ScyllaDBDatacenter %q: %w", naming.ObjRef(sdc), err)
+		}
+		sortedAllHostIDs = append(sortedAllHostIDs, hostIDs...)
+	}
+	sort.Strings(sortedAllHostIDs)
+
+	var errs []error
+	for _, sdc := range sdcs {
+		err := WaitForFullQuorum(ctx, dcClientMap[naming.GetScyllaDBDatacenterGossipDatacenterName(sdc)], sdc, sortedAllHostIDs)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("can't wait for nodes of ScyllaDBDatacenter %q to reach status consistency: %w", naming.ObjRef(sdc), err))
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func IsScyllaDBManagerTaskRolledOut(smt *scyllav1alpha1.ScyllaDBManagerTask) (bool, error) {

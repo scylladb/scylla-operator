@@ -132,6 +132,8 @@ func (f *Framework) Cluster() ClusterInterface {
 	return f.cluster
 }
 
+// WorkerClusters returns the worker clusters of a multi-datacenter setup, keyed by the cluster identifier.
+// The control plane cluster is expected to be listed as one of them as well, see the --worker-kubeconfigs flag.
 func (f *Framework) WorkerClusters() map[string]ClusterInterface {
 	m := make(map[string]ClusterInterface, len(f.workerClusters))
 	for k, v := range f.workerClusters {

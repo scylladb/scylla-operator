@@ -10,7 +10,8 @@ source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 
 # WORKER_KUBECONFIGS is an associative array that maps worker cluster identifiers to their kubeconfig paths.
-# It is used in multi-datacenter setups.
+# It is used in multi-datacenter setups. The control plane cluster is expected to be listed among the workers as well,
+# so that the specs can run a datacenter, with the object storage settings of its worker entry, next to ScyllaDB Manager.
 declare -A WORKER_KUBECONFIGS
 
 # WORKER_OBJECT_STORAGE_BUCKETS is an associative array that maps worker cluster identifiers to their object storage
@@ -20,6 +21,12 @@ declare -A WORKER_OBJECT_STORAGE_BUCKETS
 # WORKER_S3_CREDENTIALS_PATHS is an associative array that maps worker cluster identifiers to their S3 credentials
 # file paths. It is used in multi-datacenter setups.
 declare -A WORKER_S3_CREDENTIALS_PATHS
+
+# WORKER_S3_AGENT_CONFIG_PATHS is an associative array that maps worker cluster identifiers to custom Scylla Manager
+# Agent config files for their S3 buckets, e.g. an endpoint override for MinIO. It is optional and used in
+# multi-datacenter setups. Every entry must have a distinct basename, which is used as the Secret key and to derive
+# the in-container path.
+declare -A WORKER_S3_AGENT_CONFIG_PATHS
 
 # WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS is an associative array that maps worker cluster identifiers to their
 # GCS service account credentials file paths. It is used in multi-datacenter setups.
@@ -384,6 +391,20 @@ function run-e2e {
     echo "${res[*]}"
   )
 
+  # Create a Secret including workers' custom Scylla Manager Agent config files.
+  kubectl create -n=e2e secret generic worker-s3-agent-configs ${WORKER_S3_AGENT_CONFIG_PATHS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  # Build a comma-separated string following a `<cluster_identifier>=<agent_config_path_in_container>` format expected by `--worker-s3-agent-config-paths` flag.
+  worker_s3_agent_configs_in_container_paths=$(
+    res=()
+    for key in "${!WORKER_S3_AGENT_CONFIG_PATHS[@]}"; do
+      basename="${WORKER_S3_AGENT_CONFIG_PATHS[$key]##*/}"
+      in_container_path="/var/run/secrets/worker-s3-agent-configs/${basename}"
+      res+=( "${key}=${in_container_path}" )
+    done
+    IFS=','
+    echo "${res[*]}"
+  )
+
   ingress_class_name='haproxy'
   ingress_custom_annotations='haproxy.org/ssl-passthrough=true,route.openshift.io/termination=passthrough'
   ingress_controller_address="$( kubectl -n=haproxy-ingress get svc haproxy-ingress --template='{{ .spec.clusterIP }}' ):9142"
@@ -427,6 +448,10 @@ function run-e2e {
 
   if [[ -n "${worker_s3_credentials_in_container_paths}" ]]; then
     e2e_command_args+=( "--worker-s3-credentials-file-paths=${worker_s3_credentials_in_container_paths}" )
+  fi
+
+  if [[ -n "${worker_s3_agent_configs_in_container_paths}" ]]; then
+    e2e_command_args+=( "--worker-s3-agent-config-paths=${worker_s3_agent_configs_in_container_paths}" )
   fi
 
   if [[ -n "${worker_object_storage_buckets}" ]]; then
@@ -494,6 +519,9 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
     - name: worker-s3-credentials
       mountPath: /var/run/secrets/worker-s3-credentials
       readOnly: true
+    - name: worker-s3-agent-configs
+      mountPath: /var/run/secrets/worker-s3-agent-configs
+      readOnly: true
   volumes:
   - name: artifacts
     emptyDir: {}
@@ -521,6 +549,9 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
   - name: worker-s3-credentials
     secret:
       secretName: worker-s3-credentials
+  - name: worker-s3-agent-configs
+    secret:
+      secretName: worker-s3-agent-configs
 EOF
   kubectl -n=e2e wait --for=condition=Ready pod/e2e
 

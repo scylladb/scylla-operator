@@ -8,6 +8,8 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,7 +17,8 @@ import (
 )
 
 // SetUpObjectStorageCredentials creates a Secret with the credentials of the given object storage in the namespace and
-// mounts it into the ScyllaDB Manager Agent of the ScyllaDBDatacenter.
+// mounts it into the ScyllaDB Manager Agent of the ScyllaDBDatacenter. When the S3 settings carry a custom ScyllaDB
+// Manager Agent config, it is stored in a Secret of its own and set as the agent's custom config.
 // The ScyllaDBDatacenter is modified in place and has to be created afterwards.
 func SetUpObjectStorageCredentials(ctx context.Context, ns string, nsClient framework.Client, sdc *scyllav1alpha1.ScyllaDBDatacenter, objectStorageSettings framework.ClusterObjectStorageSettings) {
 	g.GinkgoHelper()
@@ -32,7 +35,7 @@ func SetUpObjectStorageCredentials(ctx context.Context, ns string, nsClient fram
 		s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 		o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
-		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sdc, ns, s3CredentialsFile)
+		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sdc, ns, s3CredentialsFile, objectStorageSettings.S3AgentConfig())
 
 	}
 }
@@ -75,7 +78,7 @@ func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Inte
 	})
 }
 
-func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, namespace string, s3CredentialsFile []byte) {
+func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, namespace string, s3CredentialsFile []byte, s3AgentConfig []byte) {
 	g.GinkgoHelper()
 
 	secret := &corev1.Secret{
@@ -111,4 +114,28 @@ func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Inter
 		MountPath: "/var/lib/scylla-manager/.aws/credentials",
 		SubPath:   "credentials",
 	})
+
+	if len(s3AgentConfig) > 0 {
+		// The custom agent config must carry no auth token: a token there would take precedence over the one the
+		// operator provisions, including a shared one referenced through the agent auth token override annotation.
+		agentConfigSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "s3-agent-config-",
+			},
+			Data: map[string][]byte{
+				naming.ScyllaAgentConfigFileName: s3AgentConfig,
+			},
+		}
+
+		agentConfigSecret, err = coreClient.Secrets(namespace).Create(ctx, agentConfigSecret, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// The ref goes on every rack, not on the rack template: the rack template's ref is not propagated to the racks.
+		for i := range sdc.Spec.Racks {
+			if sdc.Spec.Racks[i].ScyllaDBManagerAgent == nil {
+				sdc.Spec.Racks[i].ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{}
+			}
+			sdc.Spec.Racks[i].ScyllaDBManagerAgent.CustomConfigSecretRef = pointer.Ptr(agentConfigSecret.Name)
+		}
+	}
 }

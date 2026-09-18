@@ -1330,7 +1330,7 @@ func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
 		scyllaGlobalInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
-		"scylla/operator:envtest",
+		envtestOperatorImage,
 		scylla.DefaultNativeTransportPort,
 		keyGenerator,
 		options...,

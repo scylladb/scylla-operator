@@ -124,21 +124,6 @@ The controller manager runs the following controllers:
   - Reconciles backup and repair task definitions with ScyllaDB Manager.
 ```
 
-### Experimental controllers
-
-The following controllers are run by Operator, but there is no current plan to make their respective CRDs generally available. These controllers and CRDs may be removed in a future version.
-
-```{list-table}
-:header-rows: 1
-
-* - Controller
-  - What it reconciles
-* - ScyllaDBCluster
-  - Orchestrates multi-datacenter clusters by managing `ScyllaDBDatacenter` resources across remote Kubernetes clusters.
-* - RemoteKubernetesCluster
-  - Manages connections and informers for remote Kubernetes clusters used in multi-DC deployments.
-```
-
 Additional controllers run **inside ScyllaDB pods** rather than in the Operator deployment:
 
 ```{list-table}

@@ -11,6 +11,20 @@
 
 ## Unreleased
 
+### Upgrade requirements
+
+Please refer to the [1.22 to 1.23 upgrade guide](https://operator.docs.scylladb.com/v1.23/upgrade/upgrade-operator.html#122-to-123).
+
+### Removals
+
+- Experimental CRDs `ScyllaDBCluster` (not to be confused with `ScyllaCluster`) and `RemoteKubernetesCluster` together
+  with the internal `RemoteOwner` API are no longer supported. Existing objects and CRDs are not removed by the upgrade; delete the objects before upgrading and
+  the CRDs afterwards, as described in the upgrade guide. The supported way to deploy multi-datacenter setups is described in the [guide](https://operator.docs.scylladb.com/stable/deploy-scylladb/deploy-multi-datacenter-cluster.html).
+  [#3671](https://github.com/scylladb/scylla-operator/pull/3671)
+- `ScyllaDBCluster` (not to be confused with `ScyllaCluster`) is no longer a supported value of `spec.scyllaDBClusterRef.kind` in `ScyllaDBManagerTask` and
+  `ScyllaDBManagerClusterRegistration`. `ScyllaDBDatacenter` remains the only supported kind.
+  [#3671](https://github.com/scylladb/scylla-operator/pull/3671)
+
 ### Bug fixes
 
 - Fixed the `ScyllaDBDatacenter` controller updating the status in a loop while any member Service was missing its

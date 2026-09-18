@@ -97,6 +97,24 @@ var Suites = ginkgotest.TestSuites{
 		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
+		Name: "kind-serial",
+		Description: templates.LongDesc(`
+		Tests that must be run serially because they mutate global cluster state (e.g. the operator deployment
+		or cluster-scoped singletons), but have no node-level requirements and can be run on kind clusters.
+		`),
+		LabelFilter:        framework.SuiteKindSerialLabelName,
+		DefaultParallelism: defaultSerialParallelism,
+	},
+	{
+		Name: "kind-scylladb-upgrade",
+		Description: templates.LongDesc(`
+		Long-running ScyllaDB version update/upgrade tests that can be run on kind clusters,
+		but are too slow for the kind-fast suite.
+		`),
+		LabelFilter:        framework.SuiteKindScyllaDBUpgradeLabelName,
+		DefaultParallelism: defaultParallelParallelism,
+	},
+	{
 		Name: "kind-operator-upgrade",
 		Description: templates.LongDesc(`
 		Tests that verify operator upgrade from a released version to the current one. Runs in CI outside of k8s

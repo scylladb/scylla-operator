@@ -63,7 +63,7 @@ func updateClusterPodAnnotations(ctx context.Context, scyllaClient scyllav1clien
 	return sc
 }
 
-var _ = g.Describe("ScyllaCluster", framework.SuiteSerial, func() {
+var _ = g.Describe("ScyllaCluster", framework.SuiteSerial, framework.SuiteKindSerial, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

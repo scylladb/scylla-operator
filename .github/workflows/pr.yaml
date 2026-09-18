@@ -23,6 +23,9 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          # Without this, the checkout is refs/pull/N/merge, GitHub's test merge of the PR into the
+          # base branch, so HEAD is a merge commit that the contributor never wrote.
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Verify commit messages
         run: ./hack/.ci/verify-commits.sh "${{ github.event.pull_request.base.sha }}"

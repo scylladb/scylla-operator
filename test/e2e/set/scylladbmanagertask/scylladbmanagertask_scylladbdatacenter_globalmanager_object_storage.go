@@ -23,9 +23,7 @@ import (
 	utilsv1alpha1 "github.com/scylladb/scylla-operator/test/e2e/utils/v1alpha1"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scylladbdatacenterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scylladbdatacenter"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 // Not part of SuiteKindFast: requires external object storage configured on the cluster.
@@ -46,7 +44,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		objectStorageSettings, ok := f.GetClusterObjectStorageSettings()
 		o.Expect(ok).To(o.BeTrue(), "cluster object storage settings must be configured for this test")
 
-		setUpObjectStorageCredentials(ctx, ns.Name, nsClient, sourceSDC, objectStorageSettings)
+		utilsv1alpha1.SetUpObjectStorageCredentials(ctx, ns.Name, nsClient, sourceSDC, objectStorageSettings)
 
 		framework.By("Creating a source ScyllaDBDatacenter with the global ScyllaDB Manager registration label")
 		sourceSDC, err := nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Create(ctx, sourceSDC, metav1.CreateOptions{})
@@ -245,7 +243,7 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 
 		metav1.SetMetaDataLabel(&targetSDC.ObjectMeta, naming.GlobalScyllaDBManagerRegistrationLabel, naming.LabelValueTrue)
 
-		setUpObjectStorageCredentials(ctx, ns.Name, nsClient, targetSDC, objectStorageSettings)
+		utilsv1alpha1.SetUpObjectStorageCredentials(ctx, ns.Name, nsClient, targetSDC, objectStorageSettings)
 
 		framework.By("Creating the target ScyllaDBDatacenter with the global ScyllaDB Manager registration label")
 		targetSDC, err = nsClient.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(ns.Name).Create(ctx, targetSDC, metav1.CreateOptions{})
@@ -394,99 +392,3 @@ var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with 
 		verification.VerifyCQLData(ctx, di)
 	})
 })
-
-func setUpObjectStorageCredentials(ctx context.Context, ns string, nsClient framework.Client, sdc *scyllav1alpha1.ScyllaDBDatacenter, objectStorageSettings framework.ClusterObjectStorageSettings) {
-	g.GinkgoHelper()
-
-	o.Expect(objectStorageSettings.Type()).To(o.BeElementOf(framework.ObjectStorageTypeGCS, framework.ObjectStorageTypeS3))
-	switch objectStorageSettings.Type() {
-	case framework.ObjectStorageTypeGCS:
-		gcServiceAccountKey := objectStorageSettings.GCSServiceAccountKey()
-		o.Expect(gcServiceAccountKey).NotTo(o.BeEmpty())
-
-		setUpGCSCredentials(ctx, nsClient.KubeClient().CoreV1(), sdc, ns, gcServiceAccountKey)
-
-	case framework.ObjectStorageTypeS3:
-		s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
-		o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
-
-		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sdc, ns, s3CredentialsFile)
-
-	}
-}
-
-func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, namespace string, serviceAccountKey []byte) {
-	g.GinkgoHelper()
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "gcs-service-account-key-",
-		},
-		Data: map[string][]byte{
-			"gcs-service-account.json": serviceAccountKey,
-		},
-	}
-
-	secret, err := coreClient.Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	sdc.Spec.RackTemplate.ScyllaDBManagerAgent.Volumes = append(sdc.Spec.RackTemplate.ScyllaDBManagerAgent.Volumes, corev1.Volume{
-		Name: "gcs-service-account",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: secret.Name,
-				Items: []corev1.KeyToPath{
-					{
-						Key:  "gcs-service-account.json",
-						Path: "gcs-service-account.json",
-					},
-				},
-			},
-		},
-	})
-
-	sdc.Spec.RackTemplate.ScyllaDBManagerAgent.VolumeMounts = append(sdc.Spec.RackTemplate.ScyllaDBManagerAgent.VolumeMounts, corev1.VolumeMount{
-		Name:      "gcs-service-account",
-		ReadOnly:  true,
-		MountPath: "/etc/scylla-manager-agent/gcs-service-account.json",
-		SubPath:   "gcs-service-account.json",
-	})
-}
-
-func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, namespace string, s3CredentialsFile []byte) {
-	g.GinkgoHelper()
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "s3-credentials-file-",
-		},
-		Data: map[string][]byte{
-			"credentials": s3CredentialsFile,
-		},
-	}
-
-	secret, err := coreClient.Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	sdc.Spec.RackTemplate.ScyllaDBManagerAgent.Volumes = append(sdc.Spec.RackTemplate.ScyllaDBManagerAgent.Volumes, corev1.Volume{
-		Name: "aws-credentials",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: secret.Name,
-				Items: []corev1.KeyToPath{
-					{
-						Key:  "credentials",
-						Path: "credentials",
-					},
-				},
-			},
-		},
-	})
-
-	sdc.Spec.RackTemplate.ScyllaDBManagerAgent.VolumeMounts = append(sdc.Spec.RackTemplate.ScyllaDBManagerAgent.VolumeMounts, corev1.VolumeMount{
-		Name:      "aws-credentials",
-		ReadOnly:  true,
-		MountPath: "/var/lib/scylla-manager/.aws/credentials",
-		SubPath:   "credentials",
-	})
-}

@@ -29,9 +29,9 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
-// defaultReconciliationTimeout bounds every Reconcile of a controller registered with the manager. It is a guardrail,
-// not a budget: the longest sync the operator has is a ScyllaDBDatacenter one chaining its three 10s StatefulSet cache
-// propagation sleeps (create, update, member replace), and a minute leaves that twice the room.
+// defaultReconciliationTimeout bounds every Reconcile of a controller registered with the manager that doesn't set
+// its own. It is a guardrail, not a budget, for the controllers that only talk to the API server. The
+// ScyllaDBDatacenter controller sets a longer one: its upgrade hooks wait on ScyllaDB.
 const defaultReconciliationTimeout = 1 * time.Minute
 
 // setControllerRuntimeLogger guards ctrllog.SetLogger, which is neither idempotent nor safe to call concurrently.
@@ -52,6 +52,10 @@ type Options struct {
 	CQLSIngressPort int
 	ConcurrentSyncs int
 	ResyncPeriod    time.Duration
+
+	// SkipControllerNameValidation lets several managers register the same controllers within one process, which
+	// controller-runtime refuses by default. Test suites starting a manager per spec need it.
+	SkipControllerNameValidation bool
 }
 
 // Manager owns the controller-runtime manager, and with it the single cache every controller of the operator
@@ -98,6 +102,7 @@ func New(options Options) (*Manager, error) {
 		},
 		Controller: config.Controller{
 			ReconciliationTimeout: defaultReconciliationTimeout,
+			SkipNameValidation:    new(options.SkipControllerNameValidation),
 		},
 		// Metrics stay off until OPERATOR-414 (operator observability) settles how they are served:
 		// https://scylladb.atlassian.net/browse/OPERATOR-414. Health probes were never served.

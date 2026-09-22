@@ -7,13 +7,14 @@ import (
 	"strings"
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (sdcc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1alpha1.ScyllaDBDatacenter, status *scyllav1alpha1.ScyllaDBDatacenterStatus) error {
@@ -29,7 +30,7 @@ func (sdcc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1alp
 
 	klog.V(2).InfoS("Updating status", "ScyllaDBDatacenter", klog.KObj(sdc))
 
-	_, err := sdcc.scyllaClient.ScyllaDBDatacenters(sdc.Namespace).UpdateStatus(ctx, sdc, metav1.UpdateOptions{})
+	err := sdcc.client.Client().Status().Update(ctx, sdc)
 	if err != nil {
 		return err
 	}
@@ -40,9 +41,9 @@ func (sdcc *Controller) updateStatus(ctx context.Context, currentSC *scyllav1alp
 }
 
 // getScyllaVersion returns the Scylla version from the ordinal-0 pod owned by sts.
-func getScyllaVersion(podLister corev1listers.PodLister, sts *appsv1.StatefulSet) (string, error) {
+func getScyllaVersion(ctx context.Context, c client.Reader, sts *appsv1.StatefulSet) (string, error) {
 	firstMemberName := fmt.Sprintf("%s-0", sts.Name)
-	firstMember, err := podLister.Pods(sts.Namespace).Get(firstMemberName)
+	firstMember, err := ctrlclient.Get[corev1.Pod](ctx, c, sts.Namespace, firstMemberName)
 	if err != nil {
 		return "", fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sts.Namespace, firstMemberName), err)
 	}
@@ -64,7 +65,7 @@ func getScyllaVersion(podLister corev1listers.PodLister, sts *appsv1.StatefulSet
 // If sts is nil, it returns a stale zero status so the rack still appears in status.
 // Empty racks report the target image version; non-empty racks report the version from ordinal-0.
 // The decommissioning nodes are derived from the decommissioned labels of the rack's member Services in services.
-func calculateRackStatus(podLister corev1listers.PodLister, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, services map[string]*corev1.Service) *scyllav1alpha1.RackStatus {
+func calculateRackStatus(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackName string, sts *appsv1.StatefulSet, services map[string]*corev1.Service) *scyllav1alpha1.RackStatus {
 	status := &scyllav1alpha1.RackStatus{
 		Name:                 rackName,
 		Nodes:                new(int32(0)),
@@ -98,7 +99,7 @@ func calculateRackStatus(podLister corev1listers.PodLister, sdc *scyllav1alpha1.
 	if status.Nodes != nil && *status.Nodes == 0 {
 		status.CurrentVersion = scyllaDBImageVersion
 	} else {
-		version, err := getScyllaVersion(podLister, sts)
+		version, err := getScyllaVersion(ctx, c, sts)
 		if err != nil {
 			klog.ErrorS(err, "can't get scylla version")
 		} else {
@@ -153,7 +154,7 @@ func updateAggregatedStatusFields(status *scyllav1alpha1.ScyllaDBDatacenterStatu
 // calculateStatus calculates the ScyllaCluster status.
 // This function should always succeed. Do not return an error.
 // If a particular object can be missing, it should be reflected in the value itself, like "Unknown" or "".
-func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1alpha1.ScyllaDBDatacenterStatus {
+func (sdcc *Controller) calculateStatus(ctx context.Context, sdc *scyllav1alpha1.ScyllaDBDatacenter, statefulSetMap map[string]*appsv1.StatefulSet, serviceMap map[string]*corev1.Service) *scyllav1alpha1.ScyllaDBDatacenterStatus {
 	status := sdc.Status.DeepCopy()
 	status.ObservedGeneration = new(sdc.Generation)
 
@@ -163,7 +164,7 @@ func (sdcc *Controller) calculateStatus(sdc *scyllav1alpha1.ScyllaDBDatacenter, 
 	// Calculate the status for racks.
 	for _, rack := range sdc.Spec.Racks {
 		stsName := naming.StatefulSetNameForRack(rack, sdc)
-		status.Racks = append(status.Racks, *calculateRackStatus(sdcc.podLister, sdc, rack.Name, statefulSetMap[stsName], serviceMap))
+		status.Racks = append(status.Racks, *calculateRackStatus(ctx, sdcc.client.Client(), sdc, rack.Name, statefulSetMap[stsName], serviceMap))
 	}
 
 	updateAggregatedStatusFields(status)

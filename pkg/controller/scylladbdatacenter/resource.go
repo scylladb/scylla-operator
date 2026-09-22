@@ -2,6 +2,7 @@ package scylladbdatacenter
 
 import (
 	"cmp"
+	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -15,6 +16,7 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
@@ -35,8 +37,8 @@ import (
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -1825,7 +1827,7 @@ func MakeRoleBinding(sdc *scyllav1alpha1.ScyllaDBDatacenter) *rbacv1.RoleBinding
 	}
 }
 
-func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister, image string) ([]*batchv1.Job, []metav1.Condition, error) {
+func MakeJobs(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, image string) ([]*batchv1.Job, []metav1.Condition, error) {
 	var jobs []*batchv1.Job
 	var progressingConditions []metav1.Condition
 
@@ -1917,7 +1919,7 @@ func MakeJobs(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev
 				}
 			}
 
-			pod, err := podLister.Pods(sdc.Namespace).Get(naming.PodNameFromService(svc))
+			pod, err := ctrlclient.Get[corev1.Pod](ctx, c, sdc.Namespace, naming.PodNameFromService(svc))
 			if err != nil {
 				return jobs, progressingConditions, fmt.Errorf("can't get Pod %q: %w", naming.ManualRef(sdc.Namespace, naming.PodNameFromService(svc)), err)
 			}
@@ -2427,7 +2429,7 @@ func cloneMapExcludingKeysOrEmpty[M ~map[K]V, S ~[]K, K comparable, V any](m M, 
 
 // makeScyllaDBDatacenterNodesStatusReport creates a ScyllaDBDatacenterNodesStatusReport for a ScyllaDBDatacenter.
 // The caller must ensure all the provided Services are controlled by the given ScyllaDBDatacenter.
-func makeScyllaDBDatacenterNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport, error) {
+func makeScyllaDBDatacenterNodesStatusReport(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service) (*scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport, error) {
 	var errs []error
 
 	rackMemberServices, err := groupMemberServicesByRack(services)
@@ -2437,7 +2439,7 @@ func makeScyllaDBDatacenterNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacen
 
 	var rackStatusReports []scyllav1alpha1.RackNodesStatusReport
 	for _, rack := range sdc.Spec.Racks {
-		rackNodesStatusReport, err := makeRackNodesStatusReport(sdc, &rack, rackMemberServices[rack.Name], podLister)
+		rackNodesStatusReport, err := makeRackNodesStatusReport(ctx, c, sdc, &rack, rackMemberServices[rack.Name])
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't make rack nodes status report for rack %q of ScyllaDBDatacenter %q: %w", rack.Name, naming.ObjRef(sdc), err))
 			continue
@@ -2512,12 +2514,12 @@ func groupMemberServicesByRack(services map[string]*corev1.Service) (map[string]
 // being decommissioned during a scale down outlives the desired count: it stays a member of the ScyllaDB cluster, observed
 // by its peers, until it finishes decommissioning. Its sidecar then annotates it as no longer joined, and it drops out
 // of the report, while its member Service is only pruned later.
-func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, rackMemberServices []*corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.RackNodesStatusReport, error) {
+func makeRackNodesStatusReport(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec *scyllav1alpha1.RackSpec, rackMemberServices []*corev1.Service) (*scyllav1alpha1.RackNodesStatusReport, error) {
 	var errs []error
 
 	var nodeStatusReports []scyllav1alpha1.NodeStatusReport
 	for _, svc := range rackMemberServices {
-		nodeStatusReport, ok, err := makeNodeStatusReport(sdc, svc, podLister)
+		nodeStatusReport, ok, err := makeNodeStatusReport(ctx, c, sdc, svc)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("can't make node status report for member Service %q of rack %q of ScyllaDBDatacenter %q: %w", naming.ObjRef(svc), rackSpec.Name, naming.ObjRef(sdc), err))
 			continue
@@ -2550,7 +2552,7 @@ func makeRackNodesStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, rackSpec 
 // A node is included in the report only while its Service is annotated with naming.NodeJoinedScyllaDBClusterAnnotation
 // set to true, signaling it is a member of the ScyllaDB cluster.
 // The provided Service must be a member Service, named with an ordinal suffix.
-func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, podLister corev1listers.PodLister) (*scyllav1alpha1.NodeStatusReport, bool, error) {
+func makeNodeStatusReport(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service) (*scyllav1alpha1.NodeStatusReport, bool, error) {
 	if svc.Annotations[naming.NodeJoinedScyllaDBClusterAnnotation] != naming.LabelValueTrue {
 		klog.V(5).InfoS("Node has not yet been annotated as a member of the ScyllaDB cluster, skipping", "ScyllaDBDatacenter", klog.KObj(sdc), "Service", klog.KObj(svc), "AnnotationKey", naming.NodeJoinedScyllaDBClusterAnnotation)
 		return nil, false, nil
@@ -2575,7 +2577,7 @@ func makeNodeStatusReport(sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Se
 	nodeStatusReport.HostID = &hostID
 
 	podName := naming.PodNameFromService(svc)
-	pod, err := podLister.Pods(sdc.Namespace).Get(podName)
+	pod, err := ctrlclient.Get[corev1.Pod](ctx, c, sdc.Namespace, podName)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			return nil, false, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err)

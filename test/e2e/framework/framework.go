@@ -283,25 +283,6 @@ func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatac
 	return sdc
 }
 
-func (f *Framework) GetDefaultScyllaDBCluster(rkcMap map[string]*scyllav1alpha1.RemoteKubernetesCluster) *scyllav1alpha1.ScyllaDBCluster {
-	renderArgs := map[string]any{
-		"scyllaDBImageRef":               ScyllaDBTargetImageRef(TestContext.ScyllaDBImageRef, TestContext.ScyllaDBVersion),
-		"scyllaDBManagerVersion":         TestContext.ScyllaDBManagerAgentVersion,
-		"nodeServiceType":                TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
-		"nodesBroadcastAddressType":      TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
-		"clientsBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
-		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
-		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
-		"remoteKubernetesClusterMap":     rkcMap,
-		"scyllaDBManagerAgentRepository": configassets.ScyllaDBManagerAgentImageRepository,
-	}
-
-	sc, _, err := scyllafixture.ScyllaDBClusterTemplate.RenderObject(renderArgs)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	return sc
-}
-
 func (f *Framework) AddCleaners(cleaners ...Cleaner) {
 	f.cluster.AddCleaners(cleaners...)
 }

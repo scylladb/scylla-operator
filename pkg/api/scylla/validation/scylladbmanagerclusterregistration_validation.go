@@ -16,7 +16,6 @@ import (
 var (
 	scyllaDBManagerClusterRegistrationSupportedLocalScyllaDBReferenceKinds = []string{
 		scyllav1alpha1.ScyllaDBDatacenterGVK.Kind,
-		scyllav1alpha1.ScyllaDBClusterGVK.Kind,
 	}
 )
 

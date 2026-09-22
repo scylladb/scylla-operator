@@ -59,10 +59,6 @@ func AgentAuthTokenSecretNameForScyllaCluster(sc *scyllav1.ScyllaCluster) string
 	})
 }
 
-func ScyllaDBManagerAgentAuthTokenSecretNameForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
-	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, sc.Name, "auth-token")
-}
-
 // MemberServiceNameForStatefulSet returns the name of the member Service of the node at the given ordinal of the
 // StatefulSet with the given name. It is the same as the name of the node's Pod.
 func MemberServiceNameForStatefulSet(stsName string, ordinal int) string {
@@ -79,19 +75,6 @@ func MemberServiceNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaC
 
 func PodNameForScyllaCluster(r scyllav1.RackSpec, sc *scyllav1.ScyllaCluster, idx int) string {
 	return MemberServiceNameForScyllaCluster(r, sc, idx)
-}
-
-func LocalIdentityServiceName(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
-	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1035LabelMaxLength, sc.Name, "client")
-}
-
-func InterNamespaceLocalIdentityServiceAddress(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
-	name, err := LocalIdentityServiceName(sc)
-	if err != nil {
-		return "", fmt.Errorf("can't get local identity service name for ScyllaDBCluster %q: %w", ObjRef(sc), err)
-	}
-
-	return fmt.Sprintf("%s.%s.svc", name, sc.Namespace), nil
 }
 
 func IdentityServiceName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
@@ -292,20 +275,6 @@ func UpgradeContextConfigMapName(sdc *scyllav1alpha1.ScyllaDBDatacenter) string 
 	return fmt.Sprintf("%s-upgrade-context", sdc.Name)
 }
 
-func DCNameFromSeedServiceAddress(sc *scyllav1alpha1.ScyllaDBCluster, seedServiceAddress, namespace string) string {
-	dcName := strings.TrimPrefix(seedServiceAddress, fmt.Sprintf("%s-", sc.Name))
-	dcName = strings.TrimSuffix(dcName, fmt.Sprintf("-seed.%s.svc", namespace))
-	return dcName
-}
-
-func SeedService(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) string {
-	return fmt.Sprintf("%s-%s-seed", sc.Name, dc.Name)
-}
-
-func ScyllaDBDatacenterName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) string {
-	return fmt.Sprintf("%s-%s", sc.Name, dc.Name)
-}
-
 func GenerateNameHash(parts ...string) (string, error) {
 	h, err := hash.HashObjectFNV64a(parts)
 	if err != nil {
@@ -316,10 +285,6 @@ func GenerateNameHash(parts ...string) (string, error) {
 
 func ScyllaDBManagerClusterRegistrationNameForScyllaDBDatacenter(sdc *scyllav1alpha1.ScyllaDBDatacenter) (string, error) {
 	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBDatacenterGVK.Kind, sdc.Name)
-}
-
-func ScyllaDBManagerClusterRegistrationNameForScyllaDBCluster(sc *scyllav1alpha1.ScyllaDBCluster) (string, error) {
-	return scyllaDBManagerClusterRegistrationName(scyllav1alpha1.ScyllaDBClusterGVK.Kind, sc.Name)
 }
 
 func ScyllaDBManagerClusterRegistrationNameForScyllaDBManagerTask(smt *scyllav1alpha1.ScyllaDBManagerTask) (string, error) {
@@ -364,15 +329,6 @@ func generateTruncatedHashedName(maxLength int, parts ...string) (string, error)
 	return fullName, nil
 }
 
-func RemoteNamespaceName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) (string, error) {
-	suffix, err := GenerateNameHash(sc.Namespace, dc.Name)
-	if err != nil {
-		return "", fmt.Errorf("can't generate namespace name suffix: %w", err)
-	}
-
-	return fmt.Sprintf("%s-%s", sc.Namespace, suffix), nil
-}
-
 func NodeConfigSysctlsJobForNodeName(nodeUID string) (string, error) {
 	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, "sysctls", "node", nodeUID)
 }
@@ -395,12 +351,4 @@ func ScyllaDBDatacenterNodesStatusReportName(sdc *scyllav1alpha1.ScyllaDBDatacen
 
 func ScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sdc *scyllav1alpha1.ScyllaDBDatacenter) string {
 	return sdc.Name
-}
-
-func ExternalScyllaDBDatacenterNodesStatusReportName(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) (string, error) {
-	return generateTruncatedHashedName(apimachineryutilvalidation.DNS1123SubdomainMaxLength, sc.Name, dc.Name, "external")
-}
-
-func ExternalScyllaDBDatacenterNodesStatusReportSelectorLabelValue(sc *scyllav1alpha1.ScyllaDBCluster, dc *scyllav1alpha1.ScyllaDBClusterDatacenter) string {
-	return ScyllaDBDatacenterName(sc, dc)
 }

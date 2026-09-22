@@ -10,15 +10,11 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	scyllaversionedclient "github.com/scylladb/scylla-operator/pkg/client/scylla/clientset/versioned"
 	"github.com/scylladb/scylla-operator/pkg/controllermanager"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	remoteclient "github.com/scylladb/scylla-operator/pkg/remoteclient/client"
 	"github.com/scylladb/scylla-operator/pkg/scylla"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var _ = g.Describe("Controller manager", func() {
@@ -83,31 +79,12 @@ func waitForScyllaOperatorConfigSingleton(ctx context.Context, e *envtest.Enviro
 func runControllerManager(ctx context.Context, e *envtest.Environment, adjust ...func(*controllermanager.Options)) *controllermanager.Manager {
 	g.GinkgoHelper()
 
-	clusterKubeClient := remoteclient.NewClusterClient(func(config []byte) (kubernetes.Interface, error) {
-		restConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
-		if err != nil {
-			return nil, err
-		}
-
-		return kubernetes.NewForConfig(restConfig)
-	})
-	clusterScyllaClient := remoteclient.NewClusterClient(func(config []byte) (scyllaversionedclient.Interface, error) {
-		restConfig, err := clientcmd.RESTConfigFromKubeConfig(config)
-		if err != nil {
-			return nil, err
-		}
-
-		return scyllaversionedclient.NewForConfig(restConfig)
-	})
-
 	options := controllermanager.Options{
-		RestConfig:          e.Config(),
-		Logger:              g.GinkgoLogr,
-		KubeClient:          e.TypedKubeClient(),
-		ScyllaClient:        e.ScyllaClient(),
-		MonitoringClient:    e.MonitoringClient(),
-		ClusterKubeClient:   clusterKubeClient,
-		ClusterScyllaClient: clusterScyllaClient,
+		RestConfig:       e.Config(),
+		Logger:           g.GinkgoLogr,
+		KubeClient:       e.TypedKubeClient(),
+		ScyllaClient:     e.ScyllaClient(),
+		MonitoringClient: e.MonitoringClient(),
 		ClusterDomainGetter: func(ctx context.Context) (string, error) {
 			return "cluster.local", nil
 		},

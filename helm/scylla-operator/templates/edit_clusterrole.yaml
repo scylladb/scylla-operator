@@ -12,7 +12,6 @@ rules:
   - scyllaclusters
   - scylladbmonitorings
   - scylladbdatacenters
-  - scylladbclusters
   - scylladbmanagerclusterregistrations
   - scylladbmanagertasks
   verbs:

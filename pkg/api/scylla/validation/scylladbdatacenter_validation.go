@@ -32,21 +32,6 @@ var (
 		scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress,
 	}
 
-	allowedNodeServiceTypesByBroadcastAddressType = map[scyllav1alpha1.BroadcastAddressType][]scyllav1alpha1.NodeServiceType{
-		scyllav1alpha1.BroadcastAddressTypeServiceClusterIP: {
-			scyllav1alpha1.NodeServiceTypeClusterIP,
-			scyllav1alpha1.NodeServiceTypeLoadBalancer,
-		},
-		scyllav1alpha1.BroadcastAddressTypePodIP: {
-			scyllav1alpha1.NodeServiceTypeHeadless,
-			scyllav1alpha1.NodeServiceTypeClusterIP,
-			scyllav1alpha1.NodeServiceTypeLoadBalancer,
-		},
-		scyllav1alpha1.BroadcastAddressTypeServiceLoadBalancerIngress: {
-			scyllav1alpha1.NodeServiceTypeLoadBalancer,
-		},
-	}
-
 	supportedNodeServiceTypes = []scyllav1alpha1.NodeServiceType{
 		scyllav1alpha1.NodeServiceTypeHeadless,
 		scyllav1alpha1.NodeServiceTypeClusterIP,

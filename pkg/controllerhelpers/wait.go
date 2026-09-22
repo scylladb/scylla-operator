@@ -193,14 +193,6 @@ func WaitForDaemonSetState(ctx context.Context, client appsv1client.DaemonSetInt
 	return WaitForObjectState[*appsv1.DaemonSet, *appsv1.DaemonSetList](ctx, client, name, options, condition, additionalConditions...)
 }
 
-func WaitForRemoteKubernetesClusterState(ctx context.Context, client scyllav1alpha1client.RemoteKubernetesClusterInterface, name string, options WaitForStateOptions, condition func(*scyllav1alpha1.RemoteKubernetesCluster) (bool, error), additionalConditions ...func(*scyllav1alpha1.RemoteKubernetesCluster) (bool, error)) (*scyllav1alpha1.RemoteKubernetesCluster, error) {
-	return WaitForObjectState[*scyllav1alpha1.RemoteKubernetesCluster, *scyllav1alpha1.RemoteKubernetesClusterList](ctx, client, name, options, condition, additionalConditions...)
-}
-
-func WaitForScyllaDBClusterState(ctx context.Context, client scyllav1alpha1client.ScyllaDBClusterInterface, name string, options WaitForStateOptions, condition func(cluster *scyllav1alpha1.ScyllaDBCluster) (bool, error), additionalConditions ...func(cluster *scyllav1alpha1.ScyllaDBCluster) (bool, error)) (*scyllav1alpha1.ScyllaDBCluster, error) {
-	return WaitForObjectState[*scyllav1alpha1.ScyllaDBCluster, *scyllav1alpha1.ScyllaDBClusterList](ctx, client, name, options, condition, additionalConditions...)
-}
-
 func WaitForScyllaDBDatacenterState(ctx context.Context, client scyllav1alpha1client.ScyllaDBDatacenterInterface, name string, options WaitForStateOptions, condition func(cluster *scyllav1alpha1.ScyllaDBDatacenter) (bool, error), additionalConditions ...func(*scyllav1alpha1.ScyllaDBDatacenter) (bool, error)) (*scyllav1alpha1.ScyllaDBDatacenter, error) {
 	return WaitForObjectState[*scyllav1alpha1.ScyllaDBDatacenter, *scyllav1alpha1.ScyllaDBDatacenterList](ctx, client, name, options, condition, additionalConditions...)
 }

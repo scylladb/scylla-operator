@@ -69,7 +69,6 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	scyllaClusters := informerFor(ctx, c, errs, &scyllav1.ScyllaCluster{}, scyllav1listers.NewScyllaClusterLister)
 	scyllaDBDatacenters := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBDatacenter{}, scyllav1alpha1listers.NewScyllaDBDatacenterLister)
 	scyllaDBDatacenterNodesStatusReports := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, scyllav1alpha1listers.NewScyllaDBDatacenterNodesStatusReportLister)
-	scyllaDBClusters := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBCluster{}, scyllav1alpha1listers.NewScyllaDBClusterLister)
 	scyllaDBMonitorings := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBMonitoring{}, scyllav1alpha1listers.NewScyllaDBMonitoringLister)
 	scyllaDBManagerClusterRegistrations := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBManagerClusterRegistration{}, scyllav1alpha1listers.NewScyllaDBManagerClusterRegistrationLister)
 	scyllaDBManagerTasks := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBManagerTask{}, scyllav1alpha1listers.NewScyllaDBManagerTaskLister)
@@ -229,17 +228,11 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		m.addRunnable(mc.Run, o.ConcurrentSyncs)
 	}
 
-	err = m.registerMultiDatacenterControllers(ctx)
-	if err != nil {
-		return fmt.Errorf("can't register multi-datacenter controllers: %w", err)
-	}
-
 	gsmc, err := globalscylladbmanager.NewController(
 		o.KubeClient,
 		o.ScyllaClient,
 		scyllaDBManagerClusterRegistrations,
 		scyllaDBDatacenters,
-		scyllaDBClusters,
 		namespaces,
 	)
 	if err != nil {
@@ -252,7 +245,6 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		o.ScyllaClient,
 		scyllaDBManagerClusterRegistrations,
 		scyllaDBDatacenters,
-		scyllaDBClusters,
 		secrets,
 		namespaces,
 	)

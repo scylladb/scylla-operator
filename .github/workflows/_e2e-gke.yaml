@@ -1,0 +1,180 @@
+name: "E2E: GKE"
+
+# Runs one e2e suite against a GKE cluster it creates for the run and deletes afterwards.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        required: true
+        type: string
+      image-ref:
+        description: >-
+          Reference of the Operator image to test, as `name:tag`, `name@digest` or `name:tag@digest`, e.g.
+          `quay.io/scylladb/scylla-operator:1.22.0` or `quay.io/scylladb/scylla-operator@sha256:6a1f0c...`.
+        required: true
+        type: string
+      suite:
+        description: Name of the `scylla-operator-tests` suite to run, e.g. `scylla-operator/conformance/parallel`.
+        required: true
+        type: string
+      cluster-manifest:
+        description: KubernetesCluster to provision the suite against.
+        required: false
+        default: ./hack/.ci/manifests/ci-clusters/gke.yaml
+        type: string
+      object-storage:
+        description: >-
+          Enable if the chosen suite requires a GCS bucket. The workflow then provisions one in the cluster's region
+          and passes it to the suite.
+        required: false
+        default: false
+        type: boolean
+      storageclass-name:
+        description: >-
+          StorageClass the tested ScyllaDBs claim their volumes from. Empty falls back to the cluster's default one,
+          which is what the suites running without local storage want.
+        required: false
+        default: scylladb-local-xfs
+        type: string
+      nodeconfig-path:
+        description: >-
+          NodeConfig the workflow applies to the cluster, which sets up the local disks the CSI driver serves. Empty
+          prepares no local storage and deploys no CSI driver either, leaving ScyllaDB on the cluster's default
+          StorageClass.
+        required: false
+        default: ./hack/.ci/manifests/cluster/nodeconfig.yaml
+        type: string
+    secrets:
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the KubernetesCluster and StorageBucket objects in.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 180
+    env:
+      OBJECT_NAME: so-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Materialize the CI provisioners kubeconfig
+      id: provisioners
+      uses: ./.github/actions/ci-provisioning/common/materialize-kubeconfig
+      with:
+        kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+
+    # This workflow names every object it creates OBJECT_NAME, so the teardown can run unconditionally from here on,
+    # including when provisioning itself fails partway.
+    - name: Provision the cluster
+      id: cluster
+      uses: ./.github/actions/ci-provisioning/gke/provision-cluster
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ env.OBJECT_NAME }}
+        manifest: ${{ inputs.cluster-manifest }}
+
+    - name: Provision the object storage bucket
+      if: inputs.object-storage
+      id: bucket
+      uses: ./.github/actions/ci-provisioning/gke/provision-bucket
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ env.OBJECT_NAME }}
+        # The bucket must be in the same region as the cluster using it.
+        location: ${{ steps.cluster.outputs.region }}
+
+    - name: Get the provisioned cluster's kubeconfig
+      id: kubeconfig
+      uses: ./.github/actions/ci-provisioning/common/get-cluster-kubeconfig
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        secret-name: ${{ steps.cluster.outputs.kubeconfig-secret-name }}
+
+    # GKE taints Arm nodes with kubernetes.io/arch=arm64:NoSchedule by default and the deployed manifests don't
+    # tolerate it. The selector matches nothing on amd64 clusters, so this is a no-op there.
+    - name: Drop the GKE arm64 taint
+      env:
+        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
+      run: kubectl taint nodes --selector=kubernetes.io/arch=arm64 kubernetes.io/arch-
+
+    - name: Run the e2e suite
+      env:
+        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
+        # Both are empty when object-storage is disabled, which the test runner tolerates.
+        SO_BUCKET_NAME: ${{ steps.bucket.outputs.bucket-name }}
+        SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ steps.bucket.outputs.credentials-path }}
+        SO_IMAGE: ${{ inputs.image-ref }}
+        SO_SUITE: ${{ inputs.suite }}
+        SO_E2E_TIMEOUT: 90m
+        SO_NODECONFIG_PATH: ${{ inputs.nodeconfig-path }}
+        SO_SCYLLACLUSTER_STORAGECLASS_NAME: ${{ inputs.storageclass-name }}
+        SO_SCYLLACLUSTER_NODE_SERVICE_TYPE: Headless
+        SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE: PodIP
+        SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE: PodIP
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS}"
+
+        # The local CSI driver has nothing to serve without a NodeConfig to prepare the disks, so the workflow deploys
+        # the two together. Left unset, the run script installs the driver from the checkout; set empty, it installs
+        # none.
+        if [[ -z "${SO_NODECONFIG_PATH}" ]]; then
+          SO_CSI_DRIVER_PATH=""
+          export SO_CSI_DRIVER_PATH
+        fi
+
+        # INT first so the suite can shut down and the run script still gathers the artifacts; SIGKILL follows 10
+        # minutes later.
+        timeout --verbose --signal=INT --kill-after=10m 120m ./hack/.ci/run-e2e-gke.sh
+
+    # must-gather names files after object names, which can contain colons that upload-artifact rejects, so the
+    # directory goes up as a single tarball.
+    - name: Pack artifacts
+      if: always()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # The directory only exists once the suite step ran, so an earlier failure would otherwise fail this step too.
+        mkdir -p "${ARTIFACTS}"
+        tar -cf "${RUNNER_TEMP}/artifacts.tar" -C "${ARTIFACTS}" .
+
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/artifacts.tar
+        retention-days: 14
+        if-no-files-found: warn
+
+    # The objects carry a TTL, so a leak is bounded rather than permanent, but deleting eagerly frees the quota for
+    # the suites still queued behind this one.
+    - name: Tear down
+      if: always()
+      env:
+        KUBECONFIG: ${{ steps.provisioners.outputs.path }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        kubectl get kubernetescluster/"${OBJECT_NAME}" -o=yaml || true
+        kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}" storagebucket/"${OBJECT_NAME}"

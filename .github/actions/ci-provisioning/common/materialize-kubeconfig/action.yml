@@ -1,0 +1,27 @@
+name: Materialize the CI provisioners kubeconfig
+description: Writes the CI provisioners cluster kubeconfig from a secret into a file.
+
+inputs:
+  kubeconfig:
+    description: Kubeconfig content of the cluster to create the CI provisioning objects in.
+    required: true
+
+outputs:
+  path:
+    description: Path to the written kubeconfig.
+    value: ${{ steps.write.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+  - id: write
+    shell: bash
+    env:
+      CI_PROVISIONERS_KUBECONFIG: ${{ inputs.kubeconfig }}
+    run: |
+      set -euEo pipefail
+      shopt -s inherit_errexit
+
+      kubeconfig="${RUNNER_TEMP}/ci-provisioners-kubeconfig"
+      ( umask 077; printf '%s\n' "${CI_PROVISIONERS_KUBECONFIG}" > "${kubeconfig}" )
+      echo "path=${kubeconfig}" >> "${GITHUB_OUTPUT}"

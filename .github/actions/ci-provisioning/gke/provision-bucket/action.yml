@@ -1,0 +1,63 @@
+name: Provision a GCS bucket
+description: Creates a GCS StorageBucket, waits for it and extracts its service account credentials into a file.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  name:
+    description: Name for the StorageBucket object.
+    required: true
+  location:
+    description: GCS location to create the bucket in.
+    required: true
+  ttl-seconds:
+    description: Time after which the provisioner deletes the bucket regardless of the workflow outcome.
+    required: false
+    default: "14400"
+
+outputs:
+  bucket-name:
+    description: Name of the provisioned bucket.
+    value: ${{ steps.provision.outputs.bucket-name }}
+  credentials-path:
+    description: Path to the service account JSON credentials with access to the bucket.
+    value: ${{ steps.provision.outputs.credentials-path }}
+
+runs:
+  using: composite
+  steps:
+  - id: provision
+    shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      OBJECT_NAME: ${{ inputs.name }}
+      LOCATION: ${{ inputs.location }}
+      TTL_SECONDS: ${{ inputs.ttl-seconds }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      kubectl create -f - <<EOF
+      apiVersion: ci.scylladb.com/v1alpha1
+      kind: StorageBucket
+      metadata:
+        name: "${OBJECT_NAME}"
+      spec:
+        ttlSeconds: ${TTL_SECONDS}
+        type: GCS
+        gcs:
+          location: ${LOCATION}
+        credentialsSecret:
+          name: "${OBJECT_NAME}-gcs-service-account"
+      EOF
+
+      timeout -v 5m bash -c 'until kubectl wait --for=condition=Degraded=False storagebucket/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Progressing=False storagebucket/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done'
+
+      credentials="${RUNNER_TEMP}/gcs-service-account.json"
+      ( umask 077; kubectl get secret/"${OBJECT_NAME}-gcs-service-account" --template='{{ index .data "gcs-service-account.json" }}' | base64 -d > "${credentials}" )
+
+      {
+        echo "bucket-name=$( kubectl get storagebucket/"${OBJECT_NAME}" --template='{{ .status.bucketName }}' )"
+        echo "credentials-path=${credentials}"
+      } >> "${GITHUB_OUTPUT}"

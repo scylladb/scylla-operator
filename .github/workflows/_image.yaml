@@ -1,0 +1,147 @@
+name: Image
+
+# Builds the operator image from the checked out ref, natively on amd64 and arm64 runners, and publishes it under a
+# caller-supplied tag as a manifest list. Outputs a digest-pinned reference to it.
+on:
+  workflow_call:
+    inputs:
+      image-tag:
+        description: Tag to publish the manifest list under, in the quay.io/scylladb-dev/ci repository.
+        required: true
+        type: string
+    outputs:
+      image-ref:
+        description: Digest-pinned reference to the published manifest list.
+        value: ${{ jobs.manifest.outputs.image-ref }}
+    secrets:
+      registry-auth-json:
+        description: Contents of a containers-auth.json(5) file with push access to the target repository.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_REPO_REF: quay.io/scylladb-dev/ci
+
+jobs:
+  # Each leg pushes its image by digest only and hands the digest over to the manifest job as an artifact, following
+  # https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners.
+  build:
+    name: build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: amd64
+          runner: ubuntu-24.04
+        - arch: arm64
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    # containers-auth.json(5) shares the "auths" format with docker's config.json, so buildx picks it up as is.
+    - name: Write registry auth file
+      env:
+        REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
+      run: |
+        umask 077
+        mkdir -p ~/.docker
+        printf '%s' "${REGISTRY_AUTH_JSON}" > ~/.docker/config.json
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+    - name: Build and push
+      id: build
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: .
+        platforms: linux/${{ matrix.arch }}
+        labels: org.opencontainers.image.revision=${{ github.sha }}
+        outputs: type=image,name=${{ env.IMAGE_REPO_REF }},push-by-digest=true,name-canonical=true,push=true
+
+    - name: Export digest
+      env:
+        DIGEST: ${{ steps.build.outputs.digest }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${RUNNER_TEMP}/digests"
+        touch "${RUNNER_TEMP}/digests/${DIGEST#sha256:}"
+
+    - name: Upload digest
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: image-digest-${{ matrix.arch }}
+        path: ${{ runner.temp }}/digests/*
+        if-no-files-found: error
+        retention-days: 7
+        # A re-run of a build leg replaces the digest the earlier attempt left behind.
+        overwrite: true
+
+  manifest:
+    name: manifest
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      image-ref: ${{ steps.push.outputs.image-ref }}
+    steps:
+    - name: Download digests
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        path: ${{ runner.temp }}/digests
+        pattern: image-digest-*
+        merge-multiple: true
+
+    - name: Write registry auth file
+      env:
+        REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
+      run: |
+        umask 077
+        mkdir -p ~/.docker
+        printf '%s' "${REGISTRY_AUTH_JSON}" > ~/.docker/config.json
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+    - name: Create and push manifest
+      id: push
+      env:
+        IMAGE_TAG: ${{ inputs.image-tag }}
+        REVISION: ${{ github.sha }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        shopt -s nullglob
+        source_refs=()
+        for f in "${RUNNER_TEMP}/digests"/*; do
+          source_refs+=( "${IMAGE_REPO_REF}@sha256:$( basename "${f}" )" )
+        done
+
+        image_ref="${IMAGE_REPO_REF}:${IMAGE_TAG}"
+        docker buildx imagetools create \
+        --annotation="index:org.opencontainers.image.revision=${REVISION}" \
+        --tag="${image_ref}" \
+        "${source_refs[@]}"
+
+        # A list missing an architecture would only surface once the pods crash-loop on its nodes.
+        manifest="$( docker buildx imagetools inspect --raw "${image_ref}" )"
+        for arch in amd64 arm64; do
+          jq -e --arg arch "${arch}" 'any(.manifests[]; .platform.os == "linux" and .platform.architecture == $arch)' <<< "${manifest}"
+        done
+
+        digest="$( docker buildx imagetools inspect --format='{{ .Manifest.Digest }}' "${image_ref}" )"
+        echo "image-ref=${IMAGE_REPO_REF}@${digest}" >> "${GITHUB_OUTPUT}"

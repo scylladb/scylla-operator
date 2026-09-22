@@ -74,6 +74,9 @@ type Report struct {
 	// Format: date-time
 	Updated strfmt.DateTime `json:"updated,omitempty"`
 
+	// urls
+	Urls []*ReportURLItem `json:"urls"`
+
 	// user Id
 	UserID int64 `json:"userId,omitempty"`
 }
@@ -107,6 +110,10 @@ func (m *Report) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateUpdated(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUrls(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -262,6 +269,36 @@ func (m *Report) validateUpdated(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Report) validateUrls(formats strfmt.Registry) error {
+	if swag.IsZero(m.Urls) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Urls); i++ {
+		if swag.IsZero(m.Urls[i]) { // not required
+			continue
+		}
+
+		if m.Urls[i] != nil {
+			if err := m.Urls[i].Validate(formats); err != nil {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
+					return ve.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
+					return ce.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
 // ContextValidate validate this report based on the context it is used
 func (m *Report) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -283,6 +320,10 @@ func (m *Report) ContextValidate(ctx context.Context, formats strfmt.Registry) e
 	}
 
 	if err := m.contextValidateState(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUrls(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -414,6 +455,35 @@ func (m *Report) contextValidateState(ctx context.Context, formats strfmt.Regist
 		}
 
 		return err
+	}
+
+	return nil
+}
+
+func (m *Report) contextValidateUrls(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Urls); i++ {
+
+		if m.Urls[i] != nil {
+
+			if swag.IsZero(m.Urls[i]) { // not required
+				return nil
+			}
+
+			if err := m.Urls[i].ContextValidate(ctx, formats); err != nil {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
+					return ve.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
+					return ce.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+
+				return err
+			}
+		}
+
 	}
 
 	return nil

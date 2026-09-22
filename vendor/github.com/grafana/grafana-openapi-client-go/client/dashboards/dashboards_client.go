@@ -202,7 +202,7 @@ DeleteDashboardByUID deletes dashboard by uid
 
 Will delete the dashboard given the specified unique identifier (uid).
 
-Use: /apis/dashboards.grafana.app/v1/namespaces/{ns}/dashboards/{uid}
+Use: /apis/dashboard.grafana.app/v1/namespaces/{ns}/dashboards/{uid}
 */
 func (a *Client) DeleteDashboardByUID(uid string, opts ...ClientOption) (*DeleteDashboardByUIDOK, error) {
 	params := NewDeleteDashboardByUIDParams().WithUID(uid)
@@ -387,7 +387,7 @@ Optional query parameter `apiVersion` selects the Kubernetes API version used to
 
 Will return the dashboard given the dashboard unique identifier (uid).
 
-Use: /apis/dashboards.grafana.app/v1/namespaces/{ns}/dashboards/{uid}
+Use: /apis/dashboard.grafana.app/v1/namespaces/{ns}/dashboards/{uid}
 */
 func (a *Client) GetDashboardByUID(uid string, opts ...ClientOption) (*GetDashboardByUIDOK, error) {
 	params := NewGetDashboardByUIDParams().WithUID(uid)
@@ -433,7 +433,7 @@ func (a *Client) GetDashboardByUIDWithParams(params *GetDashboardByUIDParams, op
 /*
 GetDashboardPermissionsListByUID gets all existing permissions for the given dashboard
 
-Use: /apis/dashboards.grafana.app/v1/namespaces/{ns}/dashboards/{uid}/access
+Use: /apis/dashboard.grafana.app/v1/namespaces/{ns}/dashboards/{uid}/access
 */
 func (a *Client) GetDashboardPermissionsListByUID(uid string, opts ...ClientOption) (*GetDashboardPermissionsListByUIDOK, error) {
 	params := NewGetDashboardPermissionsListByUIDParams().WithUID(uid)
@@ -918,7 +918,7 @@ PostDashboard creates update dashboard
 Creates a new dashboard or updates an existing dashboard.
 Note: This endpoint is not intended for creating folders, use `POST /api/folders` for that.
 
-Use: /apis/dashboards.grafana.app/v1/namespaces/{ns}/dashboards
+Use: /apis/dashboard.grafana.app/v1/namespaces/{ns}/dashboards
 */
 func (a *Client) PostDashboard(body *models.SaveDashboardCommand, opts ...ClientOption) (*PostDashboardOK, error) {
 	params := NewPostDashboardParams().WithBody(body)
@@ -1008,7 +1008,7 @@ func (a *Client) QueryPublicDashboardWithParams(params *QueryPublicDashboardPara
 /*
 RestoreDashboardVersionByUID restores a dashboard to a given dashboard version using UID
 
-This API will be removed when /apis/dashboards.grafana.app/v1 is released.
+This API will be removed when /apis/dashboard.grafana.app/v1 is released.
 You can restore a dashboard by reading it from history, then creating it again.
 */
 func (a *Client) RestoreDashboardVersionByUID(uid string, body *models.RestoreDashboardVersionCommand, opts ...ClientOption) (*RestoreDashboardVersionByUIDOK, error) {

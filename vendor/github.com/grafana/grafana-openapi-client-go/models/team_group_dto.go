@@ -26,7 +26,7 @@ type TeamGroupDTO struct {
 	// team Uid
 	TeamUID string `json:"teamUid,omitempty"`
 
-	// uid
+	// Deprecated: always empty; no per-entry id.
 	UID string `json:"uid,omitempty"`
 }
 

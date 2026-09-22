@@ -42,6 +42,12 @@ func (o *PostContactpointsReader) ReadResponse(response runtime.ClientResponse, 
 			return nil, err
 		}
 		return nil, result
+	case 409:
+		result := NewPostContactpointsConflict()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[POST /v1/provisioning/contact-points] PostContactpoints", response, response.Code())
 	}
@@ -248,6 +254,76 @@ func (o *PostContactpointsForbidden) GetPayload() *models.ForbiddenError {
 func (o *PostContactpointsForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPostContactpointsConflict creates a PostContactpointsConflict with default headers values
+func NewPostContactpointsConflict() *PostContactpointsConflict {
+	return &PostContactpointsConflict{}
+}
+
+/*
+PostContactpointsConflict describes a response with status code 409, with default header values.
+
+PublicError
+*/
+type PostContactpointsConflict struct {
+	Payload *models.PublicError
+}
+
+// IsSuccess returns true when this post contactpoints conflict response has a 2xx status code
+func (o *PostContactpointsConflict) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this post contactpoints conflict response has a 3xx status code
+func (o *PostContactpointsConflict) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this post contactpoints conflict response has a 4xx status code
+func (o *PostContactpointsConflict) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this post contactpoints conflict response has a 5xx status code
+func (o *PostContactpointsConflict) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this post contactpoints conflict response a status code equal to that given
+func (o *PostContactpointsConflict) IsCode(code int) bool {
+	return code == 409
+}
+
+// Code gets the status code for the post contactpoints conflict response
+func (o *PostContactpointsConflict) Code() int {
+	return 409
+}
+
+func (o *PostContactpointsConflict) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/contact-points][%d] postContactpointsConflict %s", 409, payload)
+}
+
+func (o *PostContactpointsConflict) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /v1/provisioning/contact-points][%d] postContactpointsConflict %s", 409, payload)
+}
+
+func (o *PostContactpointsConflict) GetPayload() *models.PublicError {
+	return o.Payload
+}
+
+func (o *PostContactpointsConflict) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.PublicError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

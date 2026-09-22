@@ -10,11 +10,11 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 const (
@@ -27,9 +27,9 @@ const (
 	invariantPollingInterval = 20 * time.Millisecond
 )
 
-// Informer caches give no read-your-writes, so a sync may decide from state that predates the controller's own
-// writes. These specs hold invariants throughout a change, while the other specs only assert the end state, so that
-// a decision made from a stale cache is visible.
+// A sync that decides from a cache that predates the controller's own writes publishes a status that goes backwards.
+// These specs hold invariants throughout a change, while the other specs only assert the end state, so that such a
+// decision is visible.
 var _ = g.Describe("ScyllaDBDatacenter controller status invariants", func() {
 	const rackName = "rack-a"
 
@@ -95,8 +95,8 @@ var _ = g.Describe("ScyllaDBDatacenter controller status invariants", func() {
 	g.It("should never regress the published status to a previous generation with a lagging ScyllaDBDatacenter informer", func(ctx g.SpecContext) {
 		g.By("Running ScyllaDBDatacenter controller with a lagging ScyllaDBDatacenter informer")
 		runScyllaDBDatacenterControllerWithOptions(ctx, env, scyllaDBDatacenterControllerRunOptions{
-			scyllaInformerOptions: []scyllainformers.SharedInformerOption{
-				scyllainformers.WithTransform(informerLagTransform(scyllaDBDatacenterInformerLag, isScyllaDBDatacenter)),
+			cacheOptions: []func(*ctrlcache.Options){
+				withInformerLag(&scyllav1alpha1.ScyllaDBDatacenter{}, scyllaDBDatacenterInformerLag),
 			},
 		})
 
@@ -131,11 +131,6 @@ var _ = g.Describe("ScyllaDBDatacenter controller status invariants", func() {
 		waitForObservedGeneration(ctx, env, sdc.Name)
 	})
 })
-
-func isScyllaDBDatacenter(obj any) bool {
-	_, ok := obj.(*scyllav1alpha1.ScyllaDBDatacenter)
-	return ok
-}
 
 // consistentlyObservedGenerationIsMonotonic verifies for the given window that the observed generation of the
 // ScyllaDBDatacenter status, and of every condition in it, never decreases between samples nor exceeds the generation.

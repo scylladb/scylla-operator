@@ -1,0 +1,125 @@
+name: Image
+
+# Builds the operator image from the checked out ref and pushes it under a caller-supplied tag, natively on amd64 and
+# arm64 runners, as a manifest list. The output is a digest-pinned reference, so consumers test exactly what was built
+# here even if the tag is later overwritten.
+on:
+  workflow_call:
+    inputs:
+      image-tag:
+        description: Tag to push under, in the quay.io/scylladb-dev/ci repository.
+        required: true
+        type: string
+    outputs:
+      image-ref:
+        description: Digest-pinned reference to the pushed manifest list.
+        value: ${{ jobs.manifest.outputs.image-ref }}
+    secrets:
+      registry-auth-json:
+        description: Contents of a containers-auth.json(5) file with push access to the target repository.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_REPO_REF: quay.io/scylladb-dev/ci
+
+jobs:
+  build:
+    name: build (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - arch: amd64
+          runner: ubuntu-24.04
+        - arch: arm64
+          runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: quay.io/scylladb/scylla-operator-images:buildah
+      # buildah needs /dev/fuse and mount/namespace access that docker's default apparmor and seccomp profiles deny.
+      options: --privileged
+    timeout-minutes: 60
+    env:
+      REGISTRY_AUTH_FILE: /run/containers/auth.json
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Write registry auth file
+      env:
+        REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
+      run: |
+        umask 077
+        mkdir -p "$( dirname "${REGISTRY_AUTH_FILE}" )"
+        printf '%s' "${REGISTRY_AUTH_JSON}" > "${REGISTRY_AUTH_FILE}"
+
+    # ci-deploy-release.sh resolves the manifests to install from the image's org.opencontainers.image.revision label,
+    # so the build has to stamp it. The Dockerfile only carries the static labels.
+    - name: Build and push
+      env:
+        ARCH: ${{ matrix.arch }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        image_ref="${IMAGE_REPO_REF}:${IMAGE_TAG}-${ARCH}"
+
+        buildah build --format=docker \
+        --platform="linux/${ARCH}" \
+        --label="org.opencontainers.image.revision=$( git rev-parse HEAD )" \
+        --tag="${image_ref}" .
+
+        buildah push "${image_ref}" "docker://${image_ref}"
+
+  manifest:
+    name: manifest
+    needs: build
+    runs-on: ubuntu-24.04
+    container:
+      image: quay.io/scylladb/scylla-operator-images:buildah
+      # Even without a build, buildah's overlay storage driver bind-mounts its own home on every store open (pull and
+      # push included), which docker's default profiles deny.
+      options: --privileged
+    timeout-minutes: 30
+    outputs:
+      image-ref: ${{ steps.push.outputs.image-ref }}
+    env:
+      REGISTRY_AUTH_FILE: /run/containers/auth.json
+    steps:
+    - name: Write registry auth file
+      env:
+        REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
+      run: |
+        umask 077
+        mkdir -p "$( dirname "${REGISTRY_AUTH_FILE}" )"
+        printf '%s' "${REGISTRY_AUTH_JSON}" > "${REGISTRY_AUTH_FILE}"
+
+    - name: Create and push manifest
+      id: push
+      env:
+        IMAGE_TAG: ${{ inputs.image-tag }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        image_ref="${IMAGE_REPO_REF}:${IMAGE_TAG}"
+        buildah manifest create "${image_ref}"
+        for arch in amd64 arm64; do
+          buildah manifest add "${image_ref}" "docker://${image_ref}-${arch}"
+        done
+
+        digestfile="$( mktemp )"
+        # --all pushes the per-arch images along with the index; they're only reachable by digest.
+        buildah manifest push --all --digestfile="${digestfile}" "${image_ref}" "docker://${image_ref}"
+
+        echo "image-ref=${IMAGE_REPO_REF}@$( cat "${digestfile}" )" >> "${GITHUB_OUTPUT}"

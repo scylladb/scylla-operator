@@ -1,0 +1,212 @@
+name: "E2E: OKE"
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        required: true
+        type: string
+      image-ref:
+        description: Operator image to test, ideally digest-pinned.
+        required: true
+        type: string
+      suite:
+        description: Name of the e2e suite to run.
+        required: true
+        type: string
+      e2e-timeout:
+        description: How long the suite itself may run before the e2e binary gives up on it.
+        required: false
+        default: 60m
+        type: string
+      run-timeout-minutes:
+        description: >-
+          Wall clock budget for the e2e script. On expiry it's signalled INT so the suite can shut down and artifacts
+          still get gathered; SIGKILL follows 10 minutes later.
+        required: false
+        default: 90
+        type: number
+      timeout-minutes:
+        description: Budget for the whole job, including provisioning and teardown.
+        required: false
+        default: 180
+        type: number
+    secrets:
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig authenticating against the CI cluster.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+# The kube-tools image declares no USER, so the job runs as root and git refuses to operate on a tree it sees as
+# foreign. See the equivalent comment in ci-jobs.yaml.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    env:
+      # Prefixed with "so-" so the name starts with a letter, which the Crossplane OCI provider requires for the
+      # Terraform resource identifiers it derives from it.
+      OBJECT_NAME: so-gha-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Materialize the CI cluster kubeconfig
+      env:
+        CI_PROVISIONERS_KUBECONFIG: ${{ secrets.ci-provisioners-kubeconfig }}
+      run: |
+        set -euEo pipefail
+        shopt -s inherit_errexit
+
+        kubeconfig="${RUNNER_TEMP}/ci-provisioners-kubeconfig"
+        ( umask 077; printf '%s\n' "${CI_PROVISIONERS_KUBECONFIG}" > "${kubeconfig}" )
+        echo "PROVISIONERS_KUBECONFIG=${kubeconfig}" >> "${GITHUB_ENV}"
+
+    # Every object this workflow creates is named OBJECT_NAME, so the teardown can run unconditionally from here on,
+    # including when provisioning itself fails partway.
+    - name: Provision the cluster
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+
+        # OCI enforces a 32-character maximum on the OKE cluster name, and truncating OBJECT_NAME to fit would cut
+        # into the run id and attempt that make it unique, so this hashes it rather than trimming it.
+        CLUSTER_NAME="so-$( sha256sum <<< "${OBJECT_NAME}" | cut -c 1-28 )"
+        export CLUSTER_NAME
+
+        CLOUD_INIT_B64="$( base64 -w0 ./hack/.ci/oke/cloud-init-scylladb-node.sh )"
+        export CLOUD_INIT_B64
+
+        # To find the current node image for a Kubernetes version, substituting a valid cluster OCID in the region:
+        #   OKE_IMAGE_QUERY=$(printf 'max_by(data.sources[?contains("source-name",`Oracle-Linux-8.`) && contains("source-name",`-OKE-%s-`) && !contains("source-name",`aarch64`) && !contains("source-name",`GPU`)], &"source-name")."image-id"' "<k8s-version>")
+        #   oci ce node-pool-options get --node-pool-option-id <cluster-ocid> --region us-sanjose-1 --query "${OKE_IMAGE_QUERY}" --raw-output
+        NODE_IMAGE_ID=ocid1.image.oc1.us-sanjose-1.aaaaaaaazlnscyy4pkytb3htpuihxpo46inskxpn2oqsmugr7l4l5qehepvq
+        export NODE_IMAGE_ID
+
+        NODE_POOLS="$( cat <<'EOF'
+        - name: worker
+          shape: VM.Standard.E5.Flex
+          shapeConfig:
+            ocpus: 4
+            memoryInGBs: 32
+          # VM.Standard.E5.Flex with 4 OCPUs gets 4 VNICs; OCI caps maxPodsPerNode at (VNICs-1)*31 = 93.
+          maxPodsPerNode: 93
+          size: 1
+          availabilityDomain: TMnf:US-SANJOSE-1-AD-1
+          config:
+            labels:
+              pool: workers
+        - name: scylla
+          shape: VM.DenseIO2.8
+          # OCI caps maxPodsPerNode at 110 for VM.DenseIO2.8.
+          maxPodsPerNode: 110
+          size: 1
+          availabilityDomain: TMnf:US-SANJOSE-1-AD-1
+          config:
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+        EOF
+        )"
+        export NODE_POOLS
+
+        # nodePools arrives as a YAML string. Splicing it in with a here-document would need it reindented to match,
+        # so yq parses and grafts it instead, along with the image and the ScyllaDB pool's cloud-init blob.
+        yq -n '
+          .apiVersion = "ci.scylladb.com/v1alpha1" |
+          .kind = "OracleKubernetesEngineCluster" |
+          .metadata.name = strenv(OBJECT_NAME) |
+          .metadata.annotations."ci.scylladb.com/ttl" = "4h" |
+          .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-kubeconfig" |
+          .spec.parameters.compartmentID = "ocid1.compartment.oc1..aaaaaaaa7go6tkc26yzlzmn7sqpgu2z3b2bqbirhqnobxljocaggffgs6qhq" |
+          .spec.parameters.region = "us-sanjose-1" |
+          .spec.parameters.clusterName = strenv(CLUSTER_NAME) |
+          .spec.parameters.kubernetesVersion = "v1.35.2" |
+          .spec.parameters.nodePools = env(NODE_POOLS) |
+          .spec.parameters.nodePools[].nodeImageID = strenv(NODE_IMAGE_ID) |
+          ( .spec.parameters.nodePools[] | select(.config.labels."scylla.scylladb.com/node-type" == "scylla") ).config.cloudInitB64 = strenv(CLOUD_INIT_B64)
+        ' | tee /dev/stderr | kubectl create -f=-
+
+        timeout -v 45m bash -c 'until kubectl wait --for=condition=Synced=True oraclekubernetesenginecluster/"${OBJECT_NAME}" --timeout=45m && kubectl wait --for=condition=Ready=True oraclekubernetesenginecluster/"${OBJECT_NAME}" --timeout=45m; do sleep 1; done'
+
+    - name: Get the provisioned cluster's kubeconfig
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+
+        kubeconfig="${RUNNER_TEMP}/kubeconfig"
+        ( umask 077; kubectl get secret/"${OBJECT_NAME}-kubeconfig" --template='{{ index .data "kubeconfig" }}' | base64 -d > "${kubeconfig}" )
+
+        # The e2e machinery creates its own namespaces; pointing the current context at a nonexistent one keeps an
+        # unqualified command from silently acting on `default`.
+        kubectl --kubeconfig="${kubeconfig}" config set-context --current --namespace 'default-unexisting-namespace'
+
+        # Sanity check.
+        kubectl --kubeconfig="${kubeconfig}" version -o yaml
+        kubectl --kubeconfig="${kubeconfig}" config view
+
+        # The OCI provider doesn't support node taints, so they're applied here instead of through the node pool.
+        kubectl --kubeconfig="${kubeconfig}" taint nodes --selector=scylla.scylladb.com/node-type=scylla scylla-operator.scylladb.com/dedicated=scyllaclusters:NoSchedule
+
+        echo "KUBECONFIG=${kubeconfig}" >> "${GITHUB_ENV}"
+
+    - name: Run the e2e suite
+      env:
+        RUN_TIMEOUT_MINUTES: ${{ inputs.run-timeout-minutes }}
+        SO_IMAGE: ${{ inputs.image-ref }}
+        SO_SUITE: ${{ inputs.suite }}
+        SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+        SO_SCYLLACLUSTER_NODE_SERVICE_TYPE: Headless
+        SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE: PodIP
+        SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE: PodIP
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS}"
+
+        timeout --verbose --signal=INT --kill-after="$(( RUN_TIMEOUT_MINUTES + 10 ))m" "${RUN_TIMEOUT_MINUTES}m" ./hack/.ci/run-e2e-oke.sh
+
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: artifacts-${{ inputs.name }}
+        path: ${{ env.ARTIFACTS }}
+        retention-days: 14
+        if-no-files-found: warn
+
+    # The object carries a TTL, so a leak is bounded rather than permanent, but deleting eagerly frees the quota for
+    # the suites still queued behind this one.
+    - name: Tear down
+      if: always()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+
+        kubectl get oraclekubernetesenginecluster/"${OBJECT_NAME}" -o=yaml || true
+        kubectl delete --wait=false --ignore-not-found oraclekubernetesenginecluster/"${OBJECT_NAME}"

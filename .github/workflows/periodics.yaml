@@ -1,0 +1,215 @@
+name: Periodics
+
+# Builds the operator image from the ref under test and runs the e2e suites against it in the same run.
+#
+# Runs are independent: every provisioned object, image tag and artifact is named after the run and attempt, so
+# overlapping runs share nothing but cloud quota.
+on:
+  schedule:
+  - cron: '0 6 * * MON'
+  # workflow_dispatch already runs against a chosen ref, so testing a specific operator ref needs no input of its own.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  e2e-gke-parallel:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-parallel
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/parallel
+      object-storage: true
+      node-pools: |
+        - name: workers
+          locations:
+          - us-central1-a
+          config:
+            machineType: e2-standard-8
+            diskType: pd-standard
+            diskSizeGB: 40
+            labels:
+              pool: workers
+          initialNodeCount: 1
+        - name: scylladb
+          locations:
+          - us-central1-a
+          config:
+            machineType: n2d-standard-8
+            diskType: pd-balanced
+            diskSizeGB: 40
+            localNVMeSSDBlockConfig:
+              localSSDCount: 1
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+            taints:
+            - key: scylla-operator.scylladb.com/dedicated
+              value: scyllaclusters
+              effect: NO_SCHEDULE
+            kubeletConfig:
+              cpuManagerPolicy: static
+          initialNodeCount: 1
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-gke-serial:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-serial
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/serial
+      # No NodeConfig, so no local storage class either, and ScyllaDB storage falls back to the cluster default.
+      nodeconfig-path: ""
+      storageclass-name: ""
+      node-pools: |
+        - name: workers
+          locations:
+          - us-central1-a
+          config:
+            machineType: e2-standard-8
+            diskType: pd-standard
+            diskSizeGB: 40
+            labels:
+              pool: workers
+          initialNodeCount: 1
+        - name: scylladb
+          locations:
+          - us-central1-a
+          config:
+            machineType: n2d-standard-8
+            diskType: pd-balanced
+            diskSizeGB: 40
+            localNVMeSSDBlockConfig:
+              localSSDCount: 1
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+            taints:
+            - key: scylla-operator.scylladb.com/dedicated
+              value: scyllaclusters
+              effect: NO_SCHEDULE
+            kubeletConfig:
+              cpuManagerPolicy: static
+          initialNodeCount: 1
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-gke-arm64-parallel:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-arm64-parallel
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/parallel
+      object-storage: true
+      region: europe-west4
+      nodeconfig-path: ./hack/.ci/manifests/cluster/nodeconfig-gke-arm64.yaml
+      node-pools: |
+        - name: workers
+          locations:
+          - europe-west4-a
+          config:
+            machineType: t2a-standard-8
+            diskType: pd-standard
+            diskSizeGB: 40
+            labels:
+              pool: workers
+          initialNodeCount: 1
+        - name: scylladb
+          locations:
+          - europe-west4-a
+          config:
+            machineType: c4a-standard-8-lssd
+            diskType: hyperdisk-balanced
+            diskSizeGB: 120
+            localNVMeSSDBlockConfig:
+              localSSDCount: 2
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+            taints:
+            - key: scylla-operator.scylladb.com/dedicated
+              value: scyllaclusters
+              effect: NO_SCHEDULE
+            kubeletConfig:
+              cpuManagerPolicy: static
+          initialNodeCount: 1
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-gke-arm64-serial:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-arm64-serial
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/serial
+      region: europe-west4
+      nodeconfig-path: ""
+      storageclass-name: ""
+      node-pools: |
+        - name: workers
+          locations:
+          - europe-west4-a
+          config:
+            machineType: t2a-standard-8
+            diskType: pd-standard
+            diskSizeGB: 40
+            labels:
+              pool: workers
+          initialNodeCount: 1
+        - name: scylladb
+          locations:
+          - europe-west4-a
+          config:
+            # This suite runs without a NodeConfig, so ScyllaDB storage comes from the default StorageClass, which is
+            # backed by pd-balanced. C4A supports only Hyperdisk, not Persistent Disk, thus this pool doesn't use C4A.
+            machineType: t2a-standard-8
+            diskType: pd-balanced
+            diskSizeGB: 120
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+            taints:
+            - key: scylla-operator.scylladb.com/dedicated
+              value: scyllaclusters
+              effect: NO_SCHEDULE
+            kubeletConfig:
+              cpuManagerPolicy: static
+          initialNodeCount: 1
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-oke-parallel:
+    needs: image
+    uses: ./.github/workflows/_e2e-oke.yaml
+    with:
+      name: e2e-oke-parallel
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/parallel
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-oke-serial:
+    needs: image
+    uses: ./.github/workflows/_e2e-oke.yaml
+    with:
+      name: e2e-oke-serial
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/serial
+      e2e-timeout: 180m
+      run-timeout-minutes: 210
+      timeout-minutes: 330
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}

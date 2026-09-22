@@ -1,0 +1,228 @@
+name: "E2E: GKE"
+
+# Runs one e2e suite against a single ephemeral GKE cluster. The cluster is provisioned by the CI controller manager
+# running in our CI cluster: the runner only creates a KubernetesCluster (and optionally a StorageBucket) there and
+# waits for it to bootstrap, so this needs no self-hosted runner, only a credential for the `e2e` ServiceAccount.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        required: true
+        type: string
+      image-ref:
+        description: Operator image to test, ideally digest-pinned.
+        required: true
+        type: string
+      suite:
+        description: Name of the e2e suite to run.
+        required: true
+        type: string
+      node-pools:
+        description: >-
+          KubernetesCluster .spec.gke.nodePools, verbatim. The suites differ in machine type, disk and local SSD
+          layout, which is too much shape to thread through as separate inputs.
+        required: true
+        type: string
+      object-storage:
+        description: Whether to provision a GCS bucket and expose it to the suite. Only the parallel suites need one.
+        required: false
+        default: false
+        type: boolean
+      storageclass-name:
+        description: >-
+          StorageClass the tested ScyllaDBs claim their volumes from. Empty falls back to the cluster's default one,
+          which is what the suites running without local storage want.
+        required: false
+        default: scylladb-local-xfs
+        type: string
+      region:
+        description: >-
+          GCP region hosting both the GKE cluster and, when one is provisioned, the object storage bucket. The node
+          pools pick their own zones within it, in node-pools.
+        required: false
+        default: us-central1
+        type: string
+      nodeconfig-path:
+        description: >-
+          NodeConfig applied to the cluster, which sets up the local disks the CSI driver serves. Empty prepares no
+          local storage and deploys no CSI driver either, leaving ScyllaDB on the cluster's default StorageClass.
+        required: false
+        default: ./hack/.ci/manifests/cluster/nodeconfig.yaml
+        type: string
+    secrets:
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig authenticating against the CI cluster.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+# The kube-tools image declares no USER, so the job runs as root and git refuses to operate on a tree it sees as
+# foreign. See the equivalent comment in ci-jobs.yaml.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 180
+    env:
+      OBJECT_NAME: gha-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Materialize the CI cluster kubeconfig
+      env:
+        CI_PROVISIONERS_KUBECONFIG: ${{ secrets.ci-provisioners-kubeconfig }}
+      run: |
+        set -euEo pipefail
+        shopt -s inherit_errexit
+
+        kubeconfig="${RUNNER_TEMP}/ci-provisioners-kubeconfig"
+        ( umask 077; printf '%s\n' "${CI_PROVISIONERS_KUBECONFIG}" > "${kubeconfig}" )
+        echo "PROVISIONERS_KUBECONFIG=${kubeconfig}" >> "${GITHUB_ENV}"
+
+    # Every object this workflow creates is named OBJECT_NAME, so the teardown can run unconditionally from here on,
+    # including when provisioning itself fails partway.
+    - name: Provision the cluster
+      env:
+        REGION: ${{ inputs.region }}
+        NODE_POOLS: ${{ inputs.node-pools }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+
+        # nodePools arrives as a YAML string. Splicing it in with the here-document would need it reindented to
+        # match, so yq parses and grafts it instead.
+        yq -n '
+          .apiVersion = "ci.scylladb.com/v1alpha1" |
+          .kind = "KubernetesCluster" |
+          .metadata.name = strenv(OBJECT_NAME) |
+          .spec.version = "1.35" |
+          .spec.ttlSeconds = 14400 |
+          .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-kubeconfig" |
+          .spec.type = "GKE" |
+          .spec.gke.location = strenv(REGION) |
+          .spec.gke.nodePools = env(NODE_POOLS)
+        ' | tee /dev/stderr | kubectl create -f=-
+
+        timeout -v 15m bash -c 'until kubectl wait --for=condition=Degraded=False kubernetescluster/"${OBJECT_NAME}" --timeout=15m && kubectl wait --for=condition=Progressing=False kubernetescluster/"${OBJECT_NAME}" --timeout=15m && kubectl wait --for=condition=ClusterBootstrapped=True kubernetescluster/"${OBJECT_NAME}" --timeout=15m; do sleep 1; done'
+
+    - name: Provision the object storage bucket
+      if: inputs.object-storage
+      env:
+        REGION: ${{ inputs.region }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+
+        kubectl create -f - <<EOF
+        apiVersion: ci.scylladb.com/v1alpha1
+        kind: StorageBucket
+        metadata:
+          name: "${OBJECT_NAME}"
+        spec:
+          ttlSeconds: 14400
+          type: GCS
+          gcs:
+            location: ${REGION}
+          credentialsSecret:
+            name: "${OBJECT_NAME}-gcs-service-account"
+        EOF
+
+        timeout -v 5m bash -c 'until kubectl wait --for=condition=Degraded=False storagebucket/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Progressing=False storagebucket/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done'
+
+        {
+          echo "SO_BUCKET_NAME=$( kubectl get storagebucket/"${OBJECT_NAME}" --template='{{ .status.bucketName }}' )"
+          echo "SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH=${RUNNER_TEMP}/gcs-service-account.json"
+        } >> "${GITHUB_ENV}"
+
+        ( umask 077; kubectl get secret/"${OBJECT_NAME}-gcs-service-account" --template='{{ index .data "gcs-service-account.json" }}' | base64 -d > "${RUNNER_TEMP}/gcs-service-account.json" )
+
+    - name: Get the provisioned cluster's kubeconfig
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+
+        kubeconfig="${RUNNER_TEMP}/kubeconfig"
+        ( umask 077; kubectl get secret/"${OBJECT_NAME}-kubeconfig" --template='{{ .data.kubeconfig }}' | base64 -d > "${kubeconfig}" )
+
+        # The e2e machinery creates its own namespaces; pointing the current context at a nonexistent one keeps an
+        # unqualified command from silently acting on `default`.
+        kubectl --kubeconfig="${kubeconfig}" config set-context --current --namespace 'default-unexisting-namespace'
+
+        # Sanity check.
+        kubectl --kubeconfig="${kubeconfig}" version -o yaml
+        kubectl --kubeconfig="${kubeconfig}" config view
+
+        echo "KUBECONFIG=${kubeconfig}" >> "${GITHUB_ENV}"
+
+    - name: Run the e2e suite
+      env:
+        SO_IMAGE: ${{ inputs.image-ref }}
+        SO_SUITE: ${{ inputs.suite }}
+        SO_E2E_TIMEOUT: 60m
+        SO_NODECONFIG_PATH: ${{ inputs.nodeconfig-path }}
+        SO_SCYLLACLUSTER_STORAGECLASS_NAME: ${{ inputs.storageclass-name }}
+        SO_SCYLLACLUSTER_NODE_SERVICE_TYPE: Headless
+        SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE: PodIP
+        SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE: PodIP
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS}"
+
+        # The local CSI driver has nothing to serve without a NodeConfig to prepare the disks, so the two are
+        # deployed together. Left unset, the deploy script installs the driver from the manifests at the image's
+        # revision; set empty, it installs none.
+        if [[ -z "${SO_NODECONFIG_PATH}" ]]; then
+          SO_CSI_DRIVER_PATH=""
+          export SO_CSI_DRIVER_PATH
+        fi
+
+        # INT first so the suite can shut down and artifacts still get gathered; SIGKILL follows 10 minutes later.
+        timeout --verbose --signal=INT --kill-after=100m 90m ./hack/.ci/run-e2e-gke-release.sh
+
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: artifacts-${{ inputs.name }}
+        path: ${{ env.ARTIFACTS }}
+        retention-days: 14
+        if-no-files-found: warn
+
+    # The objects carry a TTL, so a leak is bounded rather than permanent, but deleting eagerly frees the quota for
+    # the suites still queued behind this one.
+    - name: Tear down
+      if: always()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KUBECONFIG="${PROVISIONERS_KUBECONFIG}"
+
+        kubectl get kubernetescluster/"${OBJECT_NAME}" -o=yaml || true
+        kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}"
+        kubectl delete --wait=false --ignore-not-found storagebucket/"${OBJECT_NAME}"

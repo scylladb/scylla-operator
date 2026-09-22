@@ -1,0 +1,138 @@
+name: "E2E: OKE"
+
+# Runs one e2e suite against an OKE cluster it creates for the run and deletes afterwards.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        required: true
+        type: string
+      image-ref:
+        description: >-
+          Reference of the Operator image to test, as `name:tag`, `name@digest` or `name:tag@digest`, e.g.
+          `quay.io/scylladb/scylla-operator:1.22.0` or `quay.io/scylladb/scylla-operator@sha256:6a1f0c...`.
+        required: true
+        type: string
+      suite:
+        description: Name of the `scylla-operator-tests` suite to run, e.g. `scylla-operator/conformance/parallel`.
+        required: true
+        type: string
+      cluster-manifest:
+        description: OracleKubernetesEngineCluster to provision the suite against.
+        required: false
+        default: ./hack/.ci/manifests/ci-clusters/oke.yaml
+        type: string
+    secrets:
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the OracleKubernetesEngineCluster object in.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 180
+    env:
+      # Prefixed with "so-" so the name starts with a letter, which the Crossplane OCI provider requires for the
+      # Terraform resource identifiers it derives from it.
+      OBJECT_NAME: so-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Materialize the CI provisioners kubeconfig
+      id: provisioners
+      uses: ./.github/actions/ci-provisioning/common/materialize-kubeconfig
+      with:
+        kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+
+    # This workflow names every object it creates OBJECT_NAME, so the teardown can run unconditionally from here on,
+    # including when provisioning itself fails partway.
+    - name: Provision the cluster
+      id: cluster
+      uses: ./.github/actions/ci-provisioning/oke/provision-cluster
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ env.OBJECT_NAME }}
+        manifest: ${{ inputs.cluster-manifest }}
+        cloud-init-path: ./hack/.ci/oke/cloud-init-scylladb-node.sh
+
+    - name: Get the provisioned cluster's kubeconfig
+      id: kubeconfig
+      uses: ./.github/actions/ci-provisioning/common/get-cluster-kubeconfig
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        secret-name: ${{ steps.cluster.outputs.kubeconfig-secret-name }}
+
+    # The OCI provider doesn't support node taints, so this step applies them instead of setting them through the
+    # node pool.
+    - name: Taint the ScyllaDB nodes
+      env:
+        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
+      run: kubectl taint nodes --overwrite --selector=scylla.scylladb.com/node-type=scylla scylla-operator.scylladb.com/dedicated=scyllaclusters:NoSchedule
+
+    - name: Run the e2e suite
+      env:
+        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
+        SO_IMAGE: ${{ inputs.image-ref }}
+        SO_SUITE: ${{ inputs.suite }}
+        SO_E2E_TIMEOUT: 90m
+        SO_SCYLLACLUSTER_NODE_SERVICE_TYPE: Headless
+        SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE: PodIP
+        SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE: PodIP
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS}"
+
+        # INT first so the suite can shut down and the run script still gathers the artifacts; SIGKILL follows 10
+        # minutes later.
+        timeout --verbose --signal=INT --kill-after=10m 120m ./hack/.ci/run-e2e-oke.sh
+
+    # must-gather names files after object names, which can contain colons that upload-artifact rejects, so the
+    # directory goes up as a single tarball.
+    - name: Pack artifacts
+      if: always()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # The directory only exists once the suite step ran, so an earlier failure would otherwise fail this step too.
+        mkdir -p "${ARTIFACTS}"
+        tar -cf "${RUNNER_TEMP}/artifacts.tar" -C "${ARTIFACTS}" .
+
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/artifacts.tar
+        retention-days: 14
+        if-no-files-found: warn
+
+    # The object carries a TTL, so a leak is bounded rather than permanent, but deleting eagerly frees the quota for
+    # the suites still queued behind this one.
+    - name: Tear down
+      if: always()
+      env:
+        KUBECONFIG: ${{ steps.provisioners.outputs.path }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        kubectl get oraclekubernetesenginecluster/"${OBJECT_NAME}" -o=yaml || true
+        kubectl delete --wait=false --ignore-not-found oraclekubernetesenginecluster/"${OBJECT_NAME}"

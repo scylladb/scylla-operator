@@ -1,0 +1,71 @@
+name: Provision an OKE cluster
+description: Creates an OracleKubernetesEngineCluster from a manifest and waits for it to become ready.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  name:
+    description: Name for the OracleKubernetesEngineCluster object.
+    required: true
+  manifest:
+    description: >-
+      OracleKubernetesEngineCluster manifest with empty metadata.name, spec.credentialsSecret.name,
+      spec.parameters.clusterName and node pool cloudInitB64 placeholders.
+    required: true
+  cloud-init-path:
+    description: Cloud-init script the action injects into every node pool with an empty cloudInitB64 placeholder.
+    required: true
+  timeout:
+    description: How long to wait for the cluster to become ready.
+    required: false
+    default: 30m
+
+outputs:
+  kubeconfig-secret-name:
+    description: Name of the Secret holding the provisioned cluster's kubeconfig.
+    value: ${{ inputs.name }}-kubeconfig
+
+runs:
+  using: composite
+  steps:
+  - id: provision
+    shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      OBJECT_NAME: ${{ inputs.name }}
+      CLUSTER_MANIFEST: ${{ inputs.manifest }}
+      CLOUD_INIT_PATH: ${{ inputs.cloud-init-path }}
+      TIMEOUT: ${{ inputs.timeout }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      # OCI enforces a 32-character maximum on the OKE cluster name, and truncating OBJECT_NAME to fit would cut
+      # into the run id and attempt that make it unique, so this hashes it rather than trimming it.
+      CLUSTER_NAME="so-$( sha256sum <<< "${OBJECT_NAME}" | cut -c 1-28 )"
+      export CLUSTER_NAME
+
+      CLOUD_INIT_B64="$( base64 -w0 "${CLOUD_INIT_PATH}" )"
+      export CLOUD_INIT_B64
+
+      # yq creates any path it's given, so if the manifest renames a field, this would silently add the old one back
+      # instead of filling in the new one. Asserting the placeholders exist first turns that into a failure.
+      yq -e '
+        select(
+          .metadata.name == "" and
+          .spec.credentialsSecret.name == "" and
+          .spec.parameters.clusterName == "" and
+          (.spec.parameters.nodePools | any_c(.config.cloudInitB64 == ""))
+        ) |
+        .metadata.name = strenv(OBJECT_NAME) |
+        .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-kubeconfig" |
+        .spec.parameters.clusterName = strenv(CLUSTER_NAME) |
+        ( .spec.parameters.nodePools[] | select(.config.cloudInitB64 == "") ).config.cloudInitB64 = strenv(CLOUD_INIT_B64)
+      ' "${CLUSTER_MANIFEST}" | tee /dev/stderr | kubectl create -f=-
+
+      timeout -v "${TIMEOUT}" bash -c 'until kubectl wait --for=condition=Synced=True oraclekubernetesenginecluster/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Ready=True oraclekubernetesenginecluster/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done' || {
+        echo 'Cluster provisioning timed out. Object status:' >&2
+        kubectl get oraclekubernetesenginecluster/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
+        exit 1
+      }

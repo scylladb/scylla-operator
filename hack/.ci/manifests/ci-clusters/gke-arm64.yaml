@@ -1,0 +1,44 @@
+apiVersion: ci.scylladb.com/v1alpha1
+kind: KubernetesCluster
+metadata:
+  # Filled in per run.
+  name: ""
+spec:
+  credentialsSecret:
+    # Filled in per run.
+    name: ""
+  version: "1.35"
+  ttlSeconds: 14400
+  type: GKE
+  gke:
+    location: europe-west4
+    nodePools:
+    - name: workers
+      locations:
+      - europe-west4-a
+      config:
+        machineType: t2a-standard-8
+        diskType: pd-standard
+        diskSizeGB: 40
+        labels:
+          pool: workers
+      initialNodeCount: 1
+    - name: scylladb
+      locations:
+      - europe-west4-a
+      config:
+        machineType: c4a-standard-8-lssd
+        diskType: hyperdisk-balanced
+        diskSizeGB: 120
+        localNVMeSSDBlockConfig:
+          localSSDCount: 2
+        labels:
+          pool: scylladb
+          scylla.scylladb.com/node-type: scylla
+        taints:
+        - key: scylla-operator.scylladb.com/dedicated
+          value: scyllaclusters
+          effect: NO_SCHEDULE
+        kubeletConfig:
+          cpuManagerPolicy: static
+      initialNodeCount: 1

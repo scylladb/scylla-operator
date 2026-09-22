@@ -25,6 +25,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -94,6 +95,10 @@ type Controller struct {
 	statefulSetCachePropagationDelay time.Duration
 
 	newScyllaClientFunc NewScyllaClientFunc
+
+	// onReconcile, if set, is called with the key of ScyllaDBDatacenter at the start of its reconciliation.
+	// It is meant for testing only.
+	onReconcile func(types.NamespacedName)
 }
 
 // NewScyllaClientFunc creates a ScyllaDB API client for the given hosts, authenticating with authToken.
@@ -106,6 +111,15 @@ type ControllerOption func(ctrl *Controller)
 func WithStatefulSetCachePropagationDelay(delay time.Duration) ControllerOption {
 	return func(c *Controller) {
 		c.statefulSetCachePropagationDelay = delay
+	}
+}
+
+// WithOnReconcile is meant for testing only: it sets a function the controller calls with the key of
+// ScyllaDBDatacenter at the start of its reconciliation, so that tests can tell which changes enqueue which
+// ScyllaDBDatacenters.
+func WithOnReconcile(onReconcile func(types.NamespacedName)) ControllerOption {
+	return func(c *Controller) {
+		c.onReconcile = onReconcile
 	}
 }
 

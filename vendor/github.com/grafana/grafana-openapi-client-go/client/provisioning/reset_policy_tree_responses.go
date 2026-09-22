@@ -36,6 +36,12 @@ func (o *ResetPolicyTreeReader) ReadResponse(response runtime.ClientResponse, co
 			return nil, err
 		}
 		return nil, result
+	case 409:
+		result := NewResetPolicyTreeConflict()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[DELETE /v1/provisioning/policies] ResetPolicyTree", response, response.Code())
 	}
@@ -170,6 +176,76 @@ func (o *ResetPolicyTreeForbidden) GetPayload() *models.ForbiddenError {
 func (o *ResetPolicyTreeForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewResetPolicyTreeConflict creates a ResetPolicyTreeConflict with default headers values
+func NewResetPolicyTreeConflict() *ResetPolicyTreeConflict {
+	return &ResetPolicyTreeConflict{}
+}
+
+/*
+ResetPolicyTreeConflict describes a response with status code 409, with default header values.
+
+PublicError
+*/
+type ResetPolicyTreeConflict struct {
+	Payload *models.PublicError
+}
+
+// IsSuccess returns true when this reset policy tree conflict response has a 2xx status code
+func (o *ResetPolicyTreeConflict) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this reset policy tree conflict response has a 3xx status code
+func (o *ResetPolicyTreeConflict) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this reset policy tree conflict response has a 4xx status code
+func (o *ResetPolicyTreeConflict) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this reset policy tree conflict response has a 5xx status code
+func (o *ResetPolicyTreeConflict) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this reset policy tree conflict response a status code equal to that given
+func (o *ResetPolicyTreeConflict) IsCode(code int) bool {
+	return code == 409
+}
+
+// Code gets the status code for the reset policy tree conflict response
+func (o *ResetPolicyTreeConflict) Code() int {
+	return 409
+}
+
+func (o *ResetPolicyTreeConflict) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/policies][%d] resetPolicyTreeConflict %s", 409, payload)
+}
+
+func (o *ResetPolicyTreeConflict) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /v1/provisioning/policies][%d] resetPolicyTreeConflict %s", 409, payload)
+}
+
+func (o *ResetPolicyTreeConflict) GetPayload() *models.PublicError {
+	return o.Payload
+}
+
+func (o *ResetPolicyTreeConflict) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.PublicError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

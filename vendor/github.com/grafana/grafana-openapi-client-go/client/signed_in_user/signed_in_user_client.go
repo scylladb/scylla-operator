@@ -35,9 +35,6 @@ type ClientService interface {
 	ChangeUserPassword(body *models.ChangeUserPasswordCommand, opts ...ClientOption) (*ChangeUserPasswordOK, error)
 	ChangeUserPasswordWithParams(params *ChangeUserPasswordParams, opts ...ClientOption) (*ChangeUserPasswordOK, error)
 
-	ClearHelpFlags(opts ...ClientOption) (*ClearHelpFlagsOK, error)
-	ClearHelpFlagsWithParams(params *ClearHelpFlagsParams, opts ...ClientOption) (*ClearHelpFlagsOK, error)
-
 	GetSignedInUser(opts ...ClientOption) (*GetSignedInUserOK, error)
 	GetSignedInUserWithParams(params *GetSignedInUserParams, opts ...ClientOption) (*GetSignedInUserOK, error)
 
@@ -58,9 +55,6 @@ type ClientService interface {
 
 	RevokeUserAuthToken(body *models.RevokeAuthTokenCmd, opts ...ClientOption) (*RevokeUserAuthTokenOK, error)
 	RevokeUserAuthTokenWithParams(params *RevokeUserAuthTokenParams, opts ...ClientOption) (*RevokeUserAuthTokenOK, error)
-
-	SetHelpFlag(flagID string, opts ...ClientOption) (*SetHelpFlagOK, error)
-	SetHelpFlagWithParams(params *SetHelpFlagParams, opts ...ClientOption) (*SetHelpFlagOK, error)
 
 	StarDashboardByUID(dashboardUID string, opts ...ClientOption) (*StarDashboardByUIDOK, error)
 	StarDashboardByUIDWithParams(params *StarDashboardByUIDParams, opts ...ClientOption) (*StarDashboardByUIDOK, error)
@@ -123,50 +117,6 @@ func (a *Client) ChangeUserPasswordWithParams(params *ChangeUserPasswordParams, 
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for changeUserPassword: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-ClearHelpFlags clears user help flag
-*/
-func (a *Client) ClearHelpFlags(opts ...ClientOption) (*ClearHelpFlagsOK, error) {
-	params := NewClearHelpFlagsParams()
-	return a.ClearHelpFlagsWithParams(params, opts...)
-}
-
-func (a *Client) ClearHelpFlagsWithParams(params *ClearHelpFlagsParams, opts ...ClientOption) (*ClearHelpFlagsOK, error) {
-	if params == nil {
-		params = NewClearHelpFlagsParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "clearHelpFlags",
-		Method:             "GET",
-		PathPattern:        "/user/helpflags/clear",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &ClearHelpFlagsReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*ClearHelpFlagsOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for clearHelpFlags: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -354,6 +304,8 @@ func (a *Client) GetUserAuthTokensWithParams(params *GetUserAuthTokensParams, op
 
 /*
 GetUserPreferences gets user preferences
+
+Use /apis/preferences.grafana.app/v1/namespaces/{namespace}/preferences/user-{uid}
 */
 func (a *Client) GetUserPreferences(opts ...ClientOption) (*GetUserPreferencesOK, error) {
 	params := NewGetUserPreferencesParams()
@@ -398,6 +350,8 @@ func (a *Client) GetUserPreferencesWithParams(params *GetUserPreferencesParams, 
 
 /*
 PatchUserPreferences patches user preferences
+
+Use /apis/preferences.grafana.app/v1/namespaces/{namespace}/preferences/user-{uid}
 */
 func (a *Client) PatchUserPreferences(body *models.PatchPrefsCmd, opts ...ClientOption) (*PatchUserPreferencesOK, error) {
 	params := NewPatchUserPreferencesParams().WithBody(body)
@@ -487,53 +441,11 @@ func (a *Client) RevokeUserAuthTokenWithParams(params *RevokeUserAuthTokenParams
 }
 
 /*
-SetHelpFlag sets user help flag
-*/
-func (a *Client) SetHelpFlag(flagID string, opts ...ClientOption) (*SetHelpFlagOK, error) {
-	params := NewSetHelpFlagParams().WithFlagID(flagID)
-	return a.SetHelpFlagWithParams(params, opts...)
-}
-
-func (a *Client) SetHelpFlagWithParams(params *SetHelpFlagParams, opts ...ClientOption) (*SetHelpFlagOK, error) {
-	if params == nil {
-		params = NewSetHelpFlagParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "setHelpFlag",
-		Method:             "PUT",
-		PathPattern:        "/user/helpflags/{flag_id}",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"http", "https"},
-		Params:             params,
-		Reader:             &SetHelpFlagReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(op)
-		}
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*SetHelpFlagOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for setHelpFlag: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
 StarDashboardByUID stars a dashboard
 
 Stars the given Dashboard for the actual user.
+
+Use: PUT /apis/collections.grafana.app/v1alpha1/namespaces/{namespace}/stars/{name}/update/{group}/{kind}/{id}
 */
 func (a *Client) StarDashboardByUID(dashboardUID string, opts ...ClientOption) (*StarDashboardByUIDOK, error) {
 	params := NewStarDashboardByUIDParams().WithDashboardUID(dashboardUID)
@@ -580,6 +492,8 @@ func (a *Client) StarDashboardByUIDWithParams(params *StarDashboardByUIDParams, 
 UnstarDashboardByUID unstars a dashboard
 
 Deletes the starring of the given Dashboard for the actual user.
+
+Use: DELETE /apis/collections.grafana.app/v1alpha1/namespaces/{namespace}/stars/{name}/update/{group}/{kind}/{id}
 */
 func (a *Client) UnstarDashboardByUID(dashboardUID string, opts ...ClientOption) (*UnstarDashboardByUIDOK, error) {
 	params := NewUnstarDashboardByUIDParams().WithDashboardUID(dashboardUID)
@@ -669,7 +583,7 @@ func (a *Client) UpdateSignedInUserWithParams(params *UpdateSignedInUserParams, 
 /*
 UpdateUserPreferences updates user preferences
 
-Omitting a key (`theme`, `homeDashboardUID`, `timezone`) will cause the current value to be replaced with the system default value.
+Use /apis/preferences.grafana.app/v1/namespaces/{namespace}/preferences/user-{uid}
 */
 func (a *Client) UpdateUserPreferences(body *models.UpdatePrefsCmd, opts ...ClientOption) (*UpdateUserPreferencesOK, error) {
 	params := NewUpdateUserPreferencesParams().WithBody(body)

@@ -214,6 +214,8 @@ func (a *Client) GetCurrentOrgWithParams(params *GetCurrentOrgParams, opts ...Cl
 
 /*
 GetOrgPreferences gets current org prefs
+
+Use /apis/preferences.grafana.app/v1/namespaces/{namespace}/preferences/namespace
 */
 func (a *Client) GetOrgPreferences(opts ...ClientOption) (*GetOrgPreferencesOK, error) {
 	params := NewGetOrgPreferencesParams()
@@ -390,6 +392,8 @@ func (a *Client) GetPendingOrgInvitesWithParams(params *GetPendingOrgInvitesPara
 
 /*
 PatchOrgPreferences patches current org prefs
+
+Use /apis/preferences.grafana.app/v1/namespaces/{namespace}/preferences/namespace
 */
 func (a *Client) PatchOrgPreferences(body *models.PatchPrefsCmd, opts ...ClientOption) (*PatchOrgPreferencesOK, error) {
 	params := NewPatchOrgPreferencesParams().WithBody(body)
@@ -613,6 +617,8 @@ func (a *Client) UpdateCurrentOrgAddressWithParams(params *UpdateCurrentOrgAddre
 
 /*
 UpdateOrgPreferences updates current org prefs
+
+Use /apis/preferences.grafana.app/v1/namespaces/{namespace}/preferences/namespace
 */
 func (a *Client) UpdateOrgPreferences(body *models.UpdatePrefsCmd, opts ...ClientOption) (*UpdateOrgPreferencesOK, error) {
 	params := NewUpdateOrgPreferencesParams().WithBody(body)

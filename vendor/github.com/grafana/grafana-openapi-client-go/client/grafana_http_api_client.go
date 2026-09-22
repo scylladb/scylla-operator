@@ -35,7 +35,6 @@ import (
 	"github.com/grafana/grafana-openapi-client-go/client/devices"
 	"github.com/grafana/grafana-openapi-client-go/client/enterprise"
 	"github.com/grafana/grafana-openapi-client-go/client/folders"
-	"github.com/grafana/grafana-openapi-client-go/client/group_attribute_sync"
 	"github.com/grafana/grafana-openapi-client-go/client/health"
 	"github.com/grafana/grafana-openapi-client-go/client/library_elements"
 	"github.com/grafana/grafana-openapi-client-go/client/licensing"
@@ -120,7 +119,6 @@ func New(transport runtime.ClientTransport, cfg *TransportConfig, formats strfmt
 	cli.Devices = devices.New(transport, formats)
 	cli.Enterprise = enterprise.New(transport, formats)
 	cli.Folders = folders.New(transport, formats)
-	cli.GroupAttributeSync = group_attribute_sync.New(transport, formats)
 	cli.Health = health.New(transport, formats)
 	cli.LibraryElements = library_elements.New(transport, formats)
 	cli.Licensing = licensing.New(transport, formats)
@@ -244,8 +242,6 @@ type GrafanaHTTPAPI struct {
 
 	Folders folders.ClientService
 
-	GroupAttributeSync group_attribute_sync.ClientService
-
 	Health health.ClientService
 
 	LibraryElements library_elements.ClientService
@@ -313,7 +309,6 @@ func (c *GrafanaHTTPAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Devices.SetTransport(transport)
 	c.Enterprise.SetTransport(transport)
 	c.Folders.SetTransport(transport)
-	c.GroupAttributeSync.SetTransport(transport)
 	c.Health.SetTransport(transport)
 	c.LibraryElements.SetTransport(transport)
 	c.Licensing.SetTransport(transport)

@@ -25,6 +25,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -94,6 +95,9 @@ type Controller struct {
 	statefulSetCachePropagationDelay time.Duration
 
 	newScyllaClientFunc NewScyllaClientFunc
+
+	// reconcileObserver, when set, is told about every ScyllaDBDatacenter the controller reconciles.
+	reconcileObserver func(types.NamespacedName)
 }
 
 // NewScyllaClientFunc creates a ScyllaDB API client for the given hosts, authenticating with authToken.
@@ -106,6 +110,14 @@ type ControllerOption func(ctrl *Controller)
 func WithStatefulSetCachePropagationDelay(delay time.Duration) ControllerOption {
 	return func(c *Controller) {
 		c.statefulSetCachePropagationDelay = delay
+	}
+}
+
+// WithReconcileObserver has the controller report every ScyllaDBDatacenter it reconciles to observer before syncing
+// it, so that tests can tell which changes enqueue which ScyllaDBDatacenters.
+func WithReconcileObserver(observer func(types.NamespacedName)) ControllerOption {
+	return func(c *Controller) {
+		c.reconcileObserver = observer
 	}
 }
 

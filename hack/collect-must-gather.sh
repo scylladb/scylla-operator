@@ -25,5 +25,8 @@ fi
 source_root="$( realpath "$( dirname "${BASH_SOURCE[0]}" )/.." )"
 
 mkdir -p "${dest_dir}/must-gather"
-go run "${source_root}/cmd/scylla-operator" must-gather --all-resources --loglevel=2 --dest-dir="${dest_dir}/must-gather" || true
+# Archive even partial evidence, but propagate must-gather's failure.
+must_gather_rc=0
+go run "${source_root}/cmd/scylla-operator" must-gather --all-resources --loglevel=2 --dest-dir="${dest_dir}/must-gather" || must_gather_rc="$?"
 tar -czf "${dest_dir}/must-gather.tar.gz" -C "${dest_dir}" must-gather
+exit "${must_gather_rc}"

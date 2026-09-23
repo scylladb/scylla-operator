@@ -7,6 +7,7 @@ runs:
   steps:
     - name: Collect must-gather evidence
       shell: bash
+      continue-on-error: true
       run: ./hack/collect-must-gather.sh "${RUNNER_TEMP}"
 
     - name: Upload must-gather artifact

@@ -2,6 +2,7 @@ name: "Periodic E2E"
 
 # Builds the operator image from the ref under test and runs the e2e suites against it in the same run.
 on:
+  push:
   schedule:
   - cron: '0 6 * * MON'
   workflow_dispatch:

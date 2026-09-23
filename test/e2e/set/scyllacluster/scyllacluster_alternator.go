@@ -152,7 +152,7 @@ auth_superuser_salted_password: '%s'
 		o.Expect(err).NotTo(o.HaveOccurred())
 		alternatorServingCerts, _, _, _ := verification.VerifyAndParseTLSCert(alternatorServingCertsSecret, verification.TLSCertOptions{
 			IsCA:     pointer.Ptr(false),
-			KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+			KeyUsage: pointer.Ptr(x509.KeyUsageDigitalSignature),
 		})
 		o.Expect(alternatorServingCerts).To(o.HaveLen(1))
 		alternatorServingCert := alternatorServingCerts[0]

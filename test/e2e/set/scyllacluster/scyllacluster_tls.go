@@ -156,12 +156,12 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 
 				framework.By("Verifying TLS certificates and live TLS connections")
 
-				rsaCAKeyUsage := x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
-				rsaLeafKeyUsage := x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
+				ecdsaCAKeyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
+				ecdsaLeafKeyUsage := x509.KeyUsageDigitalSignature
 
 				tlsResult := verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, hostIDs, verification.VerifyScyllaClusterTLSOptions{
-					CAKeyUsage:   rsaCAKeyUsage,
-					LeafKeyUsage: rsaLeafKeyUsage,
+					CAKeyUsage:   ecdsaCAKeyUsage,
+					LeafKeyUsage: ecdsaLeafKeyUsage,
 				})
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})

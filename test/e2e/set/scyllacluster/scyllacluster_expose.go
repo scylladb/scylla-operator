@@ -232,7 +232,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 			o.Expect(err).NotTo(o.HaveOccurred())
 			servingCerts, _, _, _ := verification.VerifyAndParseTLSCert(servingCertSecret, verification.TLSCertOptions{
 				IsCA:     pointer.Ptr(false),
-				KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+				KeyUsage: pointer.Ptr(x509.KeyUsageDigitalSignature),
 			})
 			o.Expect(servingCerts).To(o.HaveLen(1))
 			o.Expect(servingCerts[0].Subject.CommonName).To(o.BeEmpty())

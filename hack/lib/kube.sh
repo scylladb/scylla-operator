@@ -37,6 +37,17 @@ function wait-for-object-creation {
   kubectl wait --timeout="${timeout}" --for=create -n="${1}" "${2}"
 }
 
+# wait-for-scyllacluster-rollout waits until a ScyllaCluster is fully rolled out and available.
+# $1 - namespace
+# $2 - ScyllaCluster name
+# $3 - timeout (optional, defaults to 10m)
+function wait-for-scyllacluster-rollout {
+  local timeout="${3:-10m}"
+  kubectl -n="${1}" wait --timeout="${timeout}" --for='condition=Progressing=False' scyllaclusters.scylla.scylladb.com/"${2}"
+  kubectl -n="${1}" wait --timeout="${timeout}" --for='condition=Degraded=False' scyllaclusters.scylla.scylladb.com/"${2}"
+  kubectl -n="${1}" wait --timeout="${timeout}" --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/"${2}"
+}
+
 # $1 - namespace
 # $2 - pod name
 # $3 - container name

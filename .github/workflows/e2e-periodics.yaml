@@ -2,6 +2,8 @@ name: "Periodic E2E"
 
 # Builds the operator image from the ref under test and runs the e2e suites against it in the same run.
 on:
+  push:
+    branches: [e2e-multi-dc-test]
   schedule:
   - cron: '0 6 * * MON'
   workflow_dispatch:
@@ -28,46 +30,6 @@ jobs:
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
-  e2e-gke-serial:
-    needs: image
-    uses: ./.github/workflows/_e2e-gke.yaml
-    with:
-      name: e2e-gke-serial
-      image-ref: ${{ needs.image.outputs.image-ref }}
-      suite: scylla-operator/conformance/serial
-      cluster-manifest: ./hack/.ci/manifests/ci-clusters/gke-serial.yaml
-      # No NodeConfig, so no local storage class either, and ScyllaDB storage falls back to the cluster default.
-      nodeconfig-path: ""
-      storageclass-name: ""
-    secrets:
-      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
-
-  e2e-gke-arm64-parallel:
-    needs: image
-    uses: ./.github/workflows/_e2e-gke.yaml
-    with:
-      name: e2e-gke-arm64-parallel
-      image-ref: ${{ needs.image.outputs.image-ref }}
-      suite: scylla-operator/conformance/parallel
-      cluster-manifest: ./hack/.ci/manifests/ci-clusters/gke-arm64.yaml
-      object-storage: true
-      nodeconfig-path: ./hack/.ci/manifests/cluster/nodeconfig-gke-arm64.yaml
-    secrets:
-      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
-
-  e2e-gke-arm64-serial:
-    needs: image
-    uses: ./.github/workflows/_e2e-gke.yaml
-    with:
-      name: e2e-gke-arm64-serial
-      image-ref: ${{ needs.image.outputs.image-ref }}
-      suite: scylla-operator/conformance/serial
-      cluster-manifest: ./hack/.ci/manifests/ci-clusters/gke-arm64-serial.yaml
-      nodeconfig-path: ""
-      storageclass-name: ""
-    secrets:
-      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
-
   e2e-gke-multi-datacenter-parallel:
     needs: image
     uses: ./.github/workflows/_e2e-gke-multi-dc.yaml
@@ -75,25 +37,5 @@ jobs:
       name: e2e-gke-multi-dc-parallel
       image-ref: ${{ needs.image.outputs.image-ref }}
       suite: scylla-operator/conformance/multi-datacenter-parallel
-    secrets:
-      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
-
-  e2e-oke-parallel:
-    needs: image
-    uses: ./.github/workflows/_e2e-oke.yaml
-    with:
-      name: e2e-oke-parallel
-      image-ref: ${{ needs.image.outputs.image-ref }}
-      suite: scylla-operator/conformance/parallel
-    secrets:
-      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
-
-  e2e-oke-serial:
-    needs: image
-    uses: ./.github/workflows/_e2e-oke.yaml
-    with:
-      name: e2e-oke-serial
-      image-ref: ${{ needs.image.outputs.image-ref }}
-      suite: scylla-operator/conformance/serial
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}

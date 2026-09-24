@@ -1,0 +1,159 @@
+name: "E2E: kind"
+
+# Runs one kind-based e2e suite on the runner itself, inside a privileged kube-tools container -- the same
+# environment the prow kind presubmits ran in. The suite builds the operator image from the checked-out ref into
+# a runner-local registry, so no registry credentials are needed and pull requests from forks work.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the artifact name.
+        required: true
+        type: string
+      suite:
+        description: Name of the `scylla-operator-tests` suite to run, e.g. `kind-fast`.
+        required: true
+        type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      enable-parallel-node-operations:
+        description: >-
+          Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the
+          field defaulted.
+        required: false
+        default: ""
+        type: string
+      parallelism:
+        description: Test parallelism within the suite. 0 falls back to the suite's default.
+        required: false
+        default: 0
+        type: number
+      e2e-timeout:
+        description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
+        required: false
+        default: 90m
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+env:
+  KUBE_TOOLS_IMAGE: quay.io/scylladb/scylla-operator-images:kube-tools
+  ARTIFACTS_HOST: ${{ github.workspace }}/artifacts
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    # The podman instance backing kind must have its container storage on a host bind mount: left on the container's
+    # own filesystem it would sit on docker's overlayfs, where podman can't use the overlay driver (no nested
+    # overlayfs) and falls back to slower, disk-hungry alternatives. The host path also survives the container for
+    # inspection, and the runner's root disk (~86G free) comfortably fits the kind node image, the images the suites
+    # pull into the cluster, and the PV data.
+    - name: Prepare container storage
+      run: sudo mkdir -p /mnt/containers
+
+    # kind nodes host many pods, each with several watches; the image defaults are too low and manifest as obscure
+    # "too many open files" failures.
+    - name: Raise inotify limits
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        sudo sysctl fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
+
+    # The container hosts the kind cluster, so it stays up for the rest of the job: later steps reach the cluster
+    # with `docker exec`, and the environment set here is inherited by each of them.
+    - name: Start the kube-tools container
+      env:
+        SO_SUITE: ${{ inputs.suite }}
+        SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+        SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
+        SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
+        SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS_HOST}"
+
+        docker run --detach --name=e2e --privileged \
+        --volume="${GITHUB_WORKSPACE}:/go/src/github.com/scylladb/scylla-operator" \
+        --volume=/mnt/containers:/var/lib/containers \
+        --volume="${ARTIFACTS_HOST}:/artifacts" \
+        --workdir=/go/src/github.com/scylladb/scylla-operator \
+        --env=ARTIFACTS=/artifacts \
+        --env=SO_SUITE \
+        --env=SCYLLADB_IMAGE_REF \
+        --env=SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS \
+        --env=SO_E2E_PARALLELISM \
+        --env=SO_E2E_TIMEOUT \
+        "${KUBE_TOOLS_IMAGE}" \
+        /usr/bin/sleep infinity
+
+        # Disable pids limit to allow high parallelism in tests.
+        docker exec e2e sed -i '/\[containers\]/a pids_limit = 0' /etc/containers/containers.conf
+
+    - name: Run the e2e suite
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        docker exec e2e /usr/bin/bash -euExo pipefail -O inherit_errexit -c '
+          # INT first so the suite can shut down and artifacts still get gathered; SIGKILL follows 10 minutes later.
+          timeout --verbose --signal=INT --kill-after=10m 120m make test-e2e-kind
+        '
+
+    # A failure before the suite starts leaves no must-gather behind, and the kind cluster dies with the job, so
+    # dump the basic cluster state while it is still around.
+    - name: Dump cluster state
+      if: failure()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        docker exec e2e /usr/bin/bash -euExo pipefail -O inherit_errexit -c '
+          export KIND_EXPERIMENTAL_PROVIDER=podman
+          kubeconfig="$( mktemp )"
+          kind get kubeconfig --name=scylla-operator-e2e > "${kubeconfig}" || true
+          export KUBECONFIG="${kubeconfig}"
+          kubectl get nodes -o=wide |& tee "${ARTIFACTS}/debug-nodes.txt" || true
+          kubectl get pods -A -o=wide |& tee "${ARTIFACTS}/debug-pods.txt" || true
+          kubectl get events -A --sort-by=.lastTimestamp &> "${ARTIFACTS}/debug-events.txt" || true
+          kubectl describe pods -A &> "${ARTIFACTS}/debug-describe-pods.txt" || true
+        '
+
+    # must-gather names files after object names, which can contain colons that upload-artifact rejects, so the
+    # directory goes up as a single tarball. The container ran as root, hence the sudo.
+    - name: Pack artifacts
+      if: always()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # The directory only exists once the suite step ran, so an earlier failure would otherwise fail this step too.
+        mkdir -p "${ARTIFACTS_HOST}"
+        sudo tar -cf "${RUNNER_TEMP}/artifacts.tar" -C "${ARTIFACTS_HOST}" .
+
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/artifacts.tar
+        retention-days: 14
+        if-no-files-found: warn

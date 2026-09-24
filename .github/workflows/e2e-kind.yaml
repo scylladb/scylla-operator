@@ -1,0 +1,43 @@
+name: "Presubmit E2E: kind"
+
+# Runs the kind-based e2e suites, ported from the prow presubmits, on pull requests.
+on:
+  pull_request:
+    # Mirrors the prow presubmits' skip_if_only_changed, except workflow changes still run the suites so they test
+    # themselves.
+    paths-ignore:
+    - 'docs/**'
+    - 'enhancements/**'
+    - '**.md'
+    - 'renovate.json'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind-fast:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: e2e-kind-fast
+      suite: kind-fast
+
+  e2e-kind-scylladb-monitoring-old-node-exporter:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: e2e-kind-scylladb-monitoring-old-node-exporter
+      suite: kind-scylladb-monitoring
+      # Verify that the old node-exporter bundling within the ScyllaDB container (before 2026.3) is not broken
+      # (for as long as we support <2026.3).
+      scylladb-image-ref: docker.io/scylladb/scylla:2026.2.6
+
+  e2e-kind-cluster-topology-sequential:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: e2e-kind-cluster-topology-sequential
+      suite: kind-cluster-topology
+      enable-parallel-node-operations: "false"

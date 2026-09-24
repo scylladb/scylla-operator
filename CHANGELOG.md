@@ -66,6 +66,11 @@ Please refer to the [1.22 to 1.23 upgrade guide](https://operator.docs.scylladb.
   instead of a TCP socket check. The TCP probe closed each connection without a TLS handshake, making the agent log
   `http: TLS handshake error from <kubelet>: EOF` every 10 seconds on every node.
   [#3673](https://github.com/scylladb/scylla-operator/pull/3673)
+- Fixed a `ScyllaDBDatacenter` or `ScyllaCluster` rack being scaled up over a node that was leaving the cluster when
+  its node count was raised right after being lowered. The operator could decide the rack's scale before observing
+  its own request to decommission the node, and start new nodes above the leaving one instead of deferring the raised
+  node count until the node had left. The operator now waits until it observes its own changes before acting on them.
+  [#3681](https://github.com/scylladb/scylla-operator/pull/3681), [#3686](https://github.com/scylladb/scylla-operator/pull/3686)
 
 ### Features & Enhancements
 - The `enableParallelNodeOperations` field of `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec` now also controls how

@@ -1,0 +1,90 @@
+name: Provision GCS buckets
+description: >-
+  Creates a GCS StorageBucket per location, waits for them and extracts their service account credentials into files.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  name:
+    description: >-
+      Prefix for the StorageBucket objects, which are named `<name>-<key>`. The objects are also labelled with
+      `scylla-operator.scylladb.com/e2e-run=<name>`, so a teardown can delete them without knowing the keys.
+    required: true
+  locations:
+    description: GCS location per bucket, as `<key>=<location>,...`. The keys identify the buckets in the outputs.
+    required: true
+  ttl-seconds:
+    description: Time after which the provisioner deletes the buckets regardless of the workflow outcome.
+    required: false
+    default: "14400"
+
+outputs:
+  bucket-names:
+    description: Name of each provisioned bucket, as `<key>=<bucket>,...`.
+    value: ${{ steps.provision.outputs.bucket-names }}
+  credentials-paths:
+    description: Path to the service account JSON credentials with access to each bucket, as `<key>=<path>,...`.
+    value: ${{ steps.provision.outputs.credentials-paths }}
+
+runs:
+  using: composite
+  steps:
+  - id: provision
+    shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      NAME_PREFIX: ${{ inputs.name }}
+      LOCATIONS: ${{ inputs.locations }}
+      TTL_SECONDS: ${{ inputs.ttl-seconds }}
+    run: |
+      source ./hack/.ci/lib/ci-provisioning.sh
+
+      # GHA doesn't enforce required inputs of composite actions, and an empty location would only fail once the
+      # suite tries to use the bucket.
+      if [[ -z "${LOCATIONS}" ]]; then
+        echo "locations can't be empty" >&2
+        exit 2
+      fi
+      IFS=',' read -r -a entries <<< "${LOCATIONS}"
+      for entry in "${entries[@]}"; do
+        if [[ ! "${entry}" =~ ^[^=]+=.+$ ]]; then
+          echo "Invalid locations entry '${entry}', expected '<key>=<location>'" >&2
+          exit 2
+        fi
+      done
+
+      buckets=()
+      credentials=()
+      for entry in "${entries[@]}"; do
+        key="${entry%%=*}"
+        location="${entry#*=}"
+        object_name="${NAME_PREFIX}-${key}"
+        # Named after the object so that the buckets don't overwrite each other's credentials. e2e.sh also keys the
+        # worker credentials Secret by file basename.
+        credentials_path="${RUNNER_TEMP}/${object_name}-gcs-service-account.json"
+
+        provision-storage-bucket "${object_name}" "${credentials_path}" <<EOM
+      apiVersion: ci.scylladb.com/v1alpha1
+      kind: StorageBucket
+      metadata:
+        name: "${object_name}"
+        labels:
+          scylla-operator.scylladb.com/e2e-run: "${NAME_PREFIX}"
+      spec:
+        ttlSeconds: ${TTL_SECONDS}
+        type: GCS
+        gcs:
+          location: ${location}
+        credentialsSecret:
+          name: "${object_name}-gcs-service-account"
+      EOM
+
+        buckets+=( "${key}=$( kubectl get storagebucket/"${object_name}" --template='{{ .status.bucketName }}' )" )
+        credentials+=( "${key}=${credentials_path}" )
+      done
+
+      {
+        echo "bucket-names=$( IFS=','; echo "${buckets[*]}" )"
+        echo "credentials-paths=$( IFS=','; echo "${credentials[*]}" )"
+      } >> "${GITHUB_OUTPUT}"

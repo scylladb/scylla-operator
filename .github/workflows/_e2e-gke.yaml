@@ -92,12 +92,12 @@ jobs:
     - name: Provision the object storage bucket
       if: inputs.object-storage
       id: bucket
-      uses: ./.github/actions/ci-provisioning/gke/provision-bucket
+      uses: ./.github/actions/ci-provisioning/gke/provision-buckets
       with:
         provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
         name: ${{ env.OBJECT_NAME }}
         # The bucket must be in the same region as the cluster using it.
-        location: ${{ steps.cluster.outputs.region }}
+        locations: default=${{ steps.cluster.outputs.region }}
 
     - name: Get the provisioned cluster's kubeconfig
       id: kubeconfig
@@ -116,9 +116,8 @@ jobs:
     - name: Run the e2e suite
       env:
         KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
-        # Both are empty when object-storage is disabled, which the test runner tolerates.
-        SO_BUCKET_NAME: ${{ steps.bucket.outputs.bucket-name }}
-        SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ steps.bucket.outputs.credentials-path }}
+        BUCKET_NAMES: ${{ steps.bucket.outputs.bucket-names }}
+        CREDENTIALS_PATHS: ${{ steps.bucket.outputs.credentials-paths }}
         SO_IMAGE: ${{ inputs.image-ref }}
         SO_SUITE: ${{ inputs.suite }}
         SO_E2E_TIMEOUT: 90m
@@ -132,6 +131,13 @@ jobs:
         shopt -s inherit_errexit
 
         mkdir -p "${ARTIFACTS}"
+
+        # The bucket action keys its outputs by the single `default` entry it was given, and the suite takes the bare
+        # values. Both are empty when object-storage is disabled, which the test runner tolerates.
+        SO_BUCKET_NAME="${BUCKET_NAMES#default=}"
+        export SO_BUCKET_NAME
+        SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH="${CREDENTIALS_PATHS#default=}"
+        export SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH
 
         # The local CSI driver has nothing to serve without a NodeConfig to prepare the disks, so the workflow deploys
         # the two together. Left unset, the run script installs the driver from the checkout; set empty, it installs
@@ -177,4 +183,6 @@ jobs:
         shopt -s inherit_errexit
 
         kubectl get kubernetescluster/"${OBJECT_NAME}" -o=yaml || true
-        kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}" storagebucket/"${OBJECT_NAME}"
+        kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}"
+        # provision-buckets labels the buckets with the name it was given.
+        kubectl delete --wait=false storagebuckets --selector=scylla-operator.scylladb.com/e2e-run="${OBJECT_NAME}"

@@ -135,6 +135,12 @@ jobs:
           kubectl get pods -A -o=wide |& tee "${ARTIFACTS}/debug-pods.txt" || true
           kubectl get events -A --sort-by=.lastTimestamp &> "${ARTIFACTS}/debug-events.txt" || true
           kubectl describe pods -A &> "${ARTIFACTS}/debug-describe-pods.txt" || true
+
+          # Machine facts and node-level logs, for failures the cluster API cannot explain.
+          { nproc; free -h; df -h /var/lib/containers; ulimit -a; sysctl fs.inotify; stat -fc %T /sys/fs/cgroup; } \
+            &> "${ARTIFACTS}/debug-system.txt" || true
+          podman ps -a &> "${ARTIFACTS}/debug-podman-ps.txt" || true
+          kind export logs --name=scylla-operator-e2e "${ARTIFACTS}/kind-logs" &> "${ARTIFACTS}/debug-kind-export.txt" || true
         '
 
     # must-gather names files after object names, which can contain colons that upload-artifact rejects, so the

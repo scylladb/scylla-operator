@@ -25,6 +25,22 @@ declare -A WORKER_S3_CREDENTIALS_PATHS
 # GCS service account credentials file paths. It is used in multi-datacenter setups.
 declare -A WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS
 
+# Associative arrays can't cross a process boundary, so a caller that executes the run scripts instead of sourcing them
+# passes the worker maps serialized in SO_WORKER_* as `<cluster_identifier>=<value>,...`, the format of the
+# corresponding `--worker-*` flags of scylla-operator-tests.
+# $1 - name of the associative array to fill
+# $2 - serialized map, possibly empty
+function parse-worker-map {
+  local -n map="${1}"
+  local IFS=','
+  for kv in ${2}; do
+    map["${kv%%=*}"]="${kv#*=}"
+  done
+}
+parse-worker-map WORKER_KUBECONFIGS "${SO_WORKER_KUBECONFIGS:-}"
+parse-worker-map WORKER_OBJECT_STORAGE_BUCKETS "${SO_WORKER_OBJECT_STORAGE_BUCKETS:-}"
+parse-worker-map WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS "${SO_WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS:-}"
+
 # KUBECONFIG is the kubeconfig file used to connect to the cluster.
 # In multi-datacenter setups, it is the control plane cluster kubeconfig.
 if [ -z "${KUBECONFIG+x}" ]; then

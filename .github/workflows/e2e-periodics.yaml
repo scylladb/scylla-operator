@@ -68,6 +68,16 @@ jobs:
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
+  e2e-gke-multi-datacenter-parallel:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke-multi-dc.yaml
+    with:
+      name: e2e-gke-multi-dc-parallel
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/multi-datacenter-parallel
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
   e2e-oke-parallel:
     needs: image
     uses: ./.github/workflows/_e2e-oke.yaml

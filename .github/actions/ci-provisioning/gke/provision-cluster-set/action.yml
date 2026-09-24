@@ -1,0 +1,77 @@
+name: Provision a GKE cluster set
+description: >-
+  Creates a KubernetesClusterSet from a manifest, waits for it to bootstrap, and for every cluster in it extracts the
+  kubeconfig.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  name:
+    description: Name for the KubernetesClusterSet object.
+    required: true
+  manifest:
+    description: >-
+      KubernetesClusterSet manifest with empty metadata.name and spec.clusterTemplates[].spec.credentialsSecret.name
+      placeholders. The first template is the control plane cluster.
+    required: true
+  timeout:
+    description: How long to wait for the cluster set to bootstrap.
+    required: false
+    default: 15m
+
+outputs:
+  control-plane-kubeconfig-path:
+    description: Path to the kubeconfig of the first cluster in the set.
+    value: ${{ steps.provision.outputs.control-plane-kubeconfig-path }}
+  worker-kubeconfigs:
+    description: Kubeconfig path per cluster, as `<cluster>=<path>,...`.
+    value: ${{ steps.provision.outputs.worker-kubeconfigs }}
+  locations:
+    description: GKE location per cluster, as `<cluster>=<location>,...`, for colocating other resources with them.
+    value: ${{ steps.provision.outputs.locations }}
+
+runs:
+  using: composite
+  steps:
+  - id: provision
+    shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      OBJECT_NAME: ${{ inputs.name }}
+      MANIFEST: ${{ inputs.manifest }}
+      TIMEOUT: ${{ inputs.timeout }}
+    run: |
+      source ./hack/.ci/lib/ci-provisioning.sh
+
+      # yq creates any path it's given, so if the manifest renames a field, this would silently add the old one back
+      # instead of filling in the new one. Asserting the placeholders exist first turns that into a failure.
+      yq -e '
+        select(.metadata.name == "" and ([.spec.clusterTemplates[].spec.credentialsSecret.name == ""] | all)) |
+        .metadata.name = strenv(OBJECT_NAME) |
+        .spec.clusterTemplates[] |= .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-" + .metadata.name + "-kubeconfig"
+      ' "${MANIFEST}" | tee /dev/stderr | kubectl create -f=-
+
+      timeout -v "${TIMEOUT}" bash -c 'until kubectl wait --for=condition=Degraded=False kubernetesclusterset/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Progressing=False kubernetesclusterset/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done' || {
+        echo 'Cluster set provisioning timed out. Object status:' >&2
+        kubectl get kubernetesclusterset/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
+        exit 1
+      }
+
+      mapfile -t clusters < <( yq '.spec.clusterTemplates[].metadata.name' "${MANIFEST}" )
+
+      kubeconfigs=()
+      locations=()
+      for cluster in "${clusters[@]}"; do
+        # e2e.sh keys the worker Secrets by file basename, so every cluster's files need a distinct one.
+        kubeconfig="${RUNNER_TEMP}/clusters/${cluster}.kubeconfig"
+        get-provisioned-cluster-kubeconfig "${OBJECT_NAME}-${cluster}-kubeconfig" "${kubeconfig}"
+        kubeconfigs+=( "${cluster}=${kubeconfig}" )
+        locations+=( "${cluster}=$( cluster="${cluster}" yq '.spec.clusterTemplates[] | select(.metadata.name == strenv(cluster)) | .spec.gke.location' "${MANIFEST}" )" )
+      done
+
+      {
+        echo "control-plane-kubeconfig-path=${RUNNER_TEMP}/clusters/${clusters[0]}.kubeconfig"
+        echo "worker-kubeconfigs=$( IFS=','; echo "${kubeconfigs[*]}" )"
+        echo "locations=$( IFS=','; echo "${locations[*]}" )"
+      } >> "${GITHUB_OUTPUT}"

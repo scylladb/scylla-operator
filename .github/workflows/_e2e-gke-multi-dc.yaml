@@ -1,0 +1,132 @@
+name: "E2E: GKE multi-datacenter"
+
+# Runs one e2e suite against a set of GKE clusters with shared networking it creates for the run and deletes
+# afterwards. The suite runs from the first cluster in the set and treats all of them as workers.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        required: true
+        type: string
+      image-ref:
+        description: >-
+          Reference of the Operator image to test, as `name:tag`, `name@digest` or `name:tag@digest`, e.g.
+          `quay.io/scylladb/scylla-operator:1.22.0` or `quay.io/scylladb/scylla-operator@sha256:6a1f0c...`.
+        required: true
+        type: string
+      suite:
+        description: >-
+          Name of the `scylla-operator-tests` suite to run, e.g. `scylla-operator/conformance/multi-datacenter-parallel`.
+        required: true
+        type: string
+    secrets:
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the KubernetesClusterSet and StorageBucket objects in.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-24.04
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 180
+    env:
+      OBJECT_NAME: so-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Materialize the CI provisioners kubeconfig
+      id: provisioners
+      uses: ./.github/actions/ci-provisioning/common/materialize-kubeconfig
+      with:
+        kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+
+    # This workflow names every object it creates after OBJECT_NAME, so the teardown can run unconditionally from here
+    # on, including when provisioning itself fails partway.
+    - name: Provision the cluster set
+      id: cluster-set
+      uses: ./.github/actions/ci-provisioning/gke/provision-cluster-set
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ env.OBJECT_NAME }}
+        manifest: ./hack/.ci/manifests/ci-clusters/gke-multi-dc.yaml
+
+    - name: Provision the object storage buckets
+      id: buckets
+      uses: ./.github/actions/ci-provisioning/gke/provision-buckets
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ env.OBJECT_NAME }}
+        # Each bucket must be in the same region as the cluster using it.
+        locations: ${{ steps.cluster-set.outputs.locations }}
+
+    - name: Run the e2e suite
+      env:
+        KUBECONFIG: ${{ steps.cluster-set.outputs.control-plane-kubeconfig-path }}
+        SO_WORKER_KUBECONFIGS: ${{ steps.cluster-set.outputs.worker-kubeconfigs }}
+        SO_WORKER_OBJECT_STORAGE_BUCKETS: ${{ steps.buckets.outputs.bucket-names }}
+        SO_WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS: ${{ steps.buckets.outputs.credentials-paths }}
+        SO_IMAGE: ${{ inputs.image-ref }}
+        SO_SUITE: ${{ inputs.suite }}
+        SO_E2E_TIMEOUT: 90m
+        SO_SCYLLACLUSTER_NODE_SERVICE_TYPE: Headless
+        SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE: PodIP
+        SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE: PodIP
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS}"
+
+        # INT first so the suite can shut down and the run script still gathers the artifacts; SIGKILL follows 10
+        # minutes later.
+        timeout --verbose --signal=INT --kill-after=10m 120m ./hack/.ci/run-e2e-gke.sh
+
+    # must-gather names files after object names, which can contain colons that upload-artifact rejects, so the
+    # directory goes up as a single tarball.
+    - name: Pack artifacts
+      if: always()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # The directory only exists once the suite step ran, so an earlier failure would otherwise fail this step too.
+        mkdir -p "${ARTIFACTS}"
+        tar -cf "${RUNNER_TEMP}/artifacts.tar" -C "${ARTIFACTS}" .
+
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/artifacts.tar
+        retention-days: 14
+        if-no-files-found: warn
+
+    # The objects carry a TTL, so a leak is bounded rather than permanent, but deleting eagerly frees the quota for
+    # the suites still queued behind this one.
+    - name: Tear down
+      if: always()
+      env:
+        KUBECONFIG: ${{ steps.provisioners.outputs.path }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        kubectl get kubernetesclusterset/"${OBJECT_NAME}" -o=yaml || true
+        kubectl delete --wait=false --ignore-not-found kubernetesclusterset/"${OBJECT_NAME}"
+        # provision-buckets labels the buckets with the name it was given.
+        kubectl delete --wait=false storagebuckets --selector=scylla-operator.scylladb.com/e2e-run="${OBJECT_NAME}"

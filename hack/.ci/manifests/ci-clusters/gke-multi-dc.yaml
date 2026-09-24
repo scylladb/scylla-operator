@@ -1,0 +1,131 @@
+apiVersion: ci.scylladb.com/v1alpha1
+kind: KubernetesClusterSet
+metadata:
+  # Filled in per run.
+  name: ""
+spec:
+  ttlSeconds: 14400
+  networking:
+    type: Shared
+  # The first cluster doubles as the control plane the suite runs from; the run scripts skip its second deploy.
+  clusterTemplates:
+  - metadata:
+      name: europe-west1
+    spec:
+      # Filled in per run.
+      credentialsSecret:
+        name: ""
+      version: "1.35"
+      type: GKE
+      gke:
+        location: europe-west1
+        nodePools:
+        - name: workers
+          locations:
+          - europe-west1-b
+          config:
+            machineType: e2-standard-8
+            diskType: pd-standard
+            diskSizeGB: 40
+            labels:
+              pool: workers
+          initialNodeCount: 1
+        - name: scylladb
+          locations:
+          - europe-west1-b
+          config:
+            machineType: n2d-standard-8
+            diskType: pd-balanced
+            diskSizeGB: 40
+            localNVMeSSDBlockConfig:
+              localSSDCount: 1
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+            taints:
+            - key: scylla-operator.scylladb.com/dedicated
+              value: scyllaclusters
+              effect: NO_SCHEDULE
+            kubeletConfig:
+              cpuManagerPolicy: static
+          initialNodeCount: 1
+  - metadata:
+      name: europe-west3
+    spec:
+      # Filled in per run.
+      credentialsSecret:
+        name: ""
+      version: "1.35"
+      type: GKE
+      gke:
+        location: europe-west3
+        nodePools:
+        - name: workers
+          locations:
+          - europe-west3-a
+          config:
+            machineType: e2-standard-8
+            diskType: pd-standard
+            diskSizeGB: 40
+            labels:
+              pool: workers
+          initialNodeCount: 1
+        - name: scylladb
+          locations:
+          - europe-west3-a
+          config:
+            machineType: n2d-standard-8
+            diskType: pd-balanced
+            diskSizeGB: 40
+            localNVMeSSDBlockConfig:
+              localSSDCount: 1
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+            taints:
+            - key: scylla-operator.scylladb.com/dedicated
+              value: scyllaclusters
+              effect: NO_SCHEDULE
+            kubeletConfig:
+              cpuManagerPolicy: static
+          initialNodeCount: 1
+  - metadata:
+      name: europe-west4
+    spec:
+      # Filled in per run.
+      credentialsSecret:
+        name: ""
+      version: "1.35"
+      type: GKE
+      gke:
+        location: europe-west4
+        nodePools:
+        - name: workers
+          locations:
+          - europe-west4-a
+          config:
+            machineType: e2-standard-8
+            diskType: pd-standard
+            diskSizeGB: 40
+            labels:
+              pool: workers
+          initialNodeCount: 1
+        - name: scylladb
+          locations:
+          - europe-west4-a
+          config:
+            machineType: n2d-standard-8
+            diskType: pd-balanced
+            diskSizeGB: 40
+            localNVMeSSDBlockConfig:
+              localSSDCount: 1
+            labels:
+              pool: scylladb
+              scylla.scylladb.com/node-type: scylla
+            taints:
+            - key: scylla-operator.scylladb.com/dedicated
+              value: scyllaclusters
+              effect: NO_SCHEDULE
+            kubeletConfig:
+              cpuManagerPolicy: static
+          initialNodeCount: 1

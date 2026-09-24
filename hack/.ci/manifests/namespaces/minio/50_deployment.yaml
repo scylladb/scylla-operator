@@ -15,8 +15,11 @@ spec:
     spec:
       containers:
       - name: minio
-        # Final MinIO community release with a published container image; subsequent releases are source-only.
-        image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+        # MinIO has withdrawn its container images: quay.io/minio/minio and docker.io/minio/minio now return
+        # 401 for anonymous pulls of all tags, including the previously pinned final community release. This is the
+        # Bitnami Legacy build of the last freely released MinIO server, frozen with no further updates, and the
+        # closest maintained public mirror. TODO: move to a ScyllaDB-controlled mirror.
+        image: docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20
         command:
         - minio
         - server

@@ -21,20 +21,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
+      - name: Set up KinD cluster
+        env:
+          CLUSTER_NAME: e2e
+          SO_SKIP_DEPLOYMENT: "true"
+        run: ./hack/kind/cluster-setup.sh
+
       - name: Build operator image
-        run: make image IMAGE_TAG=dev
-
-      - name: Create KinD cluster
-        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc
-        with:
-          cluster_name: e2e
-          config: hack/kind/cluster-config.yaml
-
-      - name: Load operator image into KinD
-        run: kind load docker-image docker.io/scylladb/scylla-operator:dev --name=e2e
+        run: ./hack/kind/build-and-push-operator-image.sh dev
 
       - name: Deploy operator (Helm)
-        run: ./hack/ci-deploy-helm.sh scylladb dev
+        run: ./hack/ci-deploy-helm.sh localhost:5001/scylladb dev
 
       - name: Deploy ScyllaDB cluster and verify CQL connectivity (Helm)
         run: ./hack/ci-test-helm-scyllacluster.sh

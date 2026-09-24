@@ -59,22 +59,13 @@ jobs:
       with:
         persist-credentials: false
 
-    # The podman instance backing kind must have its container storage on a host bind mount: left on the container's
-    # own filesystem it would sit on docker's overlayfs, where podman can't use the overlay driver (no nested
-    # overlayfs) and falls back to slower, disk-hungry alternatives. The host path also survives the container for
-    # inspection, and the runner's root disk (~86G free) comfortably fits the kind node image, the images the suites
-    # pull into the cluster, and the PV data.
+    # The podman instance backing kind must have its container storage bind-mounted from a real (non-overlayfs)
+    # filesystem: anywhere else, the volumes podman serves to the kind nodes end up on overlayfs and containerd
+    # inside the nodes fails every overlay mount with EINVAL. RUNNER_TEMP sits on the runner's work volume, which is
+    # backed by the machine's disk both on VM runners and on containerized (dind) ones, where it is also the rare
+    # path mounted identically in the runner and the docker daemon's mount namespace.
     - name: Prepare container storage
-      run: sudo mkdir -p /mnt/containers
-
-    # kind nodes host many pods, each with several watches; the image defaults are too low and manifest as obscure
-    # "too many open files" failures.
-    - name: Raise inotify limits
-      run: |
-        set -euExo pipefail
-        shopt -s inherit_errexit
-
-        sudo sysctl fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
+      run: mkdir -p "${RUNNER_TEMP}/containers"
 
     # The container hosts the kind cluster, so it stays up for the rest of the job: later steps reach the cluster
     # with `docker exec`, and the environment set here is inherited by each of them.
@@ -93,7 +84,7 @@ jobs:
 
         docker run --detach --name=e2e --privileged \
         --volume="${GITHUB_WORKSPACE}:/go/src/github.com/scylladb/scylla-operator" \
-        --volume=/mnt/containers:/var/lib/containers \
+        --volume="${RUNNER_TEMP}/containers:/var/lib/containers" \
         --volume="${ARTIFACTS_HOST}:/artifacts" \
         --workdir=/go/src/github.com/scylladb/scylla-operator \
         --env=ARTIFACTS=/artifacts \
@@ -107,6 +98,11 @@ jobs:
 
         # Disable pids limit to allow high parallelism in tests.
         docker exec e2e sed -i '/\[containers\]/a pids_limit = 0' /etc/containers/containers.conf
+
+        # kind nodes host many pods, each with several watches; the defaults are too low and manifest as obscure
+        # "too many open files" failures. Set from the privileged container: these limits are namespaced, and this
+        # is the namespace the kind nodes inherit, which the runner's own may not reach on containerized runners.
+        docker exec e2e sysctl fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
 
     - name: Run the e2e suite
       run: |

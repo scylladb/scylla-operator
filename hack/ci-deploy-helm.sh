@@ -24,7 +24,7 @@ source_root="$( realpath "$( dirname "${BASH_SOURCE[0]}" )/.." )"
 
 deploy-cert-manager "${source_root}"
 
-helm install scylla-operator "${source_root}/helm/scylla-operator" \
+helm upgrade --install scylla-operator "${source_root}/helm/scylla-operator" \
   --create-namespace \
   --namespace=scylla-operator \
   --set=image.repository="${image_repository}" \

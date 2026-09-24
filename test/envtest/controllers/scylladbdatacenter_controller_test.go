@@ -35,7 +35,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/transport"
 	"k8s.io/client-go/util/retry"
 	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -835,8 +837,15 @@ func leavingOrdinals(enableParallelNodeOperations bool, nodes, target int32) []i
 func setupRolledOutRacks(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
 	g.GinkgoHelper()
 
+	return setupRolledOutRacksWithOptions(ctx, env, scyllaDBDatacenterControllerRunOptions{}, enableParallelNodeOperations, rackNames, nodes)
+}
+
+// setupRolledOutRacksWithOptions is setupRolledOutRacks with the controller run with the given options.
+func setupRolledOutRacksWithOptions(ctx g.SpecContext, env *envtest.Environment, runOptions scyllaDBDatacenterControllerRunOptions, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
+	g.GinkgoHelper()
+
 	g.By("Running ScyllaDBDatacenter controller")
-	runScyllaDBDatacenterController(ctx, env)
+	runScyllaDBDatacenterControllerWithOptions(ctx, env, runOptions)
 
 	g.By("Creating ScyllaOperatorConfig singleton")
 	createScyllaOperatorConfig(ctx, env)
@@ -1282,6 +1291,8 @@ type scyllaDBDatacenterControllerRunOptions struct {
 	cacheOptions []func(*ctrlcache.Options)
 	// controllerOptions are passed to the controller on top of the defaults of every spec.
 	controllerOptions []scylladbdatacenter.ControllerOption
+	// wrapTransport wraps the transport of the manager's rest config, e.g. to hold a watch stream.
+	wrapTransport transport.WrapperFunc
 }
 
 // runScyllaDBDatacenterController runs the controller until the context is done.
@@ -1304,7 +1315,13 @@ func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.
 		opt(&cacheOptions)
 	}
 
-	mgr, err := ctrlmanager.New(e.Config(), ctrlmanager.Options{
+	restConfig := e.Config()
+	if runOptions.wrapTransport != nil {
+		restConfig = rest.CopyConfig(restConfig)
+		restConfig.WrapTransport = transport.Wrappers(restConfig.WrapTransport, runOptions.wrapTransport)
+	}
+
+	mgr, err := ctrlmanager.New(restConfig, ctrlmanager.Options{
 		Scheme: scheme.Scheme,
 		Logger: g.GinkgoLogr,
 		Cache:  cacheOptions,

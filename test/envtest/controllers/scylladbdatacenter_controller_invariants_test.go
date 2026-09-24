@@ -92,6 +92,76 @@ var _ = g.Describe("ScyllaDBDatacenter controller status invariants", func() {
 		waitForServiceToBePrunedAndRecordToDrain(ctx, env, sdc.Name, decommissioningRackName, leavingServiceName)
 	})
 
+	// The rack's scale is decided from the decommissioned labels of its member Services. The Service watch stream is
+	// held from before the controller requests the decommission, so the label never reaches the cache while held: a
+	// sync deciding from the cache would see no leaving node and scale the rack up over it.
+	g.It("should wait for the Service cache to observe a requested decommission before scaling the rack up", func(ctx g.SpecContext) {
+		gate := newWatchGate()
+		sdc := setupRolledOutRacksWithOptions(ctx, env, scyllaDBDatacenterControllerRunOptions{
+			wrapTransport: gate.holdWatches("services"),
+		}, false, []string{decommissioningRackName}, decommissioningInitialNodes)
+		// Registered after the controller, so that the gate opens before the controller is stopped.
+		g.DeferCleanup(gate.Release)
+		rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
+		leavingServiceName := naming.MemberServiceName(sdc.Spec.Racks[0], sdc, int(decommissioningInitialNodes-1))
+
+		expectStatefulSetReplicas := func(co o.Gomega, ctx context.Context) {
+			sts, err := env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()).Get(ctx, rackStatefulSetName, metav1.GetOptions{})
+			co.Expect(err).NotTo(o.HaveOccurred())
+			co.Expect(*sts.Spec.Replicas).To(o.Equal(decommissioningInitialNodes))
+		}
+
+		g.By("Holding the Service watch stream")
+		gate.Hold()
+
+		g.By("Scaling the rack down to one node")
+		scaleRackTemplate(ctx, env, sdc.Name, decommissioningInitialNodes-1)
+
+		g.By("Waiting for the decommission of the leaving node to be requested")
+		waitForServiceDecommissionedLabel(ctx, env, leavingServiceName, naming.LabelValueFalse)
+
+		g.By("Raising the node count above the leaving node while the Service cache hasn't observed the request")
+		scaleRackTemplate(ctx, env, sdc.Name, decommissioningInitialNodes+1)
+
+		g.By("Verifying the rack isn't scaled up while the Service cache is held")
+		o.Consistently(expectStatefulSetReplicas).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultConsistentlyTimeout).WithPolling(invariantPollingInterval).Should(o.Succeed())
+
+		g.By("Releasing the Service watch stream")
+		gate.Release()
+
+		g.By("Waiting for the raised node count to be deferred until the leaving node is pruned")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			progressingCondition := getStatefulSetControllerProgressingCondition(ctx, env, sdc.Name)
+			eo.Expect(progressingCondition).NotTo(o.BeNil())
+			eo.Expect(progressingCondition.Status).To(o.Equal(metav1.ConditionTrue))
+			eo.Expect(progressingCondition.Reason).To(o.ContainSubstring("DeferringRackNodeCountChange"))
+		}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+
+		g.By("Verifying the rack isn't scaled up once the Service cache has caught up")
+		o.Consistently(expectStatefulSetReplicas).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultConsistentlyTimeout).WithPolling(invariantPollingInterval).Should(o.Succeed())
+
+		leavingService, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, leavingServiceName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+		leavingServiceUID := leavingService.UID
+
+		g.By("Marking the node as decommissioned in place of the sidecar")
+		setServiceDecommissionedLabel(ctx, env, leavingServiceName, naming.LabelValueTrue)
+
+		// The scale-down, the pruning and the scale-up can all happen within milliseconds, so verify the end state: a
+		// pruned node comes back as a fresh Service.
+		g.By("Waiting for the leaving node to be removed and the rack to grow to the raised node count")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			sts, err := env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()).Get(ctx, rackStatefulSetName, metav1.GetOptions{})
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(*sts.Spec.Replicas).To(o.Equal(decommissioningInitialNodes + 1))
+
+			svc, err := env.TypedKubeClient().CoreV1().Services(env.Namespace()).Get(ctx, leavingServiceName, metav1.GetOptions{})
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(svc.UID).NotTo(o.Equal(leavingServiceUID))
+			eo.Expect(svc.Labels).NotTo(o.HaveKey(naming.DecommissionedLabel))
+		}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+	})
+
 	g.It("should never regress the published status to a previous generation with a lagging ScyllaDBDatacenter informer", func(ctx g.SpecContext) {
 		g.By("Running ScyllaDBDatacenter controller with a lagging ScyllaDBDatacenter informer")
 		runScyllaDBDatacenterControllerWithOptions(ctx, env, scyllaDBDatacenterControllerRunOptions{

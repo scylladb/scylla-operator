@@ -51,7 +51,7 @@ env:
 jobs:
   e2e:
     name: e2e
-    runs-on: ubuntu-24.04
+    runs-on: hosted-runners-standard-pool
     timeout-minutes: 150
     steps:
     - name: Checkout

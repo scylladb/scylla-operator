@@ -35,10 +35,6 @@ const (
 	// ControllerName names the controller within controller-runtime: in its logs, metrics and the workqueue.
 	ControllerName = "scylladbdatacenter"
 
-	// defaultStatefulSetCachePropagationDelay is the default value for the delay after applying StatefulSet changes
-	// to let informer caches observe the update.
-	defaultStatefulSetCachePropagationDelay = 10 * time.Second
-
 	// reconciliationTimeout bounds a Reconcile. The upgrade hooks call into ScyllaDB and wait for the answer: a drain
 	// has a 5-minute client timeout, and the keyspace snapshots follow it in the same sync. The manager's default
 	// covers the controllers that only talk to the API server, so this one sets its own.
@@ -66,8 +62,6 @@ type Controller struct {
 
 	keyGetter crypto.KeyGenerator
 
-	statefulSetCachePropagationDelay time.Duration
-
 	newScyllaClientFunc NewScyllaClientFunc
 
 	// reconcileObserver, when set, is told about every ScyllaDBDatacenter the controller reconciles.
@@ -80,14 +74,6 @@ var _ reconcile.Reconciler = &Controller{}
 type NewScyllaClientFunc func(hosts []string, authToken string) (*scyllaclient.Client, error)
 
 type ControllerOption func(ctrl *Controller)
-
-// WithStatefulSetCachePropagationDelay overrides the delay after applying StatefulSet changes to let informer caches
-// observe the update.
-func WithStatefulSetCachePropagationDelay(delay time.Duration) ControllerOption {
-	return func(c *Controller) {
-		c.statefulSetCachePropagationDelay = delay
-	}
-}
 
 // WithReconcileObserver has the controller report every ScyllaDBDatacenter it reconciles to observer before syncing
 // it, so that tests can tell which changes enqueue which ScyllaDBDatacenters.
@@ -124,8 +110,6 @@ func NewController(
 		eventRecorder: eventRecorder,
 
 		keyGetter: keyGetter,
-
-		statefulSetCachePropagationDelay: defaultStatefulSetCachePropagationDelay,
 
 		newScyllaClientFunc: controllerhelpers.NewScyllaClientFromToken,
 	}

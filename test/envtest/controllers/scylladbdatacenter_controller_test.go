@@ -46,21 +46,16 @@ import (
 )
 
 const (
-	// scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay disables the production cache-propagation
-	// wait in envtests. Envtest runs the controller and API server in-process, so the default delay only slows tests down.
-	// Tests that need to exercise cache lag should override this.
-	scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay = 0 * time.Second
-
 	scyllaDBDatacenterControllerResyncPeriod = 12 * time.Hour
 
 	// scyllaDBDatacenterControllerDefaultEventuallyTimeout is the default timeout for async envtest assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay or lags an informer, otherwise Eventually
-	// may time out before the controller resumes reconciliation.
+	// Pad accordingly when a test lags an informer, otherwise Eventually may time out before the controller resumes
+	// reconciliation.
 	scyllaDBDatacenterControllerDefaultEventuallyTimeout = 15 * time.Second
 
 	// scyllaDBDatacenterControllerDefaultConsistentlyTimeout is the default window for stability assertions.
-	// Pad accordingly when a test uses a non-zero cache-propagation delay or lags an informer, otherwise Consistently
-	// may pass while the controller is delayed instead of observing real steady state.
+	// Pad accordingly when a test lags an informer, otherwise Consistently may pass while the controller is delayed
+	// instead of observing real steady state.
 	scyllaDBDatacenterControllerDefaultConsistentlyTimeout = 5 * time.Second
 
 	// envtestServiceFinalizer holds a member Service in a terminating state, so that specs can freeze the window
@@ -1280,7 +1275,7 @@ func withInformerLag(obj client.Object, lag time.Duration) func(*ctrlcache.Optio
 type scyllaDBDatacenterControllerRunOptions struct {
 	// cacheOptions are applied to the manager's cache, e.g. to lag one kind behind the API server.
 	cacheOptions []func(*ctrlcache.Options)
-	// controllerOptions are passed to the controller on top of the defaults of every spec.
+	// controllerOptions are passed to the controller.
 	controllerOptions []scylladbdatacenter.ControllerOption
 }
 
@@ -1324,11 +1319,6 @@ func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	options := append([]scylladbdatacenter.ControllerOption{
-		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
-		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
-	}, runOptions.controllerOptions...)
-
 	sdcc := scylladbdatacenter.NewController(
 		ctrlclient.NewReadYourWritesClient(mgr.GetClient()),
 		mgr.GetAPIReader(),
@@ -1336,7 +1326,7 @@ func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.
 		envtestOperatorImage,
 		scylla.DefaultNativeTransportPort,
 		newStaticKeyGenerator(),
-		options...,
+		runOptions.controllerOptions...,
 	)
 	err = sdcc.SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: 1,

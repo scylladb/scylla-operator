@@ -35,10 +35,10 @@ runs:
       LOCATION: ${{ inputs.location }}
       TTL_SECONDS: ${{ inputs.ttl-seconds }}
     run: |
-      set -euExo pipefail
-      shopt -s inherit_errexit
+      source ./hack/.ci/lib/ci-provisioning.sh
 
-      kubectl create -f - <<EOF
+      credentials="${RUNNER_TEMP}/gcs-service-account.json"
+      provision-storage-bucket "${OBJECT_NAME}" "${credentials}" <<EOF
       apiVersion: ci.scylladb.com/v1alpha1
       kind: StorageBucket
       metadata:
@@ -51,11 +51,6 @@ runs:
         credentialsSecret:
           name: "${OBJECT_NAME}-gcs-service-account"
       EOF
-
-      timeout -v 5m bash -c 'until kubectl wait --for=condition=Degraded=False storagebucket/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Progressing=False storagebucket/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done'
-
-      credentials="${RUNNER_TEMP}/gcs-service-account.json"
-      ( umask 077; kubectl get secret/"${OBJECT_NAME}-gcs-service-account" --template='{{ index .data "gcs-service-account.json" }}' | base64 -d > "${credentials}" )
 
       {
         echo "bucket-name=$( kubectl get storagebucket/"${OBJECT_NAME}" --template='{{ .status.bucketName }}' )"

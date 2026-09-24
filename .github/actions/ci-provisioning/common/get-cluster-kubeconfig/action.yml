@@ -23,18 +23,9 @@ runs:
       KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
       SECRET_NAME: ${{ inputs.secret-name }}
     run: |
-      set -euExo pipefail
-      shopt -s inherit_errexit
+      source ./hack/.ci/lib/ci-provisioning.sh
 
       kubeconfig="${RUNNER_TEMP}/kubeconfig"
-      ( umask 077; kubectl get secret/"${SECRET_NAME}" --template='{{ .data.kubeconfig }}' | base64 -d > "${kubeconfig}" )
-
-      # The e2e machinery creates its own namespaces; pointing the current context at a nonexistent one keeps an
-      # unqualified command from silently acting on `default`.
-      kubectl --kubeconfig="${kubeconfig}" config set-context --current --namespace 'default-unexisting-namespace'
-
-      # Sanity check.
-      kubectl --kubeconfig="${kubeconfig}" version -o yaml
-      kubectl --kubeconfig="${kubeconfig}" config view
+      get-provisioned-cluster-kubeconfig "${SECRET_NAME}" "${kubeconfig}"
 
       echo "path=${kubeconfig}" >> "${GITHUB_OUTPUT}"

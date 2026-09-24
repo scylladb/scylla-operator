@@ -73,6 +73,33 @@
       "enabled": false
     },
     {
+      "description": "Major updates that change the module path and cannot be applied mechanically. yaml.v2 is required by go.uber.org/config; jsonpatch/v2 is pinned by controller-runtime.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "matchPackageNames": [
+        "gopkg.in/yaml.v2",
+        "gomodules.xyz/jsonpatch/v2"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "glob v1 drops the glob.Glob interface, which vendored scylla-manager's inexlist still uses. Re-enable once github.com/scylladb/scylla-manager/v3/pkg/util is on glob v1.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "matchPackageNames": [
+        "github.com/gobwas/glob"
+      ],
+      "enabled": false
+    },
+    {
       "description": "cert-manager dependency should be updated every weekday",
       "matchDepNames": [
         "cert-manager"

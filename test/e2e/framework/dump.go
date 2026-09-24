@@ -16,7 +16,7 @@ import (
 )
 
 func DumpResource(ctx context.Context, restConfig *rest.Config, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface, corev1Client corev1client.CoreV1Interface, artifactsDir string, resourceInfo *collect.ResourceInfo, namespace string, name string) error {
-	discoverer := collect.NewResourceDiscoverer(true, discoveryClient)
+	discoverer := collect.NewResourceDiscoverer(false, discoveryClient)
 	discoveredResources, err := discoverer.DiscoverResources()
 	if err != nil {
 		return fmt.Errorf("can't discover resources: %w", err)

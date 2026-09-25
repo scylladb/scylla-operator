@@ -28,8 +28,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-// Not part of SuiteKindFast: requires external object storage configured on the cluster.
-var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
+var _ = g.Describe("ScyllaDBManagerTask and ScyllaDBDatacenter integration with global ScyllaDB Manager", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {
@@ -410,7 +409,7 @@ func setUpObjectStorageCredentials(ctx context.Context, ns string, nsClient fram
 		s3CredentialsFile := objectStorageSettings.S3CredentialsFile()
 		o.Expect(s3CredentialsFile).NotTo(o.BeEmpty())
 
-		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sdc, ns, s3CredentialsFile)
+		setUpS3Credentials(ctx, nsClient.KubeClient().CoreV1(), sdc, ns, s3CredentialsFile, objectStorageSettings.S3AgentConfig())
 
 	}
 }
@@ -453,7 +452,7 @@ func setUpGCSCredentials(ctx context.Context, coreClient corev1client.CoreV1Inte
 	})
 }
 
-func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, namespace string, s3CredentialsFile []byte) {
+func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter, namespace string, s3CredentialsFile []byte, s3AgentConfig []byte) {
 	g.GinkgoHelper()
 
 	secret := &corev1.Secret{
@@ -467,6 +466,23 @@ func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Inter
 
 	secret, err := coreClient.Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
+
+	// An optional custom agent config allows overriding the S3 endpoint, e.g. to point at MinIO.
+	if len(s3AgentConfig) > 0 {
+		agentConfigSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: "s3-agent-config-",
+			},
+			Data: map[string][]byte{
+				naming.ScyllaAgentConfigFileName: s3AgentConfig,
+			},
+		}
+
+		agentConfigSecret, err = coreClient.Secrets(namespace).Create(ctx, agentConfigSecret, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef = pointer.Ptr(agentConfigSecret.Name)
+	}
 
 	sdc.Spec.RackTemplate.ScyllaDBManagerAgent.Volumes = append(sdc.Spec.RackTemplate.ScyllaDBManagerAgent.Volumes, corev1.Volume{
 		Name: "aws-credentials",

@@ -13,6 +13,13 @@ source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 # It is used in multi-datacenter setups.
 declare -A WORKER_KUBECONFIGS
 
+# WORKER_IN_CLUSTER_KUBECONFIGS is an associative array that optionally maps worker cluster identifiers to kubeconfig
+# paths reachable from within the control plane cluster (e.g. KinD's --internal kubeconfigs). When set for a worker,
+# it is used instead of its WORKER_KUBECONFIGS entry as the source of the worker-kubeconfigs Secret mounted into the
+# e2e Pod, mirroring what IN_CLUSTER_KUBECONFIG does for the main cluster. Host-side operations (deployment, artifact
+# gathering) keep using WORKER_KUBECONFIGS.
+declare -A WORKER_IN_CLUSTER_KUBECONFIGS
+
 # WORKER_OBJECT_STORAGE_BUCKETS is an associative array that maps worker cluster identifiers to their object storage
 # bucket names. It is used in multi-datacenter setups.
 declare -A WORKER_OBJECT_STORAGE_BUCKETS
@@ -293,12 +300,18 @@ function run-e2e {
   kubectl create -n=e2e secret generic kubeconfig --from-file=kubeconfig="${KUBECONFIG_SECRET_SOURCE}" --dry-run=client -o=yaml | kubectl_create -f=-
 
   # Create a Secret including _all_ workers' kubeconfigs (including the main cluster's kubeconfig if present in WORKER_KUBECONFIGS).
-  kubectl create -n=e2e secret generic worker-kubeconfigs ${WORKER_KUBECONFIGS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  # Workers with an entry in WORKER_IN_CLUSTER_KUBECONFIGS use it as the Secret source instead of their
+  # WORKER_KUBECONFIGS entry, mirroring what IN_CLUSTER_KUBECONFIG does for the main cluster above.
+  declare -A worker_kubeconfig_secret_sources
+  for key in "${!WORKER_KUBECONFIGS[@]}"; do
+    worker_kubeconfig_secret_sources["${key}"]="${WORKER_IN_CLUSTER_KUBECONFIGS[${key}]:-${WORKER_KUBECONFIGS[${key}]}}"
+  done
+  kubectl create -n=e2e secret generic worker-kubeconfigs ${worker_kubeconfig_secret_sources[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
   # Build a comma-separated string following a `<cluster_identifier>=<kubeconfig_path_in_container>` format expected by `--worker-kubeconfigs` flag.
   worker_kubeconfigs_in_container_paths=$(
     res=()
-    for key in "${!WORKER_KUBECONFIGS[@]}"; do
-      basename="${WORKER_KUBECONFIGS[$key]##*/}"
+    for key in "${!worker_kubeconfig_secret_sources[@]}"; do
+      basename="${worker_kubeconfig_secret_sources[$key]##*/}"
       in_container_path="${basename/#//var/run/secrets/worker-kubeconfigs/}"
       res+=( "${key}=${in_container_path}" )
     done

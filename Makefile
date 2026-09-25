@@ -87,6 +87,9 @@ GO_LD_FLAGS ?=-ldflags '$(strip $(call version-ldflags,$(GO_PACKAGE)/pkg/build) 
 RENOVATE_CONFIG ?=./renovate.json
 
 KIND_CLUSTER_NAME=scylla-operator-e2e
+KIND_IPV6_CLUSTER_NAME=scylla-operator-e2e-ipv6
+KIND_MULTI_DC_CLUSTER_NAME=scylla-operator-e2e-multi-dc
+KIND_RELEASE_DEPLOY_CLUSTER_NAME=scylla-operator-release-deploy
 KIND_OPERATOR_UPGRADE_CLUSTER_NAME=kind-operator-upgrade
 
 # TODO: look into how to make these local to the targets
@@ -884,6 +887,23 @@ kind-teardown:
 test-e2e-kind: kind-setup
 	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/run-e2e-tests.sh
 .PHONY: test-e2e-kind
+
+kind-setup-ipv6:
+	CLUSTER_NAME=$(KIND_IPV6_CLUSTER_NAME) KIND_IP_FAMILY=dual ./hack/kind/cluster-setup.sh
+.PHONY: kind-setup-ipv6
+
+test-e2e-kind-ipv6: kind-setup-ipv6
+	CLUSTER_NAME=$(KIND_IPV6_CLUSTER_NAME) SO_SUITE=scylla-operator/conformance/parallel-ipv6 ./hack/kind/run-e2e-tests.sh
+.PHONY: test-e2e-kind-ipv6
+
+test-e2e-kind-multi-dc:
+	CLUSTER_NAME=$(KIND_MULTI_DC_CLUSTER_NAME) ./hack/kind/run-e2e-multi-dc-tests.sh
+.PHONY: test-e2e-kind-multi-dc
+
+# This target verifies that the release deploy script (hack/ci-deploy-release.sh) works against a kind cluster.
+test-release-deploy-kind:
+	CLUSTER_NAME=$(KIND_RELEASE_DEPLOY_CLUSTER_NAME) ./hack/kind/run-release-deploy.sh
+.PHONY: test-release-deploy-kind
 
 # This target runs a modified kind-setup on its own (no auto deployment)
 test-e2e-kind-operator-upgrade:

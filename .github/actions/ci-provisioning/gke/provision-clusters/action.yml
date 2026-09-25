@@ -1,0 +1,106 @@
+name: Provision GKE clusters
+description: >-
+  Creates a KubernetesClusterSet, or a single KubernetesCluster, from a manifest, waits for it to bootstrap, and
+  extracts the kubeconfig of every cluster it provisioned.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  name:
+    description: Name for the provisioned object.
+    required: true
+  manifest:
+    description: >-
+      KubernetesClusterSet or KubernetesCluster manifest with empty metadata.name and credentialsSecret.name
+      placeholders.
+    required: true
+  timeout:
+    description: How long to wait for the object to bootstrap.
+    required: false
+    default: 15m
+
+outputs:
+  kubeconfigs:
+    description: >-
+      Kubeconfig path per cluster, as `<cluster>=<path>,...`, in manifest order. A single cluster is keyed `default`.
+    value: ${{ steps.provision.outputs.kubeconfigs }}
+  locations:
+    description: GKE location per cluster, as `<cluster>=<location>,...`, for colocating other resources with them.
+    value: ${{ steps.provision.outputs.locations }}
+
+runs:
+  using: composite
+  steps:
+  - id: provision
+    shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      OBJECT_NAME: ${{ inputs.name }}
+      MANIFEST: ${{ inputs.manifest }}
+      TIMEOUT: ${{ inputs.timeout }}
+    run: |
+      source ./hack/.ci/lib/ci-provisioning.sh
+
+      # Both branches name every cluster's kubeconfig Secret `<object>-<cluster>-kubeconfig` and fill `locations` with
+      # `<cluster>=<location>` entries, so everything after the case is kind-agnostic.
+      # yq creates any path it's given, so if the manifest renames a field, the fill-in would silently add the old one
+      # back instead of filling in the new one. Asserting the placeholders exist first turns that into a failure.
+      kind="$( yq '.kind' "${MANIFEST}" )"
+      case "${kind}" in
+      KubernetesCluster)
+        yq -e '
+          select(.metadata.name == "" and .spec.credentialsSecret.name == "") |
+          .metadata.name = strenv(OBJECT_NAME) |
+          .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-default-kubeconfig"
+        ' "${MANIFEST}" | tee /dev/stderr | kubectl create -f=-
+
+        kubectl wait --timeout="${TIMEOUT}" \
+          --for=condition=Degraded=False \
+          --for=condition=Progressing=False \
+          --for=condition=ClusterBootstrapped=True \
+          kubernetescluster/"${OBJECT_NAME}" || {
+          echo 'Cluster provisioning timed out. Object status:' >&2
+          kubectl get kubernetescluster/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
+          exit 1
+        }
+
+        locations=( "default=$( yq '.spec.gke.location' "${MANIFEST}" )" )
+        ;;
+      KubernetesClusterSet)
+        yq -e '
+          select(.metadata.name == "" and ([.spec.clusterTemplates[].spec.credentialsSecret.name == ""] | all)) |
+          .metadata.name = strenv(OBJECT_NAME) |
+          .spec.clusterTemplates[] |= .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-" + .metadata.name + "-kubeconfig"
+        ' "${MANIFEST}" | tee /dev/stderr | kubectl create -f=-
+
+        # The set's Progressing condition aggregates ClusterBootstrapped over its clusters.
+        kubectl wait --timeout="${TIMEOUT}" \
+          --for=condition=Degraded=False \
+          --for=condition=Progressing=False \
+          kubernetesclusterset/"${OBJECT_NAME}" || {
+          echo 'Cluster set provisioning timed out. Object status:' >&2
+          kubectl get kubernetesclusterset/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
+          exit 1
+        }
+
+        mapfile -t locations < <( yq '.spec.clusterTemplates[] | .metadata.name + "=" + .spec.gke.location' "${MANIFEST}" )
+        ;;
+      *)
+        echo "Unsupported manifest kind ${kind}" >&2
+        exit 2
+        ;;
+      esac
+
+      kubeconfigs=()
+      for cluster in "${locations[@]%%=*}"; do
+        # e2e.sh keys the worker Secrets by file basename, so every cluster's file needs a distinct one.
+        kubeconfig="${RUNNER_TEMP}/clusters/${cluster}.kubeconfig"
+        get-provisioned-cluster-kubeconfig "${KUBECONFIG}" "${OBJECT_NAME}-${cluster}-kubeconfig" "${kubeconfig}"
+        kubeconfigs+=( "${cluster}=${kubeconfig}" )
+      done
+
+      {
+        echo "kubeconfigs=$( IFS=','; echo "${kubeconfigs[*]}" )"
+        echo "locations=$( IFS=','; echo "${locations[*]}" )"
+      } >> "${GITHUB_OUTPUT}"

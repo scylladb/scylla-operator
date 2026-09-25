@@ -70,23 +70,16 @@ jobs:
         manifest: ${{ inputs.cluster-manifest }}
         cloud-init-path: ./hack/.ci/oke/cloud-init-scylladb-node.sh
 
-    - name: Get the provisioned cluster's kubeconfig
-      id: kubeconfig
-      uses: ./.github/actions/ci-provisioning/common/get-cluster-kubeconfig
-      with:
-        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
-        secret-name: ${{ steps.cluster.outputs.kubeconfig-secret-name }}
-
     # The OCI provider doesn't support node taints, so this step applies them instead of setting them through the
     # node pool.
     - name: Taint the ScyllaDB nodes
       env:
-        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
+        KUBECONFIG: ${{ steps.cluster.outputs.kubeconfig-path }}
       run: kubectl taint nodes --overwrite --selector=scylla.scylladb.com/node-type=scylla scylla-operator.scylladb.com/dedicated=scyllaclusters:NoSchedule
 
     - name: Run the e2e suite
       env:
-        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
+        KUBECONFIG: ${{ steps.cluster.outputs.kubeconfig-path }}
         SO_IMAGE: ${{ inputs.image-ref }}
         SO_SUITE: ${{ inputs.suite }}
         SO_E2E_TIMEOUT: 90m
@@ -134,5 +127,4 @@ jobs:
         set -euExo pipefail
         shopt -s inherit_errexit
 
-        kubectl get oraclekubernetesenginecluster/"${OBJECT_NAME}" -o=yaml || true
         kubectl delete --wait=false --ignore-not-found oraclekubernetesenginecluster/"${OBJECT_NAME}"

@@ -103,26 +103,12 @@ jobs:
         # minutes later.
         timeout --verbose --signal=INT --kill-after=10m 120m ./hack/.ci/run-e2e-oke.sh
 
-    # must-gather names files after object names, which can contain colons that upload-artifact rejects, so the
-    # directory goes up as a single tarball.
-    - name: Pack artifacts
+    - name: Pack and upload artifacts
       if: always()
-      run: |
-        set -euExo pipefail
-        shopt -s inherit_errexit
-
-        # The directory only exists once the suite step ran, so an earlier failure would otherwise fail this step too.
-        mkdir -p "${ARTIFACTS}"
-        tar -cf "${RUNNER_TEMP}/artifacts.tar" -C "${ARTIFACTS}" .
-
-    - name: Upload artifacts
-      if: always()
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: ./.github/actions/pack-and-upload-artifacts
       with:
         name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
-        path: ${{ runner.temp }}/artifacts.tar
-        retention-days: 14
-        if-no-files-found: warn
+        directory: ${{ env.ARTIFACTS }}
 
     # The object carries a TTL, so a leak is bounded rather than permanent, but deleting eagerly frees the quota for
     # the suites still queued behind this one.

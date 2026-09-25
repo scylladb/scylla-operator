@@ -1,0 +1,80 @@
+name: "E2E: kind suite"
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the artifact name.
+        required: true
+        type: string
+      suite:
+        description: Name of the `scylla-operator-tests` suite to run, e.g. `kind-fast`.
+        required: true
+        type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      enable-parallel-node-operations:
+        description: >-
+          Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the
+          field defaulted.
+        required: false
+        default: ""
+        type: string
+      parallelism:
+        description: Test parallelism within the suite. 0 falls back to the suite's default.
+        required: false
+        default: 0
+        type: number
+      e2e-timeout:
+        description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
+        required: false
+        default: 90m
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Start the kind e2e container
+      uses: ./.github/actions/kind-e2e/start-container
+      with:
+        artifacts-dir: ${{ github.workspace }}/artifacts
+
+    - name: Run the e2e suite
+      uses: ./.github/actions/kind-e2e/run-suite
+      with:
+        suite: ${{ inputs.suite }}
+        scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+        enable-parallel-node-operations: ${{ inputs.enable-parallel-node-operations }}
+        parallelism: ${{ inputs.parallelism }}
+        e2e-timeout: ${{ inputs.e2e-timeout }}
+
+    - name: Dump cluster state
+      if: failure()
+      uses: ./.github/actions/kind-e2e/dump-cluster-state
+
+    - name: Pack and upload artifacts
+      if: always()
+      uses: ./.github/actions/pack-and-upload-artifacts
+      with:
+        name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
+        directory: ${{ github.workspace }}/artifacts
+        # The container producing the artifacts runs as root.
+        sudo: "true"

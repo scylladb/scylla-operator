@@ -1,0 +1,59 @@
+name: Run the kind e2e suite
+description: >
+  Runs one `scylla-operator-tests` suite via `make test-e2e-kind` in the container started by the
+  kind-e2e/start-container action.
+
+inputs:
+  suite:
+    description: Name of the `scylla-operator-tests` suite to run, e.g. `kind-fast`.
+    required: true
+  scylladb-image-ref:
+    description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+    required: false
+    default: ""
+  enable-parallel-node-operations:
+    description: >-
+      Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the field
+      defaulted.
+    required: false
+    default: ""
+  parallelism:
+    description: Test parallelism within the suite. 0 falls back to the suite's default.
+    required: false
+    default: "0"
+  e2e-timeout:
+    description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
+    required: false
+    default: 90m
+  container-name:
+    description: Name of the container started by kind-e2e/start-container.
+    required: false
+    default: e2e
+
+runs:
+  using: composite
+  steps:
+    - name: Run the e2e suite
+      shell: bash
+      env:
+        CONTAINER_NAME: ${{ inputs.container-name }}
+        SO_SUITE: ${{ inputs.suite }}
+        SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+        SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
+        SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
+        SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        docker exec \
+        --env=SO_SUITE \
+        --env=SCYLLADB_IMAGE_REF \
+        --env=SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS \
+        --env=SO_E2E_PARALLELISM \
+        --env=SO_E2E_TIMEOUT \
+        "${CONTAINER_NAME}" \
+        /usr/bin/bash -euExo pipefail -O inherit_errexit -c '
+          # INT first so the suite can shut down and artifacts still get gathered; SIGKILL follows 10 minutes later.
+          timeout --verbose --signal=INT --kill-after=10m 120m make test-e2e-kind
+        '

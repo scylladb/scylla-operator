@@ -1,0 +1,33 @@
+name: "E2E: kind"
+
+# The kind-based e2e suites, ported from the prow presubmits. Called from the PR workflow, where the check-required
+# aggregate gates the merge on them; dispatchable manually as well.
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind-fast:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: e2e-kind-fast
+      suite: kind-fast
+
+  e2e-kind-scylladb-monitoring-old-node-exporter:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: e2e-kind-scylladb-monitoring-old-node-exporter
+      suite: kind-scylladb-monitoring
+      # Verify that the old node-exporter bundling within the ScyllaDB container (before 2026.3) is not broken
+      # (for as long as we support <2026.3).
+      scylladb-image-ref: docker.io/scylladb/scylla:2026.2.6
+
+  e2e-kind-cluster-topology-sequential:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: e2e-kind-cluster-topology-sequential
+      suite: kind-cluster-topology
+      enable-parallel-node-operations: "false"

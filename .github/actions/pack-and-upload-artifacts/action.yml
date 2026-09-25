@@ -1,0 +1,49 @@
+name: Pack and upload artifacts
+description: >
+  Uploads an artifacts directory as a single tarball. must-gather names files after object names, which can contain
+  colons that upload-artifact rejects, so the directory goes up packed.
+
+inputs:
+  name:
+    description: Name to upload the artifact under.
+    required: true
+  directory:
+    description: Directory to pack and upload.
+    required: true
+  retention-days:
+    description: Retention for the uploaded artifact, in days.
+    required: false
+    default: "14"
+  sudo:
+    description: Pack with sudo, for directories with content the runner user cannot read, e.g. written by a root container.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Pack artifacts
+      shell: bash
+      env:
+        DIRECTORY: ${{ inputs.directory }}
+        SUDO: ${{ inputs.sudo }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # The directory only exists once the suite ran, so an earlier failure would otherwise fail this step too.
+        mkdir -p "${DIRECTORY}"
+
+        tar=( tar )
+        if [[ "${SUDO}" == "true" ]]; then
+          tar=( sudo tar )
+        fi
+        "${tar[@]}" -cf "${RUNNER_TEMP}/artifacts.tar" -C "${DIRECTORY}" .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ runner.temp }}/artifacts.tar
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: warn

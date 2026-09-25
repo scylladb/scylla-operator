@@ -1,0 +1,44 @@
+name: Dump the kind cluster state
+description: >
+  Dumps the basic state of the kind cluster and its host into the artifacts. Meant for failures before the suite
+  starts, which leave no must-gather behind; the kind cluster dies with the job, so this collects while it is still
+  around. Every probe is best-effort.
+
+inputs:
+  container-name:
+    description: Name of the container started by kind-e2e/start-container.
+    required: false
+    default: e2e
+  cluster-name:
+    description: Name of the kind cluster, as set by the Makefile's KIND_CLUSTER_NAME.
+    required: false
+    default: scylla-operator-e2e
+
+runs:
+  using: composite
+  steps:
+    - name: Dump cluster state
+      shell: bash
+      env:
+        CONTAINER_NAME: ${{ inputs.container-name }}
+        CLUSTER_NAME: ${{ inputs.cluster-name }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        docker exec --env=CLUSTER_NAME "${CONTAINER_NAME}" /usr/bin/bash -euExo pipefail -O inherit_errexit -c '
+          export KIND_EXPERIMENTAL_PROVIDER=podman
+          kubeconfig="$( mktemp )"
+          kind get kubeconfig --name="${CLUSTER_NAME}" > "${kubeconfig}" || true
+          export KUBECONFIG="${kubeconfig}"
+          kubectl get nodes -o=wide |& tee "${ARTIFACTS}/debug-nodes.txt" || true
+          kubectl get pods -A -o=wide |& tee "${ARTIFACTS}/debug-pods.txt" || true
+          kubectl get events -A --sort-by=.lastTimestamp &> "${ARTIFACTS}/debug-events.txt" || true
+          kubectl describe pods -A &> "${ARTIFACTS}/debug-describe-pods.txt" || true
+
+          # Machine facts and node-level logs, for failures the cluster API cannot explain.
+          { nproc; free -h; df -h /var/lib/containers; ulimit -a; sysctl fs.inotify; stat -fc %T /sys/fs/cgroup; } \
+            &> "${ARTIFACTS}/debug-system.txt" || true
+          podman ps -a &> "${ARTIFACTS}/debug-podman-ps.txt" || true
+          kind export logs --name="${CLUSTER_NAME}" "${ARTIFACTS}/kind-logs" &> "${ARTIFACTS}/debug-kind-export.txt" || true
+        '

@@ -30,6 +30,9 @@ jobs:
       - name: Verify commit messages
         run: ./hack/.ci/verify-commits.sh "${{ github.event.pull_request.base.sha }}"
 
+  e2e-kind:
+    uses: ./.github/workflows/e2e-kind.yaml
+
   # The merge automation gates on a fixed set of contexts it is configured with, so individual GitHub Actions
   # checks are invisible to it. This aggregate is the single context it can be told to require once these jobs
   # have matured, which keeps wiring further jobs into the merge gate a one-line change here.
@@ -38,6 +41,7 @@ jobs:
     needs:
     - ci
     - verify-commits
+    - e2e-kind
     if: always()
     steps:
     - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')

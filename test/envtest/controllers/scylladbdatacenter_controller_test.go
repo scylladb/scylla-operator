@@ -17,12 +17,13 @@ import (
 	o "github.com/onsi/gomega"
 	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/scylla"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
@@ -33,10 +34,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/informers"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/transport"
 	"k8s.io/client-go/util/retry"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 const (
@@ -829,8 +837,15 @@ func leavingOrdinals(enableParallelNodeOperations bool, nodes, target int32) []i
 func setupRolledOutRacks(ctx g.SpecContext, env *envtest.Environment, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
 	g.GinkgoHelper()
 
+	return setupRolledOutRacksWithOptions(ctx, env, scyllaDBDatacenterControllerRunOptions{}, enableParallelNodeOperations, rackNames, nodes)
+}
+
+// setupRolledOutRacksWithOptions is setupRolledOutRacks with the controller run with the given options.
+func setupRolledOutRacksWithOptions(ctx g.SpecContext, env *envtest.Environment, runOptions scyllaDBDatacenterControllerRunOptions, enableParallelNodeOperations bool, rackNames []string, nodes int32) *scyllav1alpha1.ScyllaDBDatacenter {
+	g.GinkgoHelper()
+
 	g.By("Running ScyllaDBDatacenter controller")
-	runScyllaDBDatacenterController(ctx, env)
+	runScyllaDBDatacenterControllerWithOptions(ctx, env, runOptions)
 
 	g.By("Creating ScyllaOperatorConfig singleton")
 	createScyllaOperatorConfig(ctx, env)
@@ -1246,33 +1261,38 @@ func (g *staticKeyGenerator) GetKeyType() crypto.KeyType {
 	return crypto.ECDSAKeyType
 }
 
-// informerLagTransform returns an informer transform that delays every event of the objects selected by lags before
-// it reaches the informer cache, keeping the cache behind the API server by lag. The objects are not modified.
-// Informer caches give no read-your-writes and in envtest they catch up within microseconds; a lagging informer
-// widens the window in which the controller decides from a cache that hasn't observed its own writes yet.
-func informerLagTransform(lag time.Duration, lags func(obj any) bool) cache.TransformFunc {
+// informerLagTransform returns an informer transform that delays every event before it reaches the informer cache,
+// keeping the cache behind the API server by lag. The objects are not modified. Informer caches give no
+// read-your-writes on their own and in envtest they catch up within microseconds; a lagging informer widens the window
+// in which the controller decides from a cache that hasn't observed its own writes yet.
+func informerLagTransform(lag time.Duration) cache.TransformFunc {
 	return func(obj any) (any, error) {
-		selected := obj
-		if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-			selected = tombstone.Obj
-		}
-		if lags(selected) {
-			time.Sleep(lag)
-		}
+		time.Sleep(lag)
 
 		return obj, nil
 	}
 }
 
+// withInformerLag keeps the informer of obj's kind behind the API server by lag.
+func withInformerLag(obj client.Object, lag time.Duration) func(*ctrlcache.Options) {
+	return func(opts *ctrlcache.Options) {
+		if opts.ByObject == nil {
+			opts.ByObject = map[client.Object]ctrlcache.ByObject{}
+		}
+		opts.ByObject[obj] = ctrlcache.ByObject{
+			Transform: informerLagTransform(lag),
+		}
+	}
+}
+
 // scyllaDBDatacenterControllerRunOptions tunes how a spec runs the controller.
 type scyllaDBDatacenterControllerRunOptions struct {
-	// kubeInformerOptions are applied to the informers of the Kubernetes objects, e.g. to lag one kind behind the API
-	// server.
-	kubeInformerOptions []informers.SharedInformerOption
-	// scyllaInformerOptions are applied to the namespaced informers of the Scylla objects.
-	scyllaInformerOptions []scyllainformers.SharedInformerOption
+	// cacheOptions are applied to the manager's cache, e.g. to lag one kind behind the API server.
+	cacheOptions []func(*ctrlcache.Options)
 	// controllerOptions are passed to the controller on top of the defaults of every spec.
 	controllerOptions []scylladbdatacenter.ControllerOption
+	// wrapTransport wraps the transport of the manager's rest config, e.g. to hold a watch stream.
+	wrapTransport transport.WrapperFunc
 }
 
 // runScyllaDBDatacenterController runs the controller until the context is done.
@@ -1286,72 +1306,70 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.Environment, runOptions scyllaDBDatacenterControllerRunOptions) {
 	g.GinkgoHelper()
 
-	kubeClient := e.TypedKubeClient()
-	scyllaClient := e.ScyllaClient()
-	kubeInformers := informers.NewSharedInformerFactoryWithOptions(
-		kubeClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		append([]informers.SharedInformerOption{
-			informers.WithNamespace(e.Namespace()),
-		}, runOptions.kubeInformerOptions...)...,
-	)
-	scyllaInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		scyllaClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		append([]scyllainformers.SharedInformerOption{
-			scyllainformers.WithNamespace(e.Namespace()),
-		}, runOptions.scyllaInformerOptions...)...,
-	)
-	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
-		scyllaClient,
-		scyllaDBDatacenterControllerResyncPeriod,
-		scyllainformers.WithNamespace(corev1.NamespaceAll),
-	)
-	keyGenerator := newStaticKeyGenerator()
+	// The controller runs under a controller-runtime manager like in the operator binary, reading through the
+	// manager's read-your-writes client. The cache watches all namespaces: every spec gets its own API server.
+	cacheOptions := ctrlcache.Options{
+		SyncPeriod: new(scyllaDBDatacenterControllerResyncPeriod),
+	}
+	for _, opt := range runOptions.cacheOptions {
+		opt(&cacheOptions)
+	}
+
+	restConfig := e.Config()
+	if runOptions.wrapTransport != nil {
+		restConfig = rest.CopyConfig(restConfig)
+		restConfig.WrapTransport = transport.Wrappers(restConfig.WrapTransport, runOptions.wrapTransport)
+	}
+
+	mgr, err := ctrlmanager.New(restConfig, ctrlmanager.Options{
+		Scheme: scheme.Scheme,
+		Logger: g.GinkgoLogr,
+		Cache:  cacheOptions,
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				EnableReadYourWritesConsistency: new(true),
+			},
+		},
+		Controller: config.Controller{
+			// Every spec runs its own manager in this process; controller names are only unique within one.
+			SkipNameValidation: new(true),
+		},
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
+		HealthProbeBindAddress: "0",
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
 
 	options := append([]scylladbdatacenter.ControllerOption{
 		// The default delay only slows tests down; tests that need to exercise cache lag should override this.
 		scylladbdatacenter.WithStatefulSetCachePropagationDelay(scyllaDBDatacenterControllerDisabledStatefulSetCachePropagationDelay),
 	}, runOptions.controllerOptions...)
 
-	sdcc, err := scylladbdatacenter.NewController(
-		kubeClient,
-		scyllaClient.ScyllaV1alpha1(),
-		kubeInformers.Core().V1().Pods(),
-		kubeInformers.Core().V1().Services(),
-		kubeInformers.Core().V1().Secrets(),
-		kubeInformers.Core().V1().ConfigMaps(),
-		kubeInformers.Core().V1().ServiceAccounts(),
-		kubeInformers.Rbac().V1().RoleBindings(),
-		kubeInformers.Apps().V1().StatefulSets(),
-		kubeInformers.Policy().V1().PodDisruptionBudgets(),
-		kubeInformers.Networking().V1().Ingresses(),
-		kubeInformers.Batch().V1().Jobs(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
-		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenterNodesStatusReports(),
-		scyllaGlobalInformers.Scylla().V1alpha1().ScyllaOperatorConfigs(),
+	sdcc := scylladbdatacenter.NewController(
+		ctrlclient.NewReadYourWritesClient(mgr.GetClient()),
+		mgr.GetAPIReader(),
+		mgr.GetEventRecorderFor("scylladbdatacenter-controller"),
 		envtestOperatorImage,
 		scylla.DefaultNativeTransportPort,
-		keyGenerator,
+		newStaticKeyGenerator(),
 		options...,
 	)
+	err = sdcc.SetupWithManager(mgr, controller.Options{
+		MaxConcurrentReconciles: 1,
+	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	kubeInformers.Start(ctx.Done())
-	scyllaInformers.Start(ctx.Done())
-	scyllaGlobalInformers.Start(ctx.Done())
-
+	ctx, cancel := context.WithCancel(ctx)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sdcc.Run(ctx, 1)
-	}()
-
 	g.DeferCleanup(func() {
-		kubeInformers.Shutdown()
-		scyllaInformers.Shutdown()
-		scyllaGlobalInformers.Shutdown()
+		cancel()
 		wg.Wait()
+	})
+
+	wg.Go(func() {
+		defer g.GinkgoRecover()
+		err := mgr.Start(ctx)
+		o.Expect(err).NotTo(o.HaveOccurred())
 	})
 }

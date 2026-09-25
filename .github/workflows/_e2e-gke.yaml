@@ -176,5 +176,4 @@ jobs:
         set -euExo pipefail
         shopt -s inherit_errexit
 
-        kubectl get kubernetescluster/"${OBJECT_NAME}" -o=yaml || true
         kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}" storagebucket/"${OBJECT_NAME}"

@@ -134,5 +134,4 @@ jobs:
         set -euExo pipefail
         shopt -s inherit_errexit
 
-        kubectl get oraclekubernetesenginecluster/"${OBJECT_NAME}" -o=yaml || true
         kubectl delete --wait=false --ignore-not-found oraclekubernetesenginecluster/"${OBJECT_NAME}"

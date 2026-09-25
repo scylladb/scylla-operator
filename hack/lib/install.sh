@@ -10,6 +10,41 @@ source "$( dirname "${BASH_SOURCE[0]}" )/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/kube.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/assets.sh"
 
+# deploy-cert-manager deploys cert-manager and waits until its webhook is actually callable.
+# $1 - root source path to use. It can either be an absolute file path or a URL.
+function deploy-cert-manager() {
+  if [[ "$#" -ne 1 ]]; then
+    echo "Missing arguments.\nUsage: ${FUNCNAME[0]} <source_root>" > /dev/stderr
+    exit 1
+  fi
+
+  kubectl_create -f="${1}/examples/third-party/cert-manager.yaml"
+
+  # Wait for cert-manager crd and webhooks
+  kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
+  for d in cert-manager{,-cainjector,-webhook}; do
+      kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${d}"
+  done
+  wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
+  # Rollouts and the CA secret existing don't yet mean the webhook is callable: cainjector
+  # still has to sync the CA into the webhook's caBundle. Probe the real apiserver->webhook
+  # path with a server-side dry-run until it works, so the first actual object can't hit
+  # "x509: certificate signed by unknown authority".
+  timeout 5m bash -c "until kubectl create --dry-run=server -f=- <<< '{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Issuer\",\"metadata\":{\"name\":\"webhook-probe\",\"namespace\":\"cert-manager\"},\"spec\":{\"selfSigned\":{}}}'; do sleep 1; done"
+}
+
+# wait-for-scylla-operator-rollout waits for the operator and webhook server deployments to roll out
+# and for the ScyllaCluster CRD to be established.
+function wait-for-scylla-operator-rollout() {
+  wait-for-object-creation scylla-operator deployment.apps/scylla-operator 5m
+  kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+  wait-for-object-creation scylla-operator deployment.apps/webhook-server 5m
+  kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
+
+  wait-for-object-creation scylla-operator crd/scyllaclusters.scylla.scylladb.com 5m
+  kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
+}
+
 # install-operator installs the Scylla Operator and its dependencies in the cluster through the specified method.
 # $1 - root source path to use. It can either be an absolute file path or a URL.
 function install-operator() {
@@ -80,19 +115,7 @@ function _install-operator-manifests() {
     exit 1
   fi
 
-  kubectl_create -f="${SOURCE_ROOT}/examples/third-party/cert-manager.yaml"
-
-  # Wait for cert-manager crd and webhooks
-  kubectl wait --for condition=established --timeout=60s crd/certificates.cert-manager.io crd/issuers.cert-manager.io
-  for d in cert-manager{,-cainjector,-webhook}; do
-      kubectl -n cert-manager rollout status --timeout=5m deployment.apps/"${d}"
-  done
-  wait-for-object-creation cert-manager secret/cert-manager-webhook-ca
-  # Rollouts and the CA secret existing don't yet mean the webhook is callable: cainjector
-  # still has to sync the CA into the webhook's caBundle. Probe the real apiserver->webhook
-  # path with a server-side dry-run until it works, so the first actual object can't hit
-  # "x509: certificate signed by unknown authority".
-  timeout 5m bash -c "until kubectl create --dry-run=server -f=- <<< '{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Issuer\",\"metadata\":{\"name\":\"webhook-probe\",\"namespace\":\"cert-manager\"},\"spec\":{\"selfSigned\":{}}}'; do sleep 1; done"
+  deploy-cert-manager "${SOURCE_ROOT}"
 
   mkdir -p "${ARTIFACTS_DEPLOY_DIR}"/operator
   cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF

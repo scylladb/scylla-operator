@@ -52,7 +52,10 @@ runs:
           name: "${OBJECT_NAME}-gcs-service-account"
       EOF
 
-      timeout -v 5m bash -c 'until kubectl wait --for=condition=Degraded=False storagebucket/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Progressing=False storagebucket/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done'
+      kubectl wait --timeout=5m \
+        --for=condition=Degraded=False \
+        --for=condition=Progressing=False \
+        storagebucket/"${OBJECT_NAME}"
 
       credentials="${RUNNER_TEMP}/gcs-service-account.json"
       ( umask 077; kubectl get secret/"${OBJECT_NAME}-gcs-service-account" --template='{{ index .data "gcs-service-account.json" }}' | base64 -d > "${credentials}" )

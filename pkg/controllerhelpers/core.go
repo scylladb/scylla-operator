@@ -1,7 +1,6 @@
 package controllerhelpers
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -13,7 +12,6 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
 )
@@ -233,20 +231,6 @@ func AddGenericProgressingStatusCondition(conditions *[]metav1.Condition, condit
 		Message:            fmt.Sprintf("Progressing: Running %q on %q", verb, resource.GetObjectGVKOrUnknown(obj)),
 		ObservedGeneration: observedGeneration,
 	})
-}
-
-func IsPodReadyWithPositiveLiveCheck(ctx context.Context, client corev1client.PodsGetter, pod *corev1.Pod) (bool, *corev1.Pod, error) {
-	if !IsPodReady(pod) {
-		return false, pod, nil
-	}
-
-	// Verify readiness with a live call.
-	fresh, err := client.Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return false, pod, err
-	}
-
-	return IsPodReady(fresh), fresh, nil
 }
 
 func GetNodePointerArrayFromArray(nodes []corev1.Node) []*corev1.Node {

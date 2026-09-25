@@ -48,7 +48,11 @@ runs:
 
       echo "region=$( yq '.spec.gke.location' "${CLUSTER_MANIFEST}" )" >> "${GITHUB_OUTPUT}"
 
-      timeout -v "${TIMEOUT}" bash -c 'until kubectl wait --for=condition=Degraded=False kubernetescluster/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Progressing=False kubernetescluster/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=ClusterBootstrapped=True kubernetescluster/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done' || {
+      kubectl wait --timeout="${TIMEOUT}" \
+        --for=condition=Degraded=False \
+        --for=condition=Progressing=False \
+        --for=condition=ClusterBootstrapped=True \
+        kubernetescluster/"${OBJECT_NAME}" || {
         echo 'Cluster provisioning timed out. Object status:' >&2
         kubectl get kubernetescluster/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
         exit 1

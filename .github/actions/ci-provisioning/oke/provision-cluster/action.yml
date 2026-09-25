@@ -64,7 +64,10 @@ runs:
         ( .spec.parameters.nodePools[] | select(.config.cloudInitB64 == "") ).config.cloudInitB64 = strenv(CLOUD_INIT_B64)
       ' "${CLUSTER_MANIFEST}" | tee /dev/stderr | kubectl create -f=-
 
-      timeout -v "${TIMEOUT}" bash -c 'until kubectl wait --for=condition=Synced=True oraclekubernetesenginecluster/"${OBJECT_NAME}" --timeout=5m && kubectl wait --for=condition=Ready=True oraclekubernetesenginecluster/"${OBJECT_NAME}" --timeout=5m; do sleep 1; done' || {
+      kubectl wait --timeout="${TIMEOUT}" \
+        --for=condition=Synced=True \
+        --for=condition=Ready=True \
+        oraclekubernetesenginecluster/"${OBJECT_NAME}" || {
         echo 'Cluster provisioning timed out. Object status:' >&2
         kubectl get oraclekubernetesenginecluster/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
         exit 1

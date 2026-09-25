@@ -73,6 +73,25 @@ To run specific test cases, use the `SO_FOCUS` environment variable (it accepts 
 SO_FOCUS=".*TestCaseName.*" make test-e2e-kind
 ```
 
+#### Running the multi-datacenter E2E tests locally
+
+The multi-datacenter suite normally runs against a control plane cluster hosting ScyllaDB Manager and several worker
+clusters. It can also be run against the single Kind cluster created by `make kind-setup`, where every worker entry
+points at that same cluster and the datacenters end up in separate namespaces, joined through external seeds:
+
+```bash
+make test-e2e-kind-multi-datacenter
+```
+
+`SO_FOCUS` works here too, which is useful while iterating on a single spec:
+
+```bash
+SO_FOCUS=".*repair task.*" make test-e2e-kind-multi-datacenter
+```
+
+Note that a local run cannot cover the control plane versus worker topology itself, so changes to these tests should
+also be verified on a real multi-cluster setup.
+
 If you ever need to start from a clean state, you can delete the Kind cluster with:
 
 ```bash

@@ -10,11 +10,15 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
-	scyllainformers "github.com/scylladb/scylla-operator/pkg/client/scylla/informers/externalversions"
+	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/envtest"
+	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/watch"
+	ctrlcache "sigs.k8s.io/controller-runtime/pkg/cache"
 )
 
 const (
@@ -23,13 +27,17 @@ const (
 	// that predates the spec's update.
 	scyllaDBDatacenterInformerLag = 2 * time.Second
 
+	// statefulSetInformerLag is how far behind the API server the StatefulSet informer is kept in the spec that lags
+	// it: wide enough for the syncs following a StatefulSet update to run before the update reaches the cache.
+	statefulSetInformerLag = 2 * time.Second
+
 	// invariantPollingInterval samples the state often enough to catch a status that is only briefly wrong.
 	invariantPollingInterval = 20 * time.Millisecond
 )
 
-// Informer caches give no read-your-writes, so a sync may decide from state that predates the controller's own
-// writes. These specs hold invariants throughout a change, while the other specs only assert the end state, so that
-// a decision made from a stale cache is visible.
+// A sync that decides from a cache that predates the controller's own writes publishes a status that goes backwards.
+// These specs hold invariants throughout a change, while the other specs only assert the end state, so that such a
+// decision is visible.
 var _ = g.Describe("ScyllaDBDatacenter controller status invariants", func() {
 	const rackName = "rack-a"
 
@@ -95,8 +103,8 @@ var _ = g.Describe("ScyllaDBDatacenter controller status invariants", func() {
 	g.It("should never regress the published status to a previous generation with a lagging ScyllaDBDatacenter informer", func(ctx g.SpecContext) {
 		g.By("Running ScyllaDBDatacenter controller with a lagging ScyllaDBDatacenter informer")
 		runScyllaDBDatacenterControllerWithOptions(ctx, env, scyllaDBDatacenterControllerRunOptions{
-			scyllaInformerOptions: []scyllainformers.SharedInformerOption{
-				scyllainformers.WithTransform(informerLagTransform(scyllaDBDatacenterInformerLag, isScyllaDBDatacenter)),
+			cacheOptions: []func(*ctrlcache.Options){
+				withInformerLag(&scyllav1alpha1.ScyllaDBDatacenter{}, scyllaDBDatacenterInformerLag),
 			},
 		})
 
@@ -130,12 +138,59 @@ var _ = g.Describe("ScyllaDBDatacenter controller status invariants", func() {
 		g.By("Waiting for the status to catch up with the generation")
 		waitForObservedGeneration(ctx, env, sdc.Name)
 	})
-})
+	g.It("should never report a rack as not stale for a generation whose StatefulSet update is not observed yet", func(ctx g.SpecContext) {
+		g.By("Running ScyllaDBDatacenter controller with a lagging StatefulSet informer")
+		runScyllaDBDatacenterControllerWithOptions(ctx, env, scyllaDBDatacenterControllerRunOptions{
+			cacheOptions: []func(*ctrlcache.Options){
+				withInformerLag(&appsv1.StatefulSet{}, statefulSetInformerLag),
+			},
+		})
 
-func isScyllaDBDatacenter(obj any) bool {
-	_, ok := obj.(*scyllav1alpha1.ScyllaDBDatacenter)
-	return ok
-}
+		g.By("Creating ScyllaOperatorConfig singleton")
+		createScyllaOperatorConfig(ctx, env)
+
+		g.By("Creating a ScyllaDBDatacenter with a single rack")
+		sdc := makeEnvtestScyllaDBDatacenter(env.Namespace(), []string{rackName})
+		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Create(ctx, sdc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Waiting for the rack to roll out")
+		rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
+		waitForStatefulSet(ctx, env, rackStatefulSetName, scyllaDBDatacenterControllerDefaultEventuallyTimeout+statefulSetInformerLag)
+		markStatefulSetAsRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), rackStatefulSetName)
+		waitForRackToBeRolledOut(ctx, env, sdc.Name, rackName)
+
+		sdc, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Updating the ScyllaDB arguments")
+		updateScyllaDBDatacenter(ctx, env, sdc.Name, func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+			sdc.Spec.ScyllaDB.AdditionalScyllaDBArguments = []string{"--logger-log-level=compaction=debug"}
+		})
+
+		// The StatefulSet status stays frozen at the previous generation, so the rack is stale until the spec marks it
+		// rolled out. A sync following the StatefulSet update would see the previous StatefulSet, rolled out, if it
+		// read it from the lagging informer without waiting for the update.
+		g.By("Verifying every published status reports the rack stale for the new generation")
+		forEveryPublishedScyllaDBDatacenter(ctx, env, sdc.Name, sdc.ResourceVersion, scyllaDBDatacenterControllerDefaultConsistentlyTimeout+statefulSetInformerLag, func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+			if sdc.Status.ObservedGeneration == nil || *sdc.Status.ObservedGeneration < sdc.Generation {
+				return
+			}
+
+			rackStatus, _, ok := oslices.Find(sdc.Status.Racks, func(rs scyllav1alpha1.RackStatus) bool {
+				return rs.Name == rackName
+			})
+			o.Expect(ok).To(o.BeTrue(), "rack %q status is missing", rackName)
+			o.Expect(rackStatus.Stale).To(o.HaveValue(o.BeTrue()), "rack %q is reported not stale for generation %d", rackName, sdc.Generation)
+		})
+
+		g.By("Marking the rack StatefulSet as rolled out")
+		markStatefulSetAsRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), rackStatefulSetName)
+
+		g.By("Waiting for the rack to roll out")
+		waitForRackToBeRolledOut(ctx, env, sdc.Name, rackName)
+	})
+})
 
 // consistentlyObservedGenerationIsMonotonic verifies for the given window that the observed generation of the
 // ScyllaDBDatacenter status, and of every condition in it, never decreases between samples nor exceeds the generation.
@@ -166,4 +221,57 @@ func waitForObservedGeneration(ctx context.Context, e *envtest.Environment, sdcN
 		eo.Expect(err).NotTo(o.HaveOccurred())
 		eo.Expect(sdc.Status.ObservedGeneration).To(o.HaveValue(o.Equal(sdc.Generation)))
 	}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout + scyllaDBDatacenterInformerLag).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+}
+
+// waitForRackToBeRolledOut waits for the ScyllaDBDatacenter status to observe the current generation and to report
+// the rack as not stale.
+func waitForRackToBeRolledOut(ctx context.Context, e *envtest.Environment, sdcName string, rackName string) {
+	g.GinkgoHelper()
+
+	o.Eventually(func(eo o.Gomega, ctx context.Context) {
+		sdc, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Get(ctx, sdcName, metav1.GetOptions{})
+		eo.Expect(err).NotTo(o.HaveOccurred())
+		eo.Expect(sdc.Status.ObservedGeneration).To(o.HaveValue(o.Equal(sdc.Generation)))
+
+		rackStatus, _, ok := oslices.Find(sdc.Status.Racks, func(rs scyllav1alpha1.RackStatus) bool {
+			return rs.Name == rackName
+		})
+		eo.Expect(ok).To(o.BeTrue(), "rack %q status is missing", rackName)
+		eo.Expect(rackStatus.Stale).To(o.HaveValue(o.BeFalse()))
+	}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout + statefulSetInformerLag).WithPolling(100 * time.Millisecond).Should(o.Succeed())
+}
+
+// forEveryPublishedScyllaDBDatacenter calls verify for every version of the ScyllaDBDatacenter written after
+// resourceVersion within the window. Unlike polling, it sees the statuses that the next sync overwrites right away.
+func forEveryPublishedScyllaDBDatacenter(ctx context.Context, e *envtest.Environment, sdcName string, resourceVersion string, window time.Duration, verify func(*scyllav1alpha1.ScyllaDBDatacenter)) {
+	g.GinkgoHelper()
+
+	watchCtx, watchCtxCancel := context.WithTimeout(ctx, window)
+	defer watchCtxCancel()
+
+	w, err := e.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(e.Namespace()).Watch(watchCtx, metav1.ListOptions{
+		FieldSelector:   fields.OneTermEqualSelector("metadata.name", sdcName).String(),
+		ResourceVersion: resourceVersion,
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	defer w.Stop()
+
+	for {
+		select {
+		case <-watchCtx.Done():
+			o.Expect(ctx.Err()).NotTo(o.HaveOccurred())
+			return
+
+		case event, ok := <-w.ResultChan():
+			if watchCtx.Err() != nil {
+				continue
+			}
+			o.Expect(ok).To(o.BeTrue(), "watch closed before the end of the window")
+			o.Expect(event.Type).To(o.Equal(watch.Modified), "unexpected watch event: %v", event.Object)
+
+			sdc, ok := event.Object.(*scyllav1alpha1.ScyllaDBDatacenter)
+			o.Expect(ok).To(o.BeTrue(), "unexpected watch object %T", event.Object)
+			verify(sdc)
+		}
+	}
 }

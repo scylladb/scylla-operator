@@ -36,6 +36,7 @@ import (
 	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
 // registerControllers wires every controller of the operator binary. The controllers not migrated to
@@ -68,7 +69,6 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 
 	scyllaClusters := informerFor(ctx, c, errs, &scyllav1.ScyllaCluster{}, scyllav1listers.NewScyllaClusterLister)
 	scyllaDBDatacenters := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBDatacenter{}, scyllav1alpha1listers.NewScyllaDBDatacenterLister)
-	scyllaDBDatacenterNodesStatusReports := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReport{}, scyllav1alpha1listers.NewScyllaDBDatacenterNodesStatusReportLister)
 	scyllaDBMonitorings := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBMonitoring{}, scyllav1alpha1listers.NewScyllaDBMonitoringLister)
 	scyllaDBManagerClusterRegistrations := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBManagerClusterRegistration{}, scyllav1alpha1listers.NewScyllaDBManagerClusterRegistrationLister)
 	scyllaDBManagerTasks := informerFor(ctx, c, errs, &scyllav1alpha1.ScyllaDBManagerTask{}, scyllav1alpha1listers.NewScyllaDBManagerTaskLister)
@@ -81,30 +81,22 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		return fmt.Errorf("can't get informers: %w", err)
 	}
 
-	sdcc, err := scylladbdatacenter.NewController(
-		o.KubeClient,
-		o.ScyllaClient.ScyllaV1alpha1(),
-		pods,
-		services,
-		secrets,
-		configMaps,
-		serviceAccounts,
-		roleBindings,
-		statefulSets,
-		podDisruptionBudgets,
-		ingresses,
-		jobs,
-		scyllaDBDatacenters,
-		scyllaDBDatacenterNodesStatusReports,
-		scyllaOperatorConfigs,
+	// The ScyllaDBDatacenter controller is a controller-runtime reconciler: it reads and writes through the manager's
+	// client and is run by the manager.
+	sdcc := scylladbdatacenter.NewController(
+		m.client,
+		m.mgr.GetAPIReader(),
+		m.mgr.GetEventRecorderFor("scylladbdatacenter-controller"),
 		o.OperatorImage,
 		o.CQLSIngressPort,
 		o.KeyGenerator,
 	)
+	err = sdcc.SetupWithManager(m.mgr, controller.Options{
+		MaxConcurrentReconciles: o.ConcurrentSyncs,
+	})
 	if err != nil {
-		return fmt.Errorf("can't create scylladbdatacenter controller: %w", err)
+		return fmt.Errorf("can't set up scylladbdatacenter controller: %w", err)
 	}
-	m.addRunnable(sdcc.Run, o.ConcurrentSyncs)
 
 	scc, err := scyllacluster.NewController(
 		o.KubeClient,

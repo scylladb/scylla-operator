@@ -1,20 +1,10 @@
-name: "Presubmit E2E: kind"
+name: "E2E: kind"
 
-# Runs the kind-based e2e suites, ported from the prow presubmits, on pull requests.
+# The kind-based e2e suites, ported from the prow presubmits. Called from the PR workflow, where the check-required
+# aggregate gates the merge on them; dispatchable manually as well.
 on:
-  pull_request:
-    # Mirrors the prow presubmits' skip_if_only_changed, except workflow changes still run the suites so they test
-    # themselves.
-    paths-ignore:
-    - 'docs/**'
-    - 'enhancements/**'
-    - '**.md'
-    - 'renovate.json'
   workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 permissions:
   contents: read

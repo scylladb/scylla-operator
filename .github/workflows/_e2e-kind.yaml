@@ -1,4 +1,4 @@
-name: "E2E: kind"
+name: "E2E: kind suite"
 
 on:
   workflow_call:

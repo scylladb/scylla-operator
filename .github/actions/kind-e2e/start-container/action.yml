@@ -1,0 +1,56 @@
+name: Start the kind e2e container
+description: >
+  Starts the privileged kube-tools container that hosts a kind cluster for the e2e suites. The container keeps
+  running for the rest of the job, so later steps reach the cluster with `docker exec`.
+
+inputs:
+  artifacts-dir:
+    description: Host directory collecting the artifacts, mounted into the container at /artifacts.
+    required: true
+  image:
+    description: Image to run the container from.
+    required: false
+    default: quay.io/scylladb/scylla-operator-images:kube-tools
+  container-name:
+    description: Name for the started container, for the later `docker exec` calls.
+    required: false
+    default: e2e
+
+runs:
+  using: composite
+  steps:
+    - name: Start the kube-tools container
+      shell: bash
+      env:
+        CONTAINER_NAME: ${{ inputs.container-name }}
+        CONTAINER_IMAGE: ${{ inputs.image }}
+        ARTIFACTS_HOST: ${{ inputs.artifacts-dir }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS_HOST}"
+
+        # The podman instance backing kind must have its container storage bind-mounted from a real (non-overlayfs)
+        # filesystem: anywhere else, the volumes podman serves to the kind nodes end up on overlayfs and containerd
+        # inside the nodes fails every overlay mount with EINVAL. RUNNER_TEMP sits on the runner's work volume, which
+        # is backed by the machine's disk both on VM runners and on containerized (dind) ones, where it is also the
+        # rare path mounted identically in the runner and the docker daemon's mount namespace.
+        mkdir -p "${RUNNER_TEMP}/containers"
+
+        docker run --detach --name="${CONTAINER_NAME}" --privileged \
+        --volume="${GITHUB_WORKSPACE}:/go/src/github.com/scylladb/scylla-operator" \
+        --volume="${RUNNER_TEMP}/containers:/var/lib/containers" \
+        --volume="${ARTIFACTS_HOST}:/artifacts" \
+        --workdir=/go/src/github.com/scylladb/scylla-operator \
+        --env=ARTIFACTS=/artifacts \
+        "${CONTAINER_IMAGE}" \
+        /usr/bin/sleep infinity
+
+        # Disable pids limit to allow high parallelism in tests.
+        docker exec "${CONTAINER_NAME}" sed -i '/\[containers\]/a pids_limit = 0' /etc/containers/containers.conf
+
+        # kind nodes host many pods, each with several watches; the defaults are too low and manifest as obscure
+        # "too many open files" failures. Set from the privileged container: these limits are namespaced, and this
+        # is the namespace the kind nodes inherit, which the runner's own may not reach on containerized runners.
+        docker exec "${CONTAINER_NAME}" sysctl fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576

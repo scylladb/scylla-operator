@@ -4,7 +4,7 @@ metadata:
   labels:
     {{- include "scylla-manager.labels" . | nindent 4 }}
   name: scylla-manager
-  namespace: scylla-manager
+  namespace: {{ .Release.Namespace }}
 spec:
   ports:
   - name: api

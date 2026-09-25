@@ -22,6 +22,9 @@
     "logLevel": {
       "type": "string"
     },
+    "scyllaOperatorNamespace": {
+      "type": "string"
+    },
     "nodeSelector": {
       "type": "object"
     },

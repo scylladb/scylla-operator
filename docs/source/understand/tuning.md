@@ -17,7 +17,7 @@ It configures the Kubernetes host for optimal ScyllaDB performance.
 
 ### What runs
 
-The NodeConfig controller creates a privileged DaemonSet in the `scylla-operator-node-tuning` namespace.
+The NodeConfig controller creates a privileged DaemonSet in the namespace ScyllaDB Operator runs in (`scylla-operator` by default).
 This DaemonSet runs on every node that matches the NodeConfig's placement selectors.
 Inside each DaemonSet pod, a controller creates two types of Jobs:
 
@@ -102,8 +102,8 @@ For a step-by-step guide on configuring CPU pinning, see [CPU Pinning](../deploy
 
 ## Tuning namespace and security
 
-All node-level and container-level tuning Jobs run in the `scylla-operator-node-tuning` namespace.
-This namespace is created and managed entirely by the Operator and is only accessible to cluster administrators.
+All node-level and container-level tuning Jobs run in the Operator's own namespace (`scylla-operator` by default), which is only accessible to cluster administrators.
+Older Operator versions used a dedicated `scylla-operator-node-tuning` namespace; on upgrade the Operator removes it automatically.
 
 The tuning system uses four dedicated ServiceAccounts with minimal privileges:
 - `scylla-node-config` — for the DaemonSet pods.

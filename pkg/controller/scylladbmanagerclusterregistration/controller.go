@@ -65,6 +65,8 @@ type Controller struct {
 
 	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBManagerClusterRegistration]
+
+	globalScyllaDBManagerNamespace string
 }
 
 func NewController(
@@ -74,6 +76,7 @@ func NewController(
 	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
 	secretInformer corev1informers.SecretInformer,
 	namespaceInformer corev1informers.NamespaceInformer,
+	globalScyllaDBManagerNamespace string,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -103,6 +106,8 @@ func NewController(
 				Name: "scylladbmanagerclusterregistration",
 			},
 		),
+
+		globalScyllaDBManagerNamespace: globalScyllaDBManagerNamespace,
 	}
 
 	var err error
@@ -359,7 +364,7 @@ func (smcrc *Controller) enqueueThroughOwner(depth int, obj kubeinterfaces.Objec
 func (smcrc *Controller) enqueueThroughGlobalScyllaDBManagerNamespace(depth int, obj kubeinterfaces.ObjectInterface, op controllerhelpers.HandlerOperationType) {
 	ns := obj.(*corev1.Namespace)
 
-	if ns.Name != naming.ScyllaManagerNamespace {
+	if ns.Name != smcrc.globalScyllaDBManagerNamespace {
 		return
 	}
 

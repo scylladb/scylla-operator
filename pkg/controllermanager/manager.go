@@ -48,10 +48,12 @@ type Options struct {
 	ClusterDomainGetter scyllaoperatorconfig.GetClusterDomainFunc
 	KeyGenerator        crypto.KeyGenerator
 
-	OperatorImage   string
-	CQLSIngressPort int
-	ConcurrentSyncs int
-	ResyncPeriod    time.Duration
+	OperatorImage                  string
+	CQLSIngressPort                int
+	ConcurrentSyncs                int
+	ResyncPeriod                   time.Duration
+	OperatorNamespace              string
+	GlobalScyllaDBManagerNamespace string
 }
 
 // Manager owns the controller-runtime manager, and with it the single cache every controller of the operator

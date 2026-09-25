@@ -3,7 +3,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: scylla-manager
-  namespace: scylla-manager
+  namespace: {{ .Release.Namespace }}
   {{- if .Values.serviceMonitor.labels }}
   labels:
     {{- toYaml .Values.serviceMonitor.labels | nindent 4 }}

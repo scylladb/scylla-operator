@@ -17,22 +17,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func makeScyllaOperatorNodeTuningNamespace() *corev1.Namespace {
-	return &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: naming.ScyllaOperatorNodeTuningNamespace,
-			Labels: map[string]string{
-				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
-			},
-		},
-	}
-}
-
-func makeNodeConfigServiceAccount() *corev1.ServiceAccount {
+func makeNodeConfigServiceAccount(namespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      naming.NodeConfigAppName,
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 			},
@@ -40,10 +29,10 @@ func makeNodeConfigServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
-func makePerftuneServiceAccount() *corev1.ServiceAccount {
+func makePerftuneServiceAccount(namespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.PerftuneServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -52,10 +41,10 @@ func makePerftuneServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
-func makeSysctlsServiceAccount() *corev1.ServiceAccount {
+func makeSysctlsServiceAccount(namespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.SysctlsServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -64,10 +53,10 @@ func makeSysctlsServiceAccount() *corev1.ServiceAccount {
 	}
 }
 
-func makeRlimitsServiceAccount() *corev1.ServiceAccount {
+func makeRlimitsServiceAccount(namespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.RlimitsJobServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -79,8 +68,7 @@ func makeRlimitsServiceAccount() *corev1.ServiceAccount {
 func NodeConfigClusterRole() *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      naming.NodeConfigAppName,
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name: naming.NodeConfigAppName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 			},
@@ -141,10 +129,10 @@ func NodeConfigClusterRole() *rbacv1.ClusterRole {
 	}
 }
 
-func makePerftuneRole() *rbacv1.Role {
+func makePerftuneRole(namespace string) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.PerftuneServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -161,10 +149,10 @@ func makePerftuneRole() *rbacv1.Role {
 	}
 }
 
-func makeSysctlsRole() *rbacv1.Role {
+func makeSysctlsRole(namespace string) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.SysctlsServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -181,10 +169,10 @@ func makeSysctlsRole() *rbacv1.Role {
 	}
 }
 
-func makeRlimitsRole() *rbacv1.Role {
+func makeRlimitsRole(namespace string) *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.RlimitsJobServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -201,11 +189,10 @@ func makeRlimitsRole() *rbacv1.Role {
 	}
 }
 
-func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
+func makeNodeConfigClusterRoleBinding(namespace string) *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      naming.NodeConfigAppName,
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Name: naming.NodeConfigAppName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
 			},
@@ -218,17 +205,17 @@ func makeNodeConfigClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Namespace: namespace,
 				Name:      naming.NodeConfigAppName,
 			},
 		},
 	}
 }
 
-func makePerftuneRoleBinding() *rbacv1.RoleBinding {
+func makePerftuneRoleBinding(namespace string) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.PerftuneServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -242,17 +229,17 @@ func makePerftuneRoleBinding() *rbacv1.RoleBinding {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Namespace: namespace,
 				Name:      naming.PerftuneServiceAccountName,
 			},
 		},
 	}
 }
 
-func makeSysctlsRoleBinding() *rbacv1.RoleBinding {
+func makeSysctlsRoleBinding(namespace string) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.SysctlsServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -266,17 +253,17 @@ func makeSysctlsRoleBinding() *rbacv1.RoleBinding {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Namespace: namespace,
 				Name:      naming.SysctlsServiceAccountName,
 			},
 		},
 	}
 }
 
-func makeRlimitsRoleBinding() *rbacv1.RoleBinding {
+func makeRlimitsRoleBinding(namespace string) *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Name:      naming.RlimitsJobServiceAccountName,
 			Labels: map[string]string{
 				naming.NodeConfigNameLabel: naming.NodeConfigAppName,
@@ -290,14 +277,14 @@ func makeRlimitsRoleBinding() *rbacv1.RoleBinding {
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Namespace: namespace,
 				Name:      naming.RlimitsJobServiceAccountName,
 			},
 		},
 	}
 }
 
-func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scyllaImage string) *appsv1.DaemonSet {
+func makeNodeSetupDaemonSet(namespace string, nc *scyllav1alpha1.NodeConfig, operatorImage, scyllaImage string) *appsv1.DaemonSet {
 	if nc.Spec.LocalDiskSetup == nil && nc.Spec.DisableOptimizations {
 		return nil
 	}
@@ -310,7 +297,7 @@ func makeNodeSetupDaemonSet(nc *scyllav1alpha1.NodeConfig, operatorImage, scylla
 	return &appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-node-setup", nc.Name),
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(nc, nodeConfigControllerGVK),
@@ -516,10 +503,10 @@ exec chroot ./ /scylla-operator/usr/bin/scylla-operator node-setup-daemon \
 	}
 }
 
-func makeConfigMaps(nc *scyllav1alpha1.NodeConfig) ([]*corev1.ConfigMap, error) {
+func makeConfigMaps(namespace string, nc *scyllav1alpha1.NodeConfig) ([]*corev1.ConfigMap, error) {
 	var configMaps []*corev1.ConfigMap
 
-	sysctlConfigMap, err := makeSysctlConfigMap(nc)
+	sysctlConfigMap, err := makeSysctlConfigMap(namespace, nc)
 	if err != nil {
 		return nil, fmt.Errorf("can't make sysctl configmap: %w", err)
 	}
@@ -528,7 +515,7 @@ func makeConfigMaps(nc *scyllav1alpha1.NodeConfig) ([]*corev1.ConfigMap, error) 
 	return configMaps, nil
 }
 
-func makeSysctlConfigMap(nc *scyllav1alpha1.NodeConfig) (*corev1.ConfigMap, error) {
+func makeSysctlConfigMap(namespace string, nc *scyllav1alpha1.NodeConfig) (*corev1.ConfigMap, error) {
 	name, err := naming.NodeConfigSysctlConfigMapName(nc)
 	if err != nil {
 		return nil, fmt.Errorf("can't get sysctl configmap name: %w", err)
@@ -542,7 +529,7 @@ func makeSysctlConfigMap(nc *scyllav1alpha1.NodeConfig) (*corev1.ConfigMap, erro
 	cm := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+			Namespace: namespace,
 			Labels: map[string]string{
 				naming.KubernetesNameLabel: naming.NodeConfigAppName,
 				naming.NodeConfigNameLabel: nc.Name,

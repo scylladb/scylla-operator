@@ -341,7 +341,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 	})
 })
 
-var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, func() {
+var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, framework.SuiteKindSerial, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

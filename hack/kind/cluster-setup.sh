@@ -24,16 +24,39 @@ if [ -z "${CLUSTER_NAME}" ]; then
   exit 1
 fi
 
+# IP family of the KinD cluster ("ipv4", "ipv6" or "dual"). Anything other than "ipv4" requires
+# the shared `kind` Podman network to have an IPv6 subnet.
+KIND_IP_FAMILY="${KIND_IP_FAMILY:-ipv4}"
+case "${KIND_IP_FAMILY}" in
+ipv4|ipv6|dual)
+  ;;
+*)
+  echo "KIND_IP_FAMILY must be one of 'ipv4', 'ipv6' or 'dual'" > /dev/stderr
+  exit 1
+  ;;
+esac
+
 # If RECREATE is set to "true", delete any existing KinD cluster and Podman network.
 if [ "${RECREATE:-false}" == "true" ]; then
     kind delete cluster --name="${CLUSTER_NAME}" || true
     podman network rm -f kind || true
 fi
 
-# Ensure there's a `kind` IPv4 network.
+# Ensure there's a `kind` network with the required address families.
+# KinD reuses a preexisting `kind` network as-is, so an IPv6-capable cluster needs the network
+# to be created with IPv6 enabled up front.
 if ! podman network inspect kind >/dev/null 2>&1; then
-  echo "Creating kind IPv4-only network..."
-  podman network create kind
+  if [ "${KIND_IP_FAMILY}" == "ipv4" ]; then
+    echo "Creating kind IPv4-only network..."
+    podman network create kind
+  else
+    echo "Creating kind dual-stack network..."
+    podman network create --ipv6 kind
+  fi
+elif [ "${KIND_IP_FAMILY}" != "ipv4" ] && [ "$( podman network inspect kind --format '{{ .IPv6Enabled }}' )" != "true" ]; then
+  echo "The existing 'kind' Podman network has no IPv6 subnet, but KIND_IP_FAMILY=${KIND_IP_FAMILY} requires one." > /dev/stderr
+  echo "Recreate it (this destroys all existing KinD clusters!) by running this script with RECREATE=true, or remove it manually with 'podman network rm -f kind'." > /dev/stderr
+  exit 1
 fi
 
 # Generate containerd registry configuration (mounted into KinD nodes via cluster-config.yaml).
@@ -46,7 +69,14 @@ EOF
 
 # Ensure KinD cluster exists.
 if ! kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
-    KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${repo_root}/hack/kind/cluster-config.yaml" --image="${kind_node_image}" --retain)
+    kind_cluster_config="${repo_root}/hack/kind/cluster-config.yaml"
+    if [ "${KIND_IP_FAMILY}" != "ipv4" ]; then
+      # Render the cluster config with the requested IP family.
+      kind_cluster_config="$( mktemp --suffix='.kind-cluster-config.yaml' )"
+      yq e ".networking.ipFamily = \"${KIND_IP_FAMILY}\"" "${repo_root}/hack/kind/cluster-config.yaml" > "${kind_cluster_config}"
+    fi
+
+    KIND_CREATE_CMD=(kind create cluster --name="${CLUSTER_NAME}" --config="${kind_cluster_config}" --image="${kind_node_image}" --retain)
 
     # As we rely on rootless Podman, we need to delegate cgroup management to the user systemd instance (this is implicitly
     # done on systems with systemd >= 252, but needs to be explicit on older systems).

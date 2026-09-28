@@ -138,6 +138,7 @@ var _ = g.Describe("ScyllaCluster upgrades", framework.SuiteParallel, framework.
 		// Test 1 and 3 member rack to cover e.g. handling PDBs correctly.
 		// 3-member-rack entries are excluded from SuiteKindFast because they are long-running
 		// (~20+ minutes) and SuiteKindFast targets relatively quick tests.
+		// They carry SuiteKindScyllaDBUpgrade instead, which runs on kind in a dedicated job.
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        1,
@@ -149,7 +150,7 @@ var _ = g.Describe("ScyllaCluster upgrades", framework.SuiteParallel, framework.
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}),
+		}, framework.SuiteKindScyllaDBUpgrade),
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        1,
@@ -161,12 +162,12 @@ var _ = g.Describe("ScyllaCluster upgrades", framework.SuiteParallel, framework.
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}),
+		}, framework.SuiteKindScyllaDBUpgrade),
 		g.Entry(describeEntry, &entry{
 			rackCount:       2,
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
 			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
-		}),
+		}, framework.SuiteKindScyllaDBUpgrade),
 	)
 })

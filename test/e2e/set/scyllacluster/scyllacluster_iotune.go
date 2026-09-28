@@ -73,7 +73,7 @@ func IOPropertiesFileExists(ctx context.Context, f *framework.Framework, podName
 	return true, nil
 }
 
-var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, func() {
+var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {

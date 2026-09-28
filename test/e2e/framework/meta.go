@@ -17,6 +17,8 @@ const (
 	SuiteKindFastLabelName                = "SuiteKindFast"
 	SuiteKindScyllaDBMonitoringLabelName  = "SuiteKindScyllaDBMonitoring"
 	SuiteKindClusterTopologyLabelName     = "SuiteKindClusterTopology"
+	SuiteKindSerialLabelName              = "SuiteKindSerial"
+	SuiteKindScyllaDBUpgradeLabelName     = "SuiteKindScyllaDBUpgrade"
 	SuiteOperatorUpgradeLabelName         = "SuiteOperatorUpgrade"
 )
 
@@ -28,6 +30,8 @@ var (
 	SuiteKindFast                = g.Label(SuiteKindFastLabelName)
 	SuiteKindScyllaDBMonitoring  = g.Label(SuiteKindScyllaDBMonitoringLabelName)
 	SuiteKindClusterTopology     = g.Label(SuiteKindClusterTopologyLabelName)
+	SuiteKindSerial              = g.Label(SuiteKindSerialLabelName)
+	SuiteKindScyllaDBUpgrade     = g.Label(SuiteKindScyllaDBUpgradeLabelName)
 	SuiteOperatorUpgrade         = g.Label(SuiteOperatorUpgradeLabelName)
 
 	// SuiteSerial bundles the Ginkgo serial-execution decorator with the

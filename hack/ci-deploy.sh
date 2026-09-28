@@ -30,7 +30,7 @@ fi
 
 SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:-false}
 
-mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{prometheus-operator,haproxy-ingress}
+mkdir -p "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
 
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
   echo "Skipping copying prometheus-operator manifests to ${ARTIFACTS_DEPLOY_DIR}"
@@ -45,7 +45,7 @@ else
   echo "Skipping enabling OpenShift User Workload Monitoring"
 fi
 
-cp ./examples/third-party/haproxy-ingress/*.yaml "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
+cp ./examples/third-party/haproxy-ingress.yaml "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress.yaml"
 
 # Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
@@ -58,7 +58,7 @@ if [[ "${SO_ENABLE_OPENSHIFT_USER_WORKLOAD_MONITORING:-}" == "true" ]]; then
   kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}/openshift-uwm.cm.yaml"
 fi
 
-kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
+kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress.yaml"
 
 install-operator "$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../" )"
 

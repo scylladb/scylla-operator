@@ -24,7 +24,7 @@ trap gracefully-shutdown-e2es INT
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${parent_dir}/manifests/cluster/nodeconfig-openshift-aws.yaml}"
 export SO_NODECONFIG_PATH
 
-SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/local-csi-driver/}"
+SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/../../examples/common/local-volume-provisioner/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 
 # TODO: When https://github.com/scylladb/scylla-operator/issues/2490 is completed,

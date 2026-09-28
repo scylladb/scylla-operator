@@ -575,17 +575,6 @@ verify-examples:
 	$(diff) -r '$(tmp_dir)'/ ./examples
 .PHONY: verify-examples
 
-update-local-csi-driver-ci-manifests:
-	./hack/third-party/build-local-csi-driver-manifests.sh "./hack/.ci/manifests/namespaces/local-csi-driver"
-.PHONY: update-local-csi-driver-ci-manifests
-
-verify-local-csi-driver-ci-manifests: tmp_dir :=$(shell mktemp -d)
-verify-local-csi-driver-ci-manifests:
-	./hack/third-party/build-local-csi-driver-manifests.sh "$(tmp_dir)/local-csi-driver"
-
-	$(diff) -r '$(tmp_dir)'/local-csi-driver ./hack/.ci/manifests/namespaces/local-csi-driver || (echo 'Local CSI Driver CI manifests are not up to date. Please run `make update-local-csi-driver-ci-manifests` to update them.' && false)
-.PHONY: verify-local-csi-driver-ci-manifests
-
 # $1 - dashboard dir
 # $2 - output configmap location
 define embed-dashboard
@@ -806,10 +795,10 @@ verify-e2e-suite-coverage:
 	./hack/verify-e2e-suite-coverage.sh
 .PHONY: verify-e2e-suite-coverage
 
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-local-csi-driver-ci-manifests verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config verify-e2e-suite-coverage
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config verify-e2e-suite-coverage
 .PHONY: verify
 
-update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-local-csi-driver-ci-manifests update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports update-config
+update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports update-config
 .PHONY: update
 
 test-unit:

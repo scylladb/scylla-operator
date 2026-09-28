@@ -25,6 +25,30 @@ declare -A WORKER_S3_CREDENTIALS_PATHS
 # GCS service account credentials file paths. It is used in multi-datacenter setups.
 declare -A WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS
 
+# Associative arrays can't cross a process boundary, so a caller that executes the run scripts instead of sourcing them
+# passes the worker maps serialized in WORKER_*_SERIALIZED as `<cluster_identifier>=<value>,...`, the format of the
+# corresponding `--worker-*` flags of scylla-operator-tests. The Prow multi-datacenter jobs source the scripts and fill
+# the arrays above directly instead.
+# TODO: once those jobs move to GHA, make the serialized form the only input under the WORKER_* names and the arrays
+# local. https://scylladb.atlassian.net/browse/OPERATOR-456
+# $1 - name of the associative array to fill
+# $2 - serialized map, possibly empty
+function parse-worker-map {
+  local -n map="${1}"
+  local entries kv
+  IFS=',' read -r -a entries <<< "${2}"
+  for kv in "${entries[@]}"; do
+    if [[ ! "${kv}" =~ ^[^=]+=.+$ ]]; then
+      echo "Invalid ${1} entry '${kv}', expected '<cluster_identifier>=<value>'" >&2
+      exit 2
+    fi
+    map["${kv%%=*}"]="${kv#*=}"
+  done
+}
+parse-worker-map WORKER_KUBECONFIGS "${WORKER_KUBECONFIGS_SERIALIZED:-}"
+parse-worker-map WORKER_OBJECT_STORAGE_BUCKETS "${WORKER_OBJECT_STORAGE_BUCKETS_SERIALIZED:-}"
+parse-worker-map WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS "${WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS_SERIALIZED:-}"
+
 # KUBECONFIG is the kubeconfig file used to connect to the cluster.
 # In multi-datacenter setups, it is the control plane cluster kubeconfig.
 if [ -z "${KUBECONFIG+x}" ]; then

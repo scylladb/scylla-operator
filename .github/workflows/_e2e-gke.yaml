@@ -1,6 +1,7 @@
 name: "E2E: GKE"
 
-# Runs one e2e suite against a GKE cluster it creates for the run and deletes afterwards.
+# Runs one e2e suite against a GKE cluster, or a set of GKE clusters with shared networking, it creates for the run and
+# deletes afterwards. With a set, the suite runs from the first cluster and treats all of them as workers.
 on:
   workflow_call:
     inputs:
@@ -19,14 +20,14 @@ on:
         required: true
         type: string
       cluster-manifest:
-        description: KubernetesCluster to provision the suite against.
+        description: KubernetesCluster or KubernetesClusterSet to provision the suite against.
         required: false
         default: ./hack/.ci/manifests/ci-clusters/gke.yaml
         type: string
       object-storage:
         description: >-
-          Enable if the chosen suite requires a GCS bucket. The workflow then provisions one in the cluster's region
-          and passes it to the suite.
+          Enable if the chosen suite requires a GCS bucket. The workflow then provisions one per cluster in its region
+          and passes them to the suite.
         required: false
         default: false
         type: boolean
@@ -47,7 +48,7 @@ on:
         type: string
     secrets:
       ci-provisioners-kubeconfig:
-        description: Kubeconfig of the cluster to create the KubernetesCluster and StorageBucket objects in.
+        description: Kubeconfig of the cluster to create the KubernetesCluster(Set) and StorageBucket objects in.
         required: true
 
 defaults:
@@ -81,44 +82,46 @@ jobs:
 
     # This workflow names every object it creates OBJECT_NAME, so the teardown can run unconditionally from here on,
     # including when provisioning itself fails partway.
-    - name: Provision the cluster
+    - name: Provision the clusters
       id: cluster
-      uses: ./.github/actions/ci-provisioning/gke/provision-cluster
+      uses: ./.github/actions/ci-provisioning/gke/provision-clusters
       with:
         provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
         name: ${{ env.OBJECT_NAME }}
         manifest: ${{ inputs.cluster-manifest }}
 
-    - name: Provision the object storage bucket
+    - name: Provision the object storage buckets
       if: inputs.object-storage
-      id: bucket
-      uses: ./.github/actions/ci-provisioning/gke/provision-bucket
+      id: buckets
+      uses: ./.github/actions/ci-provisioning/gke/provision-buckets
       with:
         provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
-        name: ${{ env.OBJECT_NAME }}
-        # The bucket must be in the same region as the cluster using it.
-        location: ${{ steps.cluster.outputs.region }}
+        name-prefix: ${{ env.OBJECT_NAME }}
+        # Each bucket must be in the same region as the cluster using it.
+        locations: ${{ steps.cluster.outputs.locations }}
 
-    - name: Get the provisioned cluster's kubeconfig
-      id: kubeconfig
-      uses: ./.github/actions/ci-provisioning/common/get-cluster-kubeconfig
-      with:
-        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
-        secret-name: ${{ steps.cluster.outputs.kubeconfig-secret-name }}
+    # The suite runs from the first cluster in the manifest, and with a set treats all of them as workers. Steps that
+    # talk to the provisioners cluster instead set their own KUBECONFIG.
+    - name: Point KUBECONFIG at the control plane cluster
+      env:
+        KUBECONFIGS: ${{ steps.cluster.outputs.kubeconfigs }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        first="${KUBECONFIGS%%,*}"
+        echo "KUBECONFIG=${first#*=}" >> "${GITHUB_ENV}"
 
     # GKE taints Arm nodes with kubernetes.io/arch=arm64:NoSchedule by default and the deployed manifests don't
     # tolerate it. The selector matches nothing on amd64 clusters, so this is a no-op there.
     - name: Drop the GKE arm64 taint
-      env:
-        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
       run: kubectl taint nodes --selector=kubernetes.io/arch=arm64 kubernetes.io/arch-
 
     - name: Run the e2e suite
       env:
-        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
-        # Both are empty when object-storage is disabled, which the test runner tolerates.
-        SO_BUCKET_NAME: ${{ steps.bucket.outputs.bucket-name }}
-        SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH: ${{ steps.bucket.outputs.credentials-path }}
+        KUBECONFIGS: ${{ steps.cluster.outputs.kubeconfigs }}
+        BUCKET_NAMES: ${{ steps.buckets.outputs.bucket-names }}
+        CREDENTIALS_PATHS: ${{ steps.buckets.outputs.credentials-paths }}
         SO_IMAGE: ${{ inputs.image-ref }}
         SO_SUITE: ${{ inputs.suite }}
         SO_E2E_TIMEOUT: 90m
@@ -132,6 +135,18 @@ jobs:
         shopt -s inherit_errexit
 
         mkdir -p "${ARTIFACTS}"
+
+        # The outputs are `<cluster>=<value>` maps, the bucket ones empty when object-storage is disabled, which the
+        # test runner tolerates. More than one cluster means a multi-datacenter suite, which takes the maps as they
+        # are; a single cluster takes the bare value of the only entry.
+        if [[ "${KUBECONFIGS}" == *,* ]]; then
+          export WORKER_KUBECONFIGS_SERIALIZED="${KUBECONFIGS}"
+          export WORKER_OBJECT_STORAGE_BUCKETS_SERIALIZED="${BUCKET_NAMES}"
+          export WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS_SERIALIZED="${CREDENTIALS_PATHS}"
+        else
+          export SO_BUCKET_NAME="${BUCKET_NAMES#*=}"
+          export SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH="${CREDENTIALS_PATHS#*=}"
+        fi
 
         # The local CSI driver has nothing to serve without a NodeConfig to prepare the disks, so the workflow deploys
         # the two together. Left unset, the run script installs the driver from the checkout; set empty, it installs
@@ -172,9 +187,14 @@ jobs:
       if: always()
       env:
         KUBECONFIG: ${{ steps.provisioners.outputs.path }}
+        # Empty when object-storage is disabled and the buckets step didn't run.
+        BUCKET_OBJECT_NAMES: ${{ steps.buckets.outputs.object-names }}
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit
 
-        kubectl get kubernetescluster/"${OBJECT_NAME}" -o=yaml || true
-        kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}" storagebucket/"${OBJECT_NAME}"
+        # Only one of the two kinds exists for a given run.
+        kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}" kubernetesclusterset/"${OBJECT_NAME}"
+        if [[ -n "${BUCKET_OBJECT_NAMES}" ]]; then
+          kubectl delete --wait=false --ignore-not-found storagebuckets ${BUCKET_OBJECT_NAMES//,/ }
+        fi

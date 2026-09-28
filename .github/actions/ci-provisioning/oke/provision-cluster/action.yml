@@ -1,5 +1,6 @@
 name: Provision an OKE cluster
-description: Creates an OracleKubernetesEngineCluster from a manifest and waits for it to become ready.
+description: >-
+  Creates an OracleKubernetesEngineCluster from a manifest, waits for it to become ready, and extracts its kubeconfig.
 
 inputs:
   provisioners-kubeconfig:
@@ -22,9 +23,9 @@ inputs:
     default: 30m
 
 outputs:
-  kubeconfig-secret-name:
-    description: Name of the Secret holding the provisioned cluster's kubeconfig.
-    value: ${{ inputs.name }}-kubeconfig
+  kubeconfig-path:
+    description: Path to the provisioned cluster's kubeconfig.
+    value: ${{ steps.provision.outputs.kubeconfig-path }}
 
 runs:
   using: composite
@@ -38,8 +39,7 @@ runs:
       CLOUD_INIT_PATH: ${{ inputs.cloud-init-path }}
       TIMEOUT: ${{ inputs.timeout }}
     run: |
-      set -euExo pipefail
-      shopt -s inherit_errexit
+      source ./hack/.ci/lib/ci-provisioning.sh
 
       # OCI enforces a 32-character maximum on the OKE cluster name, and truncating OBJECT_NAME to fit would cut
       # into the run id and attempt that make it unique, so this hashes it rather than trimming it.
@@ -72,3 +72,8 @@ runs:
         kubectl get oraclekubernetesenginecluster/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
         exit 1
       }
+
+      kubeconfig="${RUNNER_TEMP}/kubeconfig"
+      get-provisioned-cluster-kubeconfig "${KUBECONFIG}" "${OBJECT_NAME}-kubeconfig" "${kubeconfig}"
+
+      echo "kubeconfig-path=${kubeconfig}" >> "${GITHUB_OUTPUT}"

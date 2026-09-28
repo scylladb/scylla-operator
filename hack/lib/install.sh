@@ -239,3 +239,48 @@ EOF
 
   kubectl kustomize --load-restrictor=LoadRestrictionsNone "${ARTIFACTS_DEPLOY_DIR}/olm" | kubectl_create -f=-
 }
+
+# install-scylladb-manager installs ScyllaDB Manager with the CI overrides applied from the environment.
+# $1 - root source path to use.
+function install-scylladb-manager() {
+  if [[ "$#" -ne 1 ]]; then
+    echo "Missing arguments.\nUsage: ${FUNCNAME[0]} <source_root>" > /dev/stderr
+    exit 1
+  fi
+
+  if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
+    echo "ARTIFACTS_DEPLOY_DIR must be set" > /dev/stderr
+    exit 1
+  fi
+
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}/manager"
+  cp "${1}"/deploy/manager/*.yaml "${ARTIFACTS_DEPLOY_DIR}/manager"
+
+  # Don't run the manager's ScyllaCluster with the production cpuset and resources, so it doesn't take an exclusive
+  # core on the ScyllaDB nodes the e2e clusters share.
+  yq e --inplace '.spec.cpuset = false | .spec.datacenter.racks[0].resources = {"limits": {"cpu": "200m", "memory": "200Mi"}, "requests": {"cpu": "10m", "memory": "100Mi"}}' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+
+  if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
+    yq e --inplace '.spec.datacenter.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+    yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
+    yq e --inplace '.spec.version = env(SCYLLADB_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
+    yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
+    yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${SO_SCYLLACLUSTER_REACTOR_BACKEND:-}" ]]; then
+    yq e --inplace '.spec.scyllaArgs = "--reactor-backend=" + strenv(SO_SCYLLACLUSTER_REACTOR_BACKEND)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/manager
+}

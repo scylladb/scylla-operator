@@ -1,0 +1,156 @@
+name: "PR: E2E on label"
+
+# Runs the e2e suites that are too expensive to run on every PR. Labelling a PR `e2e/<suite>` runs the `e2e-<suite>`
+# job, and from then on every push to the PR reruns it. The suite is then required until the label is removed.
+# This is a separate workflow from pr.yaml, so that a label event doesn't restart the suites that always run.
+on:
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - labeled
+    - unlabeled
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      suites: ${{ steps.plan.outputs.suites }}
+    steps:
+    - id: plan
+      env:
+        ACTION: ${{ github.event.action }}
+        LABEL: ${{ github.event.label.name }}
+        LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # A label starts only its own suite, so that labelling a PR leaves the suites already running on it alone. A new
+        # commit reruns all the labelled ones. Removing a label runs no suite, only the aggregate, which stops requiring it.
+        case "${ACTION}" in
+        labeled)
+          suites="$( jq -cn --arg label "${LABEL}" '[$label | select(startswith("e2e/")) | ltrimstr("e2e/")]' )"
+          ;;
+        opened | synchronize | reopened)
+          suites="$( jq -c '[.[] | select(startswith("e2e/")) | ltrimstr("e2e/")]' <<< "${LABELS}" )"
+          ;;
+        *)
+          suites='[]'
+          ;;
+        esac
+        echo "suites=${suites}" >> "${GITHUB_OUTPUT}"
+
+  image:
+    needs: plan
+    if: needs.plan.outputs.suites != '[]'
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  # Every suite gets a concurrency group of its own, so that a new commit cancels the suite's run on the old one, while
+  # the other suites keep running.
+  e2e-gke-parallel-ipv6:
+    needs:
+    - plan
+    - image
+    if: contains(fromJSON(needs.plan.outputs.suites), 'gke-parallel-ipv6')
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}-gke-parallel-ipv6
+      cancel-in-progress: true
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-parallel-ipv6
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/parallel-ipv6
+      object-storage: true
+      dual-stack: true
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-gke-multi-dc-parallel:
+    needs:
+    - plan
+    - image
+    if: contains(fromJSON(needs.plan.outputs.suites), 'gke-multi-dc-parallel')
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.event.pull_request.number }}-gke-multi-dc-parallel
+      cancel-in-progress: true
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-multi-dc-parallel
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/multi-datacenter-parallel
+      cluster-manifest: ./hack/.ci/manifests/ci-clusters/gke-multi-dc.yaml
+      object-storage: true
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  # A run only starts the suites its event asks for, and skips the rest, so its own `needs` don't say whether the PR's
+  # labelled suites passed. This aggregate looks at the latest run of each of them on the PR's head commit instead,
+  # whichever run of this workflow it was in, and is the context the merge automation requires.
+  check-required-on-label:
+    runs-on: ubuntu-latest
+    needs:
+    - plan
+    - image
+    - e2e-gke-parallel-ipv6
+    - e2e-gke-multi-dc-parallel
+    if: always()
+    timeout-minutes: 240
+    permissions:
+      actions: read
+      checks: read
+      pull-requests: read
+    steps:
+    - if: contains(needs.*.result, 'failure')
+      run: |
+        echo "Some jobs failed."
+        exit 1
+
+    - name: Require the latest run of every labelled suite to pass
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        RUN_ID: ${{ github.run_id }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # Wait for the earlier runs on this commit, which may still be running a suite, e.g. when two labels are added
+        # at once. Waiting only for earlier ones keeps two aggregates from waiting on each other, and leaves the verdict
+        # to the latest one.
+        workflow_file="$( basename "${GITHUB_WORKFLOW_REF%@*}" )"
+        until [[ "$( gh api -X GET "repos/${REPO}/actions/workflows/${workflow_file}/runs" -f head_sha="${HEAD_SHA}" -f per_page=100 \
+          --jq "[.workflow_runs[] | select(.id < ${RUN_ID} and .status != \"completed\")] | length" )" == 0 ]]; do
+          sleep 60
+        done
+
+        # The labels as they are now, rather than as of the event, which may predate a label added or removed since.
+        mapfile -t suites < <( gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq '.labels[].name | select(startswith("e2e/")) | ltrimstr("e2e/")' )
+
+        failed=false
+        for suite in "${suites[@]}"; do
+          # The check of a reusable workflow's job is named after the calling job and the called one.
+          name="e2e-${suite} / e2e"
+          conclusion="$( gh api -X GET "repos/${REPO}/commits/${HEAD_SHA}/check-runs" -f check_name="${name}" -f filter=all -f per_page=100 \
+            --jq '[.check_runs[] | select(.status == "completed" and .conclusion != "skipped")] | sort_by(.started_at) | last | .conclusion // "missing"' )"
+          if [[ "${conclusion}" != "success" ]]; then
+            echo "::error::${name} is labelled on the PR, but its latest run on ${HEAD_SHA} is ${conclusion}."
+            failed=true
+          fi
+        done
+
+        [[ "${failed}" == "false" ]]

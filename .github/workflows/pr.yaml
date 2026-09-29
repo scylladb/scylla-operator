@@ -30,6 +30,77 @@ jobs:
       - name: Verify commit messages
         run: ./hack/.ci/verify-commits.sh "${{ github.event.pull_request.base.sha }}"
 
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # A file counts only if it matches every pattern, so the e2e suites are skipped when a PR changes nothing
+          # but the paths negated below.
+          predicate-quantifier: every
+          filters: |
+            e2e:
+              - '**'
+              - '!docs/**'
+              - '!enhancements/**'
+              - '!**/*.md'
+              - '!renovate.json'
+
+  # On a PR from a fork this fails for lack of secrets, and so does check-required, rather than the suites being
+  # skipped and counted as passed.
+  image:
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  e2e-gke-parallel:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-parallel
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/parallel
+      object-storage: true
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-gke-parallel-clusterip:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-parallel-clusterip
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/parallel
+      object-storage: true
+      node-service-type: ClusterIP
+      nodes-broadcast-address-type: ServiceClusterIP
+      clients-broadcast-address-type: ServiceClusterIP
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  e2e-gke-serial:
+    needs: image
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-gke-serial
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: scylla-operator/conformance/serial
+      cluster-manifest: ./hack/.ci/manifests/ci-clusters/gke-serial.yaml
+      # No NodeConfig, so no local storage class either, and ScyllaDB storage falls back to the cluster default.
+      nodeconfig-path: ""
+      storageclass-name: ""
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
   # The merge automation gates on a fixed set of contexts it is configured with, so individual GitHub Actions
   # checks are invisible to it. This aggregate is the single context it can be told to require once these jobs
   # have matured, which keeps wiring further jobs into the merge gate a one-line change here.
@@ -38,6 +109,11 @@ jobs:
     needs:
     - ci
     - verify-commits
+    - changes
+    - image
+    - e2e-gke-parallel
+    - e2e-gke-parallel-clusterip
+    - e2e-gke-serial
     if: always()
     steps:
     - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')

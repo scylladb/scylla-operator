@@ -54,6 +54,11 @@ jobs:
       env:
         REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
       run: |
+        if [[ -z "${REGISTRY_AUTH_JSON}" ]]; then
+          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs triggered by pull requests from forks.'
+          exit 1
+        fi
+
         umask 077
         mkdir -p ~/.docker
         printf '%s' "${REGISTRY_AUTH_JSON}" > ~/.docker/config.json
@@ -109,6 +114,11 @@ jobs:
       env:
         REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
       run: |
+        if [[ -z "${REGISTRY_AUTH_JSON}" ]]; then
+          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs triggered by pull requests from forks.'
+          exit 1
+        fi
+
         umask 077
         mkdir -p ~/.docker
         printf '%s' "${REGISTRY_AUTH_JSON}" > ~/.docker/config.json

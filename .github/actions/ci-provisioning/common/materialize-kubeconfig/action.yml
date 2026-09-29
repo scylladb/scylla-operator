@@ -22,6 +22,12 @@ runs:
       set -euEo pipefail
       shopt -s inherit_errexit
 
+      # Otherwise the missing secret only surfaces as an unrelated kubectl error further down.
+      if [[ -z "${CI_PROVISIONERS_KUBECONFIG}" ]]; then
+        echo '::error::The CI provisioners kubeconfig is empty. GitHub does not pass secrets to runs triggered by pull requests from forks.'
+        exit 1
+      fi
+
       kubeconfig="${RUNNER_TEMP}/ci-provisioners-kubeconfig"
       ( umask 077; printf '%s\n' "${CI_PROVISIONERS_KUBECONFIG}" > "${kubeconfig}" )
       echo "path=${kubeconfig}" >> "${GITHUB_OUTPUT}"

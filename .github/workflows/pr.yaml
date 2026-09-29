@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   ci:
-    uses: ./.github/workflows/ci-jobs.yaml
+    uses: ./.github/workflows/_ci-jobs.yaml
     permissions:
       contents: read
       # For detect-source-changes to read the PR's changed files.

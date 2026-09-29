@@ -12,7 +12,14 @@ permissions:
 
 jobs:
   ci:
+    permissions:
+      contents: read
+      # For the e2e path filter, which lists the changed files through the API.
+      pull-requests: read
     uses: ./.github/workflows/_ci-jobs.yaml
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
   verify-commits:
     name: verify-commits

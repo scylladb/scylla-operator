@@ -2,6 +2,13 @@ name: CI jobs
 
 on:
   workflow_call:
+    secrets:
+      registry-auth-json:
+        description: Contents of a containers-auth.json(5) file with push access to the e2e image repository.
+        required: true
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the CI provisioning objects in.
+        required: true
 
 permissions:
   contents: read
@@ -261,3 +268,38 @@ jobs:
       # Make sure the stable branch has been created from the remote.
       - name: Verify site
         run: '[[ -d docs/_build/dirhtml/stable ]]'
+
+  # Only pull requests are filtered. The filter lists their changed files through the API, and any other event runs
+  # the suites unconditionally.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # A file counts only if it matches every pattern, so the e2e suites are skipped when a PR changes nothing
+          # but the paths negated below.
+          predicate-quantifier: every
+          filters: |
+            e2e:
+              - '**'
+              - '!docs/**'
+              - '!enhancements/**'
+              - '!**/*.md'
+              - '!renovate.json'
+
+  e2e:
+    needs: changes
+    # A skipped dependency would skip this job too, unless the condition says otherwise.
+    if: ${{ !cancelled() && (needs.changes.result == 'skipped' || needs.changes.outputs.e2e == 'true') }}
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      jobs: '["gke-parallel", "gke-parallel-clusterip", "gke-serial"]'
+    secrets:
+      registry-auth-json: ${{ secrets.registry-auth-json }}
+      ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

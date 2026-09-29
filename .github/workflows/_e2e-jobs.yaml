@@ -115,6 +115,8 @@ jobs:
           echo "oke=$( jq -c "${select}" <<< "${oke}" )"
         } >> "${GITHUB_OUTPUT}"
 
+  # On a PR from a fork this fails for lack of secrets, and so does the caller, rather than the suites being skipped
+  # and counted as passed.
   image:
     uses: ./.github/workflows/_image.yaml
     with:

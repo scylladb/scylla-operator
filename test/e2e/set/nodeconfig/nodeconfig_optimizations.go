@@ -99,7 +99,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.SuiteSerial, func() {
 		verifyNodeConfig(ctx, f.KubeAdminClient(), nc)
 
 		// There should be a tuning job for every scylla node.
-		nodeJobList, err := f.KubeAdminClient().BatchV1().Jobs(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+		nodeJobList, err := f.KubeAdminClient().BatchV1().Jobs(framework.OperatorNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set{
 				naming.NodeConfigNameLabel:    nc.Name,
 				naming.NodeConfigJobTypeLabel: string(naming.NodeConfigJobTypeNodePerftune),
@@ -221,7 +221,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.SuiteSerial, func() {
 			ctx,
 			&corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: naming.ScyllaOperatorNodeTuningNamespace,
+					Name: framework.OperatorNamespace,
 				},
 			},
 			metav1.CreateOptions{},
@@ -233,7 +233,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.SuiteSerial, func() {
 		rq := &corev1.ResourceQuota{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      resourceQuotaName,
-				Namespace: naming.ScyllaOperatorNodeTuningNamespace,
+				Namespace: framework.OperatorNamespace,
 			},
 			Spec: corev1.ResourceQuotaSpec{
 				Hard: corev1.ResourceList{
@@ -254,7 +254,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.SuiteSerial, func() {
 		f.AddCleaners(rqRC)
 		rqRC.DeleteObject(ctx, true)
 
-		rq, err = f.KubeAdminClient().CoreV1().ResourceQuotas(naming.ScyllaOperatorNodeTuningNamespace).Create(
+		rq, err = f.KubeAdminClient().CoreV1().ResourceQuotas(framework.OperatorNamespace).Create(
 			ctx,
 			rq,
 			metav1.CreateOptions{},
@@ -391,7 +391,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.SuiteSerial, func() {
 
 		framework.By("Bumping tuning DaemonSet sync and waiting for it to become healthy")
 
-		dsList, err := f.KubeAdminClient().AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List(ctx, metav1.ListOptions{
+		dsList, err := f.KubeAdminClient().AppsV1().DaemonSets(framework.OperatorNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.Set{
 				"app.kubernetes.io/name": naming.NodeConfigAppName,
 			}.AsSelector().String(),
@@ -403,7 +403,7 @@ var _ = g.Describe("NodeConfig Optimizations", framework.SuiteSerial, func() {
 		// At this point the DaemonSet controller in kube-controller-manager is notably rate-limited
 		// because of resource quota failures. We have to trigger an event to reset its queue rate limiter,
 		// or there will be a large delay.
-		ds, err = f.KubeAdminClient().AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Patch(
+		ds, err = f.KubeAdminClient().AppsV1().DaemonSets(framework.OperatorNamespace).Patch(
 			ctx,
 			ds.Name,
 			types.JSONPatchType,

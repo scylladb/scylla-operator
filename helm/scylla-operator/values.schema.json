@@ -22,6 +22,9 @@
         "logLevel": {
             "type": "integer"
         },
+        "scyllaDBManagerNamespace": {
+            "type": "string"
+        },
         "nodeSelector": {
             "type": "object"
         },

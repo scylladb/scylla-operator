@@ -24,7 +24,7 @@ kubectl logs <pod-name> -c scylla | grep -E 'overprovisioned|smp|cpuset'
 Check that the `ContainerPerftune` Job ran for each ScyllaDB Pod:
 
 :::{code-block} console
-kubectl -n scylla-operator-node-tuning get jobs \
+kubectl -n scylla-operator get jobs \
   -l scylla-operator.scylladb.com/node-config-job-type=ContainerPerftune
 :::
 

@@ -8,7 +8,6 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
-	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +21,7 @@ func (ncc *Controller) syncConfigMaps(
 ) ([]metav1.Condition, error) {
 	var progressingConditions []metav1.Condition
 
-	requiredConfigMaps, err := makeConfigMaps(nc)
+	requiredConfigMaps, err := makeConfigMaps(ncc.namespace, nc)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't make required ConfigMap(s): %w", err)
 	}
@@ -32,7 +31,7 @@ func (ncc *Controller) syncConfigMaps(
 		requiredConfigMaps,
 		configMaps,
 		&controllerhelpers.PruneControlFuncs{
-			DeleteFunc: ncc.kubeClient.CoreV1().ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).Delete,
+			DeleteFunc: ncc.kubeClient.CoreV1().ConfigMaps(ncc.namespace).Delete,
 		},
 		ncc.eventRecorder)
 	if err != nil {

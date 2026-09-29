@@ -9,6 +9,8 @@ image:
   tag: 3.12.1@sha256:ba54287094e7097fb6685717187dca4bee304130b5fbdde1473e70e2bc6e998a
 # Scylla Manager log level, allowed values are: error, warn, info, debug, trace
 logLevel: info
+# Namespace in which Scylla Operator is deployed, used to allow its traffic in the NetworkPolicy.
+scyllaOperatorNamespace: scylla-operator
 # Resources allocated to Scylla Manager pods
 resources:
   requests:

@@ -12,7 +12,7 @@ Helm does not support managing CustomResourceDefinition resources ([helm#5871](h
 :::
 
 :::{note}
-ScyllaDB Operator must run in the `scylla-operator` namespace.
+ScyllaDB Operator runs in the `scylla-operator` namespace by default. You can install it into a custom namespace by passing a different `--namespace` to `helm install`. If you also deploy ScyllaDB Manager into a custom namespace, you must point the Operator at it by setting the `scyllaDBManagerNamespace` value (see [Deploy ScyllaDB Manager](../deploy-scylladb/install-scylladb-manager.md)).
 :::
 
 ## Prerequisites

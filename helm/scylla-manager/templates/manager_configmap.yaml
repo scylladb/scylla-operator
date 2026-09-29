@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: scylla-manager-config
-  namespace: scylla-manager
+  namespace: {{ .Release.Namespace }}
 data:
   scylla-manager.yaml: |-
     http: :5080

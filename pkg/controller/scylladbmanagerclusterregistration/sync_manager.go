@@ -70,7 +70,7 @@ func (smcrc *Controller) syncManager(
 		return progressingConditions, fmt.Errorf("can't make required ScyllaDB Manager cluster: %w", err)
 	}
 
-	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr)
+	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr, smcrc.globalScyllaDBManagerNamespace)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get manager client: %w", err)
 	}

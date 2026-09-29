@@ -79,7 +79,7 @@ func (smtc *Controller) syncManager(
 
 	clusterID := *smcr.Status.ClusterID
 
-	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr)
+	managerClient, err := controllerhelpers.GetScyllaDBManagerClient(ctx, smcr, smtc.globalScyllaDBManagerNamespace)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't get manager client: %w", err)
 	}

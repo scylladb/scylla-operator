@@ -94,8 +94,8 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		ncSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *appsv1.DaemonSet]{
 			GetControllerUncachedFunc: ncc.scyllaClient.NodeConfigs().Get,
-			ListObjectsFunc:           ncc.daemonSetLister.DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).List,
-			PatchObjectFunc:           ncc.kubeClient.AppsV1().DaemonSets(naming.ScyllaOperatorNodeTuningNamespace).Patch,
+			ListObjectsFunc:           ncc.daemonSetLister.DaemonSets(ncc.namespace).List,
+			PatchObjectFunc:           ncc.kubeClient.AppsV1().DaemonSets(ncc.namespace).Patch,
 		},
 	)
 	if err != nil {
@@ -109,8 +109,8 @@ func (ncc *Controller) sync(ctx context.Context, key string) error {
 		ncSelector,
 		controllerhelpers.ControlleeManagerGetObjectsFuncs[CT, *corev1.ConfigMap]{
 			GetControllerUncachedFunc: ncc.scyllaClient.NodeConfigs().Get,
-			ListObjectsFunc:           ncc.configMapLister.ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).List,
-			PatchObjectFunc:           ncc.kubeClient.CoreV1().ConfigMaps(naming.ScyllaOperatorNodeTuningNamespace).Patch,
+			ListObjectsFunc:           ncc.configMapLister.ConfigMaps(ncc.namespace).List,
+			PatchObjectFunc:           ncc.kubeClient.CoreV1().ConfigMaps(ncc.namespace).Patch,
 		},
 	)
 	if err != nil {

@@ -74,6 +74,9 @@ type Controller struct {
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.NodeConfig]
 
 	operatorImage string
+
+	// namespace is the namespace the node tuning resources are deployed into.
+	namespace string
 }
 
 func isManagedByNodeConfigController(obj kubeinterfaces.ObjectInterface) bool {
@@ -95,6 +98,7 @@ func NewController(
 	serviceAccountInformer corev1informers.ServiceAccountInformer,
 	configMapInformer corev1informers.ConfigMapInformer,
 	operatorImage string,
+	namespace string,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -140,6 +144,8 @@ func NewController(
 		),
 
 		operatorImage: operatorImage,
+
+		namespace: namespace,
 	}
 
 	var err error

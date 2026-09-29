@@ -73,7 +73,7 @@ func Test_makeSysctlConfigMap(t *testing.T) {
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-sysctl-rh5ie",
-					Namespace: "scylla-operator-node-tuning",
+					Namespace: "test-tuning-ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":                        "scylla-node-config",
 						"scylla-operator.scylladb.com/node-config-name": "test",
@@ -110,7 +110,7 @@ func Test_makeSysctlConfigMap(t *testing.T) {
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-sysctl-rh5ie",
-					Namespace: "scylla-operator-node-tuning",
+					Namespace: "test-tuning-ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":                        "scylla-node-config",
 						"scylla-operator.scylladb.com/node-config-name": "test",
@@ -172,7 +172,7 @@ func Test_makeSysctlConfigMap(t *testing.T) {
 			expected: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-sysctl-rh5ie",
-					Namespace: "scylla-operator-node-tuning",
+					Namespace: "test-tuning-ns",
 					Labels: map[string]string{
 						"app.kubernetes.io/name":                        "scylla-node-config",
 						"scylla-operator.scylladb.com/node-config-name": "test",
@@ -207,7 +207,7 @@ vm.vfs_cache_pressure = 2000
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := makeSysctlConfigMap(tc.nc)
+			got, err := makeSysctlConfigMap("test-tuning-ns", tc.nc)
 
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))

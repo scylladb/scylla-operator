@@ -24,12 +24,14 @@ permissions:
 jobs:
   # A matrix creates checks only for the jobs selected, where jobs gated by `if` would all show up, the unselected ones
   # as skipped. Every entry carries every input of the workflow it calls, because a key missing from an entry passes an
-  # empty value rather than the input's default, so the defaults below have to match those of _e2e-gke.yaml.
+  # empty value rather than the input's default, so the defaults below have to match those of the
+  # workflows they call.
   plan:
     runs-on: ubuntu-latest
     outputs:
       gke: ${{ steps.plan.outputs.gke }}
       oke: ${{ steps.plan.outputs.oke }}
+      openshift: ${{ steps.plan.outputs.openshift }}
     steps:
     - id: plan
       shell: bash
@@ -109,11 +111,32 @@ jobs:
             "suite": "scylla-operator/conformance/serial"
           }
         ]'
+        openshift_defaults='{
+          "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws.yaml",
+          "object-storage": false,
+          "storageclass-name": "scylladb-local-xfs",
+          "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig-openshift-aws.yaml"
+        }'
+        openshift='[
+          {
+            "id": "openshift-aws-parallel",
+            "suite": "scylla-operator/conformance/parallel/openshift",
+            "object-storage": true
+          },
+          {
+            "id": "openshift-aws-serial",
+            "suite": "scylla-operator/conformance/serial",
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws-serial.yaml",
+            "nodeconfig-path": "",
+            "storageclass-name": ""
+          }
+        ]'
 
         select='(env.JOBS | fromjson) as $jobs | map(select(.id as $id | $jobs | any(. == "all" or . == $id)))'
         {
           echo "gke=$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )"
           echo "oke=$( jq -c "${select}" <<< "${oke}" )"
+          echo "openshift=$( jq -c --argjson defaults "${openshift_defaults}" "${select} | map(\$defaults + .)" <<< "${openshift}" )"
         } >> "${GITHUB_OUTPUT}"
 
   # On a PR from a fork this fails for lack of secrets, and so does the caller, rather than the suites being skipped
@@ -183,5 +206,30 @@ jobs:
       name: e2e-${{ matrix.id }}
       image-ref: ${{ needs.image.outputs.image-ref }}
       suite: ${{ matrix.suite }}
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+
+  openshift:
+    needs:
+    - plan
+    - image
+    - olm
+    # An empty matrix is an error.
+    if: needs.plan.outputs.openshift != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.openshift) }}
+    name: ${{ matrix.id }}
+    uses: ./.github/workflows/_e2e-openshift-aws.yaml
+    with:
+      name: e2e-${{ matrix.id }}
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+      suite: ${{ matrix.suite }}
+      cluster-manifest: ${{ matrix.cluster-manifest }}
+      object-storage: ${{ matrix.object-storage }}
+      storageclass-name: ${{ matrix.storageclass-name }}
+      nodeconfig-path: ${{ matrix.nodeconfig-path }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

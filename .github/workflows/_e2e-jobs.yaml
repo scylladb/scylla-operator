@@ -116,11 +116,14 @@ jobs:
         } >> "${GITHUB_OUTPUT}"
 
   # On a PR from a fork this fails for lack of secrets, and so does the caller, rather than the suites being skipped
-  # and counted as passed.
+  # and counted as passed. On PRs, github.sha is the test merge commit, so the tag changes whenever the PR or its base
+  # does. A run of the same commit that starts once the image is pushed reuses it. Overlapping runs don't wait for each
+  # other, because a concurrency group keeps only one run pending and cancels the ones before it, along with the jobs
+  # depending on them.
   image:
     uses: ./.github/workflows/_image.yaml
     with:
-      image-tag: scylla-operator-${{ github.run_id }}
+      image-tag: scylla-operator-${{ github.sha }}
     secrets:
       registry-auth-json: ${{ secrets.registry-auth-json }}
 

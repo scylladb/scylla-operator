@@ -1,7 +1,10 @@
 name: Image
 
 # Builds the operator image from the checked out ref, natively on amd64 and arm64 runners, and publishes it under a
-# caller-supplied tag as a manifest list. Outputs a digest-pinned reference to it.
+# caller-supplied tag as a manifest list. Outputs a digest-pinned reference to it. If the tag already exists, the
+# workflow reuses it instead of building it again. Every run also tags the list with a tag of its own, because the
+# registry deletes a list once no tag points at it, and runs that overlap move the caller-supplied tag between their
+# lists.
 on:
   workflow_call:
     inputs:
@@ -12,7 +15,7 @@ on:
     outputs:
       image-ref:
         description: Digest-pinned reference to the published manifest list.
-        value: ${{ jobs.manifest.outputs.image-ref }}
+        value: ${{ jobs.lookup.outputs.image-ref || jobs.manifest.outputs.image-ref }}
     secrets:
       registry-auth-json:
         description: Contents of a containers-auth.json(5) file with push access to the target repository.
@@ -29,6 +32,25 @@ env:
   IMAGE_REPO_REF: quay.io/scylladb-dev/ci
 
 jobs:
+  # The repository is public, so looking the tag up needs no auth.
+  lookup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      image-ref: ${{ steps.lookup.outputs.image-ref }}
+    steps:
+    - name: Look up the tag
+      id: lookup
+      env:
+        IMAGE_TAG: ${{ inputs.image-tag }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        if digest="$( docker buildx imagetools inspect --format='{{ .Manifest.Digest }}' "${IMAGE_REPO_REF}:${IMAGE_TAG}" )"; then
+          echo "image-ref=${IMAGE_REPO_REF}@${digest}" >> "${GITHUB_OUTPUT}"
+        fi
+
   # Each leg pushes its image by digest only and hands the digest over to the manifest job as an artifact, following
   # https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners.
   build:
@@ -41,6 +63,8 @@ jobs:
           runner: ubuntu-24.04
         - arch: arm64
           runner: ubuntu-24.04-arm
+    needs: lookup
+    if: needs.lookup.outputs.image-ref == ''
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     steps:
@@ -74,6 +98,11 @@ jobs:
         platforms: linux/${{ matrix.arch }}
         labels: org.opencontainers.image.revision=${{ github.sha }}
         outputs: type=image,name=${{ env.IMAGE_REPO_REF }},push-by-digest=true,name-canonical=true,push=true
+        # The cache covers the builds the lookup can't skip, like re-runs of a build that failed before pushing. The slow
+        # layer is the build in the builder stage, which only mode=max exports. The legs build different layers, so each
+        # needs a scope of its own. A failure to export the cache shouldn't fail the image.
+        cache-from: type=gha,scope=image-${{ matrix.arch }}
+        cache-to: type=gha,scope=image-${{ matrix.arch }},mode=max,ignore-error=true
 
     - name: Export digest
       env:
@@ -141,9 +170,11 @@ jobs:
           source_refs+=( "${IMAGE_REPO_REF}@sha256:$( basename "${f}" )" )
         done
 
-        image_ref="${IMAGE_REPO_REF}:${IMAGE_TAG}"
+        # The list is read back through the run's own tag, which no other run moves.
+        image_ref="${IMAGE_REPO_REF}:${IMAGE_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
         docker buildx imagetools create \
         --annotation="index:org.opencontainers.image.revision=${REVISION}" \
+        --tag="${IMAGE_REPO_REF}:${IMAGE_TAG}" \
         --tag="${image_ref}" \
         "${source_refs[@]}"
 

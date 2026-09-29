@@ -178,20 +178,6 @@ func TestProjectConfig(t *testing.T) {
 			),
 		},
 		{
-			name:        "operatorVersions.upgradeFrom",
-			configField: Project.OperatorTests.OperatorVersions.UpgradeFrom,
-			testFn: composeValidators(
-				validateRequired,
-				validateSemanticVersion,
-				validateMultiPlatformVersionWithRepo(ctx, OperatorImageRepository),
-			),
-		},
-		{
-			name:        "operatorVersions.upgradeTo",
-			configField: Project.OperatorTests.OperatorVersions.UpgradeTo,
-			testFn:      validateRequired,
-		},
-		{
 			name:        "scyllaDBVersions.UpdateFrom",
 			configField: Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
 			testFn: composeValidators(

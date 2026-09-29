@@ -19,6 +19,12 @@ inputs:
     description: How long to wait for the object to bootstrap.
     required: false
     default: 15m
+  dual-stack:
+    description: >-
+      Set to `true` to connect the cluster to the dual-stack CI network with an IPV4_IPV6 stack, instead of what the
+      manifest says. Only supported with a KubernetesCluster.
+    required: false
+    default: 'false'
 
 outputs:
   kubeconfigs:
@@ -39,6 +45,7 @@ runs:
       OBJECT_NAME: ${{ inputs.name }}
       MANIFEST: ${{ inputs.manifest }}
       TIMEOUT: ${{ inputs.timeout }}
+      DUAL_STACK: ${{ inputs.dual-stack }}
     run: |
       source ./hack/.ci/lib/ci-provisioning.sh
 
@@ -49,11 +56,19 @@ runs:
       kind="$( yq '.kind' "${MANIFEST}" )"
       case "${kind}" in
       KubernetesCluster)
-        yq -e '
+        manifest="$( yq -e '
           select(.metadata.name == "" and .spec.credentialsSecret.name == "") |
           .metadata.name = strenv(OBJECT_NAME) |
           .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-default-kubeconfig"
-        ' "${MANIFEST}" | tee /dev/stderr | kubectl create -f=-
+        ' "${MANIFEST}" )"
+        # Dual-stack clusters need a custom mode VPC network, which the default one isn't.
+        if [[ "${DUAL_STACK}" == "true" ]]; then
+          manifest="$( yq '
+            .spec.gke.network = "ci-dual-stack-network" |
+            .spec.gke.ipAllocationPolicy.stackType = "IPV4_IPV6"
+          ' <<< "${manifest}" )"
+        fi
+        tee /dev/stderr <<< "${manifest}" | kubectl create -f=-
 
         kubectl wait --timeout="${TIMEOUT}" \
           --for=condition=Degraded=False \
@@ -68,6 +83,11 @@ runs:
         locations=( "default=$( yq '.spec.gke.location' "${MANIFEST}" )" )
         ;;
       KubernetesClusterSet)
+        if [[ "${DUAL_STACK}" == "true" ]]; then
+          echo 'dual-stack is not supported with a KubernetesClusterSet' >&2
+          exit 2
+        fi
+
         yq -e '
           select(.metadata.name == "" and ([.spec.clusterTemplates[].spec.credentialsSecret.name == ""] | all)) |
           .metadata.name = strenv(OBJECT_NAME) |

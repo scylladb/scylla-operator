@@ -42,7 +42,11 @@ jobs:
           "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke.yaml",
           "object-storage": false,
           "storageclass-name": "scylladb-local-xfs",
-          "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig.yaml"
+          "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig.yaml",
+          "dual-stack": false,
+          "node-service-type": "Headless",
+          "nodes-broadcast-address-type": "PodIP",
+          "clients-broadcast-address-type": "PodIP"
         }'
         # The serial jobs run without a NodeConfig, so without a local storage class either, and ScyllaDB storage falls
         # back to the cluster default.
@@ -51,6 +55,20 @@ jobs:
             "id": "gke-parallel",
             "suite": "scylla-operator/conformance/parallel",
             "object-storage": true
+          },
+          {
+            "id": "gke-parallel-clusterip",
+            "suite": "scylla-operator/conformance/parallel",
+            "object-storage": true,
+            "node-service-type": "ClusterIP",
+            "nodes-broadcast-address-type": "ServiceClusterIP",
+            "clients-broadcast-address-type": "ServiceClusterIP"
+          },
+          {
+            "id": "gke-parallel-ipv6",
+            "suite": "scylla-operator/conformance/parallel-ipv6",
+            "object-storage": true,
+            "dual-stack": true
           },
           {
             "id": "gke-serial",
@@ -124,6 +142,10 @@ jobs:
       object-storage: ${{ matrix.object-storage }}
       storageclass-name: ${{ matrix.storageclass-name }}
       nodeconfig-path: ${{ matrix.nodeconfig-path }}
+      dual-stack: ${{ matrix.dual-stack }}
+      node-service-type: ${{ matrix.node-service-type }}
+      nodes-broadcast-address-type: ${{ matrix.nodes-broadcast-address-type }}
+      clients-broadcast-address-type: ${{ matrix.clients-broadcast-address-type }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
 

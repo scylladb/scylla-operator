@@ -1,0 +1,42 @@
+apiVersion: ci.scylladb.com/v1alpha1
+kind: KubernetesCluster
+metadata:
+  # Filled in per run.
+  name: ""
+spec:
+  credentialsSecret:
+    # Filled in per run.
+    name: ""
+  version: quay.io/okd/scos-release:4.20.0-okd-scos.17
+  ttlSeconds: 14400
+  type: OpenShift
+  openshift:
+    platformType: AWS
+    credentialsSecret:
+      name: aws-openshift-admin-creds
+    installConfig:
+      baseDomain: okd.ci.aws.scylla-operator.scylladb.com
+      platform:
+        aws:
+          region: us-east-1
+          userTags:
+            keep: "8"
+      controlPlane:
+        name: master
+        platform:
+          aws:
+            zones:
+            - us-east-1a
+            type: m6i.xlarge
+        replicas: 3
+      compute:
+      - name: worker
+        platform:
+          aws:
+            zones:
+            - us-east-1a
+            # Comes with the local NVMe SSD the NodeConfig sets up.
+            type: m5ad.2xlarge
+        replicas: 2
+      pullSecret:
+        name: openshift-red-hat-registry-pull-secret

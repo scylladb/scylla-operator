@@ -1,7 +1,7 @@
 name: E2E jobs
 
-# Every e2e job, defined once for all the workflows that run them. Builds the operator image from the ref under test
-# and runs the selected jobs against it. The callers select the jobs by their ids, which the `e2e/<job>` labels on PRs
+# Every e2e job, defined once for all the workflows that run them. Builds the operator image, and the OLM bundle and
+# catalog deploying it, from the ref under test and runs the selected jobs against them. The callers select the jobs by their ids, which the `e2e/<job>` labels on PRs
 # refer to as well.
 on:
   workflow_call:
@@ -125,6 +125,18 @@ jobs:
     uses: ./.github/workflows/_image.yaml
     with:
       image-tag: scylla-operator-${{ github.sha }}
+    secrets:
+      registry-auth-json: ${{ secrets.registry-auth-json }}
+
+  # Runs whichever jobs are selected, so that the callers fail on a bundle or catalog that doesn't build. Runs of the
+  # same commit reuse them the same way as the image.
+  olm:
+    needs: image
+    uses: ./.github/workflows/_olm.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      bundle-image-tag: scylla-operator-bundle-${{ github.sha }}
+      catalog-image-tag: scylla-operator-catalog-${{ github.sha }}
     secrets:
       registry-auth-json: ${{ secrets.registry-auth-json }}
 

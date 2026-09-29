@@ -1,0 +1,45 @@
+name: Has changes
+description: >
+  Detects whether the pull request changes any file outside the ignored paths and outputs the "true"/"false" result. Requires a checkout whose history reaches the base commit, e.g. `fetch-depth: 0`. Can be used to skip jobs for PRs not affecting them.
+
+inputs:
+  ignored-paths:
+    description: >-
+      Newline-separated POSIX extended regular expressions, matched against each changed path; a file matching any
+      of them is disregarded.
+    required: true
+  base-sha:
+    description: Base commit the changes are computed against, from its merge base with HEAD.
+    required: false
+    default: ${{ github.event.pull_request.base.sha }}
+
+outputs:
+  changed:
+    description: '"true" when at least one changed file is outside the ignored paths, "false" otherwise.'
+    value: ${{ steps.detect.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - name: Detect changes
+      id: detect
+      shell: bash
+      env:
+        IGNORED_PATHS: ${{ inputs.ignored-paths }}
+        BASE_SHA: ${{ inputs.base-sha }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        changed_files="$( git diff --name-only "${BASE_SHA}...HEAD" )"
+
+        # grep -f treats every non-empty line as an independent pattern and matches a file against any of them.
+        patterns_file="$( mktemp )"
+        # strip leading whitespace
+        grep -v '^[[:space:]]*$' <<< "${IGNORED_PATHS}" > "${patterns_file}" || true
+
+        changed=false
+        if grep -qvE -f "${patterns_file}" <<< "${changed_files}"; then
+          changed=true
+        fi
+        echo "changed=${changed}" | tee -a "${GITHUB_OUTPUT}"

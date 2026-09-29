@@ -106,7 +106,7 @@ export SO_SCYLLACLUSTER_STORAGECLASS_NAME
 
 source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
 
-# Deploy the operator stack unless the caller opts out (e.g. operator-upgrade tests deploy it themselves).
+# Deploy the operator stack unless the caller opts out (e.g. to deploy it with Helm instead).
 if [ "${SO_SKIP_DEPLOYMENT:-false}" == "true" ]; then
   echo "Skipping operator stack deployment (SO_SKIP_DEPLOYMENT=true)."
 else

@@ -74,6 +74,10 @@ jobs:
         platforms: linux/${{ matrix.arch }}
         labels: org.opencontainers.image.revision=${{ github.sha }}
         outputs: type=image,name=${{ env.IMAGE_REPO_REF }},push-by-digest=true,name-canonical=true,push=true
+        # The slow layer is the build in the builder stage, which only mode=max exports. The legs build different layers,
+        # so each needs a scope of its own. A failure to export the cache shouldn't fail the image.
+        cache-from: type=gha,scope=image-${{ matrix.arch }}
+        cache-to: type=gha,scope=image-${{ matrix.arch }},mode=max,ignore-error=true
 
     - name: Export digest
       env:

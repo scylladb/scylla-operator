@@ -24,7 +24,7 @@ runs:
 
       # Otherwise the missing secret only surfaces as an unrelated kubectl error further down.
       if [[ -z "${CI_PROVISIONERS_KUBECONFIG}" ]]; then
-        echo '::error::The CI provisioners kubeconfig is empty. GitHub does not pass secrets to runs triggered by pull requests from forks.'
+        echo '::error::The CI provisioners kubeconfig is empty. GitHub does not pass secrets to runs of pull requests from forks. If this is a pull request from a fork, this is expected and needs no action from you: a maintainer will run the e2e suites for it.'
         exit 1
       fi
 

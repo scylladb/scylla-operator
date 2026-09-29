@@ -55,7 +55,7 @@ jobs:
         REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
       run: |
         if [[ -z "${REGISTRY_AUTH_JSON}" ]]; then
-          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs triggered by pull requests from forks.'
+          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs of pull requests from forks. If this is a pull request from a fork, this is expected and needs no action from you: a maintainer will run the e2e suites for it.'
           exit 1
         fi
 
@@ -115,7 +115,7 @@ jobs:
         REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
       run: |
         if [[ -z "${REGISTRY_AUTH_JSON}" ]]; then
-          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs triggered by pull requests from forks.'
+          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs of pull requests from forks. If this is a pull request from a fork, this is expected and needs no action from you: a maintainer will run the e2e suites for it.'
           exit 1
         fi
 

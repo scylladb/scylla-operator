@@ -9,7 +9,7 @@ _oke_shared_env_parent_dir="$( dirname "${BASH_SOURCE[0]}" )"
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=${_oke_shared_env_parent_dir}/manifests/cluster/nodeconfig-oke.yaml}"
 export SO_NODECONFIG_PATH
 
-SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${_oke_shared_env_parent_dir}/manifests/namespaces/local-csi-driver/}"
+SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${_oke_shared_env_parent_dir}/../../examples/common/local-volume-provisioner/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 
 # TODO: Remove object-storage entries from SO_SKIPPED_TESTS when https://scylladb.atlassian.net/browse/OPERATOR-83 is resolved.

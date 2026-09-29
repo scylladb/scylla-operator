@@ -232,7 +232,7 @@
         "2. Propagate changes by running:",
         "   ```bash",
         "   make update",
-        "   git add examples/common/local-volume-provisioner/local-csi-driver hack/.ci/manifests/namespaces/local-csi-driver",
+        "   git add examples/common/local-volume-provisioner/local-csi-driver",
         "   git commit -m \"chore(deps): update generated files\" && git push --force",
         "   ```",
         "3. Review the regenerated manifests. A driver release may change the sidecar images, the provisioner flags or the RBAC rules, and those changes land in this PR.",

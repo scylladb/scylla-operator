@@ -426,7 +426,7 @@ endef
 # $1 - Helm values file
 # $2 - output_dir
 # $3 - tmp_dir
-define generate-manager-manifests-prod
+define generate-manager-manifests
 	$(call generate-manifests-from-helm,scylla-manager,helm/scylla-manager,$(1),$(3))
 
 	mv '$(3)'/scylla-manager/templates/manager_service.yaml '$(2)'/10_manager_service.yaml
@@ -439,12 +439,6 @@ define generate-manager-manifests-prod
 
 	@leftovers=$$( find '$(3)'/scylla-manager/ -mindepth 1 -type f ) && [[ "$${leftovers}" == "" ]] || \
 	( echo -e "Internal error: Unhandled helm files: \n$${leftovers}" && false )
-endef
-
-# $1 - output_dir
-define generate-manager-manifests-dev
-	cp -r deploy/manager/prod/. '$(1)'/.
-	$(YQ) eval -i -P '.spec.cpuset = false | .spec.datacenter.racks[0].resources = {"limits": {"cpu": "200m", "memory": "200Mi"}, "requests": {"cpu": "10m", "memory": "100Mi"}}' '$(1)'/50_scyllacluster.yaml
 endef
 
 # $1 - chart dir
@@ -505,16 +499,14 @@ update-deploy: tmp_dir:=$(shell mktemp -d)
 update-deploy:
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,./deploy/operator,$(tmp_dir))
 	$(call concat-manifests,$(sort $(wildcard deploy/operator/*.yaml)),./deploy/operator.yaml)
-	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,./deploy/manager/prod,$(tmp_dir))
-	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),./deploy/manager-prod.yaml)
-	$(call generate-manager-manifests-dev,./deploy/manager/dev)
-	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),./deploy/manager-dev.yaml)
+	$(call generate-manager-manifests,helm/deploy/manager_prod.yaml,./deploy/manager,$(tmp_dir))
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/*.yaml)),./deploy/manager.yaml)
 .PHONY: update-deploy
 
 verify-deploy: tmp_dir :=$(shell mktemp -d)
 verify-deploy: tmp_dir_generate :=$(shell mktemp -d)
 verify-deploy:
-	mkdir -p $(tmp_dir)/{operator,manager/{prod,dev}}
+	mkdir -p $(tmp_dir)/{operator,manager}
 
 	cp -r deploy/operator/. $(tmp_dir)/operator/.
 	$(call generate-operator-manifests,helm/deploy/operator.yaml,$(tmp_dir)/operator,$(tmp_dir_generate))
@@ -522,16 +514,11 @@ verify-deploy:
 	$(call concat-manifests,$(sort $(wildcard ./deploy/operator/*.yaml)),'$(tmp_dir)'/operator.yaml)
 	$(diff) '$(tmp_dir)'/operator.yaml deploy/operator.yaml
 
-	cp -r deploy/manager/prod/. $(tmp_dir)/manager/prod/.
-	$(call generate-manager-manifests-prod,helm/deploy/manager_prod.yaml,$(tmp_dir)/manager/prod,$(tmp_dir_generate))
-	$(diff) -r '$(tmp_dir)'/manager/prod deploy/manager/prod
-	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/prod/*.yaml)),'$(tmp_dir)'/manager-prod.yaml)
-	$(diff) '$(tmp_dir)'/manager-prod.yaml deploy/manager-prod.yaml
-
-	$(call generate-manager-manifests-dev,$(tmp_dir)/manager/dev)
-	$(diff) -r '$(tmp_dir)'/manager/dev deploy/manager/dev
-	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/dev/*.yaml)),'$(tmp_dir)'/manager-dev.yaml)
-	$(diff) '$(tmp_dir)'/manager-dev.yaml deploy/manager-dev.yaml
+	cp -r deploy/manager/. $(tmp_dir)/manager/.
+	$(call generate-manager-manifests,helm/deploy/manager_prod.yaml,$(tmp_dir)/manager,$(tmp_dir_generate))
+	$(diff) -r '$(tmp_dir)'/manager deploy/manager
+	$(call concat-manifests,$(sort $(wildcard ./deploy/manager/*.yaml)),'$(tmp_dir)'/manager.yaml)
+	$(diff) '$(tmp_dir)'/manager.yaml deploy/manager.yaml
 .PHONY: verify-deploy
 
 # $1 - file name
@@ -573,17 +560,6 @@ verify-examples:
 
 	$(diff) -r '$(tmp_dir)'/ ./examples
 .PHONY: verify-examples
-
-update-local-csi-driver-ci-manifests:
-	./hack/third-party/build-local-csi-driver-manifests.sh "./hack/.ci/manifests/namespaces/local-csi-driver"
-.PHONY: update-local-csi-driver-ci-manifests
-
-verify-local-csi-driver-ci-manifests: tmp_dir :=$(shell mktemp -d)
-verify-local-csi-driver-ci-manifests:
-	./hack/third-party/build-local-csi-driver-manifests.sh "$(tmp_dir)/local-csi-driver"
-
-	$(diff) -r '$(tmp_dir)'/local-csi-driver ./hack/.ci/manifests/namespaces/local-csi-driver || (echo 'Local CSI Driver CI manifests are not up to date. Please run `make update-local-csi-driver-ci-manifests` to update them.' && false)
-.PHONY: verify-local-csi-driver-ci-manifests
 
 # $1 - dashboard dir
 # $2 - output configmap location
@@ -805,10 +781,10 @@ verify-e2e-suite-coverage:
 	./hack/verify-e2e-suite-coverage.sh
 .PHONY: verify-e2e-suite-coverage
 
-verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-local-csi-driver-ci-manifests verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config verify-e2e-suite-coverage
+verify: verify-codegen verify-crds verify-helm-schemas verify-helm-charts verify-deploy verify-lint verify-helm-lint verify-links verify-examples verify-docs-api verify-monitoring verify-bundle verify-renovate-config verify-in-tree-prometheus-operator-exports verify-config verify-e2e-suite-coverage
 .PHONY: verify
 
-update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-local-csi-driver-ci-manifests update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports update-config
+update: update-codegen update-crds update-helm-schemas update-helm-charts update-deploy update-examples update-docs-api update-monitoring update-bundle update-go-mod-replace update-renovate-config update-in-tree-prometheus-operator-exports update-config
 .PHONY: update
 
 test-unit:

@@ -30,7 +30,7 @@ fi
 
 SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT:-false}
 
-mkdir -p "${ARTIFACTS_DEPLOY_DIR}/"{prometheus-operator,haproxy-ingress}
+mkdir -p "${ARTIFACTS_DEPLOY_DIR}/prometheus-operator"
 
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
   echo "Skipping copying prometheus-operator manifests to ${ARTIFACTS_DEPLOY_DIR}"
@@ -45,7 +45,7 @@ else
   echo "Skipping enabling OpenShift User Workload Monitoring"
 fi
 
-cp ./examples/third-party/haproxy-ingress/*.yaml "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
+cp ./examples/third-party/haproxy-ingress.yaml "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress.yaml"
 
 # Do not install prometheus-operator if the platform already has it (e.g., OpenShift).
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then
@@ -58,7 +58,7 @@ if [[ "${SO_ENABLE_OPENSHIFT_USER_WORKLOAD_MONITORING:-}" == "true" ]]; then
   kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}/openshift-uwm.cm.yaml"
 fi
 
-kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress"
+kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress.yaml"
 
 install-operator "$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../" )"
 
@@ -83,32 +83,7 @@ fi
 if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" == "true" ]]; then
   echo "Skipping ScyllaDBManager deployment"
 else
-  mkdir -p "${ARTIFACTS_DEPLOY_DIR}/manager"
-  cp ./deploy/manager/dev/*.yaml "${ARTIFACTS_DEPLOY_DIR}/manager"
-
-  if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
-    yq e --inplace '.spec.datacenter.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-  elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
-    yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-  fi
-
-  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
-    yq e --inplace '.spec.version = env(SCYLLADB_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-  fi
-
-  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
-    yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
-  fi
-
-  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
-    yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-  fi
-
-  if [[ -n "${SO_SCYLLACLUSTER_REACTOR_BACKEND:-}" ]]; then
-    yq e --inplace '.spec.scyllaArgs = "--reactor-backend=" + strenv(SO_SCYLLACLUSTER_REACTOR_BACKEND)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
-  fi
-
-  kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/manager
+  install-scylladb-manager "$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../" )"
 
   wait-for-scyllacluster-rollout scylla-manager scylla-manager-cluster
   kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager

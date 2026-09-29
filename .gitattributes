@@ -7,8 +7,7 @@
 
 # Exact file paths
 deploy/operator.yaml linguist-generated=true
-deploy/manager-dev.yaml linguist-generated=true
-deploy/manager-prod.yaml linguist-generated=true
+deploy/manager.yaml linguist-generated=true
 examples/prometheus-operator.yaml linguist-generated=true
 examples/haproxy-ingress.yaml linguist-generated=true
 

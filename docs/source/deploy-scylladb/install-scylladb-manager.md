@@ -35,7 +35,7 @@ Apply the manifest:
 
 ```{code-block} shell
 :substitutions:
-kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager-prod.yaml
+kubectl -n=scylla-manager apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/deploy/manager.yaml
 ```
 
 :::

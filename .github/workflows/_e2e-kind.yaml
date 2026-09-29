@@ -1,0 +1,169 @@
+name: "E2E: kind suite"
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run among the kind e2e suites, e.g. `fast`. Used for the job name and the artifact name.
+        required: true
+        type: string
+      suite:
+        description: Name of the `scylla-operator-tests` suite to run, e.g. `kind-fast`.
+        required: true
+        type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      enable-parallel-node-operations:
+        description: >-
+          Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the
+          field defaulted.
+        required: false
+        default: ""
+        type: string
+      parallelism:
+        description: Test parallelism within the suite. 0 falls back to the suite's default.
+        required: false
+        default: 0
+        type: number
+      e2e-timeout:
+        description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
+        required: false
+        default: 90m
+        type: string
+  # The dispatch runs a single suite with the parameters below. The triggers keep separate input blocks by design,
+  # so the workflow_call inputs above are mirrored here; both feed the same `inputs` context.
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Short slug identifying this run among the kind e2e suites, e.g. `fast`. Used for the job name and the artifact name.
+        required: true
+        type: string
+      suite:
+        description: Name of the `scylla-operator-tests` suite to run, e.g. `kind-fast`.
+        required: true
+        type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      enable-parallel-node-operations:
+        description: >-
+          Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the
+          field defaulted.
+        required: false
+        default: ""
+        type: string
+      parallelism:
+        description: Test parallelism within the suite. 0 falls back to the suite's default.
+        required: false
+        default: 0
+        type: number
+      e2e-timeout:
+        description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
+        required: false
+        default: 90m
+        type: string
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+# actions/checkout clones as the runner user, but the kube-tools image declares no USER, so the job runs as root
+# and git refuses to operate on a tree it sees as foreign. safe.directory is only honoured from protected config
+# scopes, and GIT_CONFIG_COUNT/KEY/VALUE is the environment form of the command scope, so this covers every git
+# invocation in the job - including the ones make shells out to.
+# GIT_CONFIG_COUNT is a single shared counter: anything else setting it would overwrite these rather than append.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  e2e:
+    name: ${{ inputs.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    # The privileged kube-tools container hosts the kind cluster, and every step of the job runs inside it.
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+      options: --privileged
+      # Give the podman instance backing kind container storage on a real (non-overlayfs) filesystem.
+      volumes:
+      - /mnt/containers:/var/lib/containers
+    env:
+      ARTIFACTS: /artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Prepare the container
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS}"
+
+        # Disable pids limit to allow high parallelism in tests.
+        sed -i '/\[containers\]/a pids_limit = 0' /etc/containers/containers.conf
+
+        # kind nodes host many pods, each with several watches; the defaults are too low and manifest as obscure
+        # "too many open files" failures. The limits are namespaced, and this privileged container's namespace is
+        # the one the kind nodes inherit.
+        sysctl fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
+
+    - name: Run the e2e suite
+      env:
+        SO_SUITE: ${{ inputs.suite }}
+        SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+        SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
+        SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
+        SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # INT first so the suite can shut down and artifacts still get gathered; SIGKILL follows 10 minutes later.
+        timeout --verbose --signal=INT --kill-after=10m 120m make test-e2e-kind
+
+    # Dumps the basic state of the kind cluster and its host into the artifacts. Meant for failures before the
+    # suite starts, which leave no must-gather behind; the kind cluster dies with the job, so this collects while
+    # it is still around. Every probe is best-effort.
+    - name: Dump cluster state
+      if: failure()
+      env:
+        # As set by the Makefile's KIND_CLUSTER_NAME.
+        CLUSTER_NAME: scylla-operator-e2e
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        export KIND_EXPERIMENTAL_PROVIDER=podman
+        kubeconfig="$( mktemp )"
+        kind get kubeconfig --name="${CLUSTER_NAME}" > "${kubeconfig}" || true
+        export KUBECONFIG="${kubeconfig}"
+        kubectl get nodes -o=wide |& tee "${ARTIFACTS}/debug-nodes.txt" || true
+        kubectl get pods -A -o=wide |& tee "${ARTIFACTS}/debug-pods.txt" || true
+        kubectl get events -A --sort-by=.lastTimestamp &> "${ARTIFACTS}/debug-events.txt" || true
+        kubectl describe pods -A &> "${ARTIFACTS}/debug-describe-pods.txt" || true
+
+        # Machine facts and node-level logs, for failures the cluster API cannot explain.
+        { nproc; free -h; df -h /var/lib/containers; ulimit -a; sysctl fs.inotify; stat -fc %T /sys/fs/cgroup; } \
+          &> "${ARTIFACTS}/debug-system.txt" || true
+        podman ps -a &> "${ARTIFACTS}/debug-podman-ps.txt" || true
+        kind export logs --name="${CLUSTER_NAME}" "${ARTIFACTS}/kind-logs" &> "${ARTIFACTS}/debug-kind-export.txt" || true
+
+    - name: Pack and upload artifacts
+      if: always()
+      uses: ./.github/actions/pack-and-upload-artifacts
+      with:
+        name: artifacts-e2e-kind-${{ inputs.name }}-${{ github.run_attempt }}
+        directory: ${{ env.ARTIFACTS }}

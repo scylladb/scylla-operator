@@ -10,7 +10,7 @@ operator:
   # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
   scyllaDBManagerAgentVersion: "3.12.1@sha256:f47697d38da94a1e367286d232783199abb7477db026febfd125ee3b2aded7b0"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
-  grafanaImage: "docker.io/grafana/grafana:13.2.0" # Generated from scylla-monitoring/versions.sh GRAFANA_VERSION.
+  grafanaImage: "docker.io/grafana/grafana:13.2.2" # Generated from scylla-monitoring/versions.sh GRAFANA_VERSION.
   grafanaDefaultPlatformDashboard: "scylladb-2026.3/scylla-overview.2026.3.json"
   prometheusVersion: "v3.14.0" # Generated from scylla-monitoring/versions.sh PROMETHEUS_VERSION.
 operatorTests:

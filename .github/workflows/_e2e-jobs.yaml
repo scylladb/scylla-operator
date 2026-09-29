@@ -1,7 +1,8 @@
 name: E2E jobs
 
 # Every e2e job, defined once for all the workflows that run them. Builds the operator image from the ref under test
-# and runs the selected jobs against it. The callers select the jobs by their ids.
+# and runs the selected jobs against it. The callers select the jobs by their ids, which the `e2e/<job>` labels on PRs
+# refer to as well.
 on:
   workflow_call:
     inputs:

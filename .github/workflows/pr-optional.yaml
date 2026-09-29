@@ -1,0 +1,59 @@
+name: "PR: optional"
+
+# Runs the jobs that are too expensive to run on every PR, when the PR is labelled for them. So far these are the e2e
+# suites: labelling a PR `e2e/<job>` runs that job from _e2e-jobs.yaml, and from then on every push to the PR reruns it.
+# The jobs are informational: nothing requires them to merge. This is a separate workflow from pr.yaml, so that a label
+# event doesn't restart the jobs that always run.
+on:
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - labeled
+
+# A new commit or an `e2e/` label cancels the run before it, whatever it was doing, and the new run starts every
+# labelled job again. A label outside `e2e/` has nothing to run, so it gets a group of its own instead of cancelling
+# the run it would replace.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}${{ github.event.action == 'labeled' && !startsWith(github.event.label.name, 'e2e/') && format('-{0}', github.run_id) || '' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+    - id: plan
+      env:
+        ACTION: ${{ github.event.action }}
+        LABEL: ${{ github.event.label.name }}
+        LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        LABEL_PREFIX: e2e/
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        jobs="$( jq -c '[.[] | select(startswith(env.LABEL_PREFIX)) | ltrimstr(env.LABEL_PREFIX)]' <<< "${LABELS}" )"
+        if [[ "${ACTION}" == labeled && "${LABEL}" != "${LABEL_PREFIX}"* ]]; then
+          jobs='[]'
+        fi
+        echo "jobs=${jobs}" >> "${GITHUB_OUTPUT}"
+
+  e2e:
+    needs: plan
+    if: needs.plan.outputs.jobs != '[]'
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      jobs: ${{ needs.plan.outputs.jobs }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}

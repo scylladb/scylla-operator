@@ -88,15 +88,17 @@ env:
 jobs:
   e2e:
     name: ${{ inputs.name }}
-    runs-on: ubuntu-latest
+    runs-on: linux-amd64
     timeout-minutes: 150
     # The privileged kube-tools container hosts the kind cluster, and every step of the job runs inside it.
     container:
       image: quay.io/scylladb/scylla-operator-images:kube-tools
       options: --privileged
-      # Give the podman instance backing kind container storage on a real (non-overlayfs) filesystem.
+      # Give the podman instance backing kind container storage on a real (non-overlayfs) filesystem. A named
+      # volume lands on the docker daemon's own storage, which is a real filesystem on both VM runners and
+      # containerized (dind) ones, where a host bind path would resolve inside the dind container's overlayfs.
       volumes:
-      - /mnt/containers:/var/lib/containers
+      - containers-storage:/var/lib/containers
     env:
       ARTIFACTS: /artifacts
     steps:

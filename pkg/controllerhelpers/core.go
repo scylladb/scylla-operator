@@ -13,9 +13,9 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func GetPodCondition(conditions []corev1.PodCondition, conditionType corev1.PodConditionType) *corev1.PodCondition {
@@ -235,13 +235,14 @@ func AddGenericProgressingStatusCondition(conditions *[]metav1.Condition, condit
 	})
 }
 
-func IsPodReadyWithPositiveLiveCheck(ctx context.Context, client corev1client.PodsGetter, pod *corev1.Pod) (bool, *corev1.Pod, error) {
+func IsPodReadyWithPositiveLiveCheck(ctx context.Context, c client.Reader, pod *corev1.Pod) (bool, *corev1.Pod, error) {
 	if !IsPodReady(pod) {
 		return false, pod, nil
 	}
 
 	// Verify readiness with a live call.
-	fresh, err := client.Pods(pod.Namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+	fresh := &corev1.Pod{}
+	err := c.Get(ctx, client.ObjectKeyFromObject(pod), fresh)
 	if err != nil {
 		return false, pod, err
 	}

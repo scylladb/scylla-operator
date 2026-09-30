@@ -28,10 +28,9 @@ import (
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilintstr "k8s.io/apimachinery/pkg/util/intstr"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestMemberService(t *testing.T) {
@@ -4332,17 +4331,13 @@ func TestMakeJobs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			podCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-			for _, obj := range tc.pods {
-				err := podCache.Add(obj)
-				if err != nil {
-					t.Fatal(err)
-				}
+			builder := fake.NewClientBuilder()
+			for _, pod := range tc.pods {
+				builder.WithObjects(pod.DeepCopy())
 			}
+			c := builder.Build()
 
-			podLister := corev1listers.NewPodLister(podCache)
-
-			gotJobs, gotConditions, err := MakeJobs(tc.scyllaDBDatacenter, tc.services, podLister, unit.ScyllaDBOperatorImage)
+			gotJobs, gotConditions, err := MakeJobs(t.Context(), c, tc.scyllaDBDatacenter, tc.services, unit.ScyllaDBOperatorImage)
 			if err != nil {
 				t.Errorf("expected nil err, got: %v", err)
 			}
@@ -7741,17 +7736,13 @@ func Test_makeScyllaDBDatacenterNodesStatusReport(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			podCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-			for _, obj := range tc.pods {
-				err := podCache.Add(obj)
-				if err != nil {
-					t.Fatal(err)
-				}
+			builder := fake.NewClientBuilder()
+			for _, pod := range tc.pods {
+				builder.WithObjects(pod.DeepCopy())
 			}
+			c := builder.Build()
 
-			podLister := corev1listers.NewPodLister(podCache)
-
-			got, err := makeScyllaDBDatacenterNodesStatusReport(tc.sdc, tc.services, podLister)
+			got, err := makeScyllaDBDatacenterNodesStatusReport(t.Context(), c, tc.sdc, tc.services)
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Fatalf("expected and actual errors differ: %s", cmp.Diff(tc.expectedErr, err, cmpopts.EquateErrors()))
 			}

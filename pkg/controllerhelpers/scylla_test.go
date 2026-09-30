@@ -12,8 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	corev1listers "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestNewScyllaClientConfigForLocalhost(t *testing.T) {
@@ -723,7 +722,7 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 			},
 			expected: nil,
 			expectedError: apimachineryutilerrors.NewAggregate([]error{
-				fmt.Errorf(`can't get pod "test/simple-cluster-us-east1-us-east1-b-1": %w`, apierrors.NewNotFound(corev1.Resource("pod"), "simple-cluster-us-east1-us-east1-b-1")),
+				fmt.Errorf(`can't get pod "test/simple-cluster-us-east1-us-east1-b-1": %w`, apierrors.NewNotFound(corev1.Resource("pods"), "simple-cluster-us-east1-us-east1-b-1")),
 			}),
 		},
 		{
@@ -801,16 +800,13 @@ func TestGetRequiredScyllaHosts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			podCache := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-			for _, obj := range tc.existingPods {
-				err := podCache.Add(obj)
-				if err != nil {
-					t.Fatal(err)
-				}
+			builder := fake.NewClientBuilder()
+			for _, pod := range tc.existingPods {
+				builder.WithObjects(pod.DeepCopy())
 			}
-			podLister := corev1listers.NewPodLister(podCache)
+			c := builder.Build()
 
-			actual, err := GetRequiredScyllaHosts(tc.sdc, tc.services, podLister)
+			actual, err := GetRequiredScyllaHosts(t.Context(), c, tc.sdc, tc.services)
 
 			if !reflect.DeepEqual(err, tc.expectedError) {
 				t.Errorf("expected error %v, got %v", tc.expectedError, err)

@@ -6,13 +6,14 @@ import (
 
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	corev1listers "k8s.io/client-go/listers/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (sdcc *Controller) syncAgentToken(
@@ -23,8 +24,8 @@ func (sdcc *Controller) syncAgentToken(
 	var progressingConditions []metav1.Condition
 
 	agentAuthTokenProgressingConditions, agentAuthToken, err := controllerhelpers.GetScyllaDBManagerAgentAuthToken(
-		getOptionalAgentAuthTokenFromCustomConfigFunc(sdc, sdcc.secretLister),
-		getOptionalAgentAuthTokenOverrideFunc(sdc, sdcc.secretLister),
+		getOptionalAgentAuthTokenFromCustomConfigFunc(ctx, sdcc.client.Client(), sdc),
+		getOptionalAgentAuthTokenOverrideFunc(ctx, sdcc.client.Client(), sdc),
 		getOptionalExistingAgentAuthTokenFunc(sdc, secrets),
 	)
 	progressingConditions = append(progressingConditions, agentAuthTokenProgressingConditions...)
@@ -41,7 +42,7 @@ func (sdcc *Controller) syncAgentToken(
 	}
 
 	// TODO: Remove forced ownership in v1.5 (#672)
-	_, changed, err := resourceapply.ApplySecret(ctx, sdcc.kubeClient.CoreV1(), sdcc.secretLister, sdcc.eventRecorder, secret, resourceapply.ApplyOptions{
+	_, changed, err := resourceapply.ApplySecretWithControl(ctx, ctrlclient.ApplyControl[corev1.Secret](ctx, sdcc.client.Client(), sdc.Namespace), sdcc.eventRecorder, secret, resourceapply.ApplyOptions{
 		ForceOwnership: true,
 	})
 	if changed {
@@ -54,7 +55,7 @@ func (sdcc *Controller) syncAgentToken(
 	return progressingConditions, nil
 }
 
-func getOptionalAgentAuthTokenFromCustomConfigFunc(sdc *scyllav1alpha1.ScyllaDBDatacenter, secretLister corev1listers.SecretLister) func() ([]metav1.Condition, string, error) {
+func getOptionalAgentAuthTokenFromCustomConfigFunc(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter) func() ([]metav1.Condition, string, error) {
 	return func() ([]metav1.Condition, string, error) {
 		var progressingConditions []metav1.Condition
 
@@ -70,7 +71,7 @@ func getOptionalAgentAuthTokenFromCustomConfigFunc(sdc *scyllav1alpha1.ScyllaDBD
 		}
 
 		secretName := *configSecret
-		secret, err := secretLister.Secrets(sdc.Namespace).Get(secretName)
+		secret, err := ctrlclient.Get[corev1.Secret](ctx, c, sdc.Namespace, secretName)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return progressingConditions, "", fmt.Errorf("can't get secret %q: %w", naming.ManualRef(sdc.Namespace, secretName), err)
@@ -96,7 +97,7 @@ func getOptionalAgentAuthTokenFromCustomConfigFunc(sdc *scyllav1alpha1.ScyllaDBD
 	}
 }
 
-func getOptionalAgentAuthTokenOverrideFunc(sdc *scyllav1alpha1.ScyllaDBDatacenter, secretLister corev1listers.SecretLister) func() ([]metav1.Condition, string, error) {
+func getOptionalAgentAuthTokenOverrideFunc(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter) func() ([]metav1.Condition, string, error) {
 	return func() ([]metav1.Condition, string, error) {
 		var progressingConditions []metav1.Condition
 
@@ -105,7 +106,7 @@ func getOptionalAgentAuthTokenOverrideFunc(sdc *scyllav1alpha1.ScyllaDBDatacente
 			return progressingConditions, "", nil
 		}
 
-		secret, err := secretLister.Secrets(sdc.Namespace).Get(agentAuthTokenOverrideSecretRefAnnotationValue)
+		secret, err := ctrlclient.Get[corev1.Secret](ctx, c, sdc.Namespace, agentAuthTokenOverrideSecretRefAnnotationValue)
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return progressingConditions, "", fmt.Errorf("can't get Secret %q: %w", naming.ManualRef(sdc.Namespace, agentAuthTokenOverrideSecretRefAnnotationValue), err)

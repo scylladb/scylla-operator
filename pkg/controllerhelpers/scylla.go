@@ -2,6 +2,7 @@ package controllerhelpers
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 
@@ -15,10 +16,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
-	corev1listers "k8s.io/client-go/listers/core/v1"
 	corev1schedulinghelpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func GetScyllaHost(sdc *scyllav1alpha1.ScyllaDBDatacenter, svc *corev1.Service, pod *corev1.Pod) (string, error) {
@@ -148,7 +149,7 @@ func GetScyllaBroadcastAddress(broadcastAddressType scyllav1alpha1.BroadcastAddr
 	}
 }
 
-func GetRequiredScyllaHosts(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service, podLister corev1listers.PodLister) ([]string, error) {
+func GetRequiredScyllaHosts(ctx context.Context, c client.Reader, sdc *scyllav1alpha1.ScyllaDBDatacenter, services map[string]*corev1.Service) ([]string, error) {
 	var hosts []string
 	var errs []error
 	for _, rack := range sdc.Spec.Racks {
@@ -166,7 +167,8 @@ func GetRequiredScyllaHosts(sdc *scyllav1alpha1.ScyllaDBDatacenter, services map
 			}
 
 			podName := naming.PodNameFromService(svc)
-			pod, err := podLister.Pods(sdc.Namespace).Get(podName)
+			pod := &corev1.Pod{}
+			err := c.Get(ctx, client.ObjectKey{Namespace: sdc.Namespace, Name: podName}, pod)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sdc.Namespace, podName), err))
 				continue

@@ -407,7 +407,7 @@
                         }
                     },
                     "description": "scylla_hints_manager_written",
-                    "id": 17,
+                    "id": 18,
                     "links": [],
                     "title": "Hints Written $func by [[by]]",
                     "vizConfig": {
@@ -517,7 +517,7 @@
                         }
                     },
                     "description": "The number of Cell Tombstones found in SSTables. This number is updated by an SSTable update after flush, compaction, or streaming operations.",
-                    "id": 107,
+                    "id": 108,
                     "links": [],
                     "title": "Cell Tombstones found in SSTables $func by [[by]]",
                     "vizConfig": {
@@ -604,7 +604,7 @@
                         }
                     },
                     "description": "",
-                    "id": 108,
+                    "id": 109,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -665,7 +665,7 @@
                         }
                     },
                     "description": "LWT read rate.",
-                    "id": 109,
+                    "id": 110,
                     "links": [],
                     "title": "LWT Reads $func by [[by]]",
                     "vizConfig": {
@@ -775,7 +775,7 @@
                         }
                     },
                     "description": "LWT Average Read latency.",
-                    "id": 110,
+                    "id": 111,
                     "links": [],
                     "title": "LWT Average Read latency",
                     "vizConfig": {
@@ -885,7 +885,7 @@
                         }
                     },
                     "description": "LWT 95% Read latency.",
-                    "id": 111,
+                    "id": 112,
                     "links": [],
                     "title": "95% latency",
                     "vizConfig": {
@@ -995,7 +995,7 @@
                         }
                     },
                     "description": "LWT Read Timeouts",
-                    "id": 112,
+                    "id": 113,
                     "links": [],
                     "title": "LWT Read Timeouts $func by [[by]]",
                     "vizConfig": {
@@ -1105,7 +1105,7 @@
                         }
                     },
                     "description": "LWT write rate.",
-                    "id": 113,
+                    "id": 114,
                     "links": [],
                     "title": "LWT Writes $func by [[by]]",
                     "vizConfig": {
@@ -1215,7 +1215,7 @@
                         }
                     },
                     "description": "LWT Average Write latency.",
-                    "id": 114,
+                    "id": 115,
                     "links": [],
                     "title": "LWT Average Write latency",
                     "vizConfig": {
@@ -1325,7 +1325,7 @@
                         }
                     },
                     "description": "LWT 95% write latency.",
-                    "id": 115,
+                    "id": 116,
                     "links": [],
                     "title": "95% latency",
                     "vizConfig": {
@@ -1435,7 +1435,7 @@
                         }
                     },
                     "description": "LWT Write Timeouts",
-                    "id": 116,
+                    "id": 117,
                     "links": [],
                     "title": "LWT Write Timeouts $func by [[by]]",
                     "vizConfig": {
@@ -1545,7 +1545,7 @@
                         }
                     },
                     "description": "scylla_hints_manager_sent",
-                    "id": 18,
+                    "id": 19,
                     "links": [],
                     "title": "Hints sent $func by [[by]]",
                     "vizConfig": {
@@ -1655,7 +1655,7 @@
                         }
                     },
                     "description": "A single Read/Write LWT will result in multiple paxos operations",
-                    "id": 117,
+                    "id": 118,
                     "links": [],
                     "title": "Paxos operations $func by [[by]]",
                     "vizConfig": {
@@ -1765,7 +1765,7 @@
                         }
                     },
                     "description": "How many paxos operations that did not yet produce a result are running",
-                    "id": 118,
+                    "id": 119,
                     "links": [],
                     "title": "Paxos Foreground operations $func by [[by]]",
                     "vizConfig": {
@@ -1875,7 +1875,7 @@
                         }
                     },
                     "description": "How many paxos operations are still running after a result was already returned",
-                    "id": 119,
+                    "id": 120,
                     "links": [],
                     "title": "Paxos Background operations $func by [[by]]",
                     "vizConfig": {
@@ -1962,7 +1962,7 @@
                         }
                     },
                     "description": "",
-                    "id": 120,
+                    "id": 121,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -2023,7 +2023,7 @@
                         }
                     },
                     "description": "An LWT INSERT, UPDATE or DELETE command that involves a condition will be rejected if the condition is not met.\n\nWhile it is ok, a high value may indicate that there is a potential problem with data distribution",
-                    "id": 121,
+                    "id": 122,
                     "links": [],
                     "title": "LWT Condition-Not-Met $func by [[by]]",
                     "vizConfig": {
@@ -2133,7 +2133,7 @@
                         }
                     },
                     "description": "Number of times some INSERT, UPDATE or DELETE request with conditions had to retry because there was a concurrent conditional statement against the same key. Each retry is performed after a randomized sleep interval, so it can lead to statement timing out completely.\n\nIt can indicates contention over a hot row or key",
-                    "id": 122,
+                    "id": 123,
                     "links": [],
                     "title": "LWT Write Contention $func by [[by]]",
                     "vizConfig": {
@@ -2243,7 +2243,7 @@
                         }
                     },
                     "description": "Number of times some SELECT with SERIAL consistency had to retry because there was a concurrent conditional statement against the same key. Each retry is performed after a randomized sleep interval, so it can lead to statement timing out completely.\n\nIt can indicates contention over a hot row or key",
-                    "id": 123,
+                    "id": 124,
                     "links": [],
                     "title": "LWT Read Contention $func by [[by]]",
                     "vizConfig": {
@@ -2353,7 +2353,7 @@
                         }
                     },
                     "description": "Number of partially succeeded conditional statements. These statements were not committed by the coordinator, due to some replicas responding with errors or timing out. The coordinator had to propagate the error to the client. However, the statement succeeded on a minority of replicas, so may later be propagated to the rest during repair.",
-                    "id": 124,
+                    "id": 125,
                     "links": [],
                     "title": "LWT Write Timeout Due to Uncertainty $func by [[by]]",
                     "vizConfig": {
@@ -2463,7 +2463,7 @@
                         }
                     },
                     "description": "Number of times a INSERT, UPDATE, or DELETE with conditions failed after being unable to contact enough replicas to match the consistency level",
-                    "id": 125,
+                    "id": 126,
                     "links": [],
                     "title": "LWT Write Unavailable $func by [[by]]",
                     "vizConfig": {
@@ -2573,7 +2573,7 @@
                         }
                     },
                     "description": "Number of times a SELECT with SERIAL consistency failed after being unable to contact enough replicas to match the consistency level",
-                    "id": 126,
+                    "id": 127,
                     "links": [],
                     "title": "LWT Read Unavailable $func by [[by]]",
                     "vizConfig": {
@@ -2683,7 +2683,7 @@
                         }
                     },
                     "description": "Number of unexpected errors during sending, sending will be retried later\n\nscylla_hints_manager_send_errors",
-                    "id": 19,
+                    "id": 20,
                     "links": [],
                     "title": "Hints-Send Errors $func by [[by]]",
                     "vizConfig": {
@@ -2793,7 +2793,7 @@
                         }
                     },
                     "description": "Number of Paxos-repairs of INSERT, UPDATE, or DELETE with conditions.\n\nA repair is necessary when a previous Paxos statement was partially successful. A subsequent statement then may not proceed before completing the work of its predecessor. A repair is not guaranteed to succeed, the metric indicates the number of repair attempts made",
-                    "id": 127,
+                    "id": 128,
                     "links": [],
                     "title": "LWT Write Unfinished - Repair Attempts $func by [[by]]",
                     "vizConfig": {
@@ -2903,7 +2903,7 @@
                         }
                     },
                     "description": "Number of Paxos-repairs of SELECT statement with SERIAL consistency.\n\nA repair is necessary when a previous Paxos statement was partially successful. A subsequent statement then may not proceed before completing the work of its predecessor. A repair is not guaranteed to succeed, the metric indicates the number of repair attempts made",
-                    "id": 128,
+                    "id": 129,
                     "links": [],
                     "title": "LWT Read Unfinished - Repair Attempts $func by [[by]]",
                     "vizConfig": {
@@ -3013,7 +3013,7 @@
                         }
                     },
                     "description": "Normally, a PREPARE Paxos-round piggy-backs the previous value along with the PREPARE response. When the coordinator is unable to obtain the previous value (or its digest) from some of the participants, or when the digests did not match, a separate repair round has to be performed.\n\nThis indicates that some Paxos queries did not run successfully to completion, e.g. because some node is overloaded, down, or there was contention around a key.",
-                    "id": 129,
+                    "id": 130,
                     "links": [],
                     "title": "Failed Read-Round Optimization $func by [[by]]",
                     "vizConfig": {
@@ -3123,7 +3123,7 @@
                         }
                     },
                     "description": "Number of pruning requests.\n\nA successful conditional statement deletes the intermediate state from system.paxos table using PRUNE command.",
-                    "id": 130,
+                    "id": 131,
                     "links": [],
                     "title": "LWT Prune $func by [[by]]",
                     "vizConfig": {
@@ -3233,7 +3233,7 @@
                         }
                     },
                     "description": "Number of Dropped pruning requests.\n\nA successful conditional statement deletes the intermediate state from system.paxos table using PRUNE command. If the system is busy it may not keep up with the PRUNE requests, so such requests are dropped.\n\nHigh value suggests the system is overloaded and also that system.paxos table is taking up space. If a prune is dropped, system.paxos table key and value for respective LWT transaction  will stay around until next transaction against the same key or until the gc_grace_period, when it's removed by compaction.",
-                    "id": 131,
+                    "id": 132,
                     "links": [],
                     "title": "LWT Dropped Prune $func by [[by]]",
                     "vizConfig": {
@@ -3320,7 +3320,7 @@
                         }
                     },
                     "description": "",
-                    "id": 132,
+                    "id": 133,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -3381,7 +3381,7 @@
                         }
                     },
                     "description": "The rate of CDC operations.",
-                    "id": 133,
+                    "id": 134,
                     "links": [],
                     "title": "CDC Operations $func by [[by]]",
                     "vizConfig": {
@@ -3491,7 +3491,7 @@
                         }
                     },
                     "description": "The rate of failed CDC operations.",
-                    "id": 134,
+                    "id": 135,
                     "links": [],
                     "title": "Failed CDC operations $func by [[by]]",
                     "vizConfig": {
@@ -3578,7 +3578,7 @@
                         }
                     },
                     "description": "",
-                    "id": 135,
+                    "id": 136,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -3639,7 +3639,7 @@
                         }
                     },
                     "description": "scylla_lsa_total_space_bytes",
-                    "id": 136,
+                    "id": 137,
                     "links": [],
                     "title": "LSA total memory $func by [[by]]",
                     "vizConfig": {
@@ -3749,7 +3749,7 @@
                         }
                     },
                     "description": "Number of times a digest read was done on behalf of a speculative retry.\n\nSpeculative retry is a mechanism that causes the client or server to speculate that a request may fail, and send a new request.\n\nspeculative retry may reduce latency in exchange for system load, but only if there is little activity.\n\nA lot of speculative retries increases load and can harm latency more than helping.",
-                    "id": 20,
+                    "id": 21,
                     "links": [],
                     "title": "Speculative Digest Reads $func by [[by]]",
                     "vizConfig": {
@@ -3859,7 +3859,7 @@
                         }
                     },
                     "description": "scylla_lsa_non_lsa_used_space_bytes",
-                    "id": 137,
+                    "id": 138,
                     "links": [],
                     "title": "Non-LSA used memory $func by [[by]]",
                     "vizConfig": {
@@ -3969,7 +3969,7 @@
                         }
                     },
                     "description": "Bloom filter should take a small percentage of the total memory.\n\nscylla_sstables_bloom_filter_memory_size",
-                    "id": 138,
+                    "id": 139,
                     "links": [],
                     "title": "Bloom Filter memory usage (percentage )",
                     "vizConfig": {
@@ -4056,7 +4056,7 @@
                         }
                     },
                     "description": "",
-                    "id": 139,
+                    "id": 140,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -4117,7 +4117,7 @@
                         }
                     },
                     "description": "Shares assigned to the compaction",
-                    "id": 140,
+                    "id": 141,
                     "links": [],
                     "title": "Compactions Shares",
                     "vizConfig": {
@@ -4227,7 +4227,7 @@
                         }
                     },
                     "description": "scylla_compaction_manager_compactions",
-                    "id": 141,
+                    "id": 142,
                     "links": [],
                     "title": "Running Compactions $func by [[by]]",
                     "vizConfig": {
@@ -4337,7 +4337,7 @@
                         }
                     },
                     "description": "Percentage of CPU time used by compaction",
-                    "id": 142,
+                    "id": 143,
                     "links": [],
                     "title": "Compactions CPU Runtime",
                     "vizConfig": {
@@ -4424,7 +4424,7 @@
                         }
                     },
                     "description": "",
-                    "id": 145,
+                    "id": 146,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -4485,7 +4485,7 @@
                         }
                     },
                     "description": "scylla_storage_proxy_coordinator_write_latency",
-                    "id": 146,
+                    "id": 147,
                     "links": [],
                     "title": "Writes $func by [[by]]",
                     "vizConfig": {
@@ -4617,7 +4617,7 @@
                         }
                     },
                     "description": "",
-                    "id": 147,
+                    "id": 148,
                     "links": [],
                     "title": "Average write latency by [[by]]",
                     "vizConfig": {
@@ -4749,7 +4749,7 @@
                         }
                     },
                     "description": "",
-                    "id": 148,
+                    "id": 149,
                     "links": [],
                     "title": "95th percentile write latency by [[by]]",
                     "vizConfig": {
@@ -4859,7 +4859,7 @@
                         }
                     },
                     "description": "Number of times a read was done on behalf of a speculative retry.\n\nSpeculative retry is a mechanism that causes the client or server to speculate that a request may fail, and send a new request.\n\nspeculative retry may reduce latency in exchange for system load, but only if there is little activity.\n\nA lot of speculative retries increases load and can harm latency more than helping.",
-                    "id": 21,
+                    "id": 22,
                     "links": [],
                     "title": "Speculative Data Reads $func by [[by]]",
                     "vizConfig": {
@@ -4991,7 +4991,7 @@
                         }
                     },
                     "description": "",
-                    "id": 149,
+                    "id": 150,
                     "links": [],
                     "title": "99th percentile write latency by [[by]]",
                     "vizConfig": {
@@ -5101,7 +5101,7 @@
                         }
                     },
                     "description": "scylla_storage_proxy_coordinator_read_latency",
-                    "id": 150,
+                    "id": 151,
                     "links": [],
                     "title": "Reads $func by [[by]]",
                     "vizConfig": {
@@ -5233,7 +5233,7 @@
                         }
                     },
                     "description": "",
-                    "id": 151,
+                    "id": 152,
                     "links": [],
                     "title": "Average read latency by [[by]]",
                     "vizConfig": {
@@ -5365,7 +5365,7 @@
                         }
                     },
                     "description": "",
-                    "id": 152,
+                    "id": 153,
                     "links": [],
                     "title": "95th percentile read latency by [[by]]",
                     "vizConfig": {
@@ -5497,7 +5497,7 @@
                         }
                     },
                     "description": "",
-                    "id": 153,
+                    "id": 154,
                     "links": [],
                     "title": "99th percentile read latency by [[by]]",
                     "vizConfig": {
@@ -5607,7 +5607,7 @@
                         }
                     },
                     "description": "Bytes received in CQL messages",
-                    "id": 154,
+                    "id": 155,
                     "links": [],
                     "title": "Received payload $func by [[by]]",
                     "vizConfig": {
@@ -5717,7 +5717,7 @@
                         }
                     },
                     "description": "Average CQL message size (received)",
-                    "id": 155,
+                    "id": 156,
                     "links": [],
                     "title": "Average received payload size by [[by]]",
                     "vizConfig": {
@@ -5827,7 +5827,7 @@
                         }
                     },
                     "description": "Bytes sent in CQL messages",
-                    "id": 156,
+                    "id": 157,
                     "links": [],
                     "title": "Response payload $func by [[by]]",
                     "vizConfig": {
@@ -5937,7 +5937,7 @@
                         }
                     },
                     "description": "Average CQL message size (sent)",
-                    "id": 157,
+                    "id": 158,
                     "links": [],
                     "title": "Average response payload size by [[by]]",
                     "vizConfig": {
@@ -6047,7 +6047,7 @@
                         }
                     },
                     "description": "This is a ballpark estimation of the write-messages size (like insert and update).\n\nIt is based on the assumption that write-messages are responsible for most inwards traffic.",
-                    "id": 158,
+                    "id": 159,
                     "links": [],
                     "title": "Estimated write message size by [[by]]",
                     "vizConfig": {
@@ -6157,7 +6157,7 @@
                         }
                     },
                     "description": "scylla_transport_requests_shed",
-                    "id": 22,
+                    "id": 23,
                     "links": [],
                     "title": "Requests Shed $func by [[by]]",
                     "vizConfig": {
@@ -6267,7 +6267,7 @@
                         }
                     },
                     "description": "This is a ballpark estimation of the read-messages size (like select).\n\nIt is based on the assumption that read-messages are responsible for most outbound traffic.",
-                    "id": 159,
+                    "id": 160,
                     "links": [],
                     "title": "Estimated read message size by [[by]]",
                     "vizConfig": {
@@ -6377,7 +6377,7 @@
                         }
                     },
                     "description": "",
-                    "id": 160,
+                    "id": 161,
                     "links": [],
                     "title": "Foreground Reads $func by [[by]]",
                     "vizConfig": {
@@ -6487,7 +6487,7 @@
                         }
                     },
                     "description": "",
-                    "id": 161,
+                    "id": 162,
                     "links": [],
                     "title": "Foreground Writes $func by [[by]]",
                     "vizConfig": {
@@ -6574,7 +6574,7 @@
                         }
                     },
                     "description": "",
-                    "id": 164,
+                    "id": 165,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -6592,7 +6592,7 @@
                                     "showLineNumbers": false,
                                     "showMiniMap": false
                                 },
-                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                                 "mode": "html"
                             }
                         },
@@ -6635,7 +6635,7 @@
                         }
                     },
                     "description": "writes rate",
-                    "id": 23,
+                    "id": 24,
                     "links": [],
                     "title": "Writes $func by [[by]]",
                     "vizConfig": {
@@ -6767,7 +6767,7 @@
                         }
                     },
                     "description": "The average write latency",
-                    "id": 24,
+                    "id": 25,
                     "links": [],
                     "title": "Average write latency by [[by]]",
                     "vizConfig": {
@@ -6899,7 +6899,7 @@
                         }
                     },
                     "description": "The 95th percentile write latency",
-                    "id": 25,
+                    "id": 26,
                     "links": [],
                     "title": "95th percentile write latency by [[by]]",
                     "vizConfig": {
@@ -7031,7 +7031,7 @@
                         }
                     },
                     "description": "99th percentile write latency",
-                    "id": 26,
+                    "id": 27,
                     "links": [],
                     "title": "99th percentile write latency by [[by]]",
                     "vizConfig": {
@@ -7251,7 +7251,7 @@
                         }
                     },
                     "description": "Reads rate",
-                    "id": 27,
+                    "id": 28,
                     "links": [],
                     "title": "Reads $func by [[by]]",
                     "vizConfig": {
@@ -7383,7 +7383,7 @@
                         }
                     },
                     "description": "Average read latency",
-                    "id": 28,
+                    "id": 29,
                     "links": [],
                     "title": "Average read latency by [[by]]",
                     "vizConfig": {
@@ -7515,7 +7515,7 @@
                         }
                     },
                     "description": "95th percentile read latency",
-                    "id": 29,
+                    "id": 30,
                     "links": [],
                     "title": "95th percentile read latency by [[by]]",
                     "vizConfig": {
@@ -7647,7 +7647,7 @@
                         }
                     },
                     "description": "99th percentile read latency",
-                    "id": 30,
+                    "id": 31,
                     "links": [],
                     "title": "99th percentile read latency by [[by]]",
                     "vizConfig": {
@@ -7734,7 +7734,7 @@
                         }
                     },
                     "description": "",
-                    "id": 31,
+                    "id": 32,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -7795,7 +7795,7 @@
                         }
                     },
                     "description": "Requests that Scylla tried to write but timed out. Timeouts are counted in the node that received the request (the coordinator), not at the replicas.",
-                    "id": 32,
+                    "id": 33,
                     "links": [],
                     "title": "Write Timeouts/Seconds $func by [[by]]",
                     "vizConfig": {
@@ -7905,7 +7905,7 @@
                         }
                     },
                     "description": "Requests that Scylla did not even try to write because replicas that were needed to execute this write were unavailable. Unavailable writes are counted in the node that received the request (the coordinator), not at the replicas.",
-                    "id": 33,
+                    "id": 34,
                     "links": [],
                     "title": "Write Unavailable/Seconds $func by [[by]]",
                     "vizConfig": {
@@ -8059,7 +8059,7 @@
                         }
                     },
                     "description": "Requests that Scylla tried to read but timed out. Timeouts are counted in the node that received the request (the coordinator), not at the replicas.",
-                    "id": 34,
+                    "id": 35,
                     "links": [],
                     "title": "Read Timeouts/Seconds $func by [[by]]",
                     "vizConfig": {
@@ -8169,7 +8169,7 @@
                         }
                     },
                     "description": "Requests that Scylla did not even try to read because replicas that were needed to execute this write were unavailable. Unavailable reads are counted in the node that received the request (the coordinator), not at the replicas.",
-                    "id": 35,
+                    "id": 36,
                     "links": [],
                     "title": "Read Unavailable/Seconds $func by [[by]]",
                     "vizConfig": {
@@ -8256,7 +8256,7 @@
                         }
                     },
                     "description": "",
-                    "id": 36,
+                    "id": 37,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -8427,7 +8427,7 @@
                         }
                     },
                     "description": "The number of currently active read operations",
-                    "id": 37,
+                    "id": 38,
                     "links": [],
                     "title": "Active reads $func by [[by]]",
                     "vizConfig": {
@@ -8537,7 +8537,7 @@
                         }
                     },
                     "description": "number of currently queued read operations",
-                    "id": 38,
+                    "id": 39,
                     "links": [],
                     "title": "Queued reads $func by [[by]]",
                     "vizConfig": {
@@ -8647,7 +8647,7 @@
                         }
                     },
                     "description": "The current number of requests blocked due to reaching the memory quota. Non-zero value indicates that our bottleneck is memory",
-                    "id": 39,
+                    "id": 40,
                     "links": [],
                     "title": "Writes currently blocked on dirty $func by [[by]]",
                     "vizConfig": {
@@ -8757,7 +8757,7 @@
                         }
                     },
                     "description": "number of currently pending allocations. A non-zero value indicates that we have a bottleneck in the disk write flow.",
-                    "id": 40,
+                    "id": 41,
                     "links": [],
                     "title": "Writes currently blocked on commitlog $func by [[by]]",
                     "vizConfig": {
@@ -8867,7 +8867,7 @@
                         }
                     },
                     "description": "Reciprocal Miss Rate is a score in the range of 1 to 100 that is used to decide the fraction of read requests to send to each replica - a replica with twice the RMR value of another replica will serve twice the number of read requests.\n\nRMR is calculated on a table level, this is an aggregate estimation of that score.",
-                    "id": 41,
+                    "id": 42,
                     "links": [],
                     "title": "Reciprocal Miss Rate (HWLB)",
                     "vizConfig": {
@@ -8977,7 +8977,7 @@
                         }
                     },
                     "description": "scylla_database_total_reads_failed",
-                    "id": 42,
+                    "id": 43,
                     "links": [],
                     "title": "Reads failed $func by [[by]]",
                     "vizConfig": {
@@ -9087,7 +9087,7 @@
                         }
                     },
                     "description": "scylla_database_requests_blocked_memory",
-                    "id": 43,
+                    "id": 44,
                     "links": [],
                     "title": "Writes blocked on dirty $func by [[by]]",
                     "vizConfig": {
@@ -9197,7 +9197,7 @@
                         }
                     },
                     "description": "scylla_commitlog_requests_blocked_memory",
-                    "id": 44,
+                    "id": 45,
                     "links": [],
                     "title": "Writes blocked on commitlog $func by [[by]]",
                     "vizConfig": {
@@ -9307,7 +9307,7 @@
                         }
                     },
                     "description": "Data compression percentage by using compressed algorithm\n\nscylla_rpc_compression_compressed_bytes_sent",
-                    "id": 45,
+                    "id": 46,
                     "links": [],
                     "title": "Compression Ratios by Algorithm",
                     "vizConfig": {
@@ -9417,7 +9417,7 @@
                         }
                     },
                     "description": "Bytes sent using compressed algorithm\n\nscylla_rpc_compression_compressed_bytes_sent",
-                    "id": 46,
+                    "id": 47,
                     "links": [],
                     "title": "Compressed Bytes Sent by Algorithm $func by [[by]]",
                     "vizConfig": {
@@ -9637,7 +9637,7 @@
                         }
                     },
                     "description": "scylla_database_total_writes_failed",
-                    "id": 47,
+                    "id": 48,
                     "links": [],
                     "title": "Writes failed $func by [[by]]",
                     "vizConfig": {
@@ -9747,7 +9747,7 @@
                         }
                     },
                     "description": "scylla_database_total_writes_timedout",
-                    "id": 48,
+                    "id": 49,
                     "links": [],
                     "title": "Writes timed out $func by [[by]]",
                     "vizConfig": {
@@ -9857,7 +9857,7 @@
                         }
                     },
                     "description": "Number of sstables currently open for reading \n\nscylla_sstables_currently_open_for_reading",
-                    "id": 49,
+                    "id": 50,
                     "links": [],
                     "title": "Open sstables for reading $func by [[by]]",
                     "vizConfig": {
@@ -9967,7 +9967,7 @@
                         }
                     },
                     "description": "Number of sstables read\n\nscylla_database_sstables_read",
-                    "id": 50,
+                    "id": 51,
                     "links": [],
                     "title": "SStable reads $func by [[by]]",
                     "vizConfig": {
@@ -10077,7 +10077,7 @@
                         }
                     },
                     "description": "Number of sstables disk reads\n\nscylla_database_disk_reads",
-                    "id": 51,
+                    "id": 52,
                     "links": [],
                     "title": "SStables disk reads $func by [[by]]",
                     "vizConfig": {
@@ -10187,7 +10187,7 @@
                         }
                     },
                     "description": "S3 Writes, bytes rate \n\nscylla_s3_total_write_bytes",
-                    "id": 52,
+                    "id": 53,
                     "links": [],
                     "title": "S3 Writes Bytes/s $func by [[by]]",
                     "vizConfig": {
@@ -10297,7 +10297,7 @@
                         }
                     },
                     "description": "S3 Writes latency\n\nscylla_s3_total_write_latency_sec",
-                    "id": 53,
+                    "id": 54,
                     "links": [],
                     "title": "S3 Writes latency $func by [[by]]",
                     "vizConfig": {
@@ -10407,7 +10407,7 @@
                         }
                     },
                     "description": "S3 reads, bytes rate \n\nscylla_s3_total_read_bytes",
-                    "id": 54,
+                    "id": 55,
                     "links": [],
                     "title": "S3 reads Bytes/s $func by [[by]]",
                     "vizConfig": {
@@ -10517,7 +10517,7 @@
                         }
                     },
                     "description": "S3 average reads latency\n\nscylla_s3_total_read_latency_sec",
-                    "id": 55,
+                    "id": 56,
                     "links": [],
                     "title": "S3 Average reads latency",
                     "vizConfig": {
@@ -10604,7 +10604,7 @@
                         }
                     },
                     "description": "",
-                    "id": 56,
+                    "id": 57,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -10642,7 +10642,7 @@
                         }
                     },
                     "description": "",
-                    "id": 12,
+                    "id": 13,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -10703,7 +10703,7 @@
                         }
                     },
                     "description": "number of reads that were served from the cache",
-                    "id": 57,
+                    "id": 58,
                     "links": [],
                     "title": "Reads with no misses $func by [[by]]",
                     "vizConfig": {
@@ -10813,7 +10813,7 @@
                         }
                     },
                     "description": "scylla_cache_reads_with_misses",
-                    "id": 58,
+                    "id": 59,
                     "links": [],
                     "title": "Reads with misses $func by [[by]]",
                     "vizConfig": {
@@ -10923,7 +10923,7 @@
                         }
                     },
                     "description": "scylla_cache_row_hits",
-                    "id": 59,
+                    "id": 60,
                     "links": [],
                     "title": "Row Hits $func by [[by]]",
                     "vizConfig": {
@@ -11033,7 +11033,7 @@
                         }
                     },
                     "description": "scylla_cache_row_misses",
-                    "id": 60,
+                    "id": 61,
                     "links": [],
                     "title": "Row Misses $func by [[by]]",
                     "vizConfig": {
@@ -11143,7 +11143,7 @@
                         }
                     },
                     "description": "scylla_cache_partition_hits",
-                    "id": 61,
+                    "id": 62,
                     "links": [],
                     "title": "Partition Hits $func by [[by]]",
                     "vizConfig": {
@@ -11253,7 +11253,7 @@
                         }
                     },
                     "description": "scylla_cache_partition_misses",
-                    "id": 62,
+                    "id": 63,
                     "links": [],
                     "title": "Partition Misses $func by [[by]]",
                     "vizConfig": {
@@ -11363,7 +11363,7 @@
                         }
                     },
                     "description": "scylla_cache_row_insertions",
-                    "id": 63,
+                    "id": 64,
                     "links": [],
                     "title": "Row Insertions $func by [[by]]",
                     "vizConfig": {
@@ -11473,7 +11473,7 @@
                         }
                     },
                     "description": "scylla_cache_row_evictions",
-                    "id": 64,
+                    "id": 65,
                     "links": [],
                     "title": "Row Evictions $func by [[by]]",
                     "vizConfig": {
@@ -11583,7 +11583,7 @@
                         }
                     },
                     "description": "scylla_cache_partition_insertions",
-                    "id": 65,
+                    "id": 66,
                     "links": [],
                     "title": "Partition Insertions $func by [[by]]",
                     "vizConfig": {
@@ -11693,7 +11693,7 @@
                         }
                     },
                     "description": "scylla_cache_partition_evictions",
-                    "id": 66,
+                    "id": 67,
                     "links": [],
                     "title": "Partition Evictions $func by [[by]]",
                     "vizConfig": {
@@ -11803,7 +11803,7 @@
                         }
                     },
                     "description": "Foreground writes are writes that weren't acknowledged yet to the application. For instance, if a single replica responded and two are needed due to the consistency level. This metric represents a queue size, not a rate. High values here correlate with increased write latencies.",
-                    "id": 13,
+                    "id": 14,
                     "links": [],
                     "title": "Foreground Writes $func by [[by]]",
                     "vizConfig": {
@@ -11913,7 +11913,7 @@
                         }
                     },
                     "description": "scylla_cache_rows_merged_from_memtable",
-                    "id": 67,
+                    "id": 68,
                     "links": [],
                     "title": "Row Merges $func by [[by]]",
                     "vizConfig": {
@@ -12023,7 +12023,7 @@
                         }
                     },
                     "description": "scylla_cache_row_removals",
-                    "id": 68,
+                    "id": 69,
                     "links": [],
                     "title": "Row Removals $func by [[by]]",
                     "vizConfig": {
@@ -12133,7 +12133,7 @@
                         }
                     },
                     "description": "scylla_cache_partition_merges",
-                    "id": 69,
+                    "id": 70,
                     "links": [],
                     "title": "Partition Merges $func by [[by]]",
                     "vizConfig": {
@@ -12243,7 +12243,7 @@
                         }
                     },
                     "description": "scylla_cache_partition_removals",
-                    "id": 70,
+                    "id": 71,
                     "links": [],
                     "title": "Partition Removals $func by [[by]]",
                     "vizConfig": {
@@ -12353,7 +12353,7 @@
                         }
                     },
                     "description": "scylla_cache_rows",
-                    "id": 71,
+                    "id": 72,
                     "links": [],
                     "title": "Rows $func by [[by]]",
                     "vizConfig": {
@@ -12463,7 +12463,7 @@
                         }
                     },
                     "description": "scylla_cache_partitions",
-                    "id": 72,
+                    "id": 73,
                     "links": [],
                     "title": "Partitions $func by [[by]]",
                     "vizConfig": {
@@ -12573,7 +12573,7 @@
                         }
                     },
                     "description": "scylla_cache_bytes_used",
-                    "id": 73,
+                    "id": 74,
                     "links": [],
                     "title": "Used Bytes $func by [[by]]",
                     "vizConfig": {
@@ -12683,7 +12683,7 @@
                         }
                     },
                     "description": "scylla_cache_bytes_total",
-                    "id": 74,
+                    "id": 75,
                     "links": [],
                     "title": "Total Bytes $func by [[by]]",
                     "vizConfig": {
@@ -12793,7 +12793,7 @@
                         }
                     },
                     "description": "scylla_cql_prepared_cache_evictions",
-                    "id": 75,
+                    "id": 76,
                     "links": [],
                     "title": "Prepared Statements Cache Eviction $func by [[by]]",
                     "vizConfig": {
@@ -12903,7 +12903,7 @@
                         }
                     },
                     "description": "scylla_cql_authorized_prepared_statements_cache_evictions",
-                    "id": 76,
+                    "id": 77,
                     "links": [],
                     "title": "Authorized Prepared Statements Cache Eviction $func by [[by]]",
                     "vizConfig": {
@@ -13013,7 +13013,7 @@
                         }
                     },
                     "description": "Background writes are writes that are already acknowledged to the application but have additional work to be done. For instance, if a replica responded and only one is needed, this request is still listed as a background request until all replicas respond. This metric represents a queue size, not a rate. High values here correlate with increased write latencies.",
-                    "id": 14,
+                    "id": 15,
                     "links": [],
                     "title": "Background Writes $func by [[by]]",
                     "vizConfig": {
@@ -13123,7 +13123,7 @@
                         }
                     },
                     "description": "The number of entries currently in the querier cache.\n\nscylla_database_querier_cache_population",
-                    "id": 77,
+                    "id": 78,
                     "links": [],
                     "title": "Querier cache population $func by [[by]]",
                     "vizConfig": {
@@ -13233,7 +13233,7 @@
                         }
                     },
                     "description": "Counts querier cache lookups (paging queries)\n\nscylla_database_querier_cache_lookups",
-                    "id": 78,
+                    "id": 79,
                     "links": [],
                     "title": "Querier Cache Lookups $func by [[by]]",
                     "vizConfig": {
@@ -13343,7 +13343,7 @@
                         }
                     },
                     "description": "Counts querier cache lookups that failed to find a cached querier\n\nscylla_database_querier_cache_misses",
-                    "id": 79,
+                    "id": 80,
                     "links": [],
                     "title": "Querier Cache Misses $func by [[by]]",
                     "vizConfig": {
@@ -13453,7 +13453,7 @@
                         }
                     },
                     "description": "Counts sstables checked after applying the bloom filter. High value indicates that bloom filter is not very efficient.",
-                    "id": 80,
+                    "id": 81,
                     "links": [],
                     "title": "SStables checked after applying the bloom filter $func by [[by]]",
                     "vizConfig": {
@@ -13563,7 +13563,7 @@
                         }
                     },
                     "description": "Counts sstables that survived the clustering key filtering. High value indicates that bloom filter is not very efficient and still have to access a lot of sstables to get data.",
-                    "id": 81,
+                    "id": 82,
                     "links": [],
                     "title": "SStables that survived the clustering key filtering $func by [[by]]",
                     "vizConfig": {
@@ -13673,7 +13673,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_cache_bytes",
-                    "id": 82,
+                    "id": 83,
                     "links": [],
                     "title": "sstable index file page cache used bytes $func by [[by]]",
                     "vizConfig": {
@@ -13783,7 +13783,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_cache_hits",
-                    "id": 83,
+                    "id": 84,
                     "links": [],
                     "title": "sstable index file page cache hits $func by [[by]]",
                     "vizConfig": {
@@ -13893,7 +13893,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_cache_misses",
-                    "id": 84,
+                    "id": 85,
                     "links": [],
                     "title": "sstable index file page cache misses $func by [[by]]",
                     "vizConfig": {
@@ -14003,7 +14003,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_cache_evictions",
-                    "id": 85,
+                    "id": 86,
                     "links": [],
                     "title": "sstable index file page cache evictions $func by [[by]]",
                     "vizConfig": {
@@ -14113,7 +14113,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_cache_populations",
-                    "id": 86,
+                    "id": 87,
                     "links": [],
                     "title": "sstable index file page cache populations $func by [[by]]",
                     "vizConfig": {
@@ -14223,7 +14223,7 @@
                         }
                     },
                     "description": "Foreground reads are reads that weren't acknowledged yet to the application. For instance, if a single replica responded and two are needed due to the consistency level. This metric represents a queue size, not a rate. High values here correlate with increased read latencies.",
-                    "id": 15,
+                    "id": 16,
                     "links": [],
                     "title": "Foreground Reads $func by [[by]]",
                     "vizConfig": {
@@ -14333,7 +14333,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_used_bytes",
-                    "id": 87,
+                    "id": 88,
                     "links": [],
                     "title": "sstable partition index cache used bytes $func by [[by]]",
                     "vizConfig": {
@@ -14443,7 +14443,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_hits",
-                    "id": 88,
+                    "id": 89,
                     "links": [],
                     "title": "sstable partition index cache hits $func by [[by]]",
                     "vizConfig": {
@@ -14553,7 +14553,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_misses",
-                    "id": 89,
+                    "id": 90,
                     "links": [],
                     "title": "sstable partition index cache misses $func by [[by]]",
                     "vizConfig": {
@@ -14663,7 +14663,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_evictions",
-                    "id": 90,
+                    "id": 91,
                     "links": [],
                     "title": "sstable partition index cache evictions $func by [[by]]",
                     "vizConfig": {
@@ -14773,7 +14773,7 @@
                         }
                     },
                     "description": "scylla_sstables_index_page_populations",
-                    "id": 91,
+                    "id": 92,
                     "links": [],
                     "title": "sstable partition index cache populations $func by [[by]]",
                     "vizConfig": {
@@ -14860,7 +14860,7 @@
                         }
                     },
                     "description": "",
-                    "id": 92,
+                    "id": 93,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -14921,7 +14921,7 @@
                         }
                     },
                     "description": "Counts the number of view updates generated locally and applied on the same node",
-                    "id": 93,
+                    "id": 94,
                     "links": [],
                     "title": "Local view updates $func by [[by]]",
                     "vizConfig": {
@@ -15031,7 +15031,7 @@
                         }
                     },
                     "description": "Counts the number of view updates generated and then sent to be applied on a remote replica",
-                    "id": 94,
+                    "id": 95,
                     "links": [],
                     "title": "Remote view updates $func by [[by]]",
                     "vizConfig": {
@@ -15141,7 +15141,7 @@
                         }
                     },
                     "description": "Size in bytes of the view update backlog at each base replica.",
-                    "id": 95,
+                    "id": 96,
                     "links": [],
                     "title": "View Update Backlog $func by [[by]]",
                     "vizConfig": {
@@ -15251,7 +15251,7 @@
                         }
                     },
                     "description": "Number of dropped view updates due to an excessive view update backlog.",
-                    "id": 96,
+                    "id": 97,
                     "links": [],
                     "title": "Dropped View Updates $func by [[by]]",
                     "vizConfig": {
@@ -15361,7 +15361,7 @@
                         }
                     },
                     "description": "Background reads are reads that are already acknowledged to the application but have additional work to be done. For instance, if a replica responded and only one is needed, this request is still listed as a background request until all replicas respond. This metric represents a queue size, not a rate. High values here correlate with increased read latencies.",
-                    "id": 16,
+                    "id": 17,
                     "links": [],
                     "title": "Background Reads $func by [[by]]",
                     "vizConfig": {
@@ -15471,7 +15471,7 @@
                         }
                     },
                     "description": "Number of successfully written hints.\n\nscylla_hints_for_views_manager_written",
-                    "id": 97,
+                    "id": 98,
                     "links": [],
                     "title": "Hints written for view $func by [[by]]",
                     "vizConfig": {
@@ -15581,7 +15581,7 @@
                         }
                     },
                     "description": "Number of hints sent for view.",
-                    "id": 98,
+                    "id": 99,
                     "links": [],
                     "title": "Hints for view $func by [[by]]",
                     "vizConfig": {
@@ -15691,7 +15691,7 @@
                         }
                     },
                     "description": "Number of unexpected errors during sending, sending will be retried later.\n\nscylla_hints_for_views_manager_send_errors",
-                    "id": 99,
+                    "id": 100,
                     "links": [],
                     "title": "Hints-Send Errors for view $func by [[by]]",
                     "vizConfig": {
@@ -15801,7 +15801,7 @@
                         }
                     },
                     "description": "Currently throttled base writes, as a consequence of the respective view update backlog.",
-                    "id": 100,
+                    "id": 101,
                     "links": [],
                     "title": "Throttled Base Writes $func by [[by]]",
                     "vizConfig": {
@@ -15911,7 +15911,7 @@
                         }
                     },
                     "description": "Amount of range tombstones processed during read.",
-                    "id": 101,
+                    "id": 102,
                     "links": [],
                     "title": "Range Tombstones reads $func by [[by]]",
                     "vizConfig": {
@@ -16021,7 +16021,7 @@
                         }
                     },
                     "description": "Amount of range tombstones processed during read.",
-                    "id": 102,
+                    "id": 103,
                     "links": [],
                     "title": "Cache Range Tombstones Read $func by [[by]]",
                     "vizConfig": {
@@ -16131,7 +16131,7 @@
                         }
                     },
                     "description": "Amount of row tombstones read",
-                    "id": 103,
+                    "id": 104,
                     "links": [],
                     "title": "Row Tombstones reads $func by [[by]]",
                     "vizConfig": {
@@ -16241,7 +16241,7 @@
                         }
                     },
                     "description": "Amount of cache row tombstones read",
-                    "id": 104,
+                    "id": 105,
                     "links": [],
                     "title": "Cache Row Tombstones reads $func by [[by]]",
                     "vizConfig": {
@@ -16351,7 +16351,7 @@
                         }
                     },
                     "description": "The number of tombstones found in SSTables. This number is updated by an SSTable update after flush, compaction, or streaming operations.",
-                    "id": 105,
+                    "id": 106,
                     "links": [],
                     "title": "Tombstones found in SSTables $func by [[by]]",
                     "vizConfig": {
@@ -16461,7 +16461,7 @@
                         }
                     },
                     "description": "The number of range tombstones found in SSTables. This number is updated by an SSTable update after flush, compaction, or streaming operations.",
-                    "id": 106,
+                    "id": 107,
                     "links": [],
                     "title": "Range Tombstones found in SSTables $func by [[by]]",
                     "vizConfig": {
@@ -19461,15 +19461,15 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "4.16.0",
-                        "value": "4.16.0"
+                        "text": "4.16.1",
+                        "value": "4.16.1"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
                     "multi": false,
                     "name": "monitoring_version",
                     "options": [],
-                    "query": "4.16.0",
+                    "query": "4.16.1",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

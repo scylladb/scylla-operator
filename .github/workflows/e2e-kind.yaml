@@ -1,7 +1,7 @@
 name: "E2E: KinD"
 
-# Testing wrapper: dispatches the kind e2e suite on the self-hosted runners test branch. The registered e2e-kind.yaml
-# workflow path is reused so the run can be dispatched even though the branch is not the default one.
+# Testing wrapper for the self-hosted runners test branch. Currently a probe: the linux-amd64 runners have no
+# reachable docker daemon (attempt 1), so this gathers the facts needed to pick a viable topology.
 on:
   workflow_dispatch:
 
@@ -9,8 +9,28 @@ permissions:
   contents: read
 
 jobs:
-  e2e-kind-fast:
-    uses: ./.github/workflows/_e2e-kind.yaml
-    with:
-      name: fast
-      suite: kind-fast
+  probe:
+    name: probe
+    runs-on: linux-amd64
+    timeout-minutes: 10
+    steps:
+    - name: Probe runner capabilities
+      run: |
+        set -x
+        uname -a
+        id
+        nproc
+        free -h
+        df -h / /home/runner /tmp || true
+        stat -fc %T / /home/runner /tmp || true
+        grep Cap /proc/self/status || true
+        cat /proc/self/cgroup || true
+        ls /sys/fs/cgroup/ | head || true
+        test -w /sys/fs/cgroup && echo "cgroup root writable" || echo "cgroup root NOT writable"
+        command -v docker podman kind kubectl sudo apt-get || true
+        docker info 2>&1 | head -5 || true
+        podman info 2>&1 | head -20 || true
+        sudo -n true 2>&1 && echo "passwordless sudo OK" || echo "no passwordless sudo"
+        ls -la /var/run/docker.sock /dev/fuse 2>&1 || true
+        env | grep -iE "ACTIONS_RUNNER|container|KUBERNETES" | sort || true
+        cat /etc/os-release | head -2

@@ -13,6 +13,10 @@ permissions:
 jobs:
   ci:
     uses: ./.github/workflows/ci-jobs.yaml
+    permissions:
+      contents: read
+      # For detect-source-changes to read the PR's changed files.
+      pull-requests: read
 
   verify-commits:
     name: verify-commits

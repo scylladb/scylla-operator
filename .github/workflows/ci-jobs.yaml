@@ -265,24 +265,24 @@ jobs:
   detect-source-changes:
     name: detect-source-changes
     runs-on: ubuntu-latest
+    # The action reads the PR's changed files from the GitHub API, so there is no checkout to make.
+    permissions:
+      pull-requests: read
     outputs:
-      source-changed: ${{ steps.source-change-detection.outputs.changed }}
+      source-changed: ${{ steps.source-change-detection.outputs.source }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-
       - name: Detect source changes
         id: source-change-detection
-        uses: ./.github/actions/has-changes
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          ignored-paths: |
-            ^docs/
-            ^enhancements/
-            \.md$
-            ^renovate\.json$
+          # With 'every', a changed file counts only when it matches all rules, i.e. escapes every exclusion.
+          predicate-quantifier: every
+          filters: |
+            source:
+              - '!docs/**'
+              - '!enhancements/**'
+              - '!**/*.md'
+              - '!renovate.json'
 
   # The kind-based e2e suites, ported from the prow presubmits. They share the "kind E2E" display name, so each
   # check reads "kind E2E / <slug>" with the called workflow contributing the slug.

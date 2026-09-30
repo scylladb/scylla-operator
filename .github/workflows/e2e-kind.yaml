@@ -10,7 +10,26 @@ permissions:
 
 jobs:
   e2e-kind-fast:
+    name: kind E2E
     uses: ./.github/workflows/_e2e-kind.yaml
     with:
       name: fast
       suite: kind-fast
+
+  e2e-kind-scylladb-monitoring-old-node-exporter:
+    name: kind E2E
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: scylladb-monitoring-old-node-exporter
+      suite: kind-scylladb-monitoring
+      # Verify that the old node-exporter bundling within the ScyllaDB container (before 2026.3) is not broken
+      # (for as long as we support <2026.3).
+      scylladb-image-ref: docker.io/scylladb/scylla:2026.2.6
+
+  e2e-kind-cluster-topology-sequential:
+    name: kind E2E
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: cluster-topology-sequential
+      suite: kind-cluster-topology
+      enable-parallel-node-operations: "false"

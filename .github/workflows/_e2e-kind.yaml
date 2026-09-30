@@ -122,6 +122,12 @@ jobs:
         # the one the kind nodes inherit.
         sysctl fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
 
+        # Unlike the inotify limits, fs.aio-max-nr is global to the host kernel, and ScyllaDB allocates AIO events
+        # per shard: with several suites colocated on one self-hosted node, the default 65536 runs out and ScyllaDB
+        # aborts on startup. 30000000 is the value the operator's own NodeConfig tuning applies. The privileged
+        # container reaches the host knob, and the runner nodes are a dedicated pool.
+        sysctl fs.aio-max-nr=30000000
+
     - name: Run the e2e suite
       env:
         SO_SUITE: ${{ inputs.suite }}

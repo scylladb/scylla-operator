@@ -38,7 +38,9 @@ jobs:
     needs:
     - ci
     - verify-commits
-    if: always()
+    # A cancelled run skips this rather than failing it, so that it doesn't wait for a runner only to fail while its
+    # concurrency group holds back the run that superseded it.
+    if: ${{ !cancelled() }}
     steps:
     - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
       run: |

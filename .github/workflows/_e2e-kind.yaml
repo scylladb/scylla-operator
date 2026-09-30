@@ -88,7 +88,7 @@ env:
 jobs:
   e2e:
     name: ${{ inputs.name }}
-    runs-on: linux-amd64
+    runs-on: hosted-runners-standard-pool
     timeout-minutes: 150
     # The privileged kube-tools container hosts the kind cluster, and every step of the job runs inside it.
     container:

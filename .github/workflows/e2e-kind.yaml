@@ -1,8 +1,7 @@
 name: "E2E: KinD"
 
-# Testing wrapper for the self-hosted runners test branch. Probe 2: the pod is unprivileged (no CAP_SYS_ADMIN, ro
-# cgroup root, no docker daemon, no /dev/fuse), so this checks the gates a rootless fallback would need: user
-# namespaces, mounts inside a userns, and cgroup delegation.
+# Testing wrapper: dispatches the kind e2e suite on the self-hosted runners test branch. The registered e2e-kind.yaml
+# workflow path is reused so the run can be dispatched even though the branch is not the default one.
 on:
   workflow_dispatch:
 
@@ -10,25 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  probe:
-    name: probe
-    runs-on: linux-amd64
-    timeout-minutes: 10
-    steps:
-    - name: Probe namespaces, mounts and cgroups
-      run: |
-        set -x
-        grep Seccomp /proc/self/status || true
-        cat /proc/self/attr/current 2>/dev/null || true
-        grep -E "cgroup|overlay| / " /proc/mounts | head -15 || true
-        cat /sys/fs/cgroup/cgroup.controllers || true
-        sudo test -w /sys/fs/cgroup && echo "cgroup root writable as root" || echo "cgroup root NOT writable as root"
-        sudo mkdir /sys/fs/cgroup/probe-test 2>&1 && echo "cgroup mkdir OK" || echo "cgroup mkdir FAILED"
-        sudo rmdir /sys/fs/cgroup/probe-test 2>/dev/null || true
-        unshare --user --map-root-user true 2>&1 && echo "userns OK (runner)" || echo "userns FAILED (runner)"
-        sudo unshare --user --map-root-user true 2>&1 && echo "userns OK (root)" || echo "userns FAILED (root)"
-        unshare --user --map-root-user --mount sh -c 'mount -t tmpfs none /mnt && echo "tmpfs mount in userns OK"' 2>&1 || echo "mount in userns FAILED"
-        mkdir -p /tmp/ovl/{low,up,work,mnt}
-        unshare --user --map-root-user --mount sh -c 'mount -t overlay overlay -o lowerdir=/tmp/ovl/low,upperdir=/tmp/ovl/up,workdir=/tmp/ovl/work /tmp/ovl/mnt && echo "overlayfs in userns OK"' 2>&1 || echo "overlayfs in userns FAILED"
-        cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo "no unprivileged_userns_clone knob"
-        cat /proc/sys/user/max_user_namespaces || true
+  e2e-kind-fast:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: fast
+      suite: kind-fast

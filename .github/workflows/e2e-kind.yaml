@@ -1,0 +1,16 @@
+name: "E2E: KinD"
+
+# Testing wrapper: dispatches the kind e2e suite on the self-hosted runners test branch. The registered e2e-kind.yaml
+# workflow path is reused so the run can be dispatched even though the branch is not the default one.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-kind-fast:
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: fast
+      suite: kind-fast

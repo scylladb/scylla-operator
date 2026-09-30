@@ -88,15 +88,16 @@ env:
 jobs:
   e2e:
     name: ${{ inputs.name }}
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     timeout-minutes: 150
     # The privileged kube-tools container hosts the kind cluster, and every step of the job runs inside it.
     container:
       image: quay.io/scylladb/scylla-operator-images:kube-tools
       options: --privileged
-      # Give the podman instance backing kind container storage on a real (non-overlayfs) filesystem.
       volumes:
-      - /mnt/containers:/var/lib/containers
+      # Give the podman instance backing kind container storage on a real (non-overlayfs) filesystem.
+      # On GitHub-hosted the root volume has proven too small and therefore this may require changing to /mnt/containers.
+      - containers-storage:/var/lib/containers
     env:
       ARTIFACTS: /artifacts
     steps:
@@ -119,6 +120,9 @@ jobs:
         # "too many open files" failures. The limits are namespaced, and this privileged container's namespace is
         # the one the kind nodes inherit.
         sysctl fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
+
+        # note: unlike the inotify limits, fs.aio-max-nr is global to the host kernel
+        sysctl fs.aio-max-nr=30000000
 
     - name: Run the e2e suite
       env:

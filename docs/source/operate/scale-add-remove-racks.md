@@ -23,6 +23,11 @@ For background on the StatefulSet-per-rack architecture, see [StatefulSets and r
 Parallel node operations control whether the Operator acts on nodes one at a time or all at once.
 This covers starting nodes when you create a cluster, add a rack or scale a rack up, and decommissioning nodes when you scale a rack down.
 
+:::{note}
+We strongly recommend enabling parallel node operations.
+It significantly improves the efficiency of adding new nodes to the cluster, and prevents an occasional [known issue](../troubleshoot/recover-from-stuck-scale-down.md) that only surfaces if parallel node operations are disabled.
+:::
+
 With parallel node operations disabled, the Operator starts ScyllaDB nodes one at a time. Within a rack, each Pod must become ready before the Operator starts the next one. The Operator creates racks one at a time. Bringing up a cluster takes as long as the sum of every node's startup time.
 Likewise, scaling down removes one node at a time. The next decommission starts only after the previous node's Pod is gone, and no rack in the datacenter scales up or down in the meantime.
 

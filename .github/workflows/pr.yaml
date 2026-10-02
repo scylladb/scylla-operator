@@ -12,11 +12,14 @@ permissions:
 
 jobs:
   ci:
-    uses: ./.github/workflows/ci-jobs.yaml
+    uses: ./.github/workflows/_ci-jobs.yaml
     permissions:
       contents: read
       # For detect-source-changes to read the PR's changed files.
       pull-requests: read
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
   verify-commits:
     name: verify-commits

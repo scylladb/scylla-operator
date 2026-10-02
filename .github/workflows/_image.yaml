@@ -38,7 +38,7 @@ jobs:
       matrix:
         include:
         - arch: amd64
-          runner: ubuntu-24.04
+          runner: hosted-runners-standard-pool
         - arch: arm64
           runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
@@ -54,6 +54,11 @@ jobs:
       env:
         REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
       run: |
+        if [[ -z "${REGISTRY_AUTH_JSON}" ]]; then
+          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs of pull requests from forks. If this is a pull request from a fork, this is expected and needs no action from you: a maintainer will run the e2e suites for it.'
+          exit 1
+        fi
+
         umask 077
         mkdir -p ~/.docker
         printf '%s' "${REGISTRY_AUTH_JSON}" > ~/.docker/config.json
@@ -69,6 +74,10 @@ jobs:
         platforms: linux/${{ matrix.arch }}
         labels: org.opencontainers.image.revision=${{ github.sha }}
         outputs: type=image,name=${{ env.IMAGE_REPO_REF }},push-by-digest=true,name-canonical=true,push=true
+        # The slow layer is the build in the builder stage, which only mode=max exports. The legs build different layers,
+        # so each needs a scope of its own. A failure to export the cache shouldn't fail the image.
+        cache-from: type=gha,scope=image-${{ matrix.arch }}
+        cache-to: type=gha,scope=image-${{ matrix.arch }},mode=max,ignore-error=true
 
     - name: Export digest
       env:
@@ -93,7 +102,7 @@ jobs:
   manifest:
     name: manifest
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: hosted-runners-standard-pool
     timeout-minutes: 10
     outputs:
       image-ref: ${{ steps.push.outputs.image-ref }}
@@ -109,6 +118,11 @@ jobs:
       env:
         REGISTRY_AUTH_JSON: ${{ secrets.registry-auth-json }}
       run: |
+        if [[ -z "${REGISTRY_AUTH_JSON}" ]]; then
+          echo '::error::The registry auth is empty. GitHub does not pass secrets to runs of pull requests from forks. If this is a pull request from a fork, this is expected and needs no action from you: a maintainer will run the e2e suites for it.'
+          exit 1
+        fi
+
         umask 077
         mkdir -p ~/.docker
         printf '%s' "${REGISTRY_AUTH_JSON}" > ~/.docker/config.json

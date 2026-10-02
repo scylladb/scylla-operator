@@ -13,7 +13,7 @@ defaults:
     shell: bash
 
 # The bot image declares no USER, so the job runs as root and git refuses to operate on a tree it sees as
-# foreign. See the equivalent comment in ci-jobs.yaml.
+# foreign. See the equivalent comment in _ci-jobs.yaml.
 env:
   GIT_CONFIG_COUNT: "1"
   GIT_CONFIG_KEY_0: safe.directory

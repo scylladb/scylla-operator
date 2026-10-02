@@ -2,6 +2,13 @@ name: CI jobs
 
 on:
   workflow_call:
+    secrets:
+      registry-auth-json:
+        description: Contents of a containers-auth.json(5) file with push access to the e2e image repository.
+        required: true
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the CI provisioning objects in.
+        required: true
 
 permissions:
   contents: read
@@ -316,3 +323,13 @@ jobs:
       name: cluster-topology-sequential
       suite: kind-cluster-topology
       enable-parallel-node-operations: "false"
+
+  e2e:
+    needs: detect-source-changes
+    if: needs.detect-source-changes.outputs.source-changed == 'true'
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      jobs: '["gke-parallel", "gke-parallel-clusterip", "gke-serial"]'
+    secrets:
+      registry-auth-json: ${{ secrets.registry-auth-json }}
+      ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

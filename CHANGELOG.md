@@ -71,6 +71,9 @@ Please refer to the [1.22 to 1.23 upgrade guide](https://operator.docs.scylladb.
   its own request to decommission the node, and start new nodes above the leaving one instead of deferring the raised
   node count until the node had left. The operator now waits until it observes its own changes before acting on them.
   [#3681](https://github.com/scylladb/scylla-operator/pull/3681), [#3686](https://github.com/scylladb/scylla-operator/pull/3686)
+- Fixed `ScyllaDBDatacenter` or `ScyllaCluster` `.status` briefly reporting a rack as rolled out for a spec change
+  whose rollout had not started yet.
+  [#3681](https://github.com/scylladb/scylla-operator/pull/3681), [#3691](https://github.com/scylladb/scylla-operator/pull/3691)
 
 ### Features & Enhancements
 - The `enableParallelNodeOperations` field of `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec` now also controls how

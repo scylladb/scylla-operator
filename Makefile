@@ -859,3 +859,7 @@ kind-teardown:
 test-e2e-kind: kind-setup
 	CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/run-e2e-tests.sh
 .PHONY: test-e2e-kind
+
+test-e2e-kind-multi-datacenter: kind-setup
+	SO_SUITE=scylla-operator/conformance/multi-datacenter-parallel CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./hack/kind/run-e2e-tests.sh
+.PHONY: test-e2e-kind-multi-datacenter

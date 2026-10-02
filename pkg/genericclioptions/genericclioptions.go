@@ -51,7 +51,7 @@ func NewMultiDatacenterClientConfig(userAgentName string) MultiDatacenterClientC
 func (mdcc *MultiDatacenterClientConfig) AddFlags(cmd *cobra.Command) {
 	mdcc.ClientConfig.AddFlags(cmd)
 
-	cmd.PersistentFlags().StringToStringVarP(&mdcc.workerKubeconfigs, "worker-kubeconfigs", "", mdcc.workerKubeconfigs, "Map of worker cluster identifiers to kubeconfig paths. Used in multi-datacenter setups.")
+	cmd.PersistentFlags().StringToStringVarP(&mdcc.workerKubeconfigs, "worker-kubeconfigs", "", mdcc.workerKubeconfigs, "Map of worker cluster identifiers to kubeconfig paths. Used in multi-datacenter setups, where the control plane cluster is expected to be listed as one of the workers as well.")
 }
 
 func (mdcc *MultiDatacenterClientConfig) Validate() error {

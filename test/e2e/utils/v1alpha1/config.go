@@ -17,4 +17,10 @@ const (
 	// memberRolloutTimeout is the maximum amount of time it takes to start a scylla pod and become ready.
 	// It includes the time to pull the images, copy the necessary files (sidecar), join the cluster and similar.
 	memberRolloutTimeout = 30*time.Second + imagePullTimeout + joinClusterTimeout
+
+	// multiDatacenterJoinClusterBuffer accounts for inter-datacenter latencies affecting RPC calls during repair procedure running on bootstrap.
+	// The value should be enough to cover for up to 15ms of median inter-datacenter latency.
+	// Ref: https://github.com/scylladb/scylladb/issues/19131
+	multiDatacenterJoinClusterBuffer    = 15 * time.Minute
+	multiDatacenterMemberRolloutTimeout = memberRolloutTimeout + multiDatacenterJoinClusterBuffer
 )

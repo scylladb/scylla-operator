@@ -58,7 +58,8 @@ type TestContextType struct {
 	// RestConfig is the restclient.Config for the main cluster.
 	// It also represents the "meta" or "control-plane" cluster in multi-datacenter setups.
 	RestConfig *restclient.Config
-	// WorkerRestConfigs contains a map of restclient.Configs for each worker cluster, keyed by the cluster identifier. Used in multi-datacenter setups.
+	// WorkerRestConfigs contains a map of restclient.Configs for each worker cluster, keyed by the cluster identifier.
+	// Used in multi-datacenter setups, where the control plane cluster is expected to be listed as one of the workers as well.
 	WorkerRestConfigs                  map[string]*restclient.Config
 	ArtifactsDir                       string
 	CleanupPolicy                      CleanupPolicyType

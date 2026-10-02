@@ -22,6 +22,7 @@ type ObjectStorageOptions struct {
 	workerObjectStorageBuckets      map[string]string
 	workerGCSServiceAccountKeyPaths map[string]string
 	workerS3CredentialsFilePaths    map[string]string
+	workerS3AgentConfigPaths        map[string]string
 }
 
 func NewObjectStorageOptions() ObjectStorageOptions {
@@ -31,6 +32,7 @@ func NewObjectStorageOptions() ObjectStorageOptions {
 		workerObjectStorageBuckets:      make(map[string]string),
 		workerGCSServiceAccountKeyPaths: make(map[string]string),
 		workerS3CredentialsFilePaths:    make(map[string]string),
+		workerS3AgentConfigPaths:        make(map[string]string),
 	}
 }
 
@@ -43,6 +45,7 @@ func (oso *ObjectStorageOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringToStringVarP(&oso.workerGCSServiceAccountKeyPaths, "worker-gcs-service-account-key-paths", "", oso.workerGCSServiceAccountKeyPaths, "Map of worker cluster identifiers to GCS service account key paths. Used in multi-datacenter setups.")
 	cmd.PersistentFlags().StringToStringVarP(&oso.workerS3CredentialsFilePaths, "worker-s3-credentials-file-paths", "", oso.workerS3CredentialsFilePaths, "Map of worker cluster identifiers to S3 credentials file paths. Used in multi-datacenter setups.")
 	cmd.PersistentFlags().StringToStringVarP(&oso.workerObjectStorageBuckets, "worker-object-storage-buckets", "", oso.workerObjectStorageBuckets, "Map of worker cluster identifier to object storage bucket names. Used in multi-datacenter setups.")
+	cmd.PersistentFlags().StringToStringVarP(&oso.workerS3AgentConfigPaths, "worker-s3-agent-config-paths", "", oso.workerS3AgentConfigPaths, "Map of worker cluster identifiers to custom Scylla Manager Agent config files for their S3 buckets (e.g., for S3 endpoint override with MinIO). Used in multi-datacenter setups.")
 }
 
 func (oso *ObjectStorageOptions) Validate() error {
@@ -64,6 +67,10 @@ func (oso *ObjectStorageOptions) Validate() error {
 		errors = append(errors, fmt.Errorf("s3-credentials-file-path must be set when s3-agent-config-path is provided"))
 	}
 
+	if len(oso.workerS3AgentConfigPaths) > 0 && len(oso.workerS3CredentialsFilePaths) == 0 {
+		errors = append(errors, fmt.Errorf("worker-s3-credentials-file-paths must be set when worker-s3-agent-config-paths is provided"))
+	}
+
 	if len(oso.workerGCSServiceAccountKeyPaths) > 0 || len(oso.workerS3CredentialsFilePaths) > 0 || len(oso.workerObjectStorageBuckets) > 0 {
 		if len(oso.gcsServiceAccountKeyPath) > 0 || len(oso.s3CredentialsFilePath) > 0 || len(oso.objectStorageBucket) > 0 {
 			errors = append(errors, fmt.Errorf("worker-* flags cannot be used with single bucket flags"))
@@ -80,6 +87,9 @@ func (oso *ObjectStorageOptions) Validate() error {
 		}
 		if len(oso.workerS3CredentialsFilePaths) > 0 && !equalKeys(oso.workerObjectStorageBuckets, oso.workerS3CredentialsFilePaths) {
 			errors = append(errors, fmt.Errorf("worker-object-storage-buckets must have the same keys as worker-s3-credentials-file-paths"))
+		}
+		if len(oso.workerS3AgentConfigPaths) > 0 && !equalKeys(oso.workerS3CredentialsFilePaths, oso.workerS3AgentConfigPaths) {
+			errors = append(errors, fmt.Errorf("worker-s3-agent-config-paths must have the same keys as worker-s3-credentials-file-paths"))
 		}
 	}
 
@@ -126,7 +136,16 @@ func (oso *ObjectStorageOptions) Complete() error {
 		if err != nil {
 			return fmt.Errorf("can't read S3 credentials file for worker %q at %q: %w", worker, path, err)
 		}
-		s, err := framework.NewS3ClusterObjectStorageSettings(oso.workerObjectStorageBuckets[worker], credentials, nil)
+
+		var agentConfig []byte
+		if agentConfigPath, ok := oso.workerS3AgentConfigPaths[worker]; ok {
+			agentConfig, err = os.ReadFile(agentConfigPath)
+			if err != nil {
+				return fmt.Errorf("can't read S3 agent config file for worker %q at %q: %w", worker, agentConfigPath, err)
+			}
+		}
+
+		s, err := framework.NewS3ClusterObjectStorageSettings(oso.workerObjectStorageBuckets[worker], credentials, agentConfig)
 		if err != nil {
 			return fmt.Errorf("can't create S3 cluster object storage settings for worker %q: %w", worker, err)
 		}

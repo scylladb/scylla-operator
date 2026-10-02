@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"os/exec"
 	"time"
 
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -47,12 +46,13 @@ func (c *Controller) decommissionNode(ctx context.Context, svc *corev1.Service) 
 
 	case scyllaclient.OperationalModeDrained:
 		klog.InfoS("Node is in DRAINED state, restarting scylla to make it decommissionable")
-		// TODO: Label pod/service that it is in restarting state to avoid liveness probe race
-		_, err := exec.Command("supervisorctl", "restart", "scylla").Output()
+		// Stopping scylla makes the sidecar exit, so the kubelet restarts the container. This works the same with and
+		// without supervisord in the image.
+		err := c.restartScylla()
 		if err != nil {
 			return fmt.Errorf("can't restart scylla node: %w", err)
 		}
-		klog.InfoS("Successfully restarted scylla.")
+		klog.InfoS("Stopped scylla, waiting for the container to be restarted")
 		c.queue.AddAfter(c.key, requeueWaitDuration)
 		return nil
 

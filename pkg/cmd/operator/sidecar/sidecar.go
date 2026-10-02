@@ -217,6 +217,18 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		return controllerhelpers.NewScyllaClientForLocalhost(o.ipFamily)
 	}
 
+	// The sidecar controller restarts scylla by stopping it, which makes the sidecar exit and the container restart.
+	scyllaStarted := make(chan struct{})
+	var scyllaProc *scyllaProcess
+	restartScylla := func() error {
+		select {
+		case <-scyllaStarted:
+			return scyllaProc.Terminate()
+		default:
+			return fmt.Errorf("scylla process hasn't been started yet")
+		}
+	}
+
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
 		o.ServiceName,
@@ -224,6 +236,7 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		o.kubeClient,
 		singleServiceInformer,
 		newScyllaClient,
+		restartScylla,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create sidecar controller: %w", err)
@@ -295,10 +308,11 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 	}()
 
 	// Run scylla in a new process.
-	scyllaProc, err := startScyllaProcess(scyllaCmd)
+	scyllaProc, err = startScyllaProcess(scyllaCmd)
 	if err != nil {
 		return fmt.Errorf("can't start scylla: %w", err)
 	}
+	close(scyllaStarted)
 
 	// The sidecar is the main process of the container, so it has to exit when scylla does. Otherwise nothing restarts
 	// scylla until the liveness probe fails, unless an image-provided supervisor does it.

@@ -105,3 +105,17 @@ func GetLoglevelOrDefaultOrDie() int {
 func LogCommandStarting(cmd *cobra.Command) {
 	klog.InfoS(fmt.Sprintf("Starting %s", cmd.Name()), "GitCommit", build.GitCommit())
 }
+
+// ExitCodeError makes the command exit with Code instead of the generic failure exit code.
+type ExitCodeError struct {
+	Code int
+	Err  error
+}
+
+func (e *ExitCodeError) Error() string {
+	return fmt.Sprintf("exit code %d: %v", e.Code, e.Err)
+}
+
+func (e *ExitCodeError) Unwrap() error {
+	return e.Err
+}

@@ -177,6 +177,9 @@ linkcheck_timeout = 180  # Increase from default for slow sites like docs.redhat
 linkcheck_retries = (
     3  # Retry 3 times before failing to handle transient network issues.
 )
+# Sphinx only retries links reported as broken. Reporting timeouts as broken makes them retried too, rather than
+# failing the build on the first timeout.
+linkcheck_report_timeouts_as_broken = True
 
 # docs.redhat.com blocks a User-Agent containing "Mozilla", which is what Sphinx sends by default.
 # Overriding with a plain non-browser UA bypasses the restriction.

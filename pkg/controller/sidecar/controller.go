@@ -52,6 +52,9 @@ type Controller struct {
 
 	newScyllaClient func() (*scyllaclient.Client, error)
 
+	// restartScylla stops the local ScyllaDB process so that the container is restarted.
+	restartScylla func() error
+
 	cachesToSync []cache.InformerSynced
 
 	eventRecorder record.EventRecorder
@@ -69,6 +72,7 @@ func NewController(
 	kubeClient kubernetes.Interface,
 	singleServiceInformer corev1informers.ServiceInformer,
 	newScyllaClient func() (*scyllaclient.Client, error),
+	restartScylla func() error,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -104,6 +108,7 @@ func NewController(
 		singleServiceLister: singleServiceInformer.Lister(),
 
 		newScyllaClient: newScyllaClient,
+		restartScylla:   restartScylla,
 
 		cachesToSync: []cache.InformerSynced{
 			singleServiceInformer.Informer().HasSynced,

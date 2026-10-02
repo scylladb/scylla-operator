@@ -5,6 +5,7 @@ package sidecar
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/scylladb/scylla-operator/pkg/scyllaclient"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/util/workqueue"
 )
 
 func TestGetScyllaDBClusterMembership(t *testing.T) {
@@ -230,5 +233,69 @@ func newFakeScyllaDBTokenMetadataHandler(t *testing.T, fake fakeScyllaDBTokenMet
 			t.Errorf("unexpected request to %q", r.URL.Path)
 			http.NotFound(w, r)
 		}
+	}
+}
+
+func TestDecommissionNodeRestartsDrainedNode(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		name        string
+		restartErr  error
+		expectedErr bool
+	}{
+		{
+			name: "drained node is restarted",
+		},
+		{
+			name:        "restart failure is reported",
+			restartErr:  errors.New("restart failed"),
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(newFakeScyllaDBTokenMetadataHandler(t, fakeScyllaDBTokenMetadata{
+				operationMode: scyllaclient.OperationalModeDrained,
+			}))
+			t.Cleanup(server.Close)
+
+			u, err := url.Parse(server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			restarts := 0
+			queue := workqueue.NewTypedRateLimitingQueue[string](workqueue.DefaultTypedControllerRateLimiter[string]())
+			t.Cleanup(queue.ShutDown)
+
+			c := &Controller{
+				localhostAddress: u.Hostname(),
+				newScyllaClient: func() (*scyllaclient.Client, error) {
+					config := scyllaclient.DefaultConfig("", u.Hostname())
+					config.Scheme = "http"
+					config.Port = u.Port()
+					return scyllaclient.NewClient(config)
+				},
+				restartScylla: func() error {
+					restarts++
+					return tc.restartErr
+				},
+				queue: queue,
+				key:   "ns/svc",
+			}
+
+			// The Service must not be updated, so the test doesn't provide a kube client.
+			err = c.decommissionNode(context.Background(), &corev1.Service{})
+			if (err != nil) != tc.expectedErr {
+				t.Fatalf("expected error %v, got %v", tc.expectedErr, err)
+			}
+			if restarts != 1 {
+				t.Errorf("expected 1 restart, got %d", restarts)
+			}
+		})
 	}
 }

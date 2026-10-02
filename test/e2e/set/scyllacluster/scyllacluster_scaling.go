@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -14,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/helpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/scylladb/scylla-operator/test/e2e/utils/verification"
@@ -313,8 +315,8 @@ func assertPodsSMPEquals(ctx context.Context, f *framework.Framework, sc *scylla
 	stsName := naming.StatefulSetNameForRackForScyllaCluster(sc.Spec.Datacenter.Racks[0], sc)
 	for i := int32(0); i < sc.Spec.Datacenter.Racks[0].Members; i++ {
 		podName := fmt.Sprintf("%s-%d", stsName, i)
-		entrypointCommand, err := utils.GetScyllaDBDockerEntrypointCommand(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), f.Namespace(), podName)
+		scyllaDBArgs, err := utils.GetScyllaDBProcessArguments(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), f.Namespace(), podName)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(entrypointCommand).To(o.ContainSubstring(fmt.Sprintf("--smp=%d", expectedSMP)), "pod %q should have --smp=%d in entrypoint command", podName, expectedSMP)
+		o.Expect(scyllaDBArgs).To(o.HaveKeyWithValue("smp", pointer.Ptr(strconv.Itoa(expectedSMP))), "pod %q should run ScyllaDB with --smp %d", podName, expectedSMP)
 	}
 }

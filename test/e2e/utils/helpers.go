@@ -41,6 +41,7 @@ import (
 	appv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/exec"
 	"k8s.io/klog/v2"
 )
 
@@ -920,11 +921,12 @@ func GetContainerReadinessMap(pod *corev1.Pod) map[string]bool {
 	return res
 }
 
-// GetScyllaDBDockerEntrypointCommand returns the command line of the docker-entrypoint.py process running
-// in the ScyllaDB container of the given pod.
-func GetScyllaDBDockerEntrypointCommand(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, namespace, podName string) (string, error) {
+// GetScyllaDBProcessArguments returns the command line arguments of the ScyllaDB process running in the ScyllaDB
+// container of the given Pod. The ScyllaDB process is launched the same way with and without supervisord in the image,
+// unlike the entrypoint, which exec's into ScyllaDB in images without supervisord.
+func GetScyllaDBProcessArguments(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, namespace, podName string) (map[string]*string, error) {
 	stdout, stderr, err := ExecWithOptions(ctx, config, client, ExecOptions{
-		Command:       []string{"/usr/bin/pgrep", "-af", "docker-entrypoint.py"},
+		Command:       []string{"/usr/bin/pgrep", "-a", "-x", "scylla"},
 		Namespace:     namespace,
 		PodName:       podName,
 		ContainerName: naming.ScyllaContainerName,
@@ -932,12 +934,54 @@ func GetScyllaDBDockerEntrypointCommand(ctx context.Context, config *rest.Config
 		CaptureStderr: true,
 	})
 	if err != nil {
-		return "", fmt.Errorf("can't read entrypoint process args from pod %q: %w (stderr: %q)", podName, err, stderr)
+		return nil, fmt.Errorf("can't read ScyllaDB process args from pod %q: %w (stderr: %q)", podName, err, stderr)
 	}
 
-	if !strings.Contains(stdout, "docker-entrypoint.py") {
-		return "", fmt.Errorf("can't find docker-entrypoint.py process in pod %q", podName)
+	processes := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(processes) != 1 {
+		return nil, fmt.Errorf("expected exactly 1 ScyllaDB process in pod %q, got %d: %q", podName, len(processes), stdout)
 	}
 
-	return stdout, nil
+	return helpers.ParseScyllaArguments(processes[0]), nil
+}
+
+// IsSupervisordInScyllaDBImage reports whether the ScyllaDB image running in the given Pod ships supervisord, which
+// images before ScyllaDB 2026.4 use to run ScyllaDB.
+func IsSupervisordInScyllaDBImage(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, namespace, podName string) (bool, error) {
+	_, stderr, err := ExecWithOptions(ctx, config, client, ExecOptions{
+		Command:       []string{"test", "-x", "/usr/bin/supervisord"},
+		Namespace:     namespace,
+		PodName:       podName,
+		ContainerName: naming.ScyllaContainerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	})
+	if err != nil {
+		var codeExitErr exec.CodeExitError
+		if errors.As(err, &codeExitErr) && codeExitErr.Code == 1 {
+			return false, nil
+		}
+		return false, fmt.Errorf("can't check for supervisord in pod %q: %w (stderr: %q)", podName, err, stderr)
+	}
+
+	return true, nil
+}
+
+// GetScyllaDBDockerArguments returns the arguments that the entrypoint of the ScyllaDB image rendered for ScyllaDB
+// (SCYLLA_DOCKER_ARGS). Unlike the ScyllaDB process arguments, they include the arguments the entrypoint passes through
+// unchanged, but not the ones it interprets itself or reads from the other /etc/scylla.d files.
+func GetScyllaDBDockerArguments(ctx context.Context, config *rest.Config, client corev1client.CoreV1Interface, namespace, podName string) (map[string]*string, error) {
+	stdout, stderr, err := ExecWithOptions(ctx, config, client, ExecOptions{
+		Command:       []string{"cat", "/etc/scylla.d/docker.conf"},
+		Namespace:     namespace,
+		PodName:       podName,
+		ContainerName: naming.ScyllaContainerName,
+		CaptureStdout: true,
+		CaptureStderr: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't read ScyllaDB docker args from pod %q: %w (stderr: %q)", podName, err, stderr)
+	}
+
+	return helpers.ParseScyllaArguments(stdout), nil
 }

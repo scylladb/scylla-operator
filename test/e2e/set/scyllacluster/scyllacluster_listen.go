@@ -112,7 +112,7 @@ tail -n +2 /proc/net/tcp6
 		 *
 		 * Note: Some applications bind dedicated IPv4 and IPv6 socket while some reuse the IPv6 socket for IPv4 as well.
 		 */
-		o.Expect(listenProcNetEntries).To(o.ConsistOf([]linuxnetutils.AddressPort{
+		expectedListenEntries := []linuxnetutils.AddressPort{
 			{
 				Address: net.ParseIP("::"),
 				Port:    5090, // ScyllaDB Manager agent - metrics (insecure)
@@ -138,12 +138,6 @@ tail -n +2 /proc/net/tcp6
 			{
 				Address: net.ParseIP("::"),
 				Port:    42081, // ScyllaDB ignition probe
-			},
-			{
-				Address: net.ParseIP("127.0.0.1"),
-				Port:    9001, // supervisord (planned for removal with cont)
-				// FIXME: Remove
-				//        https://github.com/scylladb/scylla-operator/issues/1769
 			},
 			{
 				Address: net.ParseIP("::"),
@@ -187,6 +181,19 @@ tail -n +2 /proc/net/tcp6
 				// FIXME: Enforce AuthN+AuthZ by default
 				//        https://github.com/scylladb/scylla-operator/issues/1770
 			},
-		}))
+		}
+
+		isSupervisordInImage, err := utils.IsSupervisordInScyllaDBImage(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), nodePod.Namespace, nodePod.Name)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		if isSupervisordInImage {
+			expectedListenEntries = append(expectedListenEntries, linuxnetutils.AddressPort{
+				Address: net.ParseIP("127.0.0.1"),
+				Port:    9001, // supervisord, only in ScyllaDB images before 2026.4
+				// FIXME: Remove
+				//        https://github.com/scylladb/scylla-operator/issues/1769
+			})
+		}
+
+		o.Expect(listenProcNetEntries).To(o.ConsistOf(expectedListenEntries))
 	})
 })

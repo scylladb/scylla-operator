@@ -217,6 +217,18 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		return controllerhelpers.NewScyllaClientForLocalhost(o.ipFamily)
 	}
 
+	// The sidecar controller restarts scylla by stopping it, which makes the sidecar exit and the container restart.
+	scyllaStarted := make(chan struct{})
+	var scyllaProc *scyllaProcess
+	restartScylla := func() error {
+		select {
+		case <-scyllaStarted:
+			return scyllaProc.Terminate()
+		default:
+			return fmt.Errorf("scylla process hasn't been started yet")
+		}
+	}
+
 	sc, err := sidecarcontroller.NewController(
 		o.Namespace,
 		o.ServiceName,
@@ -224,6 +236,7 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 		o.kubeClient,
 		singleServiceInformer,
 		newScyllaClient,
+		restartScylla,
 	)
 	if err != nil {
 		return fmt.Errorf("can't create sidecar controller: %w", err)
@@ -295,38 +308,38 @@ func (o *Options) Run(streams genericclioptions.IOStreams, cmd *cobra.Command, a
 	}()
 
 	// Run scylla in a new process.
-	err = scyllaCmd.Start()
+	scyllaProc, err = startScyllaProcess(scyllaCmd)
 	if err != nil {
 		return fmt.Errorf("can't start scylla: %w", err)
 	}
+	close(scyllaStarted)
 
-	defer func() {
-		klog.InfoS("Waiting for scylla process to finish")
-		defer klog.InfoS("Scylla process finished")
-
-		err := scyllaCmd.Wait()
-		if err != nil {
-			klog.ErrorS(err, "Can't wait for scylla process to finish")
-		}
-	}()
-
-	// Terminate the scylla process.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		<-ctx.Done()
-
+	// The sidecar is the main process of the container, so it has to exit when scylla does. Otherwise nothing restarts
+	// scylla until the liveness probe fails, unless an image-provided supervisor does it.
+	select {
+	case <-ctx.Done():
 		klog.InfoS("Sending SIGTERM to the scylla process")
-		err := scyllaCmd.Process.Signal(syscall.SIGTERM)
+		err = scyllaProc.Terminate()
 		if err != nil {
-			klog.ErrorS(err, "Can't send SIGTERM to the scylla process")
-			return
+			klog.ErrorS(err, "Can't terminate the scylla process")
 		}
-		klog.InfoS("Sent SIGTERM to the scylla process")
-	}()
 
-	<-ctx.Done()
+		klog.InfoS("Waiting for scylla process to finish")
+		<-scyllaProc.Exited()
+
+	case <-scyllaProc.Exited():
+		klog.InfoS("Scylla process exited, shutting down the sidecar", "ExitCode", scyllaProc.ExitCode())
+		cancel()
+	}
+
+	exitCode := scyllaProc.ExitCode()
+	klog.InfoS("Scylla process finished", "ExitCode", exitCode)
+	if exitCode != 0 {
+		return &cmdutil.ExitCodeError{
+			Code: exitCode,
+			Err:  fmt.Errorf("scylla process failed: %w", scyllaProc.WaitErr()),
+		}
+	}
 
 	return nil
 }

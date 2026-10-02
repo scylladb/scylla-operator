@@ -76,7 +76,7 @@ permissions:
 jobs:
   e2e:
     name: e2e
-    runs-on: ubuntu-24.04
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:kube-tools
     timeout-minutes: 180

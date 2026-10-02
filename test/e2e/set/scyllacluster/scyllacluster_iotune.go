@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
@@ -27,23 +26,27 @@ const scyllaIOPropertiesPath = "/etc/scylla.d/" + naming.ScyllaIOPropertiesName
 
 func IsIOTuneRequested(ctx context.Context, f *framework.Framework, podName string) (bool, error) {
 	// IsIOTuneRequested reports whether iotune was requested by the entrypoint for the given Pod.
-	// It inspects the arguments the sidecar rendered onto the long-lived /docker-entrypoint.py
-	// process (it blocks on supervisord.wait(), so its args are readable for the whole container
-	// lifetime by execing into the container). --io-setup=0 and --io-properties-file are passed
-	// only when the cached IO properties file already exists, i.e. when iotune was skipped.
-	entrypointCommand, err := utils.GetScyllaDBDockerEntrypointCommand(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), f.Namespace(), podName)
+	// The sidecar passes --io-setup=0 and --io-properties-file to the entrypoint only when the cached IO properties
+	// file already exists, i.e. when iotune is skipped. The entrypoint interprets --io-setup itself, but passes
+	// --io-properties-file through to ScyllaDB in its rendered arguments. That file is read rather than the ScyllaDB
+	// command line, because iotune adds --io-properties-file to the command line too when it does run.
+	scyllaDBArgs, err := utils.GetScyllaDBProcessArguments(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), f.Namespace(), podName)
 	if err != nil {
 		return false, err
 	}
 
 	// In developer mode iotune is never run, so there's nothing to perform or skip.
-	if strings.Contains(entrypointCommand, "--developer-mode=1") {
+	developerMode, ok := scyllaDBArgs["developer-mode"]
+	if ok && developerMode != nil && *developerMode == "1" {
 		return false, nil
 	}
 
-	hasIOSetupDisabled := strings.Contains(entrypointCommand, "--io-setup=0")
-	hasIOPropertiesFile := strings.Contains(entrypointCommand, "--io-properties-file")
-	isIOTuneSkipped := hasIOSetupDisabled && hasIOPropertiesFile
+	dockerArgs, err := utils.GetScyllaDBDockerArguments(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), f.Namespace(), podName)
+	if err != nil {
+		return false, err
+	}
+
+	_, isIOTuneSkipped := dockerArgs["io-properties-file"]
 
 	return !isIOTuneSkipped, nil
 }

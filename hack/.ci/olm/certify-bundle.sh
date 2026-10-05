@@ -67,9 +67,14 @@ TARGET_BRANCH="${TARGET_BRANCH:-scylladb-operator-${version}}"
 
 target_repo=git@github.com:scylladb-operator-cd-bot/certified-operators.git
 
+# A fresh runner has no known_hosts, so accept-new would trust whatever answers for github.com. Pin the published key
+# instead: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+known_hosts_file="${temp_dir}/known_hosts"
+echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "${known_hosts_file}"
+export GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i '${ssh_scylladb_operator_cd_bot_key_path}' -o UserKnownHostsFile='${known_hosts_file}' -o StrictHostKeyChecking=yes"
+
 repo_target_dir="${temp_dir}/certified-operators"
-GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i '${ssh_scylladb_operator_cd_bot_key_path}' -o StrictHostKeyChecking=accept-new" \
-  git clone --depth 1 --branch main "${target_repo}" "${repo_target_dir}"
+git clone --depth 1 --branch main "${target_repo}" "${repo_target_dir}"
 
 # Base the branch on upstream main, not the fork's.
 upstream_repo=https://github.com/redhat-openshift-ecosystem/certified-operators.git
@@ -105,7 +110,7 @@ cp -r "${script_dir}/../../../bundle/"{manifests,metadata} "${target_dir}/"
   git add .
   # https://github.com/redhat-openshift-ecosystem/certification-releases/blob/main/4.9/ga/troubleshooting.md#pull-request-title
   git commit -s -am "operator scylladb-operator (${version})"
-  GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i ${ssh_scylladb_operator_cd_bot_key_path}" git push origin "${TARGET_BRANCH}"
+  git push origin "${TARGET_BRANCH}"
 )
 
 # Create a volume claim template file for the pipeline workspace.

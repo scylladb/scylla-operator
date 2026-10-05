@@ -3,7 +3,7 @@
 What has to change in scylla-operator to run the ScyllaDB image that drops supervisord, while keeping today's supervisord-based images working.
 
 - Upstream change: [scylladb/scylladb#31914](https://github.com/scylladb/scylladb/pull/31914)
-- PoC PR: [scylladb/scylla-operator#3704](https://github.com/scylladb/scylla-operator/pull/3704)
+- PoC PR: [scylladb/scylla-operator#3710](https://github.com/scylladb/scylla-operator/pull/3710)
 - Image: `docker.io/scylladb/scylladb-ci:2026.4.0-dev-0.20260927.c2cd59098c0f`
 
 ## 1. Objective
@@ -38,7 +38,7 @@ New image (scylladb-ci PR build), observed in `/proc`:
 ```
 
 How we tested:
-draft PR #3704 points `assets/config/config.yaml` at the CI image, so every e2e suite uses it.
+the draft PoC PR points `assets/config/config.yaml` at the CI image, so every e2e suite uses it.
 We ran the kind and GKE e2e suites on it.
 In addition, two 3-node clusters on a local kind cluster, one per image, were put through the same failure scenarios for a side-by-side comparison.
 
@@ -119,7 +119,7 @@ The sidecar retries forever with `can't restart scylla node: exec: "supervisorct
   `ignition.done` survives a container restart, so the restart is quick (see "Restart after a crash" in the scenarios).
 - This works the same on both images, so no detection is needed.
   On old images the child is the entrypoint, which forwards SIGTERM to supervisord; supervisord stops scylla and exits, and the entrypoint returns.
-  The drained-node spec passes with this on both images (section 6).
+  The drained-node spec passes with this on both images (section 7).
 - The difference for old images: the container restarts instead of just the scylla process, so the restart count of the leaving node goes up by one.
 
 ### R2. Crash recovery takes 2+ minutes and the crash is hidden (regression)
@@ -204,7 +204,7 @@ It has no operator impact: nothing in the operator references it, and pods simpl
 ## 5. Recommended actions
 
 The order follows the dependencies: the R1 fix relies on the R2 fix, and the CI changes should land before config.yaml moves to 2026.4.0.
-Actions 1–3 are implemented in the PoC (section 6), which serves as the reference for the real work.
+Actions 1–3 are implemented in the PoC (section 7), which serves as the reference for the real work.
 
 1. **Make the sidecar exit when its scylla child exits, with the child's exit code.**
    Fixes R2 and also improves U1–U3 for both images.
@@ -219,9 +219,46 @@ Actions 1–3 are implemented in the PoC (section 6), which serves as the refere
    Once the default moves to 2026.4.0, keep at least one full suite (for example kind fast) on a supervisord image through `--scylladb-image-ref`.
    The update and upgrade specs (`updateFrom` / `upgradeFrom`) already exercise old → new transitions.
 
-## 6. PoC
+## 6. Upgrade path
 
-The PoC is [scylladb/scylla-operator#3704](https://github.com/scylladb/scylla-operator/pull/3704).
+The expected order is: upgrade ScyllaDB Operator to a release with the adaptations first, then upgrade ScyllaDB to 2026.4.0.
+This matches the existing [ScyllaDB upgrade guide](https://operator.docs.scylladb.com/stable/upgrade/upgrade-scylladb.html), which requires the target ScyllaDB version to be in the [support matrix](https://operator.docs.scylladb.com/stable/reference/releases.html#support-matrix) of the running Operator.
+2026.4.0 should only be listed for Operator releases that include actions 1 and 2.
+
+### Upgrading the Operator
+
+- The new Operator image changes the sidecar injected into every ScyllaDB Pod, so every cluster goes through a rolling restart, one node at a time.
+  This is what every Operator upgrade does today; there is no API change and no user action needed.
+- While the restart is in progress, Pods that haven't been restarted keep the old sidecar.
+  Each sidecar only acts on its own container, so mixing old and new sidecars is safe.
+- Clusters on supervisord-based images keep working as before, with two differences:
+  - If the entrypoint or supervisord itself dies, the container is restarted straight away instead of waiting for the probes.
+    A plain scylla crash is still restarted by supervisord inside the container.
+  - Decommissioning a drained node restarts the container instead of only the scylla process, so that node's restart count goes up by one.
+- This was verified on kind for clusters on both images (section 7).
+
+### Upgrading ScyllaDB to 2026.4.0
+
+- It's a regular minor version upgrade: users change `spec.version` and the Operator rolls the cluster with its usual upgrade procedure.
+  As with any minor upgrade, it has to start from 2026.3.
+- During the rollout the cluster runs both image flavours side by side.
+  This worked in the "Update in place" scenario: all nodes ended UN with unchanged host IDs.
+- Visible changes after the upgrade:
+  - The `scylla` container no longer has supervisord or `supervisorctl`, and nothing listens on 127.0.0.1:9001.
+    The Operator docs never told users to rely on either.
+  - scylla-housekeeping no longer runs (U4).
+  - A scylla crash now restarts the container, with scylla's exit code in the Pod status and CrashLoopBackOff for repeated failures.
+
+### Running 2026.4.0 with an older Operator
+
+If ScyllaDB is upgraded before the Operator, or with an Operator release without the adaptations, the cluster runs, but R1 and R2 apply:
+scale-in of a drained node never completes, and a crashed scylla stays down until the liveness probe restarts the container.
+Upgrading the Operator fixes both, because the rolling restart injects the new sidecar.
+A scale-in that is already stuck is expected to complete once the leaving node's Pod runs the new sidecar, but that wasn't tested.
+
+## 7. PoC
+
+The PoC is [scylladb/scylla-operator#3710](https://github.com/scylladb/scylla-operator/pull/3710).
 It implements actions 1–3.
 
 Verification on kind:
@@ -241,7 +278,7 @@ Both clusters ended Available with no container restarts.
 Killing scylla's process on the upgraded pods then restarted the container within ~4 s, ready again in 7–13 s, recorded as `exitCode: 137, reason: Error`.
 Before the PoC, the new image took 144 s and recorded `exitCode: 0, reason: Completed`.
 
-## 7. Outlook: splitting the sidecar from the scylla container
+## 8. Outlook: splitting the sidecar from the scylla container
 
 Removing supervisord is the right direction strategically.
 Our long-term goal is to move the operator's sidecar out of the `scylla` container, so that the container runs ScyllaDB alone and the kubelet supervises it directly.

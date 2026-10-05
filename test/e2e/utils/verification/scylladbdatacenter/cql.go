@@ -22,6 +22,13 @@ func WaitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface,
 	framework.Infof("ScyllaDB nodes have reached status consistency.")
 }
 
+func WaitForFullMultiDCQuorum(ctx context.Context, dcClientMap map[string]corev1client.CoreV1Interface, sdcs []*scyllav1alpha1.ScyllaDBDatacenter) {
+	framework.By("Waiting for the ScyllaDBDatacenters to reach consistency ALL")
+	err := utilsv1alpha1.WaitForFullMultiDCQuorum(ctx, dcClientMap, sdcs)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	framework.Infof("ScyllaDB nodes have reached status consistency.")
+}
+
 func waitForFullQuorum(ctx context.Context, client corev1client.CoreV1Interface, sdc *scyllav1alpha1.ScyllaDBDatacenter) error {
 	hostIDs, err := utilsv1alpha1.GetHostIDs(ctx, client, sdc)
 	if err != nil {

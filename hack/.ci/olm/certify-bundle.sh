@@ -27,11 +27,14 @@ ssh_scylladb_operator_cd_bot_key_path="${2}"
 
 # Validate the arguments.
 
+# The bundle comes from the checkout in the working directory, which must be at the tag. The script itself may
+# run from a different checkout so that a fixed script can certify an existing tag.
 current_hash=$(git rev-parse HEAD)
 if [[ "${current_hash}" != "$(git rev-parse "${tag}"^{commit})" ]]; then
   echo "Error: The current commit hash '${current_hash}' does not match the tag '${tag}'" >&2
   exit 1
 fi
+release_root="$( git rev-parse --show-toplevel )"
 
 # Determine the version and channel based on the provided tag.
 
@@ -94,7 +97,7 @@ parent_target_dir="${repo_target_dir}/operators/scylladb-operator"
 mkdir -p "${parent_target_dir}"
 
 # Create the ci.yaml file with the certification project ID.
-cert_project_id=$( get-metadata ".operator.redHatCertificationProjectID" )
+cert_project_id=$( get-yaml-value "${release_root}/assets/metadata/metadata.yaml" ".operator.redHatCertificationProjectID" )
 cat <<EOF > "${parent_target_dir}/ci.yaml"
 cert_project_id: "${cert_project_id}"
 EOF
@@ -102,7 +105,7 @@ EOF
 target_dir="${parent_target_dir}/${version}"
 mkdir "${target_dir}"
 
-cp -r "${script_dir}/../../../bundle/"{manifests,metadata} "${target_dir}/"
+cp -r "${release_root}/bundle/"{manifests,metadata} "${target_dir}/"
 
 # Postprocess the bundle.
 "${script_dir}/postprocess-bundle.sh" "${target_dir}" "${version}" "${channel}"

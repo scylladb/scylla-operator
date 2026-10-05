@@ -1,0 +1,112 @@
+name: Certify OLM bundle
+
+# Submits the OLM bundle of a release tag to the Red Hat certification pipeline. A tag push runs the full
+# submission. A dispatch takes the workflow file and the certification scripts from the dispatched ref and the
+# bundle from the tag input, so a broken run can be redone for an existing tag after fixing the tooling. It
+# defaults to a dry run: the bundle is pushed to the certified-operators fork and the pipeline runs without
+# opening the upstream PR.
+on:
+  push:
+    tags:
+      # OLM bundle certification is supported from v1.20 on.
+      # ^v(1\.(2[0-9]|[3-9][0-9])|[2-9]\.\d+)\.\d+.*$ split into globs.
+      - 'v1.2[0-9].[0-9]+*'
+      - 'v1.[3-9][0-9].[0-9]+*'
+      - 'v[2-9].[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to certify (e.g. v1.20.1 or v1.20.1-rc.1)'
+        required: true
+        type: string
+      submit:
+        description: 'Open the PR in redhat-openshift-ecosystem/certified-operators'
+        required: false
+        type: boolean
+        default: false
+      target-branch:
+        description: 'Branch to push to in the certified-operators fork. Defaults to scylladb-operator-<version>.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Two runs for one tag would race on the same fork branch. Different tags push different branches and get their
+# own pipeline workspaces, so they can run in parallel.
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+# See _ci-jobs.yaml: the container image declares no USER, so git needs safe.directory for the checkout.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  certify:
+    name: certify
+    runs-on: hosted-runners-standard-pool
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 180
+    environment: openshift-certification
+
+    steps:
+      - name: Checkout the release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          path: release
+          # postprocess-bundle.sh lists the release tags to compute spec.replaces, and a shallow checkout has none.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # On a tag push this is the same commit as the release. On a dispatch it is the dispatched ref.
+      - name: Checkout the tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: tooling
+          persist-credentials: false
+
+      - name: Materialize the credentials
+        id: credentials
+        env:
+          CLUSTER_KUBECONFIG: ${{ secrets.OPENSHIFT_CERTIFICATION_CLUSTER_KUBECONFIG }}
+          CD_BOT_SSH_KEY: ${{ secrets.GITHUB_SCYLLADB_OPERATOR_CD_BOT_SSH }}
+        run: |
+          set -euEo pipefail
+          shopt -s inherit_errexit
+
+          if [[ -z "${CLUSTER_KUBECONFIG}" ]]; then
+            echo '::error::OPENSHIFT_CERTIFICATION_CLUSTER_KUBECONFIG must not be empty.'
+            exit 1
+          fi
+
+          if [[ -z "${CD_BOT_SSH_KEY}" ]]; then
+            echo '::error::GITHUB_SCYLLADB_OPERATOR_CD_BOT_SSH must not be empty.'
+            exit 1
+          fi
+
+          kubeconfig="${RUNNER_TEMP}/certification-cluster-kubeconfig"
+          ssh_key="${RUNNER_TEMP}/cd-bot-ssh-key"
+          ( umask 077; printf '%s\n' "${CLUSTER_KUBECONFIG}" > "${kubeconfig}"; printf '%s\n' "${CD_BOT_SSH_KEY}" > "${ssh_key}" )
+          echo "kubeconfig=${kubeconfig}" >> "${GITHUB_OUTPUT}"
+          echo "ssh-key=${ssh_key}" >> "${GITHUB_OUTPUT}"
+
+      - name: Certify the bundle
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          SUBMIT: ${{ github.event_name == 'push' || inputs.submit }}
+          TARGET_BRANCH: ${{ inputs.target-branch }}
+          KUBECONFIG: ${{ steps.credentials.outputs.kubeconfig }}
+          SSH_KEY: ${{ steps.credentials.outputs.ssh-key }}
+        # The script takes the bundle from the working directory, which is the release checkout.
+        working-directory: release
+        run: ../tooling/hack/.ci/olm/certify-bundle.sh "${TAG}" "${SSH_KEY}"

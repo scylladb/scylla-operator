@@ -73,7 +73,7 @@ case "${channel}" in
 esac
 
 OPERATOR_IMAGE_REF="${OPERATOR_IMAGE_REF:-docker.io/scylladb/scylla-operator:${version}}"
-skopeo inspect docker://${OPERATOR_IMAGE_REF} 2>&1 >/dev/null || (echo "Error: operator_image_ref '${OPERATOR_IMAGE_REF}' is not a valid image reference or is not accessible" >&2 && exit 1)
+skopeo inspect --no-tags docker://${OPERATOR_IMAGE_REF} 2>&1 >/dev/null || (echo "Error: operator_image_ref '${OPERATOR_IMAGE_REF}' is not a valid image reference or is not accessible" >&2 && exit 1)
 
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
 OPERATOR_MANIFEST_TOOLS_ARTIFACTS="${ARTIFACTS}/operator-manifest-tools"

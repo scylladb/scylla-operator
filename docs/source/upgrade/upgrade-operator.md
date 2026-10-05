@@ -98,6 +98,40 @@ A healthy node N loses its data this way, and the Operator rebuilds every node a
 Previous versions could leave the label behind when you reverted a scale-down before the Operator removed the node's Service, or when you recovered a decommissioned node by hand.
 :::
 
+#### Enable parallel node operations on existing clusters
+
+:::{note}
+This step is recommended, not required.
+:::
+
+Starting with v1.23, [parallel node operations](../operate/scale-add-remove-racks.md#sequential-and-parallel-node-operations) also cover scaling down: the Operator decommissions all the leaving nodes of a rack at once instead of one at a time.
+Together with starting nodes in parallel, this makes scaling a cluster considerably faster, and the difference grows with the number of nodes.
+Enabling parallel node operations also avoids a [known issue](../troubleshoot/recover-from-stuck-scale-down.md) in which the Pods of the leaving nodes may never be deleted.
+
+List your `ScyllaClusters` together with their ScyllaDB version and whether parallel node operations are enabled:
+
+```bash
+kubectl get scyllaclusters --all-namespaces -o=custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,VERSION:.spec.version,PARALLEL_NODE_OPERATIONS:.spec.enableParallelNodeOperations'
+```
+
+```console
+NAMESPACE   NAME          VERSION    PARALLEL_NODE_OPERATIONS
+legacy      old-cluster   2026.1.0   <none>
+scylla      analytics     2026.3.1   <none>
+scylla      basic         2026.3.1   true
+scylla      staging       2026.3.1   false
+```
+
+Already existing clusters created before v1.22 show `<none>` unless you set the field explicitly. `<none>` defaults to `false`.
+
+Enable parallel node operations on every cluster that runs ScyllaDB 2026.2 or later and doesn't show `true`:
+
+```bash
+kubectl -n <namespace> patch scyllacluster <name> --type=merge -p '{"spec":{"enableParallelNodeOperations":true}}'
+```
+
+Changing the field doesn't restart the running nodes.
+
 #### Remove ScyllaDBCluster and RemoteKubernetesCluster objects and CRDs
 
 The experimental `ScyllaDBCluster` and `RemoteKubernetesCluster` APIs and their controllers are removed in v1.23, together with the internal `RemoteOwner` API.

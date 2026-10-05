@@ -13,7 +13,9 @@
 
 ### Upgrade requirements
 
-Please refer to the [1.22 to 1.23 upgrade guide](https://operator.docs.scylladb.com/v1.23/upgrade/upgrade-operator.html#122-to-123).
+**This release requires manual actions before the upgrade. Skipping them can lead to data loss.**
+Follow the [1.22 to 1.23 upgrade guide](https://operator.docs.scylladb.com/v1.23/upgrade/upgrade-operator.html#122-to-123)
+before upgrading.
 
 ### Removals
 

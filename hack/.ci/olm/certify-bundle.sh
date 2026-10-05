@@ -62,6 +62,12 @@ export OPERATOR_IMAGE_REF
 
 SUBMIT=${SUBMIT:-false}
 TARGET_BRANCH="${TARGET_BRANCH:-scylladb-operator-${version}}"
+# The branch is reset to upstream main and pushed to the fork, so targeting the fork's main would move it onto
+# a bundle commit and every later clone would start from it.
+if [[ "${TARGET_BRANCH}" == "main" ]]; then
+  echo "Error: TARGET_BRANCH must not be 'main'" >&2
+  exit 1
+fi
 
 # Clone the target repository (fork of certified-operators).
 

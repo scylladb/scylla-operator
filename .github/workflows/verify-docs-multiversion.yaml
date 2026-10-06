@@ -25,7 +25,7 @@ env:
 jobs:
   verify-docs-multiversion:
     name: verify-docs-multiversion
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:uv-0.10
     timeout-minutes: 60

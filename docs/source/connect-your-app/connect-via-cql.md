@@ -89,6 +89,11 @@ kubectl -n scylla get secret <cluster-name>-local-user-admin \
   -o jsonpath='{.data.tls\.key}' | base64 -d > client.key
 ```
 
+:::{note}
+`ca.crt` is a copy of the serving CA bundle. When the operator reissues the serving CA, `cqlsh` rejects the new serving
+certificate until you extract the bundle again. See [Certificate rotation](../understand/security.md#certificate-rotation).
+:::
+
 **Step 2: Create a cqlshrc file**
 
 ```bash
@@ -166,11 +171,55 @@ When using a ScyllaDB or Cassandra driver in your application:
   - Sends queries directly to the replica owning the partition.
 * - TLS
   - Enabled, with CA verification
-  - Use the serving CA from `configmap/<cluster-name>-local-serving-ca`.
+  - Use the serving CA bundle from `configmap/<cluster-name>-local-serving-ca`. In Kubernetes, [mount it into your application Pods](#mount-tls-files-in-application-pods); otherwise, keep your copy up to date as described in [Certificate rotation](../understand/security.md#certificate-rotation).
 * - Reconnection
   - Exponential backoff
   - Handles node restarts during rolling updates.
 ```
+
+## Mount TLS files in application Pods
+
+Mount the serving CA bundle ConfigMap into your application Pods instead of copying it, so that they pick up a reissued
+serving CA. Kubernetes updates the mounted file when the ConfigMap changes.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  # ...
+  template:
+    spec:
+      containers:
+      - name: app
+        image: <your-app-image>
+        volumeMounts:
+        - name: scylladb-serving-ca
+          mountPath: /etc/scylladb/serving-ca
+          readOnly: true
+        - name: scylladb-client-certificate
+          mountPath: /etc/scylladb/client-certificate
+          readOnly: true
+      volumes:
+      - name: scylladb-serving-ca
+        configMap:
+          name: <cluster-name>-local-serving-ca
+      - name: scylladb-client-certificate
+        secret:
+          secretName: <client-certificate-secret-name>
+```
+
+Configure your driver to use `/etc/scylladb/serving-ca/ca-bundle.crt` as the CA, and `/etc/scylladb/client-certificate/tls.crt`
+and `/etc/scylladb/client-certificate/tls.key` as the client certificate and key. The client certificate Secret has to
+hold a certificate signed by the cluster's client CA, such as the `<cluster-name>-local-user-admin` Secret.
+
+Keep in mind:
+
+- Don't mount the files with `subPath`. Kubernetes doesn't update files mounted with `subPath`.
+- Kubernetes updates mounted files with a delay, so new connections can fail for a short time after the serving CA is reissued.
+- Your application has to read the files again when it opens new connections. If it reads them only at startup, restart it after the serving CA is reissued.
+- A Pod can only mount ConfigMaps and Secrets from its own namespace. For applications in other namespaces, keep a copy of the bundle up to date instead.
 
 ## Related pages
 

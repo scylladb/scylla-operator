@@ -94,6 +94,12 @@ kubectl get configmap/${CLUSTER_NAME}-alternator-local-serving-ca \
   --template='{{ index .data "ca-bundle.crt" }}' > "${AWS_CA_BUNDLE}"
 ```
 
+:::{note}
+`AWS_CA_BUNDLE` is a copy of the Alternator serving CA bundle. When the operator reissues the Alternator serving CA, the
+AWS CLI rejects the new serving certificate until you download the bundle again.
+See [Certificate rotation](../understand/security.md#certificate-rotation).
+:::
+
 Now use the `aws dynamodb` CLI normally:
 
 ```shell

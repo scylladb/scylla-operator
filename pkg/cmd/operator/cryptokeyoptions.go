@@ -41,7 +41,7 @@ type CryptoKeyOptions struct {
 
 func DefaultCryptoKeyOptions() CryptoKeyOptions {
 	return CryptoKeyOptions{
-		KeyType:       string(crypto.RSAKeyType),
+		KeyType:       string(crypto.ECDSAKeyType),
 		RSAKeySize:    defaultRSAKeySize,
 		ECDSAKeySize:  defaultECDSACurveBitSize,
 		BufferSizeMin: 10,

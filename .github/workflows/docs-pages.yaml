@@ -33,7 +33,7 @@ concurrency:
 jobs:
   build:
     name: Build multiversion docs
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:uv-0.10
     timeout-minutes: 60
@@ -81,7 +81,7 @@ jobs:
   release:
     name: Deploy to GitHub Pages
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     timeout-minutes: 15
 
     permissions:

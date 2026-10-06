@@ -22,7 +22,7 @@ env:
 jobs:
   govulncheck:
     name: govulncheck (${{ matrix.branch }})
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb-dev/soci-govulncheck-gh-bot:latest
     timeout-minutes: 60

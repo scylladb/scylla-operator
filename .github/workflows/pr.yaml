@@ -23,7 +23,7 @@ jobs:
 
   verify-commits:
     name: verify-commits
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,7 +41,7 @@ jobs:
   # checks are invisible to it. This aggregate is the single context it can be told to require once these jobs
   # have matured, which keeps wiring further jobs into the merge gate a one-line change here.
   check-required:
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     needs:
     - ci
     - verify-commits

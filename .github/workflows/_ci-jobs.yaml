@@ -33,7 +33,7 @@ env:
 jobs:
   build:
     name: build
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 30
@@ -51,7 +51,7 @@ jobs:
 
   unit:
     name: unit
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 30
@@ -67,7 +67,7 @@ jobs:
 
   binary:
     name: binary
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 30
@@ -83,7 +83,7 @@ jobs:
 
   envtest:
     name: envtest
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 30
@@ -99,7 +99,7 @@ jobs:
 
   verify:
     name: verify
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 45
@@ -121,7 +121,7 @@ jobs:
 
   verify-deps:
     name: verify-deps
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 30
@@ -137,7 +137,7 @@ jobs:
 
   verify-vendorability:
     name: verify-vendorability
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 30
@@ -175,7 +175,7 @@ jobs:
 
   helm-build:
     name: helm-build
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:golang-1.27
     timeout-minutes: 30
@@ -192,7 +192,7 @@ jobs:
 
   build-docs:
     name: build-docs
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:uv-0.10
     timeout-minutes: 30
@@ -214,7 +214,7 @@ jobs:
 
   verify-docs:
     name: verify-docs
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:uv-0.10
     timeout-minutes: 30
@@ -237,7 +237,7 @@ jobs:
     # BRANCHES and smv_latest_version, so this is only meaningful on master. A skipped job fails neither this
     # workflow nor the caller's aggregate, so the check stays required on master without gating release branches.
     if: github.base_ref == 'master'
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:uv-0.10
     timeout-minutes: 30
@@ -271,7 +271,7 @@ jobs:
 
   detect-source-changes:
     name: detect-source-changes
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     # The action reads the PR's changed files from the GitHub API, so there is no checkout to make.
     permissions:
       pull-requests: read

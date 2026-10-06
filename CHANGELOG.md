@@ -92,6 +92,8 @@ before upgrading.
   leaving the cluster now produces an admission warning. The change is accepted, but it isn't applied until the leaving
   nodes have finished decommissioning and been removed.
   [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
+- The operator now issues ECDSA P-384 certificates by default instead of RSA ones. After the upgrade, existing
+  certificates are reissued with ECDSA keys, unless `--crypto-key-type=RSA` is set.
 
 ### Dependencies
 

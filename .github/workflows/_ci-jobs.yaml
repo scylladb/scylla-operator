@@ -324,12 +324,33 @@ jobs:
       suite: kind-cluster-topology
       enable-parallel-node-operations: "false"
 
-  e2e:
+  # On a PR from a fork this fails for lack of secrets, and so do the jobs needing it, rather than the suites being
+  # skipped and counted as passed.
+  image:
     needs: detect-source-changes
     if: needs.detect-source-changes.outputs.source-changed == 'true'
-    uses: ./.github/workflows/_e2e-jobs.yaml
+    uses: ./.github/workflows/_image.yaml
     with:
-      jobs: '["gke-parallel", "gke-parallel-clusterip", "gke-serial"]'
+      image-tag: scylla-operator-${{ github.run_id }}
     secrets:
       registry-auth-json: ${{ secrets.registry-auth-json }}
+
+  # Fails the PR on a bundle or catalog that doesn't build.
+  olm:
+    needs: image
+    uses: ./.github/workflows/_olm.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      bundle-image-tag: scylla-operator-bundle-${{ github.run_id }}
+      catalog-image-tag: scylla-operator-catalog-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.registry-auth-json }}
+
+  e2e:
+    needs: image
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      jobs: '["gke-parallel", "gke-parallel-clusterip", "gke-serial"]'
+    secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

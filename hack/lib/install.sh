@@ -71,8 +71,6 @@ function install-operator() {
   SO_SCYLLA_OPERATOR_LOGLEVEL="${SO_SCYLLA_OPERATOR_LOGLEVEL:-4}"
   export SO_SCYLLA_OPERATOR_LOGLEVEL
 
-  SO_CRYPTO_KEY_SIZE="${SO_CRYPTO_KEY_SIZE:-2048}"
-  export SO_CRYPTO_KEY_SIZE
   SO_CRYPTO_KEY_BUFFER_DELAY="${SO_CRYPTO_KEY_BUFFER_DELAY:-2s}"
   export SO_CRYPTO_KEY_BUFFER_DELAY
 
@@ -155,9 +153,6 @@ patches:
       value: "--loglevel=${SO_SCYLLA_OPERATOR_LOGLEVEL}"
     - op: add
       path: /spec/template/spec/containers/0/args/-
-      value: "--crypto-key-size=${SO_CRYPTO_KEY_SIZE}"
-    - op: add
-      path: /spec/template/spec/containers/0/args/-
       value: "--crypto-key-buffer-size-min=${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"
     - op: add
       path: /spec/template/spec/containers/0/args/-
@@ -221,8 +216,6 @@ patches:
         # However, the 'v' flag takes precedence over 'loglevel', so setting it through the env var overrides the default flag value.
         - name: SCYLLA_OPERATOR_V
           value: "${SO_SCYLLA_OPERATOR_LOGLEVEL}"
-        - name: SCYLLA_OPERATOR_CRYPTO_KEY_SIZE
-          value: "${SO_CRYPTO_KEY_SIZE}"
         - name: SCYLLA_OPERATOR_CRYPTO_KEY_BUFFER_SIZE_MIN
           value: "${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"
         - name: SCYLLA_OPERATOR_CRYPTO_KEY_BUFFER_SIZE_MAX

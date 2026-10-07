@@ -28,9 +28,7 @@ jobs:
   # Rejects a malformed or already released version before the hours the gate takes, and decides what the release
   # publishes.
   parse-version:
-    runs-on: hosted-runners-standard-pool
-    container:
-      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       tag: ${{ steps.parse.outputs.tag }}
@@ -141,7 +139,7 @@ jobs:
         - quay.io/scylladb/scylla-operator
         - docker.io/scylladb/scylla-operator
     name: promote (${{ matrix.image-repo-ref }})
-    runs-on: hosted-runners-standard-pool
+    runs-on: ubuntu-latest
     container:
       image: quay.io/scylladb/scylla-operator-images:kube-tools
     timeout-minutes: 30
@@ -209,3 +207,24 @@ jobs:
         --notes-file "${notes_file}" \
         --prerelease="${PRERELEASE}" \
         --latest="${LATEST}"
+
+  dispatch:
+    needs:
+    - parse-version
+    - github-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+    - name: Dispatch certification and helm publishing
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.parse-version.outputs.tag }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        for workflow in certify-olm-bundle.yaml publish-helm-chart.yaml; do
+          gh workflow run "${workflow}" --repo "${GITHUB_REPOSITORY}" --ref "${TAG}" --field tag="${TAG}"
+        done

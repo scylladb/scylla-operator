@@ -1,0 +1,40 @@
+name: Verify published image
+description: >
+  Fails unless the operator image for a version tag is published in docker.io/scylladb/scylla-operator and its
+  revision label is the commit the tag points at.
+
+inputs:
+  tag:
+    description: Version tag, e.g. `v1.23.0`.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Verify the published image
+      shell: bash
+      env:
+        TAG: ${{ inputs.tag }}
+        REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # Release tags are annotated, so the commit is what the peeled ref points at.
+        commit="$( git ls-remote --tags "${REPO_URL}" "refs/tags/${TAG}^{}" | cut -f 1 )"
+        if [[ -z "${commit}" ]]; then
+          echo "::error::'${TAG}' is not an annotated tag in ${REPO_URL}."
+          exit 1
+        fi
+
+        image_ref="docker.io/scylladb/scylla-operator:${TAG#v}"
+        if ! inspect="$( skopeo inspect --retry-times=3 "docker://${image_ref}" )"; then
+          echo "::error::${image_ref} is not published."
+          exit 1
+        fi
+
+        revision="$( jq -r '.Labels["org.opencontainers.image.revision"] // empty' <<< "${inspect}" )"
+        if [[ "${revision}" != "${commit}" ]]; then
+          echo "::error::${image_ref} was built from '${revision}', not from ${commit}, which ${TAG} points at."
+          exit 1
+        fi

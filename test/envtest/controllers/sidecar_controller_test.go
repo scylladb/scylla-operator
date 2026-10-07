@@ -6,6 +6,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"sync"
@@ -644,6 +645,9 @@ func runSidecarController(ctx context.Context, env *envtest.Environment, service
 		env.TypedKubeClient(),
 		kubeInformers.Core().V1().Services(),
 		newScyllaClient,
+		func() error {
+			return errors.New("restarting scylla isn't expected in these tests")
+		},
 	)
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create sidecar controller")
 

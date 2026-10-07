@@ -19,6 +19,7 @@ var (
 
 type OperatorConfig struct {
 	ScyllaDBVersion                 string `json:"scyllaDBVersion"`
+	ScyllaDBRepository              string `json:"scyllaDBRepository"`
 	ScyllaDBUtilsImage              string `json:"scyllaDBUtilsImage"`
 	ScyllaDBNodeExporterImage       string `json:"scyllaDBNodeExporterImage"`
 	ScyllaDBManagerVersion          string `json:"scyllaDBManagerVersion"`

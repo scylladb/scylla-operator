@@ -186,7 +186,7 @@ func ScyllaDBTargetImageRef(scyllaDBImageRef, scyllaDBVersion string) string {
 		return scyllaDBImageRef
 	}
 
-	return ScyllaDBImageRefForVersion(scyllaDBVersion)
+	return fmt.Sprintf("%s:%s", configassets.Project.Operator.ScyllaDBRepository, scyllaDBVersion)
 }
 
 func ScyllaDBImageRefToRepositoryVersion(imageRef string) (string, string, error) {

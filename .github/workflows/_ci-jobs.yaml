@@ -348,10 +348,13 @@ jobs:
       registry-auth-json: ${{ secrets.registry-auth-json }}
 
   e2e:
-    needs: image
+    needs:
+    - image
+    - olm
     uses: ./.github/workflows/_e2e-jobs.yaml
     with:
       image-ref: ${{ needs.image.outputs.image-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
       jobs: '["gke-parallel", "gke-parallel-clusterip", "gke-serial"]'
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

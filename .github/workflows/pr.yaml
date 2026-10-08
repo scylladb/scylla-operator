@@ -12,11 +12,18 @@ permissions:
 
 jobs:
   ci:
-    uses: ./.github/workflows/ci-jobs.yaml
+    uses: ./.github/workflows/_ci-jobs.yaml
+    permissions:
+      contents: read
+      # For detect-source-changes to read the PR's changed files.
+      pull-requests: read
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
   verify-commits:
     name: verify-commits
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,7 +38,7 @@ jobs:
   # checks are invisible to it. This aggregate is the single context it can be told to require once these jobs
   # have matured, which keeps wiring further jobs into the merge gate a one-line change here.
   check-required:
-    runs-on: ubuntu-latest
+    runs-on: hosted-runners-standard-pool
     needs:
     - ci
     - verify-commits

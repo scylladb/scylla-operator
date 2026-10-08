@@ -454,6 +454,198 @@ func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
 }
 
+// isMajorOrMinorVersionChange returns whether the ScyllaDB version of the required StatefulSet differs from the existing
+// one in its major or minor version, which needs the upgrade flow to run its hooks.
+func isMajorOrMinorVersionChange(required, existing *appsv1.StatefulSet) (bool, error) {
+	requiredVersionString, requiredVersionLabelPresent := required.Labels[naming.ScyllaVersionLabel]
+	existingVersionString, existingVersionLabelPresent := existing.Labels[naming.ScyllaVersionLabel]
+	if !requiredVersionLabelPresent || !existingVersionLabelPresent {
+		return false, nil
+	}
+
+	requiredVersion, err := semver.Parse(requiredVersionString)
+	if err != nil {
+		return false, err
+	}
+	existingVersion, err := semver.Parse(existingVersionString)
+	if err != nil {
+		return false, err
+	}
+
+	return requiredVersion.Major != existingVersion.Major || requiredVersion.Minor != existingVersion.Minor, nil
+}
+
+// stuckRolloutTimeout is how long a Pod of a StatefulSet's update revision has to be unready before its rollout is
+// considered stuck.
+const stuckRolloutTimeout = 5 * time.Minute
+
+// getPodUnreadySince returns the time since which the Pod has been unready.
+func getPodUnreadySince(pod *corev1.Pod) time.Time {
+	readyCondition := controllerhelpers.GetPodCondition(pod.Status.Conditions, corev1.PodReady)
+	if readyCondition != nil && readyCondition.Status != corev1.ConditionTrue && !readyCondition.LastTransitionTime.IsZero() {
+		return readyCondition.LastTransitionTime.Time
+	}
+
+	return pod.CreationTimestamp.Time
+}
+
+// syncStuckStatefulSetRollouts lets the required spec through to the StatefulSets whose rollout is stuck, and
+// recreates the Pods left behind at superseded revisions.
+// A rollout to a revision that a node can't start with, e.g. after the CPUs of a rack using tablets were lowered,
+// never finishes, so the rollout waits that follow in the sync would keep a reverted or fixed spec from ever reaching
+// the StatefulSet. A rollout is stuck when a Pod of the update revision has been unready for stuckRolloutTimeout. The
+// required StatefulSet is then applied right away, superseding the rollout, with the existing replicas, as scaling is
+// left to the scaling loop. This also lets a spec change reach a rack whose node is slow to start, e.g. replaying a
+// large commitlog, in which case the node is restarted at the new revision once it's superseded. Racks with leaving nodes are left to the decommission flow and racks with nodes under
+// maintenance or being replaced are left alone. A spec that also changes the major or minor ScyllaDB version needs the
+// upgrade flow, which only starts once all racks are rolled out, so such a change doesn't unstick the rack.
+//
+// With the OrderedReady Pod management policy, the StatefulSet controller doesn't update a Pod that isn't ready, so a
+// Pod that failed at a superseded revision, i.e. neither the current nor the update one, would never pick up the
+// update revision on its own (https://github.com/kubernetes/kubernetes/issues/67250). Such Pods are deleted once the
+// StatefulSet controller has observed the StatefulSet and all Pods of the update revision are ready, so that a broken
+// update revision doesn't take down more nodes. The Pods are deleted directly, bypassing the PodDisruptionBudget, as
+// they are unready already, which is what the PodDisruptionBudget counts. Pods below the partition are kept.
+func (sdcc *Controller) syncStuckStatefulSetRollouts(
+	ctx context.Context,
+	rq *controllertools.Requeue,
+	sdc *scyllav1alpha1.ScyllaDBDatacenter,
+	status *scyllav1alpha1.ScyllaDBDatacenterStatus,
+	requiredStatefulSets []*appsv1.StatefulSet,
+	statefulSets map[string]*appsv1.StatefulSet,
+	services map[string]*corev1.Service,
+) ([]metav1.Condition, error) {
+	var progressingConditions []metav1.Condition
+
+	for _, req := range requiredStatefulSets {
+		sts, ok := statefulSets[req.Name]
+		if !ok {
+			continue
+		}
+
+		if sts.Spec.Replicas == nil || sts.Status.ObservedGeneration != sts.Generation || len(sts.Status.UpdateRevision) == 0 {
+			continue
+		}
+
+		rackName := sts.Labels[naming.RackNameLabel]
+		if len(calculateDecommissioningNodes(rackName, services)) != 0 {
+			continue
+		}
+
+		hasMemberUnderOperation := false
+		for _, svc := range services {
+			if svc.Labels[naming.RackNameLabel] != rackName {
+				continue
+			}
+			_, underMaintenance := svc.Labels[naming.NodeMaintenanceLabel]
+			_, replaceRequested := svc.Labels[naming.ReplaceLabel]
+			_, replacing := svc.Labels[naming.ReplacingNodeHostIDLabel]
+			if underMaintenance || replaceRequested || replacing {
+				hasMemberUnderOperation = true
+				break
+			}
+		}
+		if hasMemberUnderOperation {
+			continue
+		}
+
+		partition := int32(0)
+		if sts.Spec.UpdateStrategy.RollingUpdate != nil && sts.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
+			partition = *sts.Spec.UpdateStrategy.RollingUpdate.Partition
+		}
+
+		var updatedPodsUnreadySince []time.Time
+		var supersededUnreadyPods []*corev1.Pod
+		for ordinal := partition; ordinal < *sts.Spec.Replicas; ordinal++ {
+			podName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
+			pod, err := ctrlclient.Get[corev1.Pod](ctx, sdcc.client.Client(), sts.Namespace, podName)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue
+				}
+				return progressingConditions, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sts.Namespace, podName), err)
+			}
+
+			if pod.DeletionTimestamp != nil || controllerhelpers.IsPodReady(pod) {
+				continue
+			}
+
+			switch pod.Labels[appsv1.ControllerRevisionHashLabelKey] {
+			case sts.Status.UpdateRevision:
+				updatedPodsUnreadySince = append(updatedPodsUnreadySince, getPodUnreadySince(pod))
+			case sts.Status.CurrentRevision:
+				// The StatefulSet controller waits for the Pod to become ready, and updates it in its turn.
+			default:
+				supersededUnreadyPods = append(supersededUnreadyPods, pod)
+			}
+		}
+
+		if len(updatedPodsUnreadySince) != 0 {
+			if sts.Status.UpdateRevision == sts.Status.CurrentRevision {
+				continue
+			}
+
+			stuckFor := time.Since(slices.MinFunc(updatedPodsUnreadySince, time.Time.Compare))
+			if stuckFor < stuckRolloutTimeout {
+				rq.After(stuckRolloutTimeout - stuckFor)
+				continue
+			}
+
+			versionChange, err := isMajorOrMinorVersionChange(req, sts)
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't compare ScyllaDB versions of StatefulSet %q: %w", naming.ObjRef(sts), err)
+			}
+			if versionChange {
+				continue
+			}
+
+			required := req.DeepCopy()
+			// The replicas come from the cached StatefulSet, so use optimistic concurrency not to write back stale ones.
+			required.ResourceVersion = sts.ResourceVersion
+			required.Spec.Replicas = pointer.Ptr(*sts.Spec.Replicas)
+			updatedSts, changed, err := resourceapply.ApplyStatefulSetWithControl(ctx, ctrlclient.ApplyControl[appsv1.StatefulSet](ctx, sdcc.client.Client(), sdc.Namespace), sdcc.eventRecorder, required, resourceapply.ApplyOptions{})
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't apply StatefulSet %q with a stuck rollout: %w", naming.ObjRef(sts), err)
+			}
+			if changed {
+				klog.V(2).InfoS("Applied StatefulSet with a stuck rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts), "UpdateRevision", sts.Status.UpdateRevision, "StuckFor", stuckFor)
+				controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, required, "apply", sdc.Generation)
+
+				_, idx, ok := oslices.Find(status.Racks, func(rackStatus scyllav1alpha1.RackStatus) bool {
+					return rackStatus.Name == rackName
+				})
+				if ok {
+					status.Racks[idx] = *calculateRackStatus(ctx, sdcc.client.Client(), sdc, rackName, updatedSts, services)
+				}
+			}
+
+			continue
+		}
+
+		if sts.Spec.PodManagementPolicy != appsv1.OrderedReadyPodManagement {
+			// With the Parallel Pod management policy the StatefulSet controller doesn't wait for unready Pods to become
+			// ready before replacing them.
+			continue
+		}
+
+		for _, pod := range supersededUnreadyPods {
+			klog.V(2).InfoS("Deleting an unready Pod of a superseded revision", "ScyllaDBDatacenter", klog.KObj(sdc), "Pod", klog.KObj(pod), "Revision", pod.Labels[appsv1.ControllerRevisionHashLabelKey], "UpdateRevision", sts.Status.UpdateRevision)
+			controllerhelpers.AddGenericProgressingStatusCondition(&progressingConditions, statefulSetControllerProgressingCondition, pod, "delete", sdc.Generation)
+			err := sdcc.client.Client().Delete(ctx, pod, client.Preconditions{UID: &pod.UID})
+			if err != nil {
+				// The StatefulSet controller may have recreated the Pod in the meantime, which fails the UID precondition.
+				if apierrors.IsNotFound(err) || apierrors.IsConflict(err) {
+					continue
+				}
+				return progressingConditions, fmt.Errorf("can't delete unready pod %q: %w", naming.ObjRef(pod), err)
+			}
+			sdcc.eventRecorder.Eventf(sdc, corev1.EventTypeNormal, "SupersededPodDeleted", "Deleted unready Pod %q of a superseded revision, so that it's recreated at the update revision %q", naming.ObjRef(pod), sts.Status.UpdateRevision)
+		}
+	}
+
+	return progressingConditions, nil
+}
+
 // createMissingStatefulSets creates the missing StatefulSets from requiredStatefulSets.
 // Existing StatefulSets are skipped. With parallel node operations disabled at most one missing StatefulSet is created
 // so that racks bootstrap one by one, while with parallel node operations enabled all of them are created at once.
@@ -854,6 +1046,18 @@ func (sdcc *Controller) syncStatefulSets(
 	}
 	if len(progressingConditions) > 0 {
 		return progressingConditions, nil
+	}
+
+	// A stuck rollout never finishes, so the rollout waits below would block a fix of the spec forever.
+	// An upgrade in progress is left to the upgrade flow.
+	if _, upgradeInProgress := configMaps[naming.UpgradeContextConfigMapName(sdc)]; !upgradeInProgress {
+		progressingConditions, err = sdcc.syncStuckStatefulSetRollouts(ctx, rq, sdc, status, requiredStatefulSets, statefulSets, services)
+		if err != nil {
+			return progressingConditions, fmt.Errorf("can't sync stuck statefulset rollout(s): %w", err)
+		}
+		if len(progressingConditions) > 0 {
+			return progressingConditions, nil
+		}
 	}
 
 	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets, services)

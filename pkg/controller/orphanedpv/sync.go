@@ -78,6 +78,10 @@ func (opc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	if opc.onReconcile != nil {
+		opc.onReconcile(types.NamespacedName{Namespace: namespace, Name: name})
+	}
+
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaDBDatacenter", "ScyllaDBDatacenter", klog.KRef(namespace, name), "startTime", startTime)
 	defer func() {

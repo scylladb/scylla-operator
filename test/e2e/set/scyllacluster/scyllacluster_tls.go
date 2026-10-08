@@ -160,8 +160,9 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 				ecdsaLeafKeyUsage := x509.KeyUsageDigitalSignature
 
 				tlsResult := verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, hostIDs, verification.VerifyScyllaClusterTLSOptions{
-					CAKeyUsage:   ecdsaCAKeyUsage,
-					LeafKeyUsage: ecdsaLeafKeyUsage,
+					CAKeyUsage:         ecdsaCAKeyUsage,
+					LeafKeyUsage:       ecdsaLeafKeyUsage,
+					PublicKeyAlgorithm: x509.ECDSA,
 				})
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})
@@ -463,8 +464,9 @@ var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, func() {
 		ecdsaLeafKeyUsage := x509.KeyUsageDigitalSignature
 
 		verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, nil, verification.VerifyScyllaClusterTLSOptions{
-			CAKeyUsage:   ecdsaCAKeyUsage,
-			LeafKeyUsage: ecdsaLeafKeyUsage,
+			CAKeyUsage:         ecdsaCAKeyUsage,
+			LeafKeyUsage:       ecdsaLeafKeyUsage,
+			PublicKeyAlgorithm: x509.ECDSA,
 		})
 
 		framework.By("Verifying ECDSA-specific properties on each TLS secret")

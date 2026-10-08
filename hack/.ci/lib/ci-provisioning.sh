@@ -24,7 +24,7 @@ function get-provisioned-cluster-kubeconfig {
   # unqualified command from silently acting on `default`.
   kubectl --kubeconfig="${kubeconfig}" config set-context --current --namespace 'default-unexisting-namespace'
 
-  # Sanity check.
-  kubectl --kubeconfig="${kubeconfig}" version -o yaml
+  # Sanity check. A freshly provisioned cluster's API can drop the first connections, so it gets a few attempts.
+  timeout --verbose 1m bash -c 'until kubectl --kubeconfig="${0}" version -o yaml; do sleep 5; done' "${kubeconfig}"
   kubectl --kubeconfig="${kubeconfig}" config view
 }

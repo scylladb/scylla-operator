@@ -1,0 +1,25 @@
+name: Clean up an S3 bucket
+description: >-
+  Deletes a StorageBucket created by provision-bucket without waiting for it to go away. The object carries a TTL, so a
+  leak is bounded rather than permanent.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  object-name:
+    description: Name of the StorageBucket object, as passed to provision-bucket.
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      OBJECT_NAME: ${{ inputs.object-name }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      kubectl delete --wait=false --ignore-not-found storagebucket/"${OBJECT_NAME}"

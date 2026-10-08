@@ -1,0 +1,150 @@
+name: E2E jobs
+
+# Every e2e job, defined once for all the workflows that run them. Builds the operator image, and the OLM bundle and
+# catalog deploying it, from the ref under test and runs the selected jobs against them. The callers select the jobs by
+# their ids.
+on:
+  workflow_call:
+    inputs:
+      jobs:
+        description: JSON list of the ids of the jobs to run, e.g. `["gke-parallel"]`. Runs every job when omitted.
+        required: false
+        type: string
+    secrets:
+      registry-auth-json:
+        description: Contents of a containers-auth.json(5) file with push access to the image repository.
+        required: true
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the CI provisioning objects in.
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  # A matrix creates checks only for the jobs selected, where jobs gated by `if` would all show up, the unselected ones
+  # as skipped. Every entry carries every input of the workflow it calls, because a key missing from an entry passes an
+  # empty value rather than the input's default, so the defaults below have to match those of _e2e-gke.yaml.
+  plan:
+    runs-on: hosted-runners-standard-pool
+    outputs:
+      gke: ${{ steps.plan.outputs.gke }}
+    steps:
+    - id: plan
+      shell: bash
+      env:
+        JOBS: ${{ inputs.jobs }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        gke_defaults='{
+          "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke.yaml",
+          "object-storage": false,
+          "storageclass-name": "scylladb-local-xfs",
+          "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig.yaml",
+          "node-service-type": "Headless",
+          "nodes-broadcast-address-type": "PodIP",
+          "clients-broadcast-address-type": "PodIP"
+        }'
+        # The serial jobs run without a NodeConfig, so without a local storage class either, and ScyllaDB storage falls
+        # back to the cluster default.
+        gke='[
+          {
+            "id": "gke-parallel",
+            "suite": "scylla-operator/conformance/parallel",
+            "object-storage": true
+          },
+          {
+            "id": "gke-parallel-clusterip",
+            "suite": "scylla-operator/conformance/parallel",
+            "object-storage": true,
+            "node-service-type": "ClusterIP",
+            "nodes-broadcast-address-type": "ServiceClusterIP",
+            "clients-broadcast-address-type": "ServiceClusterIP"
+          },
+          {
+            "id": "gke-serial",
+            "suite": "scylla-operator/conformance/serial",
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-serial.yaml",
+            "nodeconfig-path": "",
+            "storageclass-name": ""
+          },
+          {
+            "id": "gke-arm64-parallel",
+            "suite": "scylla-operator/conformance/parallel",
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-arm64.yaml",
+            "object-storage": true,
+            "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig-gke-arm64.yaml"
+          },
+          {
+            "id": "gke-arm64-serial",
+            "suite": "scylla-operator/conformance/serial",
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-arm64-serial.yaml",
+            "nodeconfig-path": "",
+            "storageclass-name": ""
+          },
+          {
+            "id": "gke-multi-dc-parallel",
+            "suite": "scylla-operator/conformance/multi-datacenter-parallel",
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-multi-dc.yaml",
+            "object-storage": true
+          }
+        ]'
+
+        if [[ -z "${JOBS}" ]]; then
+          JOBS="$( jq -nc --argjson gke "${gke}" '$gke | map(.id)' )"
+        fi
+        # An id that matches no job would otherwise select nothing, so a renamed job would silently drop out of its callers.
+        jq -en --argjson gke "${gke}" '
+          (env.JOBS | fromjson) - ($gke | map(.id)) |
+          if length > 0 then error("unknown job ids: \(.)") else . end
+        '
+        select='(env.JOBS | fromjson) as $jobs | map(select(.id | IN($jobs[])))'
+        echo "gke=$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )" >> "${GITHUB_OUTPUT}"
+
+  # On a PR from a fork this fails for lack of secrets, and so does the caller, rather than the suites being skipped
+  # and counted as passed.
+  image:
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.registry-auth-json }}
+
+  # Runs whichever jobs are selected, so that the callers fail on a bundle or catalog that doesn't build.
+  olm:
+    needs: image
+    uses: ./.github/workflows/_olm.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      bundle-image-tag: scylla-operator-bundle-${{ github.run_id }}
+      catalog-image-tag: scylla-operator-catalog-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.registry-auth-json }}
+
+  gke:
+    needs:
+    - plan
+    - image
+    # An empty matrix is an error.
+    if: needs.plan.outputs.gke != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.gke) }}
+    name: ${{ matrix.id }}
+    uses: ./.github/workflows/_e2e-gke.yaml
+    with:
+      name: e2e-${{ matrix.id }}
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      suite: ${{ matrix.suite }}
+      cluster-manifest: ${{ matrix.cluster-manifest }}
+      object-storage: ${{ matrix.object-storage }}
+      storageclass-name: ${{ matrix.storageclass-name }}
+      nodeconfig-path: ${{ matrix.nodeconfig-path }}
+      node-service-type: ${{ matrix.node-service-type }}
+      nodes-broadcast-address-type: ${{ matrix.nodes-broadcast-address-type }}
+      clients-broadcast-address-type: ${{ matrix.clients-broadcast-address-type }}
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

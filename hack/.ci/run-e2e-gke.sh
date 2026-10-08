@@ -21,7 +21,7 @@ trap gracefully-shutdown-e2es INT
 
 SO_NODECONFIG_PATH="${SO_NODECONFIG_PATH=./hack/.ci/manifests/cluster/nodeconfig.yaml}"
 export SO_NODECONFIG_PATH
-SO_CSI_DRIVER_PATH="${parent_dir}/manifests/namespaces/local-csi-driver/"
+SO_CSI_DRIVER_PATH="${SO_CSI_DRIVER_PATH=${parent_dir}/manifests/namespaces/local-csi-driver/}"
 export SO_CSI_DRIVER_PATH
 
 # Backwards compatibility. Remove when release repo stops using SO_DISABLE_NODECONFIG.

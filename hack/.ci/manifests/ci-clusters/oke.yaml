@@ -1,0 +1,47 @@
+apiVersion: ci.scylladb.com/v1alpha1
+kind: OracleKubernetesEngineCluster
+metadata:
+  # Filled in per run.
+  name: ""
+  annotations:
+    ci.scylladb.com/ttl: 4h
+spec:
+  credentialsSecret:
+    # Filled in per run.
+    name: ""
+  parameters:
+    # Filled in per run. OCI caps this at 32 characters.
+    clusterName: ""
+    compartmentID: ocid1.compartment.oc1..aaaaaaaa7go6tkc26yzlzmn7sqpgu2z3b2bqbirhqnobxljocaggffgs6qhq
+    region: us-sanjose-1
+    kubernetesVersion: v1.35.2
+    nodePools:
+    - name: worker
+      shape: VM.Standard.E5.Flex
+      shapeConfig:
+        ocpus: 4
+        memoryInGBs: 32
+      # VM.Standard.E5.Flex with 4 OCPUs gets 4 VNICs; OCI caps maxPodsPerNode at (VNICs-1)*31 = 93.
+      maxPodsPerNode: 93
+      size: 1
+      availabilityDomain: TMnf:US-SANJOSE-1-AD-1
+      # To get the latest node image ID for a Kubernetes version, substituting a valid cluster OCID in the region:
+      #   OKE_IMAGE_QUERY=$(printf 'max_by(data.sources[?contains("source-name",`Oracle-Linux-8.`) && contains("source-name",`-OKE-%s-`) && !contains("source-name",`aarch64`) && !contains("source-name",`GPU`)], &"source-name")."image-id"' "<k8s-version>")
+      #   oci ce node-pool-options get --node-pool-option-id <cluster-ocid> --region us-sanjose-1 --query "${OKE_IMAGE_QUERY}" --raw-output
+      nodeImageID: ocid1.image.oc1.us-sanjose-1.aaaaaaaazlnscyy4pkytb3htpuihxpo46inskxpn2oqsmugr7l4l5qehepvq
+      config:
+        labels:
+          pool: workers
+    - name: scylla
+      shape: VM.DenseIO2.8
+      # OCI caps maxPodsPerNode at 110 for VM.DenseIO2.8.
+      maxPodsPerNode: 110
+      size: 1
+      availabilityDomain: TMnf:US-SANJOSE-1-AD-1
+      nodeImageID: ocid1.image.oc1.us-sanjose-1.aaaaaaaazlnscyy4pkytb3htpuihxpo46inskxpn2oqsmugr7l4l5qehepvq
+      config:
+        # Filled in per run.
+        cloudInitB64: ""
+        labels:
+          pool: scylladb
+          scylla.scylladb.com/node-type: scylla

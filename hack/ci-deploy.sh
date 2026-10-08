@@ -122,8 +122,10 @@ else
   kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
 fi
 
-kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress
-kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/ingress-default-backend deploy/prometheus
+# The default backend is pinned to an amd64-only image, so its rollout can't complete on arm64 clusters and isn't
+# waited for. It only answers requests that match no Ingress and nothing in the suites needs it.
+# TODO: put deploy/ingress-default-backend back once https://scylladb.atlassian.net/browse/OPERATOR-451 is fixed.
+kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/prometheus
 
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com

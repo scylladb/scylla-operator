@@ -29,6 +29,10 @@ func (smcrc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	if smcrc.onReconcile != nil {
+		smcrc.onReconcile(types.NamespacedName{Namespace: namespace, Name: name})
+	}
+
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaDBManagerClusterRegistration", "ScyllaDBManagerClusterRegistration", klog.KRef(namespace, name), "startTime", startTime)
 	defer func() {

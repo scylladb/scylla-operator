@@ -29,6 +29,8 @@ before upgrading.
 
 ### Bug fixes
 
+- Annotations removed from a `ScyllaCluster` are now removed from its `ScyllaDBDatacenter` as well.
+  [#3753](https://github.com/scylladb/scylla-operator/pull/3753)
 - Fixed the `ScyllaDBDatacenter` controller updating the status in a loop while any member Service was missing its
   hostID annotation, e.g. during bootstrap. The `CertControllerProgressing` condition listed the waiting Services in a
   random order, so every sync produced a different status, and every status update triggered another sync.
@@ -98,6 +100,11 @@ before upgrading.
 - The [core dump collection guide](https://operator.docs.scylladb.com/stable/troubleshoot/configure-coredumps.html) now
   covers OpenShift.
   [#3750](https://github.com/scylladb/scylla-operator/pull/3750)
+- Decreasing the CPU limit of the ScyllaDB container of a `ScyllaCluster` or `ScyllaDBDatacenter` rack is now rejected
+  on admission, unless the object is annotated with `scylla-operator.scylladb.com/force-scylladb-cpu-decrease: "true"`.
+  To lower it, replace the nodes one by one as described in the
+  [guide](https://operator.docs.scylladb.com/stable/operate/resize-nodes-in-a-rack.html#decrease-the-cpu).
+  [#3753](https://github.com/scylladb/scylla-operator/pull/3753)
 
 ### Dependencies
 

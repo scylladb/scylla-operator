@@ -95,6 +95,9 @@ before upgrading.
 - The operator now issues ECDSA P-384 certificates by default instead of RSA ones. After the upgrade, existing
   certificates are reissued with ECDSA keys, unless `--crypto-key-type=RSA` is set.
   [#3719](https://github.com/scylladb/scylla-operator/pull/3719)
+- Decreasing the CPU limit of the ScyllaDB container of a `ScyllaCluster` or `ScyllaDBDatacenter` rack is now rejected
+  on admission, unless the object is annotated with `scylla-operator.scylladb.com/force-scylladb-cpu-decrease: "true"`.
+  [#3752](https://github.com/scylladb/scylla-operator/pull/3752)
 
 ### Dependencies
 

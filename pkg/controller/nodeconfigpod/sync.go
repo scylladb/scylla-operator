@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -22,6 +23,10 @@ func (ncpc *Controller) sync(ctx context.Context, key string) error {
 	if err != nil {
 		klog.ErrorS(err, "Failed to split meta namespace cache key", "cacheKey", key)
 		return err
+	}
+
+	if ncpc.onReconcile != nil {
+		ncpc.onReconcile(types.NamespacedName{Namespace: namespace, Name: name})
 	}
 
 	startTime := time.Now()

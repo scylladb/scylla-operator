@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/informers"
 )
 
@@ -492,8 +493,9 @@ func newManagedScyllaDBMonitoring(name, namespace string) *scyllav1alpha1.Scylla
 }
 
 // runScyllaDBMonitoringController creates and starts a ScyllaDBMonitoring controller against the given
-// envtest environment. The controller is stopped automatically when ctx is cancelled.
-func runScyllaDBMonitoringController(ctx context.Context, e *envtest.Environment) {
+// envtest environment, with its ScyllaOperatorConfig informer filtered to the singleton like in the operator
+// binary. The controller is stopped automatically when ctx is cancelled.
+func runScyllaDBMonitoringController(ctx context.Context, e *envtest.Environment, options ...scylladbmonitoring.ControllerOption) {
 	g.GinkgoHelper()
 
 	const resyncPeriod = 12 * time.Hour
@@ -511,9 +513,12 @@ func runScyllaDBMonitoringController(ctx context.Context, e *envtest.Environment
 		resyncPeriod,
 		scyllainformers.WithNamespace(e.Namespace()),
 	)
-	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactory(
+	scyllaGlobalInformers := scyllainformers.NewSharedInformerFactoryWithOptions(
 		e.ScyllaClient(),
 		resyncPeriod,
+		scyllainformers.WithTweakListOptions(func(listOptions *metav1.ListOptions) {
+			listOptions.FieldSelector = fields.OneTermEqualSelector("metadata.name", naming.SingletonName).String()
+		}),
 	)
 	monitoringInformers := monitoringinformers.NewSharedInformerFactoryWithOptions(
 		monitoringClient,
@@ -543,6 +548,7 @@ func runScyllaDBMonitoringController(ctx context.Context, e *envtest.Environment
 		monitoringInformers.Monitoring().V1().PrometheusRules(),
 		monitoringInformers.Monitoring().V1().ServiceMonitors(),
 		keyGenerator,
+		options...,
 	)
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create ScyllaDBMonitoring controller")
 

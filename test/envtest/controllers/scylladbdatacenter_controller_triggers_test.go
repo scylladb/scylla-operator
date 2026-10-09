@@ -5,8 +5,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"slices"
-	"sync"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -24,79 +22,21 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	apimachineryutilrand "k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	// triggerQuietWindow is how long the controller has to go without a reconciliation for the fixture to count as
-	// settled, and how long a change that must not trigger one is watched. The resync period is hours away, so
-	// once the controller stops reacting to its own writes nothing but the row's change can wake it.
-	triggerQuietWindow = 2 * time.Second
-
-	// triggerAnnotation is an annotation no controller manages, so setting it changes an object without changing
-	// what the controller wants it to be.
-	triggerAnnotation = "internal.scylla-operator.scylladb.com/envtest-trigger"
-
 	// triggerPodOrdinal is the ordinal of the member Pod the Pod rows create, update and delete. The fixture holds
 	// the rack's first Pod for the cleanup Job.
 	triggerPodOrdinal = 1
 )
 
-// reconcileRecorder records the ScyllaDBDatacenters the controller reconciles.
-type reconcileRecorder struct {
-	mu         sync.Mutex
-	reconciled []types.NamespacedName
-	last       time.Time
-}
+// scyllaDBDatacenterTriggerFixture is the state the trigger rows change: a rolled-out datacenter with one of every
+// kind the controller owns, another datacenter in the same namespace that no row but its own may enqueue, and
+// objects that resemble the datacenter's but aren't its.
+type scyllaDBDatacenterTriggerFixture struct {
+	triggerActions
 
-func (r *reconcileRecorder) observe(key types.NamespacedName) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.reconciled = append(r.reconciled, key)
-	r.last = time.Now()
-}
-
-// datacenters returns the names of the ScyllaDBDatacenters reconciled since the last reset, each once.
-func (r *reconcileRecorder) datacenters() []string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	var names []string
-	for _, key := range r.reconciled {
-		if !slices.Contains(names, key.Name) {
-			names = append(names, key.Name)
-		}
-	}
-
-	return names
-}
-
-func (r *reconcileRecorder) sinceLast() time.Duration {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	return time.Since(r.last)
-}
-
-// waitUntilIdle waits until the controller has run no reconciliation for the quiet window, then forgets the
-// reconciliations so far.
-func (r *reconcileRecorder) waitUntilIdle(ctx context.Context) {
-	g.GinkgoHelper()
-
-	o.Eventually(r.sinceLast).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.BeNumerically(">=", triggerQuietWindow))
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.reconciled = nil
-}
-
-// triggerFixture is the state the trigger rows change: a rolled-out datacenter with one of every kind the
-// controller owns, another datacenter in the same namespace that no row but its own may enqueue, and objects
-// that resemble the datacenter's but aren't its.
-type triggerFixture struct {
 	env      *envtest.Environment
 	recorder *reconcileRecorder
 
@@ -110,14 +50,14 @@ type triggerFixture struct {
 }
 
 // rackStatefulSet returns the datacenter's rack StatefulSet.
-func (f *triggerFixture) rackStatefulSet(ctx context.Context) *appsv1.StatefulSet {
+func (f *scyllaDBDatacenterTriggerFixture) rackStatefulSet(ctx context.Context) *appsv1.StatefulSet {
 	g.GinkgoHelper()
 
 	return waitForStatefulSet(ctx, f.env, naming.StatefulSetNameForRack(f.datacenter.Spec.Racks[0], f.datacenter), scyllaDBDatacenterControllerDefaultEventuallyTimeout)
 }
 
 // getAnyOwnedBy returns any object of list's kind controlled by sdc.
-func (f *triggerFixture) getAnyOwnedBy(ctx context.Context, list client.ObjectList, sdc *scyllav1alpha1.ScyllaDBDatacenter) client.Object {
+func (f *scyllaDBDatacenterTriggerFixture) getAnyOwnedBy(ctx context.Context, list client.ObjectList, sdc *scyllav1alpha1.ScyllaDBDatacenter) client.Object {
 	g.GinkgoHelper()
 
 	err := f.env.KubeClient().List(ctx, list, client.InNamespace(f.env.Namespace()))
@@ -138,51 +78,13 @@ func (f *triggerFixture) getAnyOwnedBy(ctx context.Context, list client.ObjectLi
 }
 
 // memberPod returns the member Pod of the Pod rows, created by the member Pod creation row.
-func (f *triggerFixture) memberPod(ctx context.Context) *corev1.Pod {
+func (f *scyllaDBDatacenterTriggerFixture) memberPod(ctx context.Context) *corev1.Pod {
 	g.GinkgoHelper()
 
 	pod, err := f.env.TypedKubeClient().CoreV1().Pods(f.env.Namespace()).Get(ctx, naming.MemberServiceName(f.datacenter.Spec.Racks[0], f.datacenter, triggerPodOrdinal), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	return pod
-}
-
-// annotate sets the trigger annotation on obj to a fresh value.
-func (f *triggerFixture) annotate(ctx context.Context, obj client.Object) {
-	g.GinkgoHelper()
-
-	patch := client.MergeFrom(obj.DeepCopyObject().(client.Object))
-	annotations := obj.GetAnnotations()
-	if annotations == nil {
-		annotations = map[string]string{}
-	}
-	annotations[triggerAnnotation] = apimachineryutilrand.String(8)
-	obj.SetAnnotations(annotations)
-
-	err := f.env.KubeClient().Patch(ctx, obj, patch)
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
-func (f *triggerFixture) create(ctx context.Context, obj client.Object) {
-	g.GinkgoHelper()
-
-	err := f.env.KubeClient().Create(ctx, obj)
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
-func (f *triggerFixture) delete(ctx context.Context, obj client.Object) {
-	g.GinkgoHelper()
-
-	err := f.env.KubeClient().Delete(ctx, obj)
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
-type triggerRow struct {
-	// change is what the row does to the cluster.
-	change func(ctx context.Context, f *triggerFixture)
-	// expected are the names of the datacenters the change must have reconciled, and nothing else; none means the
-	// change must not reconcile anything.
-	expected []string
 }
 
 // These rows check which ScyllaDBDatacenters each kind of change reconciles. The rows run in order against one
@@ -195,7 +97,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller triggers", g.Ordered, g.Contin
 		otherDatacenterName = "envtest-other-sdc"
 	)
 
-	var f *triggerFixture
+	var f *scyllaDBDatacenterTriggerFixture
 
 	g.BeforeAll(func(ctx g.SpecContext) {
 		env := envtest.Setup(ctx)
@@ -286,7 +188,8 @@ var _ = g.Describe("ScyllaDBDatacenter controller triggers", g.Ordered, g.Contin
 		foreignStatefulSet, err := env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()).Create(ctx, makeEnvtestForeignStatefulSet(env.Namespace(), "foreign", nil), metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		f = &triggerFixture{
+		f = &scyllaDBDatacenterTriggerFixture{
+			triggerActions:     triggerActions{client: env.KubeClient()},
 			env:                env,
 			recorder:           recorder,
 			datacenter:         datacenter,
@@ -297,96 +200,82 @@ var _ = g.Describe("ScyllaDBDatacenter controller triggers", g.Ordered, g.Contin
 	})
 
 	g.DescribeTable("reconciles the ScyllaDBDatacenters a change concerns",
-		func(ctx g.SpecContext, row triggerRow) {
-			g.By("Waiting for the controller to go idle")
-			f.recorder.waitUntilIdle(ctx)
-
-			g.By("Applying the change")
-			row.change(ctx, f)
-
-			if len(row.expected) == 0 {
-				g.By("Verifying no ScyllaDBDatacenter is reconciled")
-				o.Consistently(f.recorder.datacenters).WithContext(ctx).WithTimeout(triggerQuietWindow).WithPolling(100 * time.Millisecond).Should(o.BeEmpty())
-				return
-			}
-
-			g.By("Waiting for the expected ScyllaDBDatacenters to be reconciled, and no other")
-			o.Eventually(f.recorder.datacenters).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.ConsistOf(row.expected))
-			o.Consistently(f.recorder.datacenters).WithContext(ctx).WithTimeout(triggerQuietWindow).WithPolling(100 * time.Millisecond).Should(o.ConsistOf(row.expected))
+		func(ctx g.SpecContext, row triggerRow[*scyllaDBDatacenterTriggerFixture]) {
+			runTriggerRow(ctx, f.recorder, f, row)
 		},
 
 		// The rows below cover the watches declared in SetupWithManager with For and Owns: the datacenter itself and
 		// the objects it controls. Owns feeds every event of an object through the same handler, so one change per
 		// kind is enough.
-		g.Entry("ScyllaDBDatacenter update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("ScyllaDBDatacenter update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.datacenter.DeepCopy())
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("other ScyllaDBDatacenter update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("other ScyllaDBDatacenter update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.otherDatacenter.DeepCopy())
 			},
 			expected: []string{otherDatacenterName},
 		}),
 
-		g.Entry("owned Service update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned Service update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &corev1.ServiceList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned ConfigMap update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned ConfigMap update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &corev1.ConfigMapList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned Secret update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned Secret update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &corev1.SecretList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned ServiceAccount update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned ServiceAccount update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &corev1.ServiceAccountList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned RoleBinding update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned RoleBinding update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &rbacv1.RoleBindingList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned StatefulSet update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned StatefulSet update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &appsv1.StatefulSetList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned PodDisruptionBudget update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned PodDisruptionBudget update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &policyv1.PodDisruptionBudgetList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned ScyllaDBDatacenterNodesStatusReport update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned ScyllaDBDatacenterNodesStatusReport update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &scyllav1alpha1.ScyllaDBDatacenterNodesStatusReportList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned Ingress update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned Ingress update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &networkingv1.IngressList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("owned Job update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("owned Job update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.getAnyOwnedBy(ctx, &batchv1.JobList{}, f.datacenter))
 			},
 			expected: []string{datacenterName},
@@ -395,14 +284,14 @@ var _ = g.Describe("ScyllaDBDatacenter controller triggers", g.Ordered, g.Contin
 		// The rows below exercise the map functions, the only enqueue logic written by hand: the Secret watch
 		// reaching the datacenters that name the Secret in their annotation, the Pod watch reaching the datacenter
 		// through the Pod's StatefulSet, and the ScyllaOperatorConfig watch reaching every datacenter.
-		g.Entry("override Secret update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("override Secret update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.overrideSecret.DeepCopy())
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("unrelated Secret creation", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("unrelated Secret creation", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.create(ctx, &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "unrelated",
@@ -413,8 +302,8 @@ var _ = g.Describe("ScyllaDBDatacenter controller triggers", g.Ordered, g.Contin
 		}),
 		// An orphan carries the datacenter's labels but no controllerRef: it is adopted by the next sync that runs
 		// for another reason, not by one of its own.
-		g.Entry("orphaned ConfigMap creation", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("orphaned ConfigMap creation", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.create(ctx, &corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "orphan",
@@ -425,26 +314,26 @@ var _ = g.Describe("ScyllaDBDatacenter controller triggers", g.Ordered, g.Contin
 			},
 		}),
 
-		g.Entry("member Pod creation", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("member Pod creation", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				createMemberPod(ctx, f.env, f.rackStatefulSet(ctx), triggerPodOrdinal, f.datacenter.Spec.ScyllaDB.Image)
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("member Pod update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("member Pod update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, f.memberPod(ctx))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("member Pod deletion", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("member Pod deletion", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.delete(ctx, f.memberPod(ctx))
 			},
 			expected: []string{datacenterName},
 		}),
-		g.Entry("Pod of a foreign StatefulSet creation", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("Pod of a foreign StatefulSet creation", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.create(ctx, &corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foreign-0",
@@ -459,8 +348,8 @@ var _ = g.Describe("ScyllaDBDatacenter controller triggers", g.Ordered, g.Contin
 			},
 		}),
 
-		g.Entry("ScyllaOperatorConfig update", triggerRow{
-			change: func(ctx context.Context, f *triggerFixture) {
+		g.Entry("ScyllaOperatorConfig update", triggerRow[*scyllaDBDatacenterTriggerFixture]{
+			change: func(ctx context.Context, f *scyllaDBDatacenterTriggerFixture) {
 				f.annotate(ctx, &scyllav1alpha1.ScyllaOperatorConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: naming.SingletonName,

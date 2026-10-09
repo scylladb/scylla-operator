@@ -4,13 +4,16 @@ package scyllacluster
 
 import (
 	"context"
-	"crypto/ecdsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
+	"github.com/gocql/gocql"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -19,7 +22,9 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/features"
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/scylla"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
@@ -156,12 +161,13 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 
 				framework.By("Verifying TLS certificates and live TLS connections")
 
-				rsaCAKeyUsage := x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
-				rsaLeafKeyUsage := x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
+				ecdsaCAKeyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
+				ecdsaLeafKeyUsage := x509.KeyUsageDigitalSignature
 
 				tlsResult := verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, hostIDs, verification.VerifyScyllaClusterTLSOptions{
-					CAKeyUsage:   rsaCAKeyUsage,
-					LeafKeyUsage: rsaLeafKeyUsage,
+					CAKeyUsage:         ecdsaCAKeyUsage,
+					LeafKeyUsage:       ecdsaLeafKeyUsage,
+					PublicKeyAlgorithm: x509.ECDSA,
 				})
 
 				adminClientConnectionConfigsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-local-cql-connection-configs-admin", sc.Name), metav1.GetOptions{})
@@ -341,20 +347,140 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 	})
 })
 
-var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, func() {
+// setOperatorCryptoKeyType sets --crypto-key-type on the operator Deployment, or removes it when keyType is nil,
+// and waits for the operator to roll out.
+func setOperatorCryptoKeyType(ctx context.Context, f *framework.Framework, keyType *crypto.KeyType) {
+	g.GinkgoHelper()
+
+	const (
+		cryptoKeyTypeFlagPrefix    = "--crypto-key-type="
+		cryptoRSAKeySizeFlagPrefix = "--crypto-rsa-key-size="
+	)
+
+	operatorDeploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	containerIdx := slices.IndexFunc(operatorDeploy.Spec.Template.Spec.Containers, func(c corev1.Container) bool {
+		return c.Name == "scylla-operator"
+	})
+	o.Expect(containerIdx).NotTo(o.Equal(-1), "operator container not found in Deployment")
+
+	args := slices.DeleteFunc(slices.Clone(operatorDeploy.Spec.Template.Spec.Containers[containerIdx].Args), func(arg string) bool {
+		return strings.HasPrefix(arg, cryptoKeyTypeFlagPrefix) || strings.HasPrefix(arg, cryptoRSAKeySizeFlagPrefix)
+	})
+
+	if keyType != nil {
+		args = append(args, cryptoKeyTypeFlagPrefix+string(*keyType))
+
+		if *keyType == crypto.RSAKeyType {
+			// Use the smallest supported RSA key size, so that the operator generates the keys quickly.
+			args = append(args, cryptoRSAKeySizeFlagPrefix+"2048")
+		}
+	}
+
+	patchBytes, err := json.Marshal([]map[string]any{
+		{
+			"op":    "replace",
+			"path":  fmt.Sprintf("/spec/template/spec/containers/%d/args", containerIdx),
+			"value": args,
+		},
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	operatorDeploy, err = f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Patch(
+		ctx,
+		operatorDeploymentName,
+		types.JSONPatchType,
+		patchBytes,
+		metav1.PatchOptions{},
+	)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	framework.By("Waiting for the operator Deployment to roll out (RV=%s)", operatorDeploy.ResourceVersion)
+	waitCtx, waitCtxCancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer waitCtxCancel()
+	_, err = controllerhelpers.WaitForDeploymentState(
+		waitCtx,
+		f.KubeAdminClient().AppsV1().Deployments(operatorNamespace),
+		operatorDeploymentName,
+		controllerhelpers.WaitForStateOptions{},
+		controllerhelpers.IsDeploymentRolledOut,
+		// Make sure no operator replica with the previous configuration is left to reconcile.
+		func(deploy *appsv1.Deployment) (bool, error) {
+			return deploy.Status.Replicas == *deploy.Spec.Replicas, nil
+		},
+	)
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
+// waitForCertificatesToUseKeyAlgorithm waits until the certificates of the ScyllaCluster's serving chain (CA and serving
+// certificate) and client chain (CA and admin client certificate) have keys of the given algorithm.
+func waitForCertificatesToUseKeyAlgorithm(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster, algorithm x509.PublicKeyAlgorithm) {
+	g.GinkgoHelper()
+
+	secretNames := []string{
+		naming.GetScyllaClusterLocalServingCAName(sc.Name),
+		naming.GetScyllaClusterLocalClientCAName(sc.Name),
+		naming.GetScyllaClusterLocalServingCertName(sc.Name),
+		naming.GetScyllaClusterLocalUserAdminCertName(sc.Name),
+	}
+
+	o.Eventually(func(eo o.Gomega) {
+		for _, name := range secretNames {
+			secret, err := f.KubeClient().CoreV1().Secrets(sc.Namespace).Get(ctx, name, metav1.GetOptions{})
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			certs, err := crypto.DecodeCertificates(secret.Data[corev1.TLSCertKey])
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			eo.Expect(certs).NotTo(o.BeEmpty())
+			eo.Expect(certs[0].PublicKeyAlgorithm).To(o.Equal(algorithm), "certificate in Secret %q", name)
+		}
+	}).WithContext(ctx).WithTimeout(5 * time.Minute).WithPolling(5 * time.Second).Should(o.Succeed())
+}
+
+// verifyAdminCanQueryOverTLS runs a CQL query over TLS with the admin client certificate, verifying ScyllaDB with the
+// serving CA bundle. A TLS handshake alone doesn't show that ScyllaDB accepts the client certificate.
+func verifyAdminCanQueryOverTLS(ctx context.Context, hosts []string, certificates verification.VerifyScyllaClusterTLSResult) {
+	g.GinkgoHelper()
+
+	servingCAPool := x509.NewCertPool()
+	o.Expect(servingCAPool.AppendCertsFromPEM(certificates.ServingCACertBytes)).To(o.BeTrue())
+
+	adminCert, err := tls.X509KeyPair(certificates.AdminClientCertBytes, certificates.AdminClientKeyBytes)
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	o.Eventually(func(eo o.Gomega) {
+		cluster := gocql.NewCluster(hosts...)
+		cluster.Port = scylla.DefaultNativeTransportPortSSL
+		cluster.SslOpts = &gocql.SslOptions{
+			Config: &tls.Config{
+				RootCAs:      servingCAPool,
+				Certificates: []tls.Certificate{adminCert},
+			},
+			EnableHostVerification: true,
+		}
+		session, err := cluster.CreateSession()
+		eo.Expect(err).NotTo(o.HaveOccurred())
+		defer session.Close()
+
+		var key string
+		eo.Expect(session.Query("SELECT key FROM system.local").WithContext(ctx).Scan(&key)).To(o.Succeed())
+	}).WithContext(ctx).WithTimeout(5 * time.Minute).WithPolling(5 * time.Second).Should(o.Succeed())
+}
+
+var _ = g.Describe("ScyllaCluster", framework.SuiteSerial, func() {
 	var f *framework.Framework
 
 	g.BeforeEach(func(ctx context.Context) {
 		f = framework.NewFramework(ctx, "scyllacluster")
 	})
 
-	g.It("should create TLS certificates using ECDSA keys when the operator is configured with --crypto-key-type=ECDSA", func(ctx g.SpecContext) {
+	g.It("should rotate RSA certificates to ECDSA keys when --crypto-key-type=RSA is removed", func(ctx g.SpecContext) {
 		if !utilfeature.DefaultMutableFeatureGate.Enabled(features.AutomaticTLSCertificates) {
 			g.Skip(fmt.Sprintf("Skipping because %q feature is disabled", features.AutomaticTLSCertificates))
 		}
 
 		framework.By("Snapshotting the operator Deployment for restoration")
-		rc := framework.NewRestoringCleaner(
+		f.AddCleaners(framework.NewRestoringCleaner(
 			ctx,
 			f.AdminClientConfig(),
 			f.KubeAdminClient(),
@@ -363,141 +489,42 @@ var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, func() {
 			operatorNamespace,
 			operatorDeploymentName,
 			framework.RestoreStrategyUpdate,
-		)
-		f.AddCleaners(rc)
+		))
 
-		framework.By("Patching the operator Deployment to use ECDSA keys")
-		operatorDeploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
+		framework.By("Configuring the operator to use RSA keys")
+		setOperatorCryptoKeyType(ctx, f, new(crypto.RSAKeyType))
+
+		sc := createClusterAndWaitForRollout(ctx, f, rackLayout{racks: []string{"a"}, defaultMemberCount: 1})
+
+		hosts, hostIDs, err := utils.GetBroadcastRPCAddressesAndUUIDs(ctx, f.KubeClient().CoreV1(), sc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		// Find the operator container and add ECDSA args.
-		o.Expect(operatorDeploy.Spec.Template.Spec.Containers).NotTo(o.BeEmpty())
-		containerIdx := -1
-		for i, c := range operatorDeploy.Spec.Template.Spec.Containers {
-			if c.Name == "scylla-operator" {
-				containerIdx = i
-				break
-			}
+		framework.By("Verifying the serving and client certificates use RSA keys")
+		expectedRSACertificates := verification.VerifyScyllaClusterTLSOptions{
+			CAKeyUsage:         x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+			LeafKeyUsage:       x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+			PublicKeyAlgorithm: x509.RSA,
 		}
-		o.Expect(containerIdx).NotTo(o.Equal(-1), "operator container not found in Deployment")
+		rsaCertificates := verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, hostIDs, expectedRSACertificates)
 
-		// Add --crypto-key-type=ECDSA to the container args using a JSON patch.
-		newArgs := append(
-			operatorDeploy.Spec.Template.Spec.Containers[containerIdx].Args,
-			"--crypto-key-type=ECDSA",
-			"--crypto-ecdsa-key-size=256",
-		)
+		framework.By("Verifying ScyllaDB accepts CQL queries with the RSA admin client certificate")
+		verifyAdminCanQueryOverTLS(ctx, hosts, rsaCertificates)
 
-		type patchOp struct {
-			Op    string      `json:"op"`
-			Path  string      `json:"path"`
-			Value interface{} `json:"value"`
+		framework.By("Configuring the operator with the default key type")
+		setOperatorCryptoKeyType(ctx, f, nil)
+
+		framework.By("Waiting for the serving and client certificates to be reissued with ECDSA keys")
+		waitForCertificatesToUseKeyAlgorithm(ctx, f, sc, x509.ECDSA)
+
+		framework.By("Verifying the serving and client certificates use ECDSA keys")
+		expectedECDSACertificates := verification.VerifyScyllaClusterTLSOptions{
+			CAKeyUsage:         x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+			LeafKeyUsage:       x509.KeyUsageDigitalSignature,
+			PublicKeyAlgorithm: x509.ECDSA,
 		}
-		patch := []patchOp{
-			{
-				Op:    "replace",
-				Path:  fmt.Sprintf("/spec/template/spec/containers/%d/args", containerIdx),
-				Value: newArgs,
-			},
-		}
-		patchBytes, err := json.Marshal(patch)
-		o.Expect(err).NotTo(o.HaveOccurred())
+		ecdsaCertificates := verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, hostIDs, expectedECDSACertificates)
 
-		_, err = f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Patch(
-			ctx,
-			operatorDeploymentName,
-			types.JSONPatchType,
-			patchBytes,
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the operator Deployment to roll out with ECDSA configuration")
-		o.Eventually(func(eg o.Gomega) {
-			deploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
-			eg.Expect(err).NotTo(o.HaveOccurred())
-
-			// Check that the deployment has finished rolling out.
-			eg.Expect(deploy.Status.ObservedGeneration).To(o.BeNumerically(">=", deploy.Generation))
-			eg.Expect(deploy.Status.UpdatedReplicas).To(o.Equal(*deploy.Spec.Replicas))
-			eg.Expect(deploy.Status.ReadyReplicas).To(o.Equal(*deploy.Spec.Replicas))
-			eg.Expect(deploy.Status.AvailableReplicas).To(o.Equal(*deploy.Spec.Replicas))
-
-			for _, cond := range deploy.Status.Conditions {
-				if cond.Type == appsv1.DeploymentAvailable {
-					eg.Expect(cond.Status).To(o.Equal(corev1.ConditionTrue))
-				}
-			}
-		}).WithContext(ctx).WithTimeout(5 * time.Minute).WithPolling(5 * time.Second).Should(o.Succeed())
-
-		framework.By("Creating a multi-node ScyllaCluster to verify TLS with ECDSA")
-		sc := f.GetDefaultScyllaCluster()
-		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
-		sc.Spec.Datacenter.Racks[0].Members = 1
-
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(
-			ctx,
-			sc,
-			metav1.CreateOptions{
-				FieldManager: f.FieldManager(),
-			},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtxCancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-		scyllaclusterverification.WaitForFullQuorum(ctx, f.KubeClient().CoreV1(), sc)
-
-		hosts, err := utils.GetBroadcastRPCAddresses(ctx, f.KubeClient().CoreV1(), sc)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(hosts).To(o.HaveLen(1))
-
-		framework.By("Verifying TLS certificates and live TLS connections with ECDSA KeyUsage")
-
-		ecdsaCAKeyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
-		ecdsaLeafKeyUsage := x509.KeyUsageDigitalSignature
-
-		verification.VerifyScyllaClusterTLSCertificates(ctx, f.KubeClient().CoreV1(), sc, hosts, nil, verification.VerifyScyllaClusterTLSOptions{
-			CAKeyUsage:   ecdsaCAKeyUsage,
-			LeafKeyUsage: ecdsaLeafKeyUsage,
-		})
-
-		framework.By("Verifying ECDSA-specific properties on each TLS secret")
-
-		verifySecretUsesECDSA := func(secretName string, expectCA bool) {
-			secret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, secretName, metav1.GetOptions{})
-			o.Expect(err).NotTo(o.HaveOccurred())
-
-			certs, key, err := crypto.GetTLSCertificatesFromBytes(secret.Data["tls.crt"], secret.Data["tls.key"])
-			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(certs).NotTo(o.BeEmpty())
-
-			// Verify the key is ECDSA.
-			_, isECDSA := key.(*ecdsa.PrivateKey)
-			o.Expect(isECDSA).To(o.BeTrue(), "expected ECDSA private key for secret %s, got %T", secretName, key)
-
-			// Verify the certificate's public key algorithm is ECDSA.
-			o.Expect(certs[0].PublicKeyAlgorithm).To(o.Equal(x509.ECDSA))
-
-			// Verify the certificate is CA or not as expected.
-			o.Expect(certs[0].IsCA).To(o.Equal(expectCA))
-
-			// Verify KeyUsage does NOT include KeyEncipherment for ECDSA.
-			o.Expect(certs[0].KeyUsage&x509.KeyUsageKeyEncipherment).To(o.BeZero(),
-				"ECDSA certificate %s should not have KeyUsageKeyEncipherment", secretName)
-		}
-
-		// Verify CA secrets.
-		verifySecretUsesECDSA(fmt.Sprintf("%s-local-client-ca", sc.Name), true)
-		verifySecretUsesECDSA(fmt.Sprintf("%s-local-serving-ca", sc.Name), true)
-
-		// Verify leaf secrets.
-		verifySecretUsesECDSA(fmt.Sprintf("%s-local-serving-certs", sc.Name), false)
-		verifySecretUsesECDSA(fmt.Sprintf("%s-local-user-admin", sc.Name), false)
+		framework.By("Verifying ScyllaDB accepts CQL queries with the ECDSA admin client certificate")
+		verifyAdminCanQueryOverTLS(ctx, hosts, ecdsaCertificates)
 	}, g.NodeTimeout(testTimeout))
 })

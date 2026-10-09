@@ -25,8 +25,9 @@ import (
 )
 
 type TLSCertOptions struct {
-	IsCA     *bool
-	KeyUsage *x509.KeyUsage
+	IsCA               *bool
+	KeyUsage           *x509.KeyUsage
+	PublicKeyAlgorithm *x509.PublicKeyAlgorithm
 }
 
 func VerifyAndParseTLSCert(secret *corev1.Secret, options TLSCertOptions) ([]*x509.Certificate, []byte, crypto.Signer, []byte) {
@@ -45,6 +46,7 @@ func VerifyAndParseTLSCert(secret *corev1.Secret, options TLSCertOptions) ([]*x5
 	o.Expect(certs).NotTo(o.BeEmpty())
 	o.Expect(certs[0].IsCA).To(o.Equal(*options.IsCA))
 	o.Expect(certs[0].KeyUsage).To(o.Equal(*options.KeyUsage))
+	o.Expect(certs[0].PublicKeyAlgorithm).To(o.Equal(*options.PublicKeyAlgorithm))
 
 	o.Expect(key).NotTo(o.BeNil())
 	o.Expect(key.Public()).NotTo(o.BeNil())
@@ -76,6 +78,8 @@ type VerifyScyllaClusterTLSOptions struct {
 	CAKeyUsage x509.KeyUsage
 	// LeafKeyUsage is the expected KeyUsage for leaf (serving/client) certificates.
 	LeafKeyUsage x509.KeyUsage
+	// PublicKeyAlgorithm is the expected public key algorithm of all certificates, including the one served by ScyllaDB.
+	PublicKeyAlgorithm x509.PublicKeyAlgorithm
 }
 
 // VerifyScyllaClusterTLSResult holds the parsed TLS artifacts from verification
@@ -104,16 +108,18 @@ func VerifyScyllaClusterTLSCertificates(
 	clientCASecret, err := coreClient.Secrets(namespace).Get(ctx, fmt.Sprintf("%s-local-client-ca", sc.Name), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	clientCACerts, _, _, _ := VerifyAndParseTLSCert(clientCASecret, TLSCertOptions{
-		IsCA:     pointer.Ptr(true),
-		KeyUsage: pointer.Ptr(options.CAKeyUsage),
+		IsCA:               pointer.Ptr(true),
+		KeyUsage:           pointer.Ptr(options.CAKeyUsage),
+		PublicKeyAlgorithm: pointer.Ptr(options.PublicKeyAlgorithm),
 	})
 	o.Expect(clientCACerts).To(o.HaveLen(1))
 
 	servingCASecret, err := coreClient.Secrets(namespace).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	_, _, _, _ = VerifyAndParseTLSCert(servingCASecret, TLSCertOptions{
-		IsCA:     pointer.Ptr(true),
-		KeyUsage: pointer.Ptr(options.CAKeyUsage),
+		IsCA:               pointer.Ptr(true),
+		KeyUsage:           pointer.Ptr(options.CAKeyUsage),
+		PublicKeyAlgorithm: pointer.Ptr(options.PublicKeyAlgorithm),
 	})
 
 	servingCABundleConfigMap, err := coreClient.ConfigMaps(namespace).Get(ctx, fmt.Sprintf("%s-local-serving-ca", sc.Name), metav1.GetOptions{})
@@ -124,15 +130,17 @@ func VerifyScyllaClusterTLSCertificates(
 	servingCertSecret, err := coreClient.Secrets(namespace).Get(ctx, fmt.Sprintf("%s-local-serving-certs", sc.Name), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	servingCerts, _, _, _ := VerifyAndParseTLSCert(servingCertSecret, TLSCertOptions{
-		IsCA:     pointer.Ptr(false),
-		KeyUsage: pointer.Ptr(options.LeafKeyUsage),
+		IsCA:               pointer.Ptr(false),
+		KeyUsage:           pointer.Ptr(options.LeafKeyUsage),
+		PublicKeyAlgorithm: pointer.Ptr(options.PublicKeyAlgorithm),
 	})
 
 	adminClientSecret, err := coreClient.Secrets(namespace).Get(ctx, fmt.Sprintf("%s-local-user-admin", sc.Name), metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	_, adminClientCertBytes, _, adminClientKeyBytes := VerifyAndParseTLSCert(adminClientSecret, TLSCertOptions{
-		IsCA:     pointer.Ptr(false),
-		KeyUsage: pointer.Ptr(options.LeafKeyUsage),
+		IsCA:               pointer.Ptr(false),
+		KeyUsage:           pointer.Ptr(options.LeafKeyUsage),
+		PublicKeyAlgorithm: pointer.Ptr(options.PublicKeyAlgorithm),
 	})
 
 	framework.By("Verifying serving certificate SANs")
@@ -211,6 +219,7 @@ func VerifyScyllaClusterTLSCertificates(
 			eo.Expect(serverCerts[0].Subject.CommonName).To(o.BeEmpty())
 			eo.Expect(helpers.NormalizeIPs(serverCerts[0].IPAddresses)).To(o.ConsistOf(hostsIPs))
 			eo.Expect(serverCerts[0].DNSNames).To(o.ConsistOf(servingDNSNames))
+			eo.Expect(serverCerts[0].PublicKeyAlgorithm).To(o.Equal(options.PublicKeyAlgorithm))
 		}).WithTimeout(5 * 60 * time.Second).WithPolling(1 * time.Second).Should(o.Succeed())
 
 		framework.Infof("Node %q has correct certs", nodeAddress)

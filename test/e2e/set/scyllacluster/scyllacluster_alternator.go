@@ -151,8 +151,9 @@ auth_superuser_salted_password: '%s'
 		alternatorServingCertsSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, fmt.Sprintf("%s-alternator-local-serving-certs", sc.Name), metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		alternatorServingCerts, _, _, _ := verification.VerifyAndParseTLSCert(alternatorServingCertsSecret, verification.TLSCertOptions{
-			IsCA:     pointer.Ptr(false),
-			KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+			IsCA:               pointer.Ptr(false),
+			KeyUsage:           pointer.Ptr(x509.KeyUsageDigitalSignature),
+			PublicKeyAlgorithm: pointer.Ptr(x509.ECDSA),
 		})
 		o.Expect(alternatorServingCerts).To(o.HaveLen(1))
 		alternatorServingCert := alternatorServingCerts[0]

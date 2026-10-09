@@ -316,8 +316,9 @@ func prepareManagedPrometheusClient(ctx context.Context, f *framework.Framework,
 	prometheusGrafanaClientSecret, err := f.KubeClient().CoreV1().Secrets(f.Namespace()).Get(ctx, prometheusGrafanaClientSecretName, metav1.GetOptions{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	_, prometheusGrafanaClientCertBytes, _, prometheusGrafanaClientKeyBytes := verification.VerifyAndParseTLSCert(prometheusGrafanaClientSecret, verification.TLSCertOptions{
-		IsCA:     pointer.Ptr(false),
-		KeyUsage: pointer.Ptr(x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature),
+		IsCA:               pointer.Ptr(false),
+		KeyUsage:           pointer.Ptr(x509.KeyUsageDigitalSignature),
+		PublicKeyAlgorithm: pointer.Ptr(x509.ECDSA),
 	})
 
 	prometheusGrafanaAdminTLSCert, err := tls.X509KeyPair(prometheusGrafanaClientCertBytes, prometheusGrafanaClientKeyBytes)

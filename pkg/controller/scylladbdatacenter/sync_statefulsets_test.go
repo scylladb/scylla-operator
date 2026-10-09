@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
@@ -20,7 +24,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -1378,6 +1386,405 @@ func Test_checkExistingStatefulSetsRolloutStatus(t *testing.T) {
 
 			if diff := cmp.Diff(tc.expectedConditions, gotConditions); diff != "" {
 				t.Errorf("conditions differ (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func Test_syncStuckStatefulSetRollouts(t *testing.T) {
+	t.Parallel()
+
+	const (
+		rackName       = "a"
+		healthyRev     = "foo-8cpu"
+		brokenRev      = "foo-4cpu"
+		supersededRev  = "foo-6cpu"
+		ready          = true
+		unready        = false
+		requiredCPU    = "8"
+		brokenCPU      = "4"
+		scyllaVersion  = "2026.1.3"
+		upgradeVersion = "2026.2.0"
+	)
+
+	sdc := newScyllaDBDatacenter()
+	sdc.Generation = 3
+
+	newRackStatefulSet := func(cpu string, replicas int32) *appsv1.StatefulSet {
+		sts := newStatefulSet("foo")
+		sts.Labels = map[string]string{
+			naming.RackNameLabel:      rackName,
+			naming.ScyllaVersionLabel: scyllaVersion,
+		}
+		sts.Spec.Replicas = new(replicas)
+		sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{
+			Type:          appsv1.RollingUpdateStatefulSetStrategyType,
+			RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: new(int32(0))},
+		}
+		sts.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
+		sts.Spec.Template.Spec.Containers = []corev1.Container{
+			{
+				Name: naming.ScyllaContainerName,
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse(cpu)},
+				},
+			},
+		}
+		return sts
+	}
+	// newStuckStatefulSet returns a StatefulSet whose rollout from 8 to 4 CPUs is stuck, as observed by the
+	// StatefulSet controller.
+	newStuckStatefulSet := func() *appsv1.StatefulSet {
+		sts := newRackStatefulSet(brokenCPU, 2)
+		sts.Generation = 2
+		sts.Status = appsv1.StatefulSetStatus{
+			ObservedGeneration: 2,
+			Replicas:           2,
+			ReadyReplicas:      1,
+			AvailableReplicas:  1,
+			UpdatedReplicas:    1,
+			CurrentRevision:    healthyRev,
+			UpdateRevision:     brokenRev,
+		}
+		return sts
+	}
+	// newRevertedStatefulSet returns a StatefulSet whose template was reverted to 8 CPUs, as observed by the
+	// StatefulSet controller, which reuses the revision of the healthy Pods.
+	newRevertedStatefulSet := func() *appsv1.StatefulSet {
+		sts := newRackStatefulSet(requiredCPU, 2)
+		sts.Generation = 3
+		sts.Status = appsv1.StatefulSetStatus{
+			ObservedGeneration: 3,
+			Replicas:           2,
+			ReadyReplicas:      1,
+			AvailableReplicas:  1,
+			UpdatedReplicas:    1,
+			CurrentRevision:    healthyRev,
+			UpdateRevision:     healthyRev,
+		}
+		return sts
+	}
+	newPod := func(ordinal int, revision string, isReady bool) *corev1.Pod {
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testNamespace,
+				Name:      fmt.Sprintf("foo-%d", ordinal),
+				UID:       types.UID(fmt.Sprintf("foo-%d-uid", ordinal)),
+				// The Pods are created long enough ago for an unready one to make a rollout stuck.
+				CreationTimestamp: metav1.NewTime(time.Now().Add(-2 * stuckRolloutTimeout)),
+				Labels: map[string]string{
+					appsv1.ControllerRevisionHashLabelKey: revision,
+				},
+			},
+		}
+		if isReady {
+			pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+		}
+		return pod
+	}
+	newMemberService := func(ordinal int32, labels map[string]string) *corev1.Service {
+		svc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testNamespace,
+				Name:      naming.MemberServiceNameForStatefulSet("foo", int(ordinal)),
+				Labels: map[string]string{
+					naming.RackNameLabel: rackName,
+				},
+			},
+		}
+		maps.Copy(svc.Labels, labels)
+		return svc
+	}
+	newLeavingMemberService := func(ordinal int32) *corev1.Service {
+		return &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testNamespace,
+				Name:      naming.MemberServiceNameForStatefulSet("foo", int(ordinal)),
+				Labels: map[string]string{
+					naming.RackNameLabel:       rackName,
+					naming.DecommissionedLabel: naming.LabelValueFalse,
+				},
+			},
+		}
+	}
+
+	tt := []struct {
+		name                 string
+		required             *appsv1.StatefulSet
+		existing             *appsv1.StatefulSet
+		pods                 []*corev1.Pod
+		services             map[string]*corev1.Service
+		expectedProgressing  bool
+		expectedCPU          string
+		expectedReplicas     int32
+		expectedDeletedPods  []string
+		expectedEventReasons []string
+		expectedRequeue      bool
+	}{
+		{
+			name:                "a fixed spec is applied to a StatefulSet with a stuck rollout",
+			required:            newRackStatefulSet(requiredCPU, 2),
+			existing:            newStuckStatefulSet(),
+			pods:                []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			expectedProgressing: true,
+			expectedCPU:         requiredCPU,
+			expectedReplicas:    2,
+		},
+		{
+			name:                "a fixed spec is applied with the existing replicas, leaving the scale to the scaling loop",
+			required:            newRackStatefulSet(requiredCPU, 3),
+			existing:            newStuckStatefulSet(),
+			pods:                []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			expectedProgressing: true,
+			expectedCPU:         requiredCPU,
+			expectedReplicas:    2,
+		},
+		{
+			name: "a fixed spec changing the ScyllaDB minor version is left to the upgrade flow",
+			required: func() *appsv1.StatefulSet {
+				sts := newRackStatefulSet(requiredCPU, 2)
+				sts.Labels[naming.ScyllaVersionLabel] = upgradeVersion
+				return sts
+			}(),
+			existing:         newStuckStatefulSet(),
+			pods:             []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:             "a rollout whose updated Pods are ready is left to the rollout wait",
+			required:         newRackStatefulSet(requiredCPU, 2),
+			existing:         newStuckStatefulSet(),
+			pods:             []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, ready)},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "a StatefulSet without a rollout in progress is left to the rollout wait",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: func() *appsv1.StatefulSet {
+				sts := newStuckStatefulSet()
+				sts.Status.CurrentRevision = brokenRev
+				return sts
+			}(),
+			pods:             []*corev1.Pod{newPod(0, brokenRev, ready), newPod(1, brokenRev, unready)},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "a StatefulSet not observed by the StatefulSet controller yet is skipped",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: func() *appsv1.StatefulSet {
+				sts := newStuckStatefulSet()
+				sts.Generation = 3
+				return sts
+			}(),
+			pods:             []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "a StatefulSet of a rack with leaving nodes is skipped",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: newStuckStatefulSet(),
+			pods:     []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			services: map[string]*corev1.Service{
+				"foo-1": newLeavingMemberService(1),
+			},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:                 "an unready Pod of a superseded revision is deleted once the fix is observed",
+			required:             newRackStatefulSet(requiredCPU, 2),
+			existing:             newRevertedStatefulSet(),
+			pods:                 []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			expectedProgressing:  true,
+			expectedCPU:          requiredCPU,
+			expectedReplicas:     2,
+			expectedDeletedPods:  []string{"foo-1"},
+			expectedEventReasons: []string{"SupersededPodDeleted"},
+		},
+		{
+			name:                "an unready Pod of a superseded revision is kept until the applied fix is observed",
+			required:            newRackStatefulSet(requiredCPU, 2),
+			existing:            newStuckStatefulSet(),
+			pods:                []*corev1.Pod{newPod(0, supersededRev, unready), newPod(1, brokenRev, unready)},
+			expectedProgressing: true,
+			expectedCPU:         requiredCPU,
+			expectedReplicas:    2,
+		},
+		{
+			name: "an unready Pod of a superseded revision is kept while a Pod of the update revision is unready",
+			required: func() *appsv1.StatefulSet {
+				sts := newRackStatefulSet(requiredCPU, 2)
+				sts.Labels[naming.ScyllaVersionLabel] = upgradeVersion
+				return sts
+			}(),
+			existing:         newStuckStatefulSet(),
+			pods:             []*corev1.Pod{newPod(0, supersededRev, unready), newPod(1, brokenRev, unready)},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "an unready Pod below the partition is kept",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: func() *appsv1.StatefulSet {
+				sts := newRevertedStatefulSet()
+				sts.Spec.UpdateStrategy.RollingUpdate.Partition = new(int32(1))
+				return sts
+			}(),
+			pods:             []*corev1.Pod{newPod(0, brokenRev, unready), newPod(1, healthyRev, ready)},
+			expectedCPU:      requiredCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "a rollout whose updated Pod became unready recently is not stuck yet",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: newStuckStatefulSet(),
+			pods: []*corev1.Pod{
+				newPod(0, healthyRev, ready),
+				func() *corev1.Pod {
+					pod := newPod(1, brokenRev, unready)
+					pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionFalse, LastTransitionTime: metav1.Now()}}
+					return pod
+				}(),
+			},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+			expectedRequeue:  true,
+		},
+		{
+			name:             "an unready Pod of the current revision is left to the rollout",
+			required:         newRackStatefulSet(requiredCPU, 2),
+			existing:         newStuckStatefulSet(),
+			pods:             []*corev1.Pod{newPod(0, healthyRev, unready), newPod(1, brokenRev, ready)},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "a StatefulSet of a rack with a node under maintenance is skipped",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: newStuckStatefulSet(),
+			pods:     []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			services: map[string]*corev1.Service{
+				"foo-0": newMemberService(0, map[string]string{naming.NodeMaintenanceLabel: ""}),
+			},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "a StatefulSet of a rack with a node being replaced is skipped",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: newStuckStatefulSet(),
+			pods:     []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			services: map[string]*corev1.Service{
+				"foo-1": newMemberService(1, map[string]string{naming.ReplaceLabel: ""}),
+			},
+			expectedCPU:      brokenCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "an unready Pod of a superseded revision is left to the StatefulSet controller with the Parallel policy",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: func() *appsv1.StatefulSet {
+				sts := newRevertedStatefulSet()
+				sts.Spec.PodManagementPolicy = appsv1.ParallelPodManagement
+				return sts
+			}(),
+			pods:             []*corev1.Pod{newPod(0, healthyRev, ready), newPod(1, brokenRev, unready)},
+			expectedCPU:      requiredCPU,
+			expectedReplicas: 2,
+		},
+		{
+			name:     "a ready Pod of a superseded revision is left to the rollout",
+			required: newRackStatefulSet(requiredCPU, 2),
+			existing: func() *appsv1.StatefulSet {
+				sts := newRevertedStatefulSet()
+				sts.Status.CurrentRevision = brokenRev
+				return sts
+			}(),
+			pods:             []*corev1.Pod{newPod(0, brokenRev, ready), newPod(1, brokenRev, ready)},
+			expectedCPU:      requiredCPU,
+			expectedReplicas: 2,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			objects := []client.Object{tc.existing.DeepCopy()}
+			for _, pod := range tc.pods {
+				objects = append(objects, pod)
+			}
+			for _, svc := range tc.services {
+				objects = append(objects, svc)
+			}
+			c := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(objects...).Build()
+
+			recorder := record.NewFakeRecorder(10)
+			sdcc := &Controller{
+				client:        ctrlclient.NewReadYourWritesClient(c),
+				eventRecorder: recorder,
+			}
+
+			rq := &controllertools.Requeue{}
+			status := &scyllav1alpha1.ScyllaDBDatacenterStatus{
+				Racks: []scyllav1alpha1.RackStatus{{Name: rackName}},
+			}
+			gotConditions, err := sdcc.syncStuckStatefulSetRollouts(t.Context(), rq, sdc, status, []*appsv1.StatefulSet{tc.required}, map[string]*appsv1.StatefulSet{"foo": tc.existing}, tc.services)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			if gotProgressing := len(gotConditions) != 0; gotProgressing != tc.expectedProgressing {
+				t.Errorf("expected progressing %t, got conditions %v", tc.expectedProgressing, gotConditions)
+			}
+
+			if gotRequeue := rq.Result().RequeueAfter != 0; gotRequeue != tc.expectedRequeue {
+				t.Errorf("expected requeue %t, got %v", tc.expectedRequeue, rq.Result())
+			}
+
+			// The rack status is recalculated when the StatefulSet is applied.
+			expectedRackStatusUpdated := tc.expectedProgressing && len(tc.expectedDeletedPods) == 0
+			if gotRackStatusUpdated := !reflect.DeepEqual(status.Racks[0], scyllav1alpha1.RackStatus{Name: rackName}); gotRackStatusUpdated != expectedRackStatusUpdated {
+				t.Errorf("expected rack status updated %t, got %#v", expectedRackStatusUpdated, status.Racks[0])
+			}
+
+			sts, err := ctrlclient.Get[appsv1.StatefulSet](t.Context(), c, testNamespace, "foo")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if gotCPU := sts.Spec.Template.Spec.Containers[0].Resources.Limits.Cpu().String(); gotCPU != tc.expectedCPU {
+				t.Errorf("expected StatefulSet CPU %q, got %q", tc.expectedCPU, gotCPU)
+			}
+			if *sts.Spec.Replicas != tc.expectedReplicas {
+				t.Errorf("expected StatefulSet replicas %d, got %d", tc.expectedReplicas, *sts.Spec.Replicas)
+			}
+
+			var deletedPods []string
+			for _, pod := range tc.pods {
+				_, err := ctrlclient.Get[corev1.Pod](t.Context(), c, testNamespace, pod.Name)
+				if apierrors.IsNotFound(err) {
+					deletedPods = append(deletedPods, pod.Name)
+				} else if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if diff := cmp.Diff(tc.expectedDeletedPods, deletedPods, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("deleted pods differ (-want +got):\n%s", diff)
+			}
+
+			close(recorder.Events)
+			var eventReasons []string
+			for event := range recorder.Events {
+				eventReasons = append(eventReasons, strings.Fields(event)[1])
+			}
+			// Applying the StatefulSet records its own events.
+			eventReasons = slices.DeleteFunc(eventReasons, func(reason string) bool { return strings.HasPrefix(reason, "StatefulSet") })
+			if diff := cmp.Diff(tc.expectedEventReasons, eventReasons, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("event reasons differ (-want +got):\n%s", diff)
 			}
 		})
 	}

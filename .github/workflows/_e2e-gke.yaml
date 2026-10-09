@@ -95,7 +95,7 @@ jobs:
       with:
         kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
 
-    # This workflow names every object it creates OBJECT_NAME, so the teardown can run unconditionally from here on,
+    # This workflow names every object it creates OBJECT_NAME, so the cleanup can run unconditionally from here on,
     # including when provisioning itself fails partway.
     - name: Provision the clusters
       id: cluster
@@ -182,20 +182,16 @@ jobs:
         name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
         directory: ${{ env.ARTIFACTS }}
 
-    # The objects carry a TTL, so a leak is bounded rather than permanent, but deleting eagerly frees the quota for
-    # the suites still queued behind this one.
-    - name: Tear down
-      if: always()
-      env:
-        KUBECONFIG: ${{ steps.provisioners.outputs.path }}
-        # Empty when object-storage is disabled and the buckets step didn't run.
-        BUCKET_OBJECT_NAMES: ${{ steps.buckets.outputs.object-names }}
-      run: |
-        set -euExo pipefail
-        shopt -s inherit_errexit
+    - name: Clean up the object storage buckets
+      if: always() && steps.buckets.outputs.object-names != ''
+      uses: ./.github/actions/ci-provisioning/gke/cleanup-buckets
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        object-names: ${{ steps.buckets.outputs.object-names }}
 
-        # Only one of the two kinds exists for a given run.
-        kubectl delete --wait=false --ignore-not-found kubernetescluster/"${OBJECT_NAME}" kubernetesclusterset/"${OBJECT_NAME}"
-        if [[ -n "${BUCKET_OBJECT_NAMES}" ]]; then
-          kubectl delete --wait=false --ignore-not-found storagebuckets ${BUCKET_OBJECT_NAMES//,/ }
-        fi
+    - name: Clean up the clusters
+      if: always()
+      uses: ./.github/actions/ci-provisioning/gke/cleanup-clusters
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        object-name: ${{ env.OBJECT_NAME }}

@@ -4,17 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
+	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/ctrlclient"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
+	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/scheme"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	appsv1 "k8s.io/api/apps/v1"
@@ -1370,14 +1374,209 @@ func Test_checkExistingStatefulSetsRolloutStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			sdcc := &Controller{}
-			gotConditions, err := sdcc.checkExistingStatefulSetsRolloutStatus(t.Context(), sdc, tc.required, tc.existing, tc.services)
+			sdcc := &Controller{
+				client: ctrlclient.NewReadYourWritesClient(fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()),
+			}
+			gotConditions, err := sdcc.checkExistingStatefulSetsRolloutStatus(t.Context(), &controllertools.Requeue{}, sdc, tc.required, tc.existing, tc.services, false)
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
 
 			if diff := cmp.Diff(tc.expectedConditions, gotConditions); diff != "" {
 				t.Errorf("conditions differ (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func Test_makeWaitingForStatefulSetRolloutCondition(t *testing.T) {
+	t.Parallel()
+
+	sdc := newScyllaDBDatacenter()
+	sdc.Generation = 3
+
+	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+
+	const rackName = "a"
+
+	sts := newStatefulSet("foo")
+	sts.Labels = map[string]string{naming.RackNameLabel: rackName}
+	sts.Spec.Replicas = new(int32(2))
+
+	newMemberService := func(ordinal int, labels map[string]string, joined bool) *corev1.Service {
+		svc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   testNamespace,
+				Name:        naming.MemberServiceNameForStatefulSet("foo", ordinal),
+				Labels:      map[string]string{naming.RackNameLabel: rackName},
+				Annotations: map[string]string{naming.NodeJoinedScyllaDBClusterAnnotation: naming.LabelValueTrue},
+			},
+		}
+		maps.Copy(svc.Labels, labels)
+		if !joined {
+			svc.Annotations[naming.NodeJoinedScyllaDBClusterAnnotation] = naming.LabelValueFalse
+		}
+		return svc
+	}
+	joinedServices := map[string]*corev1.Service{
+		"foo-0": newMemberService(0, nil, true),
+		"foo-1": newMemberService(1, nil, true),
+	}
+
+	newPod := func(ordinal int, ready bool, unreadySince time.Time) *corev1.Pod {
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:         testNamespace,
+				Name:              fmt.Sprintf("foo-%d", ordinal),
+				CreationTimestamp: metav1.NewTime(now.Add(-time.Hour)),
+			},
+		}
+		if ready {
+			pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+		} else {
+			pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionFalse, LastTransitionTime: metav1.NewTime(unreadySince)}}
+		}
+		return pod
+	}
+
+	plainMessage := fmt.Sprintf(`Waiting for StatefulSet "%s/foo" to roll out.`, testNamespace)
+	hintMessage := fmt.Sprintf(`Waiting for StatefulSet "%s/foo" to roll out. The rollout hasn't progressed for more than 10m: if the nodes can't start with the current spec, see %s`, testNamespace, stuckRolloutRecoveryGuideURL)
+
+	stalledPods := []*corev1.Pod{newPod(0, true, now), newPod(1, false, now.Add(-12*time.Minute))}
+
+	tt := []struct {
+		name                 string
+		pods                 []*corev1.Pod
+		services             map[string]*corev1.Service
+		upgradeInProgress    bool
+		expectedMessage      string
+		expectedRequeueAfter time.Duration
+	}{
+		{
+			name:            "no pods yield the plain message",
+			pods:            nil,
+			expectedMessage: plainMessage,
+		},
+		{
+			name:            "ready pods yield the plain message",
+			pods:            []*corev1.Pod{newPod(0, true, now), newPod(1, true, now)},
+			expectedMessage: plainMessage,
+		},
+		{
+			name:                 "a pod unready for less than the delay yields the plain message and a requeue",
+			pods:                 []*corev1.Pod{newPod(0, true, now), newPod(1, false, now.Add(-4*time.Minute))},
+			expectedMessage:      plainMessage,
+			expectedRequeueAfter: 6 * time.Minute,
+		},
+		{
+			name:            "a pod unready for longer than the delay yields the hint",
+			pods:            []*corev1.Pod{newPod(0, true, now), newPod(1, false, now.Add(-12*time.Minute))},
+			expectedMessage: hintMessage,
+		},
+		{
+			name: "a pod without a ready condition counts from its creation",
+			pods: []*corev1.Pod{newPod(0, true, now), func() *corev1.Pod {
+				pod := newPod(1, false, now)
+				pod.Status.Conditions = nil
+				pod.CreationTimestamp = metav1.NewTime(now.Add(-12 * time.Minute))
+				return pod
+			}()},
+			expectedMessage: hintMessage,
+		},
+		{
+			name: "a terminating unready pod is ignored",
+			pods: []*corev1.Pod{newPod(0, true, now), func() *corev1.Pod {
+				pod := newPod(1, false, now.Add(-12*time.Minute))
+				pod.DeletionTimestamp = pointer.Ptr(metav1.NewTime(now))
+				pod.Finalizers = []string{"foo"}
+				return pod
+			}()},
+			expectedMessage: plainMessage,
+		},
+		{
+			name:            "a pod above the replicas is ignored",
+			pods:            []*corev1.Pod{newPod(0, true, now), newPod(1, true, now), newPod(2, false, now.Add(-12*time.Minute))},
+			expectedMessage: plainMessage,
+		},
+		{
+			name:              "no hint during an upgrade",
+			pods:              stalledPods,
+			upgradeInProgress: true,
+			expectedMessage:   plainMessage,
+		},
+		{
+			name:            "no hint while a node of the rack is leaving",
+			pods:            stalledPods,
+			services:        map[string]*corev1.Service{"foo-0": newMemberService(0, nil, true), "foo-1": newMemberService(1, map[string]string{naming.DecommissionedLabel: naming.LabelValueFalse}, true)},
+			expectedMessage: plainMessage,
+		},
+		{
+			name:            "no hint while a node of the rack is in maintenance",
+			pods:            stalledPods,
+			services:        map[string]*corev1.Service{"foo-0": newMemberService(0, map[string]string{naming.NodeMaintenanceLabel: ""}, true), "foo-1": newMemberService(1, nil, true)},
+			expectedMessage: plainMessage,
+		},
+		{
+			name:            "no hint while a node of the rack is being replaced",
+			pods:            stalledPods,
+			services:        map[string]*corev1.Service{"foo-0": newMemberService(0, nil, true), "foo-1": newMemberService(1, map[string]string{naming.ReplaceLabel: ""}, true)},
+			expectedMessage: plainMessage,
+		},
+		{
+			name:            "no hint while a node of the rack hasn't joined the cluster",
+			pods:            stalledPods,
+			services:        map[string]*corev1.Service{"foo-0": newMemberService(0, nil, true), "foo-1": newMemberService(1, nil, false)},
+			expectedMessage: plainMessage,
+		},
+		{
+			name: "a node of another rack under an operation doesn't hold the hint",
+			pods: stalledPods,
+			services: map[string]*corev1.Service{"foo-0": newMemberService(0, nil, true), "foo-1": newMemberService(1, nil, true), "bar-0": func() *corev1.Service {
+				svc := newMemberService(0, map[string]string{naming.NodeMaintenanceLabel: ""}, false)
+				svc.Name = "bar-0"
+				svc.Labels[naming.RackNameLabel] = "b"
+				return svc
+			}()},
+			expectedMessage: hintMessage,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var objects []client.Object
+			for _, pod := range tc.pods {
+				// The fake client mutates the objects it is built with.
+				objects = append(objects, pod.DeepCopy())
+			}
+			sdcc := &Controller{
+				client: ctrlclient.NewReadYourWritesClient(fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(objects...).Build()),
+			}
+
+			services := tc.services
+			if services == nil {
+				services = joinedServices
+			}
+			rq := &controllertools.Requeue{}
+			got, err := sdcc.makeWaitingForStatefulSetRolloutCondition(t.Context(), rq, sdc, sts, services, tc.upgradeInProgress, now)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			expected := metav1.Condition{
+				Type:               statefulSetControllerProgressingCondition,
+				Status:             metav1.ConditionTrue,
+				Reason:             "WaitingForStatefulSetRollout",
+				Message:            tc.expectedMessage,
+				ObservedGeneration: sdc.Generation,
+			}
+			if diff := cmp.Diff(expected, got); diff != "" {
+				t.Errorf("condition differs (-want +got):\n%s", diff)
+			}
+
+			if got := rq.Result().RequeueAfter; got != tc.expectedRequeueAfter {
+				t.Errorf("expected requeue after %v, got %v", tc.expectedRequeueAfter, got)
 			}
 		})
 	}

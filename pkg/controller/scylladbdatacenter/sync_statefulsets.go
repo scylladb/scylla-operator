@@ -30,6 +30,7 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	apimachineryutilduration "k8s.io/apimachinery/pkg/util/duration"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
@@ -400,10 +401,12 @@ func (sdcc *Controller) pruneStatefulSets(
 // after this check owns them.
 func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 	ctx context.Context,
+	rq *controllertools.Requeue,
 	sdc *scyllav1alpha1.ScyllaDBDatacenter,
 	requiredStatefulSets []*appsv1.StatefulSet,
 	statefulSets map[string]*appsv1.StatefulSet,
 	services map[string]*corev1.Service,
+	upgradeInProgress bool,
 ) ([]metav1.Condition, error) {
 	var errs []error
 	var progressingConditions []metav1.Condition
@@ -441,17 +444,101 @@ func (sdcc *Controller) checkExistingStatefulSetsRolloutStatus(
 
 		if !rolledOut {
 			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               statefulSetControllerProgressingCondition,
-				Status:             metav1.ConditionTrue,
-				Reason:             "WaitingForStatefulSetRollout",
-				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(sts)),
-				ObservedGeneration: sdc.Generation,
-			})
+			condition, err := sdcc.makeWaitingForStatefulSetRolloutCondition(ctx, rq, sdc, sts, services, upgradeInProgress, time.Now())
+			if err != nil {
+				errs = append(errs, fmt.Errorf("can't make rollout condition for statefulset %q: %w", naming.ObjRef(sts), err))
+				continue
+			}
+			progressingConditions = append(progressingConditions, condition)
 		}
 	}
 
 	return progressingConditions, apimachineryutilerrors.NewAggregate(errs)
+}
+
+// rolloutStalledHintDelay is how long a StatefulSet rollout can keep a Pod unready before the progressing condition
+// points at the recovery guide. A node that can't start with the current Pod template never becomes ready, and no
+// further change reaches the StatefulSet until the rollout finishes.
+const rolloutStalledHintDelay = 10 * time.Minute
+
+const stuckRolloutRecoveryGuideURL = "https://operator.docs.scylladb.com/stable/troubleshoot/recover-from-stuck-rollout.html"
+
+// makeWaitingForStatefulSetRolloutCondition makes the progressing condition reporting that the StatefulSet is waited
+// on to roll out. Once a Pod of the StatefulSet has been unready for rolloutStalledHintDelay, the message says the
+// rollout hasn't progressed and links the recovery guide; until then, a requeue is scheduled for the moment it would.
+// The guide is for a node that can't start with the Pod template, so the hint is left out while a ScyllaDB upgrade is
+// in progress and while a node of the rack is joining, leaving, in maintenance or being replaced, which keep a Pod
+// unready for long legitimately.
+func (sdcc *Controller) makeWaitingForStatefulSetRolloutCondition(ctx context.Context, rq *controllertools.Requeue, sdc *scyllav1alpha1.ScyllaDBDatacenter, sts *appsv1.StatefulSet, services map[string]*corev1.Service, upgradeInProgress bool, now time.Time) (metav1.Condition, error) {
+	condition := metav1.Condition{
+		Type:               statefulSetControllerProgressingCondition,
+		Status:             metav1.ConditionTrue,
+		Reason:             "WaitingForStatefulSetRollout",
+		Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(sts)),
+		ObservedGeneration: sdc.Generation,
+	}
+
+	if sts.Spec.Replicas == nil || upgradeInProgress {
+		return condition, nil
+	}
+
+	rackName := sts.Labels[naming.RackNameLabel]
+	for _, svc := range services {
+		if svc.Labels[naming.RackNameLabel] != rackName {
+			continue
+		}
+		_, leaving := svc.Labels[naming.DecommissionedLabel]
+		_, underMaintenance := svc.Labels[naming.NodeMaintenanceLabel]
+		_, replaceRequested := svc.Labels[naming.ReplaceLabel]
+		_, replacing := svc.Labels[naming.ReplacingNodeHostIDLabel]
+		joined := svc.Annotations[naming.NodeJoinedScyllaDBClusterAnnotation] == naming.LabelValueTrue
+		if leaving || underMaintenance || replaceRequested || replacing || !joined {
+			return condition, nil
+		}
+	}
+
+	var unreadySince *time.Time
+	for ordinal := int32(0); ordinal < *sts.Spec.Replicas; ordinal++ {
+		podName := fmt.Sprintf("%s-%d", sts.Name, ordinal)
+		pod, err := ctrlclient.Get[corev1.Pod](ctx, sdcc.client.Client(), sts.Namespace, podName)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return condition, fmt.Errorf("can't get pod %q: %w", naming.ManualRef(sts.Namespace, podName), err)
+		}
+
+		if pod.DeletionTimestamp != nil || controllerhelpers.IsPodReady(pod) {
+			continue
+		}
+
+		podUnreadySince := pod.CreationTimestamp.Time
+		readyCondition := controllerhelpers.GetPodCondition(pod.Status.Conditions, corev1.PodReady)
+		if readyCondition != nil && !readyCondition.LastTransitionTime.IsZero() {
+			podUnreadySince = readyCondition.LastTransitionTime.Time
+		}
+		if unreadySince == nil || podUnreadySince.Before(*unreadySince) {
+			unreadySince = &podUnreadySince
+		}
+	}
+
+	if unreadySince == nil {
+		return condition, nil
+	}
+
+	stalledFor := now.Sub(*unreadySince)
+	if stalledFor < rolloutStalledHintDelay {
+		rq.After(rolloutStalledHintDelay - stalledFor)
+		return condition, nil
+	}
+
+	condition.Message = fmt.Sprintf(
+		"Waiting for StatefulSet %q to roll out. The rollout hasn't progressed for more than %s: if the nodes can't start with the current spec, see %s",
+		naming.ObjRef(sts),
+		apimachineryutilduration.HumanDuration(rolloutStalledHintDelay),
+		stuckRolloutRecoveryGuideURL,
+	)
+	return condition, nil
 }
 
 // createMissingStatefulSets creates the missing StatefulSets from requiredStatefulSets.
@@ -856,7 +943,8 @@ func (sdcc *Controller) syncStatefulSets(
 		return progressingConditions, nil
 	}
 
-	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, sdc, requiredStatefulSets, statefulSets, services)
+	_, upgradeInProgress := configMaps[naming.UpgradeContextConfigMapName(sdc)]
+	progressingConditions, err = sdcc.checkExistingStatefulSetsRolloutStatus(ctx, rq, sdc, requiredStatefulSets, statefulSets, services, upgradeInProgress)
 	if err != nil {
 		return progressingConditions, fmt.Errorf("can't check existing statefulset(s) rollout status: %w", err)
 	}
@@ -982,13 +1070,11 @@ func (sdcc *Controller) syncStatefulSets(
 
 		if !rolledOut {
 			klog.V(4).InfoS("Waiting for StatefulSet rollout", "ScyllaDBDatacenter", klog.KObj(sdc), "StatefulSet", klog.KObj(sts))
-			progressingConditions = append(progressingConditions, metav1.Condition{
-				Type:               statefulSetControllerProgressingCondition,
-				Status:             metav1.ConditionTrue,
-				Reason:             "WaitingForStatefulSetRollout",
-				Message:            fmt.Sprintf("Waiting for StatefulSet %q to roll out.", naming.ObjRef(req)),
-				ObservedGeneration: sdc.Generation,
-			})
+			condition, err := sdcc.makeWaitingForStatefulSetRolloutCondition(ctx, rq, sdc, sts, services, upgradeInProgress, time.Now())
+			if err != nil {
+				return progressingConditions, fmt.Errorf("can't make rollout condition for statefulset %q: %w", naming.ObjRef(sts), err)
+			}
+			progressingConditions = append(progressingConditions, condition)
 			return progressingConditions, nil
 		}
 	}

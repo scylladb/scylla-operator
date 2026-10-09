@@ -6,6 +6,9 @@ on:
   schedule:
   - cron: '0 6 * * MON'
   workflow_dispatch:
+  push:
+    branches:
+    - contrib/rzetelskik/openshift-jobs-gha-test
 
 permissions:
   contents: read
@@ -36,6 +39,7 @@ jobs:
     with:
       image-ref: ${{ needs.image.outputs.image-ref }}
       olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+      jobs: '["openshift-aws-parallel", "openshift-aws-serial", "gke-multi-dc-parallel"]'
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 

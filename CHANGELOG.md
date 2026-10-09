@@ -92,6 +92,13 @@ before upgrading.
   leaving the cluster now produces an admission warning. The change is accepted, but it isn't applied until the leaving
   nodes have finished decommissioning and been removed.
   [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
+- Decreasing the CPU limit of the ScyllaDB container of a `ScyllaCluster` or `ScyllaDBDatacenter` rack is now rejected
+  on admission, unless the object is annotated with `scylla-operator.scylladb.com/force-scylladb-cpu-decrease: "true"`.
+  [#XXXX](https://github.com/scylladb/scylla-operator/pull/XXXX)
+- The `WaitingForStatefulSetRollout` progressing condition of a `ScyllaDBDatacenter` now reports how long a rollout
+  has had a Pod unready once that exceeds 10 minutes, and links the
+  [guide for recovering a rack from a stuck rollout](https://operator.docs.scylladb.com/stable/troubleshoot/recover-from-stuck-rollout.html).
+  [#XXXX](https://github.com/scylladb/scylla-operator/pull/XXXX)
 
 ### Dependencies
 

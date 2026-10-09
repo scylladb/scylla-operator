@@ -1,0 +1,230 @@
+name: Release
+
+# Releases the dispatched ref as the given version. Builds the operator image, gates it on the e2e suites, pushes the
+# version tag, publishes the image to the production repositories and creates the GitHub release, in that order: the
+# tag is the output of the gate, not its trigger, and nothing is published for a version without one. Lives on every
+# release branch and is dispatched on the branch being released.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, without the `v` prefix, e.g. `1.23.0` or `1.23.0-rc.0`.
+        required: true
+        type: string
+
+# One release at a time across all branches. Which rolling tags a version gets depends on the tags released before
+# it, so two releases in flight could both decide they're the latest.
+concurrency:
+  group: ${{ github.workflow }}
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  # Rejects a malformed or already released version before the hours the gate takes, and decides what the release
+  # publishes.
+  parse-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.parse.outputs.tag }}
+      prerelease: ${{ steps.parse.outputs.prerelease }}
+      latest: ${{ steps.parse.outputs.latest }}
+      image-tags: ${{ steps.parse.outputs.image-tags }}
+    steps:
+    # `X.Y` follows the highest GA patch of its minor and `latest` the highest GA overall, so a patch of an older minor
+    # can't move `latest` backwards. Prereleases get neither.
+    - name: Parse the version
+      id: parse
+      env:
+        VERSION: ${{ inputs.version }}
+        REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        readonly semver_pattern='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+        if [[ ! "${VERSION}" =~ ${semver_pattern} ]]; then
+          echo "::error::Version '${VERSION}' is not MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-PRERELEASE."
+          exit 1
+        fi
+        prerelease="$( [[ -n "${BASH_REMATCH[1]}" ]] && echo true || echo false )"
+
+        tag="v${VERSION}"
+        released_tags="$( git ls-remote --tags --refs "${REPO_URL}" 'v*' | sed -e 's#.*refs/tags/##' )"
+        if grep -qxF "${tag}" <<< "${released_tags}"; then
+          echo "::error::Tag '${tag}' already exists."
+          exit 1
+        fi
+
+        image_tags=( "${VERSION}" )
+        latest=false
+        if [[ "${prerelease}" == "false" ]]; then
+          ga_tags="$( { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' <<< "${released_tags}" || true; echo "${tag}"; } | sort --version-sort )"
+          minor="${VERSION%.*}"
+          if [[ "$( grep -F "v${minor}." <<< "${ga_tags}" | tail -n 1 )" == "${tag}" ]]; then
+            image_tags+=( "${minor}" )
+          fi
+          if [[ "$( tail -n 1 <<< "${ga_tags}" )" == "${tag}" ]]; then
+            image_tags+=( "latest" )
+            latest=true
+          fi
+        fi
+
+        {
+          echo "tag=${tag}"
+          echo "prerelease=${prerelease}"
+          echo "latest=${latest}"
+          echo "image-tags=$( printf '%s\n' "${image_tags[@]}" | jq -Rnc '[inputs]' )"
+        } >> "${GITHUB_OUTPUT}"
+
+  image:
+    needs: parse-version
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  e2e:
+    needs: image
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  # Creating the version tag relies on GitHub Actions being a bypass actor of the version tag ruleset.
+  tag:
+    needs:
+    - parse-version
+    - e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+    - name: Push the tag
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.parse-version.outputs.tag }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        tag_object_sha="$( gh api --method POST "repos/${GITHUB_REPOSITORY}/git/tags" \
+        --raw-field tag="${TAG}" \
+        --raw-field message="${TAG}" \
+        --raw-field object="${GITHUB_SHA}" \
+        --raw-field type=commit \
+        --jq .sha )"
+        gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+        --raw-field ref="refs/tags/${TAG}" \
+        --raw-field sha="${tag_object_sha}"
+
+  # Copies the image the gate ran against, so what was tested is what ships.
+  promote:
+    needs:
+    - parse-version
+    - image
+    - tag
+    strategy:
+      fail-fast: false
+      matrix:
+        image-repo-ref:
+        - quay.io/scylladb/scylla-operator
+        - docker.io/scylladb/scylla-operator
+    name: promote (${{ matrix.image-repo-ref }})
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 30
+    steps:
+    # skopeo reads one auth file, so the per-registry secrets are merged into it.
+    - name: Write registry auth file
+      env:
+        QUAY_AUTH_JSON: ${{ secrets.QUAY_SCYLLADB_PUBLISHER_CREDS }}
+        DOCKERHUB_AUTH_JSON: ${{ secrets.DOCKERHUB_SCYLLADB_PUBLISHER_CREDS }}
+      run: |
+        set -euo pipefail
+        shopt -s inherit_errexit
+
+        umask 077
+        jq -n '[env.QUAY_AUTH_JSON, env.DOCKERHUB_AUTH_JSON | fromjson | .auths] | {auths: add}' > "${RUNNER_TEMP}/auth.json"
+        echo "REGISTRY_AUTH_FILE=${RUNNER_TEMP}/auth.json" >> "${GITHUB_ENV}"
+
+    # --preserve-digests fails the copy rather than letting skopeo rewrite a manifest into a different digest.
+    - name: Copy the image
+      env:
+        SOURCE_IMAGE_REF: ${{ needs.image.outputs.image-ref }}
+        IMAGE_REPO_REF: ${{ matrix.image-repo-ref }}
+        IMAGE_TAGS: ${{ needs.parse-version.outputs.image-tags }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        for image_tag in $( jq -r '.[]' <<< "${IMAGE_TAGS}" ); do
+          skopeo copy --all --preserve-digests "docker://${SOURCE_IMAGE_REF}" "docker://${IMAGE_REPO_REF}:${image_tag}"
+        done
+
+  github-release:
+    needs:
+    - parse-version
+    - promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+    # Prereleases link to the top of the changelog, since their section doesn't exist yet. The anchor of a version's
+    # section is the version without dots, e.g. 1201 for 1.20.1.
+    - name: Create the release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VERSION: ${{ inputs.version }}
+        TAG: ${{ needs.parse-version.outputs.tag }}
+        PRERELEASE: ${{ needs.parse-version.outputs.prerelease }}
+        LATEST: ${{ needs.parse-version.outputs.latest }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        changelog_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/master/CHANGELOG.md"
+        if [[ "${PRERELEASE}" == "false" ]]; then
+          changelog_url+="#${VERSION//./}"
+        fi
+        notes_file="${RUNNER_TEMP}/notes.md"
+        printf '## Docker Image\n\n```\ndocker.io/scylladb/scylla-operator:%s\n```\n\n## Changelog\n\n%s\n' "${VERSION}" "${changelog_url}" > "${notes_file}"
+
+        gh release create "${TAG}" \
+        --repo "${GITHUB_REPOSITORY}" \
+        --verify-tag \
+        --title "${TAG}" \
+        --notes-file "${notes_file}" \
+        --prerelease="${PRERELEASE}" \
+        --latest="${LATEST}"
+
+  dispatch:
+    needs:
+    - parse-version
+    - github-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+    - name: Dispatch certification and helm publishing
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.parse-version.outputs.tag }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        for workflow in certify-olm-bundle.yaml publish-helm-chart.yaml; do
+          gh workflow run "${workflow}" --repo "${GITHUB_REPOSITORY}" --ref "${TAG}" --field tag="${TAG}"
+        done

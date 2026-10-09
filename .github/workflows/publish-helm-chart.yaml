@@ -1,0 +1,38 @@
+name: Publish helm chart
+
+# Stub. Publishes the helm charts of a released version once its operator image is published. Takes the tag as an
+# input instead of running on it, so it can be dispatched again from the release branch after a fix.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag, e.g. `v1.23.0`.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Verify the published image
+      uses: ./.github/actions/verify-published-image
+      with:
+        tag: ${{ inputs.tag }}
+
+    - name: Publish helm chart
+      env:
+        TAG: ${{ inputs.tag }}
+      run: echo "Stub for ${TAG}."

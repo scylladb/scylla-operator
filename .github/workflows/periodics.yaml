@@ -1,0 +1,55 @@
+name: "Periodics"
+
+# Builds the operator image, and the OLM bundle and catalog deploying it, from the ref under test and runs the e2e suites
+# and the OpenShift preflight checks against them in the same run.
+on:
+  schedule:
+  - cron: '0 6 * * MON'
+  workflow_dispatch:
+  push:
+    branches:
+    - contrib/rzetelskik/openshift-jobs-gha-test
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  olm:
+    needs: image
+    uses: ./.github/workflows/_olm.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      bundle-image-tag: scylla-operator-bundle-${{ github.run_id }}
+      catalog-image-tag: scylla-operator-catalog-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  e2e:
+    needs:
+    - image
+    - olm
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+      jobs: '["openshift-aws-parallel", "openshift-aws-serial", "gke-multi-dc-parallel"]'
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  # Checks the bundle against Red Hat's certification requirements ahead of a release, without submitting the results.
+  openshift-preflight:
+    needs: olm
+    uses: ./.github/workflows/_openshift-preflight.yaml
+    with:
+      name: openshift-preflight
+      olm-bundle-image-ref: ${{ needs.olm.outputs.bundle-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}

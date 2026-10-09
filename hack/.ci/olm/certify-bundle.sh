@@ -27,11 +27,14 @@ ssh_scylladb_operator_cd_bot_key_path="${2}"
 
 # Validate the arguments.
 
+# The bundle comes from the checkout in the working directory, which must be at the tag. The script itself may
+# run from a different checkout so that a fixed script can certify an existing tag.
 current_hash=$(git rev-parse HEAD)
 if [[ "${current_hash}" != "$(git rev-parse "${tag}"^{commit})" ]]; then
   echo "Error: The current commit hash '${current_hash}' does not match the tag '${tag}'" >&2
   exit 1
 fi
+release_root="$( git rev-parse --show-toplevel )"
 
 # Determine the version and channel based on the provided tag.
 
@@ -62,20 +65,39 @@ export OPERATOR_IMAGE_REF
 
 SUBMIT=${SUBMIT:-false}
 TARGET_BRANCH="${TARGET_BRANCH:-scylladb-operator-${version}}"
+# The branch is reset to upstream main and pushed to the fork, so targeting the fork's main would move it onto
+# a bundle commit and every later clone would start from it.
+if [[ "${TARGET_BRANCH}" == "main" ]]; then
+  echo "Error: TARGET_BRANCH must not be 'main'" >&2
+  exit 1
+fi
 
 # Clone the target repository (fork of certified-operators).
 
 target_repo=git@github.com:scylladb-operator-cd-bot/certified-operators.git
 
+# A fresh runner has no known_hosts, so accept-new would trust whatever answers for github.com. Pin the published key
+# instead: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+known_hosts_file="${temp_dir}/known_hosts"
+echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "${known_hosts_file}"
+export GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i '${ssh_scylladb_operator_cd_bot_key_path}' -o UserKnownHostsFile='${known_hosts_file}' -o StrictHostKeyChecking=yes"
+
 repo_target_dir="${temp_dir}/certified-operators"
-GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i '${ssh_scylladb_operator_cd_bot_key_path}' -o StrictHostKeyChecking=accept-new" \
-  git clone --depth 1 --branch main "${target_repo}" "${repo_target_dir}"
+git clone --depth 1 --branch main "${target_repo}" "${repo_target_dir}"
+
+# Base the branch on upstream main, not the fork's.
+upstream_repo=https://github.com/redhat-openshift-ecosystem/certified-operators.git
+(
+  cd "${repo_target_dir}"
+  git fetch --depth 1 "${upstream_repo}" main
+  git checkout -B "${TARGET_BRANCH}" FETCH_HEAD
+)
 
 parent_target_dir="${repo_target_dir}/operators/scylladb-operator"
 mkdir -p "${parent_target_dir}"
 
 # Create the ci.yaml file with the certification project ID.
-cert_project_id=$( get-metadata ".operator.redHatCertificationProjectID" )
+cert_project_id=$( get-yaml-value "${release_root}/assets/metadata/metadata.yaml" ".operator.redHatCertificationProjectID" )
 cat <<EOF > "${parent_target_dir}/ci.yaml"
 cert_project_id: "${cert_project_id}"
 EOF
@@ -83,7 +105,7 @@ EOF
 target_dir="${parent_target_dir}/${version}"
 mkdir "${target_dir}"
 
-cp -r "${script_dir}/../../../bundle/"{manifests,metadata} "${target_dir}/"
+cp -r "${release_root}/bundle/"{manifests,metadata} "${target_dir}/"
 
 # Postprocess the bundle.
 "${script_dir}/postprocess-bundle.sh" "${target_dir}" "${version}" "${channel}"
@@ -94,11 +116,10 @@ cp -r "${script_dir}/../../../bundle/"{manifests,metadata} "${target_dir}/"
   cd "${repo_target_dir}"
   git config user.name "ScyllaDB Operator Continuous Delivery Bot"
   git config user.email "251034767+scylladb-operator-cd-bot@users.noreply.github.com"
-  git checkout -B "${TARGET_BRANCH}"
   git add .
   # https://github.com/redhat-openshift-ecosystem/certification-releases/blob/main/4.9/ga/troubleshooting.md#pull-request-title
   git commit -s -am "operator scylladb-operator (${version})"
-  GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i ${ssh_scylladb_operator_cd_bot_key_path}" git push origin "${TARGET_BRANCH}"
+  git push origin "${TARGET_BRANCH}"
 )
 
 # Create a volume claim template file for the pipeline workspace.

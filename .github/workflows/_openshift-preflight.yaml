@@ -1,0 +1,108 @@
+name: "OpenShift preflight"
+
+# Runs the Red Hat certification preflight checks for the OLM bundle against an OKD cluster on AWS it creates for the
+# run and deletes afterwards.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        required: true
+        type: string
+      olm-bundle-image-ref:
+        description: Reference of the OLM bundle to check.
+        required: true
+        type: string
+      olm-catalog-image-ref:
+        description: Reference of the OLM catalog serving the bundle.
+        required: true
+        type: string
+      cluster-manifest:
+        description: KubernetesCluster to run the checks against.
+        required: false
+        default: ./hack/.ci/manifests/ci-clusters/openshift-aws-serial.yaml
+        type: string
+    secrets:
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the KubernetesCluster object in.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: preflight
+    runs-on: hosted-runners-standard-pool
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    # Installing OKD takes up to 2h and preflight up to 45m, with 30m left for the rest.
+    timeout-minutes: 195
+    env:
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Materialize the CI provisioners kubeconfig
+      id: provisioners
+      uses: ./.github/actions/ci-provisioning/common/materialize-kubeconfig
+      with:
+        kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+
+    # The action outputs the object name before it creates anything, so the cleanup can run unconditionally from here
+    # on, including when provisioning itself fails partway.
+    - name: Provision the cluster
+      id: cluster
+      uses: ./.github/actions/ci-provisioning/openshift/aws/provision-cluster
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+        manifest: ${{ inputs.cluster-manifest }}
+
+    # Steps that talk to the provisioners cluster set their own KUBECONFIG.
+    - name: Point KUBECONFIG at the cluster
+      env:
+        KUBECONFIG_PATH: ${{ steps.cluster.outputs.kubeconfig-path }}
+      run: echo "KUBECONFIG=${KUBECONFIG_PATH}" >> "${GITHUB_ENV}"
+
+    - name: Run preflight
+      env:
+        BUNDLE_REF: ${{ inputs.olm-bundle-image-ref }}
+        PFLT_INDEXIMAGE: ${{ inputs.olm-catalog-image-ref }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        PFLT_CHANNEL="$( yq -e '.operatorTests.olm.channel' ./assets/metadata/metadata.yaml )"
+        export PFLT_CHANNEL
+        PFLT_ARTIFACTS="${ARTIFACTS}/preflight"
+        export PFLT_ARTIFACTS
+        mkdir -p "${PFLT_ARTIFACTS}"
+
+        timeout --verbose --signal=INT --kill-after=20m 25m preflight check operator "${BUNDLE_REF}"
+
+        if [[ "$( jq '.passed' "${PFLT_ARTIFACTS}/results.json" )" != "true" ]]; then
+          echo "::error::Preflight checks haven't passed."
+          exit 1
+        fi
+
+    - name: Pack and upload artifacts
+      if: always()
+      uses: ./.github/actions/pack-and-upload-artifacts
+      with:
+        name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
+        directory: ${{ env.ARTIFACTS }}
+
+    - name: Clean up the cluster
+      if: always() && steps.cluster.outputs.object-name != ''
+      uses: ./.github/actions/ci-provisioning/openshift/aws/cleanup-cluster
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        object-name: ${{ steps.cluster.outputs.object-name }}

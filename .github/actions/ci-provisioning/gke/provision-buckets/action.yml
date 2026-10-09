@@ -24,7 +24,7 @@ inputs:
 outputs:
   object-names:
     description: >-
-      Names of the StorageBucket objects, comma-separated, for a teardown to delete. Written before the action creates
+      Names of the StorageBucket objects, comma-separated, for cleanup-buckets to delete. Written before the action creates
       anything, so a failure partway still leaves them available.
     value: ${{ steps.provision.outputs.object-names }}
   bucket-names:

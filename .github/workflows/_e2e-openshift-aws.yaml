@@ -1,0 +1,173 @@
+name: "E2E: OpenShift on AWS"
+
+# Runs one e2e suite against an OKD cluster on AWS it creates for the run and deletes afterwards. The operator is
+# installed through OLM.
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        required: true
+        type: string
+      image-ref:
+        description: >-
+          Reference of the Operator image to test, as `name:tag`, `name@digest` or `name:tag@digest`, e.g.
+          `quay.io/scylladb/scylla-operator:1.22.0` or `quay.io/scylladb/scylla-operator@sha256:6a1f0c...`.
+        required: true
+        type: string
+      olm-catalog-image-ref:
+        description: Reference of the OLM catalog serving a bundle of the Operator image to test.
+        required: true
+        type: string
+      suite:
+        description: Name of the `scylla-operator-tests` suite to run, e.g. `scylla-operator/conformance/serial`.
+        required: true
+        type: string
+      cluster-manifest:
+        description: KubernetesCluster to provision the suite against.
+        required: false
+        default: ./hack/.ci/manifests/ci-clusters/openshift-aws.yaml
+        type: string
+      object-storage:
+        description: >-
+          Enable if the chosen suite requires an S3 bucket. The workflow then provisions one in the cluster's region
+          and passes it to the suite.
+        required: false
+        default: false
+        type: boolean
+      storageclass-name:
+        description: >-
+          StorageClass the tested ScyllaDBs claim their volumes from. Empty falls back to the cluster's default one,
+          which is what the suites running without local storage want.
+        required: false
+        default: scylladb-local-xfs
+        type: string
+      nodeconfig-path:
+        description: >-
+          NodeConfig the workflow applies to the cluster, which sets up the local disks the CSI driver serves. Empty
+          prepares no local storage and deploys no CSI driver either, leaving ScyllaDB on the cluster's default
+          StorageClass.
+        required: false
+        default: ./hack/.ci/manifests/cluster/nodeconfig-openshift-aws.yaml
+        type: string
+    secrets:
+      ci-provisioners-kubeconfig:
+        description: Kubeconfig of the cluster to create the KubernetesCluster and StorageBucket objects in.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e
+    runs-on: hosted-runners-standard-pool
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    # Installing OKD alone takes up to 2h, and rolling out the KubeletConfig to the workers up to another 40m.
+    timeout-minutes: 300
+    env:
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Materialize the CI provisioners kubeconfig
+      id: provisioners
+      uses: ./.github/actions/ci-provisioning/common/materialize-kubeconfig
+      with:
+        kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+
+    # The action outputs the object name before it creates anything, so the cleanup can run unconditionally from here
+    # on, including when provisioning itself fails partway.
+    - name: Provision the cluster
+      id: cluster
+      uses: ./.github/actions/ci-provisioning/openshift/aws/provision-cluster
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+        manifest: ${{ inputs.cluster-manifest }}
+
+    # The bucket shares the cluster's name, so the cleanup finds both by it.
+    - name: Provision the object storage bucket
+      if: inputs.object-storage
+      id: bucket
+      uses: ./.github/actions/ci-provisioning/openshift/aws/provision-bucket
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        name: ${{ steps.cluster.outputs.object-name }}
+        # Colocated with the cluster.
+        region: ${{ steps.cluster.outputs.region }}
+
+    # Steps that talk to the provisioners cluster set their own KUBECONFIG.
+    - name: Point KUBECONFIG at the cluster
+      env:
+        KUBECONFIG_PATH: ${{ steps.cluster.outputs.kubeconfig-path }}
+      run: echo "KUBECONFIG=${KUBECONFIG_PATH}" >> "${GITHUB_ENV}"
+
+    - name: Prepare the cluster
+      run: ./hack/.ci/openshift/prepare-cluster.sh
+
+    - name: Run the e2e suite
+      env:
+        BUCKET_NAME: ${{ steps.bucket.outputs.bucket-name }}
+        CREDENTIALS_PATH: ${{ steps.bucket.outputs.credentials-path }}
+        SO_IMAGE: ${{ inputs.image-ref }}
+        SO_OLM_CATALOG_IMAGE_REF: ${{ inputs.olm-catalog-image-ref }}
+        SO_SUITE: ${{ inputs.suite }}
+        SO_E2E_TIMEOUT: 60m
+        SO_NODECONFIG_PATH: ${{ inputs.nodeconfig-path }}
+        SO_SCYLLACLUSTER_STORAGECLASS_NAME: ${{ inputs.storageclass-name }}
+        SO_SCYLLACLUSTER_NODE_SERVICE_TYPE: Headless
+        SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE: PodIP
+        SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE: PodIP
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        mkdir -p "${ARTIFACTS}"
+
+        # The test runner only mounts the S3 credentials when the variable is set, so it's left unset without a bucket.
+        if [[ -n "${BUCKET_NAME}" ]]; then
+          export SO_BUCKET_NAME="${BUCKET_NAME}"
+          export SO_S3_CREDENTIALS_PATH="${CREDENTIALS_PATH}"
+        fi
+
+        # The local CSI driver has nothing to serve without a NodeConfig to prepare the disks, so the workflow deploys
+        # the two together. Left unset, the run script installs the driver from the checkout; set empty, it installs
+        # none.
+        if [[ -z "${SO_NODECONFIG_PATH}" ]]; then
+          SO_CSI_DRIVER_PATH=""
+          export SO_CSI_DRIVER_PATH
+        fi
+
+        # INT first so the suite can shut down and the run script still gathers the artifacts; SIGKILL follows 10
+        # minutes later.
+        timeout --verbose --signal=INT --kill-after=10m 90m ./hack/.ci/run-e2e-openshift-aws.sh
+
+    - name: Pack and upload artifacts
+      if: always()
+      uses: ./.github/actions/pack-and-upload-artifacts
+      with:
+        name: artifacts-${{ inputs.name }}-${{ github.run_attempt }}
+        directory: ${{ env.ARTIFACTS }}
+
+    - name: Clean up the object storage bucket
+      if: always() && inputs.object-storage && steps.cluster.outputs.object-name != ''
+      uses: ./.github/actions/ci-provisioning/openshift/aws/cleanup-bucket
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        object-name: ${{ steps.cluster.outputs.object-name }}
+
+    - name: Clean up the cluster
+      if: always() && steps.cluster.outputs.object-name != ''
+      uses: ./.github/actions/ci-provisioning/openshift/aws/cleanup-cluster
+      with:
+        provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
+        object-name: ${{ steps.cluster.outputs.object-name }}

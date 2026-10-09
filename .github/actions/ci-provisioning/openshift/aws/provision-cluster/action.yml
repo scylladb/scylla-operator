@@ -1,0 +1,93 @@
+name: Provision an OpenShift cluster on AWS
+description: >-
+  Creates an OpenShift on AWS KubernetesCluster from a manifest, waits for it to bootstrap, and extracts its kubeconfig.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  name:
+    description: >-
+      Identifies the run. The action names the KubernetesCluster after its hash, and outputs that name as
+      `object-name`.
+    required: true
+  manifest:
+    description: >-
+      KubernetesCluster manifest of the OpenShift type on the AWS platform with empty metadata.name and
+      spec.credentialsSecret.name placeholders.
+    required: true
+  timeout:
+    description: How long to wait for the cluster to bootstrap.
+    required: false
+    default: 2h
+
+outputs:
+  object-name:
+    description: >-
+      Name of the KubernetesCluster object, for cleanup-cluster to delete. Written before the action creates anything, so a
+      failure partway still leaves it available.
+    value: ${{ steps.provision.outputs.object-name }}
+  kubeconfig-path:
+    description: Path to the provisioned cluster's kubeconfig.
+    value: ${{ steps.provision.outputs.kubeconfig-path }}
+  region:
+    description: AWS region the cluster runs in, for colocating other resources with it.
+    value: ${{ steps.provision.outputs.region }}
+
+runs:
+  using: composite
+  steps:
+  - id: provision
+    shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      NAME: ${{ inputs.name }}
+      MANIFEST: ${{ inputs.manifest }}
+      TIMEOUT: ${{ inputs.timeout }}
+    run: |
+      source ./hack/.ci/lib/ci-provisioning.sh
+
+      # ci-tools names the installer Job `<object>-openshift-create-cluster`, and Kubernetes copies the Job name into a
+      # pod label capped at 63 characters. That leaves 38 for the object, too few for a name identifying the run, so the
+      # object is named after its hash instead.
+      OBJECT_NAME="so-$( sha256sum <<< "${NAME}" | cut -c 1-28 )"
+      export OBJECT_NAME
+      echo "object-name=${OBJECT_NAME}" >> "${GITHUB_OUTPUT}"
+
+      # yq creates any path it's given, so if the manifest renames a field, the fill-in would silently add the old one
+      # back instead of filling in the new one. Asserting the placeholders exist first turns that into a failure.
+      yq -e '
+        select(
+          .spec.type == "OpenShift" and
+          .spec.openshift.platformType == "AWS" and
+          .metadata.name == "" and
+          .spec.credentialsSecret.name == ""
+        ) |
+        .metadata.name = strenv(OBJECT_NAME) |
+        .spec.credentialsSecret.name = strenv(OBJECT_NAME) + "-kubeconfig"
+      ' "${MANIFEST}" | tee /dev/stderr | kubectl create -f=-
+
+      kubectl wait --timeout="${TIMEOUT}" \
+        --for=condition=Degraded=False \
+        --for=condition=Progressing=False \
+        --for=condition=ClusterBootstrapped=True \
+        kubernetescluster/"${OBJECT_NAME}" || {
+        echo 'Cluster provisioning timed out. Object status:' >&2
+        kubectl get kubernetescluster/"${OBJECT_NAME}" -o yaml | yq '.status' >&2
+        exit 1
+      }
+
+      kubeconfig="${RUNNER_TEMP}/kubeconfig"
+      get-provisioned-cluster-kubeconfig "${KUBECONFIG}" "${OBJECT_NAME}-kubeconfig" "${kubeconfig}"
+
+      # The installer returns before the cluster operators settle, and until they do, rolling out new revisions of the
+      # API servers drops connections.
+      kubectl --kubeconfig="${kubeconfig}" wait --timeout=10m --all clusteroperators \
+        --for=condition=Available=True \
+        --for=condition=Progressing=False \
+        --for=condition=Degraded=False
+
+      {
+        echo "kubeconfig-path=${kubeconfig}"
+        echo "region=$( yq -e '.spec.openshift.installConfig.platform.aws.region' "${MANIFEST}" )"
+      } >> "${GITHUB_OUTPUT}"

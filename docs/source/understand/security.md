@@ -82,6 +82,54 @@ The Alternator serving certificate is configured through `spec.alternator.servin
 - **`OperatorManaged`** (default): the operator provisions and rotates the Alternator serving certificate automatically. You can specify `additionalDNSNames` and `additionalIPAddresses` in `operatorManagedOptions` to include custom SANs.
 - **`UserManaged`**: you provide your own TLS certificate in a `kubernetes.io/tls` Secret referenced by `userManagedOptions.secretName`. The operator mounts this Secret but does not manage its lifecycle — you are responsible for rotation.
 
+### Certificate rotation
+
+The operator stores each CA's certificate and private key in a Secret, and the CA bundle that clients and ScyllaDB trust in a ConfigMap of the same name, under the `ca-bundle.crt` key.
+For example, the serving CA of a `ScyllaCluster` is in the `<name>-local-serving-ca` Secret, and its bundle in the `<name>-local-serving-ca` ConfigMap.
+
+#### When certificates are reissued
+
+The operator reissues the certificates it manages before they expire:
+
+```{list-table}
+:header-rows: 1
+
+* - Certificates
+  - Validity
+  - Reissued after
+* - CAs (`<name>-local-serving-ca`, `<name>-local-client-ca`, `<name>-alternator-local-serving-ca`)
+  - 10 years
+  - 8 years
+* - Serving certificates (`<name>-local-serving-certs`, `<name>-alternator-local-serving-certs`)
+  - 30 days
+  - 20 days
+* - Admin client certificate (`<name>-local-user-admin`)
+  - 10 years
+  - 8 years
+```
+
+Serving certificates are also reissued whenever the addresses or DNS names they cover change, for example when you add or remove nodes, when a ScyllaDB Pod gets a new IP address, or when you change `dnsDomains`.
+Clients that use the current serving CA bundle aren't affected.
+
+A CA is also reissued before its time in these situations:
+
+- You change the operator's `--crypto-key-type` flag. The operator reissues the CAs of all the clusters it manages.
+- You delete a CA Secret.
+- You delete and recreate a `ScyllaCluster`, for example when recovering from a disaster. Its CA Secrets and CA bundle ConfigMaps are deleted with it, so the recreated cluster gets new CAs, and its CA bundles don't contain the previous ones. Clients need the new serving CA bundle and new client certificates.
+
+#### What a CA reissue means for clients
+
+A reissued CA has a new key, and all the certificates it signs are reissued right away.
+The operator adds the new CA to the CA bundle and keeps the previous CAs in it until they expire. As a result:
+
+- ScyllaDB keeps accepting client certificates signed by a previous client CA, because it trusts the whole client CA bundle.
+- ScyllaDB starts serving a certificate signed by the new serving CA right away. Clients that verify ScyllaDB against a copy of the serving CA bundle taken before the reissue reject it until they get the current bundle.
+
+To keep clients working across a CA reissue:
+
+- In Kubernetes, mount the serving CA bundle ConfigMap into your application Pods instead of copying it, as described in [Mount TLS files in application Pods](../connect-your-app/connect-via-cql.md#mount-tls-files-in-application-pods).
+- Outside Kubernetes, extract the serving CA bundle again after the reissue. The same applies to the `<name>-local-cql-connection-configs-admin` Secret, which embeds the serving CA bundle.
+
 ## Authentication and authorization
 
 ### CQL authentication

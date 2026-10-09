@@ -98,6 +98,137 @@ A healthy node N loses its data this way, and the Operator rebuilds every node a
 Previous versions could leave the label behind when you reverted a scale-down before the Operator removed the node's Service, or when you recovered a decommissioned node by hand.
 :::
 
+#### Choose the certificate key type
+
+:::{caution}
+Skipping this step can cause downtime for your applications.
+Starting with v1.23, the Operator issues ECDSA P-384 certificates by default instead of RSA ones.
+Unless it runs with `--crypto-key-type=RSA`, the upgraded Operator replaces every RSA certificate it manages with an ECDSA one right after the upgrade, CAs included, in all `ScyllaClusters` and `ScyllaDBMonitorings`.
+Clients that verify ScyllaDB against a copy of the serving CA bundle can't connect until they get the new bundle.
+:::
+
+Check whether your Operator already sets the key type:
+
+```bash
+kubectl -n scylla-operator get deployment/scylla-operator -o=jsonpath='{.spec.template.spec.containers[?(@.name=="scylla-operator")].args}{"\n"}{.spec.template.spec.containers[?(@.name=="scylla-operator")].env}{"\n"}'
+```
+
+The first line of the output lists the arguments of the Operator container, and the second one its environment variables.
+In a default installation, neither sets the key type:
+
+```console
+["operator","--loglevel=2"]
+[{"name":"SCYLLA_OPERATOR_IMAGE","value":"docker.io/scylladb/scylla-operator:1.22"}]
+```
+
+```{list-table}
+:header-rows: 1
+
+* - The output contains
+  - Your certificates
+  - After the upgrade
+* - `--crypto-key-type=RSA`, or `SCYLLA_OPERATOR_CRYPTO_KEY_TYPE` with the value `RSA`
+  - RSA
+  - Unchanged
+* - `--crypto-key-type=ECDSA`, or `SCYLLA_OPERATOR_CRYPTO_KEY_TYPE` with the value `ECDSA`
+  - ECDSA
+  - Unchanged
+* - Neither, as in a default installation
+  - RSA
+  - Replaced with ECDSA ones
+```
+
+The deprecated `--crypto-key-size` flag only sets the RSA key size and doesn't keep the Operator on RSA.
+
+If your certificates are RSA, decide before upgrading whether to [keep RSA certificates](#keep-rsa-certificates) or [switch to ECDSA certificates](#switch-to-ecdsa-certificates).
+
+:::{note}
+**Why switch to ECDSA?**
+With ECDSA certificates, ScyllaDB spends much less CPU on each TLS connection that clients open, so connections are set up faster, especially when many clients reconnect at once, for example after an application restart.
+The Operator also spends much less CPU generating keys, and doesn't make you wait for key generation when it needs many certificates at once, for example when you create several clusters.
+:::
+
+##### Keep RSA certificates
+
+Set `--crypto-key-type=RSA` before upgrading, and keep it in the configuration you upgrade with.
+ScyllaDB Operator v1.22 accepts the flag, and since RSA is its default, setting it doesn't change any certificates.
+
+:::::{tabs}
+::::{group-tab} Helm
+
+Add the flag to your values file, next to any other additional arguments you already pass:
+
+```yaml
+additionalArgs:
+- --crypto-key-type=RSA
+```
+
+::::
+
+::::{group-tab} GitOps
+
+Add the flag to the arguments of the `scylla-operator` container in the `scylla-operator` Deployment of the manifests you apply:
+
+```yaml
+args:
+- operator
+- --loglevel=2
+- --crypto-key-type=RSA
+```
+
+::::
+
+::::{group-tab} OLM
+
+Add an environment variable to the `config` section of your `Subscription`:
+
+```yaml
+spec:
+  config:
+    env:
+    - name: SCYLLA_OPERATOR_CRYPTO_KEY_TYPE
+      value: RSA
+```
+
+::::
+:::::
+
+To switch to ECDSA certificates later, remove the flag and follow the steps below.
+
+##### Switch to ECDSA certificates
+
+After the upgrade, the Operator reissues every certificate that still has an RSA key, CAs included, and leaves certificates that already have ECDSA keys unchanged.
+ScyllaDB then serves a certificate signed by the new serving CA, which clients holding a copy of the previous serving CA bundle don't trust.
+Plan the upgrade for a time when you can update your clients right after it:
+
+1. Upgrade the Operator.
+1. Wait for the serving CA of each `ScyllaCluster` to be reissued with an ECDSA key:
+
+   ```bash
+   NAMESPACE=<namespace>
+   CLUSTER_NAME=<cluster-name>
+   kubectl -n="${NAMESPACE}" get "secret/${CLUSTER_NAME}-local-serving-ca" --template='{{ index .data "tls.crt" }}' | base64 -d | openssl x509 -noout -text | grep 'Public Key Algorithm'
+   ```
+
+   The output shows `id-ecPublicKey` once the CA is reissued:
+
+   ```console
+               Public Key Algorithm: id-ecPublicKey
+   ```
+
+1. Give your clients the new serving CA bundles:
+
+   - CQL clients: the `<cluster-name>-local-serving-ca` ConfigMap, as described in [Connect via CQL](../connect-your-app/connect-via-cql.md).
+   - Alternator clients: the `<cluster-name>-alternator-local-serving-ca` ConfigMap, as described in [Alternator](../connect-your-app/alternator.md).
+   - Grafana clients: the `<scylladbmonitoring-name>-grafana-serving-ca` ConfigMap of the `ScyllaDBMonitoring`, unless you provide Grafana's serving certificate yourself with `servingCertSecretName`.
+
+   Clients that [mount the serving CA bundle ConfigMap](../connect-your-app/connect-via-cql.md#mount-tls-files-in-application-pods) pick it up by themselves.
+
+1. Give your clients the reissued client certificates, for example the admin client certificate from the `<cluster-name>-local-user-admin` Secret.
+   The `<cluster-name>-local-cql-connection-configs-admin` Secret embeds the admin client certificate and key together with the serving CA bundle, so clients that use it get both at once.
+
+See [Certificate rotation](../understand/security.md#certificate-rotation) for how the Operator reissues certificates.
+
 #### Enable parallel node operations on existing clusters
 
 :::{note}

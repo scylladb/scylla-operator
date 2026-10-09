@@ -286,6 +286,7 @@ jobs:
           predicate-quantifier: every
           filters: |
             source:
+              - '!CODEOWNERS'
               - '!docs/**'
               - '!enhancements/**'
               - '!**/*.md'

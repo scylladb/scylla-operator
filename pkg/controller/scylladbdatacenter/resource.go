@@ -82,6 +82,9 @@ var (
 		// object created on migration from scyllav1.ScyllaCluster object. Setting it shouldn't trigger a rollout as it
 		// doesn't affect the ScyllaDB cluster itself.
 		naming.ScyllaDBManagerClusterRegistrationNameOverrideAnnotation,
+		// This annotation only tells admission to accept a decrease of the ScyllaDB CPU limit. Propagating it into
+		// the Pod template would roll out every node of the datacenter when it's set and again when it's removed.
+		naming.ForceScyllaDBCPUDecreaseAnnotation,
 	}
 
 	// Label keys excluded from propagation to underlying resources.

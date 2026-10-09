@@ -226,6 +226,8 @@ func (opc *Controller) enqueue(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
 func (opc *Controller) enqueueAllScyllaDBDatacentersOnBackground() {
 	opc.wg.Add(1)
 	go func() {
+		defer opc.wg.Done()
+
 		klog.V(4).InfoS("Enqueuing all ScyllaDBDatacenters")
 
 		// This gets called from an informer handler which doesn't wait for cache sync,

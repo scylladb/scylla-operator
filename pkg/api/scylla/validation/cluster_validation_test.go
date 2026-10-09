@@ -9,6 +9,7 @@ import (
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	corev1 "k8s.io/api/core/v1"
@@ -1560,6 +1561,42 @@ func TestValidateScyllaClusterUpdate(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
 			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
+		},
+		{
+			name: "ScyllaDB CPU limit decreased",
+			old:  unit.NewSingleRackCluster(3),
+			new: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceCPU] = resource.MustParse("1")
+				return sc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.datacenter.racks[0].resources.limits.cpu", BadValue: "", Detail: "decreasing the CPU limit of the ScyllaDB container from 2 to 1 is not allowed: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables and the rack would get stuck on a node that can't start; add a rack with smaller nodes instead, or set the \"scylla-operator.scylladb.com/force-scylladb-cpu-decrease\" annotation to \"true\" to force the change"},
+			},
+			expectedErrorString: `spec.datacenter.racks[0].resources.limits.cpu: Forbidden: decreasing the CPU limit of the ScyllaDB container from 2 to 1 is not allowed: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables and the rack would get stuck on a node that can't start; add a rack with smaller nodes instead, or set the "scylla-operator.scylladb.com/force-scylladb-cpu-decrease" annotation to "true" to force the change`,
+		},
+		{
+			name: "ScyllaDB CPU limit decreased with the force annotation",
+			old:  unit.NewSingleRackCluster(3),
+			new: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Annotations = map[string]string{naming.ForceScyllaDBCPUDecreaseAnnotation: "true"}
+				sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceCPU] = resource.MustParse("1")
+				return sc
+			}(),
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name: "ScyllaDB CPU limit increased",
+			old:  unit.NewSingleRackCluster(3),
+			new: func() *scyllav1.ScyllaCluster {
+				sc := unit.NewSingleRackCluster(3)
+				sc.Spec.Datacenter.Racks[0].Resources.Limits[corev1.ResourceCPU] = resource.MustParse("4")
+				return sc
+			}(),
+			expectedErrorList:   nil,
+			expectedErrorString: "",
 		},
 	}
 

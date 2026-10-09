@@ -318,4 +318,10 @@ const (
 	// If set to "true", bootstrap barrier will proceed to bootstrap immediately.
 	// This can be used on a particular member Service to override the normal bootstrap precondition checks, or on the entire ScyllaDBDatacenter to override the default behavior for all members.
 	ForceProceedToBootstrapAnnotation = "scylla-operator.scylladb.com/force-proceed-to-bootstrap"
+
+	// ForceScyllaDBCPUDecreaseAnnotation allows a decrease of the CPU limit of the ScyllaDB container of a rack, which
+	// admission rejects otherwise: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables
+	// and refuses to start, which leaves the rack stuck. If set to "true" on the ScyllaCluster or ScyllaDBDatacenter,
+	// the decrease is admitted.
+	ForceScyllaDBCPUDecreaseAnnotation = "scylla-operator.scylladb.com/force-scylladb-cpu-decrease"
 )

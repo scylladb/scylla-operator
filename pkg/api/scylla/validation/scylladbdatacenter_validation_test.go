@@ -11,9 +11,11 @@ import (
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/api/scylla/validation"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -1458,6 +1460,71 @@ func TestValidateScyllaDBDatacenterUpdate(t *testing.T) {
 				&field.Error{Type: field.ErrorTypeInvalid, Field: "spec.enableParallelNodeOperations", BadValue: true, Detail: `requires a semver-parseable ScyllaDB version >= 2026.2`},
 			},
 			expectedErrorString: `spec.enableParallelNodeOperations: Invalid value: true: requires a semver-parseable ScyllaDB version >= 2026.2`,
+		},
+		{
+			name: "rack ScyllaDB CPU limit decreased",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].ScyllaDB.Resources = &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")}}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].ScyllaDB.Resources = &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")}}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.racks[0].scyllaDB.resources.limits.cpu", BadValue: "", Detail: "decreasing the CPU limit of the ScyllaDB container from 2 to 1 is not allowed: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables and the rack would get stuck on a node that can't start; add a rack with smaller nodes instead, or set the \"scylla-operator.scylladb.com/force-scylladb-cpu-decrease\" annotation to \"true\" to force the change"},
+			},
+			expectedErrorString: `spec.racks[0].scyllaDB.resources.limits.cpu: Forbidden: decreasing the CPU limit of the ScyllaDB container from 2 to 1 is not allowed: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables and the rack would get stuck on a node that can't start; add a rack with smaller nodes instead, or set the "scylla-operator.scylladb.com/force-scylladb-cpu-decrease" annotation to "true" to force the change`,
+		},
+		{
+			name: "rack template ScyllaDB CPU limit decreased",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{Resources: &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")}}}}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{ScyllaDB: &scyllav1alpha1.ScyllaDBTemplate{Resources: &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")}}}}
+				return sdc
+			}(),
+			expectedErrorList: field.ErrorList{
+				&field.Error{Type: field.ErrorTypeForbidden, Field: "spec.rackTemplate.scyllaDB.resources.limits.cpu", BadValue: "", Detail: "decreasing the CPU limit of the ScyllaDB container from 2 to 1 is not allowed: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables and the rack would get stuck on a node that can't start; add a rack with smaller nodes instead, or set the \"scylla-operator.scylladb.com/force-scylladb-cpu-decrease\" annotation to \"true\" to force the change"},
+			},
+			expectedErrorString: `spec.rackTemplate.scyllaDB.resources.limits.cpu: Forbidden: decreasing the CPU limit of the ScyllaDB container from 2 to 1 is not allowed: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables and the rack would get stuck on a node that can't start; add a rack with smaller nodes instead, or set the "scylla-operator.scylladb.com/force-scylladb-cpu-decrease" annotation to "true" to force the change`,
+		},
+		{
+			name: "rack ScyllaDB CPU limit decreased with the force annotation",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].ScyllaDB.Resources = &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")}}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Annotations = map[string]string{naming.ForceScyllaDBCPUDecreaseAnnotation: "true"}
+				sdc.Spec.Racks[0].ScyllaDB.Resources = &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("1")}}
+				return sdc
+			}(),
+			expectedErrorList:   nil,
+			expectedErrorString: "",
+		},
+		{
+			name: "rack ScyllaDB CPU limit increased",
+			old: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].ScyllaDB.Resources = &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")}}
+				return sdc
+			}(),
+			new: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newValidScyllaDBDatacenter()
+				sdc.Spec.Racks[0].ScyllaDB.Resources = &corev1.ResourceRequirements{Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("4")}}
+				return sdc
+			}(),
+			expectedErrorList:   nil,
+			expectedErrorString: "",
 		},
 	}
 

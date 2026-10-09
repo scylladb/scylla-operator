@@ -10,8 +10,11 @@ import (
 	"github.com/robfig/cron/v3"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
+	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/pkg/util/duration"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	apimachineryutilvalidation "k8s.io/apimachinery/pkg/util/validation"
@@ -489,6 +492,15 @@ func ValidateScyllaClusterSpecUpdate(new, old *scyllav1.ScyllaCluster, fldPath *
 		if !reflect.DeepEqual(oldRack.Storage, newRack.Storage) {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("datacenter", "racks").Index(i).Child("storage"), "changes in storage are currently not supported"))
 		}
+
+		var newCPULimit, oldCPULimit *resource.Quantity
+		if cpu, ok := newRack.Resources.Limits[corev1.ResourceCPU]; ok {
+			newCPULimit = &cpu
+		}
+		if cpu, ok := oldRack.Resources.Limits[corev1.ResourceCPU]; ok {
+			oldCPULimit = &cpu
+		}
+		allErrs = append(allErrs, validateScyllaDBCPULimitDecrease(newCPULimit, oldCPULimit, new.Annotations, fldPath.Child("datacenter", "racks").Index(i).Child("resources", "limits", "cpu"))...)
 	}
 
 	var oldClientBroadcastAddressType, newClientBroadcastAddressType *scyllav1.BroadcastAddressType
@@ -604,4 +616,22 @@ func getWarningsForScyllaClusterRackMemberCountUpdate(new, old *scyllav1.ScyllaC
 	}
 
 	return warnings
+}
+
+// validateScyllaDBCPULimitDecrease rejects a decrease of the CPU limit of the ScyllaDB container, which sets the number
+// of shards of the node. ScyllaDB can't reduce the shard count of a node holding tablet-based tables and refuses to
+// start, and the rack is stuck on the Pod that can't start until the StatefulSet is recreated by hand. The decrease is
+// admitted when the object carries the naming.ForceScyllaDBCPUDecreaseAnnotation set to "true".
+func validateScyllaDBCPULimitDecrease(newCPU, oldCPU *resource.Quantity, annotations map[string]string, fldPath *field.Path) field.ErrorList {
+	if newCPU == nil || oldCPU == nil || newCPU.Cmp(*oldCPU) >= 0 {
+		return nil
+	}
+
+	if annotations[naming.ForceScyllaDBCPUDecreaseAnnotation] == "true" {
+		return nil
+	}
+
+	return field.ErrorList{
+		field.Forbidden(fldPath, fmt.Sprintf("decreasing the CPU limit of the ScyllaDB container from %s to %s is not allowed: ScyllaDB can't reduce the number of shards of a node holding tablet-based tables and the rack would get stuck on a node that can't start; add a rack with smaller nodes instead, or set the %q annotation to \"true\" to force the change", oldCPU.String(), newCPU.String(), naming.ForceScyllaDBCPUDecreaseAnnotation)),
+	}
 }

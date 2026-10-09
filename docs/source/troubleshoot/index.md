@@ -19,6 +19,8 @@ Diagnose and resolve issues with ScyllaDB Operator, ScyllaDB clusters, and relat
   - [Recover from a failed node replace](recover-from-failed-replace.md)
 * - Scale-down stuck with leftover Pods of removed nodes
   - [Recover from a stuck scale-down](recover-from-stuck-scale-down.md)
+* - Rollout stuck on a Pod that can't start, fixed spec not applied
+  - [Recover from a stuck rollout](recover-from-stuck-rollout.md)
 * - Slow queries, throughput degradation, or CPU pinning not working
   - [Troubleshoot performance](troubleshoot-performance.md)
 * - Need to change log level without a rolling restart
@@ -36,6 +38,7 @@ investigate-restarts
 change-log-level
 recover-from-failed-replace
 recover-from-stuck-scale-down
+recover-from-stuck-rollout
 troubleshoot-performance
 collect-debugging-information/index
 configure-coredumps

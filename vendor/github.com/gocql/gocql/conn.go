@@ -43,6 +43,7 @@ import (
 	"github.com/gocql/gocql/tablets"
 
 	"github.com/gocql/gocql/internal/lru"
+	"github.com/gocql/gocql/internal/segment"
 	"github.com/gocql/gocql/internal/streams"
 )
 
@@ -202,16 +203,26 @@ type Conn struct {
 	ctx            context.Context
 	errorHandler   ConnErrorHandler
 	compressor     Compressor
-	supported      map[string][]string
-	streams        *streams.IDGenerator
-	host           *HostInfo
+	// segCompressor is compressor narrowed to the two Append methods the v5 segment
+	// codec takes, resolved once by resolveSegmentCompressor during the handshake. The
+	// receive path would otherwise repeat that assertion for every segment it reads,
+	// for a result that cannot change: compressor is written at dial and once more by
+	// startupCoordinator.startup, and never again.
+	//
+	// Nil is the uncompressed segment layout, and is also what a pre-v5 connection
+	// leaves it as -- it never reaches the segment codec, and its compressor need not
+	// support segments at all.
+	segCompressor segment.Compressor
+	supported     map[string][]string
+	streams       *streams.IDGenerator
+	host          *HostInfo
 	// calls stores a map from stream ID to callReq.
 	// This map is protected by mu.
 	// calls should not be used when closed is true, calls is set to nil when closed=true.
 	calls map[int]*callReq
 	// segScratch holds the reusable buffers inbound v5 segments are read into.
 	// Only touched by the receive path, which runs on the serve() goroutine.
-	segScratch segmentScratch
+	segScratch segment.Scratch
 	// headerReader is the reader the current frame or segment header is read
 	// through (see readFrameHeader, readFirstSegmentHeader). Reused rather than
 	// allocated per header, and like segScratch only touched by whichever
@@ -357,9 +368,13 @@ func (s *Session) dial(ctx context.Context, host *HostInfo, connConfig *ConnConf
 }
 
 func translateHostAddresses(addressTranslator AddressTranslator, host *HostInfo, logger StdLogger) (translatedAddresses, error) {
+	port := host.Port()
+	if port < 1 || port > 65535 {
+		return translatedAddresses{}, fmt.Errorf("invalid CQL port %d for host %s: port must be between 1 and 65535", port, host.UntranslatedConnectAddress())
+	}
 	addr, err := translateAddressPort(addressTranslator, host, AddressPort{
 		Address: host.UntranslatedConnectAddress(),
-		Port:    uint16(host.Port()),
+		Port:    uint16(port),
 	}, logger)
 	if err != nil {
 		return translatedAddresses{}, fmt.Errorf("unable to translate regular cql address: %w", err)
@@ -433,6 +448,9 @@ func (s *Session) dialShard(ctx context.Context, host *HostInfo, connConfig *Con
 // If nrShards is zero, shard-aware dialing is disabled.
 func (s *Session) dialWithoutObserver(ctx context.Context, host *HostInfo, cfg *ConnConfig, errorHandler ConnErrorHandler,
 	shardID, nrShards int) (*Conn, error) {
+	if cfg.ProtoVersion < 0 || cfg.ProtoVersion > 127 {
+		return nil, fmt.Errorf("invalid protocol version %d: must be between 0 and 127", cfg.ProtoVersion)
+	}
 
 	shardDialer, ok := cfg.HostDialer.(ShardDialer)
 	var (
@@ -708,8 +726,7 @@ func startupOptions(cqlVersion, driverName, driverVersion string, info Applicati
 }
 
 func (s *startupCoordinator) startup(ctx context.Context, startupCompleted *atomic.Bool) error {
-	// COMPRESSION and the CQL protocol extensions below are driver-owned too, and
-	// are already protected by being written after the callback has run.
+	// COMPRESSION and the CQL protocol extensions below are driver-owned too.
 	m := startupOptions(
 		s.conn.cfg.CQLVersion,
 		s.conn.session.cfg.DriverName,
@@ -719,6 +736,20 @@ func (s *startupCoordinator) startup(ctx context.Context, startupCompleted *atom
 		s.conn.session.id,
 		s.conn.isScyllaConn(),
 	)
+
+	// Writing after the callback is enough for the keys the driver always writes,
+	// but not for this one: COMPRESSION is written only when the server's SUPPORTED
+	// list names the configured compressor, so on any other path a value the
+	// ApplicationInfo callback put there would survive and be sent as if the driver
+	// had chosen it. The server would then compress to an algorithm the framers are
+	// not using -- or to one while no compressor is configured at all -- and every
+	// frame after the handshake would be unreadable by one side.
+	//
+	// Dropping it up front rather than reconciling it afterwards keeps the rule
+	// simple: the only COMPRESSION that can reach the server is one this block
+	// negotiated. It also keeps the presence check below honest, since the key can
+	// then only be there because the loop put it there.
+	delete(m, "COMPRESSION")
 
 	if s.conn.compressor != nil {
 		comp := s.conn.supported["COMPRESSION"]
@@ -730,9 +761,24 @@ func (s *startupCoordinator) startup(ctx context.Context, startupCompleted *atom
 			}
 		}
 
+		// The server decides: a node that does not advertise the algorithm in its
+		// SUPPORTED response would reject a STARTUP naming it, so the connection
+		// continues uncompressed rather than failing. That is a silent downgrade of
+		// something the user explicitly asked for -- and on a mixed cluster it can
+		// affect one node out of several -- so say so once, per connection, naming
+		// what the node did offer. TestCompressorNegotiated is the integration-side
+		// check that this never happens on a healthy cluster.
 		if _, ok := m["COMPRESSION"]; !ok {
+			s.conn.logger.Printf("gocql: %s does not support the requested %q compression, continuing uncompressed (server offers: %v)\n",
+				s.conn.addr, name, comp)
 			s.conn.compressor = nil
 		}
+	}
+
+	// The compressor is final now. Resolve its v5 segment view here rather than in
+	// initFramerCache: the auth exchange below is already segmented, and runs first.
+	if err := s.conn.resolveSegmentCompressor(); err != nil {
+		return err
 	}
 
 	for _, ext := range s.conn.cqlProtoExts {
@@ -827,7 +873,15 @@ func (c *Conn) closeWithError(err error) {
 		cerr = c.close()
 	}
 
+	// Dedup by identity: a duplicate entry's callReq was already recycled to the
+	// global pool, so re-reading it here would race with whoever reused it.
+	seen := make(map[*callReq]bool, len(callsToClose))
 	for _, req := range callsToClose {
+		if seen[req] {
+			continue
+		}
+		seen[req] = true
+
 		if err != nil {
 			// We need to send the error to all waiting queries.
 			select {
@@ -1018,9 +1072,19 @@ func (c *Conn) heartBeat(ctx context.Context) {
 			sleepTime = 30 * time.Second
 			failures = 0
 		case error:
-			// TODO: should we do something here?
+			// A failed heartbeat like any other. Without this the arm below can
+			// never reach the bound: a peer that answers one OPTIONS with an
+			// unexpected frame and every later one with ERROR would hold failures
+			// at 1 and sleepTime at 1s for the life of the connection, since only
+			// a SUPPORTED reply restores either.
+			failures++
 		default:
-			panic(fmt.Sprintf("gocql: unknown frame in response to options: %T", resp))
+			// Reachable from the wire: parseFrame builds a frame for every opcode it
+			// knows, and this goroutine has no recover above it.
+			c.logger.Printf("gocql: unexpected frame in response to options: %T\n", resp)
+			failures++
+			// Broken now, not in 30 seconds; controlConn.heartBeat drops to 1s too.
+			sleepTime = 1 * time.Second
 		}
 	}
 }
@@ -1054,7 +1118,7 @@ type frameSource struct {
 	// takes the connection down; out of a segment the short read is immediate and
 	// yields io.ErrUnexpectedEOF, which is not a net.Error, so processFrameSource
 	// keeps it per-request and leaves the connection up. A ~20-byte segment could
-	// otherwise buy a maxFrameSize allocation, repeatable for as long as the peer
+	// otherwise buy a frm.MaxFrameSize allocation, repeatable for as long as the peer
 	// cares to send them.
 	//
 	// Nil on the pre-v5 socket path, and nil for a reassembled frame, where
@@ -1204,13 +1268,28 @@ func (c *Conn) processFrameSource(ctx context.Context, src frameSource) error {
 		return ErrConnectionClosed
 	}
 	call, ok := c.calls[head.Stream]
+	// Read the callReq's own stream id under the lock. Leaving the entry in place
+	// below means closeWithError can be recycling this callReq the moment the lock
+	// is dropped, and putCallReq zeroes the field.
+	if call != nil && ok {
+		if streamID := call.streamID; head.Stream != streamID {
+			c.mu.Unlock()
+			// c.calls and the callReq it holds disagree: a driver bug, not something
+			// a peer can provoke. Fail the connection -- its stream bookkeeping is
+			// what is untrustworthy -- and touch nothing on the way out. addCall is
+			// the only writer of c.calls and always keys by call.streamID, so the two
+			// can only diverge once the callReq has been recycled; cleaning up by
+			// either the key or the field would then act on a stream some other call
+			// owns. serve() turns this error into closeWithError, which drains
+			// whatever is genuinely still in the map.
+			return fmt.Errorf("gocql: response for stream %d dispatched to a call on stream %d", head.Stream, streamID)
+		}
+	}
 	delete(c.calls, head.Stream)
 	c.mu.Unlock()
 	if call == nil || !ok {
 		c.logger.Printf("gocql: received response for stream which has no handler: header=%v\n", head)
 		return c.discardFrame(r, head)
-	} else if head.Stream != call.streamID {
-		panic(fmt.Sprintf("call has incorrect streamID: got %d expected %d", call.streamID, head.Stream))
 	}
 
 	framer := c.getReadFramer()
@@ -1229,7 +1308,7 @@ func (c *Conn) processFrameSource(ctx context.Context, src frameSource) error {
 	// we either, return a response to the caller, the caller timedout, or the
 	// connection has closed. Either way we should never block indefinatly here
 	select {
-	case call.resp <- callResp{framer: framer, err: err}:
+	case call.resp <- callResp{framer: framer, err: err, removedFromCalls: true}:
 		// Framer ownership transferred to caller
 	case <-call.timeout:
 		c.abandonRecvCall(call, framer)
@@ -1321,8 +1400,9 @@ func (c *Conn) recvSegment(ctx context.Context) error {
 	// resumed up to maxReadAttempts times, so one read can take that multiple of
 	// ReadTimeout before failing — only a read that delivers nothing fails within a
 	// single one. A peer that keeps trickling progress is therefore not bounded by
-	// time at all; it is bounded by the frame length recvSplitFrame enforces against
-	// the reassembled size.
+	// ReadTimeout at all: recvSplitFrame's reassembled-size check bounds how much it
+	// can send, and heartBeat bounds how long it can hold the connection — six
+	// unanswered OPTIONS close it while serve() is blocked here.
 	//
 	// netStart/netEnd bracket this read for FrameHeaderObserver. The CQL headers
 	// inside are parsed out of memory further down, so timing them there would
@@ -1335,13 +1415,13 @@ func (c *Conn) recvSegment(ctx context.Context) error {
 		return err
 	}
 
-	payload, err := readSegmentPayload(c.r, hdr, c.compressor, &c.segScratch)
+	payload, err := c.readSegmentPayload(hdr)
 	if err != nil {
 		return err
 	}
 	netEnd := c.observedNow()
 
-	if hdr.isSelfContained {
+	if hdr.IsSelfContained {
 		// The segment holds one or more complete CQL frames.
 		return c.processAllFramesInSegment(ctx, bytes.NewReader(payload), netStart, netEnd)
 	}
@@ -1432,7 +1512,7 @@ func (h *headerReader) Read(p []byte) (int, error) {
 // the stream at an unknown offset, so it stays a plain error and takes the
 // connection down rather than mis-framing everything that follows. That is the
 // timeout the re-arm above makes reachable.
-func (c *Conn) readFirstSegmentHeader() (segmentHeader, error) {
+func (c *Conn) readFirstSegmentHeader() (segment.Header, error) {
 	// No type assertion: Conn.r is a connReadSource, so the disarm always applies.
 	c.r.setDisarm(true)
 	defer c.r.setDisarm(false)
@@ -1441,15 +1521,28 @@ func (c *Conn) readFirstSegmentHeader() (segmentHeader, error) {
 	// the count only matters here, where the benign/fatal decision is made.
 	c.headerReader.reset(c.r, c.r)
 
-	hdr, err := readSegmentHeader(&c.headerReader, c.compressor)
+	hdr, err := segment.ReadHeader(&c.headerReader, c.segCompressor != nil)
 	if err != nil {
 		var netErr net.Error
 		if c.headerReader.n == 0 && errors.As(err, &netErr) && netErr.Timeout() {
-			return segmentHeader{}, fmt.Errorf("%w: %w", ErrReadHeaderTimeout, err)
+			return segment.Header{}, fmt.Errorf("%w: %w", ErrReadHeaderTimeout, err)
 		}
-		return segmentHeader{}, err
+		return segment.Header{}, err
 	}
 	return hdr, nil
+}
+
+// readSegmentPayload reads the payload of a segment whose header has already been
+// read, in the layout c.segCompressor selects — nil being the uncompressed one. The
+// narrowing behind that field happened once during the handshake; see
+// Conn.resolveSegmentCompressor.
+//
+// The header readers above take their layout from the same field. They branch on a
+// bool where this branches on the compressor being non-nil, and a connection whose two
+// answers disagreed would read an 8-byte compressed header as a 6-byte uncompressed
+// one and mis-frame everything after it.
+func (c *Conn) readSegmentPayload(hdr segment.Header) ([]byte, error) {
+	return segment.ReadPayload(c.r, hdr, c.segCompressor, &c.segScratch)
 }
 
 // recvSplitFrame reassembles a single CQL frame that the peer split across
@@ -1462,11 +1555,11 @@ func (c *Conn) readFirstSegmentHeader() (segmentHeader, error) {
 // reassembly buffer is allocated exactly once, sized to the frame length the peer
 // declared in the CQL frame header, and appending the arriving payloads is bounded
 // by that length. So neither a lying header nor incremental growth can inflate it:
-// growing a buffer to a maxFrameSize frame would end up holding ~512 MiB for a
+// growing a buffer to a frm.MaxFrameSize frame would end up holding ~512 MiB for a
 // valid 256 MiB response. Ownership of the buffer is then handed to the read
 // framer rather than copied into it, so the frame is never resident twice.
 //
-// The declared length itself is the peer's to choose, up to maxFrameSize, so a
+// The declared length itself is the peer's to choose, up to frm.MaxFrameSize, so a
 // small hostile prologue still buys this one allocation before any body byte has
 // arrived. Accepted deliberately, because it is bounded: at most once per
 // connection — the continuation reads run under ReadTimeout, so a peer that
@@ -1487,6 +1580,10 @@ func (c *Conn) recvSplitFrame(ctx context.Context, first []byte, netStart, netEn
 	// payload plus headSize, because a continuation segment must make progress and
 	// only headSize bytes are needed. Segment payloads alias c.segScratch, so each
 	// has to be copied before the next segment is read.
+	//
+	// first is never tested for emptiness, so a chain may open with an empty segment.
+	// Progress is owed from the second onward (readContinuationSegment) and does not
+	// stack. Observable behaviour: anything re-implementing this reader must match it.
 	if len(first) < headSize {
 		accumulated := append([]byte(nil), first...)
 		for len(accumulated) < headSize {
@@ -1506,7 +1603,7 @@ func (c *Conn) recvSplitFrame(ctx context.Context, first []byte, netStart, netEn
 	if err != nil {
 		return err
 	}
-	if head.Length < 0 || head.Length > maxFrameSize {
+	if head.Length < 0 || head.Length > frm.MaxFrameSize {
 		return fmt.Errorf("gocql: invalid frame body length in segmented frame: %d", head.Length)
 	}
 	total := headSize + head.Length
@@ -1547,14 +1644,14 @@ func (c *Conn) recvSplitFrame(ctx context.Context, first []byte, netStart, netEn
 // payload), is rejected so a hostile peer cannot drive an infinite reassembly
 // loop.
 func (c *Conn) readContinuationSegment() ([]byte, error) {
-	hdr, err := readSegmentHeader(c.r, c.compressor)
+	hdr, err := segment.ReadHeader(c.r, c.segCompressor != nil)
 	if err != nil {
 		return nil, fmt.Errorf("gocql: failed to read continuation segment header: %w", err)
 	}
-	if hdr.isSelfContained {
+	if hdr.IsSelfContained {
 		return nil, fmt.Errorf("gocql: received self-contained segment, but expected a continuation")
 	}
-	payload, err := readSegmentPayload(c.r, hdr, c.compressor, &c.segScratch)
+	payload, err := c.readSegmentPayload(hdr)
 	if err != nil {
 		return nil, fmt.Errorf("gocql: failed to read continuation segment payload: %w", err)
 	}
@@ -1835,6 +1932,11 @@ type callResp struct {
 	framer *framer
 	// err is error encountered, if any.
 	err error
+	// removedFromCalls means the sender already deleted this call from c.calls, so
+	// closeWithError's drain will never see it and the receiver owns releasing the
+	// stream and recycling the callReq. Set by processFrameSource on every outcome
+	// it delivers directly; Conn.closed races this delivery and cannot answer it.
+	removedFromCalls bool
 }
 
 // contextWriter is like io.Writer, but takes context as well.
@@ -2245,11 +2347,8 @@ func (c *Conn) execInternal(ctx context.Context, req frameBuilder, tracer Tracer
 		stopWaiting = true
 		if resp.err != nil {
 			c.releaseReadFramer(resp.framer)
-			if !c.Closed() {
-				// if the connection is closed then we cant release the stream,
-				// this is because the request is still outstanding and we have
-				// been handed another error from another stream which caused the
-				// connection to close.
+			if resp.removedFromCalls {
+				// We own the stream and the callReq; see callResp.removedFromCalls.
 				releaseStream = true
 				recycleCall = true
 			}
@@ -2568,12 +2667,13 @@ func (c *Conn) executeQueryWithMetrics(ctx context.Context, qry *Query, metrics 
 			return &Iter{err: fmt.Errorf("gocql: expected %d values send got %d", info.request.actualColCount, len(values))}
 		}
 
-		params.values = make([]queryValues, len(values))
+		params.values = getQueryValues(len(values))
 		for i := 0; i < len(values); i++ {
 			v := &params.values[i]
 			value := values[i]
 			typ := info.request.columns[i].TypeInfo
 			if err := marshalQueryValue(typ, value, v); err != nil {
+				putQueryValues(params.values)
 				return &Iter{err: err}
 			}
 		}
@@ -2613,6 +2713,9 @@ func (c *Conn) executeQueryWithMetrics(ctx context.Context, qry *Query, metrics 
 	}
 
 	framer, err := c.exec(ctx, frame, qry.trace, qry.GetRequestTimeout())
+	// Return pooled values; consumed by buildFrame at the start of c.exec().
+	// Returned after round-trip (not right after serialization) for simplicity.
+	putQueryValues(params.values)
 	if err != nil {
 		return &Iter{err: err}
 	}
@@ -2882,6 +2985,7 @@ func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
 		if len(entry.Args) > 0 || entry.binding != nil {
 			info, err := c.prepareStatement(batch.Context(), entry.Stmt, batch.trace, usedKeyspace, batch.GetRequestTimeout())
 			if err != nil {
+				putBatchQueryValues(req.statements)
 				return &Iter{err: err}
 			}
 
@@ -2896,24 +3000,27 @@ func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
 					PKeyColumns: info.request.pkeyColumns,
 				})
 				if err != nil {
+					putBatchQueryValues(req.statements)
 					return &Iter{err: err}
 				}
 			}
 
 			if len(values) != info.request.actualColCount {
+				putBatchQueryValues(req.statements)
 				return &Iter{err: fmt.Errorf("gocql: batch statement %d expected %d values send got %d", i, info.request.actualColCount, len(values))}
 			}
 
 			b.preparedID = info.id
 			stmts[string(info.id)] = entry.Stmt
 
-			b.values = make([]queryValues, info.request.actualColCount)
+			b.values = getQueryValues(info.request.actualColCount)
 
 			for j := 0; j < info.request.actualColCount; j++ {
 				v := &b.values[j]
 				value := values[j]
 				typ := info.request.columns[j].TypeInfo
 				if err := marshalQueryValue(typ, value, v); err != nil {
+					putBatchQueryValues(req.statements)
 					return &Iter{err: err}
 				}
 			}
@@ -2934,6 +3041,9 @@ func (c *Conn) executeBatch(ctx context.Context, batch *Batch) (iter *Iter) {
 
 	// TODO: should batch support tracing?
 	framer, err := c.exec(batch.Context(), req, batch.trace, batch.GetRequestTimeout())
+	// Return pooled values; consumed by buildFrame at the start of c.exec().
+	// Returned after round-trip (not right after serialization) for simplicity.
+	putBatchQueryValues(req.statements)
 	if err != nil {
 		return &Iter{err: err}
 	}

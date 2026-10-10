@@ -63,22 +63,17 @@ type ClientRoutesConfig struct {
 	// release.
 	BlockUnknownEndpoints bool
 
-	// EnableShardAwareness controls whether the driver should use shard-aware
-	// connections when using ClientRoutes (PrivateLink).
+	// EnableShardAwareness controls advanced shard awareness for ClientRoutes:
+	// choosing a connection's source port so Scylla assigns it to a desired shard.
+	// Per-shard connection pooling and token-to-shard routing remain enabled when
+	// this option is false.
 	//
-	// By default this is false because NAT typically breaks shard-awareness.
-	// Shard-aware routing relies on the driver knowing the source port of connections,
-	// which NAT devices modify, making it impossible for the server to route
-	// requests to the correct shard.
+	// By default this is false because PrivateLink paths commonly use NAT.
 	//
-	// However, in some deployments shard-awareness can still work:
-	//   - When using PROXY Protocol v2, the original source port is preserved
-	//     in the protocol header. See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
-	//   - When using direct connections without NAT (e.g., VPC peering)
-	//   - When the load balancer/proxy is shard-aware itself
-	//
-	// Set this to true only if your network setup preserves or correctly handles
-	// the source port information needed for shard-aware routing.
+	// Set this to true only when the client-route endpoint forwards to Scylla's
+	// Proxy Protocol v2 shard-aware CQL listener and the proxy supplies the original
+	// client source port in the Proxy Protocol v2 header. ClusterConfig's
+	// DisableShardAwarePort setting takes precedence.
 	EnableShardAwareness bool
 }
 

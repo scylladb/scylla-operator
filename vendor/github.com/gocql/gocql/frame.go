@@ -32,13 +32,14 @@ import (
 	"io"
 	"math"
 	"net"
-	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	frm "github.com/gocql/gocql/internal/frame"
+	"github.com/gocql/gocql/internal/segment"
 )
 
 type unsetColumn struct{}
@@ -84,18 +85,6 @@ const (
 	// CASSGO-88 (https://issues.apache.org/jira/browse/CASSGO-88). Supporting a
 	// beta dialect would need an explicit opt-in bound to that specific dialect.
 	protoVersion5 = 0x05
-
-	maxFrameSize = 256 * 1024 * 1024
-
-	// maxSegmentPayloadSize is the largest payload a single v5 transport segment
-	// may carry (2^17 - 1). Used as a bound check when building segments.
-	maxSegmentPayloadSize = 0x1FFFF
-
-	// segmentPayloadLenMask extracts the 17-bit payload-length field from a
-	// decoded segment header. Numerically equal to maxSegmentPayloadSize, but
-	// kept separate: one is a limit, the other is a bit mask, and conflating
-	// them obscures why no explicit bound check is needed after masking.
-	segmentPayloadLenMask = 0x1FFFF
 )
 
 // DEPRECATED use Consistency type, SerialConsistency is now an alias for backwards compatibility.
@@ -414,7 +403,7 @@ func (f *framer) readFrame(r io.Reader, head *frm.FrameHeader) error {
 	// callers that synthesise a header.
 	if head.Length < 0 {
 		return fmt.Errorf("frame body length can not be less than 0: %d", head.Length)
-	} else if head.Length > maxFrameSize {
+	} else if head.Length > frm.MaxFrameSize {
 		// need to free up the connection to be used again
 		_, err := io.CopyN(io.Discard, r, int64(head.Length))
 		if err != nil {
@@ -463,7 +452,7 @@ func (f *framer) readFrame(r io.Reader, head *frm.FrameHeader) error {
 // instead of reading and copying it as readFrame does. It is used for a v5 frame
 // reassembled from several transport segments (Conn.recvSplitFrame): that buffer
 // is already exactly frame-sized, so copying it would mean holding the frame twice
-// — 512 MiB for a maxFrameSize response.
+// — 512 MiB for a frm.MaxFrameSize response.
 //
 // f.readBuffer is deliberately left pointing at the pooled buffer, so releasing
 // the framer drops the adopted body instead of retaining an outsized buffer in the
@@ -479,15 +468,40 @@ func (f *framer) adoptFrameBody(body []byte, head *frm.FrameHeader) error {
 	return nil
 }
 
+// malformedFrameError carries a read-path failure out of the helpers through
+// panic/recover. It is the only panic value parseFrame converts into an error:
+// anything else unwinding through it comes from a driver bug, and returning that as
+// an error would file the bug against the peer.
+type malformedFrameError struct{ err error }
+
+func (e malformedFrameError) Error() string { return e.err.Error() }
+
+func (e malformedFrameError) Unwrap() error { return e.err }
+
+// malformedFramef builds the value the read helpers panic with. Every panic under
+// parseFrame goes through it; a bare panic(fmt.Errorf(...)) is not converted.
+func malformedFramef(format string, a ...any) malformedFrameError {
+	return malformedFrameError{err: fmt.Errorf(format, a...)}
+}
+
+// recoverMalformedFrame turns a read-path panic into a returned error and re-panics
+// everything else -- a runtime.Error, a panic("..."), or a plain error from code that
+// does not speak this contract. See the read-helper rules above readByte.
+func recoverMalformedFrame(r any, err *error) {
+	if r == nil {
+		return
+	}
+	mf, ok := r.(malformedFrameError)
+	if !ok {
+		panic(r)
+	}
+	*err = mf.Unwrap()
+}
+
 func (f *framer) parseFrame() (frame frame, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			if _, ok := r.(runtime.Error); ok {
-				panic(r)
-			}
-			err = r.(error)
-		}
-	}()
+	// The read helpers panic with a malformedFrameError instead of returning one (see
+	// readByte); this recover is what makes a malformed frame a protocol error.
+	defer func() { recoverMalformedFrame(recover(), &err) }()
 
 	if f.header.Version.Request() {
 		return nil, NewErrProtocol("got a request frame from server: %v", f.header.Version)
@@ -688,9 +702,16 @@ func (f *framer) setLength(length int) {
 
 func (f *framer) finish() error {
 	bufLen := len(f.buf)
-	if bufLen > maxFrameSize {
-		// huge app frame, lets remove it so it doesn't bloat the heap
+	if bufLen > frm.MaxFrameSize {
+		// huge app frame, lets remove it so it doesn't bloat the heap.
+		//
+		// readBuffer is reset with it. On a write framer it is never read -- only
+		// releaseRead realigns buf to it -- but the pool keeps the two aliased to one
+		// array, and replacing buf alone breaks that: the framer would go back to the
+		// pool holding this 128-byte buf plus the previous, EWMA-sized readBuffer that
+		// nothing can reach. Two arrays where the pool intends one.
 		f.buf = make([]byte, defaultBufSize)
+		f.readBuffer = f.buf
 		return ErrFrameTooBig
 	}
 
@@ -703,6 +724,24 @@ func (f *framer) finish() error {
 		compressed, err := f.compressor.Encode(f.buf[headSize:])
 		if err != nil {
 			return err
+		}
+
+		// The check at the top of this function measured the uncompressed body, which
+		// is the wrong side of Encode to bound. Snappy's block format has no stored-raw
+		// mode, so an incompressible body comes back larger than it went in: a body that
+		// fit the limit can exceed it once compressed. setLength below writes the
+		// compressed length, and that is the number this driver's own reader and the
+		// server both bound, so without this the frame goes out declaring a length its
+		// peer will refuse -- a remote failure, or a killed connection, in place of a
+		// local error the caller can act on.
+		//
+		// Checked before the append so an oversized result is never copied into the
+		// frame, and f.buf is dropped -- with readBuffer, for the reasons the
+		// pre-check gives -- because at this size it would otherwise sit in the pool.
+		if len(compressed) > frm.MaxFrameSize {
+			f.buf = make([]byte, defaultBufSize)
+			f.readBuffer = f.buf
+			return ErrFrameTooBig
 		}
 
 		f.buf = append(f.buf[:headSize], compressed...)
@@ -721,7 +760,7 @@ func (f *framer) writeTo(w io.Writer) error {
 
 func (f *framer) readTrace() {
 	if len(f.buf) < 16 {
-		panic(fmt.Errorf("not enough bytes in buffer to read trace uuid require 16 got: %d", len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read trace uuid require 16 got: %d", len(f.buf)))
 	}
 	if len(f.traceID) != 16 {
 		f.traceID = make([]byte, 16)
@@ -862,23 +901,54 @@ func (f *framer) readTypeInfo() TypeInfo {
 	case TypeCustom:
 		vectorTypePrefix := apacheCassandraTypePrefix + "VectorType"
 		if strings.HasPrefix(simple.custom, vectorTypePrefix) {
-			spec := strings.TrimPrefix(simple.custom, vectorTypePrefix)
-			spec = spec[1 : len(spec)-1] // remove parenthesis
-			idx := strings.LastIndex(spec, ",")
-			typeStr := spec[:idx]
-			dimStr := spec[idx+1:]
-			subType := getCassandraLongType(strings.TrimSpace(typeStr), f.proto, nopLogger{})
-			dim, _ := strconv.Atoi(strings.TrimSpace(dimStr))
-			vector := VectorType{
-				NativeType: simple,
-				SubType:    subType,
-				Dimensions: dim,
-			}
-			return vector
+			return f.readVectorTypeInfo(simple, vectorTypePrefix)
 		}
 	}
 
 	return simple
+}
+
+// readVectorTypeInfo resolves a custom type named "<prefix>(<subtype>, <dimensions>)".
+// Every part is checked before it is sliced: an unchecked index raises a
+// runtime.Error, which parseFrame's recover re-panics by design. A name that only
+// starts with the prefix is not a vector and degrades to the plain custom type.
+func (f *framer) readVectorTypeInfo(simple NativeType, vectorTypePrefix string) TypeInfo {
+	rest := simple.custom[len(vectorTypePrefix):]
+	switch {
+	case rest == "":
+		panic(malformedFramef("invalid vector type %q: expected %s(<type>, <dimensions>)", simple.custom, vectorTypePrefix))
+	case rest[0] != '(':
+		// Not a vector: a different type that shares the prefix.
+		return simple
+	case rest[len(rest)-1] != ')':
+		panic(malformedFramef("invalid vector type %q: unterminated argument list", simple.custom))
+	}
+
+	// The dimensions are the last argument, so the last comma separates them from
+	// a subtype that may itself be parenthesised and hold commas of its own.
+	spec := rest[1 : len(rest)-1]
+	idx := strings.LastIndex(spec, ",")
+	if idx < 0 {
+		panic(malformedFramef("invalid vector type %q: missing dimensions", simple.custom))
+	}
+
+	typeStr := strings.TrimSpace(spec[:idx])
+	if typeStr == "" {
+		panic(malformedFramef("invalid vector type %q: missing element type", simple.custom))
+	}
+
+	// Cassandra requires a positive dimension, and a negative one reaches
+	// reflect.MakeSlice in unmarshalVector, outside any recover.
+	dim, err := strconv.Atoi(strings.TrimSpace(spec[idx+1:]))
+	if err != nil || dim < 1 {
+		panic(malformedFramef("invalid vector type %q: dimensions must be a positive integer", simple.custom))
+	}
+
+	return VectorType{
+		NativeType: simple,
+		SubType:    getCassandraLongType(typeStr, f.proto, nopLogger{}),
+		Dimensions: dim,
+	}
 }
 
 type preparedMetadata struct {
@@ -903,7 +973,7 @@ func (f *framer) parsePreparedMetadata() preparedMetadata {
 	meta.flags = f.readInt()
 	meta.colCount = f.readInt()
 	if meta.colCount < 0 {
-		panic(fmt.Errorf("received negative column count: %d", meta.colCount))
+		panic(malformedFramef("received negative column count: %d", meta.colCount))
 	}
 	meta.actualColCount = meta.colCount
 
@@ -918,7 +988,7 @@ func (f *framer) parsePreparedMetadata() preparedMetadata {
 		// actual frame size instead of a peer-declared count, so a small malformed
 		// frame cannot force a large allocation.
 		if pkeyCount < 0 || pkeyCount > len(f.buf)/2 {
-			panic(fmt.Errorf("invalid partition key count %d (remaining %d bytes)", pkeyCount, len(f.buf)))
+			panic(malformedFramef("invalid partition key count %d (remaining %d bytes)", pkeyCount, len(f.buf)))
 		}
 		pkeys := make([]int, pkeyCount)
 		for i := 0; i < pkeyCount; i++ {
@@ -1051,7 +1121,7 @@ func (f *framer) parseResultMetadata() resultMetadata {
 	meta.flags = f.readInt()
 	meta.colCount = f.readInt()
 	if meta.colCount < 0 {
-		panic(fmt.Errorf("received negative column count: %d", meta.colCount))
+		panic(malformedFramef("received negative column count: %d", meta.colCount))
 	}
 	meta.actualColCount = meta.colCount
 
@@ -1154,7 +1224,7 @@ func (f *framer) parseResultRows() frame {
 
 	result.numRows = f.readInt()
 	if result.numRows < 0 {
-		panic(fmt.Errorf("invalid row_count in result frame: %d", result.numRows))
+		panic(malformedFramef("invalid row_count in result frame: %d", result.numRows))
 	}
 
 	return result
@@ -1265,7 +1335,7 @@ func (f *framer) parseResultSchemaChange() frame {
 			Args:        f.readStringList(),
 		}
 	default:
-		panic(fmt.Errorf("gocql: unknown SCHEMA_CHANGE target: %q change: %q", target, change))
+		panic(malformedFramef("gocql: unknown SCHEMA_CHANGE target: %q change: %q", target, change))
 	}
 }
 
@@ -1317,7 +1387,7 @@ func (f *framer) parseEventFrame() frame {
 			HostIDs:       f.readStringList(),
 		}
 	default:
-		panic(fmt.Errorf("gocql: unknown event type: %q", eventType))
+		panic(malformedFramef("gocql: unknown event type: %q", eventType))
 	}
 
 }
@@ -1344,6 +1414,70 @@ type queryValues struct {
 	name    string
 	value   []byte
 	isUnset bool
+}
+
+// queryValuesPools is a set of size-bucketed sync.Pools for []queryValues slices.
+// Buckets: 0→cap 8, 1→cap 16, 2→cap 32, 3→cap 64, 4→cap 128.
+// Slices larger than 128 are not pooled.
+var queryValuesPools [5]sync.Pool
+
+// queryValuesBucket returns the pool bucket index for a given count.
+// Returns -1 if the count exceeds the maximum pooled size.
+func queryValuesBucket(n int) int {
+	switch {
+	case n <= 8:
+		return 0
+	case n <= 16:
+		return 1
+	case n <= 32:
+		return 2
+	case n <= 64:
+		return 3
+	case n <= 128:
+		return 4
+	default:
+		return -1
+	}
+}
+
+// getQueryValues returns a []queryValues of length n from the pool.
+// The returned slice elements are zeroed.
+func getQueryValues(n int) []queryValues {
+	bucket := queryValuesBucket(n)
+	if bucket < 0 {
+		return make([]queryValues, n)
+	}
+	if v := queryValuesPools[bucket].Get(); v != nil {
+		s := v.([]queryValues)
+		return s[:n]
+	}
+	// Allocate with the bucket's capacity so future returns fit.
+	return make([]queryValues, n, 8<<bucket)
+}
+
+// putQueryValues returns a []queryValues slice to the pool.
+// It clears all elements to release references to marshaled byte slices.
+// Only slices originally obtained from getQueryValues are pooled;
+// slices with non-standard capacities are silently discarded.
+func putQueryValues(s []queryValues) {
+	if s == nil {
+		return
+	}
+	bucket := queryValuesBucket(cap(s))
+	if bucket < 0 || cap(s) != 8<<bucket {
+		return
+	}
+	// Clear to release references (name strings, value []byte).
+	clear(s[:cap(s)])
+	queryValuesPools[bucket].Put(s[:cap(s)])
+}
+
+// putBatchQueryValues returns all pooled []queryValues slices from batch statements.
+func putBatchQueryValues(stmts []batchStatment) {
+	for i := range stmts {
+		putQueryValues(stmts[i].values)
+		stmts[i].values = nil
+	}
 }
 
 type queryParams struct {
@@ -1384,6 +1518,22 @@ func (f *framer) validateV5Options(keyspace string, nowInSeconds *int) error {
 		if v := *nowInSeconds; v < math.MinInt32 || v > math.MaxInt32 {
 			return fmt.Errorf("gocql: nowInSeconds value %d overflows int32", v)
 		}
+	}
+	return nil
+}
+
+// validateShortBytes rejects a value too long for the [short bytes] wire type, whose
+// length field is two bytes. Both values written with it -- a prepared id and a v5
+// result metadata id -- are opaque server-issued tokens far below the limit, so this
+// is about what a mis-sized one would do rather than about a value anyone expects to
+// see: writeShortBytes would truncate the length silently and emit a frame whose
+// header disagrees with its payload, desynchronising the connection.
+//
+// The single source of truth for the check, like validateV5Options above, so the
+// callers that hoist it and writeShortBytes itself cannot drift apart.
+func validateShortBytes(field string, p []byte) error {
+	if len(p) > math.MaxUint16 {
+		return fmt.Errorf("gocql: %s is %d bytes, which overflows the 2-byte length of a [short bytes] value", field, len(p))
 	}
 	return nil
 }
@@ -1557,16 +1707,29 @@ func (f *framer) writeExecuteFrame(streamID int, preparedID, resultMetadataID []
 	if err := f.validateV5Options(params.keyspace, params.nowInSeconds); err != nil {
 		return err
 	}
+	writeResultMetadataID := f.proto > protoVersion4 || f.scyllaUseMetadataID
+	if err := validateShortBytes("prepared id", preparedID); err != nil {
+		return err
+	}
+	if writeResultMetadataID {
+		if err := validateShortBytes("result metadata id", resultMetadataID); err != nil {
+			return err
+		}
+	}
 
 	if len(*customPayload) > 0 {
 		f.payload()
 	}
 	f.writeHeader(f.flags, frm.OpExecute, streamID)
 	f.writeCustomPayload(customPayload)
-	f.writeShortBytes(preparedID)
+	if err := f.writeShortBytes(preparedID); err != nil {
+		return err
+	}
 
-	if f.proto > protoVersion4 || f.scyllaUseMetadataID {
-		f.writeShortBytes(resultMetadataID)
+	if writeResultMetadataID {
+		if err := f.writeShortBytes(resultMetadataID); err != nil {
+			return err
+		}
 	}
 
 	if err := f.writeQueryParams(params); err != nil {
@@ -1616,6 +1779,9 @@ func (f *framer) writeBatchFrame(streamID int, w *writeBatchFrame, customPayload
 				return fmt.Errorf("gocql: named query values are not supported in batches, please see https://issues.apache.org/jira/browse/CASSANDRA-10246")
 			}
 		}
+		if err := validateShortBytes("prepared id", w.statements[i].preparedID); err != nil {
+			return err
+		}
 	}
 
 	if len(customPayload) > 0 {
@@ -1637,7 +1803,9 @@ func (f *framer) writeBatchFrame(streamID int, w *writeBatchFrame, customPayload
 			f.writeLongString(b.statement)
 		} else {
 			f.writeByte(1)
-			f.writeShortBytes(b.preparedID)
+			if err := f.writeShortBytes(b.preparedID); err != nil {
+				return err
+			}
 		}
 
 		f.writeShort(uint16(len(b.values)))
@@ -1735,9 +1903,16 @@ func (f *framer) writeRegisterFrame(streamID int, w *writeRegisterFrame) error {
 	return f.finish()
 }
 
+// The read helpers below bounds-check and then panic instead of returning an error;
+// parseFrame's recover converts it. Two rules keep that working:
+//   - panic with malformedFramef, never a bare fmt.Errorf and never a string:
+//     recoverMalformedFrame converts that one type and re-panics everything else;
+//   - never raise a runtime.Error: bound every index against len(f.buf) and reject
+//     a negative length first -- a negative is not below any length. parseFrame
+//     re-panics a runtime.Error on purpose.
 func (f *framer) readByte() byte {
 	if len(f.buf) < 1 {
-		panic(fmt.Errorf("not enough bytes in buffer to read byte require 1 got: %d", len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read byte require 1 got: %d", len(f.buf)))
 	}
 
 	b := f.buf[0]
@@ -1747,7 +1922,7 @@ func (f *framer) readByte() byte {
 
 func (f *framer) readInt() (n int) {
 	if len(f.buf) < 4 {
-		panic(fmt.Errorf("not enough bytes in buffer to read int require 4 got: %d", len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read int require 4 got: %d", len(f.buf)))
 	}
 
 	n = int(int32(binary.BigEndian.Uint32(f.buf[:4])))
@@ -1757,7 +1932,7 @@ func (f *framer) readInt() (n int) {
 
 func (f *framer) readShort() (n uint16) {
 	if len(f.buf) < 2 {
-		panic(fmt.Errorf("not enough bytes in buffer to read short require 2 got: %d", len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read short require 2 got: %d", len(f.buf)))
 	}
 	n = binary.BigEndian.Uint16(f.buf[:2])
 	f.buf = f.buf[2:]
@@ -1768,7 +1943,7 @@ func (f *framer) readString() (s string) {
 	size := f.readShort()
 
 	if len(f.buf) < int(size) {
-		panic(fmt.Errorf("not enough bytes in buffer to read string require %d got: %d", size, len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read string require %d got: %d", size, len(f.buf)))
 	}
 
 	s = string(f.buf[:size])
@@ -1781,7 +1956,7 @@ func (f *framer) skipString() {
 	size := f.readShort()
 
 	if len(f.buf) < int(size) {
-		panic(fmt.Errorf("not enough bytes in buffer to skip string, requires %d got %d", size, len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to skip string, requires %d got %d", size, len(f.buf)))
 	}
 
 	f.buf = f.buf[size:]
@@ -1790,8 +1965,15 @@ func (f *framer) skipString() {
 func (f *framer) readLongString() (s string) {
 	size := f.readInt()
 
+	// A [long string]'s length is signed, and unlike [bytes] a negative is malformed,
+	// not null. len(f.buf) is never below a negative, so without this f.buf[:size]
+	// raises a runtime.Error that parseFrame re-panics.
+	if size < 0 {
+		panic(malformedFramef("invalid long string length: %d", size))
+	}
+
 	if len(f.buf) < size {
-		panic(fmt.Errorf("not enough bytes in buffer to read long string require %d got: %d", size, len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read long string require %d got: %d", size, len(f.buf)))
 	}
 
 	s = string(f.buf[:size])
@@ -1833,7 +2015,7 @@ func (f *framer) readBytesCopy() []byte {
 	}
 
 	if len(f.buf) < size {
-		panic(fmt.Errorf("not enough bytes in buffer to read bytes require %d got: %d", size, len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read bytes require %d got: %d", size, len(f.buf)))
 	}
 
 	out := make([]byte, size)
@@ -1845,7 +2027,7 @@ func (f *framer) readBytesCopy() []byte {
 func (f *framer) readShortBytesCopy() []byte {
 	size := f.readShort()
 	if len(f.buf) < int(size) {
-		panic(fmt.Errorf("not enough bytes in buffer to read short bytes: require %d got %d", size, len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read short bytes: require %d got %d", size, len(f.buf)))
 	}
 
 	out := make([]byte, size)
@@ -1857,18 +2039,18 @@ func (f *framer) readShortBytesCopy() []byte {
 
 func (f *framer) readInetAdressOnly() net.IP {
 	if len(f.buf) < 1 {
-		panic(fmt.Errorf("not enough bytes in buffer to read inet size require %d got: %d", 1, len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read inet size require %d got: %d", 1, len(f.buf)))
 	}
 
 	size := f.buf[0]
 	f.buf = f.buf[1:]
 
 	if !(size == 4 || size == 16) {
-		panic(fmt.Errorf("invalid IP size: %d", size))
+		panic(malformedFramef("invalid IP size: %d", size))
 	}
 
 	if len(f.buf) < int(size) {
-		panic(fmt.Errorf("not enough bytes in buffer to read inet require %d got: %d", size, len(f.buf)))
+		panic(malformedFramef("not enough bytes in buffer to read inet require %d got: %d", size, len(f.buf)))
 	}
 
 	ip := make(net.IP, size)
@@ -2039,9 +2221,16 @@ func (f *framer) writeBytes(p []byte) {
 	}
 }
 
-func (f *framer) writeShortBytes(p []byte) {
+// writeShortBytes writes a [short bytes] value. Validated again here, not only in the
+// callers that hoist it before writing any byte: this is package-internal and nothing
+// else would enforce the precondition, and uint16(len(p)) would otherwise truncate.
+func (f *framer) writeShortBytes(p []byte) error {
+	if err := validateShortBytes("value", p); err != nil {
+		return err
+	}
 	f.writeShort(uint16(len(p)))
 	f.buf = append(f.buf, p...)
+	return nil
 }
 
 func (f *framer) writeConsistency(cons Consistency) {
@@ -2087,44 +2276,49 @@ func (f *framer) prepareModernLayout() error {
 		return fmt.Errorf("gocql: modern layout is not supported with protocol version %d (requires v5+)", f.proto)
 	}
 
+	// Narrow the compressor once per frame rather than once per segment: a frame past
+	// segment.MaxPayloadSize is segmented by the loop below, and every one of those
+	// segments takes the same layout from the same compressor, which is fixed for the
+	// life of the framer.
+	//
+	// The narrowing is defensive — ClusterConfig.Validate rejects a compressor without
+	// segment support on v5 before a connection is dialed, and
+	// Conn.resolveSegmentCompressor re-checks it at the handshake — and is reported
+	// rather than ignored, because falling back to the uncompressed layout would
+	// produce segments the peer decodes with the wrong one.
+	segComp, err := asSegmentCompressor(f.compressor)
+	if err != nil {
+		return err
+	}
+
 	// Segment the frame via a local cursor rather than mutating f.buf as we go,
 	// and only swap the buffers once the whole frame has been segmented
 	// successfully, so that an error partway through leaves f.buf byte-for-byte
 	// intact.
 	src := f.buf
-	wire := f.growWireBuf(segmentedFrameSize(len(src), f.compressor != nil))
+	wire := f.growWireBuf(segment.EncodedSize(len(src), segComp != nil))
 
-	var err error
 	selfContained := true
 
 	// Process the buffer in chunks if it exceeds the max payload size
-	for len(src) > maxSegmentPayloadSize {
-		wire, err = f.appendSegment(wire, src[:maxSegmentPayloadSize], false)
+	for len(src) > segment.MaxPayloadSize {
+		wire, err = segment.Append(wire, src[:segment.MaxPayloadSize], false, segComp)
 		if err != nil {
 			return err
 		}
 
-		src = src[maxSegmentPayloadSize:]
+		src = src[segment.MaxPayloadSize:]
 		selfContained = false
 	}
 
 	// Process the remaining buffer
-	if wire, err = f.appendSegment(wire, src, selfContained); err != nil {
+	if wire, err = segment.Append(wire, src, selfContained, segComp); err != nil {
 		return err
 	}
 
 	f.wireBuf, f.buf = f.buf, wire
 
 	return nil
-}
-
-// appendSegment encodes payload as one transport segment appended to dst, in the
-// layout matching the framer's compressor.
-func (f *framer) appendSegment(dst, payload []byte, isSelfContained bool) ([]byte, error) {
-	if f.compressor != nil {
-		return appendCompressedSegment(dst, payload, isSelfContained, f.compressor)
-	}
-	return appendUncompressedSegment(dst, payload, isSelfContained)
 }
 
 // growWireBuf returns f.wireBuf emptied and with room for at least n bytes,
@@ -2134,29 +2328,4 @@ func (f *framer) growWireBuf(n int) []byte {
 		f.wireBuf = make([]byte, 0, n)
 	}
 	return f.wireBuf[:0]
-}
-
-// segmentedFrameSize returns how many bytes a rawLen-byte CQL frame occupies once
-// segmented, so the wire buffer can be sized before anything is encoded into it.
-// For the compressed layout this is an upper bound rather than the exact size:
-// compressed payloads are usually smaller, but a compressor may also return more
-// bytes than it was given, so room for one segment's worth of expansion is added.
-func segmentedFrameSize(rawLen int, compressed bool) int {
-	const (
-		// 3-byte header + CRC24 + payload CRC32.
-		uncompressedSegmentOverhead = 3 + crc24Size + crc32Size
-		// 5-byte header + CRC24 + payload CRC32.
-		compressedSegmentOverhead = 5 + crc24Size + crc32Size
-		// Room for a maximum-size payload growing under compression, matching
-		// lz4's block bound (len + len/255 + 16). A compressor that expands more
-		// than this is still handled correctly, it only makes the wire buffer grow
-		// once.
-		compressionSlack = maxSegmentPayloadSize/255 + 16
-	)
-
-	segments := rawLen/maxSegmentPayloadSize + 1
-	if compressed {
-		return rawLen + segments*compressedSegmentOverhead + compressionSlack
-	}
-	return rawLen + segments*uncompressedSegmentOverhead
 }

@@ -65,6 +65,30 @@ func (h tokenRingReplicas) replicasFor(t Token) *hostTokens {
 	return &h[p]
 }
 
+// replicasForInt64 is replicasFor specialized for an already-unboxed int64Token,
+// avoiding a Token-interface comparison on every token-aware routing decision.
+func (h tokenRingReplicas) replicasForInt64(t int64Token) *hostTokens {
+	if len(h) == 0 {
+		return nil
+	}
+
+	p := sort.Search(len(h), func(i int) bool {
+		if ht, ok := h[i].token.(int64Token); ok {
+			return ht >= t
+		}
+		// Ring token type differs from int64Token (mismatched partitioner) —
+		// fall back to the boxed comparison, matching replicasFor's panic-or-not parity.
+		return !h[i].token.Less(t)
+	})
+
+	if p >= len(h) {
+		// rollover
+		p = 0
+	}
+
+	return &h[p]
+}
+
 type placementStrategy interface {
 	replicaMap(tokenRing *tokenRing) tokenRingReplicas
 	replicationFactor(dc string) int

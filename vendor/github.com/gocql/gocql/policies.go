@@ -480,6 +480,13 @@ type SelectedHost interface {
 	Mark(error)
 }
 
+// int64TokenSelectedHost is an optional fast path: SelectedHost implementations
+// that resolve routing via an int64Token expose the raw value so the shard-aware
+// conn picker can consume it without boxing it into the Token interface.
+type int64TokenSelectedHost interface {
+	TokenInt64() (int64Token, bool)
+}
+
 type selectedHost struct {
 	info  *HostInfo
 	token Token
@@ -493,7 +500,33 @@ func (host selectedHost) Token() Token {
 	return host.token
 }
 
+func (host selectedHost) TokenInt64() (int64Token, bool) {
+	return 0, false
+}
+
 func (host selectedHost) Mark(err error) {}
+
+// int64SelectedHost is the fast-path variant of selectedHost: it carries the
+// routing token as a raw int64 instead of a boxed Token, so shard-aware conn
+// picking consumes it without an interface allocation.
+type int64SelectedHost struct {
+	info        *HostInfo
+	tokenCasted int64Token
+}
+
+func (host int64SelectedHost) Info() *HostInfo {
+	return host.info
+}
+
+func (host int64SelectedHost) Token() Token {
+	return host.tokenCasted
+}
+
+func (host int64SelectedHost) TokenInt64() (int64Token, bool) {
+	return host.tokenCasted, true
+}
+
+func (host int64SelectedHost) Mark(err error) {}
 
 func newSingleHost(info *HostInfo, maxRetries byte, retryDelay time.Duration) *singleHost {
 	return &singleHost{info: info, maxRetries: maxRetries, delay: retryDelay}
@@ -936,8 +969,18 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 		partitioner = meta.tokenRing.partitioner
 	}
 
-	token := partitioner.Hash(routingKey)
-	tokenCasted, isInt64Token := token.(int64Token)
+	// Fast path: use the raw int64 hash when available, avoiding a Token-boxing
+	// allocation. Falls back to Hash() otherwise (see int64Hasher in token.go).
+	var token Token
+	var tokenCasted int64Token
+	var isInt64Token bool
+	if h64, ok := partitioner.(int64Hasher); ok {
+		tokenCasted = int64Token(h64.hashInt64(routingKey))
+		isInt64Token = true
+	} else {
+		token = partitioner.Hash(routingKey)
+		tokenCasted, isInt64Token = token.(int64Token)
+	}
 
 	var replicas []*HostInfo
 
@@ -956,7 +999,12 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 	}
 
 	if len(replicas) == 0 {
-		ht := meta.replicas[qry.Keyspace()].replicasFor(token)
+		var ht *hostTokens
+		if isInt64Token {
+			ht = meta.replicas[qry.Keyspace()].replicasForInt64(tokenCasted)
+		} else {
+			ht = meta.replicas[qry.Keyspace()].replicasFor(token)
+		}
 		if ht != nil {
 			needsMutation := t.shuffleReplicas || t.avoidSlowReplicas
 			if needsMutation {
@@ -970,6 +1018,11 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 	}
 
 	if len(replicas) == 0 {
+		// Rare fallback (no tablet/replica-map match): GetHostForToken needs a
+		// boxed Token, so box only here instead of on every query.
+		if token == nil {
+			token = tokenCasted
+		}
 		host, _ := meta.tokenRing.GetHostForToken(token)
 		replicas = []*HostInfo{host}
 	}
@@ -1029,6 +1082,9 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 
 			if h.IsUp() {
 				used.add(h)
+				if token == nil {
+					return int64SelectedHost{info: h, tokenCasted: tokenCasted}
+				}
 				return selectedHost{info: h, token: token}
 			}
 		}
@@ -1045,6 +1101,9 @@ func (t *tokenAwareHostPolicy) Pick(qry ExecutableQuery) NextHost {
 
 				if h.IsUp() {
 					used.add(h)
+					if token == nil {
+						return int64SelectedHost{info: h, tokenCasted: tokenCasted}
+					}
 					return selectedHost{info: h, token: token}
 				}
 			}

@@ -53,6 +53,12 @@ type Token interface {
 	Less(Token) bool
 }
 
+// int64Hasher is an optional fast path avoiding Hash()'s Token-boxing
+// allocation; Pick uses the raw int64 when a Partitioner implements it.
+type int64Hasher interface {
+	hashInt64(partitionKey []byte) int64
+}
+
 // murmur3 partitioner
 type murmur3Partitioner struct{}
 
@@ -61,9 +67,14 @@ func (p murmur3Partitioner) Name() string {
 }
 
 func (p murmur3Partitioner) Hash(partitionKey []byte) Token {
-	h1 := murmur.Murmur3H1(partitionKey)
-	return int64Token(h1)
+	return int64Token(p.hashInt64(partitionKey))
 }
+
+func (p murmur3Partitioner) hashInt64(partitionKey []byte) int64 {
+	return murmur.Murmur3H1(partitionKey)
+}
+
+var _ int64Hasher = murmur3Partitioner{}
 
 // murmur3 little-endian, 128-bit hash, but returns only h1
 func (p murmur3Partitioner) ParseString(str string) Token {

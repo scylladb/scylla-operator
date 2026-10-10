@@ -19,6 +19,11 @@ testdata/pki/*.srl
 docs/_build/
 docs/source/.doctrees
 
+# Code coverage reports (see `make coverage-report` / .github/workflows/coverage.yml)
+.coverage/
+coverage-root.*
+coverage-lz4.*
+
 TODO*.md
 
 # Codex - AI assistant metadata

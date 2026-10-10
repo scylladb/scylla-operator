@@ -313,8 +313,10 @@ type ClusterConfig struct {
 	// Default: true, and has no effect on a connection that exchanges result
 	// metadata IDs.
 	DisableSkipMetadata bool
-	// DisableShardAwarePort will prevent the driver from connecting to Scylla's shard-aware port,
-	// even if there are nodes in the cluster that support it.
+	// DisableShardAwarePort disables advanced shard awareness: the driver will not
+	// choose a source port and connect through Scylla's shard-aware port to target
+	// a desired shard. Per-shard connection pooling and token-to-shard routing remain
+	// enabled through the regular CQL port.
 	//
 	// It is generally recommended to leave this option turned off because gocql can use
 	// the shard-aware port to make the process of establishing more robust.
@@ -557,6 +559,30 @@ func WithTable(tableName string) func(*ClientRoutesConfig) {
 	}
 }
 
+// WithShardAwareness controls whether client routes use advanced shard awareness,
+// where the driver chooses a source port to target a desired shard. It is disabled
+// by default; per-shard pooling and token-to-shard routing remain enabled.
+//
+// Enable it only when the client-route endpoint forwards to Scylla's Proxy
+// Protocol v2 shard-aware CQL listener and the proxy supplies the original client
+// source port. ClusterConfig.DisableShardAwarePort takes precedence.
+func WithShardAwareness(enabled bool) func(*ClientRoutesConfig) {
+	return func(cfg *ClientRoutesConfig) {
+		cfg.EnableShardAwareness = enabled
+	}
+}
+
+// WithClientRoutes returns a cluster option that enables routing through
+// ScyllaDB Cloud private endpoints using the system.client_routes table.
+//
+// Configure at least one connection ID with WithEndpoints. If cfg.Hosts is empty
+// when this option is applied, non-empty ConnectionAddr values from the endpoints
+// are also used as initial contact points.
+//
+// Advanced shard awareness is disabled by default for client routes because
+// private endpoints commonly use NAT. Use WithShardAwareness to opt in only when
+// the endpoint targets Scylla's Proxy Protocol v2 shard-aware CQL listener and
+// preserves the original client source port. Basic shard awareness remains enabled.
 func WithClientRoutes(opts ...ClientRoutesOption) func(*ClusterConfig) {
 	pmCfg := ClientRoutesConfig{
 		TableName: "system.client_routes",
@@ -574,6 +600,12 @@ func WithClientRoutes(opts ...ClientRoutesOption) func(*ClusterConfig) {
 			}
 		}
 		// TODO: cfg.ControlConnectionOnlyToInitialNodes
+	}
+}
+
+func (cfg *ClusterConfig) applyClientRoutesConfig() {
+	if cfg.ClientRoutesConfig != nil && !cfg.ClientRoutesConfig.EnableShardAwareness {
+		cfg.DisableShardAwarePort = true
 	}
 }
 
@@ -686,8 +718,8 @@ func (cfg *ClusterConfig) Validate() error {
 		return errors.New("MaxWaitSchemaAgreement should be positive time.Duration or zero")
 	}
 
-	if cfg.ProtoVersion < 0 {
-		return errors.New("ProtoVersion should be positive number or zero")
+	if cfg.ProtoVersion < 0 || cfg.ProtoVersion > 127 {
+		return errors.New("ProtoVersion should be between 0 and 127")
 	}
 
 	if cfg.ProtoVersion >= protoVersion5 && cfg.Compressor != nil {

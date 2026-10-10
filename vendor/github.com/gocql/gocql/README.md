@@ -1,7 +1,8 @@
 <div align="center">
 
 ![Build Passing](https://github.com/scylladb/gocql/workflows/Build/badge.svg)
-[![Read the Fork Driver Docs](https://img.shields.io/badge/Read_the_Docs-pkg_go-blue)](https://pkg.go.dev/github.com/scylladb/gocql#section-documentation)
+[![Code Coverage](https://codecov.io/gh/scylladb/gocql/branch/master/graph/badge.svg)](https://codecov.io/gh/scylladb/gocql)
+[![Read the Fork Driver Docs](https://img.shields.io/badge/Read_the_Docs-ScyllaDB-blue)](https://gocql-driver.docs.scylladb.com/stable/)
 [![Protocol Specs](https://img.shields.io/badge/Protocol_Specs-ScyllaDB_Docs-blue)](https://github.com/scylladb/scylladb/blob/master/docs/dev/protocol-extensions.md)
 
 </div>
@@ -36,7 +37,7 @@ It also provides support for shard aware ports, a faster way to connect to all s
 - [3. Quick Start](#3-quick-start)
 - [4. Data Types](#4-data-types)
 - [5. Configuration](#5-configuration)
-  - [5.1 Shard-aware port](#51-shard-aware-port)
+  - [5.1 Advanced shard awareness (shard-aware port)](#51-advanced-shard-awareness-shard-aware-port)
   - [5.2 Client routes (PrivateLink)](#52-client-routes-privatelink)
   - [5.3 Iterator](#53-iterator)
   - [5.4 Compression](#54-compression)
@@ -57,7 +58,7 @@ Add the following line to your project `go.mod` file.
 replace github.com/gocql/gocql => github.com/scylladb/gocql <version>
 ```
 
-Replace `<version>` with a concrete released tag (for example `v1.19.0`) or a
+Replace `<version>` with a concrete released tag (for example `v1.20.0`) or a
 pseudo-version; `latest` is not a valid version in a `replace` directive. Note
 that the module path is `github.com/gocql/gocql` (no `/v2` suffix), so `v2.x`
 tags are not valid replacement versions here — use a `v1` tag or a
@@ -171,9 +172,9 @@ if localDC != "" {
 // c.NumConns = 4
 ```
 
-### 5.1 Shard-aware port
+### 5.1 Advanced shard awareness (shard-aware port)
 
-This version of gocql supports a more robust method of establishing connection for each shard by using _shard aware port_ for native transport.
+Advanced shard awareness lets the driver choose a connection's source port so that Scylla assigns it to a desired shard. It uses the shard-aware native transport port.
 It greatly reduces time and the number of connections needed to establish a connection per shard in some cases - ex. when many clients connect at once, or when there are non-shard-aware clients connected to the same cluster.
 
 If you are using a custom Dialer and if your nodes expose the shard-aware port, it is highly recommended to update it so that it uses a specific source port when connecting.
@@ -216,12 +217,15 @@ The feature is designed to gracefully fall back to the using the non-shard-aware
 The driver will print a warning about misconfigured address translation if it detects it.
 Issues with shard-aware port not being reachable are not reported in non-debug mode, because there is no way to detect it without false positives.
 
-If you suspect that this feature is causing you problems, you can completely disable it by setting the `ClusterConfig.DisableShardAwarePort` flag to true.
+Set `ClusterConfig.DisableShardAwarePort` to true to disable advanced shard awareness. Per-shard connection pooling and token-to-shard routing remain enabled through the regular CQL port.
 
 ### 5.2 Client routes (PrivateLink)
 
 Scylla Cloud exposes a `system.client_routes` table that maps hosts to PrivateLink endpoints.
 When configured, the driver can resolve and connect to the per-host PrivateLink address instead of using the public host IP.
+
+This feature is also known as PrivateLink support, private link, private service connection, AWS PrivateLink (PL) and GCP Private Service Connect (PSC).
+See the [Client routes (PrivateLink / Private Service Connect)](https://gocql-driver.docs.scylladb.com/stable/client-routes.html) documentation page for the full reference.
 
 Use `WithClientRoutes` to enable it and pass the connection IDs you receive from Scylla Cloud:
 
@@ -237,6 +241,23 @@ cluster.WithOptions(
 ```
 
 If you also want to seed the cluster with PrivateLink hostnames, provide `ConnectionAddr` values in the endpoints list.
+
+Advanced shard awareness is disabled by default when client routes are enabled because PrivateLink paths commonly use NAT. Basic shard awareness remains enabled: the driver still maintains per-shard connections and routes requests to the appropriate shard.
+
+Opt in only when the client-route endpoint forwards to Scylla's Proxy Protocol v2 shard-aware CQL listener (`native_shard_aware_transport_port_proxy_protocol`, or `native_shard_aware_transport_port_ssl_proxy_protocol` for TLS) and the proxy sends the original client source port in the Proxy Protocol v2 header:
+
+```go
+cluster.WithOptions(
+	gocql.WithClientRoutes(
+		gocql.WithEndpoints(
+			gocql.ClientRoutesEndpoint{ConnectionID: "your-connection-id"},
+		),
+		gocql.WithShardAwareness(true),
+	),
+)
+```
+
+`ClusterConfig.DisableShardAwarePort` takes precedence over `WithShardAwareness(true)`.
 
 ### 5.3 Iterator
 
@@ -276,7 +297,7 @@ Use `ClusterConfig.Compressor` to enable compression (either Snappy or LZ4):
 import (
     ...
     "github.com/gocql/gocql"
-    "github.com/gocql/gocql/lz4"
+    "github.com/scylladb/gocql/lz4"
     ...
 )
 
@@ -292,20 +313,48 @@ When explicitly using native protocol v5, use LZ4 compression or no compression.
 `ProtoVersion` is 5 or newer. Protocol v5 is not selected by automatic protocol
 discovery; it must currently be configured explicitly.
 
-LZ4 support is provided as an optional sub-module with its own `go.mod`. Because it uses the
-same fork pattern as the parent module, add a second `replace` directive alongside the one from
-the Installation section:
+LZ4 support lives in a sub-module with its own `go.mod`, published as
+`github.com/scylladb/gocql/lz4`. Unlike the parent module, import it by that path directly --
+it needs no `replace` directive of its own, only the one from the Installation section:
 
 ```mod
-replace github.com/gocql/gocql => github.com/scylladb/gocql v1.19.0
-replace github.com/gocql/gocql/lz4 => github.com/scylladb/gocql/lz4 v1.19.0
+replace github.com/gocql/gocql => github.com/scylladb/gocql v1.20.0
 ```
 
-The two modules are versioned independently. The repository tag for the nested module is
-prefixed with its directory (`lz4/v1.19.0`), while the version used in a `go.mod` directive is
-`v1.19.0` as shown above.
-
 Then run `go mod tidy`.
+
+The path differs from the parent module's because upstream has folded its `lz4` package into
+its main module: there is no `lz4/go.mod` there any more, so `github.com/gocql/gocql/lz4` is no
+longer a module that can be released, and only its pre-merge versions exist. Every release that
+supports native protocol v5 is published from this repository, under this repository's path.
+
+**Upgrading from an earlier version:** delete the
+`replace github.com/gocql/gocql/lz4 => ...` line from your `go.mod`, and change the import from
+`github.com/gocql/gocql/lz4` to `github.com/scylladb/gocql/lz4`.
+
+Keeping that `replace` stops working once gocql's own `go.mod` requires the module under its own
+name, which it does from the first release carrying protocol v5 support onward
+(`github.com/scylladb/gocql/lz4 v1.19.0`). The directive then points a second module path at a
+module already in your graph under its own name, and Go rejects it outright:
+
+```text
+go: github.com/scylladb/gocql/lz4@v1.19.0 used for two different module paths
+    (github.com/gocql/gocql/lz4 and github.com/scylladb/gocql/lz4)
+```
+
+gocql requires the module because its integration suite builds `LZ4Compressor` to exercise the
+protocol v5 compressed-segment path, and Go has no way to mark a requirement as test-only. It
+therefore appears in your module graph whether or not you compress -- but nothing outside
+gocql's `_test.go` files imports it, so no lz4 code is linked into your binary unless you set
+`ClusterConfig.Compressor` yourself. To build against a newer release than gocql asks for, add
+your own `require github.com/scylladb/gocql/lz4 vX.Y.Z`; version selection takes the higher of
+the two.
+
+The two modules are released with the same version from one workflow run. The root module's
+`go.mod` can still pin an older published LZ4 version until its post-release bump. The
+repository tag for the nested module is
+prefixed with its directory (`lz4/v1.19.0`), while the version in a `go.mod` directive is
+`v1.19.0`.
 
 ## 6. Contributing
 

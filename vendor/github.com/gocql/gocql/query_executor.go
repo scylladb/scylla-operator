@@ -300,7 +300,7 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery, metrics *qu
 				},
 			}, RetryNextHost
 		}
-		conn := pool.Pick(selectedHost.Token(), qry)
+		conn := pool.PickConn(selectedHost, qry)
 		if conn == nil {
 			return &Iter{
 				err: &QueryError{

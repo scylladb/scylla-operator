@@ -119,8 +119,8 @@ func encReflectString(v reflect.Value) ([]byte, error) {
 		return make([]byte, 0), nil
 	}
 	switch len(s) {
-	case 45: // urn:timeuuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-		if !strings.EqualFold(s[:9], "urn:timeuuid:") {
+	case 45: // urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+		if !strings.EqualFold(s[:9], "urn:uuid:") {
 			return nil, fmt.Errorf("failed to marshal timeuuid: the (%T) have invalid urn prefix: %q", v.Interface(), s[:9])
 		}
 		s = s[9:]
@@ -172,8 +172,8 @@ func encString(s string) ([]byte, error) {
 		return make([]byte, 0), nil
 	}
 	switch len(s) {
-	case 45: // urn:timeuuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-		if !strings.EqualFold(s[:9], "urn:timeuuid:") {
+	case 45: // urn:uuid:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+		if !strings.EqualFold(s[:9], "urn:uuid:") {
 			return nil, fmt.Errorf("failed to marshal timeuuid: (string) have invalid urn prefix: %q", s[:9])
 		}
 		s = s[9:]

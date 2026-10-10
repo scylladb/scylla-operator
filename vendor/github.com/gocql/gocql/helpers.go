@@ -66,7 +66,7 @@ func asVectorType(t TypeInfo) (VectorType, bool) {
 	subStr := strings.TrimSpace(spec[:idx])
 	dimStr := strings.TrimSpace(spec[idx+1:])
 	dim, err := strconv.Atoi(dimStr)
-	if err != nil {
+	if err != nil || dim < 1 {
 		return VectorType{}, false
 	}
 	subType := getCassandraLongType(subStr, n.Version(), nopLogger{})
@@ -219,7 +219,7 @@ func getCassandraLongType(name string, protoVer byte, logger StdLogger) TypeInfo
 		names := splitJavaCompositeTypes(name, prefix+"MapType")
 		if len(names) != 2 {
 			logger.Printf("gocql: error parsing map type, it has %d subelements, expecting 2\n", len(names))
-			return NewNativeType(protoVer, TypeCustom)
+			return NewCustomType(protoVer, TypeCustom, name)
 		}
 		return CollectionType{
 			NativeType: NewNativeType(protoVer, TypeMap),
@@ -240,10 +240,19 @@ func getCassandraLongType(name string, protoVer byte, logger StdLogger) TypeInfo
 		}
 	} else if strings.HasPrefix(name, prefix+"UserType") {
 		names := splitJavaCompositeTypes(name, prefix+"UserType")
+		// Without keyspace and type name, make() below gets a negative length.
+		if len(names) < 2 {
+			logger.Printf("gocql: error parsing udt type, it has %d subelements, expecting at least 2\n", len(names))
+			return NewCustomType(protoVer, TypeCustom, name)
+		}
 		fields := make([]UDTField, len(names)-2)
 
 		for i := 2; i < len(names); i++ {
 			spec := strings.Split(names[i], ":")
+			if len(spec) < 2 {
+				logger.Printf("gocql: error parsing udt field %q, expecting <name>:<type>\n", names[i])
+				return NewCustomType(protoVer, TypeCustom, name)
+			}
 			fieldName, _ := hex.DecodeString(spec[0])
 			fields[i-2] = UDTField{
 				Name: string(fieldName),
@@ -260,11 +269,31 @@ func getCassandraLongType(name string, protoVer byte, logger StdLogger) TypeInfo
 		}
 	} else if strings.HasPrefix(name, prefix+"VectorType") {
 		names := splitJavaCompositeTypes(name, prefix+"VectorType")
-		subType := getCassandraLongType(strings.TrimSpace(names[0]), protoVer, logger)
+		// Without the element type and the dimensions, indexing names below panics.
+		if len(names) != 2 {
+			logger.Printf("gocql: error parsing vector type, it has %d subelements, expecting 2\n", len(names))
+			return NewCustomType(protoVer, TypeCustom, name)
+		}
+		// A nested vector arrives here, not readVectorTypeInfo, which validates only
+		// the outer spec, so both of its guards are repeated below.
+		elem := strings.TrimSpace(names[0])
+		if elem == "" {
+			// Without this the element resolves to a custom type with no name at all,
+			// while the other two parsers of this grammar both reject it.
+			logger.Printf("gocql: error parsing vector type %q: missing element type\n", name)
+			return NewCustomType(protoVer, TypeCustom, name)
+		}
+		subType := getCassandraLongType(elem, protoVer, logger)
+		// A negative dimension reaches unmarshalVector's MakeSlice.
 		dim, err := strconv.Atoi(strings.TrimSpace(names[1]))
 		if err != nil {
-			logger.Printf("gocql: error parsing vector dimensions: %v\n", err)
-			return NewNativeType(protoVer, TypeCustom)
+			logger.Printf("gocql: error parsing vector dimensions %q: %v\n", names[1], err)
+			return NewCustomType(protoVer, TypeCustom, name)
+		}
+		if dim < 1 {
+			// Separate arm: err is nil here, so %v would log "<nil>".
+			logger.Printf("gocql: error parsing vector dimensions %q: expecting a positive value\n", names[1])
+			return NewCustomType(protoVer, TypeCustom, name)
 		}
 
 		return VectorType{
@@ -277,9 +306,14 @@ func getCassandraLongType(name string, protoVer byte, logger StdLogger) TypeInfo
 		return getCassandraLongType(strings.TrimSpace(names[0]), protoVer, logger)
 	} else {
 		// basic type
+		typ := getApacheCassandraType(name)
+		if typ == TypeCustom {
+			// Keep the name so an error can say what the server sent, not "custom()".
+			return NewCustomType(protoVer, TypeCustom, name)
+		}
 		return NativeType{
 			proto: protoVer,
-			typ:   getApacheCassandraType(name),
+			typ:   typ,
 		}
 	}
 }
@@ -385,7 +419,19 @@ func getApacheCassandraType(class string) Type {
 func (r *RowData) rowMap(m map[string]any) {
 	for i, column := range r.Columns {
 		val := dereference(r.Values[i])
-		if valVal := reflect.ValueOf(val); valVal.Kind() == reflect.Slice && !valVal.IsNil() {
+		// []byte (blob) is by far the most common slice-typed column; avoid
+		// the reflect.MakeSlice/Copy/Interface() round trip for it since a
+		// plain copy() does the same defensive-copy job. This is a CPU-time
+		// win (no reflect dispatch), not an allocation-count one: both paths
+		// still pay for the backing-array copy and the interface-boxing that
+		// storing a []byte into map[string]any requires either way.
+		if b, ok := val.([]byte); ok {
+			if b != nil {
+				m[column] = copyBytes(b)
+			} else {
+				m[column] = val
+			}
+		} else if valVal := reflect.ValueOf(val); valVal.Kind() == reflect.Slice && !valVal.IsNil() {
 			valCopy := reflect.MakeSlice(valVal.Type(), valVal.Len(), valVal.Cap())
 			reflect.Copy(valCopy, valVal)
 			m[column] = valCopy.Interface()

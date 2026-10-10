@@ -196,7 +196,7 @@ func (a *Client) DeleteClusterClusterIDBackupsLocalSnapshots(params *DeleteClust
 }
 
 /*
-DeleteClusterClusterIDTaskTaskTypeTaskID delete cluster cluster ID task task type task ID API
+DeleteClusterClusterIDTaskTaskTypeTaskID Deletes the task. A running task is stopped without awaiting its completion.
 */
 func (a *Client) DeleteClusterClusterIDTaskTaskTypeTaskID(params *DeleteClusterClusterIDTaskTaskTypeTaskIDParams) (*DeleteClusterClusterIDTaskTaskTypeTaskIDOK, error) {
 	// TODO: Validate the params before sending

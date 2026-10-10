@@ -208,14 +208,22 @@ func (p *policyConnPool) getPoolByHostID(hostID string) (pool *hostConnPool, ok 
 	return
 }
 
+// iteratePool runs iter for each host pool, stopping early if it returns false.
+//
+// The unlock is deferred because iter is caller-supplied: a panic, or a
+// runtime.Goexit from something like t.Fatal, would otherwise skip a bare
+// RUnlock and leave the read lock held forever, wedging every later addHost,
+// removeHost and Close on the pool. The other bare RUnlocks in this file only
+// guard reads of internal state and cannot panic.
 func (p *policyConnPool) iteratePool(iter func(info HostPoolInfo) bool) {
 	p.mu.RLock()
+	defer p.mu.RUnlock()
+
 	for _, pool := range p.hostConnPools {
 		if !iter(pool) {
 			break
 		}
 	}
-	p.mu.RUnlock()
 }
 
 func (p *policyConnPool) Close() {
@@ -308,8 +316,46 @@ func (pool *hostConnPool) Pick(token Token, qry ExecutableQuery) *Conn {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
-	if pool.closed {
+	if !pool.pickable() {
 		return nil
+	}
+
+	return pool.connPicker.Pick(token, qry)
+}
+
+// PickInt64 picks a connection for the given raw int64 routing token, avoiding
+// the Token interface boxing. Picks fall back to the boxed path when the
+// connPicker does not support raw-int64 picking.
+func (pool *hostConnPool) PickInt64(token int64, qry ExecutableQuery) *Conn {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+
+	if !pool.pickable() {
+		return nil
+	}
+
+	if p, ok := pool.connPicker.(int64ConnPicker); ok {
+		return p.PickInt64(token, qry)
+	}
+	return pool.connPicker.Pick(int64Token(token), qry)
+}
+
+// PickConn routes a picked host to the raw-int64 fast path when it exposes one,
+// and to the boxed Token path otherwise.
+func (pool *hostConnPool) PickConn(host SelectedHost, qry ExecutableQuery) *Conn {
+	if th, ok := host.(int64TokenSelectedHost); ok {
+		if token, has := th.TokenInt64(); has {
+			return pool.PickInt64(int64(token), qry)
+		}
+	}
+	return pool.Pick(host.Token(), qry)
+}
+
+// pickable reports whether the pool is open and has (or is filling) connections.
+// Must be called with pool.mu held.
+func (pool *hostConnPool) pickable() bool {
+	if pool.closed {
+		return false
 	}
 
 	size, missing := pool.connPicker.Size()
@@ -318,11 +364,11 @@ func (pool *hostConnPool) Pick(token Token, qry ExecutableQuery) *Conn {
 		go pool.fill_debounce()
 
 		if size == 0 {
-			return nil
+			return false
 		}
 	}
 
-	return pool.connPicker.Pick(token, qry)
+	return true
 }
 
 // Size returns the number of connections currently active in the pool

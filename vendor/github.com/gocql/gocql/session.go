@@ -137,6 +137,7 @@ func resolveInitialEndpoints(resolver DNSResolver, addrs []string, defaultPort i
 }
 
 func newSessionCommon(cfg ClusterConfig) (*Session, error) {
+	cfg.applyClientRoutesConfig()
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("gocql: unable to create session: cluster config validation failed: %v", err)
 	}
@@ -1167,6 +1168,9 @@ func translateAddressPort(addressTranslator AddressTranslator, host *HostInfo, a
 		newAddr, newPort := addressTranslator.Translate(addr.Address, int(addr.Port))
 		if debug.Enabled {
 			logger.Printf("gocql: translated address %q to '%v:%d'", addr, newAddr, newPort)
+		}
+		if newPort < 1 || newPort > 65535 {
+			return addr, fmt.Errorf("invalid translated port %d: port must be between 1 and 65535", newPort)
 		}
 		return AddressPort{
 			Address: newAddr,
@@ -2947,6 +2951,13 @@ func (is *iterScanner) Next() bool {
 		}
 	}
 
+	// A page turn can install new metadata (RESULT_METADATA_CHANGED), so the
+	// column count this row must be read with is not necessarily the one
+	// Scanner() sized cols for.
+	if len(is.cols) != len(iter.meta.columns) {
+		is.cols = make([][]byte, len(iter.meta.columns))
+	}
+
 	for i := 0; i < len(is.cols); i++ {
 		col, err := iter.readColumn()
 		if err != nil {
@@ -3869,11 +3880,26 @@ type HostPoolInfo interface {
 	IsClosed() bool
 }
 
+// GetHostPoolByID returns the connection pool for hostID, or nil if the session
+// holds no pool for it -- including when hostID is not a well-formed UUID.
+//
+// The explicit nil matters: returning the *hostConnPool unconditionally would
+// box a nil pointer into a non-nil HostPoolInfo, so a caller's `if pool != nil`
+// would pass and the first method call would panic.
 func (s *Session) GetHostPoolByID(hostID string) HostPoolInfo {
-	hostPool, _ := s.pool.getPoolByHostID(hostID)
+	hostPool, ok := s.pool.getPoolByHostID(hostID)
+	if !ok {
+		return nil
+	}
 	return hostPool
 }
 
+// IterateHostPools calls iter once for each host's connection pool, stopping
+// early if iter returns false. Iteration order is unspecified.
+//
+// iter runs while an internal lock on the pool is held, so it must not call
+// back into the Session -- anything that adds or removes a host, or closes the
+// session, will deadlock -- and it should not block.
 func (s *Session) IterateHostPools(iter func(info HostPoolInfo) bool) {
 	s.pool.iteratePool(iter)
 }

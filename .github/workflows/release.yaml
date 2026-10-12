@@ -1,0 +1,248 @@
+name: Release
+
+# Releases the dispatched ref as the given version. Builds the operator image, gates it on the e2e suites, pushes the
+# version tag, publishes the image to the production repositories and creates the GitHub release, in that order: the
+# tag is the output of the gate, not its trigger, and nothing is published for a version without one. Lives on every
+# release branch and is dispatched on the branch being released.
+#
+# Version tags are immutable, so a release that failed after its tag is finished by dispatching it again with the same
+# version. The tag records the image the gate tested, and the run publishes that image instead of building and gating
+# a new one, whose digest would differ. The publishing steps are safe to repeat. A redispatch can run from any ref,
+# master included, so a fix to the workflow applies to an existing tag: the ref only supplies the workflow, and
+# everything published comes from the tag. A job that publishes files from the repository after the tag has to check
+# out the tag rather than `github.sha`.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, without the `v` prefix, e.g. `1.23.0` or `1.23.0-rc.0`.
+        required: true
+        type: string
+
+# One release at a time across all branches. Which rolling tags a version gets depends on the tags released before
+# it, so two releases in flight could both decide they're the latest. GitHub keeps one more run pending, so a third
+# dispatch cancels the pending one rather than queueing behind it.
+concurrency:
+  group: ${{ github.workflow }}
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+env:
+  # Repository the tested image is pushed to, and the one a redispatch copies it from. The tag records only the digest,
+  # which is the same in every repository the image is copied to.
+  DEV_IMAGE_REPO_REF: &dev-image-repo-ref quay.io/scylladb-dev/ci
+
+jobs:
+  # Rejects a malformed version before anything is built or tested, finds the image a version that already has its tag
+  # was tested with, and decides which rolling tags the image gets and whether the GitHub release is marked latest.
+  plan-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.parse-version.outputs.tag }}
+      prerelease: ${{ steps.parse-version.outputs.prerelease }}
+      tag-exists: ${{ steps.resolve-tag.outputs.tag-exists }}
+      image-ref: ${{ steps.resolve-tag.outputs.image-ref }}
+      rolling-tags: ${{ steps.compute-rolling-tags.outputs.rolling-tags }}
+      latest: ${{ steps.compute-rolling-tags.outputs.latest }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Parse the version
+      id: parse-version
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./hack/.ci/release/parse-version.sh "${VERSION}" >> "${GITHUB_OUTPUT}"
+
+    - name: Resolve the tag
+      id: resolve-tag
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ steps.parse-version.outputs.tag }}
+        MINOR: ${{ steps.parse-version.outputs.minor }}
+      run: ./hack/.ci/release/resolve-tag.sh "${GITHUB_REPOSITORY}" "${TAG}" "${MINOR}" "${GITHUB_REF}" "${DEV_IMAGE_REPO_REF}" >> "${GITHUB_OUTPUT}"
+
+    - name: Compute the rolling tags
+      id: compute-rolling-tags
+      env:
+        TAG: ${{ steps.parse-version.outputs.tag }}
+        MINOR: ${{ steps.parse-version.outputs.minor }}
+        PRERELEASE: ${{ steps.parse-version.outputs.prerelease }}
+      run: ./hack/.ci/release/compute-rolling-tags.sh "${GITHUB_REPOSITORY}" "${TAG}" "${MINOR}" "${PRERELEASE}" >> "${GITHUB_OUTPUT}"
+
+  # A version that already has its tag passed the gate, so the run skips straight to publishing what the tag records.
+  # Skipping the image skips everything up to the tag with it.
+  image:
+    needs: plan-release
+    if: needs.plan-release.outputs.tag-exists == 'false'
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-repo-ref: *dev-image-repo-ref
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  olm:
+    needs: image
+    uses: ./.github/workflows/_olm.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      bundle-image-tag: scylla-operator-bundle-${{ github.run_id }}
+      catalog-image-tag: scylla-operator-catalog-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  e2e:
+    needs:
+      - image
+      - olm
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  # Checks the bundle against Red Hat's certification requirements ahead of a release, without submitting the results.
+  openshift-preflight:
+    needs: olm
+    uses: ./.github/workflows/_openshift-preflight.yaml
+    with:
+      name: openshift-preflight
+      olm-bundle-image-ref: ${{ needs.olm.outputs.bundle-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  # Creating the version tag relies on GitHub Actions being a bypass actor of the version tag ruleset.
+  tag:
+    needs:
+    - plan-release
+    - image
+    - e2e
+    - openshift-preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+    - name: Push the tag
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ needs.plan-release.outputs.tag }}
+        IMAGE_REF: ${{ needs.image.outputs.image-ref }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # A redispatch of this version reads the trailer to publish the tested image.
+        message="$( printf '%s\n\nImage-Digest: %s' "${TAG}" "${IMAGE_REF#*@}" )"
+        tag_object_sha="$( gh api --method POST "repos/${GITHUB_REPOSITORY}/git/tags" \
+        --raw-field tag="${TAG}" \
+        --raw-field message="${message}" \
+        --raw-field object="${GITHUB_SHA}" \
+        --raw-field type=commit \
+        --jq .sha )"
+        gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+        --raw-field ref="refs/tags/${TAG}" \
+        --raw-field sha="${tag_object_sha}"
+
+  # Copies the image the gate ran against, so what was tested is what ships. Runs on a redispatch too, where the jobs
+  # it needs are skipped.
+  promote:
+    needs:
+    - plan-release
+    - image
+    - tag
+    if: ${{ !cancelled() && !failure() && (needs.plan-release.outputs.tag-exists == 'true' || needs.tag.result == 'success') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image-repo-ref:
+        - quay.io/scylladb/scylla-operator
+        - docker.io/scylladb/scylla-operator
+    name: promote (${{ matrix.image-repo-ref }})
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 30
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    # skopeo reads one auth file, so the per-registry secrets are merged into it.
+    - name: Write registry auth file
+      env:
+        QUAY_AUTH_JSON: ${{ secrets.QUAY_SCYLLADB_PROD_PUBLISHER_CREDS }}
+        DOCKERHUB_AUTH_JSON: ${{ secrets.DOCKERHUB_SCYLLADB_PROD_PUBLISHER_CREDS }}
+      run: |
+        set -euo pipefail
+        shopt -s inherit_errexit
+
+        umask 077
+        jq -n '[env.QUAY_AUTH_JSON, env.DOCKERHUB_AUTH_JSON | fromjson | .auths] | {auths: add}' > "${RUNNER_TEMP}/auth.json"
+        echo "REGISTRY_AUTH_FILE=${RUNNER_TEMP}/auth.json" >> "${GITHUB_ENV}"
+
+    # The rolling tags are a space-separated list, split into arguments on purpose.
+    - name: Copy the image
+      env:
+        SOURCE_IMAGE_REF: ${{ needs.image.outputs.image-ref || needs.plan-release.outputs.image-ref }}
+        IMAGE_REPO_REF: ${{ matrix.image-repo-ref }}
+        VERSION: ${{ inputs.version }}
+        ROLLING_TAGS: ${{ needs.plan-release.outputs.rolling-tags }}
+      run: ./hack/.ci/release/promote-image.sh "${SOURCE_IMAGE_REF}" "${IMAGE_REPO_REF}" "${VERSION}" ${ROLLING_TAGS}
+
+  # Without a condition of its own, a job runs only if every job before it succeeded, and a redispatch skips some.
+  github-release:
+    needs:
+    - plan-release
+    - promote
+    if: ${{ !cancelled() && !failure() && needs.promote.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+    # Prereleases link to the top of the changelog, since their section doesn't exist yet. The anchor of a version's
+    # section is the version without dots, e.g. 1201 for 1.20.1.
+    - name: Create the release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VERSION: ${{ inputs.version }}
+        TAG: ${{ needs.plan-release.outputs.tag }}
+        PRERELEASE: ${{ needs.plan-release.outputs.prerelease }}
+        LATEST: ${{ needs.plan-release.outputs.latest }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # A release that exists may have been edited since, so a redispatch leaves it as it is.
+        if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" > /dev/null; then
+          echo "::notice::Release '${TAG}' already exists, leaving it unchanged."
+          exit 0
+        fi
+
+        changelog_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/master/CHANGELOG.md"
+        if [[ "${PRERELEASE}" == "false" ]]; then
+          changelog_url+="#${VERSION//./}"
+        fi
+        notes_file="${RUNNER_TEMP}/notes.md"
+        printf '## Docker Image\n\n```\ndocker.io/scylladb/scylla-operator:%s\n```\n\n## Changelog\n\n%s\n' "${VERSION}" "${changelog_url}" > "${notes_file}"
+
+        gh release create "${TAG}" \
+        --repo "${GITHUB_REPOSITORY}" \
+        --verify-tag \
+        --title "${TAG}" \
+        --notes-file "${notes_file}" \
+        --prerelease="${PRERELEASE}" \
+        --latest="${LATEST}"

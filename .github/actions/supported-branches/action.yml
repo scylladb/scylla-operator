@@ -1,0 +1,61 @@
+name: Supported branches
+description: >
+  Lists the release branches of the supported releases, which are the latest 2 vX.Y minors. A minor counts as released
+  once its vX.Y.0 tag exists.
+
+inputs:
+  include-master:
+    description: Whether to put master first in the list.
+    required: false
+    default: "false"
+  include-unreleased:
+    description: Whether to also list the release branches cut after the latest GA release.
+    required: false
+    default: "false"
+
+outputs:
+  branches:
+    description: JSON array of the branch names.
+    value: ${{ steps.branches.outputs.branches }}
+
+runs:
+  using: composite
+  steps:
+    - id: branches
+      shell: bash
+      env:
+        REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        INCLUDE_MASTER: ${{ inputs.include-master }}
+        INCLUDE_UNRELEASED: ${{ inputs.include-unreleased }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        refs="$( git ls-remote --heads --tags "${REPOSITORY_URL}" )"
+        mapfile -t supported < <(
+          sed -nE 's|^.*\trefs/tags/(v[0-9]+\.[0-9]+)\.0$|\1|p' <<< "${refs}" |
+          sort -V |
+          tail -n 2
+        )
+        if [[ "${#supported[@]}" -ne 2 ]]; then
+          echo "Expected 2 GA releases, got ${#supported[@]}: ${supported[*]}" >&2
+          exit 1
+        fi
+        mapfile -t branches < <(
+          sed -nE 's|^.*\trefs/heads/(v[0-9]+\.[0-9]+)$|\1|p' <<< "${refs}" |
+          sort -V |
+          sed -n "/^${supported[0]//./\\.}\$/,\$p"
+        )
+        for b in "${supported[@]}"; do
+          if [[ ! " ${branches[*]} " =~ " ${b} " ]]; then
+            echo "Release branch ${b@Q} of a supported release doesn't exist" >&2
+            exit 1
+          fi
+        done
+        if [[ "${INCLUDE_UNRELEASED}" != "true" ]]; then
+          branches=( "${supported[@]}" )
+        fi
+        if [[ "${INCLUDE_MASTER}" == "true" ]]; then
+          branches=( master "${branches[@]}" )
+        fi
+        echo "branches=$( jq -cn '$ARGS.positional' --args "${branches[@]}" )" >> "${GITHUB_OUTPUT}"

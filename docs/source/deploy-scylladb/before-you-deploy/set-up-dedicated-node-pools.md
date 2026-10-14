@@ -44,7 +44,7 @@ See [OCI recommendations](https://docs.scylladb.com/manual/stable/getting-starte
 :::{tab} OpenShift
 Instance type recommendations depend on the underlying cloud provider.
 Use the same instance families as the corresponding platform (e.g., `i` family on AWS for ROSA, `n2-highmem` on GCP for OSD).
-Configure node pools using [MachineSets](https://docs.openshift.com/container-platform/latest/machine_management/creating_machinesets/creating-machineset-aws.html) or [MachinePools](https://docs.openshift.com/rosa/rosa_cluster_admin/rosa_nodes/rosa-managing-worker-nodes.html) depending on your OpenShift variant.
+Configure node pools using [MachineSets](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_management/managing-compute-machines-with-the-machine-api#creating-machineset-aws) or [MachinePools](https://docs.redhat.com/en/documentation/red_hat_openshift_service_on_aws/4/html/cluster_administration/managing-compute-nodes-using-machine-pools) depending on your OpenShift variant.
 :::
 
 ::::
@@ -93,7 +93,7 @@ See the [OKE cluster setup guide](../../install-operator/provision-infrastructur
 :::
 
 :::{tab} OpenShift
-Configure labels on your node pool using [MachineSets](https://docs.openshift.com/container-platform/latest/machine_management/creating_machinesets/creating-machineset-aws.html) or [MachinePools](https://docs.openshift.com/rosa/rosa_cluster_admin/rosa_nodes/rosa-managing-worker-nodes.html) depending on your OpenShift variant.
+Configure labels on your node pool using [MachineSets](https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/machine_management/managing-compute-machines-with-the-machine-api#creating-machineset-aws) or [MachinePools](https://docs.redhat.com/en/documentation/red_hat_openshift_service_on_aws/4/html/cluster_administration/managing-compute-nodes-using-machine-pools) depending on your OpenShift variant.
 
 ```yaml
 metadata:

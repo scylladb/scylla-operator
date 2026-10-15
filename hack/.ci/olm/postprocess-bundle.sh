@@ -133,7 +133,7 @@ if [[ "${channel}" == "stable" ]]; then
   previous_version=""
 
   tag="v${version}"
-  tags=$( git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]$' )
+  tags=$( git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' )
   previous_tag="$( find_previous_semver "${tags}" "${tag}" )"
   if [[ ! -n "${previous_tag}" ]]; then
     echo "Error: Cannot find a previous version tag for version '${version}'" >&2

@@ -62,14 +62,14 @@ export OPERATOR_IMAGE_REF
 
 SUBMIT=${SUBMIT:-false}
 TARGET_BRANCH="${TARGET_BRANCH:-scylladb-operator-${version}}"
-# The branch is reset to upstream main and pushed to the fork, so targeting the fork's main would move it onto
-# a bundle commit and every later clone would start from it.
+# The branch is based on upstream main and pushed to the fork, so targeting main would move the fork's main onto a
+# bundle commit.
 if [[ "${TARGET_BRANCH}" == "main" ]]; then
   echo "Error: TARGET_BRANCH must not be 'main'" >&2
   exit 1
 fi
 
-# Clone the target repository (fork of certified-operators).
+# Clone upstream certified-operators. The branch is pushed to the fork, which shares upstream's objects.
 
 target_repo=git@github.com:scylladb-operator-cd-bot/certified-operators.git
 
@@ -80,15 +80,7 @@ echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH
 export GIT_SSH_COMMAND="ssh -o IdentitiesOnly=yes -i '${ssh_scylladb_operator_cd_bot_key_path}' -o UserKnownHostsFile='${known_hosts_file}' -o StrictHostKeyChecking=yes"
 
 repo_target_dir="${temp_dir}/certified-operators"
-git clone --depth 1 --branch main "${target_repo}" "${repo_target_dir}"
-
-# Base the branch on upstream main, not the fork's.
-upstream_repo=https://github.com/redhat-openshift-ecosystem/certified-operators.git
-(
-  cd "${repo_target_dir}"
-  git fetch --depth 1 "${upstream_repo}" main
-  git checkout -B "${TARGET_BRANCH}" FETCH_HEAD
-)
+git clone --depth 1 --branch main https://github.com/redhat-openshift-ecosystem/certified-operators.git "${repo_target_dir}"
 
 parent_target_dir="${repo_target_dir}/operators/scylladb-operator"
 mkdir -p "${parent_target_dir}"
@@ -116,7 +108,7 @@ cp -r "${script_dir}/../../../bundle/"{manifests,metadata} "${target_dir}/"
   git add .
   # https://github.com/redhat-openshift-ecosystem/certification-releases/blob/main/4.9/ga/troubleshooting.md#pull-request-title
   git commit -s -am "operator scylladb-operator (${version})"
-  git push origin "${TARGET_BRANCH}"
+  git push "${target_repo}" "HEAD:refs/heads/${TARGET_BRANCH}"
 )
 
 # Create a volume claim template file for the pipeline workspace.

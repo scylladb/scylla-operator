@@ -1,9 +1,9 @@
 name: Release
 
 # Releases the dispatched ref as the given version. Builds the operator image, gates it on the e2e suites, pushes the
-# version tag, publishes the image to the production repositories and creates the GitHub release, in that order: the
-# tag is the output of the gate, not its trigger, and nothing is published for a version without one. Lives on every
-# release branch and is dispatched on the branch being released.
+# version tag, publishes the image to the production repositories and the Helm charts to the chart repository, and
+# creates the GitHub release, in that order: the tag is the output of the gate, not its trigger, and nothing is
+# published for a version without one. Lives on every release branch and is dispatched on the branch being released.
 #
 # Version tags are immutable, so a release that failed after its tag is finished by dispatching it again with the same
 # version. The tag records the image the gate tested, and the run publishes that image instead of building and gating
@@ -202,12 +202,56 @@ jobs:
         ROLLING_TAGS: ${{ needs.plan-release.outputs.rolling-tags }}
       run: ./hack/.ci/release/promote-image.sh "${SOURCE_IMAGE_REF}" "${IMAGE_REPO_REF}" "${VERSION}" ${ROLLING_TAGS}
 
-  # Without a condition of its own, a job runs only if every job before it succeeded, and a redispatch skips some.
-  github-release:
+  # Publishes the charts once the image they default to exists. The index is read, merged and written back, which relies
+  # on the concurrency group to keep two releases from publishing at once.
+  helm:
     needs:
     - plan-release
     - promote
     if: ${{ !cancelled() && !failure() && needs.promote.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout the release
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ needs.plan-release.outputs.tag }}
+        path: release
+        persist-credentials: false
+
+    - name: Checkout the tooling
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        path: tooling
+        persist-credentials: false
+
+    - name: Authenticate to GCS
+      env:
+        GCS_CREDENTIALS_JSON: ${{ secrets.HELM_CHARTS_GCS_PROD_PUBLISHER_CREDS }}
+      run: |
+        set -euo pipefail
+        shopt -s inherit_errexit
+
+        umask 077
+        printenv GCS_CREDENTIALS_JSON > "${RUNNER_TEMP}/gcs-credentials.json"
+        gcloud auth activate-service-account --key-file="${RUNNER_TEMP}/gcs-credentials.json"
+
+    - name: Publish the charts
+      env:
+        BUCKET_URL: gs://scylla-operator-charts/stable
+        REPOSITORY_URL: https://scylla-operator-charts.storage.googleapis.com/stable
+        TAG: ${{ needs.plan-release.outputs.tag }}
+        VERSION: ${{ inputs.version }}
+      # The script packages the charts from the working directory, which is the release checkout.
+      working-directory: release
+      run: ../tooling/hack/.ci/release/publish-helm-charts.sh "${BUCKET_URL}" "${REPOSITORY_URL}" "${TAG}" "${VERSION}"
+
+  # Without a condition of its own, a job runs only if every job before it succeeded, and a redispatch skips some.
+  github-release:
+    needs:
+    - plan-release
+    - helm
+    if: ${{ !cancelled() && !failure() && needs.helm.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

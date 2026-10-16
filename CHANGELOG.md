@@ -29,6 +29,13 @@ before upgrading.
 
 ### Bug fixes
 
+- Fixed a rack staying stuck after a change that its nodes can't start with, e.g. lowering the CPUs of a rack whose
+  ScyllaDB nodes use tablets. Reverting or fixing the spec never reached the rack's `StatefulSet`, as the operator
+  waited for the broken rollout to finish first, and the only way out was deleting the `StatefulSet`. Now a spec change
+  is applied to a rack whose rollout has had a node not ready for 5 minutes, even though the rollout hasn't finished,
+  and the nodes left behind at the broken revision are recreated at the new one. A change that also bumps the major or
+  minor ScyllaDB version still can't unstick a rack.
+  [#3725](https://github.com/scylladb/scylla-operator/pull/3725)
 - Fixed the `ScyllaDBDatacenter` controller updating the status in a loop while any member Service was missing its
   hostID annotation, e.g. during bootstrap. The `CertControllerProgressing` condition listed the waiting Services in a
   random order, so every sync produced a different status, and every status update triggered another sync.

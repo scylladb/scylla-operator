@@ -46,6 +46,13 @@ on:
         required: false
         default: ./hack/.ci/manifests/cluster/nodeconfig.yaml
         type: string
+      dual-stack:
+        description: >-
+          Enable to provision the cluster with both IPv4 and IPv6, which the IPv6 suites require. Only supported with a
+          KubernetesCluster.
+        required: false
+        default: false
+        type: boolean
       node-service-type:
         description: Type of the per-node Service of the tested ScyllaDBs.
         required: false
@@ -105,6 +112,7 @@ jobs:
         provisioners-kubeconfig: ${{ steps.provisioners.outputs.path }}
         name: ${{ env.OBJECT_NAME }}
         manifest: ${{ inputs.cluster-manifest }}
+        dual-stack: ${{ inputs.dual-stack }}
 
     - name: Provision the object storage buckets
       if: inputs.object-storage

@@ -52,9 +52,10 @@ jobs:
 
     - name: Materialize the CI provisioners kubeconfig
       id: provisioners
-      uses: ./.github/actions/ci-provisioning/common/materialize-kubeconfig
+      uses: ./.github/actions/materialize-secret
       with:
-        kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+        name: ci-provisioners-kubeconfig
+        content: ${{ secrets.ci-provisioners-kubeconfig }}
 
     # The action outputs the object name before it creates anything, so the cleanup can run unconditionally from here
     # on, including when provisioning itself fails partway.

@@ -1,9 +1,10 @@
 name: Release
 
 # Releases the dispatched ref as the given version. Builds the operator image, gates it on the e2e suites, pushes the
-# version tag, publishes the image to the production repositories and the Helm charts to the chart repository, and
-# creates the GitHub release, in that order: the tag is the output of the gate, not its trigger, and nothing is
-# published for a version without one. Lives on every release branch and is dispatched on the branch being released.
+# version tag, publishes the image to the production repositories and the Helm charts to the chart repository, creates
+# the GitHub release and submits the OLM bundle for certification, in that order: the tag is the output of the gate, not
+# its trigger, and nothing is published for a version without one. Lives on every release branch and is dispatched on
+# the branch being released.
 #
 # Version tags are immutable, so a release that failed after its tag is finished by dispatching it again with the same
 # version. The tag records the image the gate tested, and the run publishes that image instead of building and gating
@@ -33,6 +34,17 @@ permissions:
   contents: read
 
 env:
+  # actions/checkout clones as the runner user, but the container images declare no USER, so the jobs run as root and
+  # git refuses to operate on a tree it sees as foreign. actions/checkout only marks the checkout as safe while it runs,
+  # not for the git invocations that come after it. safe.directory is only honoured from protected config scopes, and
+  # GIT_CONFIG_COUNT/KEY/VALUE is the environment form of the command scope, so this covers every git invocation in the
+  # job - including the ones the scripts shell out to - without a step in each job. The checkout paths inside the
+  # container aren't known when the environment is set, so `*` rather than listing them, which trusts nothing else since
+  # every job runs on a runner created for it.
+  # GIT_CONFIG_COUNT is a single shared counter: anything else setting it would overwrite these rather than append.
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
   # Repository the tested image is pushed to, and the one a redispatch copies it from. The tag records only the digest,
   # which is the same in every repository the image is copied to.
   DEV_IMAGE_REPO_REF: &dev-image-repo-ref quay.io/scylladb-dev/ci
@@ -290,3 +302,55 @@ jobs:
         --notes-file "${notes_file}" \
         --prerelease="${PRERELEASE}" \
         --latest="${LATEST}"
+
+  certify-olm-bundle:
+    needs:
+    - plan-release
+    - github-release
+    if: ${{ !cancelled() && !failure() && needs.github-release.result == 'success' }}
+    runs-on: hosted-runners-standard-pool
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 180
+    steps:
+    - name: Checkout the release
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ needs.plan-release.outputs.tag }}
+        path: release
+        # postprocess-bundle.sh lists the release tags to compute spec.replaces, and a shallow checkout has none.
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: Checkout the tooling
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        path: tooling
+        persist-credentials: false
+
+    - name: Materialize the cluster kubeconfig
+      id: kubeconfig
+      uses: ./tooling/.github/actions/materialize-secret
+      with:
+        name: OPENSHIFT_CERTIFICATION_CLUSTER_KUBECONFIG
+        content: ${{ secrets.OPENSHIFT_CERTIFICATION_CLUSTER_KUBECONFIG }}
+
+    - name: Materialize the cd-bot SSH key
+      id: ssh-key
+      uses: ./tooling/.github/actions/materialize-secret
+      with:
+        name: SCYLLADB_OPERATOR_CD_BOT_SSH
+        content: ${{ secrets.SCYLLADB_OPERATOR_CD_BOT_SSH }}
+
+    # The script leaves a version that's already in certified-operators or has an open PR from the bot unchanged.
+    # To replace the bundle of an open PR, close it and dispatch the release again.
+    - name: Certify the bundle
+      env:
+        TAG: ${{ needs.plan-release.outputs.tag }}
+        SUBMIT: "true"
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        KUBECONFIG: ${{ steps.kubeconfig.outputs.path }}
+        SSH_KEY: ${{ steps.ssh-key.outputs.path }}
+      # The script takes the bundle from the working directory, which is the release checkout.
+      working-directory: release
+      run: ../tooling/hack/.ci/olm/certify-bundle.sh "${TAG}" "${SSH_KEY}"

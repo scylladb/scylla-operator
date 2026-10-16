@@ -1,0 +1,25 @@
+name: Clean up GCS buckets
+description: >-
+  Deletes the StorageBuckets created by provision-buckets without waiting for them to go away. The objects carry a TTL,
+  so a leak is bounded rather than permanent.
+
+inputs:
+  provisioners-kubeconfig:
+    description: Path to the CI provisioners cluster kubeconfig.
+    required: true
+  object-names:
+    description: Names of the StorageBucket objects, comma-separated, as provision-buckets outputs them.
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      KUBECONFIG: ${{ inputs.provisioners-kubeconfig }}
+      OBJECT_NAMES: ${{ inputs.object-names }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      kubectl delete --wait=false --ignore-not-found storagebuckets ${OBJECT_NAMES//,/ }

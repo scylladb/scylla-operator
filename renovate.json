@@ -6,7 +6,8 @@
   ],
   "enabledManagers": [
     "custom.regex",
-    "gomod"
+    "gomod",
+    "github-actions"
   ],
   "ignorePaths": [],
   "schedule": [

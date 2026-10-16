@@ -182,9 +182,11 @@ func (s *Session) handleTableChange(keyspace, table, change string) {
 // Topology events are debounced by performing a single full topology refresh
 // whenever any topology event comes in.
 //
-// Processing topology change events before status change events ensures
-// that a NEW_NODE event is not dropped in favor of a newer UP event (which
-// would itself be dropped/ignored, as the node is not yet known).
+// Topology events are tracked separately from that map, rather than sharing it,
+// so that a NEW_NODE is not dropped in favor of a newer UP for the same host
+// (which would itself be dropped/ignored, as the node is not yet known). They
+// are also refreshed regardless of DisableNodeStatusEvents -- only
+// DisableTopologyEvents suppresses them.
 func (s *Session) handleNodeEvent(frames []frame) {
 	type nodeEvent struct {
 		change string
@@ -249,9 +251,6 @@ func (s *Session) handleNodeUp(eventIp net.IP, eventPort int) {
 		return
 	}
 
-	if d := host.Version().nodeUpDelay(); d > 0 {
-		time.Sleep(d)
-	}
 	s.startPoolFill(host)
 }
 

@@ -6,6 +6,9 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	"strconv"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -29,6 +32,9 @@ type RestoreTableProgress struct {
 
 	// failed
 	Failed int64 `json:"failed,omitempty"`
+
+	// Restore method used for restoring this table. Multiple methods are used only in edge-case scenarios of restoring an old backup
+	Method []string `json:"method"`
 
 	// restored
 	Restored int64 `json:"restored,omitempty"`
@@ -55,6 +61,10 @@ func (m *RestoreTableProgress) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateMethod(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateStartedAt(formats); err != nil {
 		res = append(res, err)
 	}
@@ -73,6 +83,43 @@ func (m *RestoreTableProgress) validateCompletedAt(formats strfmt.Registry) erro
 
 	if err := validate.FormatOf("completed_at", "body", "date-time", m.CompletedAt.String(), formats); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+var restoreTableProgressMethodItemsEnum []interface{}
+
+func init() {
+	var res []string
+	if err := json.Unmarshal([]byte(`["rclone","native","tablet"]`), &res); err != nil {
+		panic(err)
+	}
+	for _, v := range res {
+		restoreTableProgressMethodItemsEnum = append(restoreTableProgressMethodItemsEnum, v)
+	}
+}
+
+func (m *RestoreTableProgress) validateMethodItemsEnum(path, location string, value string) error {
+	if err := validate.EnumCase(path, location, value, restoreTableProgressMethodItemsEnum, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *RestoreTableProgress) validateMethod(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.Method) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Method); i++ {
+
+		// value enum
+		if err := m.validateMethodItemsEnum("method"+"."+strconv.Itoa(i), "body", m.Method[i]); err != nil {
+			return err
+		}
+
 	}
 
 	return nil

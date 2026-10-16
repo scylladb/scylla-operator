@@ -91,9 +91,10 @@ jobs:
 
     - name: Materialize the CI provisioners kubeconfig
       id: provisioners
-      uses: ./.github/actions/ci-provisioning/common/materialize-kubeconfig
+      uses: ./.github/actions/materialize-secret
       with:
-        kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
+        name: ci-provisioners-kubeconfig
+        content: ${{ secrets.ci-provisioners-kubeconfig }}
 
     # This workflow names every object it creates OBJECT_NAME, so the cleanup can run unconditionally from here on,
     # including when provisioning itself fails partway.

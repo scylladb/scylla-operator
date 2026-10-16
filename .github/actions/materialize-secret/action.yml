@@ -1,0 +1,43 @@
+name: Materialize a secret
+description: Writes a secret into a file that only the runner user can read.
+
+inputs:
+  name:
+    description: Name of the secret, used for the file name and in the error message.
+    required: true
+  content:
+    description: Content of the secret.
+    required: true
+
+outputs:
+  path:
+    description: Path to the written file.
+    value: ${{ steps.write.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+  - id: write
+    shell: bash
+    env:
+      NAME: ${{ inputs.name }}
+      CONTENT: ${{ inputs.content }}
+      # Reusable workflows see the caller's event, so this also holds in jobs called from a pull request workflow.
+      FROM_FORK: ${{ github.event.pull_request.head.repo.fork == true }}
+    run: |
+      set -euEo pipefail
+      shopt -s inherit_errexit
+
+      # Otherwise the missing secret only surfaces as an unrelated error further down.
+      if [[ -z "${CONTENT}" ]]; then
+        if [[ "${FROM_FORK}" == "true" ]]; then
+          echo "::error::${NAME} must not be empty. GitHub does not pass secrets to runs of pull requests from forks, so this is expected and needs no action from you: a maintainer will run the jobs that need secrets for it."
+        else
+          echo "::error::${NAME} must not be empty."
+        fi
+        exit 1
+      fi
+
+      path="${RUNNER_TEMP}/${NAME}"
+      ( umask 077; printf '%s\n' "${CONTENT}" > "${path}" )
+      echo "path=${path}" >> "${GITHUB_OUTPUT}"

@@ -463,7 +463,7 @@ func newCondition(condType string, status metav1.ConditionStatus, reason, messag
 // runScyllaClusterController creates and starts a ScyllaCluster controller against the given envtest environment.
 // The controller is stopped automatically when ctx is cancelled. Informer factories are shut down and the
 // controller goroutine is drained via DeferCleanup before the envtest environment is torn down.
-func runScyllaClusterController(ctx context.Context, e *envtest.Environment) {
+func runScyllaClusterController(ctx context.Context, e *envtest.Environment, options ...scyllacluster.ControllerOption) {
 	g.GinkgoHelper()
 
 	const resyncPeriod = 12 * time.Hour
@@ -495,6 +495,7 @@ func runScyllaClusterController(ctx context.Context, e *envtest.Environment) {
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerClusterRegistrations(),
 		scyllaInformers.Scylla().V1alpha1().ScyllaDBManagerTasks(),
+		options...,
 	)
 	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create ScyllaCluster controller")
 

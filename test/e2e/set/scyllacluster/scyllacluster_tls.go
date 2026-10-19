@@ -7,7 +7,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,40 +16,29 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/features"
-	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/operator"
 	verificationutils "github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-)
-
-var (
-	deploymentResourceInfo = collect.ResourceInfo{
-		Resource: schema.GroupVersionResource{
-			Group:    "apps",
-			Version:  "v1",
-			Resource: "deployments",
-		},
-		Scope: meta.RESTScopeNamespace,
-	}
 )
 
 const (
 	operatorNamespace      = "scylla-operator"
 	operatorDeploymentName = "scylla-operator"
+
+	cryptoKeyTypeFlag      = "crypto-key-type"
+	cryptoECDSAKeySizeFlag = "crypto-ecdsa-key-size"
 )
 
 var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
@@ -353,89 +341,20 @@ var _ = g.Describe("ScyllaCluster ECDSA", framework.SuiteSerial, func() {
 			g.Skip(fmt.Sprintf("Skipping because %q feature is disabled", features.AutomaticTLSCertificates))
 		}
 
-		framework.By("Snapshotting the operator Deployment for restoration")
-		rc := framework.NewRestoringCleaner(
-			ctx,
-			f.AdminClientConfig(),
-			f.KubeAdminClient(),
-			f.DynamicAdminClient(),
-			deploymentResourceInfo,
-			operatorNamespace,
-			operatorDeploymentName,
-			framework.RestoreStrategyUpdate,
-		)
-		f.AddCleaners(rc)
+		operatorDeploymentModifier := operator.NewOperatorDeploymentModifier(ctx, f)
 
-		framework.By("Patching the operator Deployment to use ECDSA keys")
-		operatorDeploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		// Find the operator container and add ECDSA args.
-		o.Expect(operatorDeploy.Spec.Template.Spec.Containers).NotTo(o.BeEmpty())
-		containerIdx := -1
-		for i, c := range operatorDeploy.Spec.Template.Spec.Containers {
-			if c.Name == "scylla-operator" {
-				containerIdx = i
-				break
-			}
-		}
-		o.Expect(containerIdx).NotTo(o.Equal(-1), "operator container not found in Deployment")
-
-		// Add --crypto-key-type=ECDSA to the container args using a JSON patch.
-		newArgs := append(
-			operatorDeploy.Spec.Template.Spec.Containers[containerIdx].Args,
-			"--crypto-key-type=ECDSA",
-			"--crypto-ecdsa-key-size=256",
-		)
-
-		type patchOp struct {
-			Op    string      `json:"op"`
-			Path  string      `json:"path"`
-			Value interface{} `json:"value"`
-		}
-		patch := []patchOp{
-			{
-				Op:    "replace",
-				Path:  fmt.Sprintf("/spec/template/spec/containers/%d/args", containerIdx),
-				Value: newArgs,
-			},
-		}
-		patchBytes, err := json.Marshal(patch)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		_, err = f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Patch(
-			ctx,
-			operatorDeploymentName,
-			types.JSONPatchType,
-			patchBytes,
-			metav1.PatchOptions{},
-		)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the operator Deployment to roll out with ECDSA configuration")
-		o.Eventually(func(eg o.Gomega) {
-			deploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
-			eg.Expect(err).NotTo(o.HaveOccurred())
-
-			// Check that the deployment has finished rolling out.
-			eg.Expect(deploy.Status.ObservedGeneration).To(o.BeNumerically(">=", deploy.Generation))
-			eg.Expect(deploy.Status.UpdatedReplicas).To(o.Equal(*deploy.Spec.Replicas))
-			eg.Expect(deploy.Status.ReadyReplicas).To(o.Equal(*deploy.Spec.Replicas))
-			eg.Expect(deploy.Status.AvailableReplicas).To(o.Equal(*deploy.Spec.Replicas))
-
-			for _, cond := range deploy.Status.Conditions {
-				if cond.Type == appsv1.DeploymentAvailable {
-					eg.Expect(cond.Status).To(o.Equal(corev1.ConditionTrue))
-				}
-			}
-		}).WithContext(ctx).WithTimeout(5 * time.Minute).WithPolling(5 * time.Second).Should(o.Succeed())
+		framework.By("Configuring the operator to use ECDSA keys")
+		operatorDeploymentModifier.SetFlags(ctx, map[string]string{
+			cryptoKeyTypeFlag:      string(crypto.ECDSAKeyType),
+			cryptoECDSAKeySizeFlag: "256",
+		})
 
 		framework.By("Creating a multi-node ScyllaCluster to verify TLS with ECDSA")
 		sc := f.GetDefaultScyllaCluster()
 		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
 		sc.Spec.Datacenter.Racks[0].Members = 1
 
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(
+		sc, err := f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(
 			ctx,
 			sc,
 			metav1.CreateOptions{

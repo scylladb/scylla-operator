@@ -37,12 +37,12 @@ function deploy-cert-manager() {
 # and for the ScyllaCluster CRD to be established.
 function wait-for-scylla-operator-rollout() {
   wait-for-object-creation scylla-operator deployment.apps/scylla-operator 5m
-  kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+  kubectl_retry 5m -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
   wait-for-object-creation scylla-operator deployment.apps/webhook-server 5m
-  kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
+  kubectl_retry 5m -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
 
   wait-for-object-creation scylla-operator crd/scyllaclusters.scylla.scylladb.com 5m
-  kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
+  kubectl_retry 5m wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
 }
 
 # install-operator installs the Scylla Operator and its dependencies in the cluster through the specified method.

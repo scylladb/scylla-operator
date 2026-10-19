@@ -28,13 +28,23 @@ function kubectl_cp {
   done
 }
 
+# kubectl_retry runs kubectl with the given arguments until it succeeds or the timeout expires. It's meant for idempotent
+# commands, like waits, so that a dropped connection to the API server doesn't fail the caller.
+# $1 - timeout
+# $2... - kubectl arguments
+function kubectl_retry {
+  local timeout="${1}"
+  shift
+  timeout --verbose "${timeout}" bash -c 'until kubectl "$@"; do sleep 5; done' bash "$@"
+}
+
 # wait-for-object-creation awaits the creation of a Kubernetes object in a given namespace.
 # $1 - namespace
 # $2 - object kind/name (e.g., pod/name)
 # $3 - timeout (optional, defaults to 60s)
 function wait-for-object-creation {
   local timeout="${3:-60s}"
-  kubectl wait --timeout="${timeout}" --for=create -n="${1}" "${2}"
+  kubectl_retry "${timeout}" wait --timeout="${timeout}" --for=create -n="${1}" "${2}"
 }
 
 # wait-for-scyllacluster-rollout waits until a ScyllaCluster is fully rolled out and available.

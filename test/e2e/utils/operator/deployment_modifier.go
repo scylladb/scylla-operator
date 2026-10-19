@@ -15,6 +15,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/platform"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -37,12 +38,20 @@ type OperatorDeploymentModifier interface {
 	UnsetFlags(ctx context.Context, names ...string)
 }
 
-// NewOperatorDeploymentModifier snapshots the operator configuration it is going to change and registers its
-// restoration with the framework cleaners.
+// NewOperatorDeploymentModifier returns the OperatorDeploymentModifier for the platform the operator was installed on.
+// It snapshots the object it is going to change and registers its restoration with the framework cleaners.
 func NewOperatorDeploymentModifier(ctx context.Context, f *framework.Framework) OperatorDeploymentModifier {
 	g.GinkgoHelper()
 
-	return newManifestsOperatorDeploymentModifier(ctx, f)
+	switch p := platform.DetectPlatform(ctx, f.KubeAdminClient()); p {
+	case platform.PlatformOLM:
+		return newOLMOperatorDeploymentModifier(ctx, f)
+	case platform.PlatformOther:
+		return newManifestsOperatorDeploymentModifier(ctx, f)
+	default:
+		g.Fail(fmt.Sprintf("unsupported platform %q", p))
+		return nil
+	}
 }
 
 // flagEnvVarName returns the name of the environment variable the operator reads the flag from. The modifiers set the
@@ -142,10 +151,10 @@ func waitForOperatorContainer(ctx context.Context, f *framework.Framework, condi
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-// addRestoringCleaner snapshots the object the modifier changes, which is the operator Deployment, and registers its
-// restoration with the framework cleaners. After restoring it, the cleaner waits until the operator Deployment rolls
-// out with the operator container's env from before the test, so that the following tests don't run against the
-// modified operator.
+// addRestoringCleaner snapshots the object the modifier changes, which is either the operator Deployment or the OLM
+// Subscription that installed the operator, and registers its restoration with the framework cleaners. After restoring
+// it, the cleaner waits until the operator Deployment rolls out with the operator container's env from before the
+// test, so that the following tests don't run against the modified operator.
 func addRestoringCleaner(ctx context.Context, f *framework.Framework, resourceInfo collect.ResourceInfo, objectNamespace, objectName string) {
 	g.GinkgoHelper()
 

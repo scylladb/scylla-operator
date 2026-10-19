@@ -5,8 +5,13 @@ name: Image
 on:
   workflow_call:
     inputs:
+      image-repo-ref:
+        description: Repository to publish the image to.
+        required: false
+        type: string
+        default: quay.io/scylladb-dev/ci
       image-tag:
-        description: Tag to publish the manifest list under, in the quay.io/scylladb-dev/ci repository.
+        description: Tag to publish the manifest list under.
         required: true
         type: string
     outputs:
@@ -26,7 +31,7 @@ permissions:
   contents: read
 
 env:
-  IMAGE_REPO_REF: quay.io/scylladb-dev/ci
+  IMAGE_REPO_REF: ${{ inputs.image-repo-ref }}
 
 jobs:
   # Each leg pushes its image by digest only and hands the digest over to the manifest job as an artifact, following

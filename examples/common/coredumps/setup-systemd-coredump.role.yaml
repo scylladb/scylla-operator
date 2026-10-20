@@ -1,0 +1,19 @@
+# The setup DaemonSet runs privileged Pods with host PID and a hostPath mount.
+# On OpenShift, this requires the privileged SecurityContextConstraints.
+# On other platforms, this rule has no effect.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scylladb-coredump-setup
+  namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylladb-coredump-setup
+rules:
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  resourceNames:
+  - privileged
+  verbs:
+  - use

@@ -28,7 +28,7 @@ GKE Ubuntu nodes do not ship `systemd-coredump` by default. The two manifests be
 
 ### 1. Create the ConfigMap
 
-:::{literalinclude} ../../../examples/gke/coredumps/coredump-conf.configmap.yaml
+:::{literalinclude} ../../../examples/common/coredumps/coredump-conf.configmap.yaml
 :language: yaml
 :::
 
@@ -36,7 +36,7 @@ Download the manifest and edit `MaxUse` and `KeepFree` to match your environment
 
 :::{code-block} bash
 :substitutions:
-curl -fLO https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/coredumps/coredump-conf.configmap.yaml
+curl -fLO https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/coredumps/coredump-conf.configmap.yaml
 :::
 
 :::{code-block} bash
@@ -49,13 +49,13 @@ kubectl apply --server-side -f=coredump-conf.configmap.yaml
 
 ### 2. Deploy the setup DaemonSet
 
-:::{literalinclude} ../../../examples/gke/coredumps/setup-systemd-coredump.daemonset.yaml
+:::{literalinclude} ../../../examples/common/coredumps/setup-systemd-coredump.daemonset.yaml
 :language: yaml
 :::
 
 :::{code-block} bash
 :substitutions:
-kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/gke/coredumps/setup-systemd-coredump.daemonset.yaml
+kubectl apply --server-side -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/coredumps/setup-systemd-coredump.daemonset.yaml
 :::
 
 Wait for the DaemonSet to roll out on all ScyllaDB nodes:

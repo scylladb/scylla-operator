@@ -20,11 +20,13 @@ This must be completed **before the anticipated crash**.
 
 4. **`systemd-coredump.socket` active**. 
 
-A ready-to-use setup for GKE is provided below. On other platforms, apply these four steps using the OS package manager and systemd tooling available on the node.
+A ready-to-use setup for GKE and OpenShift is provided below. On other platforms, apply these four steps using the OS package manager and systemd tooling available on the node.
 
-## Set up core dump collection on GKE
+## Set up core dump collection
 
-GKE Ubuntu nodes do not ship `systemd-coredump` by default. The two manifests below handle all four setup steps via a single container on each ScyllaDB node. The container performs the setup once at startup and then sleeps, keeping the pod alive so that the DaemonSet re-applies the settings whenever the pod is evicted or rescheduled.
+The manifests below handle all four setup steps via a single container on each ScyllaDB node. The container performs the setup once at startup and then sleeps, keeping the pod alive so that the DaemonSet re-applies the settings whenever the pod is evicted or rescheduled.
+
+RHCOS nodes on OpenShift ship `systemd-coredump` with systemd. GKE Ubuntu nodes do not, so the container installs it with `apt-get`. The container sets `kernel.core_pattern` from the `/usr/lib/sysctl.d/50-coredump.conf` file shipped with the node's `systemd-coredump`, because the arguments it expects differ between systemd versions.
 
 ### 1. Create the ConfigMap
 
@@ -47,7 +49,23 @@ vi coredump-conf.configmap.yaml
 kubectl apply --server-side -f=coredump-conf.configmap.yaml
 :::
 
-### 2. Deploy the setup DaemonSet
+### 2. Create the ServiceAccount and its permissions
+
+The setup container runs privileged with access to the host. On OpenShift, this requires the `privileged` SecurityContextConstraints, which the Role below grants. On other platforms, the Role has no effect. The command below creates the Role together with the ServiceAccount and a RoleBinding between them.
+
+:::{literalinclude} ../../../examples/common/coredumps/setup-systemd-coredump.role.yaml
+:language: yaml
+:::
+
+:::{code-block} bash
+:substitutions:
+kubectl apply --server-side \
+  -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/coredumps/setup-systemd-coredump.serviceaccount.yaml \
+  -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/coredumps/setup-systemd-coredump.role.yaml \
+  -f=https://raw.githubusercontent.com/{{repository}}/{{revision}}/examples/common/coredumps/setup-systemd-coredump.rolebinding.yaml
+:::
+
+### 3. Deploy the setup DaemonSet
 
 :::{literalinclude} ../../../examples/common/coredumps/setup-systemd-coredump.daemonset.yaml
 :language: yaml
@@ -64,7 +82,7 @@ Wait for the DaemonSet to roll out on all ScyllaDB nodes:
 kubectl -n scylla-operator rollout status daemonset/scylladb-coredump-setup
 :::
 
-### 3. Verify the configuration
+### 4. Verify the configuration
 
 After the DaemonSet rolls out, confirm `kernel.core_pattern` is correctly set on each node. List the dedicated ScyllaDB nodes:
 
@@ -79,7 +97,7 @@ kubectl debug node/<node-name> -it --profile=sysadmin --image=docker.io/library/
   nsenter --mount=/proc/1/ns/mnt -- sysctl -n kernel.core_pattern
 :::
 
-Expected output:
+The output must start with `|/usr/lib/systemd/systemd-coredump`. The arguments that follow depend on the node's systemd version, e.g. on GKE Ubuntu nodes:
 
 :::{code-block} console
 |/usr/lib/systemd/systemd-coredump %P %u %g %s %t 9223372036854775808 %h %d

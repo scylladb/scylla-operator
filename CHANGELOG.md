@@ -95,6 +95,9 @@ before upgrading.
 - The operator now issues ECDSA P-384 certificates by default instead of RSA ones. After the upgrade, existing
   certificates are reissued with ECDSA keys, unless `--crypto-key-type=RSA` is set.
   [#3719](https://github.com/scylladb/scylla-operator/pull/3719)
+- The [core dump collection guide](https://operator.docs.scylladb.com/stable/troubleshoot/configure-coredumps.html) now
+  covers OpenShift.
+  [#3750](https://github.com/scylladb/scylla-operator/pull/3750)
 
 ### Dependencies
 

@@ -1,0 +1,52 @@
+name: "Image preflight"
+
+# Runs the Red Hat certification preflight checks for an image against the operator's certification component and,
+# when asked to, submits the results. Preflight checks every platform of a manifest list.
+on:
+  workflow_call:
+    inputs:
+      image-repo-ref:
+        description: Repository of the image to check.
+        required: true
+        type: string
+      image-tag:
+        description: Tag of the image to check. Pyxis records it with the results.
+        required: true
+        type: string
+      submit:
+        description: Whether to submit the results to Red Hat.
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      pyxis-api-token:
+        description: Red Hat Container API key. It selects the component's policy and, with submit, submits the results.
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: preflight
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
+    timeout-minutes: 15
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Run preflight
+      env:
+        IMAGE_REPO_REF: ${{ inputs.image-repo-ref }}
+        IMAGE_TAG: ${{ inputs.image-tag }}
+        SUBMIT: ${{ inputs.submit }}
+        PFLT_PYXIS_API_TOKEN: ${{ secrets.pyxis-api-token }}
+      run: ./hack/.ci/release/certify-image.sh "${IMAGE_REPO_REF}" "${IMAGE_TAG}"

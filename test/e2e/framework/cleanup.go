@@ -117,18 +117,29 @@ const (
 )
 
 type RestoringCleaner struct {
-	restConfig    *rest.Config
-	client        kubernetes.Interface
-	dynamicClient dynamic.Interface
-	resourceInfo  collect.ResourceInfo
-	object        *unstructured.Unstructured
-	strategy      RestoreStrategy
+	restConfig      *rest.Config
+	client          kubernetes.Interface
+	dynamicClient   dynamic.Interface
+	resourceInfo    collect.ResourceInfo
+	object          *unstructured.Unstructured
+	strategy        RestoreStrategy
+	postCleanupHook func(ctx context.Context)
 }
 
 var _ Cleaner = &RestoringCleaner{}
 var _ Collector = &RestoringCleaner{}
 
-func NewRestoringCleaner(ctx context.Context, restConfig *rest.Config, client kubernetes.Interface, dynamicClient dynamic.Interface, resourceInfo collect.ResourceInfo, namespace string, name string, strategy RestoreStrategy) *RestoringCleaner {
+type RestoringCleanerOption func(*RestoringCleaner)
+
+// WithPostCleanupHook makes the cleaner call the hook after it restores or deletes the object, e.g. to wait until the
+// restored object takes effect.
+func WithPostCleanupHook(hook func(ctx context.Context)) RestoringCleanerOption {
+	return func(rc *RestoringCleaner) {
+		rc.postCleanupHook = hook
+	}
+}
+
+func NewRestoringCleaner(ctx context.Context, restConfig *rest.Config, client kubernetes.Interface, dynamicClient dynamic.Interface, resourceInfo collect.ResourceInfo, namespace string, name string, strategy RestoreStrategy, options ...RestoringCleanerOption) *RestoringCleaner {
 	g.By(fmt.Sprintf("Snapshotting object %s %q", resourceInfo.Resource, naming.ManualRef(namespace, name)))
 
 	if resourceInfo.Scope.Name() == meta.RESTScopeNameNamespace {
@@ -149,7 +160,7 @@ func NewRestoringCleaner(ctx context.Context, restConfig *rest.Config, client ku
 		klog.InfoS("Snapshotted object", "GVR", resourceInfo.Resource, "Instance", naming.ManualRef(namespace, name), "UID", obj.GetUID())
 	}
 
-	return &RestoringCleaner{
+	rc := &RestoringCleaner{
 		restConfig:    restConfig,
 		client:        client,
 		dynamicClient: dynamicClient,
@@ -157,6 +168,11 @@ func NewRestoringCleaner(ctx context.Context, restConfig *rest.Config, client ku
 		object:        obj,
 		strategy:      strategy,
 	}
+	for _, option := range options {
+		option(rc)
+	}
+
+	return rc
 }
 
 func (rc *RestoringCleaner) getCleansedObject() *unstructured.Unstructured {
@@ -288,8 +304,11 @@ func (rc *RestoringCleaner) restoreObject(ctx context.Context) {
 func (rc *RestoringCleaner) Cleanup(ctx context.Context) {
 	if len(rc.object.GetUID()) == 0 {
 		rc.DeleteObject(ctx, true)
-		return
+	} else {
+		rc.restoreObject(ctx)
 	}
 
-	rc.restoreObject(ctx)
+	if rc.postCleanupHook != nil {
+		rc.postCleanupHook(ctx)
+	}
 }

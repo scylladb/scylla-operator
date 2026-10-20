@@ -12,6 +12,9 @@ name: Release
 # master included, so a fix to the workflow applies to an existing tag: the ref only supplies the workflow, and
 # everything published comes from the tag. A job that publishes files from the repository after the tag has to check
 # out the tag rather than `github.sha`.
+#
+# `allow-any-ref` allows creating the tag on a ref other than the release branch of the version's minor, e.g. to test
+# the release procedure from master. A regular release generally shouldn't set it.
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +22,10 @@ on:
         description: Version to release, without the `v` prefix, e.g. `1.23.0` or `1.23.0-rc.0`.
         required: true
         type: string
+      allow-any-ref:
+        description: Allow creating the tag on a ref other than the release branch of the version's minor. A regular release generally shouldn't set it.
+        type: boolean
+        default: false
 
 # One release at a time across all branches. Which rolling tags a version gets depends on the tags released before
 # it, so two releases in flight could both decide they're the latest. GitHub keeps one more run pending, so a third
@@ -80,7 +87,8 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ steps.parse-version.outputs.tag }}
         MINOR: ${{ steps.parse-version.outputs.minor }}
-      run: ./hack/.ci/release/resolve-tag.sh "${GITHUB_REPOSITORY}" "${TAG}" "${MINOR}" "${GITHUB_REF}" "${DEV_IMAGE_REPO_REF}" >> "${GITHUB_OUTPUT}"
+        ALLOW_ANY_REF: ${{ inputs.allow-any-ref }}
+      run: ./hack/.ci/release/resolve-tag.sh "${GITHUB_REPOSITORY}" "${TAG}" "${MINOR}" "${GITHUB_REF}" "${DEV_IMAGE_REPO_REF}" "${ALLOW_ANY_REF}" >> "${GITHUB_OUTPUT}"
 
     - name: Compute the rolling tags
       id: compute-rolling-tags

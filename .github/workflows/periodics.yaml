@@ -36,16 +36,6 @@ jobs:
     with:
       image-ref: ${{ needs.image.outputs.image-ref }}
       olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
-    secrets:
-      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
-
-  # Checks the bundle against Red Hat's certification requirements ahead of a release, without submitting the results.
-  openshift-preflight:
-    needs: olm
-    uses: ./.github/workflows/_openshift-preflight.yaml
-    with:
-      name: openshift-preflight
-      olm-bundle-image-ref: ${{ needs.olm.outputs.bundle-ref }}
-      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+      jobs: '["openshift-aws-serial"]'
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}

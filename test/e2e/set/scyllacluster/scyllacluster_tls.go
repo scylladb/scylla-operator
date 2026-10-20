@@ -7,10 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -20,7 +17,6 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/crypto"
 	"github.com/scylladb/scylla-operator/pkg/features"
-	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/kubecrypto"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -28,34 +24,24 @@ import (
 	"github.com/scylladb/scylla-operator/test/e2e/framework"
 	"github.com/scylladb/scylla-operator/test/e2e/scheme"
 	"github.com/scylladb/scylla-operator/test/e2e/utils"
+	"github.com/scylladb/scylla-operator/test/e2e/utils/operator"
 	verificationutils "github.com/scylladb/scylla-operator/test/e2e/utils/verification"
 	scyllaclusterverification "github.com/scylladb/scylla-operator/test/e2e/utils/verification/scyllacluster"
 	"github.com/scylladb/scylla-operator/test/e2e/verification"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-)
-
-var (
-	deploymentResourceInfo = collect.ResourceInfo{
-		Resource: schema.GroupVersionResource{
-			Group:    "apps",
-			Version:  "v1",
-			Resource: "deployments",
-		},
-		Scope: meta.RESTScopeNamespace,
-	}
 )
 
 const (
 	operatorNamespace      = "scylla-operator"
 	operatorDeploymentName = "scylla-operator"
+
+	cryptoKeyTypeFlag    = "crypto-key-type"
+	cryptoRSAKeySizeFlag = "crypto-rsa-key-size"
 )
 
 var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuiteParallelOpenShift, framework.SuiteKindFast, func() {
@@ -347,72 +333,6 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteParallel, framework.SuitePara
 	})
 })
 
-// setOperatorCryptoKeyType sets --crypto-key-type on the operator Deployment, or removes it when keyType is nil,
-// and waits for the operator to roll out.
-func setOperatorCryptoKeyType(ctx context.Context, f *framework.Framework, keyType *crypto.KeyType) {
-	g.GinkgoHelper()
-
-	const (
-		cryptoKeyTypeFlagPrefix    = "--crypto-key-type="
-		cryptoRSAKeySizeFlagPrefix = "--crypto-rsa-key-size="
-	)
-
-	operatorDeploy, err := f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Get(ctx, operatorDeploymentName, metav1.GetOptions{})
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	containerIdx := slices.IndexFunc(operatorDeploy.Spec.Template.Spec.Containers, func(c corev1.Container) bool {
-		return c.Name == "scylla-operator"
-	})
-	o.Expect(containerIdx).NotTo(o.Equal(-1), "operator container not found in Deployment")
-
-	args := slices.DeleteFunc(slices.Clone(operatorDeploy.Spec.Template.Spec.Containers[containerIdx].Args), func(arg string) bool {
-		return strings.HasPrefix(arg, cryptoKeyTypeFlagPrefix) || strings.HasPrefix(arg, cryptoRSAKeySizeFlagPrefix)
-	})
-
-	if keyType != nil {
-		args = append(args, cryptoKeyTypeFlagPrefix+string(*keyType))
-
-		if *keyType == crypto.RSAKeyType {
-			// Use the smallest supported RSA key size, so that the operator generates the keys quickly.
-			args = append(args, cryptoRSAKeySizeFlagPrefix+"2048")
-		}
-	}
-
-	patchBytes, err := json.Marshal([]map[string]any{
-		{
-			"op":    "replace",
-			"path":  fmt.Sprintf("/spec/template/spec/containers/%d/args", containerIdx),
-			"value": args,
-		},
-	})
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	operatorDeploy, err = f.KubeAdminClient().AppsV1().Deployments(operatorNamespace).Patch(
-		ctx,
-		operatorDeploymentName,
-		types.JSONPatchType,
-		patchBytes,
-		metav1.PatchOptions{},
-	)
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	framework.By("Waiting for the operator Deployment to roll out (RV=%s)", operatorDeploy.ResourceVersion)
-	waitCtx, waitCtxCancel := context.WithTimeout(ctx, 5*time.Minute)
-	defer waitCtxCancel()
-	_, err = controllerhelpers.WaitForDeploymentState(
-		waitCtx,
-		f.KubeAdminClient().AppsV1().Deployments(operatorNamespace),
-		operatorDeploymentName,
-		controllerhelpers.WaitForStateOptions{},
-		controllerhelpers.IsDeploymentRolledOut,
-		// Make sure no operator replica with the previous configuration is left to reconcile.
-		func(deploy *appsv1.Deployment) (bool, error) {
-			return deploy.Status.Replicas == *deploy.Spec.Replicas, nil
-		},
-	)
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
 // waitForCertificatesToUseKeyAlgorithm waits until the certificates of the ScyllaCluster's serving chain (CA and serving
 // certificate) and client chain (CA and admin client certificate) have keys of the given algorithm.
 func waitForCertificatesToUseKeyAlgorithm(ctx context.Context, f *framework.Framework, sc *scyllav1.ScyllaCluster, algorithm x509.PublicKeyAlgorithm) {
@@ -479,20 +399,14 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteSerial, func() {
 			g.Skip(fmt.Sprintf("Skipping because %q feature is disabled", features.AutomaticTLSCertificates))
 		}
 
-		framework.By("Snapshotting the operator Deployment for restoration")
-		f.AddCleaners(framework.NewRestoringCleaner(
-			ctx,
-			f.AdminClientConfig(),
-			f.KubeAdminClient(),
-			f.DynamicAdminClient(),
-			deploymentResourceInfo,
-			operatorNamespace,
-			operatorDeploymentName,
-			framework.RestoreStrategyUpdate,
-		))
+		operatorDeploymentModifier := operator.NewOperatorDeploymentModifier(ctx, f)
 
 		framework.By("Configuring the operator to use RSA keys")
-		setOperatorCryptoKeyType(ctx, f, new(crypto.RSAKeyType))
+		operatorDeploymentModifier.SetFlags(ctx, map[string]string{
+			cryptoKeyTypeFlag: string(crypto.RSAKeyType),
+			// Use the smallest supported RSA key size, so that the operator generates the keys quickly.
+			cryptoRSAKeySizeFlag: "2048",
+		})
 
 		sc := createClusterAndWaitForRollout(ctx, f, rackLayout{racks: []string{"a"}, defaultMemberCount: 1})
 
@@ -511,7 +425,7 @@ var _ = g.Describe("ScyllaCluster", framework.SuiteSerial, func() {
 		verifyAdminCanQueryOverTLS(ctx, hosts, rsaCertificates)
 
 		framework.By("Configuring the operator with the default key type")
-		setOperatorCryptoKeyType(ctx, f, nil)
+		operatorDeploymentModifier.UnsetFlags(ctx, cryptoKeyTypeFlag, cryptoRSAKeySizeFlag)
 
 		framework.By("Waiting for the serving and client certificates to be reissued with ECDSA keys")
 		waitForCertificatesToUseKeyAlgorithm(ctx, f, sc, x509.ECDSA)

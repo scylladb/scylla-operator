@@ -6,6 +6,7 @@ Day-two operations — scaling, backup, and maintenance tasks for running cluste
 :maxdepth: 1
 
 scale-add-remove-racks
+resize-nodes-in-a-rack
 replace-nodes
 expand-storage-volumes
 use-maintenance-mode

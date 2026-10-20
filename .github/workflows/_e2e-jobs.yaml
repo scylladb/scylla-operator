@@ -16,7 +16,9 @@ on:
         required: true
         type: string
       jobs:
-        description: JSON list of the ids of the jobs to run, e.g. `["gke-parallel"]`. Runs every job when omitted.
+        description: >-
+          JSON list of glob patterns matching the ids of the jobs to run, e.g. `["gke-parallel"]`, or `["!oke-*"]` for
+          every job but OKE ones, as `hack/.ci/select-jobs.sh` matches them. Runs every job when omitted.
         required: false
         type: string
     secrets:
@@ -38,6 +40,11 @@ jobs:
       oke: ${{ steps.plan.outputs.oke }}
       openshift: ${{ steps.plan.outputs.openshift }}
     steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
     - id: plan
       shell: bash
       env:
@@ -130,16 +137,10 @@ jobs:
           }
         ]'
 
-        all="$( jq -sc 'add | map(.id)' <<< "${gke} ${oke} ${openshift}" )"
-        if [[ -z "${JOBS}" ]]; then
-          JOBS="${all}"
-        fi
-        # An id that matches no job would otherwise select nothing, so a renamed job would silently drop out of its callers.
-        jq -en --argjson all "${all}" '
-          (env.JOBS | fromjson) - $all |
-          if length > 0 then error("unknown job ids: \(.)") else . end
-        '
-        select='(env.JOBS | fromjson) as $jobs | map(select(.id | IN($jobs[])))'
+        mapfile -t ids < <( jq -sr 'add | .[].id' <<< "${gke} ${oke} ${openshift}" )
+        SELECTED="$( ./hack/.ci/select-jobs.sh "${JOBS:-[\"*\"]}" "${ids[@]}" )"
+        export SELECTED
+        select='(env.SELECTED | fromjson) as $jobs | map(select(.id | IN($jobs[])))'
         {
           echo "gke=$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )"
           echo "oke=$( jq -c "${select}" <<< "${oke}" )"

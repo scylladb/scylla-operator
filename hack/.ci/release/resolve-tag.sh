@@ -4,13 +4,13 @@
 #
 # This script decides where the image to release comes from. For a tag that already exists, it reads the tested image
 # from the tag. Otherwise the tag will be created on the given ref, so the ref has to be the release branch of the
-# minor. It prints the results as key=value lines.
+# minor, unless any ref is allowed. It prints the results as key=value lines.
 
 set -euExo pipefail
 shopt -s inherit_errexit
 
-if [[ "$#" -ne 5 ]]; then
-  echo -e "Invalid arguments.\nUsage: ${0} <repository> <tag> <minor> <ref> <dev_image_repo_ref>" >&2
+if [[ "$#" -ne 6 ]]; then
+  echo -e "Invalid arguments.\nUsage: ${0} <repository> <tag> <minor> <ref> <dev_image_repo_ref> <allow_any_ref>" >&2
   exit 1
 fi
 
@@ -19,10 +19,11 @@ tag="${2}"
 minor="${3}"
 ref="${4}"
 dev_image_repo_ref="${5}"
+allow_any_ref="${6}"
 
 if [[ -z "$( git ls-remote --tags --refs "https://github.com/${repository}.git" "refs/tags/${tag}" )" ]]; then
-  if [[ "${ref}" != "refs/heads/v${minor}" ]]; then
-    echo "Error: Tag '${tag}' has to be created on branch 'v${minor}', not '${ref}'." >&2
+  if [[ "${ref}" != "refs/heads/v${minor}" && "${allow_any_ref}" != "true" ]]; then
+    echo "Error: Tag '${tag}' has to be created on branch 'v${minor}', not '${ref}'. If you're sure the tag belongs on '${ref}', dispatch the release again with 'allow-any-ref' set." >&2
     exit 1
   fi
 

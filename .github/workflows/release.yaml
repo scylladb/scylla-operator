@@ -120,6 +120,8 @@ jobs:
     with:
       image-ref: ${{ needs.image.outputs.image-ref }}
       olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+      # TODO: Restore the OKE jobs to the release gate when https://scylladb.atlassian.net/browse/OPERATOR-505 is resolved.
+      jobs: '["!oke-*"]'
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 

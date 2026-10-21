@@ -2624,6 +2624,70 @@ func (v *DeleteVectorIndexAction) Deserialize(d smithy.ShapeDeserializer) error 
 	})
 }
 
+// The parameters for disassociating the local replica from a global table using
+// Version 2019.11.21 with multi-Region eventual consistency (MREC).
+//
+// After disassociation completes, the replica remains a standalone regional table
+// that keeps its data, indexes, and table settings.
+//
+// For request requirements, see [UpdateTable]. For prerequisites, the protection update, and
+// completion checks, see [Disassociating a global table replica]in the Amazon DynamoDB Developer Guide.
+//
+// [Disassociating a global table replica]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables-disassociate.html
+// [UpdateTable]: https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateTable.html
+type DisassociateReplicationGroupMemberAction struct {
+
+	// The mode for handling pending replication before disassociation completes. You
+	// must specify WAIT_FOR_REPLICATION . For more information, see [Disassociating a global table replica] in the Amazon
+	// DynamoDB Developer Guide.
+	//
+	// [Disassociating a global table replica]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/globaltables-disassociate.html
+	//
+	// This member is required.
+	DisassociationMode DisassociationMode
+
+	// The Region of the replica to disassociate. Set this value to the Region where
+	// you send the UpdateTable request. You must use credentials for the account that
+	// owns the replica.
+	//
+	// This member is required.
+	RegionName *string
+
+	noSmithyDocumentSerde
+}
+
+func (v *DisassociateReplicationGroupMemberAction) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.DisassociateReplicationGroupMemberAction)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *DisassociateReplicationGroupMemberAction) SerializeMembers(s smithy.ShapeSerializer) {
+	if v.DisassociationMode != "" {
+		s.WriteString(schemas.DisassociateReplicationGroupMemberAction_DisassociationMode, string(v.DisassociationMode))
+	}
+	if v.RegionName != nil {
+		s.WriteString(schemas.DisassociateReplicationGroupMemberAction_RegionName, *v.RegionName)
+	}
+}
+func (v *DisassociateReplicationGroupMemberAction) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.DisassociateReplicationGroupMemberAction, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.DisassociateReplicationGroupMemberAction_DisassociationMode:
+			var ev string
+			if err := d.ReadString(schemas.DisassociateReplicationGroupMemberAction_DisassociationMode, &ev); err != nil {
+				return err
+			}
+			v.DisassociationMode = DisassociationMode(ev)
+			return nil
+		case schemas.DisassociateReplicationGroupMemberAction_RegionName:
+			v.RegionName = new(string)
+			return d.ReadString(schemas.DisassociateReplicationGroupMemberAction_RegionName, v.RegionName)
+		}
+		return nil
+	})
+}
+
 // Enables setting the configuration for Kinesis Streaming.
 type EnableKinesisStreamingConfiguration struct {
 
@@ -2985,6 +3049,11 @@ type ExportDescription struct {
 	// Export failure reason description.
 	FailureMessage *string
 
+	// The filter criteria applied to the export. When present, only items that match
+	// the specified key conditions and filter expressions are included in the export
+	// output.
+	FilterSpecification *FilterSpecification
+
 	// Optional object containing the parameters specific to an incremental export.
 	IncrementalExportSpecification *IncrementalExportSpecification
 
@@ -3065,6 +3134,11 @@ func (v *ExportDescription) SerializeMembers(s smithy.ShapeSerializer) {
 	}
 	if v.FailureMessage != nil {
 		s.WriteString(schemas.ExportDescription_FailureMessage, *v.FailureMessage)
+	}
+	if v.FilterSpecification != nil {
+		s.WriteStruct(schemas.ExportDescription_FilterSpecification)
+		v.FilterSpecification.SerializeMembers(s)
+		s.CloseStruct()
 	}
 	if v.IncrementalExportSpecification != nil {
 		s.WriteStruct(schemas.ExportDescription_IncrementalExportSpecification)
@@ -3147,6 +3221,9 @@ func (v *ExportDescription) Deserialize(d smithy.ShapeDeserializer) error {
 		case schemas.ExportDescription_FailureMessage:
 			v.FailureMessage = new(string)
 			return d.ReadString(schemas.ExportDescription_FailureMessage, v.FailureMessage)
+		case schemas.ExportDescription_FilterSpecification:
+			v.FilterSpecification = &FilterSpecification{}
+			return v.FilterSpecification.Deserialize(d)
 		case schemas.ExportDescription_IncrementalExportSpecification:
 			v.IncrementalExportSpecification = &IncrementalExportSpecification{}
 			return v.IncrementalExportSpecification.Deserialize(d)
@@ -3279,6 +3356,86 @@ func (v *FailureException) Deserialize(d smithy.ShapeDeserializer) error {
 		case schemas.FailureException_ExceptionName:
 			v.ExceptionName = new(string)
 			return d.ReadString(schemas.FailureException_ExceptionName, v.ExceptionName)
+		}
+		return nil
+	})
+}
+
+// Contains the filter criteria used to limit which items are included in an
+// export. If you don't include this parameter, all items and attributes are
+// exported.
+type FilterSpecification struct {
+
+	// One or more substitution tokens for attribute names in an expression. For more
+	// information, see [Expression Attribute Names]in the Amazon DynamoDB Developer Guide.
+	//
+	// [Expression Attribute Names]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ExpressionAttributeNames.html
+	ExpressionAttributeNames map[string]string
+
+	// One or more values that can be substituted in an expression. For more
+	// information, see [Expression Attribute Values]in the Amazon DynamoDB Developer Guide.
+	//
+	// [Expression Attribute Values]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ExpressionAttributeValues.html
+	ExpressionAttributeValues map[string]AttributeValue
+
+	// A condition that filters which items are included in the export. This parameter
+	// uses the same syntax as FilterExpression in Query and Scan . If you don't
+	// provide KeyConditionExpression , this expression can also reference key
+	// attributes. If you don't specify this parameter, all items are included in the
+	// export.
+	FilterExpression *string
+
+	// A condition expression that filters items by key values. The expression must
+	// test equality on a single partition key value and can optionally compare a sort
+	// key value. This parameter uses the same syntax as KeyConditionExpression in
+	// Query . When you provide this parameter, FilterExpression can only reference
+	// non-key attributes. If you don't specify this parameter, all items are eligible
+	// for export.
+	KeyConditionExpression *string
+
+	// The attributes you want to retrieve for items included in the export. Separate
+	// attribute names in the expression with commas. If you don't specify this
+	// parameter, all attributes are returned.
+	ProjectionExpression *string
+
+	noSmithyDocumentSerde
+}
+
+func (v *FilterSpecification) Serialize(s smithy.ShapeSerializer) {
+	s.WriteStruct(schemas.FilterSpecification)
+	v.SerializeMembers(s)
+	s.CloseStruct()
+}
+
+func (v *FilterSpecification) SerializeMembers(s smithy.ShapeSerializer) {
+	serializeExpressionAttributeNameMap(s, schemas.FilterSpecification_ExpressionAttributeNames, v.ExpressionAttributeNames)
+	serializeExpressionAttributeValueMap(s, schemas.FilterSpecification_ExpressionAttributeValues, v.ExpressionAttributeValues)
+	if v.FilterExpression != nil {
+		s.WriteString(schemas.FilterSpecification_FilterExpression, *v.FilterExpression)
+	}
+	if v.KeyConditionExpression != nil {
+		s.WriteString(schemas.FilterSpecification_KeyConditionExpression, *v.KeyConditionExpression)
+	}
+	if v.ProjectionExpression != nil {
+		s.WriteString(schemas.FilterSpecification_ProjectionExpression, *v.ProjectionExpression)
+	}
+}
+func (v *FilterSpecification) Deserialize(d smithy.ShapeDeserializer) error {
+	return smithy.ReadStruct(d, schemas.FilterSpecification, func(s *smithy.Schema) error {
+		switch s {
+		case schemas.FilterSpecification_ExpressionAttributeNames:
+			return deserializeExpressionAttributeNameMap(d, schemas.FilterSpecification_ExpressionAttributeNames, &v.ExpressionAttributeNames)
+		case schemas.FilterSpecification_ExpressionAttributeValues:
+			return deserializeExpressionAttributeValueMap(d, schemas.FilterSpecification_ExpressionAttributeValues, &v.ExpressionAttributeValues)
+		case schemas.FilterSpecification_FilterExpression:
+			v.FilterExpression = new(string)
+			return d.ReadString(schemas.FilterSpecification_FilterExpression, v.FilterExpression)
+		case schemas.FilterSpecification_KeyConditionExpression:
+			v.KeyConditionExpression = new(string)
+			return d.ReadString(schemas.FilterSpecification_KeyConditionExpression, v.KeyConditionExpression)
+		case schemas.FilterSpecification_ProjectionExpression:
+			v.ProjectionExpression = new(string)
+			return d.ReadString(schemas.FilterSpecification_ProjectionExpression, v.ProjectionExpression)
 		}
 		return nil
 	})
@@ -6747,6 +6904,13 @@ func (v *ReplicaSettingsUpdate) Deserialize(d smithy.ShapeDeserializer) error {
 //     DeleteTableReplica action in the destination Region, deleting the replica and
 //     all if its items in the destination Region.
 //
+//   - The local replica to be disassociated from a global table and retained as a
+//     standalone regional table.
+//
+// Each ReplicationGroupUpdate contains exactly one action. A Disassociate action
+// must be the only replica update in the request; including other updates causes
+// the request to fail.
+//
 // When you manually remove a table or global table replica, you do not
 // automatically remove any associated scalable targets, scaling policies, or
 // CloudWatch alarms.
@@ -6757,6 +6921,10 @@ type ReplicationGroupUpdate struct {
 
 	// The parameters required for deleting a replica for the table.
 	Delete *DeleteReplicationGroupMemberAction
+
+	// The parameters for disassociating the local replica from the global table and
+	// retaining it as a standalone regional table.
+	Disassociate *DisassociateReplicationGroupMemberAction
 
 	// The parameters required for updating a replica for the table.
 	Update *UpdateReplicationGroupMemberAction
@@ -6781,6 +6949,11 @@ func (v *ReplicationGroupUpdate) SerializeMembers(s smithy.ShapeSerializer) {
 		v.Delete.SerializeMembers(s)
 		s.CloseStruct()
 	}
+	if v.Disassociate != nil {
+		s.WriteStruct(schemas.ReplicationGroupUpdate_Disassociate)
+		v.Disassociate.SerializeMembers(s)
+		s.CloseStruct()
+	}
 	if v.Update != nil {
 		s.WriteStruct(schemas.ReplicationGroupUpdate_Update)
 		v.Update.SerializeMembers(s)
@@ -6796,6 +6969,9 @@ func (v *ReplicationGroupUpdate) Deserialize(d smithy.ShapeDeserializer) error {
 		case schemas.ReplicationGroupUpdate_Delete:
 			v.Delete = &DeleteReplicationGroupMemberAction{}
 			return v.Delete.Deserialize(d)
+		case schemas.ReplicationGroupUpdate_Disassociate:
+			v.Disassociate = &DisassociateReplicationGroupMemberAction{}
+			return v.Disassociate.Deserialize(d)
 		case schemas.ReplicationGroupUpdate_Update:
 			v.Update = &UpdateReplicationGroupMemberAction{}
 			return v.Update.Deserialize(d)
@@ -7731,6 +7907,10 @@ type TableDescription struct {
 	// the table.
 	DeletionProtectionEnabled *bool
 
+	// Specifies whether disassociation protection is enabled ( true ) or disabled (
+	// false ) for the local global table replica. Protection is enabled by default.
+	DisassociationProtectionEnabled *bool
+
 	// The global secondary indexes, if any, on the table. Each index is scoped to a
 	// given partition key value. Each element is composed of:
 	//
@@ -7942,6 +8122,9 @@ type TableDescription struct {
 	ProvisionedThroughput *ProvisionedThroughputDescription
 
 	// Represents replicas of the table.
+	//
+	// After a successful disassociation, this list is absent or empty. To confirm
+	// disassociation, also verify that TableStatus is ACTIVE .
 	Replicas []ReplicaDescription
 
 	// Contains details for the restore.
@@ -8058,6 +8241,9 @@ func (v *TableDescription) SerializeMembers(s smithy.ShapeSerializer) {
 	if v.DeletionProtectionEnabled != nil {
 		s.WriteBool(schemas.TableDescription_DeletionProtectionEnabled, *v.DeletionProtectionEnabled)
 	}
+	if v.DisassociationProtectionEnabled != nil {
+		s.WriteBool(schemas.TableDescription_DisassociationProtectionEnabled, *v.DisassociationProtectionEnabled)
+	}
 	serializeGlobalSecondaryIndexDescriptionList(s, schemas.TableDescription_GlobalSecondaryIndexes, v.GlobalSecondaryIndexes)
 	if v.GlobalTableSettingsReplicationMode != "" {
 		s.WriteString(schemas.TableDescription_GlobalTableSettingsReplicationMode, string(v.GlobalTableSettingsReplicationMode))
@@ -8150,6 +8336,9 @@ func (v *TableDescription) Deserialize(d smithy.ShapeDeserializer) error {
 		case schemas.TableDescription_DeletionProtectionEnabled:
 			v.DeletionProtectionEnabled = new(bool)
 			return d.ReadBool(schemas.TableDescription_DeletionProtectionEnabled, v.DeletionProtectionEnabled)
+		case schemas.TableDescription_DisassociationProtectionEnabled:
+			v.DisassociationProtectionEnabled = new(bool)
+			return d.ReadBool(schemas.TableDescription_DisassociationProtectionEnabled, v.DisassociationProtectionEnabled)
 		case schemas.TableDescription_GlobalSecondaryIndexes:
 			return deserializeGlobalSecondaryIndexDescriptionList(d, schemas.TableDescription_GlobalSecondaryIndexes, &v.GlobalSecondaryIndexes)
 		case schemas.TableDescription_GlobalTableSettingsReplicationMode:

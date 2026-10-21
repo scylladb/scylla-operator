@@ -499,6 +499,26 @@ func (p *scyllaConnPicker) Pick(t Token, qry ExecutableQuery) *Conn {
 		return nil
 	}
 
+	return p.pickInt64Locked(mmt, qry)
+}
+
+// PickInt64 is the raw-int64 fast-path variant of Pick, avoiding the Token
+// interface boxing. It must only be called with int64-based routing tokens
+// (Murmur3/ScyllaCDC), which is guaranteed by int64TokenSelectedHost.
+func (p *scyllaConnPicker) PickInt64(token int64, qry ExecutableQuery) *Conn {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	if len(p.conns) == 0 {
+		return nil
+	}
+
+	return p.pickInt64Locked(int64Token(token), qry)
+}
+
+// pickInt64Locked selects the shard-aware connection for the given raw token.
+// Must be called with p.mu held.
+func (p *scyllaConnPicker) pickInt64Locked(mmt int64Token, qry ExecutableQuery) *Conn {
 	idx := -1
 
 outer:

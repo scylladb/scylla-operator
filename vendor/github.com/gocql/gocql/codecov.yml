@@ -1,0 +1,102 @@
+# Copyright (C) 2026 ScyllaDB
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Codecov configuration for the coverage lane in .github/workflows/coverage.yml,
+# which uploads the profiles `make coverage-report` writes.
+# Reference: https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  # The coverage lane is a job of its own and is not gated on the rest of CI
+  # (main.yml runs the same suites uninstrumented, in parallel), so waiting for
+  # every other check to go green before processing an upload would only delay
+  # the report. The lane is also skippable -- the `disable-coverage-tests` label
+  # and the paths-ignore filters mean plenty of commits never upload at all --
+  # and require_ci_to_pass would turn each of those into a stuck report.
+  require_ci_to_pass: false
+
+# `go tool covdata textfmt` records import paths, not repository paths: the root
+# module's files come out as `github.com/gocql/gocql/conn.go` (module path, not
+# repo slug -- this fork keeps the upstream module path) and lz4's as
+# `github.com/scylladb/gocql/lz4/lz4.go`. Strip both module prefixes so what
+# Codecov gets lines up with the paths actually in the tree; without this every
+# file in both profiles is unmatched and the report comes out empty.
+fixes:
+  - "github.com/gocql/gocql/::"
+  - "github.com/scylladb/gocql/::"
+
+# One flag per Go module, mirroring the two profiles `make coverage-report`
+# emits and the "root module total"/"lz4 module total" split it already prints.
+#
+# carryforward covers exactly one case: a commit that uploaded some flags but
+# not all of them, where the missing ones would otherwise read as a total loss
+# of coverage rather than as absent. In practice that is the root upload
+# landing and the lz4 one failing, since both steps share a condition.
+#
+# It does NOT cover a commit with no upload at all. Codecov builds no head
+# report for such a commit, and carryforward needs a report to fill in, so
+# there is nothing for it to run against. That is the shape of every skipped
+# coverage run here -- a docs-only push filtered out by paths-ignore, a pull
+# request labelled disable-coverage-tests -- and it needs no covering: with no
+# report, comparisons walk back to the nearest ancestor that has one, which is
+# the right baseline, and a run deliberately skipped has no business
+# manufacturing a status out of a blank upload.
+flag_management:
+  individual_flags:
+    - name: root
+      carryforward: true
+    - name: lz4
+      carryforward: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "50...80"
+  status:
+    # informational: report the delta, never fail the merge on it. A failed
+    # or skipped lane uploads nothing (see the guards in coverage.yml), so
+    # that is not the concern here. What remains is that the integration
+    # suites run against a live ScyllaDB cluster, and which lines they reach
+    # -- retries, reconnects, topology and schema event handling, timeouts --
+    # depends on cluster timing as much as on the diff. Two clean runs of the
+    # same commit can land a little apart, and blocking a merge on that noise
+    # would just train people to ignore the status. Flip informational to
+    # false once the run-to-run spread has proven to sit inside the threshold.
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true
+
+ignore:
+  - "docs/**"
+  - "tests/**"
+  - "testdata/**"
+  - "**/*_test.go"
+  # Test-only support code that lives outside *_test.go files: shared helpers
+  # and mocks, the CCM cluster driver the integration suites use, and the
+  # integration-tag-only flag definitions. Counting them would credit the
+  # driver with coverage of its own test harness.
+  - "internal/tests/**"
+  - "internal/ccm/**"
+  - "integration_only.go"
+
+comment:
+  layout: "header, diff, flags, files"
+  behavior: default
+  require_changes: false

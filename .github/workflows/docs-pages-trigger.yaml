@@ -2,7 +2,9 @@ name: "Docs / Publish (trigger)"
 
 # GitHub reads workflow files from the ref that a push event targets, so a workflow living only on master never runs for
 # a push to a release branch and its branches. This stub is the branch-resident part: it carries no logic of its own
-# and delegates to master's implementation, which rebuilds every version listed in master's docs/source/conf.py.
+# and dispatches master's implementation, which rebuilds every version listed in master's docs/source/conf.py.
+# It dispatches rather than calls the workflow: a called workflow runs with the caller's ref, and the github-pages
+# environment only allows deployments from master.
 
 on:
   push:
@@ -22,8 +24,13 @@ permissions:
 
 jobs:
   publish:
+    name: Dispatch docs publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: scylladb/scylla-operator/.github/workflows/docs-pages.yaml@master
+      actions: write
+    steps:
+      - name: Dispatch docs publish on master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docs-pages.yaml --repo "${GITHUB_REPOSITORY}" --ref master

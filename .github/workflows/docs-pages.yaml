@@ -3,7 +3,7 @@ name: "Docs / Publish"
 # The push trigger is expected to stay limited to master. Release branches don't belong there:
 # GitHub resolves workflow files from the ref of the push event, so this file's copy on master never
 # runs for a push to a release branch. Those are picked up by docs-pages-trigger.yaml,
-# which calls back into this workflow.
+# which dispatches this workflow on master.
 on:
   push:
     branches:
@@ -16,7 +16,6 @@ on:
       - "examples/**"
       - "assets/**"
       - ".gitmodules"
-  workflow_call:
   workflow_dispatch:
 
 permissions:

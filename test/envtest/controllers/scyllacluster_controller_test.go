@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
+	"k8s.io/client-go/util/retry"
 )
 
 var _ = g.Describe("ScyllaClusterController condition aggregation", func() {
@@ -178,12 +179,9 @@ var _ = g.Describe("ScyllaClusterController condition aggregation", func() {
 		// Update sc.Spec.Sysctls: this bumps sc.Generation by 1 but leaves sdc.Generation
 		// unchanged because sysctls are stored only as an SDC annotation, not in sdc.Spec.
 		g.By("Updating sc.Spec.Sysctls to introduce a generation skew (sc.Generation > sdc.Generation)")
-		sc, err := env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-		scCopy := sc.DeepCopy()
-		scCopy.Spec.Sysctls = []string{"fs.aio-max-nr=1048576"}
-		sc, err = env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Update(ctx, scCopy, metav1.UpdateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		sc = updateScyllaCluster(ctx, env, sc.Name, func(sc *scyllav1.ScyllaCluster) {
+			sc.Spec.Sysctls = []string{"fs.aio-max-nr=1048576"}
+		})
 
 		g.By("Verifying that the SDC annotation is updated by the controller but sdc.Generation stays the same")
 		o.Eventually(func(g o.Gomega) {
@@ -221,12 +219,10 @@ var _ = g.Describe("ScyllaClusterController condition aggregation", func() {
 		sc = waitForScyllaClusterToSettleWithHealthyConditions(ctx, env.ScyllaClient(), sc.Namespace, sc.Name)
 
 		g.By("Bumping sdc.Generation with a direct update of SDC spec")
-		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		sdcCopy := sdc.DeepCopy()
-		sdcCopy.Spec.MinReadySeconds = pointer.Ptr(int32(31))
-		sdc, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Update(ctx, sdcCopy, metav1.UpdateOptions{})
+		updateScyllaDBDatacenter(ctx, env, sdc.Name, func(sdc *scyllav1alpha1.ScyllaDBDatacenter) {
+			sdc.Spec.MinReadySeconds = pointer.Ptr(int32(31))
+		})
+		sdc, err := env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sdc.Name, metav1.GetOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		// NOTE: we do not verify that the spec change has been reconciled back to the declared value by the SC controller
@@ -264,16 +260,13 @@ var _ = g.Describe("ScyllaClusterController condition aggregation", func() {
 		g.By("Enabling webhook rejection and triggering an SDC re-apply via a sysctl change")
 		rejectSDC.Store(true)
 
-		sc, err := env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-		scCopy := sc.DeepCopy()
-		scCopy.Spec.Sysctls = []string{"fs.aio-max-nr=1048576"}
-		_, err = env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Update(ctx, scCopy, metav1.UpdateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
+		sc = updateScyllaCluster(ctx, env, sc.Name, func(sc *scyllav1.ScyllaCluster) {
+			sc.Spec.Sysctls = []string{"fs.aio-max-nr=1048576"}
+		})
 
 		g.By("Expecting ScyllaCluster to report Degraded=True due to rejected SDC apply")
 		o.Eventually(func(g o.Gomega) {
-			sc, err = env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
+			sc, err := env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
 			g.Expect(err).NotTo(o.HaveOccurred())
 
 			degradedCond := apimeta.FindStatusCondition(sc.Status.Conditions, scyllav1.DegradedCondition)
@@ -305,22 +298,19 @@ var _ = g.Describe("ScyllaClusterController condition aggregation", func() {
 		g.By("Enabling SMT webhook rejection and adding a repair task to trigger an SMT apply")
 		rejectSMT.Store(true)
 
-		sc, err := env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-		scCopy := sc.DeepCopy()
-		scCopy.Spec.Repairs = []scyllav1.RepairTaskSpec{
-			{
-				TaskSpec: scyllav1.TaskSpec{
-					Name: "weekly",
+		sc = updateScyllaCluster(ctx, env, sc.Name, func(sc *scyllav1.ScyllaCluster) {
+			sc.Spec.Repairs = []scyllav1.RepairTaskSpec{
+				{
+					TaskSpec: scyllav1.TaskSpec{
+						Name: "weekly",
+					},
 				},
-			},
-		}
-		_, err = env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Update(ctx, scCopy, metav1.UpdateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
+			}
+		})
 
 		g.By("Expecting ScyllaCluster to report Degraded=True due to rejected SMT apply")
 		o.Eventually(func(g o.Gomega) {
-			sc, err = env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
+			sc, err := env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
 			g.Expect(err).NotTo(o.HaveOccurred())
 
 			degradedCond := apimeta.FindStatusCondition(sc.Status.Conditions, scyllav1.DegradedCondition)
@@ -404,6 +394,30 @@ func waitForScyllaClusterToSettleWithHealthyConditions(ctx context.Context, scyl
 	}).WithTimeout(30 * time.Second).WithContext(ctx).Should(o.Succeed())
 
 	return sc
+}
+
+// updateScyllaCluster applies mutateFunc to the named ScyllaCluster, retrying on conflict.
+func updateScyllaCluster(ctx context.Context, e *envtest.Environment, name string, mutateFunc func(*scyllav1.ScyllaCluster)) *scyllav1.ScyllaCluster {
+	g.GinkgoHelper()
+
+	var updated *scyllav1.ScyllaCluster
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		sc, err := e.ScyllaClient().ScyllaV1().ScyllaClusters(e.Namespace()).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("can't get ScyllaCluster %q: %w", naming.ManualRef(e.Namespace(), name), err)
+		}
+
+		mutateFunc(sc)
+		updated, err = e.ScyllaClient().ScyllaV1().ScyllaClusters(e.Namespace()).Update(ctx, sc, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("can't update ScyllaCluster %q: %w", naming.ObjRef(sc), err)
+		}
+
+		return nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	return updated
 }
 
 // newBasicScyllaCluster returns a minimal valid *scyllav1.ScyllaCluster for use in envtest.

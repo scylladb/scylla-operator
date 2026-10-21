@@ -11,7 +11,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	configassests "github.com/scylladb/scylla-operator/assets/config"
-	coredumpsfixture "github.com/scylladb/scylla-operator/examples/gke/coredumps"
+	coredumpsfixture "github.com/scylladb/scylla-operator/examples/common/coredumps"
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
@@ -41,6 +41,9 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 
 	g.It("should persist a coredump when ScyllaDB crashes with SIGABRT", func(ctx g.SpecContext) {
 		cm := coredumpsfixture.CoredumpConfConfigMap.ReadOrFail()
+		sa := coredumpsfixture.SetupSystemdCoredumpServiceAccount.ReadOrFail()
+		role := coredumpsfixture.SetupSystemdCoredumpRole.ReadOrFail()
+		roleBinding := coredumpsfixture.SetupSystemdCoredumpRoleBinding.ReadOrFail()
 		ds := coredumpsfixture.SetupSystemdCoredumpDaemonSet.ReadOrFail()
 		coredumpSetupNamespace := cm.GetNamespace()
 
@@ -53,6 +56,36 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 			err := f.KubeAdminClient().CoreV1().ConfigMaps(coredumpSetupNamespace).Delete(ctx, cm.Name, metav1.DeleteOptions{
 				PropagationPolicy: pointer.Ptr(metav1.DeletePropagationForeground),
 			})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		})
+
+		framework.By("Creating the coredump setup ServiceAccount")
+		sa, err = f.KubeAdminClient().CoreV1().ServiceAccounts(coredumpSetupNamespace).Create(ctx, sa, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.DeferCleanup(func(ctx context.Context) {
+			framework.By("Deleting the coredump setup ServiceAccount")
+			err := f.KubeAdminClient().CoreV1().ServiceAccounts(coredumpSetupNamespace).Delete(ctx, sa.Name, metav1.DeleteOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		})
+
+		framework.By("Creating the coredump setup Role")
+		role, err = f.KubeAdminClient().RbacV1().Roles(coredumpSetupNamespace).Create(ctx, role, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.DeferCleanup(func(ctx context.Context) {
+			framework.By("Deleting the coredump setup Role")
+			err := f.KubeAdminClient().RbacV1().Roles(coredumpSetupNamespace).Delete(ctx, role.Name, metav1.DeleteOptions{})
+			o.Expect(err).NotTo(o.HaveOccurred())
+		})
+
+		framework.By("Creating the coredump setup RoleBinding")
+		roleBinding, err = f.KubeAdminClient().RbacV1().RoleBindings(coredumpSetupNamespace).Create(ctx, roleBinding, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.DeferCleanup(func(ctx context.Context) {
+			framework.By("Deleting the coredump setup RoleBinding")
+			err := f.KubeAdminClient().RbacV1().RoleBindings(coredumpSetupNamespace).Delete(ctx, roleBinding.Name, metav1.DeleteOptions{})
 			o.Expect(err).NotTo(o.HaveOccurred())
 		})
 
@@ -90,6 +123,27 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 		ds, err = controllerhelpers.WaitForDaemonSetState(dsRolloutCtx, f.KubeAdminClient().AppsV1().DaemonSets(coredumpSetupNamespace), ds.Name, controllerhelpers.WaitForStateOptions{}, controllerhelpers.IsDaemonSetRolledOut)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
+		sc := f.GetDefaultScyllaCluster()
+		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
+		sc.Spec.Datacenter.Racks[0].Members = 1
+
+		framework.By("Creating a ScyllaCluster")
+		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
+		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
+		defer waitCtxCancel()
+		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
+
+		podName := utils.GetNodeName(sc, 0)
+
+		scyllaPod, err := f.KubeClient().CoreV1().Pods(f.Namespace()).Get(ctx, podName, metav1.GetOptions{})
+		o.Expect(err).NotTo(o.HaveOccurred())
+
 		framework.By("Creating a privileged host Pod to verify node-level side effects")
 		hostPod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -117,9 +171,8 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 						},
 					},
 				},
-				NodeSelector: map[string]string{
-					"scylla.scylladb.com/node-type": "scylla",
-				},
+				// The coredump is stored on the node where ScyllaDB crashes.
+				NodeName: scyllaPod.Spec.NodeName,
 				Tolerations: []corev1.Toleration{
 					{
 						Key:      "scylla-operator.scylladb.com/dedicated",
@@ -142,18 +195,20 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 				RestartPolicy:                 corev1.RestartPolicyNever,
 			},
 		}
-		hostPod, err = f.KubeClient().CoreV1().Pods(f.Namespace()).Create(ctx, hostPod, metav1.CreateOptions{})
+		// The host Pod is privileged, which requires elevated permissions on some platforms (e.g. OpenShift),
+		// so it's created and exec-ed into with the admin client.
+		hostPod, err = f.KubeAdminClient().CoreV1().Pods(f.Namespace()).Create(ctx, hostPod, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for the host Pod to be running")
 		hostPodCtx, hostPodCtxCancel := context.WithTimeoutCause(ctx, coredumpVerifyPodTimeout, fmt.Errorf("timed out waiting for host Pod %q to be running", naming.ObjRef(hostPod)))
 		defer hostPodCtxCancel()
-		hostPod, err = controllerhelpers.WaitForPodState(hostPodCtx, f.KubeClient().CoreV1().Pods(f.Namespace()), hostPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
+		hostPod, err = controllerhelpers.WaitForPodState(hostPodCtx, f.KubeAdminClient().CoreV1().Pods(f.Namespace()), hostPod.Name, controllerhelpers.WaitForStateOptions{}, utils.PodIsRunning)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		framework.By("Waiting for kernel.core_pattern to be set to systemd-coredump on node %q", hostPod.Spec.NodeName)
 		o.Eventually(func(eg o.Gomega) {
-			stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+			stdout, stderr, err := utils.ExecWithOptions(ctx, f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
 				Command: []string{
 					"nsenter",
 					"--mount=/host/proc/1/ns/mnt",
@@ -170,24 +225,6 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 			eg.Expect(err).NotTo(o.HaveOccurred(), stdout, stderr)
 			eg.Expect(strings.TrimSpace(stdout)).To(o.ContainSubstring("systemd-coredump"))
 		}).WithPolling(5 * time.Second).WithTimeout(sysctlPropagationTimeout).Should(o.Succeed())
-
-		sc := f.GetDefaultScyllaCluster()
-		o.Expect(sc.Spec.Datacenter.Racks).To(o.HaveLen(1))
-		sc.Spec.Datacenter.Racks[0].Members = 1
-
-		framework.By("Creating a ScyllaCluster")
-		sc, err = f.ScyllaClient().ScyllaV1().ScyllaClusters(f.Namespace()).Create(ctx, sc, metav1.CreateOptions{})
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		framework.By("Waiting for the ScyllaCluster to roll out (RV=%s)", sc.ResourceVersion)
-		waitCtx, waitCtxCancel := utils.ContextForRollout(ctx, sc)
-		defer waitCtxCancel()
-		sc, err = controllerhelpers.WaitForScyllaClusterState(waitCtx, f.ScyllaClient().ScyllaV1().ScyllaClusters(sc.Namespace), sc.Name, controllerhelpers.WaitForStateOptions{}, utils.IsScyllaClusterRolledOut)
-		o.Expect(err).NotTo(o.HaveOccurred())
-
-		scyllaclusterverification.Verify(ctx, f.KubeClient(), f.ScyllaClient(), sc)
-
-		podName := utils.GetNodeName(sc, 0)
 
 		framework.By("Sending SIGABRT to the scylla process in Pod %q", podName)
 		_, _, err = utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
@@ -208,7 +245,7 @@ var _ = g.Describe("ScyllaCluster coredumps", framework.SuiteSerial, func() {
 
 		framework.By("Verifying coredump was captured using coredumpctl on the host")
 		o.Eventually(func(eg o.Gomega) {
-			stdout, stderr, err := utils.ExecWithOptions(ctx, f.ClientConfig(), f.KubeClient().CoreV1(), utils.ExecOptions{
+			stdout, stderr, err := utils.ExecWithOptions(ctx, f.AdminClientConfig(), f.KubeAdminClient().CoreV1(), utils.ExecOptions{
 				Command: []string{
 					"nsenter",
 					"--mount=/host/proc/1/ns/mnt",

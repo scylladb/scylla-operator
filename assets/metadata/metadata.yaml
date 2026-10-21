@@ -13,6 +13,8 @@ operator:
   # Conventionally, we only specify the major and minor versions.
   maxKubernetesVersion: "1.36"
   redHatCertificationProjectID: "678641799dbe477195796c15"
+  # redHatCertificationImageComponentID is the ID of the "ScyllaDB-Operator-Image" component in Red Hat Partner Connect.
+  redHatCertificationImageComponentID: "69314f2b299b15aab0345ff6"
 operatorTests:
   olm:
     channel: "dev" # Channel to use for OLM tests in CI/CD.

@@ -1,14 +1,7 @@
-name: CI jobs
+name: Checks
 
 on:
   workflow_call:
-    secrets:
-      registry-auth-json:
-        description: Contents of a containers-auth.json(5) file with push access to the e2e image repository.
-        required: true
-      ci-provisioners-kubeconfig:
-        description: Kubeconfig of the cluster to create the CI provisioning objects in.
-        required: true
 
 permissions:
   contents: read
@@ -268,93 +261,3 @@ jobs:
       # Make sure the stable branch has been created from the remote.
       - name: Verify site
         run: '[[ -d docs/_build/dirhtml/stable ]]'
-
-  detect-source-changes:
-    name: detect-source-changes
-    runs-on: hosted-runners-standard-pool
-    # The action reads the PR's changed files from the GitHub API, so there is no checkout to make.
-    permissions:
-      pull-requests: read
-    outputs:
-      source-changed: ${{ steps.source-change-detection.outputs.source }}
-    steps:
-      - name: Detect source changes
-        id: source-change-detection
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        with:
-          # With 'every', a changed file counts only when it matches all rules, i.e. escapes every exclusion.
-          predicate-quantifier: every
-          filters: |
-            source:
-              - '!CODEOWNERS'
-              - '!docs/**'
-              - '!enhancements/**'
-              - '!**/*.md'
-              - '!renovate.json'
-
-  # The kind-based e2e suites, ported from the prow presubmits. They share the "kind E2E" display name, so each
-  # check reads "kind E2E / <slug>" with the called workflow contributing the slug.
-  e2e-kind-fast:
-    name: kind E2E
-    needs: detect-source-changes
-    if: needs.detect-source-changes.outputs.source-changed == 'true'
-    uses: ./.github/workflows/_e2e-kind.yaml
-    with:
-      name: fast
-      suite: kind-fast
-
-  e2e-kind-scylladb-monitoring-old-node-exporter:
-    name: kind E2E
-    needs: detect-source-changes
-    if: needs.detect-source-changes.outputs.source-changed == 'true'
-    uses: ./.github/workflows/_e2e-kind.yaml
-    with:
-      name: scylladb-monitoring-old-node-exporter
-      suite: kind-scylladb-monitoring
-      # Verify that the old node-exporter bundling within the ScyllaDB container (before 2026.3) is not broken
-      # (for as long as we support <2026.3).
-      scylladb-image-ref: docker.io/scylladb/scylla:2026.2.6
-
-  e2e-kind-cluster-topology-sequential:
-    name: kind E2E
-    needs: detect-source-changes
-    if: needs.detect-source-changes.outputs.source-changed == 'true'
-    uses: ./.github/workflows/_e2e-kind.yaml
-    with:
-      name: cluster-topology-sequential
-      suite: kind-cluster-topology
-      enable-parallel-node-operations: "false"
-
-  # On a PR from a fork this fails for lack of secrets, and so do the jobs needing it, rather than the suites being
-  # skipped and counted as passed.
-  image:
-    needs: detect-source-changes
-    if: needs.detect-source-changes.outputs.source-changed == 'true'
-    uses: ./.github/workflows/_image.yaml
-    with:
-      image-tag: scylla-operator-${{ github.run_id }}
-    secrets:
-      registry-auth-json: ${{ secrets.registry-auth-json }}
-
-  # Fails the PR on a bundle or catalog that doesn't build.
-  olm:
-    needs: image
-    uses: ./.github/workflows/_olm.yaml
-    with:
-      image-ref: ${{ needs.image.outputs.image-ref }}
-      bundle-image-tag: scylla-operator-bundle-${{ github.run_id }}
-      catalog-image-tag: scylla-operator-catalog-${{ github.run_id }}
-    secrets:
-      registry-auth-json: ${{ secrets.registry-auth-json }}
-
-  e2e:
-    needs:
-    - image
-    - olm
-    uses: ./.github/workflows/_e2e-jobs.yaml
-    with:
-      image-ref: ${{ needs.image.outputs.image-ref }}
-      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
-      jobs: '["gke-parallel", "gke-parallel-clusterip", "gke-serial"]'
-    secrets:
-      ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

@@ -98,8 +98,8 @@ before upgrading.
   certificates are reissued with ECDSA keys, unless `--crypto-key-type=RSA` is set.
   [#3719](https://github.com/scylladb/scylla-operator/pull/3719)
 - The [core dump collection guide](https://operator.docs.scylladb.com/stable/troubleshoot/configure-coredumps.html) now
-  covers OpenShift.
-  [#3750](https://github.com/scylladb/scylla-operator/pull/3750)
+  covers OKE and OpenShift.
+  [#3750](https://github.com/scylladb/scylla-operator/pull/3750), [#3768](https://github.com/scylladb/scylla-operator/pull/3768)
 - Decreasing the CPU limit of the ScyllaDB container of a `ScyllaCluster` or `ScyllaDBDatacenter` rack is now rejected
   on admission, unless the object is annotated with `scylla-operator.scylladb.com/force-scylladb-cpu-decrease: "true"`.
   To lower it, replace the nodes one by one as described in the

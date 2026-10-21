@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scylladb-coredump-setup
+  namespace: scylla-operator
+  labels:
+    app.kubernetes.io/name: scylladb-coredump-setup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: scylladb-coredump-setup
+subjects:
+- kind: ServiceAccount
+  name: scylladb-coredump-setup
+  namespace: scylla-operator

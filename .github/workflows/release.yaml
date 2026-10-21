@@ -3,7 +3,8 @@ name: Release
 # Releases the dispatched ref as the given version. Builds the operator image, gates it on the e2e suites, pushes the
 # version tag, publishes the image to the production repositories and the Helm charts to the chart repository, creates
 # the GitHub release and submits the OLM bundle for certification, in that order: the tag is the output of the gate, not
-# its trigger, and nothing is published for a version without one. Lives on every release branch and is dispatched on
+# its trigger, and nothing is published for a version without one. The image is submitted for certification once it's
+# published. Lives on every release branch and is dispatched on
 # the branch being released.
 #
 # Version tags are immutable, so a release that failed after its tag is finished by dispatching it again with the same
@@ -134,12 +135,24 @@ jobs:
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
+  # Checks the image against Red Hat's certification requirements ahead of a release, without submitting the results.
+  image-preflight:
+    needs: image
+    uses: ./.github/workflows/_image-preflight.yaml
+    with:
+      image-repo-ref: *dev-image-repo-ref
+      # The tag the image job pushes. One of the checks requires a tag.
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      pyxis-api-token: ${{ secrets.CERTIFICATION_PYXIS_API_KEY }}
+
   # Creating the version tag relies on GitHub Actions being a bypass actor of the version tag ruleset.
   tag:
     needs:
     - plan-release
     - image
     - e2e
+    - image-preflight
     - openshift-preflight
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -213,6 +226,20 @@ jobs:
         VERSION: ${{ inputs.version }}
         ROLLING_TAGS: ${{ needs.plan-release.outputs.rolling-tags }}
       run: ./hack/.ci/release/promote-image.sh "${SOURCE_IMAGE_REF}" "${IMAGE_REPO_REF}" "${VERSION}" ${ROLLING_TAGS}
+
+  # Submits the preflight results of the published image to its Red Hat certification component.
+  certify-image:
+    needs:
+    - plan-release
+    - promote
+    if: ${{ !cancelled() && !failure() && needs.promote.result == 'success' }}
+    uses: ./.github/workflows/_image-preflight.yaml
+    with:
+      image-repo-ref: docker.io/scylladb/scylla-operator
+      image-tag: ${{ inputs.version }}
+      submit: true
+    secrets:
+      pyxis-api-token: ${{ secrets.CERTIFICATION_PYXIS_API_KEY }}
 
   # Publishes the charts once the image they default to exists. The index is read, merged and written back, which relies
   # on the concurrency group to keep two releases from publishing at once.

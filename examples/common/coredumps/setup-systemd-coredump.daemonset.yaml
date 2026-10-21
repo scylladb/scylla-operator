@@ -74,7 +74,7 @@ spec:
           }
 
           # Some host operating systems ship systemd-coredump with systemd
-          # (e.g. RHCOS on OpenShift), others need it installed
+          # (e.g. Oracle Linux on OKE, RHCOS on OpenShift), others need it installed
           # (e.g. Ubuntu on GKE).
           if host_exec test -x /usr/lib/systemd/systemd-coredump; then
             echo "systemd-coredump is already installed on the host."

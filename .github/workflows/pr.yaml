@@ -30,7 +30,7 @@ jobs:
           predicate-quantifier: every
           filters: |
             source:
-              - '!CODEOWNERS'
+              - '!.github/CODEOWNERS'
               - '!docs/**'
               - '!enhancements/**'
               - '!**/*.md'

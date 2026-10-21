@@ -11,11 +11,11 @@ spec:
   ttlSeconds: 14400
   type: GKE
   gke:
-    location: us-central1
+    location: europe-west4
     nodePools:
     - name: workers
       locations:
-      - us-central1-a
+      - europe-west4-a
       config:
         machineType: e2-standard-8
         diskType: pd-standard
@@ -25,7 +25,7 @@ spec:
       initialNodeCount: 1
     - name: scylladb
       locations:
-      - us-central1-a
+      - europe-west4-a
       config:
         # Suites using this run without a NodeConfig, so ScyllaDB storage comes from the default StorageClass, which
         # is backed by pd-balanced, and the pool attaches no local SSD.

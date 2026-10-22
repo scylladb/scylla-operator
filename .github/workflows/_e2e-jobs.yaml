@@ -31,11 +31,15 @@ permissions:
 
 jobs:
   # A matrix creates checks only for the jobs selected, where jobs gated by `if` would all show up, the unselected ones
-  # as skipped. Every entry carries every input of the workflow it calls, because a key missing from an entry passes an
-  # empty value rather than the input's default, so the defaults below have to match those of the workflows they call.
+  # as skipped. A platform with no job selected still shows up as skipped, with its job's name unevaluated, e.g.
+  # `matrix.id`, so the platform jobs aren't named. GitHub names them after their matrix values instead, so the matrices
+  # hold only the ids, e.g. `gke (gke-parallel)`, and the jobs look their inputs up in `jobs` by id. Every entry carries
+  # every input of the workflow it calls, because a key missing from an entry passes an empty value rather than the
+  # input's default, so the defaults below have to match those of the workflows they call.
   plan:
     runs-on: hosted-runners-standard-pool
     outputs:
+      jobs: ${{ steps.plan.outputs.jobs }}
       gke: ${{ steps.plan.outputs.gke }}
       oke: ${{ steps.plan.outputs.oke }}
       openshift: ${{ steps.plan.outputs.openshift }}
@@ -141,10 +145,14 @@ jobs:
         SELECTED="$( ./hack/.ci/select-jobs.sh "${JOBS:-[\"*\"]}" "${ids[@]}" )"
         export SELECTED
         select='(env.SELECTED | fromjson) as $jobs | map(select(.id | IN($jobs[])))'
+        gke="$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )"
+        oke="$( jq -c "${select}" <<< "${oke}" )"
+        openshift="$( jq -c --argjson defaults "${openshift_defaults}" "${select} | map(\$defaults + .)" <<< "${openshift}" )"
         {
-          echo "gke=$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )"
-          echo "oke=$( jq -c "${select}" <<< "${oke}" )"
-          echo "openshift=$( jq -c --argjson defaults "${openshift_defaults}" "${select} | map(\$defaults + .)" <<< "${openshift}" )"
+          echo "jobs=$( jq -sc 'add | INDEX(.id)' <<< "${gke} ${oke} ${openshift}" )"
+          echo "gke=$( jq -c 'map(.id)' <<< "${gke}" )"
+          echo "oke=$( jq -c 'map(.id)' <<< "${oke}" )"
+          echo "openshift=$( jq -c 'map(.id)' <<< "${openshift}" )"
         } >> "${GITHUB_OUTPUT}"
 
   gke:
@@ -154,20 +162,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.plan.outputs.gke) }}
-    name: ${{ matrix.id }}
+        id: ${{ fromJSON(needs.plan.outputs.gke) }}
     uses: ./.github/workflows/_e2e-gke.yaml
     with:
       name: e2e-${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
-      suite: ${{ matrix.suite }}
-      cluster-manifest: ${{ matrix.cluster-manifest }}
-      object-storage: ${{ matrix.object-storage }}
-      storageclass-name: ${{ matrix.storageclass-name }}
-      nodeconfig-path: ${{ matrix.nodeconfig-path }}
-      node-service-type: ${{ matrix.node-service-type }}
-      nodes-broadcast-address-type: ${{ matrix.nodes-broadcast-address-type }}
-      clients-broadcast-address-type: ${{ matrix.clients-broadcast-address-type }}
+      suite: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].suite }}
+      cluster-manifest: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].cluster-manifest }}
+      object-storage: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].object-storage }}
+      storageclass-name: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].storageclass-name }}
+      nodeconfig-path: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].nodeconfig-path }}
+      node-service-type: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].node-service-type }}
+      nodes-broadcast-address-type: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].nodes-broadcast-address-type }}
+      clients-broadcast-address-type: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].clients-broadcast-address-type }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
 
@@ -178,13 +185,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.plan.outputs.oke) }}
-    name: ${{ matrix.id }}
+        id: ${{ fromJSON(needs.plan.outputs.oke) }}
     uses: ./.github/workflows/_e2e-oke.yaml
     with:
       name: e2e-${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
-      suite: ${{ matrix.suite }}
+      suite: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].suite }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
 
@@ -195,17 +201,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.plan.outputs.openshift) }}
-    name: ${{ matrix.id }}
+        id: ${{ fromJSON(needs.plan.outputs.openshift) }}
     uses: ./.github/workflows/_e2e-openshift-aws.yaml
     with:
       name: e2e-${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
       olm-catalog-image-ref: ${{ inputs.olm-catalog-image-ref }}
-      suite: ${{ matrix.suite }}
-      cluster-manifest: ${{ matrix.cluster-manifest }}
-      object-storage: ${{ matrix.object-storage }}
-      storageclass-name: ${{ matrix.storageclass-name }}
-      nodeconfig-path: ${{ matrix.nodeconfig-path }}
+      suite: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].suite }}
+      cluster-manifest: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].cluster-manifest }}
+      object-storage: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].object-storage }}
+      storageclass-name: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].storageclass-name }}
+      nodeconfig-path: ${{ fromJSON(needs.plan.outputs.jobs)[matrix.id].nodeconfig-path }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}

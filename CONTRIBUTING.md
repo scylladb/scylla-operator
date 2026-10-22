@@ -111,7 +111,7 @@ In cases where the existing code doesn't fully follow these conventions, try to 
 
 ## Enhancement proposals
 
-For significant features or API changes, you might be required to prepare an enhancement proposal beforehand, as these usually involve broader discussions. If unsure, please consult the [maintainers of the project](https://github.com/scylladb/scylla-operator/blob/master/OWNERS) to learn if your contribution falls into these categories before you start working on the implementation.  
+For significant features or API changes, you might be required to prepare an enhancement proposal beforehand, as these usually involve broader discussions. If unsure, please consult the [maintainers of the project](https://github.com/scylladb/scylla-operator/blob/master/.github/CODEOWNERS) to learn if your contribution falls into these categories before you start working on the implementation.  
 For further details, see [Enhancement Proposals directory](https://github.com/scylladb/scylla-operator/tree/master/enhancements).
 
 ## Submitting a Pull Request

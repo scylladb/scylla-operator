@@ -1,5 +1,6 @@
 # Table of Contents
 
+- [1.23.0](#1230)
 - [1.22.0](#1220)
 - [1.21.1](#1211)
 - [1.20.3](#1203)
@@ -9,7 +10,22 @@
 - [1.19.2](#1192)
 - [Before 2026-03-11](#versions-released-before-2026-03-11)
 
-## Unreleased
+## [1.23.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.23.0)
+
+Release date: 2026-10-23
+
+### Highlights
+
+- 🚀 Nodes can now be decommissioned in parallel. With `enableParallelNodeOperations` enabled, all the nodes a rack is
+  scaled down by leave the cluster at once, and the new `status.racks[].decommissioningNodes` and
+  `status.racks[].decommissioningMembers` fields list them.
+- 🔐 The operator now issues ECDSA P-384 certificates by default. Existing RSA certificates are reissued after the
+  upgrade unless `--crypto-key-type=RSA` is set.
+- 🧹 The experimental `ScyllaDBCluster` and `RemoteKubernetesCluster` CRDs are no longer supported. Existing objects
+  have to be deleted before upgrading.
+- 🛡️ Decreasing the CPU limit of ScyllaDB containers and removing a rack that still has nodes leaving the cluster are
+  now rejected on admission, as both leave the cluster in a state that is recoverable only with human intervention.
+- ⬆️ Updated the default ScyllaDB version to `2026.3.4` and ScyllaDB Manager to `3.13.0`.
 
 ### Upgrade requirements
 
@@ -27,59 +43,8 @@ before upgrading.
   `ScyllaDBManagerClusterRegistration`. `ScyllaDBDatacenter` remains the only supported kind.
   [#3671](https://github.com/scylladb/scylla-operator/pull/3671)
 
-### Bug fixes
-
-- Annotations removed from a `ScyllaCluster` are now removed from its `ScyllaDBDatacenter` as well.
-  [#3753](https://github.com/scylladb/scylla-operator/pull/3753)
-- Fixed the `ScyllaDBDatacenter` controller updating the status in a loop while any member Service was missing its
-  hostID annotation, e.g. during bootstrap. The `CertControllerProgressing` condition listed the waiting Services in a
-  random order, so every sync produced a different status, and every status update triggered another sync.
-  [#3626](https://github.com/scylladb/scylla-operator/pull/3626)
-- Removing a rack of a `ScyllaDBDatacenter` or a `ScyllaCluster` that still has nodes leaving the cluster is now
-  rejected on admission. Previously the removal was only blocked while the rack's `StatefulSet` had replicas, so a rack
-  could be removed after the last node's `StatefulSet` was scaled down but before its member `Service` and `PVC` were
-  removed, after which the operator could no longer resolve their rack and never cleaned them up.
-  [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
-- Fixed nodes being decommissioned dropping out of `ScyllaDBDatacenterNodesStatusReport` and blocking bootstrapping new nodes for the duration of the decommission.
-  The report enumerated a rack's nodes from the desired node count, so a decommissioning node
-  disappeared from it as soon as the count shrank, while its peers kept reporting it until the decommission
-  completed. The bootstrap barrier requires every observed host ID to have a report entry of its own, so a node joining
-  during a scale down waited for the decommission to finish.
-  This could additionally prevent unblocking decommissioning by adding new nodes.
-  The report is now built from the existing member Services, and a node which has finished decommissioning is dropped
-  from it as soon as it has left the ring, rather than when its Service is removed, since it can no longer report a
-  status of its own.
-  [#3615](https://github.com/scylladb/scylla-operator/pull/3615)
-- Fixed decommissioning a node which hasn't finished bootstrapping failing with an unexpected operation mode error
-  instead of waiting for the node to reach the normal mode.
-  [#3615](https://github.com/scylladb/scylla-operator/pull/3615)
-
-- Fixed a rack getting stuck forever when its node count was changed while one of its nodes was being decommissioned.
-  A node whose decommission has started must now finish leaving, together with its Service and PVC, before the rack
-  applies a raised node count, while a lowered one extends the scale-down right away. The deferred change is reported with the `DeferringRackNodeCountChange`
-  reason in the `Progressing` condition. Capacity that comes back is bootstrapped as new, empty nodes.
-  **Warning: after the upgrade, the operator treats any node whose member Service carries a leftover
-  `scylla/decommissioned=true` label as leaving. Every node above it in its rack is decommissioned first, one at a time,
-  or all at once with `enableParallelNodeOperations` enabled. The labelled node is then removed together with its PVC
-  without being decommissioned, so it has to be removed from the ScyllaDB cluster by hand with `nodetool removenode`,
-  and the rack grows back with new, empty nodes. If the labelled node is healthy, its data is lost. Before upgrading,
-  check for these labels with `kubectl get svc -A -l scylla/decommissioned=true` and remove the label from the
-  Services of healthy nodes.**
-  [#3629](https://github.com/scylladb/scylla-operator/pull/3629)
-- The ScyllaDB Manager Agent container's readiness is now probed with an HTTPS `GET /ping` against the agent API
-  instead of a TCP socket check. The TCP probe closed each connection without a TLS handshake, making the agent log
-  `http: TLS handshake error from <kubelet>: EOF` every 10 seconds on every node.
-  [#3673](https://github.com/scylladb/scylla-operator/pull/3673)
-- Fixed a `ScyllaDBDatacenter` or `ScyllaCluster` rack being scaled up over a node that was leaving the cluster when
-  its node count was raised right after being lowered. The operator could decide the rack's scale before observing
-  its own request to decommission the node, and start new nodes above the leaving one instead of deferring the raised
-  node count until the node had left. The operator now waits until it observes its own changes before acting on them.
-  [#3681](https://github.com/scylladb/scylla-operator/pull/3681), [#3686](https://github.com/scylladb/scylla-operator/pull/3686)
-- Fixed `ScyllaDBDatacenter` or `ScyllaCluster` `.status` briefly reporting a rack as rolled out for a spec change
-  whose rollout had not started yet.
-  [#3681](https://github.com/scylladb/scylla-operator/pull/3681), [#3691](https://github.com/scylladb/scylla-operator/pull/3691)
-
 ### Features & Enhancements
+
 - The `enableParallelNodeOperations` field of `ScyllaCluster.spec` and `ScyllaDBDatacenter.spec` now also controls how
   nodes are decommissioned. With it enabled, all the nodes a rack is scaled down by are decommissioned at once and the
   StatefulSet is scaled below them as they finish, and a decommission in one rack no longer holds the scaling of the other
@@ -90,39 +55,79 @@ before upgrading.
 - Added `status.racks[].decommissioningNodes` to `ScyllaDBDatacenter` and `status.racks[].decommissioningMembers` to
   `ScyllaCluster`, listing the nodes that are leaving the cluster.
   [#3623](https://github.com/scylladb/scylla-operator/pull/3623)
-- Raising the number of nodes of a `ScyllaDBDatacenter` rack, or of members of a `ScyllaCluster` rack, above its nodes
-  leaving the cluster now produces an admission warning. The change is accepted, but it isn't applied until the leaving
-  nodes have finished decommissioning and been removed.
-  [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
 - The operator now issues ECDSA P-384 certificates by default instead of RSA ones. After the upgrade, existing
   certificates are reissued with ECDSA keys, unless `--crypto-key-type=RSA` is set.
   [#3719](https://github.com/scylladb/scylla-operator/pull/3719)
-- The [core dump collection guide](https://operator.docs.scylladb.com/stable/troubleshoot/configure-coredumps.html) now
-  covers OKE and OpenShift.
-  [#3750](https://github.com/scylladb/scylla-operator/pull/3750), [#3768](https://github.com/scylladb/scylla-operator/pull/3768)
 - Decreasing the CPU limit of the ScyllaDB container of a `ScyllaCluster` or `ScyllaDBDatacenter` rack is now rejected
   on admission, unless the object is annotated with `scylla-operator.scylladb.com/force-scylladb-cpu-decrease: "true"`.
   To lower it, replace the nodes one by one as described in the
   [guide](https://operator.docs.scylladb.com/stable/operate/resize-nodes-in-a-rack.html#decrease-the-cpu).
   [#3753](https://github.com/scylladb/scylla-operator/pull/3753)
+- Raising the number of nodes of a `ScyllaDBDatacenter` rack, or of members of a `ScyllaCluster` rack, above its nodes
+  leaving the cluster now produces an admission warning. The change is accepted, but it isn't applied until the leaving
+  nodes have finished decommissioning and been removed.
+  [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
+
+### Bug Fixes
+
+- Fixed a rack getting stuck forever when its node count was changed while one of its nodes was being decommissioned.
+  A node whose decommission has started must now finish leaving, together with its Service and PVC, before the rack
+  applies a raised node count, while a lowered one extends the scale-down right away. The deferred change is reported with the `DeferringRackNodeCountChange`
+  reason in the `Progressing` condition. Capacity that comes back is bootstrapped as new, empty nodes.
+  [#3629](https://github.com/scylladb/scylla-operator/pull/3629)
+- Fixed a `ScyllaDBDatacenter` or `ScyllaCluster` rack being scaled up over a node that was leaving the cluster when
+  its node count was raised right after being lowered.
+  [#3681](https://github.com/scylladb/scylla-operator/pull/3681), [#3686](https://github.com/scylladb/scylla-operator/pull/3686)
+- Fixed nodes being decommissioned dropping out of `ScyllaDBDatacenterNodesStatusReport`, which blocked bootstrapping
+  new nodes for the duration of the decommission.
+  [#3615](https://github.com/scylladb/scylla-operator/pull/3615)
+- Fixed decommissioning a node which hasn't finished bootstrapping failing with an unexpected operation mode error
+  instead of waiting for the node to reach the normal mode.
+  [#3615](https://github.com/scylladb/scylla-operator/pull/3615)
+- Removing a rack of a `ScyllaDBDatacenter` or a `ScyllaCluster` that still has nodes leaving the cluster is now
+  rejected on admission. Previously the removal was only blocked while the rack's `StatefulSet` had replicas, so a rack
+  could be removed after the last node's `StatefulSet` was scaled down but before its member `Service` and `PVC` were
+  removed, after which the operator could no longer resolve their rack and never cleaned them up.
+  [#3633](https://github.com/scylladb/scylla-operator/pull/3633)
+- Fixed the `ScyllaDBDatacenter` controller updating the status in a loop while any member Service was missing its
+  hostID annotation, e.g. during bootstrap. The `CertControllerProgressing` condition listed the waiting Services in a
+  random order, so every sync produced a different status, and every status update triggered another sync.
+  [#3626](https://github.com/scylladb/scylla-operator/pull/3626)
+- The ScyllaDB Manager Agent container's readiness is now probed with an HTTPS `GET /ping` against the agent API
+  instead of a TCP socket check. The TCP probe closed each connection without a TLS handshake, making the agent log
+  `http: TLS handshake error from <kubelet>: EOF` every 10 seconds on every node.
+  [#3673](https://github.com/scylladb/scylla-operator/pull/3673)
+- Fixed `ScyllaDBDatacenter` or `ScyllaCluster` `.status` briefly reporting a rack as rolled out for a spec change
+  whose rollout had not started yet.
+  [#3681](https://github.com/scylladb/scylla-operator/pull/3681), [#3691](https://github.com/scylladb/scylla-operator/pull/3691)
+- Annotations removed from a `ScyllaCluster` are now removed from its `ScyllaDBDatacenter` as well.
+  [#3753](https://github.com/scylladb/scylla-operator/pull/3753)
+
+### Other changes
+
+- The [core dump collection guide](https://operator.docs.scylladb.com/stable/troubleshoot/configure-coredumps.html) now
+  covers OKE and OpenShift.
+  [#3750](https://github.com/scylladb/scylla-operator/pull/3750), [#3768](https://github.com/scylladb/scylla-operator/pull/3768)
 
 ### Dependencies
 
-- Updated default ScyllaDB Manager version from `3.12.1` to `3.13.0`.
-  [#3776](https://github.com/scylladb/scylla-operator/pull/3776)
 - Updated default ScyllaDB version (including `scyllaDBUtilsImage`) from `2026.2.5` to `2026.3.4`.
   [#3558](https://github.com/scylladb/scylla-operator/pull/3558), [#3701](https://github.com/scylladb/scylla-operator/pull/3701), [#3716](https://github.com/scylladb/scylla-operator/pull/3716), [#3775](https://github.com/scylladb/scylla-operator/pull/3775)
-- Updated the embedded ScyllaDB Monitoring from `4.15.2` to `4.16.0`, moving the bundled Grafana to `13.2.0` and
+- Updated default ScyllaDB Manager version from `3.12.0` to `3.13.0`.
+  [#3662](https://github.com/scylladb/scylla-operator/pull/3662), [#3776](https://github.com/scylladb/scylla-operator/pull/3776)
+- Updated the embedded ScyllaDB Monitoring from `4.15.2` to `4.16.1`, moving the bundled Grafana to `13.2.2` and
   Prometheus to `v3.14.0`. The Grafana Deployment now starts the container with `grafana server` instead of the
   `grafana-server` wrapper, which is no longer shipped in Grafana 13 images.
-  [#3558](https://github.com/scylladb/scylla-operator/pull/3558)
-- Updated Prometheus Operator from `0.93.1` to `0.94.0`.
-  [#3558](https://github.com/scylladb/scylla-operator/pull/3558)
+  [#3558](https://github.com/scylladb/scylla-operator/pull/3558), [#3695](https://github.com/scylladb/scylla-operator/pull/3695)
+- Updated Prometheus Operator from `0.93.1` to `0.94.1`.
+  [#3558](https://github.com/scylladb/scylla-operator/pull/3558), [#3694](https://github.com/scylladb/scylla-operator/pull/3694)
 - Updated `k8s.io/*` modules from `v0.36.4` to `v0.37.0`, moving the Kubernetes client libraries the Operator uses to talk
   to the Kubernetes API from Kubernetes 1.36 to 1.37.
   [#3653](https://github.com/scylladb/scylla-operator/pull/3653)
-- `sigs.k8s.io/controller-runtime` from `v0.24.1` to `v0.25.0` and `controller-gen` from `v0.21.0` to `v0.22.0`.
-  [#3653](https://github.com/scylladb/scylla-operator/pull/3653)
+- `sigs.k8s.io/controller-runtime` from `v0.24.1` to `v0.25.2` and `controller-gen` from `v0.21.0` to `v0.23.0`.
+  [#3653](https://github.com/scylladb/scylla-operator/pull/3653), [#3709](https://github.com/scylladb/scylla-operator/pull/3709)
+- Updated cert-manager in the third-party example manifests from `v1.21.1` to `v1.21.2`.
+  [#3661](https://github.com/scylladb/scylla-operator/pull/3661)
 
 ## [1.22.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.22.0)
 

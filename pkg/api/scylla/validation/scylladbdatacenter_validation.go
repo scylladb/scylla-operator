@@ -519,6 +519,14 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 		if !reflect.DeepEqual(oldRackStorage, newRackStorage) {
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("racks").Index(i).Child("scyllaDB", "storage"), "changes in storage are currently not supported"))
 		}
+
+		newCPULimit, newCPULimitFromRack := getScyllaDBDatacenterRackScyllaDBCPULimit(&new.Spec, newRack)
+		oldCPULimit, _ := getScyllaDBDatacenterRackScyllaDBCPULimit(&old.Spec, oldRack)
+		cpuLimitPath := fldPath.Child("rackTemplate", "scyllaDB", "resources", "limits", "cpu")
+		if newCPULimitFromRack {
+			cpuLimitPath = fldPath.Child("racks").Index(i).Child("scyllaDB", "resources", "limits", "cpu")
+		}
+		allErrs = append(allErrs, validateScyllaDBCPULimitDecrease(newCPULimit, oldCPULimit, new.Annotations, cpuLimitPath)...)
 	}
 
 	var oldClientBroadcastAddressType, newClientBroadcastAddressType *scyllav1alpha1.BroadcastAddressType
@@ -549,6 +557,24 @@ func ValidateScyllaDBDatacenterSpecUpdate(new, old *scyllav1alpha1.ScyllaDBDatac
 	allErrs = append(allErrs, apimachineryvalidation.ValidateImmutableField(newNodeServiceType, oldNodeServiceType, fldPath.Child("exposeOptions", "nodeService", "type"))...)
 
 	return allErrs
+}
+
+// getScyllaDBDatacenterRackScyllaDBCPULimit returns the CPU limit of the ScyllaDB container of the given rack of spec,
+// resolving the rack template default the way the controller does, per resource, and whether the rack sets it itself.
+func getScyllaDBDatacenterRackScyllaDBCPULimit(spec *scyllav1alpha1.ScyllaDBDatacenterSpec, rack scyllav1alpha1.RackSpec) (*resource.Quantity, bool) {
+	if rack.ScyllaDB != nil && rack.ScyllaDB.Resources != nil {
+		if cpu, ok := rack.ScyllaDB.Resources.Limits[corev1.ResourceCPU]; ok {
+			return &cpu, true
+		}
+	}
+
+	if spec.RackTemplate != nil && spec.RackTemplate.ScyllaDB != nil && spec.RackTemplate.ScyllaDB.Resources != nil {
+		if cpu, ok := spec.RackTemplate.ScyllaDB.Resources.Limits[corev1.ResourceCPU]; ok {
+			return &cpu, false
+		}
+	}
+
+	return nil, false
 }
 
 // getScyllaDBDatacenterRackNodeCount returns the number of nodes requested in the given rack of spec, resolving the

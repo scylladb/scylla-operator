@@ -1,6 +1,7 @@
 package resourcemerge
 
 import (
+	"slices"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +28,28 @@ func cleanRemovalKeys(m map[string]string) map[string]string {
 func SanitizeObject(obj metav1.Object) {
 	cleanRemovalKeys(obj.GetAnnotations())
 	cleanRemovalKeys(obj.GetLabels())
+}
+
+// MarkMissingKeysForRemoval adds a removal key to required for every key of existing that required doesn't have,
+// so that MergeMapInPlaceWithoutRemovalKeys doesn't carry the key over from the existing object. Keys listed in keep
+// are left alone.
+func MarkMissingKeysForRemoval(required map[string]string, existing map[string]string, keep ...string) {
+	for existingKey := range existing {
+		if isRemovalKey(existingKey) {
+			continue
+		}
+
+		if slices.Contains(keep, existingKey) {
+			continue
+		}
+
+		_, found := required[existingKey]
+		if found {
+			continue
+		}
+
+		required[toRemovalKey(existingKey)] = ""
+	}
 }
 
 // MergeMapInPlaceWithoutRemovalKeys merges keys from existing into the required object.

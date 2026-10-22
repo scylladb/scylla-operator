@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllerhelpers"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/resourceapply"
+	"github.com/scylladb/scylla-operator/pkg/resourcemerge"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -53,6 +54,12 @@ func (scmc *Controller) syncScyllaDBDatacenter(ctx context.Context, sc *scyllav1
 	}
 
 	maps.Copy(sdc.Labels, naming.ClusterLabelsForScyllaCluster(sc))
+
+	// The apply keeps the annotations of the existing object that the required one doesn't have. Mark the ones that
+	// are no longer set on the ScyllaCluster for removal, so that they get removed from the ScyllaDBDatacenter too.
+	if existingSDc != nil {
+		resourcemerge.MarkMissingKeysForRemoval(sdc.Annotations, existingSDc.Annotations, naming.ManagedHash)
+	}
 	sdc.SetOwnerReferences([]metav1.OwnerReference{
 		*metav1.NewControllerRef(sc, scyllaClusterControllerGVK),
 	})

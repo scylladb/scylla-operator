@@ -25,6 +25,7 @@ import (
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/util/retry"
 )
@@ -273,6 +274,38 @@ var _ = g.Describe("ScyllaClusterController condition aggregation", func() {
 			g.Expect(degradedCond).NotTo(o.BeNil(), "Degraded condition should be present")
 			g.Expect(degradedCond.Status).To(o.Equal(metav1.ConditionTrue),
 				"Degraded should be True because the webhook rejected the SDC apply")
+		}).WithTimeout(30 * time.Second).WithContext(ctx).Should(o.Succeed())
+	})
+
+	g.It("removes an annotation removed from the ScyllaCluster from the ScyllaDBDatacenter", func(ctx g.SpecContext) {
+		g.By("Starting ScyllaCluster controller")
+		runScyllaClusterController(ctx, env)
+
+		const annotation = "example.com/removed-later"
+
+		sc := newBasicScyllaCluster("annotation-removal", env.Namespace())
+		sc.Annotations = map[string]string{
+			annotation: "true",
+		}
+		sc, sdc := createScyllaClusterAndWaitForScyllaDBDatacenterToExist(ctx, env, sc)
+		o.Expect(sdc.Annotations).To(o.HaveKeyWithValue(annotation, "true"))
+
+		g.By("Removing the annotation from the ScyllaCluster")
+		_, err := env.ScyllaClient().ScyllaV1().ScyllaClusters(env.Namespace()).Patch(
+			ctx,
+			sc.Name,
+			types.JSONPatchType,
+			[]byte(`[{"op": "remove", "path": "/metadata/annotations/example.com~1removed-later"}]`),
+			metav1.PatchOptions{},
+		)
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Expecting the ScyllaDBDatacenter to lose the annotation")
+		o.Eventually(func(g o.Gomega) {
+			sdc, err = env.ScyllaClient().ScyllaV1alpha1().ScyllaDBDatacenters(env.Namespace()).Get(ctx, sc.Name, metav1.GetOptions{})
+			g.Expect(err).NotTo(o.HaveOccurred())
+			g.Expect(sdc.Annotations).NotTo(o.HaveKey(annotation))
+			g.Expect(sdc.Annotations).To(o.HaveKey(naming.ManagedHash))
 		}).WithTimeout(30 * time.Second).WithContext(ctx).Should(o.Succeed())
 	})
 

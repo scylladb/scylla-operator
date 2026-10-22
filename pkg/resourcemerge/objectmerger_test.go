@@ -359,3 +359,94 @@ func TestMergeMetadataInPlace(t *testing.T) {
 		})
 	}
 }
+
+func TestMarkMissingKeysForRemoval(t *testing.T) {
+	tt := []struct {
+		name     string
+		required map[string]string
+		existing map[string]string
+		keep     []string
+		expected map[string]string
+	}{
+		{
+			name: "no existing map",
+			required: map[string]string{
+				"foo": "alpha",
+			},
+			existing: nil,
+			expected: map[string]string{
+				"foo": "alpha",
+			},
+		},
+		{
+			name: "missing keys are marked for removal",
+			required: map[string]string{
+				"foo": "alpha",
+			},
+			existing: map[string]string{
+				"foo": "alpha",
+				"bar": "beta",
+			},
+			expected: map[string]string{
+				"foo":  "alpha",
+				"bar-": "",
+			},
+		},
+		{
+			name: "present keys are left alone even when the value differs",
+			required: map[string]string{
+				"foo": "alpha",
+			},
+			existing: map[string]string{
+				"foo": "beta",
+			},
+			expected: map[string]string{
+				"foo": "alpha",
+			},
+		},
+		{
+			name: "kept keys are not marked",
+			required: map[string]string{
+				"foo": "alpha",
+			},
+			existing: map[string]string{
+				"foo":  "alpha",
+				"bar":  "beta",
+				"keep": "gama",
+			},
+			keep: []string{"keep"},
+			expected: map[string]string{
+				"foo":  "alpha",
+				"bar-": "",
+			},
+		},
+		{
+			name: "removal keys of the existing map are ignored",
+			required: map[string]string{
+				"foo": "alpha",
+			},
+			existing: map[string]string{
+				"foo":  "alpha",
+				"bar-": "",
+			},
+			expected: map[string]string{
+				"foo": "alpha",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got := make(map[string]string, len(tc.required))
+			for k, v := range tc.required {
+				got[k] = v
+			}
+
+			MarkMissingKeysForRemoval(got, tc.existing, tc.keep...)
+
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("expected and got differs: %s", cmp.Diff(tc.expected, got))
+			}
+		})
+	}
+}

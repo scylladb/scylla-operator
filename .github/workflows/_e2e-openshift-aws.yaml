@@ -64,7 +64,9 @@ permissions:
 
 jobs:
   e2e:
-    name: e2e
+    # A job page heads a nested job with only the first and the last part of its name, e.g.
+    # `ci / … / e2e-openshift-aws-parallel`.
+    name: ${{ inputs.name }}
     runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:kube-tools

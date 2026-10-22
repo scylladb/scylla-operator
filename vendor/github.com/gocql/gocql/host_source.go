@@ -31,7 +31,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	frm "github.com/gocql/gocql/internal/frame"
 )
@@ -141,15 +140,6 @@ func (c cassVersion) String() string {
 		return fmt.Sprintf("%d.%d.%d-%v", c.Major, c.Minor, c.Patch, c.Qualifier)
 	}
 	return fmt.Sprintf("v%d.%d.%d", c.Major, c.Minor, c.Patch)
-}
-
-func (c cassVersion) nodeUpDelay() time.Duration {
-	if c.Major >= 2 && c.Minor >= 2 {
-		// CASSANDRA-8236
-		return 0
-	}
-
-	return 10 * time.Second
 }
 
 type AddressPort struct {

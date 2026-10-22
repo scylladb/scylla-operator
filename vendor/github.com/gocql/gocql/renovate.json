@@ -3,5 +3,39 @@
   "extends": [
     "config:recommended"
   ],
-  "prConcurrentLimit": 2
+  "prConcurrentLimit": 2,
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepTypes": [
+        "indirect"
+      ],
+      "enabled": true
+    },
+    {
+      "description": "github.com/pierrec/lz4/v4 is pinned in lz4/go.mod, where it is a direct requirement, and mirrored into the root go.mod as an indirect one that go mod tidy derives from it through the replace directive. postUpdateOptions.gomodTidy only tidies the module Renovate touched, so a bump reaching one file and not the other leaves the pair inconsistent and fails check-go-mod-drift on Renovate's own PR. Move them together. tests/bench cannot be grouped in: it has no pierrec requirement to update, only go.sum entries reaching it through `replace github.com/scylladb/gocql/lz4 => ../../lz4`, so the gomod manager never edits that module and gomodTidy never runs there. A bump still fails `go mod tidy -C tests/bench -diff`, and the hosted Renovate app cannot run postUpgradeTasks to fix it. Run `make fix-go-mod-drift` on the bot's branch and push.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchPackageNames": [
+        "github.com/pierrec/lz4/v4"
+      ],
+      "groupName": "pierrec-lz4"
+    },
+    {
+      "description": "The root module requires its own nested lz4 module so the integration suite can build LZ4Compressor for the protocol v5 lane. A replace directive redirects it to ./lz4, so the pinned version is inert here and only matters to downstream consumers, for whom the replace does not apply. It should follow the lz4 module's release tags, not Renovate.",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchPackageNames": [
+        "github.com/scylladb/gocql/lz4"
+      ],
+      "enabled": false
+    }
+  ]
 }

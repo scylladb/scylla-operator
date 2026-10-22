@@ -552,7 +552,7 @@ var BackupDetails_BackupExpiryDateTime *smithy.Schema
 var BackupInUseException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "BackupInUseException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var BackupInUseException_message *smithy.Schema
 
 var _BackupName = smithy.NewSchema(smithy.ShapeID{
@@ -563,7 +563,7 @@ var _BackupName = smithy.NewSchema(smithy.ShapeID{
 var BackupNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "BackupNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var BackupNotFoundException_message *smithy.Schema
 
 var _BackupsInputLimit = smithy.NewSchema(smithy.ShapeID{
@@ -849,7 +849,7 @@ var Condition_ComparisonOperator *smithy.Schema
 var ConditionalCheckFailedException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ConditionalCheckFailedException",
-}, smithy.ShapeTypeStructure, 2)
+}, smithy.ShapeTypeStructure, 2, &smithytraits.Error{Type: "client"})
 var ConditionalCheckFailedException_message *smithy.Schema
 
 var ConditionalCheckFailedException_Item *smithy.Schema
@@ -943,7 +943,7 @@ var ContinuousBackupsStatus_DISABLED *smithy.Schema
 var ContinuousBackupsUnavailableException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ContinuousBackupsUnavailableException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ContinuousBackupsUnavailableException_message *smithy.Schema
 
 var ContributorInsightsAction = smithy.NewSchema(smithy.ShapeID{
@@ -1167,6 +1167,25 @@ var DestinationStatus_ENABLE_FAILED *smithy.Schema
 
 var DestinationStatus_UPDATING *smithy.Schema
 
+var DisassociateReplicationGroupMemberAction = smithy.NewSchema(smithy.ShapeID{
+	Namespace: "com.amazonaws.dynamodb",
+	Name:      "DisassociateReplicationGroupMemberAction",
+}, smithy.ShapeTypeStructure, 2)
+var DisassociateReplicationGroupMemberAction_RegionName *smithy.Schema
+
+var DisassociateReplicationGroupMemberAction_DisassociationMode *smithy.Schema
+
+var DisassociationMode = smithy.NewSchema(smithy.ShapeID{
+	Namespace: "com.amazonaws.dynamodb",
+	Name:      "DisassociationMode",
+}, smithy.ShapeTypeEnum, 1)
+var DisassociationMode_WAIT_FOR_REPLICATION *smithy.Schema
+
+var _DisassociationProtectionEnabled = smithy.NewSchema(smithy.ShapeID{
+	Namespace: "com.amazonaws.dynamodb",
+	Name:      "DisassociationProtectionEnabled",
+}, smithy.ShapeTypeBoolean, 0)
+
 var _DoubleObject = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "DoubleObject",
@@ -1175,7 +1194,7 @@ var _DoubleObject = smithy.NewSchema(smithy.ShapeID{
 var DuplicateItemException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "DuplicateItemException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var DuplicateItemException_message *smithy.Schema
 
 var EnableKinesisStreamingConfiguration = smithy.NewSchema(smithy.ShapeID{
@@ -1246,13 +1265,13 @@ var _ExportArn = smithy.NewSchema(smithy.ShapeID{
 var ExportConflictException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ExportConflictException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ExportConflictException_message *smithy.Schema
 
 var ExportDescription = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ExportDescription",
-}, smithy.ShapeTypeStructure, 21)
+}, smithy.ShapeTypeStructure, 22)
 var ExportDescription_ExportArn *smithy.Schema
 
 var ExportDescription_ExportStatus *smithy.Schema
@@ -1295,6 +1314,8 @@ var ExportDescription_ExportType *smithy.Schema
 
 var ExportDescription_IncrementalExportSpecification *smithy.Schema
 
+var ExportDescription_FilterSpecification *smithy.Schema
+
 var _ExportEndTime = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ExportEndTime",
@@ -1326,7 +1347,7 @@ var _ExportNextToken = smithy.NewSchema(smithy.ShapeID{
 var ExportNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ExportNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ExportNotFoundException_message *smithy.Schema
 
 var _ExportStartTime = smithy.NewSchema(smithy.ShapeID{
@@ -1437,6 +1458,20 @@ var _FilterConditionMap = smithy.NewSchema(smithy.ShapeID{
 var _FilterConditionMap_key *smithy.Schema
 
 var _FilterConditionMap_value *smithy.Schema
+
+var FilterSpecification = smithy.NewSchema(smithy.ShapeID{
+	Namespace: "com.amazonaws.dynamodb",
+	Name:      "FilterSpecification",
+}, smithy.ShapeTypeStructure, 5)
+var FilterSpecification_FilterExpression *smithy.Schema
+
+var FilterSpecification_ProjectionExpression *smithy.Schema
+
+var FilterSpecification_KeyConditionExpression *smithy.Schema
+
+var FilterSpecification_ExpressionAttributeNames *smithy.Schema
+
+var FilterSpecification_ExpressionAttributeValues *smithy.Schema
 
 var Get = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
@@ -1575,7 +1610,7 @@ var GlobalTable_ReplicationGroup *smithy.Schema
 var GlobalTableAlreadyExistsException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "GlobalTableAlreadyExistsException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var GlobalTableAlreadyExistsException_message *smithy.Schema
 
 var _GlobalTableArnString = smithy.NewSchema(smithy.ShapeID{
@@ -1622,7 +1657,7 @@ var _GlobalTableList_member *smithy.Schema
 var GlobalTableNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "GlobalTableNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var GlobalTableNotFoundException_message *smithy.Schema
 
 var GlobalTableSettingsReplicationMode = smithy.NewSchema(smithy.ShapeID{
@@ -1678,7 +1713,7 @@ var _GlobalTableWitnessGroupUpdateList_member *smithy.Schema
 var IdempotentParameterMismatchException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "IdempotentParameterMismatchException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var IdempotentParameterMismatchException_Message *smithy.Schema
 
 var _ImportArn = smithy.NewSchema(smithy.ShapeID{
@@ -1689,7 +1724,7 @@ var _ImportArn = smithy.NewSchema(smithy.ShapeID{
 var ImportConflictException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ImportConflictException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ImportConflictException_message *smithy.Schema
 
 var _ImportedItemCount = smithy.NewSchema(smithy.ShapeID{
@@ -1710,7 +1745,7 @@ var _ImportNextToken = smithy.NewSchema(smithy.ShapeID{
 var ImportNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ImportNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ImportNotFoundException_message *smithy.Schema
 
 var _ImportStartTime = smithy.NewSchema(smithy.ShapeID{
@@ -1818,7 +1853,7 @@ var _IndexName = smithy.NewSchema(smithy.ShapeID{
 var IndexNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "IndexNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var IndexNotFoundException_message *smithy.Schema
 
 var IndexStatus = smithy.NewSchema(smithy.ShapeID{
@@ -1872,25 +1907,26 @@ var _IntegerObject = smithy.NewSchema(smithy.ShapeID{
 var InternalServerError = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "InternalServerError",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "server"})
 var InternalServerError_message *smithy.Schema
 
 var InvalidEndpointException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "InvalidEndpointException",
-}, smithy.ShapeTypeStructure, 1, &smithytraits.HTTPError{Code: 421})
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"},
+	&smithytraits.HTTPError{Code: 421})
 var InvalidEndpointException_Message *smithy.Schema
 
 var InvalidExportTimeException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "InvalidExportTimeException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var InvalidExportTimeException_message *smithy.Schema
 
 var InvalidRestoreTimeException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "InvalidRestoreTimeException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var InvalidRestoreTimeException_message *smithy.Schema
 
 var _ItemCollectionKeyAttributeMap = smithy.NewSchema(smithy.ShapeID{
@@ -1937,7 +1973,7 @@ var _ItemCollectionSizeEstimateRange_member *smithy.Schema
 var ItemCollectionSizeLimitExceededException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ItemCollectionSizeLimitExceededException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ItemCollectionSizeLimitExceededException_message *smithy.Schema
 
 var _ItemCount = smithy.NewSchema(smithy.ShapeID{
@@ -2067,7 +2103,7 @@ var _LastUpdateDateTime = smithy.NewSchema(smithy.ShapeID{
 var LimitExceededException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "LimitExceededException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var LimitExceededException_message *smithy.Schema
 
 var _ListAttributeValue = smithy.NewSchema(smithy.ShapeID{
@@ -2296,13 +2332,13 @@ var PointInTimeRecoveryStatus_DISABLED *smithy.Schema
 var PointInTimeRecoveryUnavailableException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "PointInTimeRecoveryUnavailableException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var PointInTimeRecoveryUnavailableException_message *smithy.Schema
 
 var PolicyNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "PolicyNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var PolicyNotFoundException_message *smithy.Schema
 
 var _PolicyRevisionId = smithy.NewSchema(smithy.ShapeID{
@@ -2379,7 +2415,7 @@ var ProvisionedThroughputDescription_WriteCapacityUnits *smithy.Schema
 var ProvisionedThroughputExceededException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ProvisionedThroughputExceededException",
-}, smithy.ShapeTypeStructure, 2)
+}, smithy.ShapeTypeStructure, 2, &smithytraits.Error{Type: "client"})
 var ProvisionedThroughputExceededException_message *smithy.Schema
 
 var ProvisionedThroughputExceededException_ThrottlingReasons *smithy.Schema
@@ -2444,7 +2480,7 @@ var Replica_RegionName *smithy.Schema
 var ReplicaAlreadyExistsException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ReplicaAlreadyExistsException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ReplicaAlreadyExistsException_message *smithy.Schema
 
 var ReplicaAutoScalingDescription = smithy.NewSchema(smithy.ShapeID{
@@ -2632,7 +2668,7 @@ var _ReplicaList_member *smithy.Schema
 var ReplicaNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ReplicaNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ReplicaNotFoundException_message *smithy.Schema
 
 var ReplicaSettingsDescription = smithy.NewSchema(smithy.ShapeID{
@@ -2720,18 +2756,20 @@ var _ReplicaStatusPercentProgress = smithy.NewSchema(smithy.ShapeID{
 var ReplicatedWriteConflictException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ReplicatedWriteConflictException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ReplicatedWriteConflictException_message *smithy.Schema
 
 var ReplicationGroupUpdate = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ReplicationGroupUpdate",
-}, smithy.ShapeTypeStructure, 3)
+}, smithy.ShapeTypeStructure, 4)
 var ReplicationGroupUpdate_Create *smithy.Schema
 
 var ReplicationGroupUpdate_Update *smithy.Schema
 
 var ReplicationGroupUpdate_Delete *smithy.Schema
+
+var ReplicationGroupUpdate_Disassociate *smithy.Schema
 
 var _ReplicationGroupUpdateList = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
@@ -2756,7 +2794,7 @@ var _ReplicaUpdateList_member *smithy.Schema
 var RequestLimitExceeded = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "RequestLimitExceeded",
-}, smithy.ShapeTypeStructure, 2)
+}, smithy.ShapeTypeStructure, 2, &smithytraits.Error{Type: "client"})
 var RequestLimitExceeded_message *smithy.Schema
 
 var RequestLimitExceeded_ThrottlingReasons *smithy.Schema
@@ -2774,13 +2812,13 @@ var _ResourceArnString = smithy.NewSchema(smithy.ShapeID{
 var ResourceInUseException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ResourceInUseException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ResourceInUseException_message *smithy.Schema
 
 var ResourceNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ResourceNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var ResourceNotFoundException_message *smithy.Schema
 
 var _ResourcePolicy = smithy.NewSchema(smithy.ShapeID{
@@ -3108,7 +3146,7 @@ var _StringSetAttributeValue_member *smithy.Schema
 var TableAlreadyExistsException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "TableAlreadyExistsException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var TableAlreadyExistsException_message *smithy.Schema
 
 var _TableArn = smithy.NewSchema(smithy.ShapeID{
@@ -3172,7 +3210,7 @@ var TableCreationParameters_VectorIndexes *smithy.Schema
 var TableDescription = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "TableDescription",
-}, smithy.ShapeTypeStructure, 29)
+}, smithy.ShapeTypeStructure, 30)
 var TableDescription_AttributeDefinitions *smithy.Schema
 
 var TableDescription_TableName *smithy.Schema
@@ -3223,6 +3261,8 @@ var TableDescription_TableClassSummary *smithy.Schema
 
 var TableDescription_DeletionProtectionEnabled *smithy.Schema
 
+var TableDescription_DisassociationProtectionEnabled *smithy.Schema
+
 var TableDescription_OnDemandThroughput *smithy.Schema
 
 var TableDescription_WarmThroughput *smithy.Schema
@@ -3239,7 +3279,7 @@ var _TableId = smithy.NewSchema(smithy.ShapeID{
 var TableInUseException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "TableInUseException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var TableInUseException_message *smithy.Schema
 
 var _TableName = smithy.NewSchema(smithy.ShapeID{
@@ -3256,7 +3296,7 @@ var _TableNameList_member *smithy.Schema
 var TableNotFoundException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "TableNotFoundException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var TableNotFoundException_message *smithy.Schema
 
 var TableStatus = smithy.NewSchema(smithy.ShapeID{
@@ -3322,7 +3362,8 @@ var _TagValueString = smithy.NewSchema(smithy.ShapeID{
 var ThrottlingException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ThrottlingException",
-}, smithy.ShapeTypeStructure, 2, &smithytraits.HTTPError{Code: 400},
+}, smithy.ShapeTypeStructure, 2, &smithytraits.Error{Type: "client"},
+	&smithytraits.HTTPError{Code: 400},
 	&smithytraits.AWSQueryError{ErrorCode: "Throttling",
 		StatusCode: 400})
 var ThrottlingException_message *smithy.Schema
@@ -3411,7 +3452,7 @@ var _TransactGetItemList_member *smithy.Schema
 var TransactionCanceledException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "TransactionCanceledException",
-}, smithy.ShapeTypeStructure, 2)
+}, smithy.ShapeTypeStructure, 2, &smithytraits.Error{Type: "client"})
 var TransactionCanceledException_Message *smithy.Schema
 
 var TransactionCanceledException_CancellationReasons *smithy.Schema
@@ -3419,13 +3460,13 @@ var TransactionCanceledException_CancellationReasons *smithy.Schema
 var TransactionConflictException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "TransactionConflictException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var TransactionConflictException_message *smithy.Schema
 
 var TransactionInProgressException = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "TransactionInProgressException",
-}, smithy.ShapeTypeStructure, 1)
+}, smithy.ShapeTypeStructure, 1, &smithytraits.Error{Type: "client"})
 var TransactionInProgressException_Message *smithy.Schema
 
 var TransactWriteItem = smithy.NewSchema(smithy.ShapeID{
@@ -4115,7 +4156,7 @@ var ExecuteTransactionOutput_ConsumedCapacity *smithy.Schema
 var ExportTableToPointInTimeInput = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "ExportTableToPointInTimeInput",
-}, smithy.ShapeTypeStructure, 11)
+}, smithy.ShapeTypeStructure, 12)
 var ExportTableToPointInTimeInput_TableArn *smithy.Schema
 
 var ExportTableToPointInTimeInput_ExportTime *smithy.Schema
@@ -4137,6 +4178,8 @@ var ExportTableToPointInTimeInput_ExportFormat *smithy.Schema
 var ExportTableToPointInTimeInput_ExportType *smithy.Schema
 
 var ExportTableToPointInTimeInput_IncrementalExportSpecification *smithy.Schema
+
+var ExportTableToPointInTimeInput_FilterSpecification *smithy.Schema
 
 var ExportTableToPointInTimeOutput = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
@@ -4775,7 +4818,7 @@ var UpdateKinesisStreamingDestinationOutput_UpdateKinesisStreamingConfiguration 
 var UpdateTableInput = smithy.NewSchema(smithy.ShapeID{
 	Namespace: "com.amazonaws.dynamodb",
 	Name:      "UpdateTableInput",
-}, smithy.ShapeTypeStructure, 16)
+}, smithy.ShapeTypeStructure, 17)
 var UpdateTableInput_AttributeDefinitions *smithy.Schema
 
 var UpdateTableInput_TableName *smithy.Schema
@@ -4805,6 +4848,8 @@ var UpdateTableInput_OnDemandThroughput *smithy.Schema
 var UpdateTableInput_WarmThroughput *smithy.Schema
 
 var UpdateTableInput_GlobalTableSettingsReplicationMode *smithy.Schema
+
+var UpdateTableInput_DisassociationProtectionEnabled *smithy.Schema
 
 var UpdateTableInput_VectorIndexUpdates *smithy.Schema
 
@@ -5551,6 +5596,12 @@ func init() {
 
 	DestinationStatus_UPDATING = DestinationStatus.AddMember("UPDATING", smithyprelude.Unit)
 
+	DisassociationMode_WAIT_FOR_REPLICATION = DisassociationMode.AddMember("WAIT_FOR_REPLICATION", smithyprelude.Unit)
+
+	DisassociateReplicationGroupMemberAction_RegionName = DisassociateReplicationGroupMemberAction.AddMember("RegionName", _RegionName)
+
+	DisassociateReplicationGroupMemberAction_DisassociationMode = DisassociateReplicationGroupMemberAction.AddMember("DisassociationMode", DisassociationMode)
+
 	DuplicateItemException_message = DuplicateItemException.AddMember("message", _ErrorMessage)
 
 	EnableKinesisStreamingConfiguration_ApproximateCreationDateTimePrecision = EnableKinesisStreamingConfiguration.AddMember("ApproximateCreationDateTimePrecision", ApproximateCreationDateTimePrecision)
@@ -5603,6 +5654,16 @@ func init() {
 
 	IncrementalExportSpecification_ExportViewType = IncrementalExportSpecification.AddMember("ExportViewType", ExportViewType)
 
+	FilterSpecification_FilterExpression = FilterSpecification.AddMember("FilterExpression", _ConditionExpression)
+
+	FilterSpecification_ProjectionExpression = FilterSpecification.AddMember("ProjectionExpression", _ProjectionExpression)
+
+	FilterSpecification_KeyConditionExpression = FilterSpecification.AddMember("KeyConditionExpression", _KeyExpression)
+
+	FilterSpecification_ExpressionAttributeNames = FilterSpecification.AddMember("ExpressionAttributeNames", _ExpressionAttributeNameMap)
+
+	FilterSpecification_ExpressionAttributeValues = FilterSpecification.AddMember("ExpressionAttributeValues", _ExpressionAttributeValueMap)
+
 	ExportDescription_ExportArn = ExportDescription.AddMember("ExportArn", _ExportArn)
 
 	ExportDescription_ExportStatus = ExportDescription.AddMember("ExportStatus", ExportStatus)
@@ -5644,6 +5705,8 @@ func init() {
 	ExportDescription_ExportType = ExportDescription.AddMember("ExportType", ExportType)
 
 	ExportDescription_IncrementalExportSpecification = ExportDescription.AddMember("IncrementalExportSpecification", IncrementalExportSpecification)
+
+	ExportDescription_FilterSpecification = ExportDescription.AddMember("FilterSpecification", FilterSpecification)
 
 	ExportNotFoundException_message = ExportNotFoundException.AddMember("message", _ErrorMessage)
 
@@ -6263,6 +6326,8 @@ func init() {
 
 	ReplicationGroupUpdate_Delete = ReplicationGroupUpdate.AddMember("Delete", DeleteReplicationGroupMemberAction)
 
+	ReplicationGroupUpdate_Disassociate = ReplicationGroupUpdate.AddMember("Disassociate", DisassociateReplicationGroupMemberAction)
+
 	_ReplicationGroupUpdateList_member = _ReplicationGroupUpdateList.AddMember("member", ReplicationGroupUpdate)
 
 	ReplicaUpdate_Create = ReplicaUpdate.AddMember("Create", CreateReplicaAction)
@@ -6404,6 +6469,8 @@ func init() {
 	TableDescription_TableClassSummary = TableDescription.AddMember("TableClassSummary", TableClassSummary)
 
 	TableDescription_DeletionProtectionEnabled = TableDescription.AddMember("DeletionProtectionEnabled", _DeletionProtectionEnabled)
+
+	TableDescription_DisassociationProtectionEnabled = TableDescription.AddMember("DisassociationProtectionEnabled", _DisassociationProtectionEnabled)
 
 	TableDescription_OnDemandThroughput = TableDescription.AddMember("OnDemandThroughput", OnDemandThroughput)
 
@@ -6740,6 +6807,8 @@ func init() {
 	ExportTableToPointInTimeInput_ExportType = ExportTableToPointInTimeInput.AddMember("ExportType", ExportType)
 
 	ExportTableToPointInTimeInput_IncrementalExportSpecification = ExportTableToPointInTimeInput.AddMember("IncrementalExportSpecification", IncrementalExportSpecification)
+
+	ExportTableToPointInTimeInput_FilterSpecification = ExportTableToPointInTimeInput.AddMember("FilterSpecification", FilterSpecification)
 
 	ExportTableToPointInTimeOutput_ExportDescription = ExportTableToPointInTimeOutput.AddMember("ExportDescription", ExportDescription)
 
@@ -7192,6 +7261,8 @@ func init() {
 	UpdateTableInput_WarmThroughput = UpdateTableInput.AddMember("WarmThroughput", WarmThroughput)
 
 	UpdateTableInput_GlobalTableSettingsReplicationMode = UpdateTableInput.AddMember("GlobalTableSettingsReplicationMode", GlobalTableSettingsReplicationMode)
+
+	UpdateTableInput_DisassociationProtectionEnabled = UpdateTableInput.AddMember("DisassociationProtectionEnabled", _DisassociationProtectionEnabled)
 
 	UpdateTableInput_VectorIndexUpdates = UpdateTableInput.AddMember("VectorIndexUpdates", _VectorIndexUpdateList)
 

@@ -105,3 +105,7 @@ verify: verify-uv linkcheck
 
 verify-multiversion: verify-uv multiversionlinkcheck
 .PHONY: verify-multiversion
+
+.PHONY: check-redirects
+check-redirects: setup
+	$(UV) run scylla-check-redirects --yaml _utils/redirects.yaml --conf $(SOURCEDIR)

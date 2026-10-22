@@ -108,6 +108,8 @@ before upgrading.
 
 ### Dependencies
 
+- Updated default ScyllaDB Manager version from `3.12.1` to `3.13.0`.
+  [#3776](https://github.com/scylladb/scylla-operator/pull/3776)
 - Updated default ScyllaDB version (including `scyllaDBUtilsImage`) from `2026.2.5` to `2026.3.4`.
   [#3558](https://github.com/scylladb/scylla-operator/pull/3558), [#3701](https://github.com/scylladb/scylla-operator/pull/3701), [#3716](https://github.com/scylladb/scylla-operator/pull/3716), [#3775](https://github.com/scylladb/scylla-operator/pull/3775)
 - Updated the embedded ScyllaDB Monitoring from `4.15.2` to `4.16.0`, moving the bundled Grafana to `13.2.0` and

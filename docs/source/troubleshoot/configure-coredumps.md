@@ -20,13 +20,13 @@ This must be completed **before the anticipated crash**.
 
 4. **`systemd-coredump.socket` active**. 
 
-A ready-to-use setup for GKE and OpenShift is provided below. On other platforms, apply these four steps using the OS package manager and systemd tooling available on the node.
+A ready-to-use setup for GKE, OKE and OpenShift is provided below. On other platforms, apply these four steps using the OS package manager and systemd tooling available on the node.
 
 ## Set up core dump collection
 
 The manifests below handle all four setup steps via a single container on each ScyllaDB node. The container performs the setup once at startup and then sleeps, keeping the pod alive so that the DaemonSet re-applies the settings whenever the pod is evicted or rescheduled.
 
-RHCOS nodes on OpenShift ship `systemd-coredump` with systemd. GKE Ubuntu nodes do not, so the container installs it with `apt-get`. The container sets `kernel.core_pattern` from the `/usr/lib/sysctl.d/50-coredump.conf` file shipped with the node's `systemd-coredump`, because the arguments it expects differ between systemd versions.
+Oracle Linux nodes on OKE and RHCOS nodes on OpenShift ship `systemd-coredump` with systemd. GKE Ubuntu nodes do not, so the container installs it with `apt-get`. The container sets `kernel.core_pattern` from the `/usr/lib/sysctl.d/50-coredump.conf` file shipped with the node's `systemd-coredump`, because the arguments it expects differ between systemd versions.
 
 ### 1. Create the ConfigMap
 

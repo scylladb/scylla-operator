@@ -185,6 +185,10 @@ func WaitForServiceState(ctx context.Context, client corev1client.ServiceInterfa
 	return WaitForObjectState[*corev1.Service, *corev1.ServiceList](ctx, client, name, options, condition, additionalConditions...)
 }
 
+func WaitForDeploymentState(ctx context.Context, client appsv1client.DeploymentInterface, name string, options WaitForStateOptions, condition func(*appsv1.Deployment) (bool, error), additionalConditions ...func(*appsv1.Deployment) (bool, error)) (*appsv1.Deployment, error) {
+	return WaitForObjectState[*appsv1.Deployment, *appsv1.DeploymentList](ctx, client, name, options, condition, additionalConditions...)
+}
+
 func WaitForDaemonSetState(ctx context.Context, client appsv1client.DaemonSetInterface, name string, options WaitForStateOptions, condition func(*appsv1.DaemonSet) (bool, error), additionalConditions ...func(set *appsv1.DaemonSet) (bool, error)) (*appsv1.DaemonSet, error) {
 	return WaitForObjectState[*appsv1.DaemonSet, *appsv1.DaemonSetList](ctx, client, name, options, condition, additionalConditions...)
 }

@@ -6,11 +6,11 @@ version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "pygments>=2.18.0",
-    "sphinx-scylladb-theme>=1.9.3",
+    "sphinx-scylladb-theme>=1.10.0,<1.11",
     "myst-parser>=5.0.0",
     "sphinx-autobuild>=2025.4.8",
-    "sphinx>=9.0",
-    "sphinx-multiversion-scylla>=0.3.7",
+    "sphinx>=9.1.1,<10",
+    "sphinx-multiversion-scylla>=0.3.9",
     "sphinx-sitemap>=2.9.0",
     "redirects_cli>=0.1.3",
     "beartype>=0.0.0",

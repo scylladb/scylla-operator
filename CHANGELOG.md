@@ -108,8 +108,8 @@ before upgrading.
 
 ### Dependencies
 
-- Updated default ScyllaDB version (including `scyllaDBUtilsImage`) to `2026.3.0`.
-  [#3558](https://github.com/scylladb/scylla-operator/pull/3558)
+- Updated default ScyllaDB version (including `scyllaDBUtilsImage`) from `2026.2.5` to `2026.3.4`.
+  [#3558](https://github.com/scylladb/scylla-operator/pull/3558), [#3701](https://github.com/scylladb/scylla-operator/pull/3701), [#3716](https://github.com/scylladb/scylla-operator/pull/3716), [#3775](https://github.com/scylladb/scylla-operator/pull/3775)
 - Updated the embedded ScyllaDB Monitoring from `4.15.2` to `4.16.0`, moving the bundled Grafana to `13.2.0` and
   Prometheus to `v3.14.0`. The Grafana Deployment now starts the container with `grafana server` instead of the
   `grafana-server` wrapper, which is no longer shipped in Grafana 13 images.

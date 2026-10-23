@@ -45,36 +45,6 @@ var _ = g.Describe("OrphanedPVController", func() {
 		pvcName = fmt.Sprintf("%s-%s", naming.PVCTemplateName, svcName)
 	})
 
-	runOrphanedPVController := func(ctx context.Context, env *envtest.Environment) {
-		kubeInformers := kubeinformers.NewSharedInformerFactory(env.TypedKubeClient(), 0)
-		scyllaInformers := scyllainformers.NewSharedInformerFactory(env.ScyllaClient(), 0)
-
-		controller, err := orphanedpv.NewController(
-			env.TypedKubeClient(),
-			kubeInformers.Core().V1().PersistentVolumes(),
-			kubeInformers.Core().V1().PersistentVolumeClaims(),
-			kubeInformers.Core().V1().Nodes(),
-			scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
-		)
-		o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create orphaned PV controller")
-
-		kubeInformers.Start(ctx.Done())
-		scyllaInformers.Start(ctx.Done())
-
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			controller.Run(ctx, 1)
-		}()
-
-		g.DeferCleanup(func() {
-			kubeInformers.Shutdown()
-			scyllaInformers.Shutdown()
-			wg.Wait()
-		})
-	}
-
 	makeScyllaDBDatacenter := func(namespace string, disableOrphanedNodeReplacement *bool) *scyllav1alpha1.ScyllaDBDatacenter {
 		return &scyllav1alpha1.ScyllaDBDatacenter{
 			ObjectMeta: metav1.ObjectMeta{
@@ -273,3 +243,37 @@ var _ = g.Describe("OrphanedPVController", func() {
 		}),
 	)
 })
+
+// runOrphanedPVController runs the orphaned PV controller against the envtest API server until ctx is done.
+func runOrphanedPVController(ctx context.Context, env *envtest.Environment, options ...orphanedpv.ControllerOption) {
+	g.GinkgoHelper()
+
+	kubeInformers := kubeinformers.NewSharedInformerFactory(env.TypedKubeClient(), 0)
+	scyllaInformers := scyllainformers.NewSharedInformerFactory(env.ScyllaClient(), 0)
+
+	controller, err := orphanedpv.NewController(
+		env.TypedKubeClient(),
+		kubeInformers.Core().V1().PersistentVolumes(),
+		kubeInformers.Core().V1().PersistentVolumeClaims(),
+		kubeInformers.Core().V1().Nodes(),
+		scyllaInformers.Scylla().V1alpha1().ScyllaDBDatacenters(),
+		options...,
+	)
+	o.Expect(err).NotTo(o.HaveOccurred(), "Failed to create orphaned PV controller")
+
+	kubeInformers.Start(ctx.Done())
+	scyllaInformers.Start(ctx.Done())
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		controller.Run(ctx, 1)
+	}()
+
+	g.DeferCleanup(func() {
+		kubeInformers.Shutdown()
+		scyllaInformers.Shutdown()
+		wg.Wait()
+	})
+}

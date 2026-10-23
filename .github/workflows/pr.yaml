@@ -37,7 +37,8 @@ jobs:
               - '!renovate.json'
 
   e2e-kind:
-    name: e2e-kind
+    # Referencing the matrix keeps GitHub from appending its values to the name.
+    name: ${{ format('e2e-kind', matrix.id) }}
     needs: detect-source-changes
     if: needs.detect-source-changes.outputs.source-changed == 'true'
     strategy:

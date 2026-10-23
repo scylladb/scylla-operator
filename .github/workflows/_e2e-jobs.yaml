@@ -66,12 +66,12 @@ jobs:
         # back to the cluster default.
         gke='[
           {
-            "id": "gke-parallel",
+            "id": "parallel",
             "suite": "scylla-operator/conformance/parallel",
             "object-storage": true
           },
           {
-            "id": "gke-parallel-clusterip",
+            "id": "parallel-clusterip",
             "suite": "scylla-operator/conformance/parallel",
             "object-storage": true,
             "node-service-type": "ClusterIP",
@@ -79,28 +79,28 @@ jobs:
             "clients-broadcast-address-type": "ServiceClusterIP"
           },
           {
-            "id": "gke-serial",
+            "id": "serial",
             "suite": "scylla-operator/conformance/serial",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-serial.yaml",
             "nodeconfig-path": "",
             "storageclass-name": ""
           },
           {
-            "id": "gke-arm64-parallel",
+            "id": "arm64-parallel",
             "suite": "scylla-operator/conformance/parallel",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-arm64.yaml",
             "object-storage": true,
             "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig-gke-arm64.yaml"
           },
           {
-            "id": "gke-arm64-serial",
+            "id": "arm64-serial",
             "suite": "scylla-operator/conformance/serial",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-arm64-serial.yaml",
             "nodeconfig-path": "",
             "storageclass-name": ""
           },
           {
-            "id": "gke-multi-dc-parallel",
+            "id": "multi-dc-parallel",
             "suite": "scylla-operator/conformance/multi-datacenter-parallel",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-multi-dc.yaml",
             "object-storage": true
@@ -108,11 +108,11 @@ jobs:
         ]'
         oke='[
           {
-            "id": "oke-parallel",
+            "id": "parallel",
             "suite": "scylla-operator/conformance/parallel"
           },
           {
-            "id": "oke-serial",
+            "id": "serial",
             "suite": "scylla-operator/conformance/serial"
           }
         ]'
@@ -124,12 +124,12 @@ jobs:
         }'
         openshift='[
           {
-            "id": "openshift-aws-parallel",
+            "id": "aws-parallel",
             "suite": "scylla-operator/conformance/parallel/openshift",
             "object-storage": true
           },
           {
-            "id": "openshift-aws-serial",
+            "id": "aws-serial",
             "suite": "scylla-operator/conformance/serial",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws-serial.yaml",
             "nodeconfig-path": "",
@@ -137,6 +137,11 @@ jobs:
           }
         ]'
 
+        # The ids are selected across platforms, so each is prefixed with the platform it runs on, e.g. `gke-parallel`.
+        for platform in gke oke openshift; do
+          printf -v "${platform}" '%s' \
+            "$( jq -c --arg platform "${platform}" 'map(.id = "\($platform)-\(.id)")' <<< "${!platform}" )"
+        done
         mapfile -t ids < <( jq -sr 'add | .[].id' <<< "${gke} ${oke} ${openshift}" )
         SELECTED="$( ./hack/.ci/select-jobs.sh "${JOBS:-[\"*\"]}" "${ids[@]}" )"
         export SELECTED

@@ -1,0 +1,63 @@
+name: Set a commit status
+description: >-
+  Sets a commit status linking to the current run. The job needs the `statuses: write` permission.
+
+inputs:
+  context:
+    description: Context of the status, the name it shows under on the commit and its PRs.
+    required: true
+  state:
+    description: State of the status, one of `pending`, `success`, `failure` or `error`. Exclusive with `needs`.
+    required: false
+    default: ""
+  needs:
+    description: >-
+      The `needs` context of the job, as `toJSON(needs)`. Sets the state to `success` when every job in it succeeded
+      and to `failure` otherwise, and prefixes the description with `Passed` or `Failed`. Exclusive with `state`.
+    required: false
+    default: ""
+  description:
+    description: Short description of the status. Cut to the 140 characters GitHub accepts.
+    required: false
+    default: ""
+  sha:
+    description: Commit to set the status on.
+    required: false
+    default: ${{ github.sha }}
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CONTEXT: ${{ inputs.context }}
+      STATE: ${{ inputs.state }}
+      NEEDS: ${{ inputs.needs }}
+      DESCRIPTION: ${{ inputs.description }}
+      SHA: ${{ inputs.sha }}
+      TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      if [[ -n "${NEEDS}" && -n "${STATE}" ]] || [[ -z "${NEEDS}" && -z "${STATE}" ]]; then
+        echo "exactly one of state and needs is required" >&2
+        exit 1
+      fi
+      if [[ -n "${NEEDS}" ]]; then
+        if jq -e 'all(.[]; .result == "success")' <<< "${NEEDS}" > /dev/null; then
+          STATE=success
+          DESCRIPTION="Passed ${DESCRIPTION}"
+        else
+          STATE=failure
+          DESCRIPTION="Failed ${DESCRIPTION}"
+        fi
+        DESCRIPTION="${DESCRIPTION% }"
+      fi
+
+      gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+      --raw-field state="${STATE}" \
+      --raw-field context="${CONTEXT}" \
+      --raw-field target_url="${TARGET_URL}" \
+      --raw-field description="${DESCRIPTION:0:140}"

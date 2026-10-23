@@ -1,0 +1,30 @@
+name: Report a failure to Slack
+description: Posts a message linking to the current run, reporting it as failed, to a Slack incoming webhook.
+
+inputs:
+  webhook-url:
+    description: URL of the Slack incoming webhook. It determines the channel the message is posted to.
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      WEBHOOK_URL: ${{ inputs.webhook-url }}
+      TEXT: |-
+        :warning: Workflow ${{ github.workflow }} in ${{ github.repository }} (${{ github.ref_name }}) triggered by ${{ github.event_name }} failed.
+        :fire_extinguisher: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Run> :fire:
+    # No xtrace, the webhook URL is the credential.
+    run: |
+      set -euEo pipefail
+      shopt -s inherit_errexit
+
+      # Otherwise curl only fails with a generic error about a missing URL.
+      if [[ -z "${WEBHOOK_URL}" ]]; then
+        echo "::error::webhook-url must not be empty."
+        exit 1
+      fi
+
+      jq -n --arg text "${TEXT}" '{text: $text}' |
+      curl --fail-with-body -sS -X POST -H 'Content-Type: application/json; charset=utf-8' --data @- "${WEBHOOK_URL}"

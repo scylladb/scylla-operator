@@ -55,7 +55,12 @@ function wait-for-container-exit-with-logs {
   exit_code=""
   while [[ "${exit_code}" == "" ]]; do
     kubectl -n="${1}" logs -f pod/"${2}" -c="${3}" > /dev/stderr || echo "kubectl logs failed before pod has finished, retrying..." > /dev/stderr
-    exit_code="$( kubectl -n="${1}" get pods/"${2}" --template='{{ range .status.containerStatuses }}{{ if and (eq .name "'"${3}"'") (ne .state.terminated.exitCode nil) }}{{ .state.terminated.exitCode }}{{ end }}{{ end }}' )"
+    # A transient API error (e.g. a TLS handshake timeout) must not abort the caller under errexit after the container
+    # has already finished; retry the read instead.
+    exit_code="$( kubectl -n="${1}" get pods/"${2}" --template='{{ range .status.containerStatuses }}{{ if and (eq .name "'"${3}"'") (ne .state.terminated.exitCode nil) }}{{ .state.terminated.exitCode }}{{ end }}{{ end }}' || echo "kubectl get failed while reading the container exit code, retrying..." > /dev/stderr )"
+    if [[ "${exit_code}" == "" ]]; then
+      sleep 5
+    fi
   done
   echo -n "${exit_code}"
 }

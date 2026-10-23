@@ -11,14 +11,77 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    uses: ./.github/workflows/_ci-jobs.yaml
+  checks:
+    uses: ./.github/workflows/_checks.yaml
+
+  detect-source-changes:
+    name: detect-source-changes
+    runs-on: hosted-runners-standard-pool
     permissions:
-      contents: read
-      # For detect-source-changes to read the PR's changed files.
       pull-requests: read
+    outputs:
+      source-changed: ${{ steps.source-change-detection.outputs.source }}
+    steps:
+      - name: Detect source changes
+        id: source-change-detection
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # With 'every', a changed file counts only when it matches all rules, i.e. escapes every exclusion.
+          predicate-quantifier: every
+          filters: |
+            source:
+              - '!.github/CODEOWNERS'
+              - '!docs/**'
+              - '!enhancements/**'
+              - '!**/*.md'
+              - '!renovate.json'
+
+  e2e-kind:
+    name: e2e-kind
+    needs: detect-source-changes
+    if: needs.detect-source-changes.outputs.source-changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - id: fast
+          suite: kind-fast
+    uses: ./.github/workflows/_e2e-kind.yaml
+    with:
+      name: ${{ matrix.id }}
+      suite: ${{ matrix.suite }}
+      scylladb-image-ref: ${{ matrix.scylladb-image-ref }}
+      enable-parallel-node-operations: ${{ matrix.enable-parallel-node-operations }}
+
+  image:
+    needs: detect-source-changes
+    if: needs.detect-source-changes.outputs.source-changed == 'true'
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.run_id }}
     secrets:
       registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  olm:
+    needs: image
+    uses: ./.github/workflows/_olm.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      bundle-image-tag: scylla-operator-bundle-${{ github.run_id }}
+      catalog-image-tag: scylla-operator-catalog-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  e2e:
+    needs:
+    - image
+    - olm
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+      jobs: '["gke-parallel", "gke-parallel-clusterip", "gke-serial"]'
+    secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
   verify-commits:
@@ -43,7 +106,12 @@ jobs:
   check-required:
     runs-on: hosted-runners-standard-pool
     needs:
-    - ci
+    - checks
+    - detect-source-changes
+    - e2e-kind
+    - image
+    - olm
+    - e2e
     - verify-commits
     if: always()
     steps:

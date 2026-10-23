@@ -1,0 +1,103 @@
+name: "E2E (targeted)"
+
+# Runs the selected e2e suites against the dispatched ref, e.g. a PR's head branch:
+# `gh workflow run e2e-targeted.yaml --ref <branch> -f jobs='["openshift-*"]'`. A dispatched run's checks don't show on a
+# PR, so the run reports its result as a commit status, named after the workflow, on the commit it tests.
+on:
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: >-
+          JSON list of glob patterns matching the ids of the e2e jobs to run, e.g. `["gke-serial", "openshift-*"]`.
+        required: true
+        type: string
+
+run-name: "E2E (targeted) ${{ inputs.jobs }} on ${{ github.ref_name }}"
+
+# There is a single status per commit, so a new run cancels the one before it on the same ref rather than racing it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  report-pending:
+    runs-on: hosted-runners-standard-pool
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Report the run as pending
+      uses: ./.github/actions/set-commit-status
+      with:
+        context: ${{ github.workflow }}
+        state: pending
+        description: Running ${{ inputs.jobs }}
+
+  image:
+    uses: ./.github/workflows/_image.yaml
+    with:
+      image-tag: scylla-operator-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  olm:
+    needs: image
+    uses: ./.github/workflows/_olm.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      bundle-image-tag: scylla-operator-bundle-${{ github.run_id }}
+      catalog-image-tag: scylla-operator-catalog-${{ github.run_id }}
+    secrets:
+      registry-auth-json: ${{ secrets.QUAY_SCYLLADB_DEV_PR_PUBLISHER_CREDS }}
+
+  e2e:
+    needs:
+    - image
+    - olm
+    uses: ./.github/workflows/_e2e-jobs.yaml
+    with:
+      image-ref: ${{ needs.image.outputs.image-ref }}
+      olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
+      jobs: ${{ inputs.jobs }}
+    secrets:
+      ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
+
+  # A run cancelled by the next one on the same ref leaves the status to that run. A run cancelled by hand stays pending
+  # until it's dispatched again.
+  report-result:
+    needs:
+    - report-pending
+    - image
+    - olm
+    - e2e
+    if: ${{ !cancelled() }}
+    runs-on: hosted-runners-standard-pool
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Report the result of the run
+      uses: ./.github/actions/set-commit-status
+      with:
+        context: ${{ github.workflow }}
+        needs: ${{ toJSON(needs) }}
+        description: ${{ inputs.jobs }}

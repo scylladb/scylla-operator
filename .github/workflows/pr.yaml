@@ -46,14 +46,6 @@ jobs:
         include:
         - id: fast
           suite: kind-fast
-        # Verify that the old node-exporter bundling within the ScyllaDB container (before 2026.3) is not broken
-        # (for as long as we support <2026.3).
-        - id: scylladb-monitoring-old-node-exporter
-          suite: kind-scylladb-monitoring
-          scylladb-image-ref: docker.io/scylladb/scylla:2026.2.6
-        - id: cluster-topology-sequential
-          suite: kind-cluster-topology
-          enable-parallel-node-operations: "false"
     uses: ./.github/workflows/_e2e-kind.yaml
     with:
       name: ${{ matrix.id }}

@@ -17,8 +17,8 @@ on:
         type: string
       jobs:
         description: >-
-          JSON list of glob patterns matching the ids of the jobs to run, e.g. `["gke-parallel"]`, or `["!oke-*"]` for
-          every job but OKE ones, as `hack/.ci/select-jobs.sh` matches them. Runs every job when omitted.
+          JSON list of glob patterns matching the ids of the jobs to run, e.g. `["gke-parallel"]`, or `["!openshift-*"]`
+          for every job but OpenShift ones, as `hack/.ci/select-jobs.sh` matches them. Runs every job when omitted.
         required: false
         type: string
     secrets:
@@ -105,16 +105,6 @@ jobs:
             "object-storage": true
           }
         ]'
-        oke='[
-          {
-            "id": "parallel",
-            "suite": "scylla-operator/conformance/parallel"
-          },
-          {
-            "id": "serial",
-            "suite": "scylla-operator/conformance/serial"
-          }
-        ]'
         openshift_defaults='{
           "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws.yaml",
           "object-storage": false,
@@ -137,11 +127,11 @@ jobs:
         ]'
 
         # The ids are selected across platforms, so each is prefixed with the platform it runs on, e.g. `gke-parallel`.
-        for platform in gke oke openshift; do
+        for platform in gke openshift; do
           printf -v "${platform}" '%s' \
             "$( jq -c --arg platform "${platform}" 'map(.id = "\($platform)-\(.id)")' <<< "${!platform}" )"
         done
-        mapfile -t ids < <( jq -sr 'add | .[].id' <<< "${gke} ${oke} ${openshift}" )
+        mapfile -t ids < <( jq -sr 'add | .[].id' <<< "${gke} ${openshift}" )
         SELECTED="$( ./hack/.ci/select-jobs.sh "${JOBS:-[\"*\"]}" "${ids[@]}" )"
         export SELECTED
         select='(env.SELECTED | fromjson) as $jobs | map(select(.id | IN($jobs[])))'

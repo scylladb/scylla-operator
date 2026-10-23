@@ -1,14 +1,14 @@
 name: "E2E (targeted)"
 
 # Runs the selected e2e suites against the dispatched ref, e.g. a PR's head branch:
-# `gh workflow run e2e-targeted.yaml --ref <branch> -f jobs='["oke-*"]'`. A dispatched run's checks don't show on a
+# `gh workflow run e2e-targeted.yaml --ref <branch> -f jobs='["openshift-*"]'`. A dispatched run's checks don't show on a
 # PR, so the run reports its result as a commit status, named after the workflow, on the commit it tests.
 on:
   workflow_dispatch:
     inputs:
       jobs:
         description: >-
-          JSON list of glob patterns matching the ids of the e2e jobs to run, e.g. `["oke-*", "openshift-*"]`.
+          JSON list of glob patterns matching the ids of the e2e jobs to run, e.g. `["gke-serial", "openshift-*"]`.
         required: true
         type: string
 

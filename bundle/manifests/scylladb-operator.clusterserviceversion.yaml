@@ -402,8 +402,8 @@ spec:
                       - --loglevel=2
                     env:
                       - name: SCYLLA_OPERATOR_IMAGE
-                        value: docker.io/scylladb/scylla-operator:latest
-                    image: docker.io/scylladb/scylla-operator:latest
+                        value: docker.io/scylladb/scylla-operator:1.23
+                    image: docker.io/scylladb/scylla-operator:1.23
                     imagePullPolicy: IfNotPresent
                     name: scylla-operator
                     resources:
@@ -447,7 +447,7 @@ spec:
                       - --tls-cert-file=/tmp/k8s-webhook-server/serving-certs/tls.crt
                       - --tls-private-key-file=/tmp/k8s-webhook-server/serving-certs/tls.key
                       - --port=5000
-                    image: docker.io/scylladb/scylla-operator:latest
+                    image: docker.io/scylladb/scylla-operator:1.23
                     imagePullPolicy: IfNotPresent
                     lifecycle:
                       preStop:

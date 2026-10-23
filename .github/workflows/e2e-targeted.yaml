@@ -29,6 +29,9 @@ defaults:
 jobs:
   report-pending:
     runs-on: hosted-runners-standard-pool
+    # The runners don't have gh, which set-commit-status calls.
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
     timeout-minutes: 5
     permissions:
       contents: read
@@ -85,6 +88,9 @@ jobs:
     - e2e
     if: ${{ !cancelled() }}
     runs-on: hosted-runners-standard-pool
+    # The runners don't have gh, which set-commit-status calls.
+    container:
+      image: quay.io/scylladb/scylla-operator-images:kube-tools
     timeout-minutes: 5
     permissions:
       contents: read

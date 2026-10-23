@@ -148,10 +148,11 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.gke) }}
-    name: ${{ matrix.id }}
+    # Referencing the matrix keeps GitHub from appending its values to the name.
+    name: ${{ format('gke', matrix.id) }}
     uses: ./.github/workflows/_e2e-gke.yaml
     with:
-      name: e2e-${{ matrix.id }}
+      name: ${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
       suite: ${{ matrix.suite }}
       cluster-manifest: ${{ matrix.cluster-manifest }}
@@ -172,10 +173,11 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.openshift) }}
-    name: ${{ matrix.id }}
+    # Referencing the matrix keeps GitHub from appending its values to the name.
+    name: ${{ format('openshift', matrix.id) }}
     uses: ./.github/workflows/_e2e-openshift-aws.yaml
     with:
-      name: e2e-${{ matrix.id }}
+      name: ${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
       olm-catalog-image-ref: ${{ inputs.olm-catalog-image-ref }}
       suite: ${{ matrix.suite }}

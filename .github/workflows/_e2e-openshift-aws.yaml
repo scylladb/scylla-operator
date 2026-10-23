@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       name:
-        description: Short slug identifying this run. Used for the provisioned objects and the artifact name.
+        description: Short slug identifying this run. Used for the job name, the provisioned objects and the artifact name.
         required: true
         type: string
       image-ref:
@@ -64,7 +64,7 @@ permissions:
 
 jobs:
   e2e:
-    name: e2e
+    name: ${{ inputs.name }}
     runs-on: hosted-runners-standard-pool
     container:
       image: quay.io/scylladb/scylla-operator-images:kube-tools

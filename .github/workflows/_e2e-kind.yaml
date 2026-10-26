@@ -16,6 +16,16 @@ on:
         required: false
         default: ""
         type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
       enable-parallel-node-operations:
         description: >-
           Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the
@@ -52,6 +62,16 @@ on:
         type: string
       scylladb-image-ref:
         description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
         required: false
         default: ""
         type: string
@@ -138,6 +158,8 @@ jobs:
       env:
         SO_SUITE: ${{ inputs.suite }}
         SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+        SCYLLADB_MANAGER_IMAGE_REF: ${{ inputs.scylladb-manager-image-ref }}
+        SCYLLADB_MANAGER_AGENT_IMAGE_REF: ${{ inputs.scylladb-manager-agent-image-ref }}
         SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
         SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
         SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}

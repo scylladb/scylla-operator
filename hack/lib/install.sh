@@ -379,8 +379,8 @@ function _install-scylladb-manager-manifests() {
     set-image-from-ref "${SCYLLADB_IMAGE_REF}" '.spec.repository' '.spec.version' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
-    yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
+  if [[ -n "${SCYLLADB_MANAGER_IMAGE_REF:-}" ]]; then
+    yq e --inplace '.spec.template.spec.containers[0].image = strenv(SCYLLADB_MANAGER_IMAGE_REF)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
   fi
 
   if [[ -n "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}" ]]; then
@@ -411,8 +411,14 @@ function _install-scylladb-manager-helm() {
     set-image-from-ref "${SCYLLADB_IMAGE_REF}" '.scylla.scyllaImage.repository' '.scylla.scyllaImage.tag' "${values}"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
-    yq e --inplace '.image.tag = strenv(SCYLLA_MANAGER_VERSION)' "${values}"
+  if [[ -n "${SCYLLADB_MANAGER_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_MANAGER_IMAGE_REF}" '.image.repository' '.image.tag' "${values}"
+    # The chart appends the image name to the repository.
+    if [[ "$( yq e '.image.repository' "${values}" )" != */scylla-manager ]]; then
+      echo "SCYLLADB_MANAGER_IMAGE_REF must point to a scylla-manager image with the helm install mode" > /dev/stderr
+      exit 1
+    fi
+    yq e --inplace '.image.repository |= sub("/scylla-manager$"; "")' "${values}"
   fi
 
   if [[ -n "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}" ]]; then

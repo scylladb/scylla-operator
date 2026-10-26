@@ -131,24 +131,22 @@ jobs:
             "suite": "scylla-operator/conformance/serial"
           }
         ]'
-        openshift_defaults='{
-          "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws.yaml",
-          "object-storage": false,
-          "storageclass-name": "scylladb-local-xfs",
-          "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig-openshift-aws.yaml"
-        }'
         openshift='[
           {
             "id": "aws-parallel",
             "suite": "scylla-operator/conformance/parallel/openshift",
-            "object-storage": true
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws.yaml",
+            "object-storage": true,
+            "storageclass-name": "scylladb-local-xfs",
+            "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig-openshift-aws.yaml"
           },
           {
             "id": "aws-serial",
             "suite": "scylla-operator/conformance/serial",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws-serial.yaml",
-            "nodeconfig-path": "",
-            "storageclass-name": ""
+            "object-storage": false,
+            "storageclass-name": "",
+            "nodeconfig-path": ""
           }
         ]'
 
@@ -164,7 +162,7 @@ jobs:
         {
           echo "gke=$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )"
           echo "oke=$( jq -c "${select}" <<< "${oke}" )"
-          echo "openshift=$( jq -c --argjson defaults "${openshift_defaults}" "${select} | map(\$defaults + .)" <<< "${openshift}" )"
+          echo "openshift=$( jq -c "${select}" <<< "${openshift}" )"
         } >> "${GITHUB_OUTPUT}"
 
   gke:

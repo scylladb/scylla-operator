@@ -383,8 +383,8 @@ function _install-scylladb-manager-manifests() {
     yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
-    yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  if [[ -n "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_MANAGER_AGENT_IMAGE_REF}" '.spec.agentRepository' '.spec.agentVersion' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
   fi
 
   if [[ -n "${scyllacluster_scylla_args}" ]]; then
@@ -415,8 +415,8 @@ function _install-scylladb-manager-helm() {
     yq e --inplace '.image.tag = strenv(SCYLLA_MANAGER_VERSION)' "${values}"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
-    yq e --inplace '.scylla.agentImage.tag = strenv(SCYLLA_MANAGER_AGENT_VERSION)' "${values}"
+  if [[ -n "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_MANAGER_AGENT_IMAGE_REF}" '.scylla.agentImage.repository' '.scylla.agentImage.tag' "${values}"
   fi
 
   if [[ -n "${scyllacluster_scylla_args}" ]]; then

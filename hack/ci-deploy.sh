@@ -20,7 +20,7 @@ fi
 OPERATOR_IMAGE_REF="${1}"
 export OPERATOR_IMAGE_REF
 
-for image_ref in "${SCYLLADB_IMAGE_REF:-}"; do
+for image_ref in "${SCYLLADB_IMAGE_REF:-}" "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}"; do
   if [[ -n "${image_ref}" ]]; then
     validate-image-ref "${image_ref}"
   fi

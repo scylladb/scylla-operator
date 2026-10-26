@@ -66,17 +66,17 @@ type TestFrameworkOptions struct {
 	genericclioptions.MultiDatacenterClientConfig
 	ObjectStorageOptions
 
-	ArtifactsDir                string
-	CleanupPolicyUntyped        string
-	CleanupPolicy               framework.CleanupPolicyType
-	IngressController           *IngressControllerOptions
-	ScyllaClusterOptionsUntyped *ScyllaClusterOptions
-	scyllaClusterOptions        *framework.ScyllaClusterOptions
-	ScyllaDBImageRef            string
-	ScyllaDBManagerAgentVersion string
-	ScyllaDBUpdateFrom          string
-	ScyllaDBUpgradeFrom         string
-	DryRun                      bool
+	ArtifactsDir                 string
+	CleanupPolicyUntyped         string
+	CleanupPolicy                framework.CleanupPolicyType
+	IngressController            *IngressControllerOptions
+	ScyllaClusterOptionsUntyped  *ScyllaClusterOptions
+	scyllaClusterOptions         *framework.ScyllaClusterOptions
+	ScyllaDBImageRef             string
+	ScyllaDBManagerAgentImageRef string
+	ScyllaDBUpdateFrom           string
+	ScyllaDBUpgradeFrom          string
+	DryRun                       bool
 }
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
@@ -93,11 +93,11 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 			ReactorBackend:               "", // Leaving empty to rely on ScyllaDB default.
 			EnableParallelNodeOperations: "", // Leaving empty to rely on the operator's default.
 		},
-		ObjectStorageOptions:        NewObjectStorageOptions(),
-		ScyllaDBImageRef:            framework.ScyllaDBImageRefForVersion(configassets.Project.Operator.ScyllaDBVersion),
-		ScyllaDBManagerAgentVersion: configassets.Project.Operator.ScyllaDBManagerAgentVersion,
-		ScyllaDBUpdateFrom:          configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
-		ScyllaDBUpgradeFrom:         configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
+		ObjectStorageOptions:         NewObjectStorageOptions(),
+		ScyllaDBImageRef:             framework.ScyllaDBImageRefForVersion(configassets.Project.Operator.ScyllaDBVersion),
+		ScyllaDBManagerAgentImageRef: fmt.Sprintf("%s:%s", configassets.ScyllaDBManagerAgentImageRepository, configassets.Project.Operator.ScyllaDBManagerAgentVersion),
+		ScyllaDBUpdateFrom:           configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
+		ScyllaDBUpgradeFrom:          configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
 	}
 }
 
@@ -145,7 +145,7 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 		", ",
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBImageRef, "scylladb-image-ref", "", o.ScyllaDBImageRef, "Image reference of ScyllaDB to use.")
-	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentImageRef, "scylladb-manager-agent-image-ref", "", o.ScyllaDBManagerAgentImageRef, "Image reference of ScyllaDB Manager Agent to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFrom, "scylladb-update-from-version", "", o.ScyllaDBUpdateFrom, "Version of ScyllaDB to update from.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
 }
@@ -208,11 +208,8 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerAgentVersion) {
-		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>[@<digest>]",
-			o.ScyllaDBManagerAgentVersion,
-		))
+	if _, _, err := framework.ImageRefToRepositoryVersion(o.ScyllaDBManagerAgentImageRef); err != nil {
+		errors = append(errors, fmt.Errorf("invalid scylladb-manager-agent-image-ref format: %q: %w", o.ScyllaDBManagerAgentImageRef, err))
 	}
 
 	if len(o.ArtifactsDir) > 0 {
@@ -267,6 +264,11 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		return fmt.Errorf("can't parse ScyllaDB image ref %q: %w", o.ScyllaDBImageRef, err)
 	}
 
+	scyllaDBManagerAgentRepository, scyllaDBManagerAgentVersion, err := framework.ImageRefToRepositoryVersion(o.ScyllaDBManagerAgentImageRef)
+	if err != nil {
+		return fmt.Errorf("can't parse ScyllaDB Manager Agent image ref %q: %w", o.ScyllaDBManagerAgentImageRef, err)
+	}
+
 	framework.TestContext = &framework.TestContextType{
 		RestConfig:                         o.ClientConfig.RestConfig,
 		WorkerRestConfigs:                  workerRestConfigs,
@@ -276,7 +278,9 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		ScyllaDBImageRef:                   o.ScyllaDBImageRef,
 		ScyllaDBRepository:                 scyllaDBRepository,
 		ScyllaDBVersion:                    scyllaDBVersion,
-		ScyllaDBManagerAgentVersion:        o.ScyllaDBManagerAgentVersion,
+		ScyllaDBManagerAgentImageRef:       o.ScyllaDBManagerAgentImageRef,
+		ScyllaDBManagerAgentRepository:     scyllaDBManagerAgentRepository,
+		ScyllaDBManagerAgentVersion:        scyllaDBManagerAgentVersion,
 		ScyllaDBUpdateFrom:                 o.ScyllaDBUpdateFrom,
 		ScyllaDBUpgradeFrom:                o.ScyllaDBUpgradeFrom,
 		ClusterObjectStorageSettings:       o.ClusterObjectStorageSettings,

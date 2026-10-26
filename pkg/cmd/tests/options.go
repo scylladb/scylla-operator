@@ -74,7 +74,6 @@ type TestFrameworkOptions struct {
 	scyllaClusterOptions        *framework.ScyllaClusterOptions
 	ScyllaDBVersion             string
 	ScyllaDBImageRef            string
-	ScyllaDBManagerVersion      string
 	ScyllaDBManagerAgentVersion string
 	ScyllaDBUpdateFrom          string
 	ScyllaDBUpgradeFrom         string
@@ -97,7 +96,6 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 		},
 		ObjectStorageOptions:        NewObjectStorageOptions(),
 		ScyllaDBVersion:             configassets.Project.Operator.ScyllaDBVersion,
-		ScyllaDBManagerVersion:      configassets.Project.Operator.ScyllaDBManagerVersion,
 		ScyllaDBManagerAgentVersion: configassets.Project.Operator.ScyllaDBManagerAgentVersion,
 		ScyllaDBUpdateFrom:          configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
 		ScyllaDBUpgradeFrom:         configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
@@ -149,7 +147,6 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBVersion, "scylladb-version", "", o.ScyllaDBVersion, "Version of ScyllaDB to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBImageRef, "scylladb-image-ref", "", o.ScyllaDBImageRef, "Optional full image reference of ScyllaDB to use instead of --scylladb-version, e.g. docker.io/scylladb/scylla:2026.1.0.")
-	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerVersion, "scylladb-manager-version", "", o.ScyllaDBManagerVersion, "Version of Scylla Manager to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFrom, "scylladb-update-from-version", "", o.ScyllaDBUpdateFrom, "Version of ScyllaDB to update from.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
@@ -222,13 +219,6 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerVersion) {
-		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-manager-version format: %q. Expected format: <tag>[@<digest>]",
-			o.ScyllaDBManagerVersion,
-		))
-	}
-
 	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBManagerAgentVersion) {
 		errors = append(errors, fmt.Errorf(
 			"invalid scylladb-manager-agent-version format: %q. Expected format: <tag>[@<digest>]",
@@ -298,7 +288,6 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		ScyllaClusterOptions:               o.scyllaClusterOptions,
 		ScyllaDBVersion:                    scyllaDBVersion,
 		ScyllaDBImageRef:                   o.ScyllaDBImageRef,
-		ScyllaDBManagerVersion:             o.ScyllaDBManagerVersion,
 		ScyllaDBManagerAgentVersion:        o.ScyllaDBManagerAgentVersion,
 		ScyllaDBUpdateFrom:                 o.ScyllaDBUpdateFrom,
 		ScyllaDBUpgradeFrom:                o.ScyllaDBUpgradeFrom,

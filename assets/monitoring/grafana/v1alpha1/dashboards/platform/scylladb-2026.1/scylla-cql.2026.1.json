@@ -10,6 +10,25 @@
             {
                 "kind": "AnnotationQuery",
                 "spec": {
+                    "builtIn": true,
+                    "enable": false,
+                    "hide": true,
+                    "iconColor": "rgba(0, 211, 255, 1)",
+                    "name": "Annotations & Alerts",
+                    "query": {
+                        "datasource": {
+                            "name": "-- Grafana --"
+                        },
+                        "group": "grafana",
+                        "kind": "DataQuery",
+                        "spec": {},
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
                     "enable": true,
                     "hide": false,
                     "iconColor": "rgba(255, 96, 96, 1)",
@@ -44,6 +63,7 @@
                         "titleFormat": "Node Restart"
                     },
                     "name": "Stall Detector",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -70,6 +90,7 @@
                         "titleFormat": "Node Restart"
                     },
                     "name": "Schema Changed",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -78,6 +99,193 @@
                         "kind": "DataQuery",
                         "spec": {
                             "expr": "changes(scylla_database_schema_changed{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "#73BF69",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Manager Task",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_manager_task_active_count{type=~\"repair|backup\",cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "#73BF69",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Manager Task Failed",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "sum(changes(scylla_manager_task_run_total{status=\"ERROR\", cluster=\"$cluster\"}[$__rate_interval])) by(type)>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(255, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Hints Write",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_hints_manager_written{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Hints Sent",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_hints_manager_sent{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "MV",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "sum(scylla_view_builder_builds_in_progress{cluster=\"$cluster\"})>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": true,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Node Operation",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "10*min(scylla_node_ops_finished_percentage{cluster=\"$cluster\"}) by (ops, dc,instance) < 10",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": true,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Streaming",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "10*min(scylla_streaming_finished_percentage{cluster=\"$cluster\"}) by (ops, dc,instance) < 10",
                             "interval": "",
                             "refId": "Anno"
                         },
@@ -146,7 +354,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_batches_pure_unlogged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_batches_pure_unlogged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -210,7 +418,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -256,7 +472,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_statements_in_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_statements_in_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -320,7 +536,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -366,7 +590,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_rows_read{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_rows_read{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -430,7 +654,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -476,7 +708,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_secondary_index_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_secondary_index_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -540,7 +772,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -586,7 +826,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])>0) by ([[by]], consistency_level))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])>0) by ([[by]], consistency_level))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -650,7 +890,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -1079,7 +1327,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1143,7 +1391,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -1227,7 +1483,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1291,7 +1547,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -1337,7 +1601,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1401,7 +1665,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -1447,7 +1719,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1511,7 +1783,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -1557,7 +1837,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1621,7 +1901,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -1705,7 +1993,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_inserts{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1769,7 +2057,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -1815,7 +2111,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1879,7 +2175,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -1925,7 +2229,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1989,7 +2293,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -2035,7 +2347,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_batches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", conditional=\"yes\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2099,7 +2411,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -2145,7 +2465,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) - sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2209,7 +2529,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -2285,31 +2613,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "floor(100 *sum(cql:non_system_prepared1m)/ (sum(cql:all_shardrate1m{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) - sum(cql:all_system_shardrate1m{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}))) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "floor(100 *sum(cql:non_system_prepared1m)/ (sum(cql:all_shardrate1m{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}) - sum(cql:all_system_shardrate1m{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}))) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -2401,7 +2721,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(cql:non_system_prepared1m{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]])",
+                                                "expr": "sum(cql:non_system_prepared1m{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2465,7 +2785,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -2503,31 +2831,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "100 * ((sum(rate(scylla_cql_unpaged_select_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))-sum(rate(scylla_cql_unpaged_select_queries_per_ks{ks=\"system\",instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])))/sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "100 * ((sum(rate(scylla_cql_unpaged_select_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))-sum(rate(scylla_cql_unpaged_select_queries_per_ks{ks=\"system\",instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])))/sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -2619,7 +2939,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_unpaged_select_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_unpaged_select_queries_per_ks{ks=\"system\",instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_unpaged_select_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_unpaged_select_queries_per_ks{ks=\"system\",instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2683,7 +3003,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -2721,31 +3049,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "clamp_max(100*((sum(rate(scylla_storage_proxy_coordinator_reads_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) or on() vector(0)) + (sum(rate(scylla_storage_proxy_coordinator_writes_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) or on() vector(0)))/((sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) + 1) or vector(1)),100) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "clamp_max(100*((sum(rate(scylla_storage_proxy_coordinator_reads_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) or on() vector(0)) + (sum(rate(scylla_storage_proxy_coordinator_writes_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) or on() vector(0)))/((sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) + 1) or vector(1)),100) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -2837,10 +3157,10 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "(sum(rate(scylla_storage_proxy_coordinator_reads_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]]))",
+                                                "expr": "(sum(rate(scylla_storage_proxy_coordinator_reads_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
-                                                "legendFormat": "Reads {{dc}} {{instance}} {{shard}}",
+                                                "legendFormat": "Reads {{dc}} {{rack}} {{instance}} {{shard}}",
                                                 "range": true
                                             },
                                             "version": "v0"
@@ -2859,10 +3179,10 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "(sum(rate(scylla_storage_proxy_coordinator_writes_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]]))",
+                                                "expr": "(sum(rate(scylla_storage_proxy_coordinator_writes_coordinator_outside_replica_set{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]) or on() sum(scylla_reactor_utilization*0) by([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
-                                                "legendFormat": "Writes {{dc}} {{instance}} {{shard}}",
+                                                "legendFormat": "Writes {{dc}} {{rack}} {{instance}} {{shard}}",
                                                 "range": true
                                             },
                                             "version": "v0"
@@ -2923,7 +3243,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -2961,31 +3289,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "100 * sum(rate(scylla_cql_reverse_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) / sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "100 * sum(rate(scylla_cql_reverse_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) / sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -3077,7 +3397,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_reverse_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_reverse_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -3141,7 +3461,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -3179,31 +3507,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "100 * sum(rate(scylla_cql_filtered_read_requests{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) / sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "100 * sum(rate(scylla_cql_filtered_read_requests{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) / sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -3295,7 +3615,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_deletes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_deletes_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -3359,7 +3679,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -3405,7 +3733,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_filtered_read_requests{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_filtered_read_requests{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -3469,7 +3797,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "rps"
                                 },
                                 "overrides": []
@@ -3507,31 +3843,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "100 * sum(rate(scylla_cql_filtered_rows_dropped_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))  /sum(rate(scylla_cql_filtered_rows_read_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "100 * sum(rate(scylla_cql_filtered_rows_dropped_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))  /sum(rate(scylla_cql_filtered_rows_read_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -3623,7 +3951,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_filtered_rows_read_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_filtered_rows_read_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "rows read $node $shard",
@@ -3645,7 +3973,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_filtered_rows_matched_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_filtered_rows_matched_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "rows matched $node $shard",
@@ -3667,7 +3995,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_filtered_rows_dropped_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_filtered_rows_dropped_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "rows dropped $node $shard",
@@ -3731,7 +4059,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "rps"
                                 },
                                 "overrides": []
@@ -3769,31 +4105,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "floor(100 *sum(rate(scylla_cql_select_partition_range_scan_no_bypass_cache{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))/(sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) - sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) )) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "floor(100 *sum(rate(scylla_cql_select_partition_range_scan_no_bypass_cache{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))/(sum(rate(scylla_cql_reads{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) - sum(rate(scylla_cql_reads_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) )) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -3885,7 +4213,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_select_partition_range_scan_no_bypass_cache{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_select_partition_range_scan_no_bypass_cache{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -3949,7 +4277,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -3987,31 +4323,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", consistency_level=\"ANY\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", consistency_level=\"ANY\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -4103,7 +4431,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\",  consistency_level=\"ANY\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\",  consistency_level=\"ANY\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -4167,7 +4495,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -4205,31 +4541,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", consistency_level=\"ALL\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", consistency_level=\"ALL\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -4321,7 +4649,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\",  consistency_level=\"ALL\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\",  consistency_level=\"ALL\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -4385,7 +4713,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -4423,31 +4759,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "(100 *sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "(100 *sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -4539,7 +4867,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_updates{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])-sum(rate(scylla_cql_updates_per_ks{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", who=\"internal\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -4603,7 +4931,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -4649,7 +4985,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_cql_batches_pure_logged{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -4713,7 +5049,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -4789,31 +5133,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", consistency_level=\"ONE\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", consistency_level=\"ONE\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -4905,7 +5241,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\",  consistency_level=\"ONE\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\",  consistency_level=\"ONE\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -4969,7 +5305,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -5007,31 +5351,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\", consistency_level=\"QUORUM\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "floor(100 *sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\", consistency_level=\"QUORUM\"}[$__rate_interval]))/sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval]))) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -5123,7 +5459,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\",  consistency_level=\"QUORUM\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_query_processor_queries{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\",  consistency_level=\"QUORUM\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -5187,7 +5523,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -5225,31 +5569,23 @@
                                 {
                                     "kind": "PanelQuery",
                                     "spec": {
-                                        "kind": "PanelQuery",
+                                        "hidden": false,
                                         "query": {
-                                            "spec": {
-                                                "expr": "100*(sum(rate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) - sum(rate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", datacenter=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])))/sum(rate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)"
-                                            }
-                                        },
-                                        "spec": {
-                                            "hidden": false,
-                                            "query": {
-                                                "datasource": {
-                                                    "name": "prometheus"
-                                                },
-                                                "group": "prometheus",
-                                                "kind": "DataQuery",
-                                                "spec": {
-                                                    "expr": "",
-                                                    "instant": false,
-                                                    "intervalFactor": 1,
-                                                    "legendFormat": "",
-                                                    "range": true
-                                                },
-                                                "version": "v0"
+                                            "datasource": {
+                                                "name": "prometheus"
                                             },
-                                            "refId": "A"
-                                        }
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "100*(sum(rate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) - sum(rate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", datacenter=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])))/sum(rate(scylla_storage_proxy_coordinator_reads_remote_node{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) OR vector(0)",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
                                     }
                                 }
                             ],
@@ -5353,7 +5689,7 @@
                                     "showLineNumbers": false,
                                     "showMiniMap": false
                                 },
-                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.17.0-rc0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                                 "mode": "html"
                             }
                         },
@@ -5379,7 +5715,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(scylla_transport_current_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(scylla_transport_current_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -5443,7 +5779,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -5489,7 +5833,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_transport_cql_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_transport_cql_connections{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -5553,7 +5897,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -5599,7 +5951,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_select_bypass_caches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
+                                                "expr": "$topbottom([[filter_limit]], sum(rate(scylla_cql_select_bypass_caches{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]]))",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -5663,7 +6015,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ops"
                                 },
                                 "overrides": []
@@ -5709,7 +6069,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_transport_cql_errors_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]],type) >0",
+                                                "expr": "sum(rate(scylla_transport_cql_errors_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", shard=~\"[[shard]]\"}[$__rate_interval])) by ([[by]],type) >0",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -5762,7 +6122,7 @@
                                         "scaleDistribution": {
                                             "type": "linear"
                                         },
-                                        "showPoints": "never",
+                                        "showPoints": "always",
                                         "showValues": false,
                                         "spanNulls": false,
                                         "stacking": {
@@ -5773,7 +6133,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -6058,7 +6426,6 @@
                                             "kind": "RowsLayoutRow",
                                             "spec": {
                                                 "collapse": true,
-                                                "hideHeader": true,
                                                 "layout": {
                                                     "kind": "GridLayout",
                                                     "spec": {
@@ -6086,7 +6453,6 @@
                                             "kind": "RowsLayoutRow",
                                             "spec": {
                                                 "collapse": true,
-                                                "hideHeader": true,
                                                 "layout": {
                                                     "kind": "GridLayout",
                                                     "spec": {
@@ -6114,7 +6480,6 @@
                                             "kind": "RowsLayoutRow",
                                             "spec": {
                                                 "collapse": true,
-                                                "hideHeader": true,
                                                 "layout": {
                                                     "kind": "GridLayout",
                                                     "spec": {
@@ -6142,7 +6507,6 @@
                                             "kind": "RowsLayoutRow",
                                             "spec": {
                                                 "collapse": true,
-                                                "hideHeader": true,
                                                 "layout": {
                                                     "kind": "GridLayout",
                                                     "spec": {
@@ -6183,7 +6547,7 @@
                                         {
                                             "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "collapse": true,
+                                                "collapse": false,
                                                 "hideHeader": true,
                                                 "layout": {
                                                     "kind": "GridLayout",
@@ -6917,7 +7281,7 @@
             "fiscalYearStartMonth": 0,
             "from": "now-6h",
             "hideTimepicker": false,
-            "timezone": "browser",
+            "timezone": "utc",
             "to": "now"
         },
         "title": "Scylla CQL",
@@ -6936,7 +7300,7 @@
                     "multi": false,
                     "name": "by",
                     "options": [],
-                    "query": "Cluster : cluster,DC : dc, Instance : instance, Shard : instance\\,shard",
+                    "query": "Cluster : cluster,DC : dc, Rack : dc\\,rack, Instance : instance, Shard : instance\\,shard",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }
@@ -7011,6 +7375,40 @@
             {
                 "kind": "QueryVariable",
                 "spec": {
+                    "allValue": ".*",
+                    "allowCustomValue": true,
+                    "current": {
+                        "text": "All",
+                        "value": "$__all"
+                    },
+                    "definition": "",
+                    "hide": "dontHide",
+                    "includeAll": true,
+                    "label": "rack",
+                    "multi": true,
+                    "name": "rack",
+                    "options": [],
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "__legacyStringValue": "label_values(scylla_reactor_utilization{cluster=~\"$cluster\", dc=~\"$dc\"}, rack)"
+                        },
+                        "version": "v0"
+                    },
+                    "refresh": "onTimeRangeChanged",
+                    "regex": "",
+                    "regexApplyTo": "value",
+                    "skipUrlSync": false,
+                    "sort": "alphabeticalAsc"
+                }
+            },
+            {
+                "kind": "QueryVariable",
+                "spec": {
                     "allowCustomValue": true,
                     "current": {
                         "selected": true,
@@ -7035,7 +7433,7 @@
                         "group": "prometheus",
                         "kind": "DataQuery",
                         "spec": {
-                            "__legacyStringValue": "label_values(scylla_reactor_utilization{cluster=\"$cluster\", dc=~\"$dc\"}, instance)"
+                            "__legacyStringValue": "label_values(scylla_reactor_utilization{cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}, instance)"
                         },
                         "version": "v0"
                     },
@@ -7207,15 +7605,15 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "4.16.1",
-                        "value": "4.16.1"
+                        "text": "4.17.0-rc0",
+                        "value": "4.17.0-rc0"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
                     "multi": false,
                     "name": "monitoring_version",
                     "options": [],
-                    "query": "4.16.1",
+                    "query": "4.17.0-rc0",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

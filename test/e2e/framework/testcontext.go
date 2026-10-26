@@ -64,8 +64,9 @@ type TestContextType struct {
 	CleanupPolicy                      CleanupPolicyType
 	IngressController                  *IngressController
 	ScyllaClusterOptions               *ScyllaClusterOptions
-	ScyllaDBVersion                    string
 	ScyllaDBImageRef                   string
+	ScyllaDBRepository                 string
+	ScyllaDBVersion                    string
 	ScyllaDBManagerAgentVersion        string
 	ScyllaDBUpdateFrom                 string
 	ScyllaDBUpgradeFrom                string

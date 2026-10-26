@@ -41,10 +41,10 @@ var _ = g.Describe("ScyllaCluster upgrades", framework.SuiteParallel, framework.
 			ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 			defer cancel()
 
-			initialRepo, initialVersion, err := framework.ScyllaDBImageRefToRepositoryVersion(e.initialImageRef)
+			initialRepo, initialVersion, err := framework.ImageRefToRepositoryVersion(e.initialImageRef)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			targetRepo, targetVersion, err := framework.ScyllaDBImageRefToRepositoryVersion(e.targetImageRef)
+			targetRepo, targetVersion, err := framework.ImageRefToRepositoryVersion(e.targetImageRef)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			sc := f.GetDefaultScyllaCluster()
@@ -142,31 +142,31 @@ var _ = g.Describe("ScyllaCluster upgrades", framework.SuiteParallel, framework.
 			rackCount:       1,
 			rackSize:        1,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
-			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+			targetImageRef:  framework.TestContext.ScyllaDBImageRef,
 		}, framework.SuiteKindFast),
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
-			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+			targetImageRef:  framework.TestContext.ScyllaDBImageRef,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        1,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
-			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+			targetImageRef:  framework.TestContext.ScyllaDBImageRef,
 		}, framework.SuiteKindFast),
 		g.Entry(describeEntry, &entry{
 			rackCount:       1,
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
-			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+			targetImageRef:  framework.TestContext.ScyllaDBImageRef,
 		}),
 		g.Entry(describeEntry, &entry{
 			rackCount:       2,
 			rackSize:        3,
 			initialImageRef: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
-			targetImageRef:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+			targetImageRef:  framework.TestContext.ScyllaDBImageRef,
 		}),
 	)
 })

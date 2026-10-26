@@ -170,14 +170,14 @@ var _ = g.Describe("ScyllaDBCluster", framework.SuiteMultiDatacenterParallel, fu
 			"is updated",
 			&entry{
 				initialScyllaDBImage: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
-				targetScyllaDBImage:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+				targetScyllaDBImage:  framework.TestContext.ScyllaDBImageRef,
 			},
 		),
 		g.Entry(
 			"is upgraded",
 			&entry{
 				initialScyllaDBImage: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
-				targetScyllaDBImage:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+				targetScyllaDBImage:  framework.TestContext.ScyllaDBImageRef,
 			},
 		),
 	)

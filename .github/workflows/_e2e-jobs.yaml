@@ -21,6 +21,21 @@ on:
           every job but OKE ones, as `hack/.ci/select-jobs.sh` matches them. Runs every job when omitted.
         required: false
         type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
     secrets:
       ci-provisioners-kubeconfig:
         description: Kubeconfig of the cluster to create the CI provisioning objects in.
@@ -173,6 +188,9 @@ jobs:
       name: ${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
       suite: ${{ matrix.suite }}
+      scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+      scylladb-manager-image-ref: ${{ inputs.scylladb-manager-image-ref }}
+      scylladb-manager-agent-image-ref: ${{ inputs.scylladb-manager-agent-image-ref }}
       cluster-manifest: ${{ matrix.cluster-manifest }}
       object-storage: ${{ matrix.object-storage }}
       storageclass-name: ${{ matrix.storageclass-name }}
@@ -198,6 +216,9 @@ jobs:
       name: ${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
       suite: ${{ matrix.suite }}
+      scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+      scylladb-manager-image-ref: ${{ inputs.scylladb-manager-image-ref }}
+      scylladb-manager-agent-image-ref: ${{ inputs.scylladb-manager-agent-image-ref }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
 
@@ -217,6 +238,9 @@ jobs:
       image-ref: ${{ inputs.image-ref }}
       olm-catalog-image-ref: ${{ inputs.olm-catalog-image-ref }}
       suite: ${{ matrix.suite }}
+      scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+      scylladb-manager-image-ref: ${{ inputs.scylladb-manager-image-ref }}
+      scylladb-manager-agent-image-ref: ${{ inputs.scylladb-manager-agent-image-ref }}
       cluster-manifest: ${{ matrix.cluster-manifest }}
       object-storage: ${{ matrix.object-storage }}
       storageclass-name: ${{ matrix.storageclass-name }}

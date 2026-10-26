@@ -18,6 +18,21 @@ on:
         description: Name of the `scylla-operator-tests` suite to run, e.g. `scylla-operator/conformance/parallel`.
         required: true
         type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
       cluster-manifest:
         description: OracleKubernetesEngineCluster to provision the suite against.
         required: false
@@ -83,6 +98,9 @@ jobs:
         KUBECONFIG: ${{ steps.cluster.outputs.kubeconfig-path }}
         SO_IMAGE: ${{ inputs.image-ref }}
         SO_SUITE: ${{ inputs.suite }}
+        SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+        SCYLLADB_MANAGER_IMAGE_REF: ${{ inputs.scylladb-manager-image-ref }}
+        SCYLLADB_MANAGER_AGENT_IMAGE_REF: ${{ inputs.scylladb-manager-agent-image-ref }}
         SO_E2E_TIMEOUT: 90m
         SO_SCYLLACLUSTER_NODE_SERVICE_TYPE: Headless
         SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE: PodIP

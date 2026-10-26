@@ -49,12 +49,16 @@ on:
         default: ""
         type: string
   # The dispatch runs a single suite with the parameters below. The triggers keep separate input blocks by design,
-  # so the workflow_call inputs above are mirrored here; both feed the same `inputs` context.
+  # so the workflow_call inputs above are mirrored here, except `name` is optional: a dispatch is otherwise named after
+  # its suite. Both feed the same `inputs` context.
   workflow_dispatch:
     inputs:
       name:
-        description: Short slug identifying this run among the kind e2e suites, e.g. `fast`. Used for the job name and the artifact name.
-        required: true
+        description: >-
+          Short slug telling this run apart from other dispatches of the suite, e.g. `rc0`. Used for the run name, the
+          job name and the artifact name. Empty names them after the suite alone.
+        required: false
+        default: ""
         type: string
       suite:
         description: Name of the `scylla-operator-tests` suite to run, e.g. `kind-fast`.
@@ -98,6 +102,8 @@ on:
         default: ""
         type: string
 
+run-name: "E2E: KinD ${{ inputs.suite }}${{ inputs.name && format(' ({0})', inputs.name) || '' }} on ${{ github.ref_name }}"
+
 defaults:
   run:
     shell: bash
@@ -117,7 +123,7 @@ env:
 
 jobs:
   e2e:
-    name: ${{ inputs.name }}
+    name: ${{ inputs.name || inputs.suite }}
     runs-on: hosted-runners-standard-pool
     timeout-minutes: 150
     # The privileged kube-tools container hosts the kind cluster, and every step of the job runs inside it.
@@ -131,6 +137,17 @@ jobs:
     env:
       ARTIFACTS: /artifacts
     steps:
+    # Suite names can contain slashes, which upload-artifact rejects in artifact names.
+    - name: Name the artifacts
+      id: artifacts
+      env:
+        NAME: ${{ inputs.name || inputs.suite }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        echo "name=artifacts-e2e-kind-${NAME//[^A-Za-z0-9._-]/-}-${{ github.run_attempt }}" >> "${GITHUB_OUTPUT}"
+
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -202,5 +219,5 @@ jobs:
       if: always()
       uses: ./.github/actions/pack-and-upload-artifacts
       with:
-        name: artifacts-e2e-kind-${{ inputs.name }}-${{ github.run_attempt }}
+        name: ${{ steps.artifacts.outputs.name }}
         directory: ${{ env.ARTIFACTS }}

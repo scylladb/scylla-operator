@@ -34,7 +34,7 @@ function kubectl_cp {
 # $3 - timeout (optional, defaults to 60s)
 function wait-for-object-creation {
   local timeout="${3:-60s}"
-  kubectl wait --timeout="${timeout}" --for=create -n="${1}" "${2}"
+  timeout --verbose "${timeout}" bash -c 'until kubectl wait --timeout="${0}" --for=create -n="${1}" "${2}"; do sleep 1; done' "${timeout}" "${1}" "${2}"
 }
 
 # wait-for-scyllacluster-rollout waits until a ScyllaCluster is fully rolled out and available.

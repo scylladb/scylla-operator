@@ -36,13 +36,15 @@ function deploy-cert-manager() {
 # wait-for-scylla-operator-rollout waits for the operator and webhook server deployments to roll out
 # and for the ScyllaCluster CRD to be established.
 function wait-for-scylla-operator-rollout() {
+  # Connecting to the API server can transiently exceed kubectl's 10s TLS handshake timeout right after the operator's
+  # CRDs are installed, so the waits are retried within their timeout.
   wait-for-object-creation scylla-operator deployment.apps/scylla-operator 5m
-  kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+  timeout --verbose 5m bash -c 'until kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator; do sleep 1; done'
   wait-for-object-creation scylla-operator deployment.apps/webhook-server 5m
-  kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
+  timeout --verbose 5m bash -c 'until kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server; do sleep 1; done'
 
   wait-for-object-creation scylla-operator crd/scyllaclusters.scylla.scylladb.com 5m
-  kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
+  timeout --verbose 5m bash -c 'until kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com; do sleep 1; done'
 }
 
 # install-operator installs the Scylla Operator and its dependencies in the cluster through the specified method.

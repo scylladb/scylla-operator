@@ -8,27 +8,27 @@
 /stable/resources/scylladbmonitorings.html: /stable/understand/monitoring.html
 
 # --- API reference redirects ---
-/stable/api-reference/index.rst: /stable/reference/api/index.rst
-/stable/api-reference/groups/scylla.scylladb.com.rst: /stable/reference/api/groups/scylla.scylladb.com.rst
-/stable/api-reference/groups/scylla.scylladb.com/nodeconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.rst
-/stable/api-reference/groups/scylla.scylladb.com/remotekubernetesclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/stable/api-reference/groups/scylla.scylladb.com/remoteowners.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/stable/api-reference/groups/scylla.scylladb.com/scyllaclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/stable/api-reference/groups/scylla.scylladb.com/scylladbclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.rst
-/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenters.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenters.rst
-/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.rst
-/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagertasks.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.rst
-/stable/api-reference/groups/scylla.scylladb.com/scylladbmonitorings.rst: /stable/reference/api/groups/scylla.scylladb.com/scylladbmonitorings.rst
-/stable/api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.rst
+/stable/api-reference/index.html: /stable/reference/api/index.html
+/stable/api-reference/groups/scylla.scylladb.com.html: /stable/reference/api/groups/scylla.scylladb.com.html
+/stable/api-reference/groups/scylla.scylladb.com/nodeconfigs.html: /stable/reference/api/groups/scylla.scylladb.com/nodeconfigs.html
+/stable/api-reference/groups/scylla.scylladb.com/remotekubernetesclusters.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/stable/api-reference/groups/scylla.scylladb.com/remoteowners.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/stable/api-reference/groups/scylla.scylladb.com/scyllaclusters.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/stable/api-reference/groups/scylla.scylladb.com/scylladbclusters.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.html: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenternodesstatusreports.html
+/stable/api-reference/groups/scylla.scylladb.com/scylladbdatacenters.html: /stable/reference/api/groups/scylla.scylladb.com/scylladbdatacenters.html
+/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.html: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagerclusterregistrations.html
+/stable/api-reference/groups/scylla.scylladb.com/scylladbmanagertasks.html: /stable/reference/api/groups/scylla.scylladb.com/scylladbmanagertasks.html
+/stable/api-reference/groups/scylla.scylladb.com/scylladbmonitorings.html: /stable/reference/api/groups/scylla.scylladb.com/scylladbmonitorings.html
+/stable/api-reference/groups/scylla.scylladb.com/scyllaoperatorconfigs.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaoperatorconfigs.html
 
 # --- Removed ScyllaDBCluster, RemoteKubernetesCluster and RemoteOwner API reference pages -> ScyllaCluster ---
-/stable/reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/stable/reference/api/groups/scylla.scylladb.com/remoteowners.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/stable/reference/api/groups/scylla.scylladb.com/scylladbclusters.rst: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/master/reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.rst: /master/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/master/reference/api/groups/scylla.scylladb.com/remoteowners.rst: /master/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
-/master/reference/api/groups/scylla.scylladb.com/scylladbclusters.rst: /master/reference/api/groups/scylla.scylladb.com/scyllaclusters.rst
+/stable/reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/stable/reference/api/groups/scylla.scylladb.com/remoteowners.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/stable/reference/api/groups/scylla.scylladb.com/scylladbclusters.html: /stable/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/master/reference/api/groups/scylla.scylladb.com/remotekubernetesclusters.html: /master/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/master/reference/api/groups/scylla.scylladb.com/remoteowners.html: /master/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
+/master/reference/api/groups/scylla.scylladb.com/scylladbclusters.html: /master/reference/api/groups/scylla.scylladb.com/scyllaclusters.html
 
 # --- Restructured docs redirects (PR #3443) ---
 

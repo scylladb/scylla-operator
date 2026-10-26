@@ -29,6 +29,9 @@ thirdParty:
   prometheusOperator:
     # renovate: datasource=github-releases depName=prometheus-operator packageName=prometheus-operator/prometheus-operator versioning=semver
     version: "0.94.2" # Latest compatible with .operator.prometheusVersion (https://prometheus-operator.dev/docs/getting-started/compatibility/)
+    # Prometheus versions assumed to be compatible with this prometheus-operator version although its compatibility
+    # matrix doesn't list them yet. Remove each entry once a prometheus-operator release includes it in the matrix.
+    assumedCompatiblePrometheusVersions: ["v3.15.1"]
     namespace: "prometheus-operator"
   localCSIDriver:
     # renovate: datasource=docker depName=local-csi-driver packageName=docker.io/scylladb/local-csi-driver versioning=semver

@@ -276,8 +276,19 @@ func TestPrometheusOperatorCompatibility(t *testing.T) {
 		t.Parallel()
 
 		prometheusVersion := Project.Operator.PrometheusVersion
-		if !slices.Contains(prometheusoperator.PrometheusCompatibilityMatrix, prometheusVersion) {
-			t.Errorf("prometheus operator version %q compatibility matrix does not contain prometheus version %q", Project.ThirdParty.PrometheusOperatorConfig.Version, prometheusVersion)
+		if !slices.Contains(prometheusoperator.PrometheusCompatibilityMatrix, prometheusVersion) &&
+			!slices.Contains(Project.ThirdParty.PrometheusOperatorConfig.AssumedCompatiblePrometheusVersions, prometheusVersion) {
+			t.Errorf("prometheus operator version %q compatibility matrix does not contain prometheus version %q and it is not listed in assumedCompatiblePrometheusVersions", Project.ThirdParty.PrometheusOperatorConfig.Version, prometheusVersion)
+		}
+	})
+
+	t.Run("assumed compatible prometheus versions are not in the compatibility matrix", func(t *testing.T) {
+		t.Parallel()
+
+		for _, v := range Project.ThirdParty.PrometheusOperatorConfig.AssumedCompatiblePrometheusVersions {
+			if slices.Contains(prometheusoperator.PrometheusCompatibilityMatrix, v) {
+				t.Errorf("prometheus version %q is already in prometheus operator version %q compatibility matrix, remove it from assumedCompatiblePrometheusVersions", v, Project.ThirdParty.PrometheusOperatorConfig.Version)
+			}
 		}
 	})
 }

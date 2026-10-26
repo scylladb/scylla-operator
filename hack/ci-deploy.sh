@@ -20,6 +20,12 @@ fi
 OPERATOR_IMAGE_REF="${1}"
 export OPERATOR_IMAGE_REF
 
+for image_ref in "${SCYLLADB_IMAGE_REF:-}"; do
+  if [[ -n "${image_ref}" ]]; then
+    validate-image-ref "${image_ref}"
+  fi
+done
+
 trap cleanup-bg-jobs-on-exit EXIT
 
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}

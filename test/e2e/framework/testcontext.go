@@ -68,6 +68,8 @@ type TestContextType struct {
 	ScyllaDBImageRef                   string
 	ScyllaDBRepository                 string
 	ScyllaDBVersion                    string
+	ScyllaDBManagerAgentImageRef       string
+	ScyllaDBManagerAgentRepository     string
 	ScyllaDBManagerAgentVersion        string
 	ScyllaDBUpdateFrom                 string
 	ScyllaDBUpgradeFrom                string

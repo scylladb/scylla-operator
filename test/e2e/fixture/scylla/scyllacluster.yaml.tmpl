@@ -7,7 +7,8 @@ metadata:
   annotations:
    bar: foo
 spec:
-  agentVersion: "{{ .scyllaDBManagerVersion }}"
+  agentRepository: "{{ .scyllaDBManagerAgentRepository }}"
+  agentVersion: "{{ .scyllaDBManagerAgentVersion }}"
   {{- if .enableParallelNodeOperations }}
   enableParallelNodeOperations: {{ .enableParallelNodeOperations }}
   {{- end }}

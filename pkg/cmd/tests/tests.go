@@ -96,6 +96,14 @@ var Suites = ginkgotest.TestSuites{
 		LabelFilter:        framework.SuiteKindClusterTopologyLabelName,
 		DefaultParallelism: defaultParallelParallelism,
 	},
+	{
+		Name: "kind-smoke",
+		Description: templates.LongDesc(`
+		A minimal set of tests verifying that an installed operator works, possible to be run on kind clusters.
+		`),
+		LabelFilter:        framework.SuiteKindSmokeLabelName,
+		DefaultParallelism: defaultParallelParallelism,
+	},
 }
 
 func NewTestsCommand(streams genericclioptions.IOStreams) *cobra.Command {

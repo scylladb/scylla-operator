@@ -46,8 +46,9 @@ type CertManagerConfig struct {
 }
 
 type PrometheusOperatorConfig struct {
-	Version   string `json:"version"`
-	Namespace string `json:"namespace"`
+	Version                             string   `json:"version"`
+	AssumedCompatiblePrometheusVersions []string `json:"assumedCompatiblePrometheusVersions"`
+	Namespace                           string   `json:"namespace"`
 }
 
 type LocalCSIDriverConfig struct {

@@ -19,7 +19,7 @@ var _ = g.Describe("ScyllaCluster's mutating admission webhook", framework.Suite
 		f = framework.NewFramework(ctx, "scyllacluster")
 	})
 
-	g.It("should default enableParallelNodeOperations on creation", func(ctx g.SpecContext) {
+	g.It("should default enableParallelNodeOperations on creation", framework.SuiteKindSmoke, func(ctx g.SpecContext) {
 		sc := f.GetDefaultScyllaCluster()
 		// The fixture carries an explicit enableParallelNodeOperations when the suite is invoked with one.
 		sc.Spec.EnableParallelNodeOperations = nil

@@ -290,7 +290,6 @@ function run-e2e {
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
   SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
-  SCYLLADB_MANAGER_VERSION="${SCYLLADB_MANAGER_VERSION:-$(yq '.operator.scyllaDBManagerVersion' "$config_file")}"
   SCYLLADB_MANAGER_AGENT_VERSION="${SCYLLADB_MANAGER_AGENT_VERSION:-$(yq '.operator.scyllaDBManagerAgentVersion' "$config_file")}"
   SCYLLADB_UPDATE_FROM_VERSION="${SCYLLADB_UPDATE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.updateFrom' "$config_file")}"
   SCYLLADB_UPGRADE_FROM_VERSION="${SCYLLADB_UPGRADE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.upgradeFrom' "$config_file")}"
@@ -411,7 +410,6 @@ function run-e2e {
     "--s3-credentials-file-path=${s3_credentials_in_container_path}"
     "--s3-agent-config-path=${agent_config_in_container_path}"
     "--scylladb-version=${SCYLLADB_VERSION}"
-    "--scylladb-manager-version=${SCYLLADB_MANAGER_VERSION}"
     "--scylladb-manager-agent-version=${SCYLLADB_MANAGER_AGENT_VERSION}"
     "--scylladb-update-from-version=${SCYLLADB_UPDATE_FROM_VERSION}"
     "--scylladb-upgrade-from-version=${SCYLLADB_UPGRADE_FROM_VERSION}"

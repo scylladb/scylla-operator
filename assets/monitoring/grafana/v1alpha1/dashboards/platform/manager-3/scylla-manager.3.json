@@ -10,6 +10,25 @@
             {
                 "kind": "AnnotationQuery",
                 "spec": {
+                    "builtIn": true,
+                    "enable": false,
+                    "hide": true,
+                    "iconColor": "rgba(0, 211, 255, 1)",
+                    "name": "Annotations & Alerts",
+                    "query": {
+                        "datasource": {
+                            "name": "-- Grafana --"
+                        },
+                        "group": "grafana",
+                        "kind": "DataQuery",
+                        "spec": {},
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
                     "enable": true,
                     "hide": false,
                     "iconColor": "rgba(255, 96, 96, 1)",
@@ -36,14 +55,69 @@
             {
                 "kind": "AnnotationQuery",
                 "spec": {
-                    "enable": true,
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgba(255, 96, 96, 1)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Stall Detector",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_stall_detector_reported{cluster=\"$cluster\"}[5m])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgba(255, 96, 96, 1)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Schema Changed",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_database_schema_changed{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
                     "hide": false,
                     "iconColor": "#73BF69",
                     "legacyOptions": {
                         "tagKeys": "instance,dc,cluster",
                         "titleFormat": "Node Restart"
                     },
-                    "name": "Task",
+                    "name": "Manager Task",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -62,14 +136,15 @@
             {
                 "kind": "AnnotationQuery",
                 "spec": {
-                    "enable": true,
+                    "enable": false,
                     "hide": false,
                     "iconColor": "#73BF69",
                     "legacyOptions": {
                         "tagKeys": "instance,dc,cluster",
                         "titleFormat": "Node Restart"
                     },
-                    "name": "Failed",
+                    "name": "Manager Task Failed",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -78,6 +153,139 @@
                         "kind": "DataQuery",
                         "spec": {
                             "expr": "sum(changes(scylla_manager_task_run_total{status=\"ERROR\", cluster=\"$cluster\"}[$__rate_interval])) by(type)>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(255, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Hints Write",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_hints_manager_written{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Hints Sent",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_hints_manager_sent{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "MV",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "sum(scylla_view_builder_builds_in_progress{cluster=\"$cluster\"})>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": true,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Node Operation",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "10*min(scylla_node_ops_finished_percentage{cluster=\"$cluster\"}) by (ops, dc,instance) < 10",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": true,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Streaming",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "10*min(scylla_streaming_finished_percentage{cluster=\"$cluster\"}) by (ops, dc,instance) < 10",
                             "interval": "",
                             "refId": "Anno"
                         },
@@ -126,9 +334,7 @@
                     },
                     "id": 1,
                     "links": [],
-                    "spec": {
-                        "title": "Manager"
-                    },
+                    "title": "Manager",
                     "vizConfig": {
                         "group": "stat",
                         "kind": "VizConfig",
@@ -167,7 +373,8 @@
                                             }
                                         ]
                                     }
-                                }
+                                },
+                                "overrides": []
                             },
                             "options": {
                                 "colorMode": "value",
@@ -192,6 +399,44 @@
                 }
             },
             "panel-10": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "",
+                    "id": 10,
+                    "links": [],
+                    "title": "",
+                    "transparent": true,
+                    "vizConfig": {
+                        "group": "text",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {},
+                                "overrides": []
+                            },
+                            "options": {
+                                "code": {
+                                    "language": "plaintext",
+                                    "showLineNumbers": false,
+                                    "showMiniMap": false
+                                },
+                                "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Repair</h1>",
+                                "mode": "html"
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-11": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -226,7 +471,7 @@
                         }
                     },
                     "description": "",
-                    "id": 10,
+                    "id": 11,
                     "links": [],
                     "title": "Repair Progress",
                     "vizConfig": {
@@ -273,80 +518,16 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "percent"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-11": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "sum(rate(scylla_manager_repair_token_ranges_success{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[$__rate_interval])) by ([[by]])",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "",
-                    "id": 11,
-                    "links": [],
-                    "title": "Repair Token-Range Rate",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "links": [],
-                                    "unit": "ops"
                                 },
                                 "overrides": []
                             },
@@ -391,7 +572,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(scylla_manager_repair_token_ranges_error{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "sum(rate(scylla_manager_repair_token_ranges_success{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -410,7 +591,7 @@
                     "description": "",
                     "id": 12,
                     "links": [],
-                    "title": "Repair Token-Range Error Rate",
+                    "title": "Repair Token-Range Rate",
                     "vizConfig": {
                         "group": "timeseries",
                         "kind": "VizConfig",
@@ -463,7 +644,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "manager:backup_progress{cluster=~\"[[cluster]]\"}",
+                                                "expr": "sum(rate(scylla_manager_repair_token_ranges_error{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -481,6 +662,116 @@
                     },
                     "description": "",
                     "id": 13,
+                    "links": [],
+                    "title": "Repair Token-Range Error Rate",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "links": [],
+                                    "unit": "ops"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-14": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "",
+                    "id": 14,
+                    "links": [],
+                    "title": "",
+                    "transparent": true,
+                    "vizConfig": {
+                        "group": "text",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {},
+                                "overrides": []
+                            },
+                            "options": {
+                                "code": {
+                                    "language": "plaintext",
+                                    "showLineNumbers": false,
+                                    "showMiniMap": false
+                                },
+                                "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Backup</h1>",
+                                "mode": "html"
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-15": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "manager:backup_progress{cluster=~\"[[cluster]]\"}",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "",
+                    "id": 15,
                     "links": [],
                     "title": "Backup Progress",
                     "vizConfig": {
@@ -527,152 +818,16 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "percentunit"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-14": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "sum(scylla_manager_backup_files_uploaded_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "",
-                    "id": 14,
-                    "links": [],
-                    "title": "Uploaded bytes",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "links": [],
-                                    "unit": "ops"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-15": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "sum(scylla_manager_backup_files_skipped_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "",
-                    "id": 15,
-                    "links": [],
-                    "title": "Uploaded skipped",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "links": [],
-                                    "unit": "ops"
                                 },
                                 "overrides": []
                             },
@@ -717,7 +872,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(scylla_manager_backup_files_failed_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
+                                                "expr": "sum(scylla_manager_backup_files_uploaded_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -736,7 +891,7 @@
                     "description": "",
                     "id": 16,
                     "links": [],
-                    "title": "Uploaded Failed",
+                    "title": "Uploaded bytes",
                     "vizConfig": {
                         "group": "timeseries",
                         "kind": "VizConfig",
@@ -789,7 +944,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "scylla_manager_restore_progress{cluster=~\"[[cluster]]\"} < 100",
+                                                "expr": "sum(scylla_manager_backup_files_skipped_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -805,56 +960,18 @@
                             "transformations": []
                         }
                     },
-                    "description": "Shows current restore progress",
+                    "description": "",
                     "id": 17,
                     "links": [],
-                    "title": "Restore Progress",
+                    "title": "Uploaded skipped",
                     "vizConfig": {
                         "group": "timeseries",
                         "kind": "VizConfig",
                         "spec": {
                             "fieldConfig": {
                                 "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "percent"
+                                    "links": [],
+                                    "unit": "ops"
                                 },
                                 "overrides": []
                             },
@@ -899,7 +1016,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(scylla_manager_restore_remaining_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
+                                                "expr": "sum(scylla_manager_backup_files_failed_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -915,10 +1032,10 @@
                             "transformations": []
                         }
                     },
-                    "description": "Shows restore progress, the remaining bytes to complete",
+                    "description": "",
                     "id": 18,
                     "links": [],
-                    "title": "Restore Remaining Bytes",
+                    "title": "Uploaded Failed",
                     "vizConfig": {
                         "group": "timeseries",
                         "kind": "VizConfig",
@@ -959,104 +1076,32 @@
                     "data": {
                         "kind": "QueryGroup",
                         "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "scylla_manager_one2onerestore_progress{cluster=~\"[[cluster]]\"} < 100",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
+                            "queries": [],
                             "queryOptions": {},
                             "transformations": []
                         }
                     },
-                    "description": "Shows current one to one restore progress",
+                    "description": "",
                     "id": 19,
                     "links": [],
-                    "title": "one to one Restore Progress",
+                    "title": "",
+                    "transparent": true,
                     "vizConfig": {
-                        "group": "timeseries",
+                        "group": "text",
                         "kind": "VizConfig",
                         "spec": {
                             "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "percent"
-                                },
+                                "defaults": {},
                                 "overrides": []
                             },
                             "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
+                                "code": {
+                                    "language": "plaintext",
+                                    "showLineNumbers": false,
+                                    "showMiniMap": false
                                 },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
+                                "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Restore</h1>",
+                                "mode": "html"
                             }
                         },
                         "version": "13.0.1"
@@ -1099,9 +1144,7 @@
                     },
                     "id": 2,
                     "links": [],
-                    "spec": {
-                        "title": "Total Nodes"
-                    },
+                    "title": "Total Nodes",
                     "vizConfig": {
                         "group": "stat",
                         "kind": "VizConfig",
@@ -1160,7 +1203,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(scylla_manager_one2onerestore_download_remaining_bytes{cluster=~\"[[cluster]]\", node=~\"$instance\"}) by ([[by]])",
+                                                "expr": "scylla_manager_restore_progress{cluster=~\"[[cluster]]\"} < 100",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1176,18 +1219,64 @@
                             "transformations": []
                         }
                     },
-                    "description": "Shows one to one restore progress, the remaining bytes to complete",
+                    "description": "Shows current restore progress",
                     "id": 20,
                     "links": [],
-                    "title": "one to one Remaining Bytes",
+                    "title": "Restore Progress",
                     "vizConfig": {
                         "group": "timeseries",
                         "kind": "VizConfig",
                         "spec": {
                             "fieldConfig": {
                                 "defaults": {
-                                    "links": [],
-                                    "unit": "bytes"
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
+                                    "unit": "percent"
                                 },
                                 "overrides": []
                             },
@@ -1232,6 +1321,306 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
+                                                "expr": "sum(scylla_manager_restore_remaining_bytes{cluster=~\"[[cluster]]\", instance=~\"$instance\", shard=~\"$shard\"}) by ([[by]])",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Shows restore progress, the remaining bytes to complete",
+                    "id": 21,
+                    "links": [],
+                    "title": "Restore Remaining Bytes",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "links": [],
+                                    "unit": "ops"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-22": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "scylla_manager_one2onerestore_progress{cluster=~\"[[cluster]]\"} < 100",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Shows current one to one restore progress",
+                    "id": 22,
+                    "links": [],
+                    "title": "one to one Restore Progress",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "color": {
+                                        "mode": "palette-classic"
+                                    },
+                                    "custom": {
+                                        "axisBorderShow": false,
+                                        "axisCenteredZero": false,
+                                        "axisColorMode": "text",
+                                        "axisLabel": "",
+                                        "axisPlacement": "auto",
+                                        "axisSoftMin": 0,
+                                        "barAlignment": 0,
+                                        "barWidthFactor": 0.6,
+                                        "drawStyle": "line",
+                                        "fillOpacity": 0,
+                                        "gradientMode": "none",
+                                        "hideFrom": {
+                                            "legend": false,
+                                            "tooltip": false,
+                                            "viz": false
+                                        },
+                                        "insertNulls": false,
+                                        "lineInterpolation": "linear",
+                                        "lineWidth": 1,
+                                        "pointSize": 5,
+                                        "scaleDistribution": {
+                                            "type": "linear"
+                                        },
+                                        "showPoints": "never",
+                                        "showValues": false,
+                                        "spanNulls": false,
+                                        "stacking": {
+                                            "group": "A",
+                                            "mode": "none"
+                                        },
+                                        "thresholdsStyle": {
+                                            "mode": "off"
+                                        }
+                                    },
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
+                                    "unit": "percent"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-23": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
+                                                "expr": "sum(scylla_manager_one2onerestore_download_remaining_bytes{cluster=~\"[[cluster]]\", node=~\"$instance\"}) by ([[by]])",
+                                                "instant": false,
+                                                "intervalFactor": 1,
+                                                "legendFormat": "",
+                                                "range": true
+                                            },
+                                            "version": "v0"
+                                        },
+                                        "refId": "A"
+                                    }
+                                }
+                            ],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "Shows one to one restore progress, the remaining bytes to complete",
+                    "id": 23,
+                    "links": [],
+                    "title": "one to one Remaining Bytes",
+                    "vizConfig": {
+                        "group": "timeseries",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {
+                                    "links": [],
+                                    "unit": "bytes"
+                                },
+                                "overrides": []
+                            },
+                            "options": {
+                                "annotations": {
+                                    "clustering": -1,
+                                    "multiLane": false
+                                },
+                                "legend": {
+                                    "calcs": [],
+                                    "displayMode": "list",
+                                    "placement": "bottom",
+                                    "showLegend": false
+                                },
+                                "tooltip": {
+                                    "hideZeros": false,
+                                    "maxHeight": 600,
+                                    "mode": "multi",
+                                    "sort": "desc"
+                                }
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-24": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [],
+                            "queryOptions": {},
+                            "transformations": []
+                        }
+                    },
+                    "description": "",
+                    "id": 24,
+                    "links": [],
+                    "title": "",
+                    "transparent": true,
+                    "vizConfig": {
+                        "group": "text",
+                        "kind": "VizConfig",
+                        "spec": {
+                            "fieldConfig": {
+                                "defaults": {},
+                                "overrides": []
+                            },
+                            "options": {
+                                "code": {
+                                    "language": "plaintext",
+                                    "showLineNumbers": false,
+                                    "showMiniMap": false
+                                },
+                                "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">CQL Health Check</h1>",
+                                "mode": "html"
+                            }
+                        },
+                        "version": "13.0.1"
+                    }
+                }
+            },
+            "panel-25": {
+                "kind": "Panel",
+                "spec": {
+                    "data": {
+                        "kind": "QueryGroup",
+                        "spec": {
+                            "queries": [
+                                {
+                                    "kind": "PanelQuery",
+                                    "spec": {
+                                        "hidden": false,
+                                        "query": {
+                                            "datasource": {
+                                                "name": "prometheus"
+                                            },
+                                            "group": "prometheus",
+                                            "kind": "DataQuery",
+                                            "spec": {
                                                 "expr": "avg(scylla_manager_healthcheck_cql_rtt_ms{instance=~\"$instance\", cluster=~\"[[cluster]]\"}) by ($by)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
@@ -1249,7 +1638,7 @@
                         }
                     },
                     "description": "Average duration time for a CQL ping operation",
-                    "id": 21,
+                    "id": 25,
                     "links": [],
                     "title": "CQL probe duration by $by",
                     "vizConfig": {
@@ -1296,7 +1685,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "ms"
                                 },
                                 "overrides": []
@@ -1324,7 +1721,7 @@
                     }
                 }
             },
-            "panel-22": {
+            "panel-26": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1336,7 +1733,7 @@
                         }
                     },
                     "description": "",
-                    "id": 22,
+                    "id": 26,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -1362,7 +1759,7 @@
                     }
                 }
             },
-            "panel-23": {
+            "panel-27": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1397,7 +1794,7 @@
                         }
                     },
                     "description": "An increase in memory can indicate an issue with the Manager agent",
-                    "id": 23,
+                    "id": 27,
                     "links": [],
                     "title": "Agent Memory Heap usage",
                     "vizConfig": {
@@ -1444,7 +1841,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "bytes"
                                 },
                                 "overrides": []
@@ -1472,7 +1877,7 @@
                     }
                 }
             },
-            "panel-24": {
+            "panel-28": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1507,7 +1912,7 @@
                         }
                     },
                     "description": "An increase in the number of threads can indicate an issue with the Manager agent",
-                    "id": 24,
+                    "id": 28,
                     "links": [],
                     "title": "Agent Threads",
                     "vizConfig": {
@@ -1554,7 +1959,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -1582,7 +1995,7 @@
                     }
                 }
             },
-            "panel-25": {
+            "panel-29": {
                 "kind": "Panel",
                 "spec": {
                     "data": {
@@ -1594,7 +2007,7 @@
                         }
                     },
                     "description": "",
-                    "id": 25,
+                    "id": 29,
                     "links": [],
                     "title": "",
                     "transparent": true,
@@ -1612,7 +2025,7 @@
                                     "showLineNumbers": false,
                                     "showMiniMap": false
                                 },
-                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.17.0-rc0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                                 "mode": "html"
                             }
                         },
@@ -1654,12 +2067,10 @@
                             "transformations": []
                         }
                     },
+                    "description": "The number of nodes that Scylla manager CQL probe failed connecting to. It could indicate a network or a node problem",
                     "id": 3,
                     "links": [],
-                    "spec": {
-                        "description": "The number of nodes that Scylla manager CQL probe failed connecting to. It could indicate a network or a node problem",
-                        "title": "CQL Fail"
-                    },
+                    "title": "CQL Fail",
                     "vizConfig": {
                         "group": "stat",
                         "kind": "VizConfig",
@@ -1684,7 +2095,8 @@
                                             }
                                         ]
                                     }
-                                }
+                                },
+                                "overrides": []
                             },
                             "options": {
                                 "colorMode": "value",
@@ -1831,12 +2243,10 @@
                             "transformations": []
                         }
                     },
+                    "description": "The time of the last successful repair",
                     "id": 5,
                     "links": [],
-                    "spec": {
-                        "description": "The time of the last successful repair",
-                        "title": "Last repair"
-                    },
+                    "title": "Last repair",
                     "vizConfig": {
                         "group": "stat",
                         "kind": "VizConfig",
@@ -1914,12 +2324,10 @@
                             "transformations": []
                         }
                     },
+                    "description": "The time of the last failed repair",
                     "id": 6,
                     "links": [],
-                    "spec": {
-                        "description": "The time of the last failed repair",
-                        "title": "Last Failure"
-                    },
+                    "title": "Last Failure",
                     "vizConfig": {
                         "group": "stat",
                         "kind": "VizConfig",
@@ -2086,12 +2494,10 @@
                             "transformations": []
                         }
                     },
+                    "description": "The time of the last successful backup",
                     "id": 8,
                     "links": [],
-                    "spec": {
-                        "description": "The time of the last successful backup",
-                        "title": "Last Backup"
-                    },
+                    "title": "Last Backup",
                     "vizConfig": {
                         "group": "stat",
                         "kind": "VizConfig",
@@ -2169,12 +2575,10 @@
                             "transformations": []
                         }
                     },
+                    "description": "The time of the last failed backup",
                     "id": 9,
                     "links": [],
-                    "spec": {
-                        "description": "The time of the last failed backup",
-                        "title": "Last Failure"
-                    },
+                    "title": "Last Failure",
                     "vizConfig": {
                         "group": "stat",
                         "kind": "VizConfig",
@@ -2228,130 +2632,145 @@
                         "spec": {
                             "collapse": false,
                             "layout": {
-                                "kind": "GridLayout",
+                                "kind": "RowsLayout",
                                 "spec": {
-                                    "items": [
+                                    "rows": [
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-1"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-1"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-2"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 6,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-3"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 8,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-4"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 10,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-5"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 12,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-6"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 14,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-7"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 16,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-8"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 18,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-9"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 2,
+                                                                    "x": 20,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 0,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-2"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 6,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-3"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 8,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-4"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 10,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-5"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 12,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-6"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 14,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-7"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 16,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-8"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 18,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-9"
-                                                },
-                                                "height": 6,
-                                                "width": 2,
-                                                "x": 20,
-                                                "y": 0
+                                                "title": ""
                                             }
                                         }
                                     ]
                                 }
                             },
-                            "title": "Summary row"
+                            "title": "Manager Summary $cluster"
                         }
                     },
                     {
@@ -2359,52 +2778,95 @@
                         "spec": {
                             "collapse": false,
                             "layout": {
-                                "kind": "GridLayout",
+                                "kind": "RowsLayout",
                                 "spec": {
-                                    "items": [
+                                    "rows": [
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-10"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-10"
+                                                                    },
+                                                                    "height": 2,
+                                                                    "width": 24,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 4,
-                                                "x": 0,
-                                                "y": 0
+                                                "title": ""
                                             }
                                         },
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-11"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-11"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 4,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-12"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 4,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-13"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 10,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 4,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-12"
-                                                },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 10,
-                                                "y": 0
+                                                "title": ""
                                             }
                                         }
                                     ]
                                 }
                             },
-                            "title": "Repair rate Row"
+                            "title": "Repair"
                         }
                     },
                     {
@@ -2412,65 +2874,108 @@
                         "spec": {
                             "collapse": false,
                             "layout": {
-                                "kind": "GridLayout",
+                                "kind": "RowsLayout",
                                 "spec": {
-                                    "items": [
+                                    "rows": [
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-13"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-14"
+                                                                    },
+                                                                    "height": 2,
+                                                                    "width": 24,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 4,
-                                                "x": 0,
-                                                "y": 0
+                                                "title": ""
                                             }
                                         },
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-14"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-15"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 4,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-16"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 4,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-17"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 10,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-18"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 16,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 4,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-15"
-                                                },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 10,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-16"
-                                                },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 16,
-                                                "y": 0
+                                                "title": ""
                                             }
                                         }
                                     ]
                                 }
                             },
-                            "title": "Backup rate Row"
+                            "title": "Backup"
                         }
                     },
                     {
@@ -2478,65 +2983,108 @@
                         "spec": {
                             "collapse": false,
                             "layout": {
-                                "kind": "GridLayout",
+                                "kind": "RowsLayout",
                                 "spec": {
-                                    "items": [
+                                    "rows": [
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-17"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-19"
+                                                                    },
+                                                                    "height": 2,
+                                                                    "width": 24,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 0,
-                                                "y": 0
+                                                "title": ""
                                             }
                                         },
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-18"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-20"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-21"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 6,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-22"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 12,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-23"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 18,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 6,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-19"
-                                                },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 12,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-20"
-                                                },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 18,
-                                                "y": 0
+                                                "title": ""
                                             }
                                         }
                                     ]
                                 }
                             },
-                            "title": "Backup Restore Bytes"
+                            "title": "Restore"
                         }
                     },
                     {
@@ -2544,26 +3092,152 @@
                         "spec": {
                             "collapse": false,
                             "layout": {
-                                "kind": "GridLayout",
+                                "kind": "RowsLayout",
                                 "spec": {
-                                    "items": [
+                                    "rows": [
                                         {
-                                            "kind": "GridLayoutItem",
+                                            "kind": "RowsLayoutRow",
                                             "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-21"
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-24"
+                                                                    },
+                                                                    "height": 2,
+                                                                    "width": 24,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
                                                 },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 0,
-                                                "y": 0
+                                                "title": ""
+                                            }
+                                        },
+                                        {
+                                            "kind": "RowsLayoutRow",
+                                            "spec": {
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-25"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "title": ""
                                             }
                                         }
                                     ]
                                 }
                             },
-                            "title": "SSH connection Row"
+                            "title": "Health Check"
+                        }
+                    },
+                    {
+                        "kind": "RowsLayoutRow",
+                        "spec": {
+                            "collapse": false,
+                            "layout": {
+                                "kind": "RowsLayout",
+                                "spec": {
+                                    "rows": [
+                                        {
+                                            "kind": "RowsLayoutRow",
+                                            "spec": {
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-26"
+                                                                    },
+                                                                    "height": 2,
+                                                                    "width": 24,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "title": ""
+                                            }
+                                        },
+                                        {
+                                            "kind": "RowsLayoutRow",
+                                            "spec": {
+                                                "collapse": false,
+                                                "hideHeader": true,
+                                                "layout": {
+                                                    "kind": "GridLayout",
+                                                    "spec": {
+                                                        "items": [
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-27"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 0,
+                                                                    "y": 0
+                                                                }
+                                                            },
+                                                            {
+                                                                "kind": "GridLayoutItem",
+                                                                "spec": {
+                                                                    "element": {
+                                                                        "kind": "ElementReference",
+                                                                        "name": "panel-28"
+                                                                    },
+                                                                    "height": 6,
+                                                                    "width": 6,
+                                                                    "x": 6,
+                                                                    "y": 0
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                "title": ""
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            "title": "Manager Agent"
                         }
                     },
                     {
@@ -2580,75 +3254,7 @@
                                             "spec": {
                                                 "element": {
                                                     "kind": "ElementReference",
-                                                    "name": "panel-22"
-                                                },
-                                                "height": 2,
-                                                "width": 24,
-                                                "x": 0,
-                                                "y": 0
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            "title": ""
-                        }
-                    },
-                    {
-                        "kind": "RowsLayoutRow",
-                        "spec": {
-                            "collapse": false,
-                            "layout": {
-                                "kind": "GridLayout",
-                                "spec": {
-                                    "items": [
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-23"
-                                                },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 0,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-24"
-                                                },
-                                                "height": 6,
-                                                "width": 6,
-                                                "x": 6,
-                                                "y": 0
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            "title": "SSH connection Row"
-                        }
-                    },
-                    {
-                        "kind": "RowsLayoutRow",
-                        "spec": {
-                            "collapse": false,
-                            "hideHeader": true,
-                            "layout": {
-                                "kind": "GridLayout",
-                                "spec": {
-                                    "items": [
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-25"
+                                                    "name": "panel-29"
                                                 },
                                                 "height": 2,
                                                 "width": 24,
@@ -2702,7 +3308,7 @@
             "fiscalYearStartMonth": 0,
             "from": "now-6h",
             "hideTimepicker": false,
-            "timezone": "browser",
+            "timezone": "utc",
             "to": "now"
         },
         "title": "Scylla Manager Metrics",
@@ -2710,6 +3316,7 @@
             {
                 "kind": "CustomVariable",
                 "spec": {
+                    "allowCustomValue": false,
                     "current": {
                         "tags": [],
                         "text": "Cluster",
@@ -2742,7 +3349,8 @@
                             "value": "shard"
                         }
                     ],
-                    "query": "Instance,Shard,Keyspace,Cluster"
+                    "query": "Instance,Shard,Keyspace,Cluster",
+                    "skipUrlSync": false
                 }
             },
             {
@@ -2908,15 +3516,15 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "4.16.1",
-                        "value": "4.16.1"
+                        "text": "4.17.0-rc0",
+                        "value": "4.17.0-rc0"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
                     "multi": false,
                     "name": "monitoring_version",
                     "options": [],
-                    "query": "4.16.1",
+                    "query": "4.17.0-rc0",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

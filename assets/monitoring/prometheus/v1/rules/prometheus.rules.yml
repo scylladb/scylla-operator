@@ -85,13 +85,13 @@ groups:
       description: 'IO Errors can indicate a node with a faulty disk {{ $labels.instance }}'
       summary: IO Disk Error
   - alert: nodeCLErrors
-    expr: sum(errors:operation_unavailable) by (cluster) > 0
+    expr: sum(errors:operation_unavailable) by (cluster, dc) > 0
     for: 10s
     labels:
-      severity: "info"
+      severity: "error"
       advisor: "operationError"
       dashboard: "scylla-detailed"
-      description: 'Some operation failed due to consistency level'
+      description: 'Some operation failed due to consistency level in DC {{ $labels.dc }}, not enough replicas are available'
       summary: Consistency Level error
   - alert: preparedCacheEviction
     expr: sum(rate(scylla_cql_prepared_cache_evictions[2m])) by (cluster) + sum(rate(scylla_cql_authorized_prepared_statements_cache_evictions[2m])) by (cluster) > 100
@@ -189,13 +189,21 @@ groups:
     annotations:
       description: '{{ $labels.instance }} has less than 20% free disk space on the root partition.'
       summary: Instance {{ $labels.instance }} low disk space
+  - alert: ManagerDown
+    expr: up{job="scylla_manager", instance!="192.0.2.1:5090"} == 0
+    for: 5m
+    labels:
+      severity: "warn"
+    annotations:
+      description: 'Scylla Manager {{ $labels.instance }} cannot be reached by Prometheus for more than 5 minutes.'
+      summary: Scylla Manager {{ $labels.instance }} offline
   - alert: NoCql
     expr: scylla_manager_healthcheck_cql_status == -1
     for: 5m
     labels:
-      severity: "info"
+      severity: "warn"
     annotations:
-      description: '{{ $labels.host }} has denied CQL connection for more than 30 seconds.'
+      description: '{{ $labels.host }} has denied CQL connection for more than 5 minutes.'
       summary: Instance {{ $labels.host }} no CQL connection
   - alert: HighLatencies
     expr: wlatencyp95{by="instance"} > 100000
@@ -317,3 +325,19 @@ groups:
       severity: "warn"
       description: 'Bloom filter size in node {{ $labels.instance }}'
       summary: The bloom filter takes too much memory, update bloom_filter_fp_chance
+  - alert: nonLsaMemoryHigh
+    expr: max(scylla_lsa_non_lsa_used_space_bytes/scylla_memory_total_memory) by (cluster, dc, instance) > 0.3
+    for: 10m
+    keep_firing_for: 1h
+    labels:
+      severity: "warn"
+      description: 'Non-LSA memory is over 30% of the memory in node {{ $labels.instance }}'
+      summary: Non-LSA memory is high, it can lead to OOM
+  - alert: nonLsaMemoryHigh
+    expr: max(scylla_lsa_non_lsa_used_space_bytes/scylla_memory_total_memory) by (cluster, dc, instance) > 0.4
+    for: 10m
+    keep_firing_for: 1h
+    labels:
+      severity: "error"
+      description: 'Non-LSA memory is over 40% of the memory in node {{ $labels.instance }}'
+      summary: Non-LSA memory is close to the 50% limit, it can lead to OOM

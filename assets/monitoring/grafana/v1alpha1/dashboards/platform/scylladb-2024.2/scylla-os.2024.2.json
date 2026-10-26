@@ -9,6 +9,25 @@
             {
                 "kind": "AnnotationQuery",
                 "spec": {
+                    "builtIn": true,
+                    "enable": false,
+                    "hide": true,
+                    "iconColor": "rgba(0, 211, 255, 1)",
+                    "name": "Annotations & Alerts",
+                    "query": {
+                        "datasource": {
+                            "name": "-- Grafana --"
+                        },
+                        "group": "grafana",
+                        "kind": "DataQuery",
+                        "spec": {},
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
                     "enable": true,
                     "hide": false,
                     "iconColor": "rgba(255, 96, 96, 1)",
@@ -43,6 +62,7 @@
                         "titleFormat": "Node Restart"
                     },
                     "name": "Stall Detector",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -69,6 +89,7 @@
                         "titleFormat": "Node Restart"
                     },
                     "name": "Schema Changed",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -77,6 +98,193 @@
                         "kind": "DataQuery",
                         "spec": {
                             "expr": "changes(scylla_database_schema_changed{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "#73BF69",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Manager Task",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_manager_task_active_count{type=~\"repair|backup\",cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "#73BF69",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Manager Task Failed",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "sum(changes(scylla_manager_task_run_total{status=\"ERROR\", cluster=\"$cluster\"}[$__rate_interval])) by(type)>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(255, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Hints Write",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_hints_manager_written{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Hints Sent",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "changes(scylla_hints_manager_sent{cluster=\"$cluster\"}[$__rate_interval])>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "MV",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "sum(scylla_view_builder_builds_in_progress{cluster=\"$cluster\"})>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": true,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Node Operation",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "10*min(scylla_node_ops_finished_percentage{cluster=\"$cluster\"}) by (ops, dc,instance) < 10",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": true,
+                    "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Streaming",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "10*min(scylla_streaming_finished_percentage{cluster=\"$cluster\"}) by (ops, dc,instance) < 10",
                             "interval": "",
                             "refId": "Anno"
                         },
@@ -218,7 +426,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_reads_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_reads_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -240,7 +448,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_reads_completed{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_reads_completed{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -304,7 +512,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "rps"
                                 },
                                 "overrides": []
@@ -350,7 +566,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_written_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_written_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -372,7 +588,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_bytes_written{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_bytes_written{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -436,7 +652,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "Bps"
                                 },
                                 "overrides": []
@@ -482,7 +706,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_read_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_read_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -504,7 +728,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_bytes_read{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_bytes_read{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -568,7 +792,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "Bps"
                                 },
                                 "overrides": []
@@ -614,10 +846,10 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "rate(node_disk_read_time_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])/rate(node_disk_reads_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])",
+                                                "expr": "rate(node_disk_read_time_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])/rate(node_disk_reads_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
-                                                "legendFormat": "{{dc}} {{instance}}",
+                                                "legendFormat": "{{dc}} {{rack}} {{instance}} {{device}}",
                                                 "range": true
                                             },
                                             "version": "v0"
@@ -678,7 +910,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "s"
                                 },
                                 "overrides": []
@@ -724,10 +964,10 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "rate(node_disk_write_time_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])/rate(node_disk_writes_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])",
+                                                "expr": "rate(node_disk_write_time_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])/rate(node_disk_writes_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
-                                                "legendFormat": "{{dc}} {{instance}}",
+                                                "legendFormat": "{{dc}} {{rack}} {{instance}} {{device}}",
                                                 "range": true
                                             },
                                             "version": "v0"
@@ -788,7 +1028,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "s"
                                 },
                                 "overrides": []
@@ -872,7 +1120,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_network_receive_packets_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_network_receive_packets_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -936,7 +1184,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "pps"
                                 },
                                 "overrides": []
@@ -982,7 +1238,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_network_transmit_packets_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_network_transmit_packets_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1046,7 +1302,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "pps"
                                 },
                                 "overrides": []
@@ -1092,7 +1356,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(8*rate(node_network_receive_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(8*rate(node_network_receive_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1156,7 +1420,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "decbits"
                                 },
                                 "overrides": []
@@ -1202,7 +1474,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(8*rate(node_network_transmit_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(8*rate(node_network_transmit_bytes_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1266,7 +1538,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "decbits"
                                 },
                                 "overrides": []
@@ -1378,7 +1658,7 @@
                                     "kind": "Transformation",
                                     "spec": {
                                         "options": {
-                                            "byField": "mountpoint",
+                                            "byField": "instance_device",
                                             "mode": "outerTabular"
                                         }
                                     }
@@ -1587,7 +1867,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_network_receive_drop_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_network_receive_drop_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1651,7 +1931,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "pps"
                                 },
                                 "overrides": []
@@ -1697,7 +1985,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_network_transmit_drop_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_network_transmit_drop_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=\"$monitor_network_interface\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1761,7 +2049,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "pps"
                                 },
                                 "overrides": []
@@ -1845,7 +2141,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(node_memory_MemAvailable_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"}) by ([[by]])",
+                                                "expr": "sum(node_memory_MemAvailable_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1909,7 +2205,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "bytes"
                                 },
                                 "overrides": []
@@ -1955,7 +2259,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(node_memory_MemAvailable_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"}) by ([[by]])/sum(node_memory_MemTotal_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"}) by ([[by]])",
+                                                "expr": "sum(node_memory_MemAvailable_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"}) by ([[by]])/sum(node_memory_MemTotal_bytes{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2019,7 +2323,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "percentunit"
                                 },
                                 "overrides": []
@@ -2065,7 +2377,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "1-sum(rate(node_cpu_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", mode=\"idle\", job=~\"node_exporter.*\"}[3m])) by ([[by]])/count(node_cpu_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", mode=\"idle\", job=~\"node_exporter.*\"}) by ([[by]])",
+                                                "expr": "1-sum(rate(node_cpu_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", mode=\"idle\", job=~\"node_exporter.*\"}[3m])) by ([[by]])/count(node_cpu_seconds_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", mode=\"idle\", job=~\"node_exporter.*\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2129,7 +2441,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "percentunit"
                                 },
                                 "overrides": []
@@ -2175,7 +2495,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "max(node_cpu_scaling_frequency_max_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"}) or on() max(node_cpu_frequency_max_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"})",
+                                                "expr": "max(node_cpu_scaling_frequency_max_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"}) or on() max(node_cpu_frequency_max_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"})",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "Max",
@@ -2197,7 +2517,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "min(node_cpu_scaling_frequency_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"}) by ([[by]]) or on() min(node_cpu_frequency_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"}) by ([[by]])",
+                                                "expr": "min(node_cpu_scaling_frequency_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"}) by ([[by]]) or on() min(node_cpu_frequency_hertz{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"}) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2285,7 +2605,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_netstat_Tcp_RetransSegs{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[3m])) by ([[by]])",
+                                                "expr": "sum(rate(node_netstat_Tcp_RetransSegs{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}[3m])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2349,7 +2669,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -2407,7 +2735,7 @@
                                     "showLineNumbers": false,
                                     "showMiniMap": false
                                 },
-                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.17.0-rc0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                                 "mode": "html"
                             }
                         },
@@ -2662,7 +2990,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "percentunit"
                                 },
                                 "overrides": []
@@ -2794,7 +3130,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "bytes"
                                 },
                                 "overrides": []
@@ -2904,7 +3248,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "bytes"
                                 },
                                 "overrides": []
@@ -3014,7 +3366,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -3098,7 +3458,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_writes_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_writes_completed_total{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -3120,7 +3480,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "sum(rate(node_disk_writes_completed{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]])",
+                                                "expr": "sum(rate(node_disk_writes_completed{instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", device=~\"$monitor_disk\", job=~\"node_exporter.*\"}[4m])) by ([[by]], device)",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -3184,7 +3544,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "wps"
                                 },
                                 "overrides": []
@@ -3877,7 +4245,7 @@
             "fiscalYearStartMonth": 0,
             "from": "now-6h",
             "hideTimepicker": false,
-            "timezone": "browser",
+            "timezone": "utc",
             "to": "now"
         },
         "title": "OS Metrics",
@@ -3952,6 +4320,40 @@
             {
                 "kind": "QueryVariable",
                 "spec": {
+                    "allValue": ".*",
+                    "allowCustomValue": true,
+                    "current": {
+                        "text": "All",
+                        "value": "$__all"
+                    },
+                    "definition": "",
+                    "hide": "dontHide",
+                    "includeAll": true,
+                    "label": "rack",
+                    "multi": true,
+                    "name": "rack",
+                    "options": [],
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "__legacyStringValue": "label_values(node_filesystem_avail_bytes{cluster=~\"$cluster\", dc=~\"$dc\"}, rack)"
+                        },
+                        "version": "v0"
+                    },
+                    "refresh": "onTimeRangeChanged",
+                    "regex": "",
+                    "regexApplyTo": "value",
+                    "skipUrlSync": false,
+                    "sort": "alphabeticalAsc"
+                }
+            },
+            {
+                "kind": "QueryVariable",
+                "spec": {
                     "allowCustomValue": true,
                     "current": {
                         "selected": true,
@@ -3976,7 +4378,7 @@
                         "group": "prometheus",
                         "kind": "DataQuery",
                         "spec": {
-                            "__legacyStringValue": "label_values(node_filesystem_avail_bytes{cluster=\"$cluster\", dc=~\"$dc\", job=~\"node_exporter.*\"}, instance)"
+                            "__legacyStringValue": "label_values(node_filesystem_avail_bytes{cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\", job=~\"node_exporter.*\"}, instance)"
                         },
                         "version": "v0"
                     },
@@ -3990,6 +4392,7 @@
             {
                 "kind": "CustomVariable",
                 "spec": {
+                    "allowCustomValue": false,
                     "current": {
                         "tags": [],
                         "text": "Instance",
@@ -4017,7 +4420,8 @@
                             "value": "instance"
                         }
                     ],
-                    "query": "Instance : instance,Cluster : cluster,DC : dc,Shard : instance\\,cpu"
+                    "query": "Instance : instance,Cluster : cluster,DC : dc,Shard : instance\\,cpu",
+                    "skipUrlSync": false
                 }
             },
             {
@@ -4057,6 +4461,7 @@
             {
                 "kind": "QueryVariable",
                 "spec": {
+                    "allowCustomValue": false,
                     "current": {
                         "isNone": true,
                         "text": "None",
@@ -4080,12 +4485,14 @@
                     },
                     "refresh": "onTimeRangeChanged",
                     "regex": "/.*device=\"([^\\\"]*)\".*/",
+                    "skipUrlSync": false,
                     "sort": "disabled"
                 }
             },
             {
                 "kind": "QueryVariable",
                 "spec": {
+                    "allowCustomValue": false,
                     "current": {
                         "text": "/var/lib/scylla",
                         "value": "/var/lib/scylla"
@@ -4109,6 +4516,7 @@
                     },
                     "refresh": "onTimeRangeChanged",
                     "regex": "/mountpoint=\"([^\"]*)\".*/",
+                    "skipUrlSync": false,
                     "sort": "disabled"
                 }
             },
@@ -4209,15 +4617,15 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "4.16.1",
-                        "value": "4.16.1"
+                        "text": "4.17.0-rc0",
+                        "value": "4.17.0-rc0"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
                     "multi": false,
                     "name": "monitoring_version",
                     "options": [],
-                    "query": "4.16.1",
+                    "query": "4.17.0-rc0",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

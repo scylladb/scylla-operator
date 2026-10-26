@@ -109,26 +109,21 @@ export SO_SCYLLACLUSTER_STORAGECLASS_NAME
 
 source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
 
-# Deploy the operator stack unless the caller opts out (e.g. to deploy it with Helm instead).
-if [ "${SO_SKIP_DEPLOYMENT:-false}" == "true" ]; then
-  echo "Skipping operator stack deployment (SO_SKIP_DEPLOYMENT=true)."
-else
-  # Build and push operator image to the local registry (skips if SO_IMAGE is already set).
-  build-and-push-operator-image "${repo_root}" SO_IMAGE
+# Build and push operator image to the local registry (skips if SO_IMAGE is already set).
+build-and-push-operator-image "${repo_root}" SO_IMAGE
 
-  # Set up ARTIFACTS directory to store manifests that are used to deploy the operator stack for inspection.
-  ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
-  export ARTIFACTS
+# Set up ARTIFACTS directory to store manifests that are used to deploy the operator stack for inspection.
+ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
+export ARTIFACTS
 
-  # Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
-  "${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
+# Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
+"${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
 
-  # Deploy MinIO as the object storage for backup/restore e2e tests.
-  minio_deploy_dir="${ARTIFACTS}/deploy/minio"
-  mkdir -p "${minio_deploy_dir}"
-  cp "${repo_root}"/hack/.ci/manifests/namespaces/minio/*.yaml "${minio_deploy_dir}"
-  yq e --inplace '.spec.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${minio_deploy_dir}/10_pvc.yaml"
+# Deploy MinIO as the object storage for backup/restore e2e tests.
+minio_deploy_dir="${ARTIFACTS}/deploy/minio"
+mkdir -p "${minio_deploy_dir}"
+cp "${repo_root}"/hack/.ci/manifests/namespaces/minio/*.yaml "${minio_deploy_dir}"
+yq e --inplace '.spec.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${minio_deploy_dir}/10_pvc.yaml"
 
-  kubectl apply --server-side=true -f "${minio_deploy_dir}"
-  kubectl -n minio rollout status --timeout=5m deployment.apps/minio
-fi
+kubectl apply --server-side=true -f "${minio_deploy_dir}"
+kubectl -n minio rollout status --timeout=5m deployment.apps/minio

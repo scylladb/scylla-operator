@@ -82,7 +82,7 @@ func TestGithubReporterDidRun(t *testing.T) {
 			name:   "passed spec is folded into a group",
 			report: newTestSpecReport([]string{"ScyllaCluster", "webhook"}, "should reject\nan invalid update", types.SpecStatePassed, 6210*time.Millisecond),
 			expectedOutput: strings.Join([]string{
-				"::group::✅ ScyllaCluster webhook should reject an invalid update (6.2s)",
+				"::group::✅    6.2s  ScyllaCluster webhook should reject an invalid update",
 				"spec body",
 				"::endgroup::",
 				"",
@@ -97,7 +97,7 @@ func TestGithubReporterDidRun(t *testing.T) {
 				return report
 			}(),
 			expectedOutput: strings.Join([]string{
-				"::group::🔁 ScyllaCluster should scale (3m1s)",
+				"::group::🔁    3m1s  ScyllaCluster should scale",
 				"spec body",
 				"::endgroup::",
 				"",
@@ -107,7 +107,7 @@ func TestGithubReporterDidRun(t *testing.T) {
 			name:   "failed spec is folded into a group and annotated",
 			report: newTestFailedSpecReport(),
 			expectedOutput: strings.Join([]string{
-				"::group::❌ [#3] ScyllaCluster should connect, via Ingresses [FAILED] (4m59s)",
+				"::group::❌ [#3]    4m59s  ScyllaCluster should connect, via Ingresses [FAILED]",
 				"spec body",
 				"::endgroup::",
 				"::error title=[FAILED] [#3] ScyllaCluster should connect%2C via Ingresses,file=test/e2e/set/scyllacluster/scyllacluster_expose.go,line=51::Timed out after 300s.%0AExpected <bool>: false%0Ato be 100%25 true%0A%0ADuring step: Connecting to cluster via Ingress",
@@ -137,7 +137,7 @@ func TestGithubReporterDidRun(t *testing.T) {
 				return report
 			}(),
 			expectedOutput: strings.Join([]string{
-				"::group::❌ ScyllaCluster should not panic [PANICKED]",
+				"::group::❌      0s  ScyllaCluster should not panic [PANICKED]",
 				"spec body",
 				"::endgroup::",
 				"::error title=[PANICKED] ScyllaCluster should not panic,file=test/e2e/set/scyllacluster/scyllacluster.go,line=28::Test Panicked: assignment to entry in nil map",
@@ -155,7 +155,7 @@ func TestGithubReporterDidRun(t *testing.T) {
 				return report
 			}(),
 			expectedOutput: strings.Join([]string{
-				"::group::❌ [SynchronizedBeforeSuite] [PANICKED] (1s)",
+				"::group::❌      1s  [SynchronizedBeforeSuite] [PANICKED]",
 				"spec body",
 				"::endgroup::",
 				"::error title=[PANICKED] [SynchronizedBeforeSuite]::boom",
@@ -196,7 +196,7 @@ func TestGithubReporterSetupGroup(t *testing.T) {
 		"::group::Test suite setup",
 		"FLAG: --v=2",
 		"::endgroup::",
-		"::group::✅ ScyllaCluster should work (1s)",
+		"::group::✅      1s  ScyllaCluster should work",
 		"spec body",
 		"::endgroup::",
 		"",
@@ -254,7 +254,7 @@ func TestGithubReporterSummary(t *testing.T) {
 		"",
 		"<sub>Ran 3 of 5 specs across 8 parallel processes · random seed 1793057848</sub>",
 		"",
-		"#### Failures",
+		"<details open><summary><b>❌ Failed (1)</b></summary>",
 		"",
 		"<details><summary>❌ <b>ScyllaCluster should connect, via Ingresses</b> <code>[FAILED]</code> <sub>process #3 · after 4m59s</sub></summary>",
 		"",
@@ -266,17 +266,29 @@ func TestGithubReporterSummary(t *testing.T) {
 		"",
 		"</details>",
 		"",
-		"#### Flakes",
+		"</details>",
 		"",
-		"- 🔁 ScyllaCluster should scale <sub>(2 attempts)</sub>",
+		"<details><summary><b>🔁 Flaked (1)</b></summary>",
 		"",
-		"<details><summary>⏱️ Slowest specs</summary>",
+		"| Attempts | Duration | Process | Spec |",
+		"|---:|---:|---:|:---|",
+		"| 2 | 2m0s |  | ScyllaCluster should scale |",
 		"",
-		"| Duration | Spec |",
-		"|---:|:---|",
-		"| 4m59s | ❌ ScyllaCluster should connect, via Ingresses |",
-		"| 2m0s | 🔁 ScyllaCluster should scale |",
-		"| 10s | ✅ ScyllaCluster should &lt;deploy&gt; \\| fast |",
+		"</details>",
+		"",
+		"<details><summary><b>✅ Passed (2)</b></summary>",
+		"",
+		"| Duration | Process | Spec |",
+		"|---:|---:|:---|",
+		"| 2m0s |  | 🔁 ScyllaCluster should scale |",
+		"| 10s |  | ScyllaCluster should &lt;deploy&gt; \\| fast |",
+		"",
+		"</details>",
+		"",
+		"<details><summary><b>⏭️ Skipped (2)</b></summary>",
+		"",
+		"- ScyllaCluster should be skipped",
+		"- ScyllaCluster should be skipped too",
 		"",
 		"</details>",
 		"",
@@ -303,7 +315,7 @@ func TestGithubReporterOutputDestination(t *testing.T) {
 	r.SuiteWillBegin(types.Report{})
 
 	writes := []string{
-		`{"kind":"scylla-operator-tests/spec-started","process":3,"text":"ScyllaCluster should\nscale"}`,
+		`{"kind":"scylla-operator-tests/spec-started","process":3,"text":"ScyllaCluster should\nscale","location":"github.com/scylladb/scylla-operator/test/e2e/set/scyllacluster/scyllacluster_scale.go:42","labels":["SuiteKindFast","SuiteParallel"]}`,
 		"partial output",
 		`{"kind":"something-else"}`,
 		"\n",
@@ -320,10 +332,15 @@ func TestGithubReporterOutputDestination(t *testing.T) {
 	}
 
 	expectedOutput := strings.Join([]string{
-		"▶ [#2] ScyllaCluster should start early",
-		"▶ [#3] ScyllaCluster should scale",
+		"::group::🏃 [#2]  started  ScyllaCluster should start early",
+		"::endgroup::",
+		"::group::🏃 [#3]  started  ScyllaCluster should scale",
+		"test/e2e/set/scyllacluster/scyllacluster_scale.go:42",
+		"Labels: SuiteKindFast, SuiteParallel",
+		"::endgroup::",
 		`partial output{"kind":"something-else"}`,
-		"▶ [#1] ScyllaCluster should deploy",
+		"::group::🏃 [#1]  started  ScyllaCluster should deploy",
+		"::endgroup::",
 		"",
 	}, "\n")
 	if diff := cmp.Diff(expectedOutput, buf.String()); diff != "" {
@@ -354,7 +371,7 @@ func TestProgressReportTitle(t *testing.T) {
 					Time: specStartTime.Add(10*time.Minute + 200*time.Millisecond),
 				},
 			},
-			expectedTitle: `⏳ [#3] ScyllaCluster should scale still running after 10m0s, at step "Waiting for the ScyllaCluster to roll out"`,
+			expectedTitle: `⏳ [#3]    10m0s  ScyllaCluster should scale (still running), at step "Waiting for the ScyllaCluster to roll out"`,
 		},
 		{
 			name: "serial spec without timing",
@@ -362,7 +379,7 @@ func TestProgressReportTitle(t *testing.T) {
 				ContainerHierarchyTexts: []string{"ScyllaCluster"},
 				LeafNodeText:            "should scale",
 			},
-			expectedTitle: "⏳ ScyllaCluster should scale",
+			expectedTitle: "⏳          ScyllaCluster should scale (still running)",
 		},
 	}
 

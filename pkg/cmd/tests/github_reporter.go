@@ -31,8 +31,6 @@ const (
 	githubSummaryFailureMessageMaxLength = 16 * 1024
 	// githubSummaryMaxFailures caps the number of failures detailed in the job summary.
 	githubSummaryMaxFailures = 50
-	// githubSummarySlowestSpecs is the number of the slowest specs listed in the job summary.
-	githubSummarySlowestSpecs = 10
 )
 
 // lineTrackingWriter remembers whether the last byte written through it ended a line, so that GitHub Actions
@@ -69,9 +67,11 @@ func (w *lineTrackingWriter) Write(p []byte) (int, error) {
 const specStartedEventKind = "scylla-operator-tests/spec-started"
 
 type specStartedEvent struct {
-	Kind    string `json:"kind"`
-	Process int    `json:"process"`
-	Text    string `json:"text"`
+	Kind     string   `json:"kind"`
+	Process  int      `json:"process"`
+	Text     string   `json:"text"`
+	Location string   `json:"location,omitempty"`
+	Labels   []string `json:"labels,omitempty"`
 }
 
 // newSpecStartedNotifier connects to the parallel server and returns a function that tells the parent process about
@@ -90,9 +90,11 @@ func newSpecStartedNotifier(serverAddress string) (func(types.SpecReport), error
 		}
 
 		data, err := json.Marshal(specStartedEvent{
-			Kind:    specStartedEventKind,
-			Process: report.ParallelProcess,
-			Text:    specText(report),
+			Kind:     specStartedEventKind,
+			Process:  report.ParallelProcess,
+			Text:     specText(report),
+			Location: report.LeafNodeLocation.String(),
+			Labels:   report.Labels(),
 		})
 		if err != nil {
 			klog.ErrorS(err, "Can't encode the spec started event")
@@ -127,7 +129,7 @@ type githubReporter struct {
 	// all the parallel processes begin the suite, but the start of specs comes through regardless, so it's held back
 	// in pendingSpecStarts until then.
 	suiteBegan        bool
-	pendingSpecStarts []string
+	pendingSpecStarts []specStartedEvent
 }
 
 var _ reporters.Reporter = &githubReporter{}
@@ -172,7 +174,8 @@ func (r *githubReporter) endGroup() {
 func (r *githubReporter) beginGroup(title string) {
 	// Groups don't nest, so a new one has to close the previous one first.
 	r.finishGroup()
-	r.command("::group::%s", oneLine(title))
+	// The title is kept as it is, as its columns are padded with spaces.
+	r.command("::group::%s", strings.NewReplacer("\r", " ", "\n", " ").Replace(title))
 	r.groupOpen = true
 }
 
@@ -205,14 +208,26 @@ func (d githubReporterOutputDestination) Write(p []byte) (int, error) {
 		return d.r.out.Write(p)
 	}
 
-	line := fmt.Sprintf("▶ %s%s", processLabel(event.Process), oneLine(event.Text))
 	if !d.r.suiteBegan {
-		d.r.pendingSpecStarts = append(d.r.pendingSpecStarts, line)
+		d.r.pendingSpecStarts = append(d.r.pendingSpecStarts, event)
 		return len(p), nil
 	}
 
-	d.r.command("%s", line)
+	d.r.writeSpecStarted(event)
 	return len(p), nil
+}
+
+// writeSpecStarted announces a spec that started. It's a group, like the spec's result, so that the two line up in
+// the log, and it holds the details of the spec that its title has no room for.
+func (r *githubReporter) writeSpecStarted(event specStartedEvent) {
+	r.beginGroup(logEntry("🏃", event.Process, "started", oneLine(event.Text)))
+	if len(event.Location) != 0 {
+		r.command("%s", r.repositoryPath(event.Location))
+	}
+	if len(event.Labels) != 0 {
+		r.command("Labels: %s", strings.Join(event.Labels, ", "))
+	}
+	r.finishGroup()
 }
 
 func (r *githubReporter) SuiteWillBegin(report types.Report) {
@@ -224,8 +239,8 @@ func (r *githubReporter) SuiteWillBegin(report types.Report) {
 	r.Reporter.SuiteWillBegin(report)
 
 	r.suiteBegan = true
-	for _, line := range r.pendingSpecStarts {
-		r.command("%s", line)
+	for _, event := range r.pendingSpecStarts {
+		r.writeSpecStarted(event)
 	}
 	r.pendingSpecStarts = nil
 }
@@ -393,15 +408,17 @@ func (r *githubReporter) summary(report types.Report) string {
 	_, _ = fmt.Fprintf(sb, "<sub>Ran %d of %d specs across %d parallel processes · random seed %d</sub>\n\n",
 		passed+failed, report.PreRunStats.TotalSpecs, report.SuiteConfig.ParallelTotal, report.SuiteConfig.RandomSeed)
 
+	// The failures are what the summary is mostly read for, so they're expanded.
 	if len(failures) > 0 {
-		_, _ = fmt.Fprintf(sb, "#### Failures\n\n")
-		for i, failure := range failures {
+		_, _ = fmt.Fprintf(sb, "<details open><summary><b>❌ Failed (%d)</b></summary>\n\n", len(failures))
+		for i, failure := range sortedByRunTime(failures) {
 			if i == githubSummaryMaxFailures {
 				_, _ = fmt.Fprintf(sb, "…and %d more, see the job log.\n\n", len(failures)-githubSummaryMaxFailures)
 				break
 			}
 			r.writeSummaryFailure(sb, failure)
 		}
+		sb.WriteString("</details>\n\n")
 	}
 
 	var flakes types.SpecReports
@@ -411,33 +428,41 @@ func (r *githubReporter) summary(report types.Report) string {
 		}
 	}
 	if len(flakes) > 0 {
-		_, _ = fmt.Fprintf(sb, "#### Flakes\n\n")
-		for _, flake := range flakes {
-			_, _ = fmt.Fprintf(sb, "- 🔁 %s <sub>(%d attempts)</sub>\n", html.EscapeString(specText(flake)), flake.NumAttempts)
+		_, _ = fmt.Fprintf(sb, "<details><summary><b>🔁 Flaked (%d)</b></summary>\n\n", len(flakes))
+		sb.WriteString("| Attempts | Duration | Process | Spec |\n")
+		sb.WriteString("|---:|---:|---:|:---|\n")
+		for _, spec := range sortedByRunTime(flakes) {
+			_, _ = fmt.Fprintf(sb, "| %d | %s | %s | %s |\n", spec.NumAttempts, formatDuration(spec.RunTime), summaryProcess(spec), summaryTableText(spec))
 		}
-		sb.WriteString("\n")
+		sb.WriteString("\n</details>\n\n")
 	}
 
-	var ran types.SpecReports
-	for _, spec := range specs {
-		if spec.State.Is(types.SpecStatePassed | types.SpecStateFailureStates) {
-			ran = append(ran, spec)
+	passedSpecs := specs.WithState(types.SpecStatePassed)
+	if len(passedSpecs) > 0 {
+		_, _ = fmt.Fprintf(sb, "<details><summary><b>✅ Passed (%d)</b></summary>\n\n", len(passedSpecs))
+		sb.WriteString("| Duration | Process | Spec |\n")
+		sb.WriteString("|---:|---:|:---|\n")
+		for _, spec := range sortedByRunTime(passedSpecs) {
+			text := summaryTableText(spec)
+			// Flaky specs passed too, but they're worth telling apart.
+			if spec.NumAttempts > 1 && spec.MaxFlakeAttempts > 1 {
+				text = fmt.Sprintf("🔁 %s", text)
+			}
+			_, _ = fmt.Fprintf(sb, "| %s | %s | %s |\n", formatDuration(spec.RunTime), summaryProcess(spec), text)
 		}
-	}
-	slices.SortStableFunc(ran, func(a, b types.SpecReport) int {
-		return cmp.Compare(b.RunTime, a.RunTime)
-	})
-	if len(ran) > 0 {
-		_, _ = fmt.Fprintf(sb, "<details><summary>⏱️ Slowest specs</summary>\n\n")
-		sb.WriteString("| Duration | Spec |\n")
-		sb.WriteString("|---:|:---|\n")
-		for _, spec := range ran[:min(len(ran), githubSummarySlowestSpecs)] {
-			_, _ = fmt.Fprintf(sb, "| %s | %s %s |\n", formatDuration(spec.RunTime), specStateIcon(spec), strings.ReplaceAll(html.EscapeString(specText(spec)), "|", `\|`))
-		}
-		sb.WriteString("\n</details>\n")
+		sb.WriteString("\n</details>\n\n")
 	}
 
-	return sb.String()
+	skippedSpecs := specs.WithState(types.SpecStateSkipped)
+	if len(skippedSpecs) > 0 {
+		_, _ = fmt.Fprintf(sb, "<details><summary><b>⏭️ Skipped (%d)</b></summary>\n\n", len(skippedSpecs))
+		for _, spec := range skippedSpecs {
+			_, _ = fmt.Fprintf(sb, "- %s\n", html.EscapeString(oneLine(specText(spec))))
+		}
+		sb.WriteString("\n</details>\n\n")
+	}
+
+	return strings.TrimRight(sb.String(), "\n") + "\n"
 }
 
 func (r *githubReporter) writeSummaryFailure(sb *strings.Builder, report types.SpecReport) {
@@ -466,6 +491,26 @@ func failureMessage(report types.SpecReport) string {
 		return fmt.Sprintf("%s: %s", report.Failure.Message, report.Failure.ForwardedPanic)
 	}
 	return report.Failure.Message
+}
+
+// sortedByRunTime returns a copy of the specs, the longest running first.
+func sortedByRunTime(specs types.SpecReports) types.SpecReports {
+	sorted := slices.Clone(specs)
+	slices.SortStableFunc(sorted, func(a, b types.SpecReport) int {
+		return cmp.Compare(b.RunTime, a.RunTime)
+	})
+	return sorted
+}
+
+func summaryProcess(report types.SpecReport) string {
+	if report.ParallelProcess <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("#%d", report.ParallelProcess)
+}
+
+func summaryTableText(report types.SpecReport) string {
+	return strings.ReplaceAll(html.EscapeString(oneLine(specText(report))), "|", `\|`)
 }
 
 func specText(report types.SpecReport) string {
@@ -500,15 +545,22 @@ func processLabel(process int) string {
 	return fmt.Sprintf("[#%d] ", process)
 }
 
+// logEntry formats a log line about a spec in columns: an icon, the parallel process, a duration or other short
+// status, and the text, so that the starts, the progress and the results of specs line up with each other.
+func logEntry(icon string, process int, status string, text string) string {
+	processColumn := ""
+	if process > 0 {
+		processColumn = fmt.Sprintf("%-6s", fmt.Sprintf("[#%d]", process))
+	}
+	return fmt.Sprintf("%s %s%7s  %s", icon, processColumn, status, text)
+}
+
 func specTitle(report types.SpecReport) string {
-	title := fmt.Sprintf("%s %s%s", specStateIcon(report), processLabel(report.ParallelProcess), specText(report))
+	text := oneLine(specText(report))
 	if !report.State.Is(types.SpecStatePassed) {
-		title = fmt.Sprintf("%s [%s]", title, strings.ToUpper(report.State.String()))
+		text = fmt.Sprintf("%s [%s]", text, strings.ToUpper(report.State.String()))
 	}
-	if report.RunTime > 0 {
-		title = fmt.Sprintf("%s (%s)", title, formatDuration(report.RunTime))
-	}
-	return title
+	return logEntry(specStateIcon(report), report.ParallelProcess, formatDuration(report.RunTime), text)
 }
 
 func progressReportTitle(report types.ProgressReport) string {
@@ -521,16 +573,18 @@ func progressReportTitle(report types.ProgressReport) string {
 	if report.RunningInParallel {
 		process = report.ParallelProcess
 	}
-	title := fmt.Sprintf("⏳ %s%s", processLabel(process), subject)
 
+	elapsed := ""
 	if !report.SpecStartTime.IsZero() && !report.Time().IsZero() {
-		title = fmt.Sprintf("%s still running after %s", title, formatDuration(report.Time().Sub(report.SpecStartTime)))
-	}
-	if len(report.CurrentStepText) != 0 {
-		title = fmt.Sprintf("%s, at step %q", title, report.CurrentStepText)
+		elapsed = formatDuration(report.Time().Sub(report.SpecStartTime))
 	}
 
-	return title
+	text := fmt.Sprintf("%s (still running)", oneLine(subject))
+	if len(report.CurrentStepText) != 0 {
+		text = fmt.Sprintf("%s, at step %q", text, report.CurrentStepText)
+	}
+
+	return logEntry("⏳", process, elapsed, text)
 }
 
 func formatDuration(d time.Duration) string {

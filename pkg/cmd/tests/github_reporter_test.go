@@ -65,6 +65,8 @@ func newTestFailedSpecReport() types.SpecReport {
 		},
 	}
 	report.Failure.ProgressReport.CurrentStepText = "Connecting to cluster via Ingress"
+	report.ParallelProcess = 3
+	report.RunningInParallel = true
 	return report
 }
 
@@ -105,10 +107,10 @@ func TestGithubReporterDidRun(t *testing.T) {
 			name:   "failed spec is folded into a group and annotated",
 			report: newTestFailedSpecReport(),
 			expectedOutput: strings.Join([]string{
-				"::group::❌ ScyllaCluster should connect, via Ingresses [FAILED] (4m59s)",
+				"::group::❌ [#3] ScyllaCluster should connect, via Ingresses [FAILED] (4m59s)",
 				"spec body",
 				"::endgroup::",
-				"::error title=[FAILED] ScyllaCluster should connect%2C via Ingresses,file=test/e2e/set/scyllacluster/scyllacluster_expose.go,line=51::Timed out after 300s.%0AExpected <bool>: false%0Ato be 100%25 true%0A%0ADuring step: Connecting to cluster via Ingress",
+				"::error title=[FAILED] [#3] ScyllaCluster should connect%2C via Ingresses,file=test/e2e/set/scyllacluster/scyllacluster_expose.go,line=51::Timed out after 300s.%0AExpected <bool>: false%0Ato be 100%25 true%0A%0ADuring step: Connecting to cluster via Ingress",
 				"",
 			}, "\n"),
 		},
@@ -254,7 +256,7 @@ func TestGithubReporterSummary(t *testing.T) {
 		"",
 		"#### Failures",
 		"",
-		"<details><summary>❌ <b>ScyllaCluster should connect, via Ingresses</b> <code>[FAILED]</code> <sub>after 4m59s</sub></summary>",
+		"<details><summary>❌ <b>ScyllaCluster should connect, via Ingresses</b> <code>[FAILED]</code> <sub>process #3 · after 4m59s</sub></summary>",
 		"",
 		"In <code>[It]</code> at <code>test/e2e/set/scyllacluster/scyllacluster_expose.go:51</code>, during step <i>Connecting to cluster via Ingress</i>",
 		"",
@@ -281,5 +283,96 @@ func TestGithubReporterSummary(t *testing.T) {
 	}, "\n")
 	if diff := cmp.Diff(expectedSummary, string(summary)); diff != "" {
 		t.Errorf("expected and got summary differ:\n%s", diff)
+	}
+}
+
+func TestGithubReporterOutputDestination(t *testing.T) {
+	t.Parallel()
+
+	r, buf := newTestGithubReporter("")
+	destination := r.outputDestination()
+
+	// Starts are held back until the suite begins.
+	_, err := destination.Write([]byte(`{"kind":"scylla-operator-tests/spec-started","process":2,"text":"ScyllaCluster should start early"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if buf.Len() != 0 {
+		t.Errorf("expected no output before the suite begins, got %q", buf.String())
+	}
+	r.SuiteWillBegin(types.Report{})
+
+	writes := []string{
+		`{"kind":"scylla-operator-tests/spec-started","process":3,"text":"ScyllaCluster should\nscale"}`,
+		"partial output",
+		`{"kind":"something-else"}`,
+		"\n",
+		`{"kind":"scylla-operator-tests/spec-started","process":1,"text":"ScyllaCluster should deploy"}`,
+	}
+	for _, w := range writes {
+		n, err := destination.Write([]byte(w))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n != len(w) {
+			t.Errorf("expected to write %d bytes, got %d", len(w), n)
+		}
+	}
+
+	expectedOutput := strings.Join([]string{
+		"▶ [#2] ScyllaCluster should start early",
+		"▶ [#3] ScyllaCluster should scale",
+		`partial output{"kind":"something-else"}`,
+		"▶ [#1] ScyllaCluster should deploy",
+		"",
+	}, "\n")
+	if diff := cmp.Diff(expectedOutput, buf.String()); diff != "" {
+		t.Errorf("expected and got output differ:\n%s", diff)
+	}
+}
+
+func TestProgressReportTitle(t *testing.T) {
+	t.Parallel()
+
+	specStartTime := time.Date(2026, 10, 27, 10, 0, 0, 0, time.UTC)
+
+	tt := []struct {
+		name          string
+		report        types.ProgressReport
+		expectedTitle string
+	}{
+		{
+			name: "parallel spec at a step",
+			report: types.ProgressReport{
+				ParallelProcess:         3,
+				RunningInParallel:       true,
+				ContainerHierarchyTexts: []string{"ScyllaCluster"},
+				LeafNodeText:            "should scale",
+				SpecStartTime:           specStartTime,
+				CurrentStepText:         "Waiting for the ScyllaCluster to roll out",
+				TimelineLocation: types.TimelineLocation{
+					Time: specStartTime.Add(10*time.Minute + 200*time.Millisecond),
+				},
+			},
+			expectedTitle: `⏳ [#3] ScyllaCluster should scale still running after 10m0s, at step "Waiting for the ScyllaCluster to roll out"`,
+		},
+		{
+			name: "serial spec without timing",
+			report: types.ProgressReport{
+				ContainerHierarchyTexts: []string{"ScyllaCluster"},
+				LeafNodeText:            "should scale",
+			},
+			expectedTitle: "⏳ ScyllaCluster should scale",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if diff := cmp.Diff(tc.expectedTitle, progressReportTitle(tc.report)); diff != "" {
+				t.Errorf("expected and got title differ:\n%s", diff)
+			}
+		})
 	}
 }

@@ -120,6 +120,9 @@ jobs:
       SO_INSTALL_MODE: ${{ inputs.install-mode }}
       # Folds the output of every spec into its own log group, annotates failures and writes a summary of the run.
       SO_E2E_GITHUB_OUTPUT: "true"
+      # Reports where a spec is stuck once it runs longer than the slowest specs normally take, and periodically after.
+      SO_E2E_POLL_PROGRESS_AFTER: 10m
+      SO_E2E_POLL_PROGRESS_INTERVAL: 5m
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

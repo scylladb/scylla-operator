@@ -4,6 +4,7 @@ package tests
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/ginkgo/v2/types"
+	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -61,19 +64,70 @@ func (w *lineTrackingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
+// specStartedEventKind marks the events that parallel processes send to the parent process through the parallel
+// server's output channel when they start a spec.
+const specStartedEventKind = "scylla-operator-tests/spec-started"
+
+type specStartedEvent struct {
+	Kind    string `json:"kind"`
+	Process int    `json:"process"`
+	Text    string `json:"text"`
+}
+
+// newSpecStartedNotifier connects to the parallel server and returns a function that tells the parent process about
+// every spec that is about to run, as Ginkgo's own parallel protocol only reports specs once they finish.
+// It's meant to be called from a ReportBeforeEach node in a parallel process.
+func newSpecStartedNotifier(serverAddress string) (func(types.SpecReport), error) {
+	client := parallel_support.NewClient(serverAddress)
+	if !client.Connect() {
+		return nil, fmt.Errorf("can't connect to the parallel server at %q", serverAddress)
+	}
+
+	return func(report types.SpecReport) {
+		// Specs that are filtered out or otherwise won't run go through ReportBeforeEach too.
+		if report.State.Is(types.SpecStateSkipped | types.SpecStatePending | types.SpecStateFailureStates) {
+			return
+		}
+
+		data, err := json.Marshal(specStartedEvent{
+			Kind:    specStartedEventKind,
+			Process: report.ParallelProcess,
+			Text:    specText(report),
+		})
+		if err != nil {
+			klog.ErrorS(err, "Can't encode the spec started event")
+			return
+		}
+
+		_, err = client.Write(data)
+		if err != nil {
+			klog.ErrorS(err, "Can't send the spec started event")
+		}
+	}, nil
+}
+
 // githubReporter decorates a Ginkgo reporter for GitHub Actions logs. Each finished spec is folded into its own log
-// group, titled with its state, duration and name, and every failure is annotated, so a run reads as a list of specs
-// rather than a wall of text. When the suite ends, it writes a Markdown summary meant for the job summary page.
+// group, titled with its state, duration, name and parallel process, and every failure is annotated, so a run reads
+// as a list of specs rather than a wall of text. Specs are also announced as they start, so that the ones in flight
+// can be told apart. When the suite ends, it writes a Markdown summary meant for the job summary page.
 // The decorated reporter is set once the reporter config is known. It must write through the same lineTrackingWriter
 // and must not emit log groups itself, as GitHub Actions doesn't support nesting them.
 type githubReporter struct {
 	reporters.Reporter
+
+	// lock serializes the output, as the start of specs is reported independently of Ginkgo's reporting.
+	lock sync.Mutex
 
 	out         *lineTrackingWriter
 	suiteName   string
 	summaryPath string
 	modulePath  string
 	groupOpen   bool
+	// suiteBegan tells whether the suite banner was emitted. Ginkgo holds back the reports of finished specs until
+	// all the parallel processes begin the suite, but the start of specs comes through regardless, so it's held back
+	// in pendingSpecStarts until then.
+	suiteBegan        bool
+	pendingSpecStarts []string
 }
 
 var _ reporters.Reporter = &githubReporter{}
@@ -104,13 +158,25 @@ func (r *githubReporter) command(format string, args ...any) {
 }
 
 func (r *githubReporter) startGroup(title string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.beginGroup(title)
+}
+
+func (r *githubReporter) endGroup() {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.finishGroup()
+}
+
+func (r *githubReporter) beginGroup(title string) {
 	// Groups don't nest, so a new one has to close the previous one first.
-	r.endGroup()
+	r.finishGroup()
 	r.command("::group::%s", oneLine(title))
 	r.groupOpen = true
 }
 
-func (r *githubReporter) endGroup() {
+func (r *githubReporter) finishGroup() {
 	if !r.groupOpen {
 		return
 	}
@@ -118,21 +184,64 @@ func (r *githubReporter) endGroup() {
 	r.groupOpen = false
 }
 
+// outputDestination returns the writer for the parallel server's output channel, which carries the events about specs
+// starting in the parallel processes. Anything else that comes through it is passed on as it is.
+func (r *githubReporter) outputDestination() io.Writer {
+	return githubReporterOutputDestination{r: r}
+}
+
+type githubReporterOutputDestination struct {
+	r *githubReporter
+}
+
+func (d githubReporterOutputDestination) Write(p []byte) (int, error) {
+	d.r.lock.Lock()
+	defer d.r.lock.Unlock()
+
+	// Every write carries one whole message of a parallel process.
+	event := specStartedEvent{}
+	err := json.Unmarshal(p, &event)
+	if err != nil || event.Kind != specStartedEventKind {
+		return d.r.out.Write(p)
+	}
+
+	line := fmt.Sprintf("▶ %s%s", processLabel(event.Process), oneLine(event.Text))
+	if !d.r.suiteBegan {
+		d.r.pendingSpecStarts = append(d.r.pendingSpecStarts, line)
+		return len(p), nil
+	}
+
+	d.r.command("%s", line)
+	return len(p), nil
+}
+
 func (r *githubReporter) SuiteWillBegin(report types.Report) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	// Closes the group with the setup output, if any.
-	r.endGroup()
+	r.finishGroup()
 	r.Reporter.SuiteWillBegin(report)
+
+	r.suiteBegan = true
+	for _, line := range r.pendingSpecStarts {
+		r.command("%s", line)
+	}
+	r.pendingSpecStarts = nil
 }
 
 func (r *githubReporter) DidRun(report types.SpecReport) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	if report.State.Is(types.SpecStateSkipped) && report.Failure.IsZero() {
 		r.Reporter.DidRun(report)
 		return
 	}
 
-	r.startGroup(specTitle(report))
+	r.beginGroup(specTitle(report))
 	r.Reporter.DidRun(report)
-	r.endGroup()
+	r.finishGroup()
 
 	if report.Failed() {
 		message := failureMessage(report)
@@ -144,13 +253,19 @@ func (r *githubReporter) DidRun(report types.SpecReport) {
 }
 
 func (r *githubReporter) EmitProgressReport(report types.ProgressReport) {
-	r.startGroup(fmt.Sprintf("⏳ Progress report: %s", progressReportSubject(report)))
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.beginGroup(progressReportTitle(report))
 	r.Reporter.EmitProgressReport(report)
-	r.endGroup()
+	r.finishGroup()
 }
 
 func (r *githubReporter) SuiteDidEnd(report types.Report) {
-	r.endGroup()
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.finishGroup()
 	r.Reporter.SuiteDidEnd(report)
 
 	if len(r.summaryPath) != 0 {
@@ -161,12 +276,12 @@ func (r *githubReporter) SuiteDidEnd(report types.Report) {
 	}
 
 	// Folds the teardown output, mostly the logs of the parallel processes, until the run ends.
-	r.startGroup("Test suite teardown")
+	r.beginGroup("Test suite teardown")
 }
 
 func (r *githubReporter) annotationProperties(report types.SpecReport) string {
 	properties := []string{
-		fmt.Sprintf("title=%s", escapeGithubCommandProperty(fmt.Sprintf("[%s] %s", strings.ToUpper(report.State.String()), specText(report)))),
+		fmt.Sprintf("title=%s", escapeGithubCommandProperty(fmt.Sprintf("[%s] %s%s", strings.ToUpper(report.State.String()), processLabel(report.ParallelProcess), specText(report)))),
 	}
 
 	location := r.failureLocation(report)
@@ -326,8 +441,12 @@ func (r *githubReporter) summary(report types.Report) string {
 }
 
 func (r *githubReporter) writeSummaryFailure(sb *strings.Builder, report types.SpecReport) {
-	_, _ = fmt.Fprintf(sb, "<details><summary>%s <b>%s</b> <code>[%s]</code> <sub>after %s</sub></summary>\n\n",
-		specStateIcon(report), html.EscapeString(specText(report)), strings.ToUpper(report.State.String()), formatDuration(report.RunTime))
+	details := fmt.Sprintf("after %s", formatDuration(report.RunTime))
+	if report.ParallelProcess > 0 {
+		details = fmt.Sprintf("process #%d · %s", report.ParallelProcess, details)
+	}
+	_, _ = fmt.Fprintf(sb, "<details><summary>%s <b>%s</b> <code>[%s]</code> <sub>%s</sub></summary>\n\n",
+		specStateIcon(report), html.EscapeString(specText(report)), strings.ToUpper(report.State.String()), details)
 
 	location := r.failureLocation(report)
 	if len(location.FileName) != 0 {
@@ -373,8 +492,16 @@ func specStateIcon(report types.SpecReport) string {
 	}
 }
 
+// processLabel identifies the parallel process that runs a spec, if any.
+func processLabel(process int) string {
+	if process <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("[#%d] ", process)
+}
+
 func specTitle(report types.SpecReport) string {
-	title := fmt.Sprintf("%s %s", specStateIcon(report), specText(report))
+	title := fmt.Sprintf("%s %s%s", specStateIcon(report), processLabel(report.ParallelProcess), specText(report))
 	if !report.State.Is(types.SpecStatePassed) {
 		title = fmt.Sprintf("%s [%s]", title, strings.ToUpper(report.State.String()))
 	}
@@ -384,15 +511,26 @@ func specTitle(report types.SpecReport) string {
 	return title
 }
 
-func progressReportSubject(report types.ProgressReport) string {
+func progressReportTitle(report types.ProgressReport) string {
 	subject := strings.Join(append(slices.Clone(report.ContainerHierarchyTexts), report.LeafNodeText), " ")
 	if len(strings.TrimSpace(subject)) == 0 {
 		subject = report.Message
 	}
+
+	process := 0
 	if report.RunningInParallel {
-		subject = fmt.Sprintf("%s (process #%d)", subject, report.ParallelProcess)
+		process = report.ParallelProcess
 	}
-	return subject
+	title := fmt.Sprintf("⏳ %s%s", processLabel(process), subject)
+
+	if !report.SpecStartTime.IsZero() && !report.Time().IsZero() {
+		title = fmt.Sprintf("%s still running after %s", title, formatDuration(report.Time().Sub(report.SpecStartTime)))
+	}
+	if len(report.CurrentStepText) != 0 {
+		title = fmt.Sprintf("%s, at step %q", title, report.CurrentStepText)
+	}
+
+	return title
 }
 
 func formatDuration(d time.Duration) string {

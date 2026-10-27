@@ -464,6 +464,14 @@ function run-e2e {
     e2e_command_args+=( "--focus=${SO_FOCUS}" )
   fi
 
+  if [[ -n "${SO_E2E_POLL_PROGRESS_AFTER:-}" ]]; then
+    e2e_command_args+=( "--poll-progress-after=${SO_E2E_POLL_PROGRESS_AFTER}" )
+  fi
+
+  if [[ -n "${SO_E2E_POLL_PROGRESS_INTERVAL:-}" ]]; then
+    e2e_command_args+=( "--poll-progress-interval=${SO_E2E_POLL_PROGRESS_INTERVAL}" )
+  fi
+
   # GitHub Actions renders colors, and the output formatted for it folds every spec into its own group.
   if [[ "${SO_E2E_GITHUB_OUTPUT}" == "true" ]]; then
     e2e_command_args+=( "--color=true" "--github-output" )

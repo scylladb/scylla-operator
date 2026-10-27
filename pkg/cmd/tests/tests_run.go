@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -220,6 +221,14 @@ func (o *RunOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command
 			summaryPath = path.Join(o.ArtifactsDir, "e2e-summary.md")
 		}
 		o.githubReporter = newGithubReporter(newLineTrackingWriter(formatter.ColorableStdOut), o.SelectedSuite.Name, summaryPath)
+		// The logs would otherwise go to stderr, which reaches the job log out of order with stdout, so some lines
+		// would end up in the wrong group. Raising the threshold keeps errors from being copied to stderr too.
+		klog.LogToStderr(false)
+		klog.SetOutput(o.githubReporter.out)
+		err := flag.CommandLine.Set("stderrthreshold", "FATAL")
+		if err != nil {
+			return fmt.Errorf("can't set the klog stderr threshold: %w", err)
+		}
 		// Folds the setup output, mostly the flags, until the suite begins.
 		o.githubReporter.startGroup("Test suite setup")
 		defer o.githubReporter.endGroup()

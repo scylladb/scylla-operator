@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/onsi/ginkgo/v2/reporters"
@@ -32,7 +33,9 @@ const (
 
 // lineTrackingWriter remembers whether the last byte written through it ended a line, so that GitHub Actions
 // workflow commands, which are only recognized at the start of a line, can be emitted after arbitrary output.
+// It's safe for concurrent use, as the logs are written through it too.
 type lineTrackingWriter struct {
+	lock        sync.Mutex
 	w           io.Writer
 	atLineStart bool
 }
@@ -47,6 +50,9 @@ func newLineTrackingWriter(w io.Writer) *lineTrackingWriter {
 }
 
 func (w *lineTrackingWriter) Write(p []byte) (int, error) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
 	n, err := w.w.Write(p)
 	if n > 0 {
 		w.atLineStart = p[n-1] == '\n'
@@ -87,7 +93,10 @@ func newGithubReporter(out *lineTrackingWriter, suiteName, summaryPath string) *
 }
 
 func (r *githubReporter) command(format string, args ...any) {
-	if !r.out.atLineStart {
+	r.out.lock.Lock()
+	atLineStart := r.out.atLineStart
+	r.out.lock.Unlock()
+	if !atLineStart {
 		_, _ = fmt.Fprintln(r.out)
 	}
 	_, _ = fmt.Fprintf(r.out, format+"\n", args...)

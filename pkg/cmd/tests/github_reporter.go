@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime/debug"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -134,7 +135,11 @@ func (r *githubReporter) DidRun(report types.SpecReport) {
 	r.endGroup()
 
 	if report.Failed() {
-		r.command("::error %s::%s", r.annotationProperties(report), escapeGithubCommandData(truncate(report.Failure.Message, githubAnnotationMessageMaxLength)))
+		message := failureMessage(report)
+		if step := report.Failure.ProgressReport.CurrentStepText; len(step) != 0 {
+			message = fmt.Sprintf("%s\n\nDuring step: %s", message, step)
+		}
+		r.command("::error %s::%s", r.annotationProperties(report), escapeGithubCommandData(truncate(message, githubAnnotationMessageMaxLength)))
 	}
 }
 
@@ -164,15 +169,65 @@ func (r *githubReporter) annotationProperties(report types.SpecReport) string {
 		fmt.Sprintf("title=%s", escapeGithubCommandProperty(fmt.Sprintf("[%s] %s", strings.ToUpper(report.State.String()), specText(report)))),
 	}
 
-	location := report.Failure.Location
+	location := r.failureLocation(report)
 	if len(location.FileName) != 0 {
-		properties = append(properties, fmt.Sprintf("file=%s", escapeGithubCommandProperty(r.repositoryPath(location.FileName))))
+		properties = append(properties, fmt.Sprintf("file=%s", escapeGithubCommandProperty(location.FileName)))
 		if location.LineNumber > 0 {
 			properties = append(properties, fmt.Sprintf("line=%d", location.LineNumber))
 		}
 	}
 
 	return strings.Join(properties, ",")
+}
+
+// failureLocation returns the repository location closest to the failure. A failure may be located outside the
+// repository, e.g. when a spec panics in the runtime, in which case it's the innermost repository frame of the stack
+// trace, or the spec itself.
+func (r *githubReporter) failureLocation(report types.SpecReport) types.CodeLocation {
+	location := report.Failure.Location
+	if r.inRepository(location.FileName) {
+		return types.CodeLocation{
+			FileName:   r.repositoryPath(location.FileName),
+			LineNumber: location.LineNumber,
+		}
+	}
+
+	for _, line := range strings.Split(location.FullStackTrace, "\n") {
+		// Frame locations look like "<file>:<line> +0x28".
+		fileName, lineNumberWithOffset, found := strings.Cut(strings.TrimSpace(line), ":")
+		if !found || !r.inRepository(fileName) {
+			continue
+		}
+		lineNumber, err := strconv.Atoi(strings.Fields(lineNumberWithOffset + " ")[0])
+		if err != nil {
+			continue
+		}
+		return types.CodeLocation{
+			FileName:   r.repositoryPath(fileName),
+			LineNumber: lineNumber,
+		}
+	}
+
+	location = report.LeafNodeLocation
+	if r.inRepository(location.FileName) {
+		return types.CodeLocation{
+			FileName:   r.repositoryPath(location.FileName),
+			LineNumber: location.LineNumber,
+		}
+	}
+
+	return types.CodeLocation{}
+}
+
+// inRepository tells whether a file name belongs to this repository. Without the module path known, it assumes so.
+func (r *githubReporter) inRepository(fileName string) bool {
+	if len(fileName) == 0 {
+		return false
+	}
+	if len(r.modulePath) == 0 {
+		return true
+	}
+	return strings.HasPrefix(fileName, r.modulePath+"/") && strings.HasSuffix(fileName, ".go")
 }
 
 // repositoryPath turns a file name, which is module-qualified in binaries built with -trimpath, into a path relative
@@ -274,16 +329,24 @@ func (r *githubReporter) writeSummaryFailure(sb *strings.Builder, report types.S
 	_, _ = fmt.Fprintf(sb, "<details><summary>%s <b>%s</b> <code>[%s]</code> <sub>after %s</sub></summary>\n\n",
 		specStateIcon(report), html.EscapeString(specText(report)), strings.ToUpper(report.State.String()), formatDuration(report.RunTime))
 
-	location := report.Failure.Location
+	location := r.failureLocation(report)
 	if len(location.FileName) != 0 {
-		_, _ = fmt.Fprintf(sb, "In <code>[%s]</code> at <code>%s:%d</code>", report.Failure.FailureNodeType, html.EscapeString(r.repositoryPath(location.FileName)), location.LineNumber)
+		_, _ = fmt.Fprintf(sb, "In <code>[%s]</code> at <code>%s:%d</code>", report.Failure.FailureNodeType, html.EscapeString(location.FileName), location.LineNumber)
 		if len(report.Failure.ProgressReport.CurrentStepText) != 0 {
 			_, _ = fmt.Fprintf(sb, ", during step <i>%s</i>", html.EscapeString(report.Failure.ProgressReport.CurrentStepText))
 		}
 		sb.WriteString("\n\n")
 	}
 
-	_, _ = fmt.Fprintf(sb, "<pre>%s</pre>\n\n</details>\n\n", html.EscapeString(truncate(report.Failure.Message, githubSummaryFailureMessageMaxLength)))
+	_, _ = fmt.Fprintf(sb, "<pre>%s</pre>\n\n</details>\n\n", html.EscapeString(truncate(failureMessage(report), githubSummaryFailureMessageMaxLength)))
+}
+
+// failureMessage returns the message of a spec's failure, including the value of a panic, which Ginkgo reports apart.
+func failureMessage(report types.SpecReport) string {
+	if len(report.Failure.ForwardedPanic) != 0 {
+		return fmt.Sprintf("%s: %s", report.Failure.Message, report.Failure.ForwardedPanic)
+	}
+	return report.Failure.Message
 }
 
 func specText(report types.SpecReport) string {

@@ -108,7 +108,37 @@ func TestGithubReporterDidRun(t *testing.T) {
 				"::group::❌ ScyllaCluster should connect, via Ingresses [FAILED] (4m59s)",
 				"spec body",
 				"::endgroup::",
-				"::error title=[FAILED] ScyllaCluster should connect%2C via Ingresses,file=test/e2e/set/scyllacluster/scyllacluster_expose.go,line=51::Timed out after 300s.%0AExpected <bool>: false%0Ato be 100%25 true",
+				"::error title=[FAILED] ScyllaCluster should connect%2C via Ingresses,file=test/e2e/set/scyllacluster/scyllacluster_expose.go,line=51::Timed out after 300s.%0AExpected <bool>: false%0Ato be 100%25 true%0A%0ADuring step: Connecting to cluster via Ingress",
+				"",
+			}, "\n"),
+		},
+		{
+			name: "panic is annotated at the innermost repository frame, with its value",
+			report: func() types.SpecReport {
+				report := newTestSpecReport([]string{"ScyllaCluster"}, "should not panic", types.SpecStatePanicked, 0)
+				report.LeafNodeLocation = types.CodeLocation{
+					FileName:   "github.com/scylladb/scylla-operator/test/e2e/set/scyllacluster/scyllacluster.go",
+					LineNumber: 20,
+				}
+				report.Failure = types.Failure{
+					Message:        "Test Panicked",
+					ForwardedPanic: "assignment to entry in nil map",
+					Location: types.CodeLocation{
+						FileName:   "internal/runtime/maps/runtime_faststr.go",
+						LineNumber: 263,
+						FullStackTrace: strings.Join([]string{
+							"github.com/scylladb/scylla-operator/test/e2e/set/scyllacluster.init.func3.3()",
+							"\tgithub.com/scylladb/scylla-operator/test/e2e/set/scyllacluster/scyllacluster.go:28 +0x28",
+						}, "\n"),
+					},
+				}
+				return report
+			}(),
+			expectedOutput: strings.Join([]string{
+				"::group::❌ ScyllaCluster should not panic [PANICKED]",
+				"spec body",
+				"::endgroup::",
+				"::error title=[PANICKED] ScyllaCluster should not panic,file=test/e2e/set/scyllacluster/scyllacluster.go,line=28::Test Panicked: assignment to entry in nil map",
 				"",
 			}, "\n"),
 		},

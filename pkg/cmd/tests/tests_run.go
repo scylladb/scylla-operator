@@ -427,7 +427,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 			if err != nil && !errors.As(err, &exitError) {
 				errs[entryIndex] = fmt.Errorf("can't wait for command %q with args %q: %w", e.cmd.Path, e.cmd.Args, err)
 			}
-			klog.V(2).InfoS("Process finished", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String())
+			klog.V(3).InfoS("Process finished", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String())
 		}()
 	}
 

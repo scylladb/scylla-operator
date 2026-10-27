@@ -96,16 +96,16 @@ verify-uv:
 	$(UV) lock --check
 .PHONY: verify-uv
 
+verify-redirects:
+	$(UV) run scylla-check-redirects --yaml _utils/redirects.yaml --conf $(SOURCEDIR)
+.PHONY: verify-redirects
+
 multiversionlinkcheck:
 	$(UV) run sphinx-multiversion -b=linkcheck $(SOURCEDIR) $(BUILDDIR)/linkcheck
 .PHONY: multiversionlinkcheck
 
-verify: verify-uv linkcheck
+verify: verify-uv verify-redirects linkcheck
 .PHONY: verify
 
 verify-multiversion: verify-uv multiversionlinkcheck
 .PHONY: verify-multiversion
-
-.PHONY: check-redirects
-check-redirects: setup
-	$(UV) run scylla-check-redirects --yaml _utils/redirects.yaml --conf $(SOURCEDIR)

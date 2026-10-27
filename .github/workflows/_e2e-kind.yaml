@@ -150,12 +150,20 @@ jobs:
         set -euExo pipefail
         shopt -s inherit_errexit
 
+        # Folds the preamble of the script until it starts a group of its own.
+        echo "::group::Prepare the environment"
+        export GHA_GROUP_OPEN="true"
+
         ./hack/kind/cluster-setup.sh
 
     - name: Run the e2e suite
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit
+
+        # Folds the preamble of the script until it starts a group of its own.
+        echo "::group::Prepare the environment"
+        export GHA_GROUP_OPEN="true"
 
         # INT first so the suite can shut down and artifacts still get gathered; SIGKILL follows 10 minutes later.
         timeout --verbose --signal=INT --kill-after=10m 120m ./hack/kind/run-e2e-tests.sh

@@ -130,5 +130,3 @@ yq e --inplace '.spec.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)
 
 kubectl apply --server-side=true -f "${minio_deploy_dir}"
 kubectl -n minio rollout status --timeout=5m deployment.apps/minio
-
-gha-endgroup

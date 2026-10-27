@@ -213,8 +213,6 @@ function gather-artifacts-on-exit {
     cp -r ${REENTRANT:+-f} "${ARTIFACTS}/must-gather/cluster" "${ARTIFACTS}/must-gather/workers/${worker_as_control_plane}"
   fi
 
-  gha-endgroup
-
   cleanup-bg-jobs "${ec}"
 }
 
@@ -566,9 +564,10 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
 EOF
   kubectl -n=e2e wait --for=condition=Ready pod/e2e
 
-  # The suite output must stay outside of any group, as it may fold its own parts.
+  # The suite output must stay outside of any group, as it may fold its own parts. The trace of waiting for it
+  # would only clutter it.
   gha-endgroup
-  exit_code="$( wait-for-container-exit-with-logs e2e e2e e2e )"
+  exit_code="$( { set +x; } 2>/dev/null; wait-for-container-exit-with-logs e2e e2e e2e )"
 
   gha-group "Collect the e2e artifacts"
   kubectl_cp -n=e2e e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}"

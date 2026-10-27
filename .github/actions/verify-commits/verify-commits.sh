@@ -23,7 +23,7 @@ base_sha="$( git merge-base "${1}" HEAD )"
 types=(build chore ci docs feat fix perf refactor revert style test)
 types_re="$( IFS='|'; echo "${types[*]}" )"
 
-# Issue closing keywords, see CONTRIBUTING.md. Plain '#1234' references used as context are allowed.
+# Issue closing keywords, see https://github.com/scylladb/scylla-operator/blob/master/CONTRIBUTING.md. Plain '#1234' references used as context are allowed.
 close_issue_re='(^|[^[:alnum:]_])(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed))[[:space:]:]+([[:alnum:]_.-]+/[[:alnum:]_.-]+)?#[0-9]+'
 
 rc=0
@@ -85,7 +85,7 @@ done <<<"$( git rev-list --no-merges --reverse "${base_sha}..HEAD" )"
 
 if [[ "${rc}" -ne 0 ]]; then
   echo
-  echo "Commit policy violations found. See the 'Commits and PRs' section of CONTRIBUTING.md for the full policy." >&2
+  echo "Commit policy violations found. See the 'Commits and PRs' section of https://github.com/scylladb/scylla-operator/blob/master/CONTRIBUTING.md for the full policy." >&2
 fi
 
 exit "${rc}"

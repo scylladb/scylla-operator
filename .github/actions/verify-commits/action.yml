@@ -1,0 +1,20 @@
+name: Verify commits
+description: >
+  Verifies that the commits between the base and HEAD follow the commit policy described in
+  https://github.com/scylladb/scylla-operator/blob/master/CONTRIBUTING.md. Expects the PR head to be checked out with
+  full history. Other repositories use this action remotely, so it must not depend on anything outside its directory.
+
+inputs:
+  base-sha:
+    description: The commit (exclusive) from which to start checking.
+    required: false
+    default: ${{ github.event.pull_request.base.sha }}
+
+runs:
+  using: composite
+  steps:
+    - name: Verify commit messages
+      shell: bash
+      env:
+        BASE_SHA: ${{ inputs.base-sha }}
+      run: '"${GITHUB_ACTION_PATH}/verify-commits.sh" "${BASE_SHA}"'

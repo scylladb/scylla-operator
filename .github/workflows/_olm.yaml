@@ -75,7 +75,7 @@ jobs:
         ./hack/.ci/olm/postprocess-bundle.sh "${RUNNER_TEMP}/bundle" "${version}" "${channel}"
 
     - name: Upload the bundle
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: olm-bundle
         path: ${{ runner.temp }}/bundle
@@ -111,7 +111,7 @@ jobs:
         --verbose
 
     - name: Upload the bundle Dockerfile
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: olm-bundle-dockerfile
         path: ${{ runner.temp }}/Dockerfile
@@ -183,7 +183,7 @@ jobs:
       run: ./hack/.ci/olm/build-catalog.sh "${BUNDLE_REF}" "${RUNNER_TEMP}/catalog"
 
     - name: Upload the catalog
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: olm-catalog
         path: ${{ runner.temp }}/catalog

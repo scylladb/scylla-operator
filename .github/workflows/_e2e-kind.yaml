@@ -110,6 +110,16 @@ jobs:
       - containers-storage:/var/lib/containers
     env:
       ARTIFACTS: /artifacts
+      # As set by the Makefile's KIND_CLUSTER_NAME.
+      CLUSTER_NAME: scylla-operator-e2e
+      SO_SUITE: ${{ inputs.suite }}
+      SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+      SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
+      SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
+      SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+      SO_INSTALL_MODE: ${{ inputs.install-mode }}
+      # Folds the output of every spec into its own log group, annotates failures and writes a summary of the run.
+      SO_E2E_GITHUB_OUTPUT: "true"
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,29 +144,41 @@ jobs:
         # note: unlike the inotify limits, fs.aio-max-nr is global to the host kernel
         sysctl fs.aio-max-nr=30000000
 
+    - name: Set up the kind cluster
+      timeout-minutes: 30
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        ./hack/kind/cluster-setup.sh
+
     - name: Run the e2e suite
-      env:
-        SO_SUITE: ${{ inputs.suite }}
-        SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
-        SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
-        SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
-        SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
-        SO_INSTALL_MODE: ${{ inputs.install-mode }}
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit
 
         # INT first so the suite can shut down and artifacts still get gathered; SIGKILL follows 10 minutes later.
-        timeout --verbose --signal=INT --kill-after=10m 120m make test-e2e-kind
+        timeout --verbose --signal=INT --kill-after=10m 120m ./hack/kind/run-e2e-tests.sh
+
+    - name: Publish the e2e summary
+      if: always()
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # Written by the suite into the artifacts once it finishes.
+        summary="${ARTIFACTS}/e2e-summary.md"
+        if [[ -f "${summary}" ]]; then
+          cat "${summary}" >> "${GITHUB_STEP_SUMMARY}"
+        else
+          echo "### ❌ E2E suite \`${SO_SUITE}\` didn't finish, see the job log" >> "${GITHUB_STEP_SUMMARY}"
+        fi
 
     # Dumps the basic state of the kind cluster and its host into the artifacts. Meant for failures before the
     # suite starts, which leave no must-gather behind; the kind cluster dies with the job, so this collects while
     # it is still around. Every probe is best-effort.
     - name: Dump cluster state
       if: failure()
-      env:
-        # As set by the Makefile's KIND_CLUSTER_NAME.
-        CLUSTER_NAME: scylla-operator-e2e
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit

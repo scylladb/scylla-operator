@@ -20,6 +20,30 @@ function cleanup-bg-jobs() {
   fi
 }
 
+# gha-group starts a collapsible group in the GitHub Actions log, ending the open one first, as groups can't nest.
+# The commands go to stderr, along with the trace and most of the output, so they don't get reordered against it.
+# It's a no-op outside GitHub Actions.
+# $1 - group title
+function gha-group {
+  if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
+    return
+  fi
+
+  gha-endgroup
+  echo "::group::${1}" > /dev/stderr
+  gha_group_open="true"
+}
+
+# gha-endgroup ends the open GitHub Actions log group, if any.
+function gha-endgroup {
+  if [[ "${gha_group_open:-}" != "true" ]]; then
+    return
+  fi
+
+  echo "::endgroup::" > /dev/stderr
+  gha_group_open="false"
+}
+
 function cleanup-bg-jobs-on-exit() {
   ec=$?
   cleanup-bg-jobs "${ec}"

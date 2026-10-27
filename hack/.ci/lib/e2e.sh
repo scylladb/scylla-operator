@@ -188,6 +188,8 @@ EOF
 function gather-artifacts-on-exit {
   ec=$?
 
+  gha-group "Gather artifacts"
+
   gather-artifacts "${ARTIFACTS}/must-gather/cluster" &
   gather_artifacts_bg_pids=( $! )
 
@@ -210,6 +212,8 @@ function gather-artifacts-on-exit {
     mkdir -p "${ARTIFACTS}/must-gather/workers"
     cp -r ${REENTRANT:+-f} "${ARTIFACTS}/must-gather/cluster" "${ARTIFACTS}/must-gather/workers/${worker_as_control_plane}"
   fi
+
+  gha-endgroup
 
   cleanup-bg-jobs "${ec}"
 }
@@ -293,6 +297,7 @@ function run-e2e {
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
   SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
   SO_WAIT_FOR_E2E_POD_DELETE="${SO_WAIT_FOR_E2E_POD_DELETE:-false}"
+  SO_E2E_GITHUB_OUTPUT="${SO_E2E_GITHUB_OUTPUT:-false}"
   SCYLLADB_IMAGE_REF="${SCYLLADB_IMAGE_REF:-}"
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
@@ -413,7 +418,6 @@ function run-e2e {
     "--skip=${SO_SKIPPED_TESTS}"
     "--kubeconfig=/var/run/secrets/kubeconfig"
     "--loglevel=2"
-    "--color=false"
     "--artifacts-dir=/tmp/artifacts"
     "--parallelism=${SO_E2E_PARALLELISM}"
     "--timeout=${SO_E2E_TIMEOUT}"
@@ -460,6 +464,13 @@ function run-e2e {
 
   if [[ -n "${SO_FOCUS+x}" ]]; then
     e2e_command_args+=( "--focus=${SO_FOCUS}" )
+  fi
+
+  # GitHub Actions renders colors, and the output formatted for it folds every spec into its own group.
+  if [[ "${SO_E2E_GITHUB_OUTPUT}" == "true" ]]; then
+    e2e_command_args+=( "--color=true" "--github-output" )
+  else
+    e2e_command_args+=( "--color=false" )
   fi
 
   if [[ -n "${SCYLLADB_IMAGE_REF}" ]]; then
@@ -555,8 +566,11 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
 EOF
   kubectl -n=e2e wait --for=condition=Ready pod/e2e
 
+  # The suite output must stay outside of any group, as it may fold its own parts.
+  gha-endgroup
   exit_code="$( wait-for-container-exit-with-logs e2e e2e e2e )"
 
+  gha-group "Collect the e2e artifacts"
   kubectl_cp -n=e2e e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}"
 
   ls -l "${ARTIFACTS}"

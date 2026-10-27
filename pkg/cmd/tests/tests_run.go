@@ -54,6 +54,7 @@ type RunOptions struct {
 	SkipStrings           []string
 	RandomSeed            int64
 	Color                 bool
+	GithubOutput          bool
 	Parallelism           int
 	ParallelShard         int
 	ParallelServerAddress string
@@ -61,6 +62,8 @@ type RunOptions struct {
 
 	TestSuites    ginkgotest.TestSuites
 	SelectedSuite *ginkgotest.TestSuite
+
+	githubReporter *githubReporter
 }
 
 func NewRunOptions(streams genericclioptions.IOStreams, testSuites ginkgotest.TestSuites, userAgent string) RunOptions {
@@ -76,6 +79,7 @@ func NewRunOptions(streams genericclioptions.IOStreams, testSuites ginkgotest.Te
 		SkipStrings:           []string{},
 		RandomSeed:            time.Now().Unix(),
 		Color:                 true,
+		GithubOutput:          false,
 		Parallelism:           0,
 		ParallelShard:         0,
 		ParallelServerAddress: "",
@@ -139,6 +143,7 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64VarP(&o.RandomSeed, randomSeedFlagKey, "", o.RandomSeed, "Seed for the test suite.")
 	cmd.Flags().BoolVarP(&o.DryRun, "dry-run", "", o.DryRun, "Doesn't execute the tests, only prints. Limited to serial execution.")
 	cmd.Flags().BoolVarP(&o.Color, "color", "", o.Color, "Colors the output.")
+	cmd.Flags().BoolVarP(&o.GithubOutput, "github-output", "", o.GithubOutput, "Formats the output for GitHub Actions logs: folds the output of every spec into its own group and annotates failures. When an artifacts directory is set, it also writes a Markdown summary of the run there, meant for the job summary.")
 	cmd.Flags().IntVarP(&o.Parallelism, "parallelism", "", o.Parallelism, "Determines how many workers are going to run in parallel. If not specified or if zero, the default parallelism for the suite will be chosen.")
 	cmd.Flags().Int32Var(&o.ParallelLogLevel, "parallel-loglevel", o.ParallelLogLevel, "Set the level of log output for parallel processes (0-10).")
 	cmd.Flags().IntVarP(&o.ParallelShard, parallelShardFlagKey, "", o.ParallelShard, "")
@@ -208,6 +213,18 @@ func (o *RunOptions) Complete(args []string) error {
 }
 
 func (o *RunOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
+	// Parallel shards report to the parent process, which is the only one that formats the output.
+	if o.GithubOutput && o.ParallelShard == 0 {
+		var summaryPath string
+		if len(o.ArtifactsDir) != 0 {
+			summaryPath = path.Join(o.ArtifactsDir, "e2e-summary.md")
+		}
+		o.githubReporter = newGithubReporter(newLineTrackingWriter(formatter.ColorableStdOut), o.SelectedSuite.Name, summaryPath)
+		// Folds the setup output, mostly the flags, until the suite begins.
+		o.githubReporter.startGroup("Test suite setup")
+		defer o.githubReporter.endGroup()
+	}
+
 	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
@@ -291,6 +308,11 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	}
 
 	if suiteConfig.ParallelTotal <= 1 || o.ParallelShard != 0 {
+		// Ginkgo owns the reporter in serial runs, so they can't be formatted for GitHub Actions beyond the setup.
+		if o.githubReporter != nil {
+			o.githubReporter.endGroup()
+		}
+
 		if suiteConfig.ParallelTotal > 1 {
 			suiteConfig.ParallelHost = o.ParallelServerAddress
 			suiteConfig.ParallelProcess = o.ParallelShard
@@ -308,7 +330,17 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		return nil
 	}
 
-	server, err := parallel_support.NewServer(suiteConfig.ParallelTotal, reporters.NewDefaultReporter(reporterConfig, formatter.ColorableStdOut))
+	var reporter reporters.Reporter
+	if o.githubReporter != nil {
+		// Skipped specs would only litter the log with their denoters; the summary counts them.
+		reporterConfig.SilenceSkips = true
+		o.githubReporter.Reporter = reporters.NewDefaultReporter(reporterConfig, o.githubReporter.out)
+		reporter = o.githubReporter
+	} else {
+		reporter = reporters.NewDefaultReporter(reporterConfig, formatter.ColorableStdOut)
+	}
+
+	server, err := parallel_support.NewServer(suiteConfig.ParallelTotal, reporter)
 	if err != nil {
 		return fmt.Errorf("can't create parallel spec server: %w", err)
 	}

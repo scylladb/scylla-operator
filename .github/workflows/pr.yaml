@@ -55,12 +55,16 @@ jobs:
         - id: cluster-topology-sequential
           suite: kind-cluster-topology
           enable-parallel-node-operations: "false"
+        - id: helm-smoke
+          suite: kind-smoke
+          install-mode: helm
     uses: ./.github/workflows/_e2e-kind.yaml
     with:
       name: ${{ matrix.id }}
       suite: ${{ matrix.suite }}
       scylladb-image-ref: ${{ matrix.scylladb-image-ref }}
       enable-parallel-node-operations: ${{ matrix.enable-parallel-node-operations }}
+      install-mode: ${{ matrix.install-mode }}
 
   image:
     needs: detect-source-changes

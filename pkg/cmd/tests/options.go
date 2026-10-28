@@ -3,7 +3,6 @@ package tests
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	configassets "github.com/scylladb/scylla-operator/assets/config"
@@ -18,14 +17,9 @@ import (
 )
 
 const (
-	// https://github.com/distribution/reference/blob/8c942b0459dfdcc5b6685581dd0a5a470f615bff/regexp.go#L68
-	referenceTagRegexp = `[\w][\w.-]{0,127}`
-
-	// https://github.com/distribution/reference/blob/8c942b0459dfdcc5b6685581dd0a5a470f615bff/regexp.go#L81
-	digestRegexp = `[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}`
+	scyllaDBUpdateFromImageRefFlagKey  = "scylladb-update-from-image-ref"
+	scyllaDBUpgradeFromImageRefFlagKey = "scylladb-upgrade-from-image-ref"
 )
-
-var tagWithOptionalDigestRegexp = regexp.MustCompile("^" + referenceTagRegexp + "(?:@" + digestRegexp + ")?$")
 
 type IngressControllerOptions struct {
 	Address           string
@@ -74,8 +68,8 @@ type TestFrameworkOptions struct {
 	scyllaClusterOptions         *framework.ScyllaClusterOptions
 	ScyllaDBImageRef             string
 	ScyllaDBManagerAgentImageRef string
-	ScyllaDBUpdateFrom           string
-	ScyllaDBUpgradeFrom          string
+	ScyllaDBUpdateFromImageRef   string
+	ScyllaDBUpgradeFromImageRef  string
 	DryRun                       bool
 }
 
@@ -96,8 +90,6 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 		ObjectStorageOptions:         NewObjectStorageOptions(),
 		ScyllaDBImageRef:             framework.ScyllaDBImageRefForVersion(configassets.Project.Operator.ScyllaDBVersion),
 		ScyllaDBManagerAgentImageRef: fmt.Sprintf("%s:%s", configassets.ScyllaDBManagerAgentImageRepository, configassets.Project.Operator.ScyllaDBManagerAgentVersion),
-		ScyllaDBUpdateFrom:           configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
-		ScyllaDBUpgradeFrom:          configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
 	}
 }
 
@@ -146,8 +138,8 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	)))
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBImageRef, "scylladb-image-ref", "", o.ScyllaDBImageRef, "Image reference of ScyllaDB to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentImageRef, "scylladb-manager-agent-image-ref", "", o.ScyllaDBManagerAgentImageRef, "Image reference of ScyllaDB Manager Agent to use.")
-	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFrom, "scylladb-update-from-version", "", o.ScyllaDBUpdateFrom, "Version of ScyllaDB to update from.")
-	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFromImageRef, scyllaDBUpdateFromImageRefFlagKey, "", o.ScyllaDBUpdateFromImageRef, "Image reference of ScyllaDB to update from. Empty finds the highest lower version of the same minor in the default repository, and skips the update tests when there is none.")
+	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFromImageRef, scyllaDBUpgradeFromImageRefFlagKey, "", o.ScyllaDBUpgradeFromImageRef, "Image reference of ScyllaDB to upgrade from. Empty finds the highest version of the nearest lower minor in the default repository, and skips the upgrade tests when there is none.")
 }
 
 func (o *TestFrameworkOptions) Validate(args []string) error {
@@ -194,22 +186,20 @@ func (o *TestFrameworkOptions) Validate(args []string) error {
 		errors = append(errors, fmt.Errorf("invalid scylladb-image-ref format: %q: %w", o.ScyllaDBImageRef, err))
 	}
 
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpdateFrom) {
-		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-update-from-version format: %q. Expected format: <tag>[@<digest>]",
-			o.ScyllaDBUpdateFrom,
-		))
-	}
-
-	if !tagWithOptionalDigestRegexp.MatchString(o.ScyllaDBUpgradeFrom) {
-		errors = append(errors, fmt.Errorf(
-			"invalid scylladb-upgrade-from-version format: %q. Expected format: <tag>[@<digest>]",
-			o.ScyllaDBUpgradeFrom,
-		))
-	}
-
 	if _, _, err := framework.ImageRefToRepositoryVersion(o.ScyllaDBManagerAgentImageRef); err != nil {
 		errors = append(errors, fmt.Errorf("invalid scylladb-manager-agent-image-ref format: %q: %w", o.ScyllaDBManagerAgentImageRef, err))
+	}
+
+	if len(o.ScyllaDBUpdateFromImageRef) > 0 {
+		if _, _, err := framework.ImageRefToRepositoryVersion(o.ScyllaDBUpdateFromImageRef); err != nil {
+			errors = append(errors, fmt.Errorf("invalid scylladb-update-from-image-ref format: %q: %w", o.ScyllaDBUpdateFromImageRef, err))
+		}
+	}
+
+	if len(o.ScyllaDBUpgradeFromImageRef) > 0 {
+		if _, _, err := framework.ImageRefToRepositoryVersion(o.ScyllaDBUpgradeFromImageRef); err != nil {
+			errors = append(errors, fmt.Errorf("invalid scylladb-upgrade-from-image-ref format: %q: %w", o.ScyllaDBUpgradeFromImageRef, err))
+		}
 	}
 
 	if len(o.ArtifactsDir) > 0 {
@@ -279,10 +269,10 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		ScyllaDBRepository:                 scyllaDBRepository,
 		ScyllaDBVersion:                    scyllaDBVersion,
 		ScyllaDBManagerAgentImageRef:       o.ScyllaDBManagerAgentImageRef,
+		ScyllaDBUpdateFromImageRef:         o.ScyllaDBUpdateFromImageRef,
+		ScyllaDBUpgradeFromImageRef:        o.ScyllaDBUpgradeFromImageRef,
 		ScyllaDBManagerAgentRepository:     scyllaDBManagerAgentRepository,
 		ScyllaDBManagerAgentVersion:        scyllaDBManagerAgentVersion,
-		ScyllaDBUpdateFrom:                 o.ScyllaDBUpdateFrom,
-		ScyllaDBUpgradeFrom:                o.ScyllaDBUpgradeFrom,
 		ClusterObjectStorageSettings:       o.ClusterObjectStorageSettings,
 		WorkerClusterObjectStorageSettings: o.WorkerClusterObjectStorageSettings,
 	}

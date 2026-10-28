@@ -79,6 +79,12 @@ jobs:
             "clients-broadcast-address-type": "ServiceClusterIP"
           },
           {
+            "id": "parallel-ipv6",
+            "suite": "scylla-operator/conformance/parallel-ipv6",
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-dual-stack.yaml",
+            "object-storage": true
+          },
+          {
             "id": "serial",
             "suite": "scylla-operator/conformance/serial",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/gke-serial.yaml",

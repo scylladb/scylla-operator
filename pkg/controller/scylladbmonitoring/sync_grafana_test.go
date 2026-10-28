@@ -451,7 +451,7 @@ spec:
       volumes:
       - name: decompressed-configmaps
         emptyDir:
-          sizeLimit: 50Mi
+          sizeLimit: 200Mi
       - name: grafana-configs
         configMap:
           name: "sm-name-grafana-configs"
@@ -660,7 +660,7 @@ spec:
       volumes:
       - name: decompressed-configmaps
         emptyDir:
-          sizeLimit: 50Mi
+          sizeLimit: 200Mi
       - name: grafana-configs
         configMap:
           name: "sm-name-grafana-configs"
@@ -937,7 +937,7 @@ spec:
       volumes:
       - name: decompressed-configmaps
         emptyDir:
-          sizeLimit: 50Mi
+          sizeLimit: 200Mi
       - name: grafana-configs
         configMap:
           name: "sm-name-grafana-configs"

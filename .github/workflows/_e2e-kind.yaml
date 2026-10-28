@@ -110,6 +110,19 @@ jobs:
       - containers-storage:/var/lib/containers
     env:
       ARTIFACTS: /artifacts
+      # As set by the Makefile's KIND_CLUSTER_NAME.
+      CLUSTER_NAME: scylla-operator-e2e
+      SO_SUITE: ${{ inputs.suite }}
+      SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+      SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
+      SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
+      SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+      SO_INSTALL_MODE: ${{ inputs.install-mode }}
+      # Announces every spec as it starts, folds its output into its own log group once it finishes and annotates failures.
+      SO_E2E_GITHUB_OUTPUT: "true"
+      # Reports where a spec is stuck once it runs longer than the slowest specs normally take, and periodically after.
+      SO_E2E_POLL_PROGRESS_AFTER: 10m
+      SO_E2E_POLL_PROGRESS_INTERVAL: 5m
     steps:
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,29 +147,35 @@ jobs:
         # note: unlike the inotify limits, fs.aio-max-nr is global to the host kernel
         sysctl fs.aio-max-nr=30000000
 
-    - name: Run the e2e suite
-      env:
-        SO_SUITE: ${{ inputs.suite }}
-        SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
-        SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
-        SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
-        SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
-        SO_INSTALL_MODE: ${{ inputs.install-mode }}
+    - name: Set up the kind cluster
+      timeout-minutes: 30
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit
 
+        # Folds the preamble of the script until it starts a group of its own.
+        echo "::group::Prepare the environment"
+        export GHA_GROUP_OPEN="true"
+
+        ./hack/kind/cluster-setup.sh
+
+    - name: Run the e2e suite
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        # Folds the preamble of the script until it starts a group of its own.
+        echo "::group::Prepare the environment"
+        export GHA_GROUP_OPEN="true"
+
         # INT first so the suite can shut down and artifacts still get gathered; SIGKILL follows 10 minutes later.
-        timeout --verbose --signal=INT --kill-after=10m 120m make test-e2e-kind
+        timeout --verbose --signal=INT --kill-after=10m 120m ./hack/kind/run-e2e-tests.sh
 
     # Dumps the basic state of the kind cluster and its host into the artifacts. Meant for failures before the
     # suite starts, which leave no must-gather behind; the kind cluster dies with the job, so this collects while
     # it is still around. Every probe is best-effort.
     - name: Dump cluster state
       if: failure()
-      env:
-        # As set by the Makefile's KIND_CLUSTER_NAME.
-        CLUSTER_NAME: scylla-operator-e2e
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit

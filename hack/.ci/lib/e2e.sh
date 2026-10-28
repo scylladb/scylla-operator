@@ -188,6 +188,8 @@ EOF
 function gather-artifacts-on-exit {
   ec=$?
 
+  gha-group "Gather artifacts"
+
   gather-artifacts "${ARTIFACTS}/must-gather/cluster" &
   gather_artifacts_bg_pids=( $! )
 
@@ -293,6 +295,7 @@ function run-e2e {
   SO_E2E_PARALLELISM="${SO_E2E_PARALLELISM:-0}"
   SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
   SO_WAIT_FOR_E2E_POD_DELETE="${SO_WAIT_FOR_E2E_POD_DELETE:-false}"
+  SO_E2E_GITHUB_OUTPUT="${SO_E2E_GITHUB_OUTPUT:-false}"
   SCYLLADB_IMAGE_REF="${SCYLLADB_IMAGE_REF:-}"
 
   config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
@@ -413,7 +416,6 @@ function run-e2e {
     "--skip=${SO_SKIPPED_TESTS}"
     "--kubeconfig=/var/run/secrets/kubeconfig"
     "--loglevel=2"
-    "--color=false"
     "--artifacts-dir=/tmp/artifacts"
     "--parallelism=${SO_E2E_PARALLELISM}"
     "--timeout=${SO_E2E_TIMEOUT}"
@@ -460,6 +462,21 @@ function run-e2e {
 
   if [[ -n "${SO_FOCUS+x}" ]]; then
     e2e_command_args+=( "--focus=${SO_FOCUS}" )
+  fi
+
+  if [[ -n "${SO_E2E_POLL_PROGRESS_AFTER:-}" ]]; then
+    e2e_command_args+=( "--poll-progress-after=${SO_E2E_POLL_PROGRESS_AFTER}" )
+  fi
+
+  if [[ -n "${SO_E2E_POLL_PROGRESS_INTERVAL:-}" ]]; then
+    e2e_command_args+=( "--poll-progress-interval=${SO_E2E_POLL_PROGRESS_INTERVAL}" )
+  fi
+
+  # GitHub Actions renders colors, and the output formatted for it folds every spec into its own group.
+  if [[ "${SO_E2E_GITHUB_OUTPUT}" == "true" ]]; then
+    e2e_command_args+=( "--color=true" "--github-output" )
+  else
+    e2e_command_args+=( "--color=false" )
   fi
 
   if [[ -n "${SCYLLADB_IMAGE_REF}" ]]; then
@@ -555,8 +572,12 @@ $(printf '    - "%s"\n' "${e2e_command_args[@]}")
 EOF
   kubectl -n=e2e wait --for=condition=Ready pod/e2e
 
-  exit_code="$( wait-for-container-exit-with-logs e2e e2e e2e )"
+  # The suite output must stay outside of any group, as it may fold its own parts. The trace of waiting for it
+  # would only clutter it.
+  gha-endgroup
+  exit_code="$( { set +x; } 2>/dev/null; wait-for-container-exit-with-logs e2e e2e e2e )"
 
+  gha-group "Collect the e2e artifacts"
   kubectl_cp -n=e2e e2e:/tmp/artifacts -c=wait-for-artifacts "${ARTIFACTS}"
 
   ls -l "${ARTIFACTS}"

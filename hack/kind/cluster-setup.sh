@@ -13,6 +13,7 @@ readonly repo_root="$( dirname "${BASH_SOURCE[0]}" )/../.."
 
 source "${repo_root}/hack/kind/lib.sh"
 source "${repo_root}/hack/lib/assets.sh"
+source "${repo_root}/hack/lib/bash.sh"
 
 kind_node_image="$( get-config '.operatorTests.kindNodeImage' )"
 
@@ -23,6 +24,8 @@ if [ -z "${CLUSTER_NAME}" ]; then
   echo "CLUSTER_NAME must be set" > /dev/stderr
   exit 1
 fi
+
+gha-group "Create the kind cluster and the local registry"
 
 # If RECREATE is set to "true", delete any existing KinD cluster and Podman network.
 if [ "${RECREATE:-false}" == "true" ]; then
@@ -106,6 +109,7 @@ export SO_SCYLLACLUSTER_STORAGECLASS_NAME
 
 source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
 
+gha-group "Build and push the operator image"
 # Build and push operator image to the local registry (skips if SO_IMAGE is already set).
 build-and-push-operator-image "${repo_root}" SO_IMAGE
 
@@ -113,9 +117,11 @@ build-and-push-operator-image "${repo_root}" SO_IMAGE
 ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
 export ARTIFACTS
 
+gha-group "Deploy the operator stack"
 # Deploy the full operator stack (cert-manager, prometheus, haproxy-ingress, operator, scylla-manager).
 "${repo_root}/hack/ci-deploy.sh" "${SO_IMAGE}"
 
+gha-group "Deploy MinIO"
 # Deploy MinIO as the object storage for backup/restore e2e tests.
 minio_deploy_dir="${ARTIFACTS}/deploy/minio"
 mkdir -p "${minio_deploy_dir}"

@@ -46,7 +46,10 @@ worker_assets_dir=""
 trap 'WORKER_KUBECONFIGS=(); gather-artifacts-on-exit; rm -rf "${KUBECONFIG}" "${IN_CLUSTER_KUBECONFIG}" ${worker_assets_dir:+"${worker_assets_dir}"}' EXIT
 trap gracefully-shutdown-e2es INT
 
+gha-group "Build and push the operator image"
 build-and-push-operator-image "${repo_root}" SO_IMAGE
+
+gha-group "Prepare the e2e run"
 
 # Use 'standard' storage class that comes with KinD by default.
 SO_SCYLLACLUSTER_STORAGECLASS_NAME="standard"

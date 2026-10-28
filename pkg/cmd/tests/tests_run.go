@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -47,6 +48,8 @@ type RunOptions struct {
 	Timeout               time.Duration
 	Quiet                 bool
 	ShowProgress          bool
+	PollProgressAfter     time.Duration
+	PollProgressInterval  time.Duration
 	FlakeAttempts         int
 	FailFast              bool
 	LabelFilter           string
@@ -54,6 +57,7 @@ type RunOptions struct {
 	SkipStrings           []string
 	RandomSeed            int64
 	Color                 bool
+	GithubOutput          bool
 	Parallelism           int
 	ParallelShard         int
 	ParallelServerAddress string
@@ -61,6 +65,8 @@ type RunOptions struct {
 
 	TestSuites    ginkgotest.TestSuites
 	SelectedSuite *ginkgotest.TestSuite
+
+	githubReporter *githubReporter
 }
 
 func NewRunOptions(streams genericclioptions.IOStreams, testSuites ginkgotest.TestSuites, userAgent string) RunOptions {
@@ -69,6 +75,8 @@ func NewRunOptions(streams genericclioptions.IOStreams, testSuites ginkgotest.Te
 		Timeout:               24 * time.Hour,
 		Quiet:                 false,
 		ShowProgress:          true,
+		PollProgressAfter:     0,
+		PollProgressInterval:  0,
 		FlakeAttempts:         0,
 		FailFast:              false,
 		LabelFilter:           "",
@@ -76,6 +84,7 @@ func NewRunOptions(streams genericclioptions.IOStreams, testSuites ginkgotest.Te
 		SkipStrings:           []string{},
 		RandomSeed:            time.Now().Unix(),
 		Color:                 true,
+		GithubOutput:          false,
 		Parallelism:           0,
 		ParallelShard:         0,
 		ParallelServerAddress: "",
@@ -131,6 +140,8 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().DurationVarP(&o.Timeout, "timeout", "", o.Timeout, "If the overall suite(s) duration exceed this value, tests will be terminated.")
 	cmd.Flags().BoolVarP(&o.Quiet, "quiet", "", o.Quiet, "Reduces the tests output.")
 	cmd.Flags().BoolVarP(&o.ShowProgress, "progress", "", o.ShowProgress, "Shows progress during test run. Only applies to serial execution.")
+	cmd.Flags().DurationVarP(&o.PollProgressAfter, "poll-progress-after", "", o.PollProgressAfter, "Emits a progress report for every spec that runs longer than this, showing where it's stuck. Zero disables it.")
+	cmd.Flags().DurationVarP(&o.PollProgressInterval, "poll-progress-interval", "", o.PollProgressInterval, "Interval between the progress reports of a spec that runs longer than --poll-progress-after. Zero leaves Ginkgo's default.")
 	cmd.Flags().IntVarP(&o.FlakeAttempts, "flake-attempts", "", o.FlakeAttempts, "Retries a failed test up to N times. If it succeeds at least once the test will be considered a success.")
 	cmd.Flags().BoolVarP(&o.FailFast, "fail-fast", "", o.FailFast, "Stops execution after first failed test.")
 	cmd.Flags().StringVarP(&o.LabelFilter, "label-filter", "", o.LabelFilter, "Ginkgo label filter.")
@@ -139,6 +150,7 @@ func (o *RunOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Int64VarP(&o.RandomSeed, randomSeedFlagKey, "", o.RandomSeed, "Seed for the test suite.")
 	cmd.Flags().BoolVarP(&o.DryRun, "dry-run", "", o.DryRun, "Doesn't execute the tests, only prints. Limited to serial execution.")
 	cmd.Flags().BoolVarP(&o.Color, "color", "", o.Color, "Colors the output.")
+	cmd.Flags().BoolVarP(&o.GithubOutput, "github-output", "", o.GithubOutput, "Formats the output for GitHub Actions logs: announces every spec as it starts, folds its output into its own group once it finishes and annotates failures.")
 	cmd.Flags().IntVarP(&o.Parallelism, "parallelism", "", o.Parallelism, "Determines how many workers are going to run in parallel. If not specified or if zero, the default parallelism for the suite will be chosen.")
 	cmd.Flags().Int32Var(&o.ParallelLogLevel, "parallel-loglevel", o.ParallelLogLevel, "Set the level of log output for parallel processes (0-10).")
 	cmd.Flags().IntVarP(&o.ParallelShard, parallelShardFlagKey, "", o.ParallelShard, "")
@@ -208,6 +220,22 @@ func (o *RunOptions) Complete(args []string) error {
 }
 
 func (o *RunOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command) error {
+	// Parallel shards report to the parent process, which is the only one that formats the output.
+	if o.GithubOutput && o.ParallelShard == 0 {
+		o.githubReporter = newGithubReporter(newLineTrackingWriter(formatter.ColorableStdOut))
+		// The logs would otherwise go to stderr, which reaches the job log out of order with stdout, so some lines
+		// would end up in the wrong group. Raising the threshold keeps errors from being copied to stderr too.
+		klog.LogToStderr(false)
+		klog.SetOutput(o.githubReporter.out)
+		err := flag.CommandLine.Set("stderrthreshold", "FATAL")
+		if err != nil {
+			return fmt.Errorf("can't set the klog stderr threshold: %w", err)
+		}
+		// Folds the setup output, mostly the flags, until the suite begins.
+		o.githubReporter.startGroup("Test suite setup")
+		defer o.githubReporter.endGroup()
+	}
+
 	cmdutil.LogCommandStarting(cmd)
 	cliflag.PrintFlags(cmd.Flags())
 
@@ -235,6 +263,10 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 
 	suiteConfig.Timeout = o.Timeout
 	suiteConfig.EmitSpecProgress = o.ShowProgress
+	suiteConfig.PollProgressAfter = o.PollProgressAfter
+	if o.PollProgressInterval != 0 {
+		suiteConfig.PollProgressInterval = o.PollProgressInterval
+	}
 	suiteConfig.FlakeAttempts = o.FlakeAttempts + 1
 	if suiteConfig.FlakeAttempts > 1 {
 		klog.Infof("Flakes will be retried up to %d times.", suiteConfig.FlakeAttempts-1)
@@ -291,12 +323,25 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 	}
 
 	if suiteConfig.ParallelTotal <= 1 || o.ParallelShard != 0 {
+		// Ginkgo owns the reporter in serial runs, so they can't be formatted for GitHub Actions beyond the setup.
+		if o.githubReporter != nil {
+			o.githubReporter.endGroup()
+		}
+
 		if suiteConfig.ParallelTotal > 1 {
 			suiteConfig.ParallelHost = o.ParallelServerAddress
 			suiteConfig.ParallelProcess = o.ParallelShard
 
 			ginkgo.GinkgoWriter.TeeTo(os.Stdout)
 			defer ginkgo.GinkgoWriter.ClearTeeWriters()
+
+			if o.GithubOutput {
+				notifySpecStarted, err := newSpecStartedNotifier(o.ParallelServerAddress)
+				if err != nil {
+					return fmt.Errorf("can't set up the notifications about specs starting: %w", err)
+				}
+				ginkgo.ReportBeforeEach(notifySpecStarted)
+			}
 		}
 
 		klog.InfoS("Running specs")
@@ -308,9 +353,22 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		return nil
 	}
 
-	server, err := parallel_support.NewServer(suiteConfig.ParallelTotal, reporters.NewDefaultReporter(reporterConfig, formatter.ColorableStdOut))
+	var reporter reporters.Reporter
+	if o.githubReporter != nil {
+		// Skipped specs would only litter the log with their denoters; the suite's closing line counts them.
+		reporterConfig.SilenceSkips = true
+		o.githubReporter.Reporter = reporters.NewDefaultReporter(reporterConfig, o.githubReporter.out)
+		reporter = o.githubReporter
+	} else {
+		reporter = reporters.NewDefaultReporter(reporterConfig, formatter.ColorableStdOut)
+	}
+
+	server, err := parallel_support.NewServer(suiteConfig.ParallelTotal, reporter)
 	if err != nil {
 		return fmt.Errorf("can't create parallel spec server: %w", err)
+	}
+	if o.githubReporter != nil {
+		server.SetOutputDestination(o.githubReporter.outputDestination())
 	}
 	server.Start()
 	defer server.Close()
@@ -386,7 +444,7 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 			if err != nil && !errors.As(err, &exitError) {
 				errs[entryIndex] = fmt.Errorf("can't wait for command %q with args %q: %w", e.cmd.Path, e.cmd.Args, err)
 			}
-			klog.V(2).InfoS("Process finished", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String())
+			klog.V(3).InfoS("Process finished", "ID", e.id, "Command", e.cmd.String(), "ProcessState", e.cmd.ProcessState.String())
 		}()
 	}
 

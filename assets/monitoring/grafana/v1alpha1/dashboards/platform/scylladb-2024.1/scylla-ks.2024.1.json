@@ -62,6 +62,7 @@
                         "titleFormat": "Node Restart"
                     },
                     "name": "Stall Detector",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -88,6 +89,7 @@
                         "titleFormat": "Node Restart"
                     },
                     "name": "Schema Changed",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -106,14 +108,15 @@
             {
                 "kind": "AnnotationQuery",
                 "spec": {
-                    "enable": true,
+                    "enable": false,
                     "hide": false,
                     "iconColor": "#73BF69",
                     "legacyOptions": {
                         "tagKeys": "instance,dc,cluster",
                         "titleFormat": "Node Restart"
                     },
-                    "name": "Task",
+                    "name": "Manager Task",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -134,12 +137,40 @@
                 "spec": {
                     "enable": false,
                     "hide": false,
+                    "iconColor": "#73BF69",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
+                    "name": "Manager Task Failed",
+                    "placement": "inControlsMenu",
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "expr": "sum(changes(scylla_manager_task_run_total{status=\"ERROR\", cluster=\"$cluster\"}[$__rate_interval])) by(type)>0",
+                            "interval": "",
+                            "refId": "Anno"
+                        },
+                        "version": "v0"
+                    }
+                }
+            },
+            {
+                "kind": "AnnotationQuery",
+                "spec": {
+                    "enable": false,
+                    "hide": false,
                     "iconColor": "rgb(255, 176, 0, 128)",
                     "legacyOptions": {
                         "tagKeys": "instance,dc,cluster",
                         "titleFormat": "Node Restart"
                     },
                     "name": "Hints Write",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -156,14 +187,17 @@
                 }
             },
             {
-                "dashversion": [
-                    "<2025.1"
-                ],
                 "kind": "AnnotationQuery",
                 "spec": {
                     "enable": false,
                     "hide": false,
+                    "iconColor": "rgb(50, 176, 0, 128)",
+                    "legacyOptions": {
+                        "tagKeys": "instance,dc,cluster",
+                        "titleFormat": "Node Restart"
+                    },
                     "name": "Hints Sent",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -190,6 +224,7 @@
                         "titleFormat": "Node Restart"
                     },
                     "name": "MV",
+                    "placement": "inControlsMenu",
                     "query": {
                         "datasource": {
                             "name": "prometheus"
@@ -326,7 +361,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "avg(wlatencyp95ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                                                "expr": "avg(scylla_column_family_write_latency_summary{quantile=\"0.95\", by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -349,7 +384,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "avg(wlatencyp99ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                                                "expr": "avg(scylla_column_family_write_latency_summary{quantile=\"0.99\", by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -395,7 +430,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "avg(rlatencyp95ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                                                "expr": "avg(scylla_column_family_read_latency_summary{quantile=\"0.95\", by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -418,7 +453,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "avg(rlatencyp99ks{by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
+                                                "expr": "avg(scylla_column_family_read_latency_summary{quantile=\"0.99\", by=\"cluster\", cluster=\"$cluster\"}) by (ks)",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -792,7 +827,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "rlatencyp99ks{ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"} ",
+                                                "expr": "scylla_column_family_read_latency_summary{quantile=\"0.99\", ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack|^$\"} ",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -856,7 +891,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "\u00b5s"
                                 },
                                 "overrides": []
@@ -902,7 +945,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "avg(scylla_column_family_cache_hit_rate{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"}) by([[by]])",
+                                                "expr": "avg(scylla_column_family_cache_hit_rate{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}) by([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -966,7 +1009,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "percentunit"
                                 },
                                 "overrides": []
@@ -1012,7 +1063,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$func(scylla_column_family_total_disk_space{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"}) by([[by]])",
+                                                "expr": "$func(scylla_column_family_total_disk_space{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}) by([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1076,7 +1127,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "bytes"
                                 },
                                 "overrides": []
@@ -1122,7 +1181,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$func(scylla_column_family_live_disk_space{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"}) by([[by]])",
+                                                "expr": "$func(scylla_column_family_live_disk_space{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}) by([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1186,7 +1245,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "bytes"
                                 },
                                 "overrides": []
@@ -1232,7 +1299,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$func(scylla_column_family_live_sstable{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"}) by([[by]])",
+                                                "expr": "$func(scylla_column_family_live_sstable{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}) by([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1296,7 +1363,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -1342,7 +1417,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$func(scylla_column_family_tablet_count{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"}) by([[by]])",
+                                                "expr": "$func(scylla_column_family_tablet_count{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}) by([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -1406,7 +1481,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": ""
                                 },
                                 "overrides": []
@@ -1464,265 +1547,7 @@
                                     "showLineNumbers": false,
                                     "showMiniMap": false
                                 },
-                                "content": "<h1 style=\"color:#5780C1; border-bottom: 3px solid #5780C1;\">Your Panels</h1>",
-                                "mode": "html"
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-17": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "This graph panel was left empty on purpose for ad-hoc usage. Change it when needed. Pay attention that changes to the panel will not be saved.\n\nIf you do need a panel that can be saved, create a new dashboard, or edit the panel inside the json file",
-                    "id": 21,
-                    "links": [],
-                    "title": "Your Graph here",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "ops"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-18": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [
-                                {
-                                    "kind": "PanelQuery",
-                                    "spec": {
-                                        "hidden": false,
-                                        "query": {
-                                            "datasource": {
-                                                "name": "prometheus"
-                                            },
-                                            "group": "prometheus",
-                                            "kind": "DataQuery",
-                                            "spec": {
-                                                "expr": "",
-                                                "instant": false,
-                                                "intervalFactor": 1,
-                                                "legendFormat": "",
-                                                "range": true
-                                            },
-                                            "version": "v0"
-                                        },
-                                        "refId": "A"
-                                    }
-                                }
-                            ],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "This graph panel was left empty on purpose for ad-hoc usage. Change it when needed. Pay attention that changes to the panel will not be saved.\n\nIf you do need a panel that can be saved, create a new dashboard, or edit the panel inside the json file",
-                    "id": 22,
-                    "links": [],
-                    "title": "Your Graph here",
-                    "vizConfig": {
-                        "group": "timeseries",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {
-                                    "color": {
-                                        "mode": "palette-classic"
-                                    },
-                                    "custom": {
-                                        "axisBorderShow": false,
-                                        "axisCenteredZero": false,
-                                        "axisColorMode": "text",
-                                        "axisLabel": "",
-                                        "axisPlacement": "auto",
-                                        "axisSoftMin": 0,
-                                        "barAlignment": 0,
-                                        "barWidthFactor": 0.6,
-                                        "drawStyle": "line",
-                                        "fillOpacity": 0,
-                                        "gradientMode": "none",
-                                        "hideFrom": {
-                                            "legend": false,
-                                            "tooltip": false,
-                                            "viz": false
-                                        },
-                                        "insertNulls": false,
-                                        "lineInterpolation": "linear",
-                                        "lineWidth": 1,
-                                        "pointSize": 5,
-                                        "scaleDistribution": {
-                                            "type": "linear"
-                                        },
-                                        "showPoints": "never",
-                                        "showValues": false,
-                                        "spanNulls": false,
-                                        "stacking": {
-                                            "group": "A",
-                                            "mode": "none"
-                                        },
-                                        "thresholdsStyle": {
-                                            "mode": "off"
-                                        }
-                                    },
-                                    "thresholds": {},
-                                    "unit": "ops"
-                                },
-                                "overrides": []
-                            },
-                            "options": {
-                                "annotations": {
-                                    "clustering": -1,
-                                    "multiLane": false
-                                },
-                                "legend": {
-                                    "calcs": [],
-                                    "displayMode": "list",
-                                    "placement": "bottom",
-                                    "showLegend": false
-                                },
-                                "tooltip": {
-                                    "hideZeros": false,
-                                    "maxHeight": 600,
-                                    "mode": "multi",
-                                    "sort": "desc"
-                                }
-                            }
-                        },
-                        "version": "13.0.1"
-                    }
-                }
-            },
-            "panel-19": {
-                "kind": "Panel",
-                "spec": {
-                    "data": {
-                        "kind": "QueryGroup",
-                        "spec": {
-                            "queries": [],
-                            "queryOptions": {},
-                            "transformations": []
-                        }
-                    },
-                    "description": "",
-                    "id": 23,
-                    "links": [],
-                    "title": "",
-                    "transparent": true,
-                    "vizConfig": {
-                        "group": "text",
-                        "kind": "VizConfig",
-                        "spec": {
-                            "fieldConfig": {
-                                "defaults": {},
-                                "overrides": []
-                            },
-                            "options": {
-                                "code": {
-                                    "language": "plaintext",
-                                    "showLineNumbers": false,
-                                    "showMiniMap": false
-                                },
-                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.16.1</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
+                                "content": "<div style=\"color:#5780C1; border-bottom: 0px solid #5780C1;\">Scylla Monitoring version - 4.17.0-rc0</div> <div style=\"\"><a href=\"https://github.com/scylladb/scylla-monitoring/issues/new?body=scylla-version%3D[[scylla_version]]%0Amonitoring-version%3D[[monitoring_version]]%0Adashboard%3D${__dashboard.uid}\" target=\"_blank\">\n<input title=\"Report an issue with Scylla Monitoring\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;Report an issue on this page&nbsp;\"></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"render/d/${__dashboard.uid}?orgId=1&from=${__from}&to=${__to}&width=1600&height=-1&kiosk\" target=\"_blank\" download=\"dashboard_${__dashboard.uid}-${__from:date:iso}.png\"><input title=\"Make a Screenshot\" type=\"button\" style=\"background-color:#306EE6;color:white;border-radius: 15px;font-size:14px;line-height:22px;padding:2px\" value=\"&nbsp;&nbsp;&nbsp;Screenshot&nbsp;&nbsp;&nbsp;\"></input></a></span></div>",
                                 "mode": "html"
                             }
                         },
@@ -1794,7 +1619,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "wlatencyp95ks{ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
+                                                "expr": "scylla_column_family_write_latency_summary{quantile=\"0.95\", ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -1817,7 +1642,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "wlatencyp99ks{ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
+                                                "expr": "scylla_column_family_write_latency_summary{quantile=\"0.99\", ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -1863,7 +1688,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "rlatencyp95ks{ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
+                                                "expr": "scylla_column_family_read_latency_summary{quantile=\"0.95\", ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -1886,7 +1711,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "rlatencyp99ks{ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
+                                                "expr": "scylla_column_family_read_latency_summary{quantile=\"0.99\", ks=\"$ks\", cf=~\"$table\", by=\"cluster\", cluster=\"$cluster\"}",
                                                 "format": "table",
                                                 "instant": true,
                                                 "intervalFactor": 1,
@@ -2228,7 +2053,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$func(rate(scylla_column_family_write_latency_count{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "$func(rate(scylla_column_family_write_latency_count{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2292,7 +2117,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "wps"
                                 },
                                 "overrides": []
@@ -2338,7 +2171,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "wlatencyaks{ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|$^\",cluster=\"$cluster\", dc=~\"$dc\"}",
+                                                "expr": "scylla_column_family_write_latency_summary{quantile=\"0.5\", ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|$^\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack|^$\"}",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2402,7 +2235,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "\u00b5s"
                                 },
                                 "overrides": []
@@ -2448,7 +2289,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "wlatencyp95ks{ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"} ",
+                                                "expr": "scylla_column_family_write_latency_summary{quantile=\"0.95\", ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack|^$\"} ",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2512,7 +2353,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "\u00b5s"
                                 },
                                 "overrides": []
@@ -2558,7 +2407,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "wlatencyp99ks{ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"} ",
+                                                "expr": "scylla_column_family_write_latency_summary{quantile=\"0.99\", ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack|^$\"} ",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2622,7 +2471,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "\u00b5s"
                                 },
                                 "overrides": []
@@ -2668,7 +2525,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "$func(rate(scylla_column_family_read_latency_count{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\"}[$__rate_interval])) by ([[by]])",
+                                                "expr": "$func(rate(scylla_column_family_read_latency_count{ks=\"$ks\", cf=\"$table\", instance=~\"[[node]]\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}[$__rate_interval])) by ([[by]])",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2732,7 +2589,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "rps"
                                 },
                                 "overrides": []
@@ -2778,7 +2643,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "rlatencyaks{ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|$^\",cluster=\"$cluster\", dc=~\"$dc\"}",
+                                                "expr": "scylla_column_family_read_latency_summary{quantile=\"0.5\", ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|$^\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack|^$\"}",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2842,7 +2707,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "\u00b5s"
                                 },
                                 "overrides": []
@@ -2888,7 +2761,7 @@
                                             "group": "prometheus",
                                             "kind": "DataQuery",
                                             "spec": {
-                                                "expr": "rlatencyp95ks{ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\"} ",
+                                                "expr": "scylla_column_family_read_latency_summary{quantile=\"0.95\", ks=\"$ks\", cf=\"$table\", by=\"[[by]]\", instance=~\"[[node]]|^$\",cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack|^$\"} ",
                                                 "instant": false,
                                                 "intervalFactor": 1,
                                                 "legendFormat": "",
@@ -2952,7 +2825,15 @@
                                             "mode": "off"
                                         }
                                     },
-                                    "thresholds": {},
+                                    "thresholds": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {
+                                                "color": "green",
+                                                "value": null
+                                            }
+                                        ]
+                                    },
                                     "unit": "\u00b5s"
                                 },
                                 "overrides": []
@@ -3255,75 +3136,6 @@
                             },
                             "title": ""
                         }
-                    },
-                    {
-                        "kind": "RowsLayoutRow",
-                        "spec": {
-                            "collapse": false,
-                            "hideHeader": true,
-                            "layout": {
-                                "kind": "GridLayout",
-                                "spec": {
-                                    "items": [
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-17"
-                                                },
-                                                "height": 6,
-                                                "width": 12,
-                                                "x": 0,
-                                                "y": 0
-                                            }
-                                        },
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-18"
-                                                },
-                                                "height": 6,
-                                                "width": 12,
-                                                "x": 12,
-                                                "y": 0
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            "title": ""
-                        }
-                    },
-                    {
-                        "kind": "RowsLayoutRow",
-                        "spec": {
-                            "collapse": false,
-                            "hideHeader": true,
-                            "layout": {
-                                "kind": "GridLayout",
-                                "spec": {
-                                    "items": [
-                                        {
-                                            "kind": "GridLayoutItem",
-                                            "spec": {
-                                                "element": {
-                                                    "kind": "ElementReference",
-                                                    "name": "panel-19"
-                                                },
-                                                "height": 2,
-                                                "width": 24,
-                                                "x": 0,
-                                                "y": 0
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            "title": ""
-                        }
                     }
                 ]
             }
@@ -3365,7 +3177,7 @@
             "fiscalYearStartMonth": 0,
             "from": "now-6h",
             "hideTimepicker": false,
-            "timezone": "browser",
+            "timezone": "utc",
             "to": "now"
         },
         "title": "Keyspace",
@@ -3384,7 +3196,7 @@
                     "multi": false,
                     "name": "by",
                     "options": [],
-                    "query": "Cluster : cluster,DC : dc, Instance : instance",
+                    "query": "Cluster : cluster,DC : dc, Rack : dc\\,rack, Instance : instance",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }
@@ -3468,6 +3280,40 @@
                     "definition": "",
                     "hide": "dontHide",
                     "includeAll": true,
+                    "label": "rack",
+                    "multi": true,
+                    "name": "rack",
+                    "options": [],
+                    "query": {
+                        "datasource": {
+                            "name": "prometheus"
+                        },
+                        "group": "prometheus",
+                        "kind": "DataQuery",
+                        "spec": {
+                            "__legacyStringValue": "label_values(scylla_reactor_utilization{cluster=~\"$cluster\", dc=~\"$dc\"}, rack)"
+                        },
+                        "version": "v0"
+                    },
+                    "refresh": "onTimeRangeChanged",
+                    "regex": "",
+                    "regexApplyTo": "value",
+                    "skipUrlSync": false,
+                    "sort": "alphabeticalAsc"
+                }
+            },
+            {
+                "kind": "QueryVariable",
+                "spec": {
+                    "allValue": ".*",
+                    "allowCustomValue": true,
+                    "current": {
+                        "text": "All",
+                        "value": "$__all"
+                    },
+                    "definition": "",
+                    "hide": "dontHide",
+                    "includeAll": true,
                     "label": "node",
                     "multi": true,
                     "name": "node",
@@ -3479,7 +3325,7 @@
                         "group": "prometheus",
                         "kind": "DataQuery",
                         "spec": {
-                            "__legacyStringValue": "label_values(scylla_reactor_utilization{cluster=\"$cluster\", dc=~\"$dc\"}, instance)"
+                            "__legacyStringValue": "label_values(scylla_reactor_utilization{cluster=\"$cluster\", dc=~\"$dc\", rack=~\"$rack\"}, instance)"
                         },
                         "version": "v0"
                     },
@@ -3524,6 +3370,19 @@
                 }
             },
             {
+                "kind": "SwitchVariable",
+                "spec": {
+                    "current": "20",
+                    "description": "Show all tables instead of the 20 most active",
+                    "disabledValue": "20",
+                    "enabledValue": "100000",
+                    "hide": "dontHide",
+                    "label": "All tables",
+                    "name": "all_tables",
+                    "skipUrlSync": false
+                }
+            },
+            {
                 "kind": "QueryVariable",
                 "spec": {
                     "allValue": ".*",
@@ -3534,7 +3393,7 @@
                             "$__all"
                         ]
                     },
-                    "definition": "query_result(topk(20, sum by (cf) (rate(scylla_column_family_read_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0) + sum by (cf) (rate(scylla_column_family_write_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0)))",
+                    "definition": "query_result(topk($all_tables, sum by (cf) (rate(scylla_column_family_read_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0) + sum by (cf) (rate(scylla_column_family_write_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0)))",
                     "hide": "dontHide",
                     "includeAll": true,
                     "label": "table",
@@ -3549,7 +3408,7 @@
                         "kind": "DataQuery",
                         "spec": {
                             "qryType": 3,
-                            "query": "query_result(topk(20, sum by (cf) (rate(scylla_column_family_read_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0) + sum by (cf) (rate(scylla_column_family_write_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0)))"
+                            "query": "query_result(topk($all_tables, sum by (cf) (rate(scylla_column_family_read_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0) + sum by (cf) (rate(scylla_column_family_write_latency_count{cluster=\"$cluster\", ks=\"$ks\"}[${__range_s}s])or scylla_column_family_cache_hit_rate{cluster=\"$cluster\", ks=\"$ks\"}*0)))"
                         },
                         "version": "v0"
                     },
@@ -3563,6 +3422,7 @@
             {
                 "kind": "CustomVariable",
                 "spec": {
+                    "allowCustomValue": false,
                     "current": {
                         "tags": [],
                         "text": "Sum",
@@ -3639,15 +3499,15 @@
                 "spec": {
                     "allowCustomValue": true,
                     "current": {
-                        "text": "4.16.1",
-                        "value": "4.16.1"
+                        "text": "4.17.0-rc0",
+                        "value": "4.17.0-rc0"
                     },
                     "hide": "hideVariable",
                     "includeAll": false,
                     "multi": false,
                     "name": "monitoring_version",
                     "options": [],
-                    "query": "4.16.1",
+                    "query": "4.17.0-rc0",
                     "skipUrlSync": false,
                     "valuesFormat": "csv"
                 }

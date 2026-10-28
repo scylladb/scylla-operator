@@ -10,6 +10,16 @@
 - [1.19.2](#1192)
 - [Before 2026-03-11](#versions-released-before-2026-03-11)
 
+## Unreleased
+
+### Dependencies
+
+- Updated default ScyllaDB version (including `scyllaDBUtilsImage`) to `2026.4.0-rc0`.
+  [#3799](https://github.com/scylladb/scylla-operator/pull/3799)
+- Updated the embedded ScyllaDB Monitoring from `4.16.1` to `4.17.0-rc0`, adding the 2026.4 dashboards and moving the
+  bundled Grafana to `13.2.4` and Prometheus to `v3.15.1`.
+  [#3799](https://github.com/scylladb/scylla-operator/pull/3799)
+
 ## [1.23.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.23.0)
 
 Release date: 2026-10-26

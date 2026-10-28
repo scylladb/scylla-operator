@@ -69,10 +69,10 @@ type TestContextType struct {
 	ScyllaDBRepository                 string
 	ScyllaDBVersion                    string
 	ScyllaDBManagerAgentImageRef       string
+	ScyllaDBUpdateFromImageRef         string
+	ScyllaDBUpgradeFromImageRef        string
 	ScyllaDBManagerAgentRepository     string
 	ScyllaDBManagerAgentVersion        string
-	ScyllaDBUpdateFrom                 string
-	ScyllaDBUpgradeFrom                string
 	WorkerClusterObjectStorageSettings map[string]ClusterObjectStorageSettings
 	ClusterObjectStorageSettings       *ClusterObjectStorageSettings
 }

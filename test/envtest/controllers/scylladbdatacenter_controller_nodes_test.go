@@ -11,11 +11,9 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
 	"github.com/scylladb/scylla-operator/pkg/naming"
-	"github.com/scylladb/scylla-operator/pkg/test/unit"
 	"github.com/scylladb/scylla-operator/test/envtest"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -214,7 +212,7 @@ var _ = g.Describe("ScyllaDBDatacenter controller member nodes", func() {
 		}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
 
 		g.By(fmt.Sprintf("Running the first node of the %q rack at an older ScyllaDB version", otherRackName))
-		olderImage := unit.ScyllaDBImageRepository + ":" + configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom
+		olderImage := olderScyllaDBImage
 		olderVersion, err := naming.ImageToVersion(olderImage)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		setPodScyllaDBImage(ctx, env, naming.MemberServiceName(sdc.Spec.Racks[1], sdc, 0), olderImage)

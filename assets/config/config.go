@@ -29,16 +29,10 @@ type OperatorConfig struct {
 	PrometheusVersion               string `json:"prometheusVersion"`
 }
 
-type ScyllaDBTestVersions struct {
-	UpdateFrom  string `json:"updateFrom"`
-	UpgradeFrom string `json:"upgradeFrom"`
-}
-
 type OperatorTestsConfig struct {
-	ScyllaDBVersions         ScyllaDBTestVersions `json:"scyllaDBVersions"`
-	NodeSetupImage           string               `json:"nodeSetupImage"`
-	EnvTestKubernetesVersion string               `json:"envTestKubernetesVersion"`
-	KindNodeImage            string               `json:"kindNodeImage"`
+	NodeSetupImage           string `json:"nodeSetupImage"`
+	EnvTestKubernetesVersion string `json:"envTestKubernetesVersion"`
+	KindNodeImage            string `json:"kindNodeImage"`
 }
 
 type CertManagerConfig struct {

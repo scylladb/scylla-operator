@@ -40,7 +40,7 @@ runs:
       MANIFEST: ${{ inputs.manifest }}
       TIMEOUT: ${{ inputs.timeout }}
     run: |
-      source ./hack/.ci/lib/ci-provisioning.sh
+      source "${GITHUB_ACTION_PATH%%/.github/actions/*}/hack/.ci/lib/ci-provisioning.sh"
 
       # Both branches name every cluster's kubeconfig Secret `<object>-<cluster>-kubeconfig` and fill `locations` with
       # `<cluster>=<location>` entries, so everything after the case is kind-agnostic.

@@ -45,7 +45,7 @@ runs:
       MANIFEST: ${{ inputs.manifest }}
       TIMEOUT: ${{ inputs.timeout }}
     run: |
-      source ./hack/.ci/lib/ci-provisioning.sh
+      source "${GITHUB_ACTION_PATH%%/.github/actions/*}/hack/.ci/lib/ci-provisioning.sh"
 
       # ci-tools names the installer Job `<object>-openshift-create-cluster`, and Kubernetes copies the Job name into a
       # pod label capped at 63 characters. That leaves 38 for the object, too few for a name identifying the run, so the

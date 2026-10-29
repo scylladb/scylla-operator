@@ -18,7 +18,7 @@ on:
       jobs:
         description: >-
           JSON list of glob patterns matching the ids of the jobs to run, e.g. `["gke-parallel"]`, or `["!oke-*"]` for
-          every job but OKE ones, as `hack/.ci/select-jobs.sh` matches them. Runs every job when omitted.
+          every job but OKE ones, as the `select-jobs` action matches them. Runs every job when omitted.
         required: false
         type: string
       scylladb-image-ref:
@@ -60,10 +60,8 @@ jobs:
       with:
         persist-credentials: false
 
-    - id: plan
+    - id: jobs
       shell: bash
-      env:
-        JOBS: ${{ inputs.jobs }}
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit
@@ -161,14 +159,35 @@ jobs:
           printf -v "${platform}" '%s' \
             "$( jq -c --arg platform "${platform}" 'map(.id = "\($platform)-\(.id)")' <<< "${!platform}" )"
         done
-        mapfile -t ids < <( jq -sr 'add | .[].id' <<< "${gke} ${oke} ${openshift}" )
-        SELECTED="$( ./hack/.ci/select-jobs.sh "${JOBS:-[\"*\"]}" "${ids[@]}" )"
-        export SELECTED
+        {
+          echo "ids=$( jq -sc 'add | map(.id)' <<< "${gke} ${oke} ${openshift}" )"
+          echo "gke=$( jq -c --argjson defaults "${gke_defaults}" 'map($defaults + .)' <<< "${gke}" )"
+          echo "oke=${oke}"
+          echo "openshift=${openshift}"
+        } >> "${GITHUB_OUTPUT}"
+
+    - id: select
+      uses: ./.github/actions/select-jobs
+      with:
+        patterns: ${{ inputs.jobs || '["*"]' }}
+        ids: ${{ steps.jobs.outputs.ids }}
+
+    - id: plan
+      shell: bash
+      env:
+        SELECTED: ${{ steps.select.outputs.selected }}
+        GKE: ${{ steps.jobs.outputs.gke }}
+        OKE: ${{ steps.jobs.outputs.oke }}
+        OPENSHIFT: ${{ steps.jobs.outputs.openshift }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
         select='(env.SELECTED | fromjson) as $jobs | map(select(.id | IN($jobs[])))'
         {
-          echo "gke=$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )"
-          echo "oke=$( jq -c "${select}" <<< "${oke}" )"
-          echo "openshift=$( jq -c "${select}" <<< "${openshift}" )"
+          echo "gke=$( jq -c "${select}" <<< "${GKE}" )"
+          echo "oke=$( jq -c "${select}" <<< "${OKE}" )"
+          echo "openshift=$( jq -c "${select}" <<< "${OPENSHIFT}" )"
         } >> "${GITHUB_OUTPUT}"
 
   gke:

@@ -1,0 +1,33 @@
+name: Select jobs
+description: >-
+  Selects the ids that match a JSON list of glob patterns, as `select-jobs.sh` describes. Other repositories use this
+  action remotely, so it must not depend on anything outside its directory.
+
+inputs:
+  patterns:
+    description: JSON list of glob patterns, e.g. `["gke-*"]` or `["!gke-serial"]`.
+    required: false
+    default: '["*"]'
+  ids:
+    description: JSON list of the ids to select from.
+    required: true
+
+outputs:
+  selected:
+    description: JSON list of the selected ids.
+    value: ${{ steps.select.outputs.selected }}
+
+runs:
+  using: composite
+  steps:
+  - id: select
+    shell: bash
+    env:
+      PATTERNS: ${{ inputs.patterns }}
+      IDS: ${{ inputs.ids }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      mapfile -t ids < <( jq -r '.[]' <<< "${IDS}" )
+      echo "selected=$( "${GITHUB_ACTION_PATH}/select-jobs.sh" "${PATTERNS}" "${ids[@]}" )" >> "${GITHUB_OUTPUT}"

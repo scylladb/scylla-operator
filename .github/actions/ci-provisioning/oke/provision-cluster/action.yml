@@ -39,7 +39,7 @@ runs:
       CLOUD_INIT_PATH: ${{ inputs.cloud-init-path }}
       TIMEOUT: ${{ inputs.timeout }}
     run: |
-      source ./hack/.ci/lib/ci-provisioning.sh
+      source "${GITHUB_ACTION_PATH%%/.github/actions/*}/hack/.ci/lib/ci-provisioning.sh"
 
       # OCI enforces a 32-character maximum on the OKE cluster name, and truncating OBJECT_NAME to fit would cut
       # into the run id and attempt that make it unique, so this hashes it rather than trimming it.

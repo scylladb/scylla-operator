@@ -84,26 +84,34 @@ function install-operator() {
   SCYLLA_OPERATOR_FEATURE_GATES="${SCYLLA_OPERATOR_FEATURE_GATES:-AllAlpha=true,AllBeta=true}"
   export SCYLLA_OPERATOR_FEATURE_GATES
 
-  SO_SCYLLA_OPERATOR_INSTALL_MODE="${SO_SCYLLA_OPERATOR_INSTALL_MODE:-manifests}"
-  case "${SO_SCYLLA_OPERATOR_INSTALL_MODE}" in
+  SO_INSTALL_MODE="${SO_INSTALL_MODE:-manifests}"
+  case "${SO_INSTALL_MODE}" in
       "manifests")
           if [ -z "${OPERATOR_IMAGE_REF+x}" ]; then
-            echo "OPERATOR_IMAGE_REF must be set when SO_SCYLLA_OPERATOR_INSTALL_MODE is 'manifests'" > /dev/stderr
+            echo "OPERATOR_IMAGE_REF must be set when SO_INSTALL_MODE is 'manifests'" > /dev/stderr
             exit 1
           fi
 
           _install-operator-manifests
           ;;
+      "helm")
+          if [ -z "${OPERATOR_IMAGE_REF+x}" ]; then
+            echo "OPERATOR_IMAGE_REF must be set when SO_INSTALL_MODE is 'helm'" > /dev/stderr
+            exit 1
+          fi
+
+          _install-operator-helm
+          ;;
       "olm")
           if [ -z "${SO_OLM_CATALOG_IMAGE_REF+x}" ]; then
-              echo "SO_OLM_CATALOG_IMAGE_REF must be set when SO_SCYLLA_OPERATOR_INSTALL_MODE is 'olm'" > /dev/stderr
+              echo "SO_OLM_CATALOG_IMAGE_REF must be set when SO_INSTALL_MODE is 'olm'" > /dev/stderr
               exit 1
           fi
 
           _install-operator-olm
           ;;
       *)
-          echo "SO_SCYLLA_OPERATOR_INSTALL_MODE must be set to 'manifests' or 'olm'"
+          echo "SO_INSTALL_MODE must be set to 'manifests', 'helm' or 'olm'"
           exit 1
           ;;
   esac
@@ -184,6 +192,55 @@ EOF
   kubectl kustomize --load-restrictor=LoadRestrictionsNone "${ARTIFACTS_DEPLOY_DIR}/operator" | kubectl_create -n=scylla-operator -f=-
 }
 
+function _install-operator-helm() {
+  if [ -z "${OPERATOR_IMAGE_REF+x}" ]; then
+    echo "OPERATOR_IMAGE_REF must be set" > /dev/stderr
+    exit 1
+  fi
+
+  # The chart composes the image as "<repository>/scylla-operator:<tag>", so the ref has to be split around the
+  # image name. A digest ref gets a placeholder tag, as "<name>:<tag>@<digest>" is pulled by the digest.
+  local image_repository image_tag_or_digest
+  image_repository="${OPERATOR_IMAGE_REF%%/scylla-operator[:@]*}"
+  image_tag_or_digest="${OPERATOR_IMAGE_REF#"${image_repository}/scylla-operator"}"
+  case "${image_tag_or_digest}" in
+    :*)
+      image_tag_or_digest="${image_tag_or_digest#:}"
+      ;;
+    @*)
+      image_tag_or_digest="latest${image_tag_or_digest}"
+      ;;
+    *)
+      echo "OPERATOR_IMAGE_REF must name a 'scylla-operator' image, got '${OPERATOR_IMAGE_REF}'" > /dev/stderr
+      exit 1
+      ;;
+  esac
+
+  deploy-cert-manager "${SOURCE_ROOT}"
+
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}"/operator
+  cat > "${ARTIFACTS_DEPLOY_DIR}/operator/values.yaml" << EOF
+image:
+  repository: "${image_repository}"
+  tag: "${image_tag_or_digest}"
+replicas: 1
+webhookServerReplicas: 1
+logLevel: ${SO_SCYLLA_OPERATOR_LOGLEVEL}
+additionalArgs:
+- "--crypto-key-buffer-size-min=${SO_CRYPTO_KEY_BUFFER_SIZE_MIN}"
+- "--crypto-key-buffer-size-max=${SO_CRYPTO_KEY_BUFFER_SIZE_MAX}"
+- "--crypto-key-buffer-delay=${SO_CRYPTO_KEY_BUFFER_DELAY}"
+- "--qps=${SO_QPS}"
+- "--burst=${SO_BURST}"
+- "--feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}"
+EOF
+
+  helm upgrade --install scylla-operator "${SOURCE_ROOT}/helm/scylla-operator" \
+    --create-namespace \
+    --namespace=scylla-operator \
+    --values="${ARTIFACTS_DEPLOY_DIR}/operator/values.yaml"
+}
+
 function _install-operator-olm() {
   if [ -z "${SO_OLM_CATALOG_IMAGE_REF+x}" ]; then
     echo "SO_OLM_CATALOG_IMAGE_REF must be set" > /dev/stderr
@@ -238,4 +295,108 @@ patches:
 EOF
 
   kubectl kustomize --load-restrictor=LoadRestrictionsNone "${ARTIFACTS_DEPLOY_DIR}/olm" | kubectl_create -f=-
+}
+
+# install-scylladb-manager installs ScyllaDB Manager with the CI overrides applied from the environment, through the
+# method matching SO_INSTALL_MODE.
+# $1 - root source path to use.
+function install-scylladb-manager() {
+  if [[ "$#" -ne 1 ]]; then
+    echo "Missing arguments.\nUsage: ${FUNCNAME[0]} <source_root>" > /dev/stderr
+    exit 1
+  fi
+
+  if [ -z "${ARTIFACTS_DEPLOY_DIR+x}" ]; then
+    echo "ARTIFACTS_DEPLOY_DIR must be set" > /dev/stderr
+    exit 1
+  fi
+
+  # Don't run the manager's ScyllaCluster with the production cpuset and resources, so it doesn't take an exclusive
+  # core on the ScyllaDB nodes the e2e clusters share.
+  local scyllacluster_cpuset="false"
+  local scyllacluster_resources='{"limits": {"cpu": "200m", "memory": "200Mi"}, "requests": {"cpu": "10m", "memory": "100Mi"}}'
+
+  local scyllacluster_scylla_args=""
+  if [[ -n "${SO_SCYLLACLUSTER_REACTOR_BACKEND:-}" ]]; then
+    scyllacluster_scylla_args="--reactor-backend=${SO_SCYLLACLUSTER_REACTOR_BACKEND}"
+  fi
+
+  case "${SO_INSTALL_MODE:-manifests}" in
+      "manifests" | "olm")
+          _install-scylladb-manager-manifests "${1}"
+          ;;
+      "helm")
+          _install-scylladb-manager-helm "${1}"
+          ;;
+      *)
+          echo "SO_INSTALL_MODE must be set to 'manifests', 'helm' or 'olm'"
+          exit 1
+          ;;
+  esac
+}
+
+function _install-scylladb-manager-manifests() {
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}/manager"
+  cp "${1}"/deploy/manager/dev/*.yaml "${ARTIFACTS_DEPLOY_DIR}/manager"
+
+  yq e --inplace ".spec.cpuset = ${scyllacluster_cpuset} | .spec.datacenter.racks[0].resources = ${scyllacluster_resources}" "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+
+  if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
+    yq e --inplace '.spec.datacenter.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+    yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
+    yq e --inplace '.spec.version = env(SCYLLADB_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
+    yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
+    yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  if [[ -n "${scyllacluster_scylla_args}" ]]; then
+    yq e --inplace ".spec.scyllaArgs = \"${scyllacluster_scylla_args}\"" "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  fi
+
+  kubectl_create -f "${ARTIFACTS_DEPLOY_DIR}"/manager
+}
+
+function _install-scylladb-manager-helm() {
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}/manager"
+  local values="${ARTIFACTS_DEPLOY_DIR}/manager/values.yaml"
+  cp "${1}/helm/deploy/manager_prod.yaml" "${values}"
+
+  yq e --inplace ".scylla.cpuset = ${scyllacluster_cpuset} | .scylla.racks[0].resources = ${scyllacluster_resources}" "${values}"
+
+  if [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME:-}" ]]; then
+    yq e --inplace '.scylla.racks[0].storage.storageClassName = env(SO_SCYLLACLUSTER_STORAGECLASS_NAME)' "${values}"
+  elif [[ -n "${SO_SCYLLACLUSTER_STORAGECLASS_NAME+x}" ]]; then
+    yq e --inplace 'del(.scylla.racks[0].storage.storageClassName)' "${values}"
+  fi
+
+  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
+    yq e --inplace '.scylla.scyllaImage.tag = strenv(SCYLLADB_VERSION)' "${values}"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
+    yq e --inplace '.image.tag = strenv(SCYLLA_MANAGER_VERSION)' "${values}"
+  fi
+
+  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
+    yq e --inplace '.scylla.agentImage.tag = strenv(SCYLLA_MANAGER_AGENT_VERSION)' "${values}"
+  fi
+
+  if [[ -n "${scyllacluster_scylla_args}" ]]; then
+    yq e --inplace ".scylla.scyllaArgs = \"${scyllacluster_scylla_args}\"" "${values}"
+  fi
+
+  helm upgrade --install scylla-manager "${1}/helm/scylla-manager" \
+    --create-namespace \
+    --namespace=scylla-manager \
+    --values="${values}"
 }

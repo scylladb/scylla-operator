@@ -97,14 +97,12 @@ var Suites = ginkgotest.TestSuites{
 		DefaultParallelism: defaultParallelParallelism,
 	},
 	{
-		Name: "kind-operator-upgrade",
+		Name: "kind-smoke",
 		Description: templates.LongDesc(`
-		Tests that verify operator upgrade from a released version to the current one. Runs in CI outside of k8s
-		(requires kubectl, kubeconfig - scylla-operator docker image does not have kubectl).
-		Must be run from the repository root, as it invokes hack/ci-deploy.sh via a relative path.
+		A minimal set of tests verifying that an installed operator works, possible to be run on kind clusters.
 		`),
-		LabelFilter:        framework.SuiteOperatorUpgradeLabelName,
-		DefaultParallelism: 1,
+		LabelFilter:        framework.SuiteKindSmokeLabelName,
+		DefaultParallelism: defaultParallelParallelism,
 	},
 }
 

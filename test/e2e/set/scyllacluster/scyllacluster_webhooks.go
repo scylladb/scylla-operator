@@ -96,14 +96,14 @@ var _ = g.Describe("ScyllaCluster's admission webhook", framework.SuiteParallel,
 			o.Expect(warningCtx.CapturedWarning()).To(o.Equal(e.expectedWarning))
 		})
 	},
-		g.Entry("with acceptance and no warning when a valid ScyllaCluster", &entry{
+		g.Entry("with acceptance and no warning when a valid ScyllaCluster", framework.SuiteKindSmoke, &entry{
 			modifierFuncs: nil,
 			expectedErrMatcherFunc: func(_ *scyllav1.ScyllaCluster) o.OmegaMatcher {
 				return o.Not(o.HaveOccurred())
 			},
 			expectedWarning: "",
 		}),
-		g.Entry("with rejection and no warning when a ScyllaCluster with duplicated racks", &entry{
+		g.Entry("with rejection and no warning when a ScyllaCluster with duplicated racks", framework.SuiteKindSmoke, &entry{
 			modifierFuncs: []func(*scyllav1.ScyllaCluster){
 				duplicateRacks,
 			},

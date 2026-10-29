@@ -108,15 +108,12 @@ function run-deploy-script-in-all-clusters {
 # $1- target directory
 function gather-artifacts {
   if [ -z "${1+x}" ]; then
-    echo -e "Missing target directory.\nUsage: ${FUNCNAME[0]} target_directory [must_gather_image]" > /dev/stderr
+    echo -e "Missing target directory.\nUsage: ${FUNCNAME[0]} target_directory" > /dev/stderr
     exit 2
   fi
 
-  # The must-gather image defaults to SO_IMAGE, but callers may override it (e.g. the operator-upgrade
-  # test builds its own image and never sets SO_IMAGE).
-  local must_gather_image="${2:-${SO_IMAGE:-}}"
-  if [ -z "${must_gather_image}" ]; then
-    echo "must-gather image can't be empty (pass it as the second argument or set SO_IMAGE)" > /dev/stderr
+  if [ -z "${SO_IMAGE+x}" ]; then
+    echo "SO_IMAGE can't be empty" > /dev/stderr
     exit 2
   fi
 
@@ -141,7 +138,7 @@ spec:
     command:
     - /usr/bin/sleep
     - infinity
-    image: "${must_gather_image}"
+    image: "${SO_IMAGE}"
     imagePullPolicy: Always
     volumeMounts:
     - name: artifacts
@@ -154,7 +151,7 @@ spec:
     - --exclude-resource=PackageManifest.packages.operators.coreos.com
     - --loglevel=2
     - --dest-dir=/tmp/artifacts
-    image: "${must_gather_image}"
+    image: "${SO_IMAGE}"
     imagePullPolicy: Always
     volumeMounts:
     - name: artifacts
@@ -184,10 +181,7 @@ EOF
 function gather-artifacts-on-exit {
   ec=$?
 
-  # Optional must-gather image override forwarded to gather-artifacts; defaults to SO_IMAGE there.
-  local must_gather_image="${1:-}"
-
-  gather-artifacts "${ARTIFACTS}/must-gather/cluster" "${must_gather_image}" &
+  gather-artifacts "${ARTIFACTS}/must-gather/cluster" &
   gather_artifacts_bg_pids=( $! )
 
   for name in "${!WORKER_KUBECONFIGS[@]}"; do
@@ -197,7 +191,7 @@ function gather-artifacts-on-exit {
       continue
     fi
 
-    KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" gather-artifacts "${ARTIFACTS}/must-gather/workers/${name}" "${must_gather_image}" &
+    KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" gather-artifacts "${ARTIFACTS}/must-gather/workers/${name}" &
     gather_artifacts_bg_pids+=( $! )
   done
 
@@ -300,8 +294,6 @@ function run-e2e {
   SCYLLADB_MANAGER_AGENT_VERSION="${SCYLLADB_MANAGER_AGENT_VERSION:-$(yq '.operator.scyllaDBManagerAgentVersion' "$config_file")}"
   SCYLLADB_UPDATE_FROM_VERSION="${SCYLLADB_UPDATE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.updateFrom' "$config_file")}"
   SCYLLADB_UPGRADE_FROM_VERSION="${SCYLLADB_UPGRADE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.upgradeFrom' "$config_file")}"
-  OPERATOR_UPGRADE_FROM_VERSION="${OPERATOR_UPGRADE_FROM_VERSION:-$(yq '.operatorTests.operatorVersions.upgradeFrom' "$config_file")}"
-  OPERATOR_UPGRADE_TO_VERSION="${OPERATOR_UPGRADE_TO_VERSION:-$(yq '.operatorTests.operatorVersions.upgradeTo' "$config_file")}"
 
   kubectl create namespace e2e --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o=yaml | kubectl_create -f=-
@@ -423,8 +415,6 @@ function run-e2e {
     "--scylladb-manager-agent-version=${SCYLLADB_MANAGER_AGENT_VERSION}"
     "--scylladb-update-from-version=${SCYLLADB_UPDATE_FROM_VERSION}"
     "--scylladb-upgrade-from-version=${SCYLLADB_UPGRADE_FROM_VERSION}"
-    "--operator-upgrade-from-version=${OPERATOR_UPGRADE_FROM_VERSION}"
-    "--operator-upgrade-to-version=${OPERATOR_UPGRADE_TO_VERSION}"
   )
 
   if [[ -n "${worker_kubeconfigs_in_container_paths}" ]]; then

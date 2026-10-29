@@ -1,0 +1,71 @@
+name: Plan a release
+description: >-
+  Validates a version to release, finds the image a version that already has its tag was tested with, and decides
+  which rolling tags the image gets and whether the GitHub release is marked latest, as the scripts next to this action
+  describe. Needs `gh`, `git`, `jq` and `skopeo`. Other repositories use this action remotely, so it must not depend on
+  anything outside its directory.
+
+inputs:
+  version:
+    description: Version to release, without the `v` prefix.
+    required: true
+  allow-any-ref:
+    description: Allow creating the tag on a ref other than the release branch of the version's minor.
+    required: false
+    default: "false"
+  dev-image-repo-ref:
+    description: Repository the release pushes the tested image to, and the one a redispatch reads it from.
+    required: true
+
+outputs:
+  tag:
+    description: Git tag of the version, e.g. `v1.0.0`.
+    value: ${{ steps.parse-version.outputs.tag }}
+  minor:
+    description: Minor of the version, e.g. `1.0`.
+    value: ${{ steps.parse-version.outputs.minor }}
+  prerelease:
+    description: Whether the version is a prerelease, `true` or `false`.
+    value: ${{ steps.parse-version.outputs.prerelease }}
+  tag-exists:
+    description: Whether the tag exists already, i.e. whether this is a redispatch of a version that passed the gate.
+    value: ${{ steps.resolve-tag.outputs.tag-exists }}
+  image-ref:
+    description: Digest-pinned reference to the image the existing tag was tested with. Empty when the tag doesn't exist.
+    value: ${{ steps.resolve-tag.outputs.image-ref }}
+  rolling-tags:
+    description: Space-separated rolling image tags the version gets.
+    value: ${{ steps.compute-rolling-tags.outputs.rolling-tags }}
+  latest:
+    description: Whether the GitHub release is marked latest, `true` or `false`.
+    value: ${{ steps.compute-rolling-tags.outputs.latest }}
+
+runs:
+  using: composite
+  steps:
+  - name: Parse the version
+    id: parse-version
+    shell: bash
+    env:
+      VERSION: ${{ inputs.version }}
+    run: '"${GITHUB_ACTION_PATH}/parse-version.sh" "${VERSION}" >> "${GITHUB_OUTPUT}"'
+
+  - name: Resolve the tag
+    id: resolve-tag
+    shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ steps.parse-version.outputs.tag }}
+      MINOR: ${{ steps.parse-version.outputs.minor }}
+      DEV_IMAGE_REPO_REF: ${{ inputs.dev-image-repo-ref }}
+      ALLOW_ANY_REF: ${{ inputs.allow-any-ref }}
+    run: '"${GITHUB_ACTION_PATH}/resolve-tag.sh" "${GITHUB_REPOSITORY}" "${TAG}" "${MINOR}" "${GITHUB_REF}" "${DEV_IMAGE_REPO_REF}" "${ALLOW_ANY_REF}" >> "${GITHUB_OUTPUT}"'
+
+  - name: Compute the rolling tags
+    id: compute-rolling-tags
+    shell: bash
+    env:
+      TAG: ${{ steps.parse-version.outputs.tag }}
+      MINOR: ${{ steps.parse-version.outputs.minor }}
+      PRERELEASE: ${{ steps.parse-version.outputs.prerelease }}
+    run: '"${GITHUB_ACTION_PATH}/compute-rolling-tags.sh" "${GITHUB_REPOSITORY}" "${TAG}" "${MINOR}" "${PRERELEASE}" >> "${GITHUB_OUTPUT}"'

@@ -17,6 +17,7 @@ const (
 	SuiteKindFastLabelName                = "SuiteKindFast"
 	SuiteKindScyllaDBMonitoringLabelName  = "SuiteKindScyllaDBMonitoring"
 	SuiteKindClusterTopologyLabelName     = "SuiteKindClusterTopology"
+	SuiteKindSmokeLabelName               = "SuiteKindSmoke"
 )
 
 var (
@@ -27,6 +28,7 @@ var (
 	SuiteKindFast                = g.Label(SuiteKindFastLabelName)
 	SuiteKindScyllaDBMonitoring  = g.Label(SuiteKindScyllaDBMonitoringLabelName)
 	SuiteKindClusterTopology     = g.Label(SuiteKindClusterTopologyLabelName)
+	SuiteKindSmoke               = g.Label(SuiteKindSmokeLabelName)
 
 	// SuiteSerial bundles the Ginkgo serial-execution decorator with the
 	// suite label, so a single value is enough to mark a spec as part of the

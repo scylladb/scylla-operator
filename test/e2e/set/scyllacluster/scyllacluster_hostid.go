@@ -23,7 +23,7 @@ var _ = g.Describe("ScyllaCluster HostID", framework.SuiteParallel, framework.Su
 		f = framework.NewFramework(ctx, "scyllacluster")
 	})
 
-	g.It("should be reflected as a Service annotation", func() {
+	g.It("should be reflected as a Service annotation", framework.SuiteKindSmoke, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
 

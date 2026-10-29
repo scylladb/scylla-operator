@@ -33,6 +33,11 @@ on:
         required: false
         default: 90m
         type: string
+      install-mode:
+        description: How the operator and ScyllaDB Manager are installed, i.e. `SO_INSTALL_MODE` (`manifests` or `helm`). Empty falls back to `manifests`.
+        required: false
+        default: ""
+        type: string
   # The dispatch runs a single suite with the parameters below. The triggers keep separate input blocks by design,
   # so the workflow_call inputs above are mirrored here; both feed the same `inputs` context.
   workflow_dispatch:
@@ -66,6 +71,11 @@ on:
         description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
         required: false
         default: 90m
+        type: string
+      install-mode:
+        description: How the operator and ScyllaDB Manager are installed, i.e. `SO_INSTALL_MODE` (`manifests` or `helm`). Empty falls back to `manifests`.
+        required: false
+        default: ""
         type: string
 
 defaults:
@@ -131,6 +141,7 @@ jobs:
         SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
         SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
         SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+        SO_INSTALL_MODE: ${{ inputs.install-mode }}
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit

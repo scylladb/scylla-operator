@@ -62,9 +62,15 @@ kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress.ya
 
 install-operator "$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../" )"
 
-# Wait for operator and webhook server to roll out.
-# The manager deployed below needs the ScyllaCluster CRD registered.
-wait-for-scylla-operator-rollout
+# Wait for operator and webhook server to roll out
+wait-for-object-creation scylla-operator deployment.apps/scylla-operator 5m
+kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+wait-for-object-creation scylla-operator deployment.apps/webhook-server 5m
+kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
+
+# Manager needs scylla CRD registered
+wait-for-object-creation scylla-operator crd/scyllaclusters.scylla.scylladb.com 5m
+kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
 
 if [[ -z "${SO_NODECONFIG_PATH:-}" ]]; then
   echo "Skipping NodeConfig creation"
@@ -85,7 +91,7 @@ if [[ "${SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT}" == "true" ]]; then
 else
   install-scylladb-manager "$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../" )"
 
-  wait-for-scyllacluster-rollout scylla-manager scylla-manager-cluster
+  kubectl -n=scylla-manager wait --timeout=10m --for='condition=Progressing=False' --for='condition=Degraded=False' --for='condition=Available=True' scyllaclusters.scylla.scylladb.com/scylla-manager-cluster
   kubectl -n scylla-manager rollout status --timeout=10m deployment.apps/scylla-manager
 fi
 

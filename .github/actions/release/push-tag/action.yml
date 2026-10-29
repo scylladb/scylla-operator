@@ -1,0 +1,46 @@
+name: Push a release tag
+description: >-
+  Pushes an annotated version tag recording the digest of the tested image in an `Image-Digest:` trailer, which a
+  redispatch of the release reads to publish that image. The job needs the `contents: write` permission. Other
+  repositories use this action remotely, so it must not depend on anything outside its directory.
+
+inputs:
+  tag:
+    description: Tag to push, e.g. `v1.0.0`.
+    required: true
+  image-ref:
+    description: Digest-pinned reference to the tested image.
+    required: true
+  sha:
+    description: Commit to tag.
+    required: false
+    default: ${{ github.sha }}
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      IMAGE_REF: ${{ inputs.image-ref }}
+      SHA: ${{ inputs.sha }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      if [[ "${IMAGE_REF}" != *@sha256:* ]]; then
+        echo "Error: Image '${IMAGE_REF}' isn't pinned by digest." >&2
+        exit 1
+      fi
+
+      message="$( printf '%s\n\nImage-Digest: %s' "${TAG}" "${IMAGE_REF#*@}" )"
+      tag_object_sha="$( gh api --method POST "repos/${GITHUB_REPOSITORY}/git/tags" \
+      --raw-field tag="${TAG}" \
+      --raw-field message="${message}" \
+      --raw-field object="${SHA}" \
+      --raw-field type=commit \
+      --jq .sha )"
+      gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+      --raw-field ref="refs/tags/${TAG}" \
+      --raw-field sha="${tag_object_sha}"

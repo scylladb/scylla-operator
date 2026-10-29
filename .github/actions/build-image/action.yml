@@ -1,0 +1,84 @@
+name: Build an image
+description: >-
+  Builds an image for a single architecture from the checked out repository and pushes it by digest only, recording the
+  revision it was built from. Uploads the digest as an artifact for `create-manifest-list` to assemble the per
+  architecture images into a manifest list, following
+  https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners. Needs push
+  access to the repository, e.g. from `write-registry-auth`. Other repositories use this action remotely, so it must
+  not depend on anything outside its directory.
+
+inputs:
+  image-repo-ref:
+    description: Repository to push the image to.
+    required: true
+  file:
+    description: Path to the Dockerfile. Defaults to `Dockerfile` in the build context.
+    required: false
+    default: ""
+  context:
+    description: Build context.
+    required: false
+    default: .
+  arch:
+    description: Architecture to build for, e.g. `amd64`. The runner should be native to it.
+    required: true
+  cache-scope:
+    description: >-
+      Scope of the build cache. The builds of different images or architectures produce different layers, so each
+      needs a scope of its own.
+    required: true
+  digest-artifact-name:
+    description: Name of the artifact to upload the digest as.
+    required: true
+  revision:
+    description: Revision to record in the `org.opencontainers.image.revision` label.
+    required: false
+    default: ${{ github.sha }}
+
+outputs:
+  digest:
+    description: Digest of the pushed image.
+    value: ${{ steps.build.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+  - name: Set up Docker Buildx
+    uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+  - name: Build and push
+    id: build
+    uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+    with:
+      context: ${{ inputs.context }}
+      file: ${{ inputs.file }}
+      platforms: linux/${{ inputs.arch }}
+      labels: org.opencontainers.image.revision=${{ inputs.revision }}
+      outputs: type=image,name=${{ inputs.image-repo-ref }},push-by-digest=true,name-canonical=true,push=true
+      # The slow layer is the build in the builder stage, which only mode=max exports. A failure to export the cache
+      # shouldn't fail the image.
+      cache-from: type=gha,scope=${{ inputs.cache-scope }}
+      cache-to: type=gha,scope=${{ inputs.cache-scope }},mode=max,ignore-error=true
+
+  - name: Export the digest
+    id: export
+    shell: bash
+    env:
+      DIGEST: ${{ steps.build.outputs.digest }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      digests_dir="$( mktemp -d -p "${RUNNER_TEMP}" )"
+      touch "${digests_dir}/${DIGEST#sha256:}"
+      echo "path=${digests_dir}" >> "${GITHUB_OUTPUT}"
+
+  - name: Upload the digest
+    uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+    with:
+      name: ${{ inputs.digest-artifact-name }}
+      path: ${{ steps.export.outputs.path }}/*
+      if-no-files-found: error
+      retention-days: 7
+      # A re-run of a build leg replaces the digest the earlier attempt left behind.
+      overwrite: true

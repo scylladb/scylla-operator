@@ -1,0 +1,32 @@
+name: Promote an image
+description: >-
+  Copies a tested image to a repository under the version and rolling tags, as `promote-image.sh` describes. Needs
+  `skopeo`, e.g. from the `kube-tools` image, and push access to the repository, e.g. from `write-registry-auth`. Other
+  repositories use this action remotely, so it must not depend on anything outside its directory.
+
+inputs:
+  source-image-ref:
+    description: Digest-pinned reference to the image to copy.
+    required: true
+  image-repo-ref:
+    description: Repository to copy the image to.
+    required: true
+  version:
+    description: Version to tag the image with.
+    required: true
+  rolling-tags:
+    description: Space-separated rolling tags to tag the image with too.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+  # The rolling tags are a space-separated list, split into arguments on purpose.
+  - shell: bash
+    env:
+      SOURCE_IMAGE_REF: ${{ inputs.source-image-ref }}
+      IMAGE_REPO_REF: ${{ inputs.image-repo-ref }}
+      VERSION: ${{ inputs.version }}
+      ROLLING_TAGS: ${{ inputs.rolling-tags }}
+    run: '"${GITHUB_ACTION_PATH}/promote-image.sh" "${SOURCE_IMAGE_REF}" "${IMAGE_REPO_REF}" "${VERSION}" ${ROLLING_TAGS}'

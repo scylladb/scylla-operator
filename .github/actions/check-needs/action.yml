@@ -1,0 +1,27 @@
+name: Check needs
+description: >-
+  Fails when a job in `needs` failed or was cancelled. Skipped jobs pass. Lets a single job with `if: always()` stand
+  for all the jobs it needs, e.g. as the one check a merge gate requires. Other repositories use this action remotely,
+  so it must not depend on anything outside its directory.
+
+inputs:
+  needs:
+    description: The `needs` context of the job, as `toJSON(needs)`.
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      NEEDS: ${{ inputs.needs }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      failed="$( jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | "\(.key): \(.value.result)"' <<< "${NEEDS}" )"
+      if [[ -n "${failed}" ]]; then
+        echo "Some jobs failed or were cancelled:" >&2
+        echo "${failed}" >&2
+        exit 1
+      fi

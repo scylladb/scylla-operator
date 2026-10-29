@@ -1,0 +1,59 @@
+name: Create a GitHub release
+description: >-
+  Creates the GitHub release of a version, linking its image and its section of the changelog. Leaves a release that
+  exists unchanged, since it may have been edited since. The job needs the `contents: write` permission. Other
+  repositories use this action remotely, so it must not depend on anything outside its directory.
+
+inputs:
+  version:
+    description: Version, without the `v` prefix.
+    required: true
+  tag:
+    description: Git tag of the version.
+    required: true
+  prerelease:
+    description: Whether the version is a prerelease, `true` or `false`.
+    required: true
+  latest:
+    description: Whether to mark the release latest, `true` or `false`.
+    required: true
+  image-repo-ref:
+    description: Repository of the released image, for the release notes.
+    required: true
+
+runs:
+  using: composite
+  steps:
+  # Prereleases link to the top of the changelog, since their section doesn't exist yet. The anchor of a version's
+  # section is the version without dots, e.g. 1201 for 1.20.1.
+  - shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+      TAG: ${{ inputs.tag }}
+      PRERELEASE: ${{ inputs.prerelease }}
+      LATEST: ${{ inputs.latest }}
+      IMAGE_REPO_REF: ${{ inputs.image-repo-ref }}
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" > /dev/null; then
+        echo "::notice::Release '${TAG}' already exists, leaving it unchanged."
+        exit 0
+      fi
+
+      changelog_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/master/CHANGELOG.md"
+      if [[ "${PRERELEASE}" == "false" ]]; then
+        changelog_url+="#${VERSION//./}"
+      fi
+      notes_file="$( mktemp -p "${RUNNER_TEMP}" )"
+      printf '## Docker Image\n\n```\n%s:%s\n```\n\n## Changelog\n\n%s\n' "${IMAGE_REPO_REF}" "${VERSION}" "${changelog_url}" > "${notes_file}"
+
+      gh release create "${TAG}" \
+      --repo "${GITHUB_REPOSITORY}" \
+      --verify-tag \
+      --title "${TAG}" \
+      --notes-file "${notes_file}" \
+      --prerelease="${PRERELEASE}" \
+      --latest="${LATEST}"

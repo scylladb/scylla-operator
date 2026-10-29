@@ -1,0 +1,36 @@
+name: Certify an image
+description: >-
+  Runs the Red Hat certification preflight checks for an image against its certification component and, when asked to,
+  submits the results, as `certify-image.sh` describes. Needs `preflight`, `skopeo`, `jq` and `curl`, e.g. from the
+  `kube-tools` image. Other repositories use this action remotely, so it must not depend on anything outside its
+  directory.
+
+inputs:
+  image-repo-ref:
+    description: Repository of the image to check.
+    required: true
+  image-tag:
+    description: Tag of the image to check. Pyxis records it with the results.
+    required: true
+  component-id:
+    description: ID of the image's Red Hat certification component.
+    required: true
+  submit:
+    description: Whether to submit the results to Red Hat.
+    required: false
+    default: "false"
+  pyxis-api-token:
+    description: Red Hat Container API key. It selects the component's policy and, with submit, submits the results.
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      IMAGE_REPO_REF: ${{ inputs.image-repo-ref }}
+      IMAGE_TAG: ${{ inputs.image-tag }}
+      COMPONENT_ID: ${{ inputs.component-id }}
+      SUBMIT: ${{ inputs.submit }}
+      PFLT_PYXIS_API_TOKEN: ${{ inputs.pyxis-api-token }}
+    run: '"${GITHUB_ACTION_PATH}/certify-image.sh" "${IMAGE_REPO_REF}" "${IMAGE_TAG}" "${COMPONENT_ID}"'

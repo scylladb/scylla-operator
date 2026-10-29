@@ -23,7 +23,7 @@ spec:
     ]
     {{- end }}
   scyllaDBManagerAgent:
-    image: "{{ .scyllaDBManagerAgentRepository }}:{{ .scyllaDBManagerVersion }}"
+    image: "{{ .scyllaDBManagerAgentImageRef }}"
   exposeOptions:
     nodeService:
       type: {{ .nodeServiceType }}

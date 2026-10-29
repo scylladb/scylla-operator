@@ -21,6 +21,21 @@ on:
           every job but OKE ones, as `hack/.ci/select-jobs.sh` matches them. Runs every job when omitted.
         required: false
         type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
     secrets:
       ci-provisioners-kubeconfig:
         description: Kubeconfig of the cluster to create the CI provisioning objects in.
@@ -122,24 +137,22 @@ jobs:
             "suite": "scylla-operator/conformance/serial"
           }
         ]'
-        openshift_defaults='{
-          "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws.yaml",
-          "object-storage": false,
-          "storageclass-name": "scylladb-local-xfs",
-          "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig-openshift-aws.yaml"
-        }'
         openshift='[
           {
             "id": "aws-parallel",
             "suite": "scylla-operator/conformance/parallel/openshift",
-            "object-storage": true
+            "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws.yaml",
+            "object-storage": true,
+            "storageclass-name": "scylladb-local-xfs",
+            "nodeconfig-path": "./hack/.ci/manifests/cluster/nodeconfig-openshift-aws.yaml"
           },
           {
             "id": "aws-serial",
             "suite": "scylla-operator/conformance/serial",
             "cluster-manifest": "./hack/.ci/manifests/ci-clusters/openshift-aws-serial.yaml",
-            "nodeconfig-path": "",
-            "storageclass-name": ""
+            "object-storage": false,
+            "storageclass-name": "",
+            "nodeconfig-path": ""
           }
         ]'
 
@@ -155,7 +168,7 @@ jobs:
         {
           echo "gke=$( jq -c --argjson defaults "${gke_defaults}" "${select} | map(\$defaults + .)" <<< "${gke}" )"
           echo "oke=$( jq -c "${select}" <<< "${oke}" )"
-          echo "openshift=$( jq -c --argjson defaults "${openshift_defaults}" "${select} | map(\$defaults + .)" <<< "${openshift}" )"
+          echo "openshift=$( jq -c "${select}" <<< "${openshift}" )"
         } >> "${GITHUB_OUTPUT}"
 
   gke:
@@ -173,6 +186,9 @@ jobs:
       name: ${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
       suite: ${{ matrix.suite }}
+      scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+      scylladb-manager-image-ref: ${{ inputs.scylladb-manager-image-ref }}
+      scylladb-manager-agent-image-ref: ${{ inputs.scylladb-manager-agent-image-ref }}
       cluster-manifest: ${{ matrix.cluster-manifest }}
       object-storage: ${{ matrix.object-storage }}
       storageclass-name: ${{ matrix.storageclass-name }}
@@ -198,6 +214,9 @@ jobs:
       name: ${{ matrix.id }}
       image-ref: ${{ inputs.image-ref }}
       suite: ${{ matrix.suite }}
+      scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+      scylladb-manager-image-ref: ${{ inputs.scylladb-manager-image-ref }}
+      scylladb-manager-agent-image-ref: ${{ inputs.scylladb-manager-agent-image-ref }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.ci-provisioners-kubeconfig }}
 
@@ -217,6 +236,9 @@ jobs:
       image-ref: ${{ inputs.image-ref }}
       olm-catalog-image-ref: ${{ inputs.olm-catalog-image-ref }}
       suite: ${{ matrix.suite }}
+      scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+      scylladb-manager-image-ref: ${{ inputs.scylladb-manager-image-ref }}
+      scylladb-manager-agent-image-ref: ${{ inputs.scylladb-manager-agent-image-ref }}
       cluster-manifest: ${{ matrix.cluster-manifest }}
       object-storage: ${{ matrix.object-storage }}
       storageclass-name: ${{ matrix.storageclass-name }}

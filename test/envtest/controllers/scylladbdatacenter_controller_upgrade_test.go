@@ -14,7 +14,6 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	configassets "github.com/scylladb/scylla-operator/assets/config"
 	scyllav1alpha1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1alpha1"
 	"github.com/scylladb/scylla-operator/pkg/controller/scylladbdatacenter"
 	"github.com/scylladb/scylla-operator/pkg/internalapi"
@@ -27,6 +26,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apimachineryutilsets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
+)
+
+const (
+	// The controller runs the upgrade hooks when the minor changes. The images are never pulled, so the versions don't
+	// have to follow the default one.
+	olderScyllaDBImage = unit.ScyllaDBImageRepository + ":2026.2.0"
+	newerScyllaDBImage = unit.ScyllaDBImageRepository + ":2026.3.0"
 )
 
 // The upgrade hooks talk to the ScyllaDB API of every node, so the controller runs against a fake one and the member
@@ -47,8 +53,8 @@ var _ = g.Describe("ScyllaDBDatacenter controller upgrade", func() {
 		systemKeyspaces := []string{"system", "system_schema"}
 		dataKeyspaces := []string{"ks1", "ks2"}
 
-		fromImage := unit.ScyllaDBImageRepository + ":" + configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom
-		toImage := unit.ScyllaDBImageRepository + ":" + configassets.Project.Operator.ScyllaDBVersion
+		fromImage := olderScyllaDBImage
+		toImage := newerScyllaDBImage
 		fromVersion, err := naming.ImageToVersion(fromImage)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		toVersion, err := naming.ImageToVersion(toImage)

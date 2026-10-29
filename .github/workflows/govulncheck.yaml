@@ -1,6 +1,7 @@
 name: govulncheck
 
 on:
+  pull_request:
   schedule:
     - cron: '0 7 * * MON-FRI'
   workflow_dispatch:
@@ -26,6 +27,9 @@ jobs:
     outputs:
       branches: ${{ steps.branches.outputs.branches }}
     steps:
+      - name: Fail on purpose
+        run: exit 1
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,7 +82,7 @@ jobs:
 
   report-failure:
     needs: govulncheck
-    if: ${{ failure() && github.event_name == 'schedule' }}
+    if: ${{ failure() && (github.event_name == 'schedule' || github.event_name == 'pull_request') }}
     runs-on: hosted-runners-standard-pool
     timeout-minutes: 5
     steps:

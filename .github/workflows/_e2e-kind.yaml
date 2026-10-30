@@ -16,6 +16,16 @@ on:
         required: false
         default: ""
         type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
       enable-parallel-node-operations:
         description: >-
           Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the
@@ -23,28 +33,22 @@ on:
         required: false
         default: ""
         type: string
-      parallelism:
-        description: Test parallelism within the suite. 0 falls back to the suite's default.
-        required: false
-        default: 0
-        type: number
-      e2e-timeout:
-        description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
-        required: false
-        default: 90m
-        type: string
       install-mode:
         description: How the operator and ScyllaDB Manager are installed, i.e. `SO_INSTALL_MODE` (`manifests` or `helm`). Empty falls back to `manifests`.
         required: false
         default: ""
         type: string
   # The dispatch runs a single suite with the parameters below. The triggers keep separate input blocks by design,
-  # so the workflow_call inputs above are mirrored here; both feed the same `inputs` context.
+  # so the workflow_call inputs above are mirrored here, except `name` is optional: a dispatch is otherwise named after
+  # its suite. Both feed the same `inputs` context.
   workflow_dispatch:
     inputs:
       name:
-        description: Short slug identifying this run among the kind e2e suites, e.g. `fast`. Used for the job name and the artifact name.
-        required: true
+        description: >-
+          Short slug telling this run apart from other dispatches of the suite, e.g. `rc0`. Used for the run name, the
+          job name and the artifact name. Empty names them after the suite alone.
+        required: false
+        default: ""
         type: string
       suite:
         description: Name of the `scylla-operator-tests` suite to run, e.g. `kind-fast`.
@@ -55,6 +59,16 @@ on:
         required: false
         default: ""
         type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
       enable-parallel-node-operations:
         description: >-
           Overrides ScyllaCluster's `enableParallelNodeOperations` in the suite ("true"/"false"). Empty leaves the
@@ -62,21 +76,13 @@ on:
         required: false
         default: ""
         type: string
-      parallelism:
-        description: Test parallelism within the suite. 0 falls back to the suite's default.
-        required: false
-        default: 0
-        type: number
-      e2e-timeout:
-        description: Timeout for the e2e suite itself, as a duration accepted by `scylla-operator-tests`.
-        required: false
-        default: 90m
-        type: string
       install-mode:
         description: How the operator and ScyllaDB Manager are installed, i.e. `SO_INSTALL_MODE` (`manifests` or `helm`). Empty falls back to `manifests`.
         required: false
         default: ""
         type: string
+
+run-name: "E2E: KinD ${{ inputs.suite }}${{ inputs.name && format(' ({0})', inputs.name) || '' }} on ${{ github.ref_name }}"
 
 defaults:
   run:
@@ -97,7 +103,7 @@ env:
 
 jobs:
   e2e:
-    name: ${{ inputs.name }}
+    name: ${{ inputs.name || inputs.suite }}
     runs-on: hosted-runners-standard-pool
     timeout-minutes: 150
     # The privileged kube-tools container hosts the kind cluster, and every step of the job runs inside it.
@@ -111,6 +117,17 @@ jobs:
     env:
       ARTIFACTS: /artifacts
     steps:
+    # Suite names can contain slashes, which upload-artifact rejects in artifact names.
+    - name: Name the artifacts
+      id: artifacts
+      env:
+        NAME: ${{ inputs.name || inputs.suite }}
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        echo "name=artifacts-e2e-kind-${NAME//[^A-Za-z0-9._-]/-}-${{ github.run_attempt }}" >> "${GITHUB_OUTPUT}"
+
     - name: Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -138,9 +155,10 @@ jobs:
       env:
         SO_SUITE: ${{ inputs.suite }}
         SCYLLADB_IMAGE_REF: ${{ inputs.scylladb-image-ref }}
+        SCYLLADB_MANAGER_IMAGE_REF: ${{ inputs.scylladb-manager-image-ref }}
+        SCYLLADB_MANAGER_AGENT_IMAGE_REF: ${{ inputs.scylladb-manager-agent-image-ref }}
         SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
-        SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
-        SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+        SO_E2E_TIMEOUT: 90m
         SO_INSTALL_MODE: ${{ inputs.install-mode }}
       run: |
         set -euExo pipefail
@@ -180,5 +198,5 @@ jobs:
       if: always()
       uses: ./.github/actions/pack-and-upload-artifacts
       with:
-        name: artifacts-e2e-kind-${{ inputs.name }}-${{ github.run_attempt }}
+        name: ${{ steps.artifacts.outputs.name }}
         directory: ${{ env.ARTIFACTS }}

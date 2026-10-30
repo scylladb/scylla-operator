@@ -278,6 +278,34 @@ EOF
   kubectl kustomize --load-restrictor=LoadRestrictionsNone "${ARTIFACTS_DEPLOY_DIR}/olm" | kubectl_create -f=-
 }
 
+# validate-image-ref fails unless the image ref is tagged, optionally pinned by a digest. On success, BASH_REMATCH[1]
+# holds the repository and BASH_REMATCH[4] the version.
+# $1 - image ref, e.g. docker.io/scylladb/scylla:2026.1.0
+function validate-image-ref() {
+  if [[ ! "${1}" =~ ^([^:@]+(:[0-9]+)?(/[^:@]+)?):([A-Za-z0-9_][A-Za-z0-9_.-]{0,127}(@sha256:[0-9a-f]{64})?)$ ]]; then
+    echo "Invalid image ref '${1}', expected <repository>:<tag>[@sha256:<digest>]" > /dev/stderr
+    exit 1
+  fi
+}
+
+# set-image-from-ref splits a tagged image ref, optionally pinned by a digest, into a repository and a version, and
+# sets them in a manifest.
+# $1 - image ref, e.g. docker.io/scylladb/scylla:2026.1.0
+# $2 - yq path to set the repository at, e.g. .spec.repository
+# $3 - yq path to set the version at, e.g. .spec.version
+# $4 - manifest file
+function set-image-from-ref() {
+  if [[ "$#" -ne 4 ]]; then
+    echo "Missing arguments.\nUsage: ${FUNCNAME[0]} <image_ref> <repository_path> <version_path> <file>" > /dev/stderr
+    exit 1
+  fi
+
+  validate-image-ref "${1}"
+  IMAGE_REPOSITORY="${BASH_REMATCH[1]}" \
+  IMAGE_VERSION="${BASH_REMATCH[4]}" \
+  yq e --inplace "${2} = strenv(IMAGE_REPOSITORY) | ${3} = strenv(IMAGE_VERSION)" "${4}"
+}
+
 # install-scylladb-manager installs ScyllaDB Manager with the CI overrides applied from the environment, through the
 # method matching SO_INSTALL_MODE.
 # $1 - root source path to use.
@@ -328,16 +356,16 @@ function _install-scylladb-manager-manifests() {
     yq e --inplace 'del(.spec.datacenter.racks[0].storage.storageClassName)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
   fi
 
-  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
-    yq e --inplace '.spec.version = env(SCYLLADB_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  if [[ -n "${SCYLLADB_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_IMAGE_REF}" '.spec.repository' '.spec.version' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
-    yq e --inplace '.spec.template.spec.containers[0].image |= "docker.io/scylladb/scylla-manager:" + env(SCYLLA_MANAGER_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
+  if [[ -n "${SCYLLADB_MANAGER_IMAGE_REF:-}" ]]; then
+    yq e --inplace '.spec.template.spec.containers[0].image = strenv(SCYLLADB_MANAGER_IMAGE_REF)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_manager_deployment.yaml"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
-    yq e --inplace '.spec.agentVersion = env(SCYLLA_MANAGER_AGENT_VERSION)' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
+  if [[ -n "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_MANAGER_AGENT_IMAGE_REF}" '.spec.agentRepository' '.spec.agentVersion' "${ARTIFACTS_DEPLOY_DIR}/manager/50_scyllacluster.yaml"
   fi
 
   if [[ -n "${scyllacluster_scylla_args}" ]]; then
@@ -360,16 +388,22 @@ function _install-scylladb-manager-helm() {
     yq e --inplace 'del(.scylla.racks[0].storage.storageClassName)' "${values}"
   fi
 
-  if [[ -n "${SCYLLADB_VERSION:-}" ]]; then
-    yq e --inplace '.scylla.scyllaImage.tag = strenv(SCYLLADB_VERSION)' "${values}"
+  if [[ -n "${SCYLLADB_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_IMAGE_REF}" '.scylla.scyllaImage.repository' '.scylla.scyllaImage.tag' "${values}"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_VERSION:-}" ]]; then
-    yq e --inplace '.image.tag = strenv(SCYLLA_MANAGER_VERSION)' "${values}"
+  if [[ -n "${SCYLLADB_MANAGER_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_MANAGER_IMAGE_REF}" '.image.repository' '.image.tag' "${values}"
+    # The chart appends the image name to the repository.
+    if [[ "$( yq e '.image.repository' "${values}" )" != */scylla-manager ]]; then
+      echo "SCYLLADB_MANAGER_IMAGE_REF must point to a scylla-manager image with the helm install mode" > /dev/stderr
+      exit 1
+    fi
+    yq e --inplace '.image.repository |= sub("/scylla-manager$"; "")' "${values}"
   fi
 
-  if [[ -n "${SCYLLA_MANAGER_AGENT_VERSION:-}" ]]; then
-    yq e --inplace '.scylla.agentImage.tag = strenv(SCYLLA_MANAGER_AGENT_VERSION)' "${values}"
+  if [[ -n "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}" ]]; then
+    set-image-from-ref "${SCYLLADB_MANAGER_AGENT_IMAGE_REF}" '.scylla.agentImage.repository' '.scylla.agentImage.tag' "${values}"
   fi
 
   if [[ -n "${scyllacluster_scylla_args}" ]]; then

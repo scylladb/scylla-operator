@@ -29,11 +29,17 @@ var _ = g.Describe("ScyllaDBCluster", framework.SuiteMultiDatacenterParallel, fu
 	})
 
 	type entry struct {
-		initialScyllaDBImage string
+		// initialScyllaDBImage returns the image to start from, empty when there is none.
+		initialScyllaDBImage func() string
 		targetScyllaDBImage  string
 	}
 
 	g.DescribeTable("should deploy when ScyllaDB version", func(ctx g.SpecContext, e *entry) {
+		initialScyllaDBImage := e.initialScyllaDBImage()
+		if len(initialScyllaDBImage) == 0 {
+			g.Skip(fmt.Sprintf("Skipping because there is no ScyllaDB version to start from for %q", framework.TestContext.ScyllaDBImageRef))
+		}
+
 		ns, _ := f.CreateUserNamespace(ctx)
 
 		workerClusters := f.WorkerClusters()
@@ -44,7 +50,7 @@ var _ = g.Describe("ScyllaDBCluster", framework.SuiteMultiDatacenterParallel, fu
 
 		framework.By(`Creating a ScyllaDBCluster`)
 		sc := f.GetDefaultScyllaDBCluster(rkcMap)
-		sc.Spec.ScyllaDB.Image = e.initialScyllaDBImage
+		sc.Spec.ScyllaDB.Image = initialScyllaDBImage
 
 		sc, err = f.ScyllaAdminClient().ScyllaV1alpha1().ScyllaDBClusters(ns.Name).Create(ctx, sc, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -169,15 +175,15 @@ var _ = g.Describe("ScyllaDBCluster", framework.SuiteMultiDatacenterParallel, fu
 		g.Entry(
 			"is updated",
 			&entry{
-				initialScyllaDBImage: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpdateFrom),
-				targetScyllaDBImage:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+				initialScyllaDBImage: func() string { return framework.TestContext.ScyllaDBUpdateFromImageRef },
+				targetScyllaDBImage:  framework.TestContext.ScyllaDBImageRef,
 			},
 		),
 		g.Entry(
 			"is upgraded",
 			&entry{
-				initialScyllaDBImage: framework.ScyllaDBImageRefForVersion(framework.TestContext.ScyllaDBUpgradeFrom),
-				targetScyllaDBImage:  framework.ScyllaDBTargetImageRef(framework.TestContext.ScyllaDBImageRef, framework.TestContext.ScyllaDBVersion),
+				initialScyllaDBImage: func() string { return framework.TestContext.ScyllaDBUpgradeFromImageRef },
+				targetScyllaDBImage:  framework.TestContext.ScyllaDBImageRef,
 			},
 		),
 	)

@@ -20,12 +20,15 @@ import (
 	"github.com/onsi/ginkgo/v2/types"
 	"github.com/onsi/gomega"
 	gomegaformat "github.com/onsi/gomega/format"
+	configassets "github.com/scylladb/scylla-operator/assets/config"
 	"github.com/scylladb/scylla-operator/pkg/cmdutil"
 	"github.com/scylladb/scylla-operator/pkg/genericclioptions"
 	oslices "github.com/scylladb/scylla-operator/pkg/helpers/slices"
 	"github.com/scylladb/scylla-operator/pkg/signals"
 	ginkgotest "github.com/scylladb/scylla-operator/pkg/test/ginkgo"
 	"github.com/scylladb/scylla-operator/pkg/thirdparty/github.com/onsi/ginkgo/v2/exposedinternal/parallel_support"
+	"github.com/scylladb/scylla-operator/test/e2e/framework"
+	"github.com/scylladb/scylla-operator/test/e2e/utils"
 	"github.com/spf13/cobra"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	cliflag "k8s.io/component-base/cli/flag"
@@ -199,6 +202,14 @@ func (o *RunOptions) Validate(args []string) error {
 func (o *RunOptions) Complete(args []string) error {
 	var errs []error
 
+	// The parallel shards get the image refs from the parent process, which lists the tags once.
+	if !o.DryRun && o.ParallelShard == 0 {
+		err := o.findScyllaDBUpdateAndUpgradeFromImageRefs()
+		if err != nil {
+			return fmt.Errorf("can't find ScyllaDB images to update and upgrade from: %w", err)
+		}
+	}
+
 	err := o.TestFrameworkOptions.Complete(args)
 	if err != nil {
 		errs = append(errs, err)
@@ -220,6 +231,42 @@ func (o *RunOptions) Run(streams genericclioptions.IOStreams, cmd *cobra.Command
 	}()
 
 	return o.run(ctx, streams)
+}
+
+// findScyllaDBUpdateAndUpgradeFromImageRefs sets the ScyllaDB images to update and upgrade from, unless they are set
+// already, to the default repository's versions closest below the ScyllaDB image under test. They stay empty when
+// there are none.
+func (o *RunOptions) findScyllaDBUpdateAndUpgradeFromImageRefs() error {
+	if len(o.ScyllaDBUpdateFromImageRef) > 0 && len(o.ScyllaDBUpgradeFromImageRef) > 0 {
+		return nil
+	}
+
+	_, version, err := framework.ImageRefToRepositoryVersion(o.ScyllaDBImageRef)
+	if err != nil {
+		return fmt.Errorf("can't parse ScyllaDB image ref %q: %w", o.ScyllaDBImageRef, err)
+	}
+	tag, _, _ := strings.Cut(version, "@")
+
+	// The registry client doesn't time out on its own.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	tags, err := utils.ListImageRepositoryTags(ctx, configassets.ScyllaDBImageRepository)
+	if err != nil {
+		return err
+	}
+
+	if v, ok := utils.FindScyllaDBUpdateFromVersion(tags, tag); ok && len(o.ScyllaDBUpdateFromImageRef) == 0 {
+		o.ScyllaDBUpdateFromImageRef = configassets.ScyllaDBImageRepository + ":" + v
+	}
+
+	if v, ok := utils.FindScyllaDBUpgradeFromVersion(tags, tag); ok && len(o.ScyllaDBUpgradeFromImageRef) == 0 {
+		o.ScyllaDBUpgradeFromImageRef = configassets.ScyllaDBImageRepository + ":" + v
+	}
+
+	klog.InfoS("Using ScyllaDB images to update and upgrade from", "UpdateFrom", o.ScyllaDBUpdateFromImageRef, "UpgradeFrom", o.ScyllaDBUpgradeFromImageRef)
+
+	return nil
 }
 
 type fakeT struct{}
@@ -320,6 +367,8 @@ func (o *RunOptions) run(ctx context.Context, streams genericclioptions.IOStream
 		commonArgs = append(commonArgs, os.Args[1:]...)
 	}
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", parallelServerAddressFlagKey, server.Address()))
+	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", scyllaDBUpdateFromImageRefFlagKey, o.ScyllaDBUpdateFromImageRef))
+	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", scyllaDBUpgradeFromImageRefFlagKey, o.ScyllaDBUpgradeFromImageRef))
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%v", cmdutil.FlagLogLevelKey, o.ParallelLogLevel))
 
 	// Propagate random seed to child processes.

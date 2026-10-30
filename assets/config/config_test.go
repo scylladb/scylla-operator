@@ -178,22 +178,6 @@ func TestProjectConfig(t *testing.T) {
 			),
 		},
 		{
-			name:        "scyllaDBVersions.UpdateFrom",
-			configField: Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
-			testFn: composeValidators(
-				validateRequired,
-				validateMultiPlatformVersionWithRepo(ctx, ScyllaDBImageRepository),
-			),
-		},
-		{
-			name:        "scyllaDBVersions.UpgradeFrom",
-			configField: Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
-			testFn: composeValidators(
-				validateRequired,
-				validateMultiPlatformVersionWithRepo(ctx, ScyllaDBImageRepository),
-			),
-		},
-		{
 			name:        "nodeSetupImage",
 			configField: Project.OperatorTests.NodeSetupImage,
 			testFn: composeValidators(

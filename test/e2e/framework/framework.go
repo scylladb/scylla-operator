@@ -179,15 +179,7 @@ func ScyllaDBImageRefForVersion(version string) string {
 	return fmt.Sprintf("%s:%s", configassets.ScyllaDBImageRepository, version)
 }
 
-func ScyllaDBTargetImageRef(scyllaDBImageRef, scyllaDBVersion string) string {
-	if len(scyllaDBImageRef) > 0 {
-		return scyllaDBImageRef
-	}
-
-	return ScyllaDBImageRefForVersion(scyllaDBVersion)
-}
-
-func ScyllaDBImageRefToRepositoryVersion(imageRef string) (string, string, error) {
+func ImageRefToRepositoryVersion(imageRef string) (string, string, error) {
 	named, err := reference.ParseNormalizedNamed(imageRef)
 	if err != nil {
 		return "", "", fmt.Errorf("can't parse image reference %q: %w", imageRef, err)
@@ -206,25 +198,18 @@ func ScyllaDBImageRefToRepositoryVersion(imageRef string) (string, string, error
 	return tagged.Name(), version, nil
 }
 
-func scyllaDBTargetRepositoryVersion() (string, string) {
-	targetImageRef := ScyllaDBTargetImageRef(TestContext.ScyllaDBImageRef, TestContext.ScyllaDBVersion)
-	repo, version, err := ScyllaDBImageRefToRepositoryVersion(targetImageRef)
-	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("can't parse target image ref %q", targetImageRef))
-	return repo, version
-}
-
 func (f *Framework) GetDefaultScyllaCluster() *scyllav1.ScyllaCluster {
-	scyllaDBRepository, scyllaDBVersion := scyllaDBTargetRepositoryVersion()
 	renderArgs := map[string]any{
-		"scyllaDBRepository":           scyllaDBRepository,
-		"scyllaDBVersion":              scyllaDBVersion,
-		"scyllaDBManagerVersion":       TestContext.ScyllaDBManagerAgentVersion,
-		"nodeServiceType":              TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
-		"nodesBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
-		"clientsBroadcastAddressType":  TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
-		"storageClassName":             TestContext.ScyllaClusterOptions.StorageClassName,
-		"scyllaArgs":                   TestContext.ScyllaClusterOptions.ScyllaArgs(),
-		"enableParallelNodeOperations": TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
+		"scyllaDBRepository":             TestContext.ScyllaDBRepository,
+		"scyllaDBVersion":                TestContext.ScyllaDBVersion,
+		"scyllaDBManagerAgentRepository": TestContext.ScyllaDBManagerAgentRepository,
+		"scyllaDBManagerAgentVersion":    TestContext.ScyllaDBManagerAgentVersion,
+		"nodeServiceType":                TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":      TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
+		"enableParallelNodeOperations":   TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
 	}
 
 	sc, _, err := scyllafixture.ScyllaClusterTemplate.RenderObject(renderArgs)
@@ -244,18 +229,18 @@ func (f *Framework) GetNonDevModeScyllaCluster() *scyllav1.ScyllaCluster {
 }
 
 func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.ScyllaCluster {
-	scyllaDBRepository, scyllaDBVersion := scyllaDBTargetRepositoryVersion()
 	renderArgs := map[string]any{
-		"scyllaDBRepository":           scyllaDBRepository,
-		"scyllaDBVersion":              scyllaDBVersion,
-		"scyllaDBManagerVersion":       TestContext.ScyllaDBManagerAgentVersion,
-		"nodeServiceType":              TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
-		"nodesBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
-		"clientsBroadcastAddressType":  TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
-		"storageClassName":             TestContext.ScyllaClusterOptions.StorageClassName,
-		"scyllaArgs":                   TestContext.ScyllaClusterOptions.ScyllaArgs(),
-		"rackNames":                    []string{"a", "b", "c"},
-		"enableParallelNodeOperations": TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
+		"scyllaDBRepository":             TestContext.ScyllaDBRepository,
+		"scyllaDBVersion":                TestContext.ScyllaDBVersion,
+		"scyllaDBManagerAgentRepository": TestContext.ScyllaDBManagerAgentRepository,
+		"scyllaDBManagerAgentVersion":    TestContext.ScyllaDBManagerAgentVersion,
+		"nodeServiceType":                TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":      TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
+		"rackNames":                      []string{"a", "b", "c"},
+		"enableParallelNodeOperations":   TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
 	}
 
 	sc, _, err := scyllafixture.ZonalScyllaClusterTemplate.RenderObject(renderArgs)
@@ -266,15 +251,14 @@ func (f *Framework) GetDefaultZonalScyllaClusterWithThreeRacks() *scyllav1.Scyll
 
 func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatacenter {
 	renderArgs := map[string]any{
-		"scyllaDBImageRef":               ScyllaDBTargetImageRef(TestContext.ScyllaDBImageRef, TestContext.ScyllaDBVersion),
-		"scyllaDBManagerVersion":         TestContext.ScyllaDBManagerAgentVersion,
-		"nodeServiceType":                TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
-		"nodesBroadcastAddressType":      TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
-		"clientsBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
-		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
-		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
-		"scyllaDBManagerAgentRepository": configassets.ScyllaDBManagerAgentImageRepository,
-		"enableParallelNodeOperations":   TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
+		"scyllaDBImageRef":             TestContext.ScyllaDBImageRef,
+		"scyllaDBManagerAgentImageRef": TestContext.ScyllaDBManagerAgentImageRef,
+		"nodeServiceType":              TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
+		"nodesBroadcastAddressType":    TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
+		"clientsBroadcastAddressType":  TestContext.ScyllaClusterOptions.ExposeOptions.ClientsBroadcastAddressType,
+		"storageClassName":             TestContext.ScyllaClusterOptions.StorageClassName,
+		"scyllaArgs":                   TestContext.ScyllaClusterOptions.ScyllaArgs(),
+		"enableParallelNodeOperations": TestContext.ScyllaClusterOptions.EnableParallelNodeOperations,
 	}
 
 	sdc, _, err := scyllafixture.ScyllaDBDatacenterTemplate.RenderObject(renderArgs)
@@ -285,7 +269,7 @@ func (f *Framework) GetDefaultScyllaDBDatacenter() *scyllav1alpha1.ScyllaDBDatac
 
 func (f *Framework) GetDefaultScyllaDBCluster(rkcMap map[string]*scyllav1alpha1.RemoteKubernetesCluster) *scyllav1alpha1.ScyllaDBCluster {
 	renderArgs := map[string]any{
-		"scyllaDBImageRef":               ScyllaDBTargetImageRef(TestContext.ScyllaDBImageRef, TestContext.ScyllaDBVersion),
+		"scyllaDBImageRef":               TestContext.ScyllaDBImageRef,
 		"scyllaDBManagerVersion":         TestContext.ScyllaDBManagerAgentVersion,
 		"nodeServiceType":                TestContext.ScyllaClusterOptions.ExposeOptions.NodeServiceType,
 		"nodesBroadcastAddressType":      TestContext.ScyllaClusterOptions.ExposeOptions.NodesBroadcastAddressType,
@@ -293,7 +277,7 @@ func (f *Framework) GetDefaultScyllaDBCluster(rkcMap map[string]*scyllav1alpha1.
 		"storageClassName":               TestContext.ScyllaClusterOptions.StorageClassName,
 		"scyllaArgs":                     TestContext.ScyllaClusterOptions.ScyllaArgs(),
 		"remoteKubernetesClusterMap":     rkcMap,
-		"scyllaDBManagerAgentRepository": configassets.ScyllaDBManagerAgentImageRepository,
+		"scyllaDBManagerAgentRepository": TestContext.ScyllaDBManagerAgentRepository,
 	}
 
 	sc, _, err := scyllafixture.ScyllaDBClusterTemplate.RenderObject(renderArgs)

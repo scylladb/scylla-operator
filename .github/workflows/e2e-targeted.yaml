@@ -2,7 +2,8 @@ name: "E2E (targeted)"
 
 # Runs the selected e2e suites against the dispatched ref, e.g. a PR's head branch:
 # `gh workflow run e2e-targeted.yaml --ref <branch> -f jobs='["oke-*"]'`. A dispatched run's checks don't show on a
-# PR, so the run reports its result as a commit status, named after the workflow, on the commit it tests.
+# PR, so the run reports its result as a commit status, named after the workflow and the `name` input, on the commit
+# it tests.
 on:
   workflow_dispatch:
     inputs:
@@ -11,13 +12,39 @@ on:
           JSON list of glob patterns matching the ids of the e2e jobs to run, e.g. `["oke-*", "openshift-*"]`.
         required: true
         type: string
+      name:
+        description: >-
+          Short slug telling this run apart from others on the same ref, e.g. `rc0`. Used for the run name, the commit
+          status and the concurrency group. Leave it empty unless the run should run alongside another one on the ref.
+        required: false
+        default: ""
+        type: string
+      scylladb-image-ref:
+        description: ScyllaDB image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-image-ref:
+        description: ScyllaDB Manager image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
+      scylladb-manager-agent-image-ref:
+        description: ScyllaDB Manager Agent image the suite runs against. Empty leaves the suite on its default version.
+        required: false
+        default: ""
+        type: string
 
-run-name: "E2E (targeted) ${{ inputs.jobs }} on ${{ github.ref_name }}"
+run-name: "E2E (targeted) ${{ inputs.jobs }}${{ inputs.name && format(' ({0})', inputs.name) || '' }} on ${{ github.ref_name }}"
 
-# There is a single status per commit, so a new run cancels the one before it on the same ref rather than racing it.
+# There is a single status per commit and name, so a new run cancels the one before it on the same ref with the same
+# name rather than racing it. Runs with different inputs only run alongside each other when they have different names.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.name }}
   cancel-in-progress: true
+
+env:
+  STATUS_CONTEXT: ${{ github.workflow }}${{ inputs.name && format(' ({0})', inputs.name) || '' }}
 
 permissions:
   contents: read
@@ -45,7 +72,7 @@ jobs:
     - name: Report the run as pending
       uses: ./.github/actions/set-commit-status
       with:
-        context: ${{ github.workflow }}
+        context: ${{ env.STATUS_CONTEXT }}
         state: pending
         description: Running ${{ inputs.jobs }}
 
@@ -75,11 +102,14 @@ jobs:
       image-ref: ${{ needs.image.outputs.image-ref }}
       olm-catalog-image-ref: ${{ needs.olm.outputs.catalog-ref }}
       jobs: ${{ inputs.jobs }}
+      scylladb-image-ref: ${{ inputs.scylladb-image-ref }}
+      scylladb-manager-image-ref: ${{ inputs.scylladb-manager-image-ref }}
+      scylladb-manager-agent-image-ref: ${{ inputs.scylladb-manager-agent-image-ref }}
     secrets:
       ci-provisioners-kubeconfig: ${{ secrets.CI_PROVISIONERS_KUBECONFIG }}
 
-  # A run cancelled by the next one on the same ref leaves the status to that run. A run cancelled by hand stays pending
-  # until it's dispatched again.
+  # A run cancelled by the next one on the same ref with the same name leaves the status to that run. A run cancelled
+  # by hand stays pending until it's dispatched again.
   report-result:
     needs:
     - report-pending
@@ -104,6 +134,6 @@ jobs:
     - name: Report the result of the run
       uses: ./.github/actions/set-commit-status
       with:
-        context: ${{ github.workflow }}
+        context: ${{ env.STATUS_CONTEXT }}
         needs: ${{ toJSON(needs) }}
         description: ${{ inputs.jobs }}

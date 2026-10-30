@@ -20,6 +20,12 @@ fi
 OPERATOR_IMAGE_REF="${1}"
 export OPERATOR_IMAGE_REF
 
+for image_ref in "${SCYLLADB_IMAGE_REF:-}" "${SCYLLADB_MANAGER_IMAGE_REF:-}" "${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}"; do
+  if [[ -n "${image_ref}" ]]; then
+    validate-image-ref "${image_ref}"
+  fi
+done
+
 trap cleanup-bg-jobs-on-exit EXIT
 
 ARTIFACTS=${ARTIFACTS:-$( mktemp -d )}
@@ -72,6 +78,19 @@ kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-s
 wait-for-object-creation scylla-operator crd/scyllaclusters.scylla.scylladb.com 5m
 kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
 
+kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
+
+# NodeConfig tunes the nodes with the utils image from the ScyllaOperatorConfig status, so it has to be set before
+# the NodeConfig is created.
+cp ./hack/.ci/manifests/cluster/scyllaoperatorconfig.yaml "${ARTIFACTS_DEPLOY_DIR}/scyllaoperatorconfig.yaml"
+if [[ -n "${SCYLLADB_IMAGE_REF:-}" ]]; then
+  yq e --inplace '.spec.scyllaUtilsImage = strenv(SCYLLADB_IMAGE_REF)' "${ARTIFACTS_DEPLOY_DIR}/scyllaoperatorconfig.yaml"
+fi
+kubectl_apply -f="${ARTIFACTS_DEPLOY_DIR}/scyllaoperatorconfig.yaml"
+if [[ -n "${SCYLLADB_IMAGE_REF:-}" ]]; then
+  kubectl wait --for=jsonpath='{.status.scyllaDBUtilsImage}'="${SCYLLADB_IMAGE_REF}" --timeout=1m scyllaoperatorconfig/cluster
+fi
+
 if [[ -z "${SO_NODECONFIG_PATH:-}" ]]; then
   echo "Skipping NodeConfig creation"
 else
@@ -101,7 +120,6 @@ fi
 kubectl -n haproxy-ingress rollout status --timeout=5m deployment.apps/haproxy-ingress deploy/prometheus
 
 kubectl wait --for condition=established crd/nodeconfigs.scylla.scylladb.com
-kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 kubectl wait --for condition=established crd/scylladbmonitorings.scylla.scylladb.com
 
 if [[ -n "${SO_DISABLE_PROMETHEUS_OPERATOR:-}" ]]; then

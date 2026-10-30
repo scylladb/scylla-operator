@@ -287,13 +287,9 @@ function run-e2e {
   SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-24h}"
   SO_WAIT_FOR_E2E_POD_DELETE="${SO_WAIT_FOR_E2E_POD_DELETE:-false}"
   SCYLLADB_IMAGE_REF="${SCYLLADB_IMAGE_REF:-}"
-
-  config_file="$(realpath "$(dirname "${BASH_SOURCE[0]}")/../../../assets/config/config.yaml")"
-  SCYLLADB_VERSION="${SCYLLADB_VERSION:-$(yq '.operator.scyllaDBVersion' "$config_file")}"
-  SCYLLADB_MANAGER_VERSION="${SCYLLADB_MANAGER_VERSION:-$(yq '.operator.scyllaDBManagerVersion' "$config_file")}"
-  SCYLLADB_MANAGER_AGENT_VERSION="${SCYLLADB_MANAGER_AGENT_VERSION:-$(yq '.operator.scyllaDBManagerAgentVersion' "$config_file")}"
-  SCYLLADB_UPDATE_FROM_VERSION="${SCYLLADB_UPDATE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.updateFrom' "$config_file")}"
-  SCYLLADB_UPGRADE_FROM_VERSION="${SCYLLADB_UPGRADE_FROM_VERSION:-$(yq '.operatorTests.scyllaDBVersions.upgradeFrom' "$config_file")}"
+  SCYLLADB_MANAGER_AGENT_IMAGE_REF="${SCYLLADB_MANAGER_AGENT_IMAGE_REF:-}"
+  SCYLLADB_UPDATE_FROM_IMAGE_REF="${SCYLLADB_UPDATE_FROM_IMAGE_REF:-}"
+  SCYLLADB_UPGRADE_FROM_IMAGE_REF="${SCYLLADB_UPGRADE_FROM_IMAGE_REF:-}"
 
   kubectl create namespace e2e --dry-run=client -o=yaml | kubectl_create -f=-
   kubectl create clusterrolebinding e2e --clusterrole=cluster-admin --serviceaccount=e2e:default --dry-run=client -o=yaml | kubectl_create -f=-
@@ -410,11 +406,6 @@ function run-e2e {
     "--gcs-service-account-key-path=${gcs_sa_in_container_path}"
     "--s3-credentials-file-path=${s3_credentials_in_container_path}"
     "--s3-agent-config-path=${agent_config_in_container_path}"
-    "--scylladb-version=${SCYLLADB_VERSION}"
-    "--scylladb-manager-version=${SCYLLADB_MANAGER_VERSION}"
-    "--scylladb-manager-agent-version=${SCYLLADB_MANAGER_AGENT_VERSION}"
-    "--scylladb-update-from-version=${SCYLLADB_UPDATE_FROM_VERSION}"
-    "--scylladb-upgrade-from-version=${SCYLLADB_UPGRADE_FROM_VERSION}"
   )
 
   if [[ -n "${worker_kubeconfigs_in_container_paths}" ]]; then
@@ -439,6 +430,18 @@ function run-e2e {
 
   if [[ -n "${SCYLLADB_IMAGE_REF}" ]]; then
     e2e_command_args+=( "--scylladb-image-ref=${SCYLLADB_IMAGE_REF}" )
+  fi
+
+  if [[ -n "${SCYLLADB_MANAGER_AGENT_IMAGE_REF}" ]]; then
+    e2e_command_args+=( "--scylladb-manager-agent-image-ref=${SCYLLADB_MANAGER_AGENT_IMAGE_REF}" )
+  fi
+
+  if [[ -n "${SCYLLADB_UPDATE_FROM_IMAGE_REF}" ]]; then
+    e2e_command_args+=( "--scylladb-update-from-image-ref=${SCYLLADB_UPDATE_FROM_IMAGE_REF}" )
+  fi
+
+  if [[ -n "${SCYLLADB_UPGRADE_FROM_IMAGE_REF}" ]]; then
+    e2e_command_args+=( "--scylladb-upgrade-from-image-ref=${SCYLLADB_UPGRADE_FROM_IMAGE_REF}" )
   fi
 
   # Wait until SA is created - eliminates an existing race condition; there is a potential further race if

@@ -64,12 +64,14 @@ type TestContextType struct {
 	CleanupPolicy                      CleanupPolicyType
 	IngressController                  *IngressController
 	ScyllaClusterOptions               *ScyllaClusterOptions
-	ScyllaDBVersion                    string
 	ScyllaDBImageRef                   string
-	ScyllaDBManagerVersion             string
+	ScyllaDBRepository                 string
+	ScyllaDBVersion                    string
+	ScyllaDBManagerAgentImageRef       string
+	ScyllaDBUpdateFromImageRef         string
+	ScyllaDBUpgradeFromImageRef        string
+	ScyllaDBManagerAgentRepository     string
 	ScyllaDBManagerAgentVersion        string
-	ScyllaDBUpdateFrom                 string
-	ScyllaDBUpgradeFrom                string
 	WorkerClusterObjectStorageSettings map[string]ClusterObjectStorageSettings
 	ClusterObjectStorageSettings       *ClusterObjectStorageSettings
 }

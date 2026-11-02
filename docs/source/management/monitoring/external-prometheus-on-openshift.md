@@ -120,4 +120,4 @@ See the [Setting up ScyllaDBMonitoring](setup.md#deploy-scylladbmonitoring) guid
 
 You can verify that configuration is correct by [accessing Grafana](exposing-grafana.md) and verifying you can see metrics from your ScyllaDB cluster.
 
-[user-workload-monitoring]: https://docs.redhat.com/en/documentation/openshift_container_platform/4.20/html/monitoring/configuring-user-workload-monitoring
+[user-workload-monitoring]: https://docs.redhat.com/en/documentation/monitoring_stack_for_red_hat_openshift/4.20/html/configuring_user_workload_monitoring/index

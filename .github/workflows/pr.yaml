@@ -1,0 +1,62 @@
+name: PR
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# The default shell is `bash -e {0}`, which leaves pipefail unset, and it silently falls back to sh in an image
+# without bash. Pinning it makes every step run under `bash --noprofile --norc -eo pipefail`, so a failing command
+# in a pipeline fails the step, and an image missing bash fails loudly instead of running the steps under sh.
+defaults:
+  run:
+    shell: bash
+
+# actions/checkout clones as the runner user, but these container images declare no USER, so the jobs run as root
+# and git refuses to operate on a tree it sees as foreign. safe.directory is only honoured from protected config
+# scopes, and GIT_CONFIG_COUNT/KEY/VALUE is the environment form of the command scope, so this covers every git
+# invocation in the job - including the ones make shells out to - without a step in each job.
+# GIT_CONFIG_COUNT is a single shared counter: anything else setting it would overwrite these rather than append.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: "*"
+
+jobs:
+  # v1.20 is out of support and only takes docs backports, so only the docs are verified here. The docs on this
+  # branch are still built with Poetry, hence the poetry image instead of the uv one used on newer branches.
+  verify-docs:
+    name: verify-docs
+    runs-on: hosted-runners-standard-pool
+    container:
+      image: quay.io/scylladb/scylla-operator-images:poetry-2.1
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up env
+        run: make -C docs setup
+
+      - name: Verify docs
+        run: make --warn-undefined-variables -C docs verify
+
+  # The branch ruleset requires this aggregate context, so it is the only way for a PR to v1.20 to become mergeable.
+  check-required:
+    runs-on: hosted-runners-standard-pool
+    needs:
+    - verify-docs
+    if: always()
+    steps:
+    - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+      run: |
+        echo "Some jobs failed or were cancelled."
+        exit 1

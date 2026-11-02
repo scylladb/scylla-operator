@@ -210,4 +210,4 @@ Take into account that ScyllaDB core dumps can be very large. You will need spar
 To avoid losing dumps due to insufficient disk space, consider the following:
 
 - **Attach a dedicated disk** to each ScyllaDB node at `/var/lib/systemd/coredump/` so core dumps do not compete with the OS for disk space.
-- **Offload dumps to object storage** - the [IBM core-dump-handler](https://github.com/IBM/core-dump-handler) project provides a Helm chart that installs a similar `kernel.core_pattern` pipe handler and automatically uploads dumps to an S3-compatible bucket. This is a good option if you need centralized, long-term dump storage.
+- **Offload dumps to object storage** - core dumps are regular files in `/var/lib/systemd/coredump/` on the host, so you can periodically copy them to an S3-compatible bucket. This is a good option if you need centralized, long-term dump storage.

@@ -27,6 +27,11 @@ image_tag="${2}"
 component_id="${3}"
 submit="${SUBMIT:-false}"
 
+if [[ -z "${component_id}" ]]; then
+  echo "Error: component_id must not be empty." >&2
+  exit 1
+fi
+
 # The token is only ever expanded with the trace off, so the check expands it to a placeholder.
 if [[ -z "${PFLT_PYXIS_API_TOKEN:+set}" ]]; then
   echo "Error: PFLT_PYXIS_API_TOKEN must not be empty." >&2

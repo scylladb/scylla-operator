@@ -29,6 +29,10 @@ runs:
       set -euExo pipefail
       shopt -s inherit_errexit
 
-      mapfile -t ids < <( jq -r '.[]' <<< "${IDS}" )
+      if ! jq -ne 'env.IDS | fromjson | type == "array" and all(.[]; type == "string" and (contains("\n") | not))' > /dev/null; then
+        echo "Ids ${IDS} are not a JSON list of strings without line breaks." >&2
+        exit 1
+      fi
+      mapfile -t ids < <( jq -nr 'env.IDS | fromjson | .[]' )
       selected="$( "${GITHUB_ACTION_PATH}/select-jobs.sh" "${PATTERNS}" "${ids[@]}" )"
       echo "selected=${selected}" >> "${GITHUB_OUTPUT}"

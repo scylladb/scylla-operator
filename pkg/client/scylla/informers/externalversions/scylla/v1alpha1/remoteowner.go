@@ -18,11 +18,39 @@ import (
 )
 
 // RemoteOwnerInformer provides access to a shared informer and lister for
-// RemoteOwners.
+// RemoteOwners. Prefer using the type-safe variant (see [TypedRemoteOwnerInformer]).
 type RemoteOwnerInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.RemoteOwnerLister
 }
+
+// TypedRemoteOwnerInformer provides access to a shared informer and lister for
+// RemoteOwners, including the type-safe TypedInformer variant.
+// It is a superset of RemoteOwnerInformer.
+type TypedRemoteOwnerInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() RemoteOwnerIndexInformer
+	Lister() scyllav1alpha1.RemoteOwnerLister
+}
+
+// RemoteOwnerIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type RemoteOwnerIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.RemoteOwner]
+
+// RemoteOwnerHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for RemoteOwner.
+type RemoteOwnerHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.RemoteOwner]
+
+// RemoteOwnerDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for RemoteOwner.
+type RemoteOwnerDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.RemoteOwner]
+
+// RemoteOwnerFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for RemoteOwner.
+type RemoteOwnerFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.RemoteOwner]
+
+// RemoteOwnerIndexers is a specialization of [cache.TypedIndexers] for RemoteOwner.
+type RemoteOwnerIndexers = cache.TypedIndexers[*apiscyllav1alpha1.RemoteOwner]
+
+// DeletedRemoteOwner is a specialization of [cache.DeletedObject] for RemoteOwner.
+type DeletedRemoteOwner = cache.DeletedObject[*apiscyllav1alpha1.RemoteOwner]
 
 type remoteOwnerInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -33,25 +61,49 @@ type remoteOwnerInformer struct {
 // NewRemoteOwnerInformer constructs a new informer for RemoteOwner type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedRemoteOwnerInformer]).
 func NewRemoteOwnerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewRemoteOwnerInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedRemoteOwnerInformer constructs a new informer for RemoteOwner type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedRemoteOwnerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers RemoteOwnerIndexers) RemoteOwnerIndexInformer {
+	return NewTypedRemoteOwnerInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredRemoteOwnerInformer constructs a new informer for RemoteOwner type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredRemoteOwnerInformer]).
 func NewFilteredRemoteOwnerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewRemoteOwnerInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedRemoteOwnerInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredRemoteOwnerInformer constructs a new informer for RemoteOwner type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredRemoteOwnerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers RemoteOwnerIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) RemoteOwnerIndexInformer {
+	return NewTypedRemoteOwnerInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewRemoteOwnerInformerWithOptions constructs a new informer for RemoteOwner type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedRemoteOwnerInformerWithOptions]).
 func NewRemoteOwnerInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedRemoteOwnerInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedRemoteOwnerInformerWithOptions constructs a new informer for RemoteOwner type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedRemoteOwnerInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) RemoteOwnerIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "remoteowners"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteOwner](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -84,17 +136,57 @@ func NewRemoteOwnerInformerWithOptions(client versioned.Interface, namespace str
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *remoteOwnerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewRemoteOwnerInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedRemoteOwnerInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *remoteOwnerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.RemoteOwner{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *remoteOwnerInformer) TypedInformer() RemoteOwnerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteOwner](f.factory.InformerFor(&apiscyllav1alpha1.RemoteOwner{}, f.defaultInformer))
 }
 
 func (f *remoteOwnerInformer) Lister() scyllav1alpha1.RemoteOwnerLister {
 	return scyllav1alpha1.NewRemoteOwnerLister(f.Informer().GetIndexer())
+}
+
+// ToTypedRemoteOwnerInformer converts an untyped informer into a TypedRemoteOwnerInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *RemoteOwner. If that is not the case, calling type-safe methods of the returned
+// TypedRemoteOwnerInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedRemoteOwnerInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedRemoteOwnerInformer(informer RemoteOwnerInformer) TypedRemoteOwnerInformer {
+	if informer, ok := informer.(TypedRemoteOwnerInformer); ok {
+		return informer
+	}
+	return &remoteOwnerTypedInformerAdapter{informer}
+}
+
+type remoteOwnerTypedInformerAdapter struct {
+	RemoteOwnerInformer
+}
+
+func (a *remoteOwnerTypedInformerAdapter) TypedInformer() RemoteOwnerIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteOwner](a.Informer())
+}
+
+// ToRemoteOwnerIndexInformer converts an untyped informer into a RemoteOwnerIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *RemoteOwner. If that is not the case, calling type-safe methods of the returned
+// RemoteOwnerIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a RemoteOwnerIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToRemoteOwnerIndexInformer(informer cache.SharedIndexInformer) RemoteOwnerIndexInformer {
+	if informer, ok := informer.(RemoteOwnerIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteOwner](informer)
 }

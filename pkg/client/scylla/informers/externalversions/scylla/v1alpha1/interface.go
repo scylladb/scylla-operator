@@ -9,25 +9,25 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// NodeConfigs returns a NodeConfigInformer.
-	NodeConfigs() NodeConfigInformer
+	NodeConfigs() TypedNodeConfigInformer
 	// RemoteKubernetesClusters returns a RemoteKubernetesClusterInformer.
-	RemoteKubernetesClusters() RemoteKubernetesClusterInformer
+	RemoteKubernetesClusters() TypedRemoteKubernetesClusterInformer
 	// RemoteOwners returns a RemoteOwnerInformer.
-	RemoteOwners() RemoteOwnerInformer
+	RemoteOwners() TypedRemoteOwnerInformer
 	// ScyllaDBClusters returns a ScyllaDBClusterInformer.
-	ScyllaDBClusters() ScyllaDBClusterInformer
+	ScyllaDBClusters() TypedScyllaDBClusterInformer
 	// ScyllaDBDatacenters returns a ScyllaDBDatacenterInformer.
-	ScyllaDBDatacenters() ScyllaDBDatacenterInformer
+	ScyllaDBDatacenters() TypedScyllaDBDatacenterInformer
 	// ScyllaDBDatacenterNodesStatusReports returns a ScyllaDBDatacenterNodesStatusReportInformer.
-	ScyllaDBDatacenterNodesStatusReports() ScyllaDBDatacenterNodesStatusReportInformer
+	ScyllaDBDatacenterNodesStatusReports() TypedScyllaDBDatacenterNodesStatusReportInformer
 	// ScyllaDBManagerClusterRegistrations returns a ScyllaDBManagerClusterRegistrationInformer.
-	ScyllaDBManagerClusterRegistrations() ScyllaDBManagerClusterRegistrationInformer
+	ScyllaDBManagerClusterRegistrations() TypedScyllaDBManagerClusterRegistrationInformer
 	// ScyllaDBManagerTasks returns a ScyllaDBManagerTaskInformer.
-	ScyllaDBManagerTasks() ScyllaDBManagerTaskInformer
+	ScyllaDBManagerTasks() TypedScyllaDBManagerTaskInformer
 	// ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
-	ScyllaDBMonitorings() ScyllaDBMonitoringInformer
+	ScyllaDBMonitorings() TypedScyllaDBMonitoringInformer
 	// ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.
-	ScyllaOperatorConfigs() ScyllaOperatorConfigInformer
+	ScyllaOperatorConfigs() TypedScyllaOperatorConfigInformer
 }
 
 type version struct {
@@ -41,52 +41,52 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// NodeConfigs returns a NodeConfigInformer.
-func (v *version) NodeConfigs() NodeConfigInformer {
+// NodeConfigs returns a TypedNodeConfigInformer.
+func (v *version) NodeConfigs() TypedNodeConfigInformer {
 	return &nodeConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// RemoteKubernetesClusters returns a RemoteKubernetesClusterInformer.
-func (v *version) RemoteKubernetesClusters() RemoteKubernetesClusterInformer {
+// RemoteKubernetesClusters returns a TypedRemoteKubernetesClusterInformer.
+func (v *version) RemoteKubernetesClusters() TypedRemoteKubernetesClusterInformer {
 	return &remoteKubernetesClusterInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// RemoteOwners returns a RemoteOwnerInformer.
-func (v *version) RemoteOwners() RemoteOwnerInformer {
+// RemoteOwners returns a TypedRemoteOwnerInformer.
+func (v *version) RemoteOwners() TypedRemoteOwnerInformer {
 	return &remoteOwnerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ScyllaDBClusters returns a ScyllaDBClusterInformer.
-func (v *version) ScyllaDBClusters() ScyllaDBClusterInformer {
+// ScyllaDBClusters returns a TypedScyllaDBClusterInformer.
+func (v *version) ScyllaDBClusters() TypedScyllaDBClusterInformer {
 	return &scyllaDBClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ScyllaDBDatacenters returns a ScyllaDBDatacenterInformer.
-func (v *version) ScyllaDBDatacenters() ScyllaDBDatacenterInformer {
+// ScyllaDBDatacenters returns a TypedScyllaDBDatacenterInformer.
+func (v *version) ScyllaDBDatacenters() TypedScyllaDBDatacenterInformer {
 	return &scyllaDBDatacenterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ScyllaDBDatacenterNodesStatusReports returns a ScyllaDBDatacenterNodesStatusReportInformer.
-func (v *version) ScyllaDBDatacenterNodesStatusReports() ScyllaDBDatacenterNodesStatusReportInformer {
+// ScyllaDBDatacenterNodesStatusReports returns a TypedScyllaDBDatacenterNodesStatusReportInformer.
+func (v *version) ScyllaDBDatacenterNodesStatusReports() TypedScyllaDBDatacenterNodesStatusReportInformer {
 	return &scyllaDBDatacenterNodesStatusReportInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ScyllaDBManagerClusterRegistrations returns a ScyllaDBManagerClusterRegistrationInformer.
-func (v *version) ScyllaDBManagerClusterRegistrations() ScyllaDBManagerClusterRegistrationInformer {
+// ScyllaDBManagerClusterRegistrations returns a TypedScyllaDBManagerClusterRegistrationInformer.
+func (v *version) ScyllaDBManagerClusterRegistrations() TypedScyllaDBManagerClusterRegistrationInformer {
 	return &scyllaDBManagerClusterRegistrationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ScyllaDBManagerTasks returns a ScyllaDBManagerTaskInformer.
-func (v *version) ScyllaDBManagerTasks() ScyllaDBManagerTaskInformer {
+// ScyllaDBManagerTasks returns a TypedScyllaDBManagerTaskInformer.
+func (v *version) ScyllaDBManagerTasks() TypedScyllaDBManagerTaskInformer {
 	return &scyllaDBManagerTaskInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ScyllaDBMonitorings returns a ScyllaDBMonitoringInformer.
-func (v *version) ScyllaDBMonitorings() ScyllaDBMonitoringInformer {
+// ScyllaDBMonitorings returns a TypedScyllaDBMonitoringInformer.
+func (v *version) ScyllaDBMonitorings() TypedScyllaDBMonitoringInformer {
 	return &scyllaDBMonitoringInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ScyllaOperatorConfigs returns a ScyllaOperatorConfigInformer.
-func (v *version) ScyllaOperatorConfigs() ScyllaOperatorConfigInformer {
+// ScyllaOperatorConfigs returns a TypedScyllaOperatorConfigInformer.
+func (v *version) ScyllaOperatorConfigs() TypedScyllaOperatorConfigInformer {
 	return &scyllaOperatorConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

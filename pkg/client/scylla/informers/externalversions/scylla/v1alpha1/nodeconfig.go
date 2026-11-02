@@ -18,11 +18,39 @@ import (
 )
 
 // NodeConfigInformer provides access to a shared informer and lister for
-// NodeConfigs.
+// NodeConfigs. Prefer using the type-safe variant (see [TypedNodeConfigInformer]).
 type NodeConfigInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.NodeConfigLister
 }
+
+// TypedNodeConfigInformer provides access to a shared informer and lister for
+// NodeConfigs, including the type-safe TypedInformer variant.
+// It is a superset of NodeConfigInformer.
+type TypedNodeConfigInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() NodeConfigIndexInformer
+	Lister() scyllav1alpha1.NodeConfigLister
+}
+
+// NodeConfigIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type NodeConfigIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.NodeConfig]
+
+// NodeConfigHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for NodeConfig.
+type NodeConfigHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.NodeConfig]
+
+// NodeConfigDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for NodeConfig.
+type NodeConfigDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.NodeConfig]
+
+// NodeConfigFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for NodeConfig.
+type NodeConfigFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.NodeConfig]
+
+// NodeConfigIndexers is a specialization of [cache.TypedIndexers] for NodeConfig.
+type NodeConfigIndexers = cache.TypedIndexers[*apiscyllav1alpha1.NodeConfig]
+
+// DeletedNodeConfig is a specialization of [cache.DeletedObject] for NodeConfig.
+type DeletedNodeConfig = cache.DeletedObject[*apiscyllav1alpha1.NodeConfig]
 
 type nodeConfigInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -32,25 +60,49 @@ type nodeConfigInformer struct {
 // NewNodeConfigInformer constructs a new informer for NodeConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedNodeConfigInformer]).
 func NewNodeConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewNodeConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedNodeConfigInformer constructs a new informer for NodeConfig type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedNodeConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers NodeConfigIndexers) NodeConfigIndexInformer {
+	return NewTypedNodeConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredNodeConfigInformer constructs a new informer for NodeConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredNodeConfigInformer]).
 func NewFilteredNodeConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewNodeConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedNodeConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredNodeConfigInformer constructs a new informer for NodeConfig type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredNodeConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers NodeConfigIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) NodeConfigIndexInformer {
+	return NewTypedNodeConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewNodeConfigInformerWithOptions constructs a new informer for NodeConfig type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedNodeConfigInformerWithOptions]).
 func NewNodeConfigInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedNodeConfigInformerWithOptions(client, options)
+}
+
+// NewTypedNodeConfigInformerWithOptions constructs a new informer for NodeConfig type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedNodeConfigInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) NodeConfigIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "nodeconfigs"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.NodeConfig](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -83,17 +135,57 @@ func NewNodeConfigInformerWithOptions(client versioned.Interface, options intern
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *nodeConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewNodeConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedNodeConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *nodeConfigInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.NodeConfig{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *nodeConfigInformer) TypedInformer() NodeConfigIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.NodeConfig](f.factory.InformerFor(&apiscyllav1alpha1.NodeConfig{}, f.defaultInformer))
 }
 
 func (f *nodeConfigInformer) Lister() scyllav1alpha1.NodeConfigLister {
 	return scyllav1alpha1.NewNodeConfigLister(f.Informer().GetIndexer())
+}
+
+// ToTypedNodeConfigInformer converts an untyped informer into a TypedNodeConfigInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *NodeConfig. If that is not the case, calling type-safe methods of the returned
+// TypedNodeConfigInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedNodeConfigInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedNodeConfigInformer(informer NodeConfigInformer) TypedNodeConfigInformer {
+	if informer, ok := informer.(TypedNodeConfigInformer); ok {
+		return informer
+	}
+	return &nodeConfigTypedInformerAdapter{informer}
+}
+
+type nodeConfigTypedInformerAdapter struct {
+	NodeConfigInformer
+}
+
+func (a *nodeConfigTypedInformerAdapter) TypedInformer() NodeConfigIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.NodeConfig](a.Informer())
+}
+
+// ToNodeConfigIndexInformer converts an untyped informer into a NodeConfigIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *NodeConfig. If that is not the case, calling type-safe methods of the returned
+// NodeConfigIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a NodeConfigIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToNodeConfigIndexInformer(informer cache.SharedIndexInformer) NodeConfigIndexInformer {
+	if informer, ok := informer.(NodeConfigIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.NodeConfig](informer)
 }

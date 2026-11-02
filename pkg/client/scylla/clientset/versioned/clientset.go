@@ -14,7 +14,7 @@ import (
 )
 
 type Interface interface {
-	Discovery() discovery.DiscoveryInterface
+	Discovery() discovery.DiscoveryInterfaces
 	ScyllaV1() scyllav1.ScyllaV1Interface
 	ScyllaV1alpha1() scyllav1alpha1.ScyllaV1alpha1Interface
 }
@@ -37,7 +37,7 @@ func (c *Clientset) ScyllaV1alpha1() scyllav1alpha1.ScyllaV1alpha1Interface {
 }
 
 // Discovery retrieves the DiscoveryClient
-func (c *Clientset) Discovery() discovery.DiscoveryInterface {
+func (c *Clientset) Discovery() discovery.DiscoveryInterfaces {
 	if c == nil {
 		return nil
 	}

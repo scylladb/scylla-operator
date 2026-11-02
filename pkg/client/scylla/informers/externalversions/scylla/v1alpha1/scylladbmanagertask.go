@@ -18,11 +18,39 @@ import (
 )
 
 // ScyllaDBManagerTaskInformer provides access to a shared informer and lister for
-// ScyllaDBManagerTasks.
+// ScyllaDBManagerTasks. Prefer using the type-safe variant (see [TypedScyllaDBManagerTaskInformer]).
 type ScyllaDBManagerTaskInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.ScyllaDBManagerTaskLister
 }
+
+// TypedScyllaDBManagerTaskInformer provides access to a shared informer and lister for
+// ScyllaDBManagerTasks, including the type-safe TypedInformer variant.
+// It is a superset of ScyllaDBManagerTaskInformer.
+type TypedScyllaDBManagerTaskInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ScyllaDBManagerTaskIndexInformer
+	Lister() scyllav1alpha1.ScyllaDBManagerTaskLister
+}
+
+// ScyllaDBManagerTaskIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ScyllaDBManagerTaskIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerTask]
+
+// ScyllaDBManagerTaskHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ScyllaDBManagerTask.
+type ScyllaDBManagerTaskHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.ScyllaDBManagerTask]
+
+// ScyllaDBManagerTaskDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ScyllaDBManagerTask.
+type ScyllaDBManagerTaskDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.ScyllaDBManagerTask]
+
+// ScyllaDBManagerTaskFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ScyllaDBManagerTask.
+type ScyllaDBManagerTaskFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.ScyllaDBManagerTask]
+
+// ScyllaDBManagerTaskIndexers is a specialization of [cache.TypedIndexers] for ScyllaDBManagerTask.
+type ScyllaDBManagerTaskIndexers = cache.TypedIndexers[*apiscyllav1alpha1.ScyllaDBManagerTask]
+
+// DeletedScyllaDBManagerTask is a specialization of [cache.DeletedObject] for ScyllaDBManagerTask.
+type DeletedScyllaDBManagerTask = cache.DeletedObject[*apiscyllav1alpha1.ScyllaDBManagerTask]
 
 type scyllaDBManagerTaskInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -33,25 +61,49 @@ type scyllaDBManagerTaskInformer struct {
 // NewScyllaDBManagerTaskInformer constructs a new informer for ScyllaDBManagerTask type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBManagerTaskInformer]).
 func NewScyllaDBManagerTaskInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewScyllaDBManagerTaskInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedScyllaDBManagerTaskInformer constructs a new informer for ScyllaDBManagerTask type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBManagerTaskInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBManagerTaskIndexers) ScyllaDBManagerTaskIndexInformer {
+	return NewTypedScyllaDBManagerTaskInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredScyllaDBManagerTaskInformer constructs a new informer for ScyllaDBManagerTask type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredScyllaDBManagerTaskInformer]).
 func NewFilteredScyllaDBManagerTaskInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewScyllaDBManagerTaskInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedScyllaDBManagerTaskInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredScyllaDBManagerTaskInformer constructs a new informer for ScyllaDBManagerTask type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredScyllaDBManagerTaskInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBManagerTaskIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ScyllaDBManagerTaskIndexInformer {
+	return NewTypedScyllaDBManagerTaskInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewScyllaDBManagerTaskInformerWithOptions constructs a new informer for ScyllaDBManagerTask type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBManagerTaskInformerWithOptions]).
 func NewScyllaDBManagerTaskInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedScyllaDBManagerTaskInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedScyllaDBManagerTaskInformerWithOptions constructs a new informer for ScyllaDBManagerTask type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBManagerTaskInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ScyllaDBManagerTaskIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "scylladbmanagertasks"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerTask](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -84,17 +136,57 @@ func NewScyllaDBManagerTaskInformerWithOptions(client versioned.Interface, names
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *scyllaDBManagerTaskInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewScyllaDBManagerTaskInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedScyllaDBManagerTaskInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *scyllaDBManagerTaskInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBManagerTask{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *scyllaDBManagerTaskInformer) TypedInformer() ScyllaDBManagerTaskIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerTask](f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBManagerTask{}, f.defaultInformer))
 }
 
 func (f *scyllaDBManagerTaskInformer) Lister() scyllav1alpha1.ScyllaDBManagerTaskLister {
 	return scyllav1alpha1.NewScyllaDBManagerTaskLister(f.Informer().GetIndexer())
+}
+
+// ToTypedScyllaDBManagerTaskInformer converts an untyped informer into a TypedScyllaDBManagerTaskInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBManagerTask. If that is not the case, calling type-safe methods of the returned
+// TypedScyllaDBManagerTaskInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedScyllaDBManagerTaskInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedScyllaDBManagerTaskInformer(informer ScyllaDBManagerTaskInformer) TypedScyllaDBManagerTaskInformer {
+	if informer, ok := informer.(TypedScyllaDBManagerTaskInformer); ok {
+		return informer
+	}
+	return &scyllaDBManagerTaskTypedInformerAdapter{informer}
+}
+
+type scyllaDBManagerTaskTypedInformerAdapter struct {
+	ScyllaDBManagerTaskInformer
+}
+
+func (a *scyllaDBManagerTaskTypedInformerAdapter) TypedInformer() ScyllaDBManagerTaskIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerTask](a.Informer())
+}
+
+// ToScyllaDBManagerTaskIndexInformer converts an untyped informer into a ScyllaDBManagerTaskIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBManagerTask. If that is not the case, calling type-safe methods of the returned
+// ScyllaDBManagerTaskIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ScyllaDBManagerTaskIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToScyllaDBManagerTaskIndexInformer(informer cache.SharedIndexInformer) ScyllaDBManagerTaskIndexInformer {
+	if informer, ok := informer.(ScyllaDBManagerTaskIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBManagerTask](informer)
 }

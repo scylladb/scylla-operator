@@ -55,6 +55,9 @@ type CreateOrUpdateReport struct {
 
 	// subject
 	Subject string `json:"subject,omitempty"`
+
+	// urls
+	Urls []*ReportURLItem `json:"urls"`
 }
 
 // Validate validates this create or update report
@@ -78,6 +81,10 @@ func (m *CreateOrUpdateReport) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateState(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateUrls(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -209,6 +216,36 @@ func (m *CreateOrUpdateReport) validateState(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *CreateOrUpdateReport) validateUrls(formats strfmt.Registry) error {
+	if swag.IsZero(m.Urls) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Urls); i++ {
+		if swag.IsZero(m.Urls[i]) { // not required
+			continue
+		}
+
+		if m.Urls[i] != nil {
+			if err := m.Urls[i].Validate(formats); err != nil {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
+					return ve.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
+					return ce.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
 // ContextValidate validate this create or update report based on the context it is used
 func (m *CreateOrUpdateReport) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -230,6 +267,10 @@ func (m *CreateOrUpdateReport) ContextValidate(ctx context.Context, formats strf
 	}
 
 	if err := m.contextValidateState(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateUrls(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -361,6 +402,35 @@ func (m *CreateOrUpdateReport) contextValidateState(ctx context.Context, formats
 		}
 
 		return err
+	}
+
+	return nil
+}
+
+func (m *CreateOrUpdateReport) contextValidateUrls(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Urls); i++ {
+
+		if m.Urls[i] != nil {
+
+			if swag.IsZero(m.Urls[i]) { // not required
+				return nil
+			}
+
+			if err := m.Urls[i].ContextValidate(ctx, formats); err != nil {
+				ve := new(errors.Validation)
+				if stderrors.As(err, &ve) {
+					return ve.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+				ce := new(errors.CompositeError)
+				if stderrors.As(err, &ce) {
+					return ce.ValidateName("urls" + "." + strconv.Itoa(i))
+				}
+
+				return err
+			}
+		}
+
 	}
 
 	return nil

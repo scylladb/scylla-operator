@@ -42,6 +42,12 @@ func (o *PutPolicyTreeReader) ReadResponse(response runtime.ClientResponse, cons
 			return nil, err
 		}
 		return nil, result
+	case 409:
+		result := NewPutPolicyTreeConflict()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("[PUT /v1/provisioning/policies] PutPolicyTree", response, response.Code())
 	}
@@ -246,6 +252,76 @@ func (o *PutPolicyTreeForbidden) GetPayload() *models.ForbiddenError {
 func (o *PutPolicyTreeForbidden) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(models.ForbiddenError)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewPutPolicyTreeConflict creates a PutPolicyTreeConflict with default headers values
+func NewPutPolicyTreeConflict() *PutPolicyTreeConflict {
+	return &PutPolicyTreeConflict{}
+}
+
+/*
+PutPolicyTreeConflict describes a response with status code 409, with default header values.
+
+PublicError
+*/
+type PutPolicyTreeConflict struct {
+	Payload *models.PublicError
+}
+
+// IsSuccess returns true when this put policy tree conflict response has a 2xx status code
+func (o *PutPolicyTreeConflict) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this put policy tree conflict response has a 3xx status code
+func (o *PutPolicyTreeConflict) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this put policy tree conflict response has a 4xx status code
+func (o *PutPolicyTreeConflict) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this put policy tree conflict response has a 5xx status code
+func (o *PutPolicyTreeConflict) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this put policy tree conflict response a status code equal to that given
+func (o *PutPolicyTreeConflict) IsCode(code int) bool {
+	return code == 409
+}
+
+// Code gets the status code for the put policy tree conflict response
+func (o *PutPolicyTreeConflict) Code() int {
+	return 409
+}
+
+func (o *PutPolicyTreeConflict) Error() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/policies][%d] putPolicyTreeConflict %s", 409, payload)
+}
+
+func (o *PutPolicyTreeConflict) String() string {
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /v1/provisioning/policies][%d] putPolicyTreeConflict %s", 409, payload)
+}
+
+func (o *PutPolicyTreeConflict) GetPayload() *models.PublicError {
+	return o.Payload
+}
+
+func (o *PutPolicyTreeConflict) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.PublicError)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

@@ -16,6 +16,9 @@ import (
 // swagger:model UserSearchHitDTO
 type UserSearchHitDTO struct {
 
+	// access control
+	AccessControl map[string]bool `json:"accessControl,omitempty"`
+
 	// auth labels
 	AuthLabels []string `json:"authLabels"`
 
@@ -53,6 +56,9 @@ type UserSearchHitDTO struct {
 
 	// name
 	Name string `json:"name,omitempty"`
+
+	// role
+	Role string `json:"role,omitempty"`
 
 	// uid
 	UID string `json:"uid,omitempty"`

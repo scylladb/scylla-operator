@@ -146,6 +146,12 @@ type GetAnnotationsParams struct {
 	*/
 	UserID *int64
 
+	/* UserUID.
+
+	   Limit response to annotations created by a specific user, identified by UID.
+	*/
+	UserUID *string
+
 	timeout    time.Duration
 	Context    context.Context
 	HTTPClient *http.Client
@@ -329,6 +335,17 @@ func (o *GetAnnotationsParams) WithUserID(userID *int64) *GetAnnotationsParams {
 // SetUserID adds the userId to the get annotations params
 func (o *GetAnnotationsParams) SetUserID(userID *int64) {
 	o.UserID = userID
+}
+
+// WithUserUID adds the userUID to the get annotations params
+func (o *GetAnnotationsParams) WithUserUID(userUID *string) *GetAnnotationsParams {
+	o.SetUserUID(userUID)
+	return o
+}
+
+// SetUserUID adds the userUid to the get annotations params
+func (o *GetAnnotationsParams) SetUserUID(userUID *string) {
+	o.UserUID = userUID
 }
 
 // WriteToRequest writes these params to a swagger request
@@ -532,6 +549,23 @@ func (o *GetAnnotationsParams) WriteToRequest(r runtime.ClientRequest, reg strfm
 		if qUserID != "" {
 
 			if err := r.SetQueryParam("userId", qUserID); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.UserUID != nil {
+
+		// query param userUID
+		var qrUserUID string
+
+		if o.UserUID != nil {
+			qrUserUID = *o.UserUID
+		}
+		qUserUID := qrUserUID
+		if qUserUID != "" {
+
+			if err := r.SetQueryParam("userUID", qUserUID); err != nil {
 				return err
 			}
 		}

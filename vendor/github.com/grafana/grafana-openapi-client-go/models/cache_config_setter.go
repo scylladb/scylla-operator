@@ -22,7 +22,7 @@ type CacheConfigSetter struct {
 	DataSourceUID string `json:"dataSourceUID,omitempty"`
 
 	// enabled
-	Enabled bool `json:"enabled,omitempty"`
+	Enabled *bool `json:"enabled,omitempty"`
 
 	// TTL MS, or "time to live", is how long a cached item will stay in the cache before it is removed (in milliseconds)
 	TTLQueriesMs int64 `json:"ttlQueriesMs,omitempty"`
@@ -31,7 +31,7 @@ type CacheConfigSetter struct {
 	TTLResourcesMs int64 `json:"ttlResourcesMs,omitempty"`
 
 	// If UseDefaultTTL is enabled, then the TTLQueriesMS and TTLResourcesMS in this object is always sent as the default TTL located in grafana.ini
-	UseDefaultTTL bool `json:"useDefaultTTL,omitempty"`
+	UseDefaultTTL *bool `json:"useDefaultTTL,omitempty"`
 }
 
 // Validate validates this cache config setter

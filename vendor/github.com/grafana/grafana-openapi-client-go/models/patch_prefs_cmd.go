@@ -33,9 +33,6 @@ type PatchPrefsCmd struct {
 	// query history
 	QueryHistory *QueryHistoryPreference `json:"queryHistory,omitempty"`
 
-	// regional format
-	RegionalFormat string `json:"regionalFormat,omitempty"`
-
 	// theme
 	// Enum: ["light","dark"]
 	Theme string `json:"theme,omitempty"`

@@ -27,6 +27,11 @@ runs:
         exit 1
       fi
 
+      if ! jq -ne 'env.AUTH_JSON | fromjson | .auths | objects | length > 0' &> /dev/null; then
+        echo '::error::The registry auth is not a containers-auth.json(5) file with a non-empty "auths" object.'
+        exit 1
+      fi
+
       # containers-auth.json(5) shares the "auths" format with docker's config.json, so buildx picks it up as is.
       umask 077
       mkdir -p ~/.docker

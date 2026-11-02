@@ -190,12 +190,15 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Write registry auth file
+    - name: Write quay.io registry auth file
       uses: ./.github/actions/write-registry-auth
       with:
-        auth-json: |
-          ${{ secrets.QUAY_SCYLLADB_PROD_PUBLISHER_CREDS }}
-          ${{ secrets.DOCKERHUB_SCYLLADB_PROD_PUBLISHER_CREDS }}
+        auth-json: ${{ secrets.QUAY_SCYLLADB_PROD_PUBLISHER_CREDS }}
+
+    - name: Write docker.io registry auth file
+      uses: ./.github/actions/write-registry-auth
+      with:
+        auth-json: ${{ secrets.DOCKERHUB_SCYLLADB_PROD_PUBLISHER_CREDS }}
 
     - name: Copy the image
       uses: ./.github/actions/release/promote-image

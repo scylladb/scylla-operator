@@ -1,14 +1,14 @@
 name: Write registry auth
 description: >-
-  Writes registry credentials to `~/.docker/config.json`, which buildx reads, and points `REGISTRY_AUTH_FILE`, which
-  skopeo reads, at it for the rest of the job. It depends on nothing outside its directory, so it can be referenced
-  remotely.
+  Merges registry credentials into `~/.docker/config.json`, which buildx reads, and points `REGISTRY_AUTH_FILE`, which
+  skopeo reads, at it for the rest of the job. Call it once per credentials file. It depends on nothing outside its
+  directory, so it can be referenced remotely.
 
 inputs:
   auth-json:
     description: >-
-      Contents of one or more containers-auth.json(5) files, separated by whitespace. Their `auths` are merged, so a
-      single file can hold credentials to several registries.
+      Contents of a containers-auth.json(5) file. Only its `auths` are merged into the existing ones, so calling the
+      action again adds credentials to more registries. Other fields, like `credHelpers`, are ignored.
     required: true
 
 runs:
@@ -30,5 +30,10 @@ runs:
       # containers-auth.json(5) shares the "auths" format with docker's config.json, so buildx picks it up as is.
       umask 077
       mkdir -p ~/.docker
-      jq -s '{auths: (map(.auths) | add)}' <<< "${AUTH_JSON}" > ~/.docker/config.json
-      echo "REGISTRY_AUTH_FILE=${HOME}/.docker/config.json" >> "${GITHUB_ENV}"
+      config=~/.docker/config.json
+      if [[ ! -f "${config}" ]]; then
+        echo '{}' > "${config}"
+      fi
+      jq '.auths += (env.AUTH_JSON | fromjson | .auths)' "${config}" > "${config}.tmp"
+      mv "${config}.tmp" "${config}"
+      echo "REGISTRY_AUTH_FILE=${config}" >> "${GITHUB_ENV}"

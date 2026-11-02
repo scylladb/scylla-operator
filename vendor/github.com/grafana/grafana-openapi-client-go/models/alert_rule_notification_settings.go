@@ -47,6 +47,11 @@ type AlertRuleNotificationSettings struct {
 	// Example: ["maintenance"]
 	MuteTimeIntervals []string `json:"mute_time_intervals"`
 
+	// Name of the notification policy to route alerts through.
+	// Mutually exclusive with all other fields, cannot be used with contact point routing via the "receiver" field.
+	// Example: \"Alerting Team\
+	Policy string `json:"policy,omitempty"`
+
 	// Name of the receiver to send notifications to.
 	// Example: grafana-default-email
 	// Required: true

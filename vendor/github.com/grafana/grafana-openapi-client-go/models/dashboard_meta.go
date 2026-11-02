@@ -70,9 +70,6 @@ type DashboardMeta struct {
 	// is snapshot
 	IsSnapshot bool `json:"isSnapshot,omitempty"`
 
-	// is starred
-	IsStarred bool `json:"isStarred,omitempty"`
-
 	// provisioned
 	Provisioned bool `json:"provisioned,omitempty"`
 

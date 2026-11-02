@@ -19,7 +19,10 @@ type PreferencesSpec struct {
 	// UID for the home dashboard
 	HomeDashboardUID string `json:"homeDashboardUID,omitempty"`
 
-	// Selected language (beta)
+	// Explicit home URL (NOTE: this can only be modified in the system settings)
+	HomeURL string `json:"homeURL,omitempty"`
+
+	// Selected language
 	Language string `json:"language,omitempty"`
 
 	// navbar
@@ -28,14 +31,10 @@ type PreferencesSpec struct {
 	// query history
 	QueryHistory *PreferencesQueryHistoryPreference `json:"queryHistory,omitempty"`
 
-	// Selected locale (beta)
-	RegionalFormat string `json:"regionalFormat,omitempty"`
-
-	// light, dark, empty is default
+	// user interface theme
 	Theme string `json:"theme,omitempty"`
 
 	// The timezone selection
-	// TODO: this should use the timezone defined in common
 	Timezone string `json:"timezone,omitempty"`
 
 	// day of the week (sunday, monday, etc)

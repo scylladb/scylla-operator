@@ -18,11 +18,39 @@ import (
 )
 
 // ScyllaOperatorConfigInformer provides access to a shared informer and lister for
-// ScyllaOperatorConfigs.
+// ScyllaOperatorConfigs. Prefer using the type-safe variant (see [TypedScyllaOperatorConfigInformer]).
 type ScyllaOperatorConfigInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.ScyllaOperatorConfigLister
 }
+
+// TypedScyllaOperatorConfigInformer provides access to a shared informer and lister for
+// ScyllaOperatorConfigs, including the type-safe TypedInformer variant.
+// It is a superset of ScyllaOperatorConfigInformer.
+type TypedScyllaOperatorConfigInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ScyllaOperatorConfigIndexInformer
+	Lister() scyllav1alpha1.ScyllaOperatorConfigLister
+}
+
+// ScyllaOperatorConfigIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ScyllaOperatorConfigIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaOperatorConfig]
+
+// ScyllaOperatorConfigHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ScyllaOperatorConfig.
+type ScyllaOperatorConfigHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.ScyllaOperatorConfig]
+
+// ScyllaOperatorConfigDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ScyllaOperatorConfig.
+type ScyllaOperatorConfigDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.ScyllaOperatorConfig]
+
+// ScyllaOperatorConfigFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ScyllaOperatorConfig.
+type ScyllaOperatorConfigFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.ScyllaOperatorConfig]
+
+// ScyllaOperatorConfigIndexers is a specialization of [cache.TypedIndexers] for ScyllaOperatorConfig.
+type ScyllaOperatorConfigIndexers = cache.TypedIndexers[*apiscyllav1alpha1.ScyllaOperatorConfig]
+
+// DeletedScyllaOperatorConfig is a specialization of [cache.DeletedObject] for ScyllaOperatorConfig.
+type DeletedScyllaOperatorConfig = cache.DeletedObject[*apiscyllav1alpha1.ScyllaOperatorConfig]
 
 type scyllaOperatorConfigInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -32,25 +60,49 @@ type scyllaOperatorConfigInformer struct {
 // NewScyllaOperatorConfigInformer constructs a new informer for ScyllaOperatorConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaOperatorConfigInformer]).
 func NewScyllaOperatorConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewScyllaOperatorConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedScyllaOperatorConfigInformer constructs a new informer for ScyllaOperatorConfig type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaOperatorConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers ScyllaOperatorConfigIndexers) ScyllaOperatorConfigIndexInformer {
+	return NewTypedScyllaOperatorConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredScyllaOperatorConfigInformer constructs a new informer for ScyllaOperatorConfig type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredScyllaOperatorConfigInformer]).
 func NewFilteredScyllaOperatorConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewScyllaOperatorConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedScyllaOperatorConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredScyllaOperatorConfigInformer constructs a new informer for ScyllaOperatorConfig type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredScyllaOperatorConfigInformer(client versioned.Interface, resyncPeriod time.Duration, indexers ScyllaOperatorConfigIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ScyllaOperatorConfigIndexInformer {
+	return NewTypedScyllaOperatorConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewScyllaOperatorConfigInformerWithOptions constructs a new informer for ScyllaOperatorConfig type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaOperatorConfigInformerWithOptions]).
 func NewScyllaOperatorConfigInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedScyllaOperatorConfigInformerWithOptions(client, options)
+}
+
+// NewTypedScyllaOperatorConfigInformerWithOptions constructs a new informer for ScyllaOperatorConfig type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaOperatorConfigInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) ScyllaOperatorConfigIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "scyllaoperatorconfigs"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaOperatorConfig](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -83,17 +135,57 @@ func NewScyllaOperatorConfigInformerWithOptions(client versioned.Interface, opti
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *scyllaOperatorConfigInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewScyllaOperatorConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedScyllaOperatorConfigInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *scyllaOperatorConfigInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaOperatorConfig{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *scyllaOperatorConfigInformer) TypedInformer() ScyllaOperatorConfigIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaOperatorConfig](f.factory.InformerFor(&apiscyllav1alpha1.ScyllaOperatorConfig{}, f.defaultInformer))
 }
 
 func (f *scyllaOperatorConfigInformer) Lister() scyllav1alpha1.ScyllaOperatorConfigLister {
 	return scyllav1alpha1.NewScyllaOperatorConfigLister(f.Informer().GetIndexer())
+}
+
+// ToTypedScyllaOperatorConfigInformer converts an untyped informer into a TypedScyllaOperatorConfigInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaOperatorConfig. If that is not the case, calling type-safe methods of the returned
+// TypedScyllaOperatorConfigInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedScyllaOperatorConfigInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedScyllaOperatorConfigInformer(informer ScyllaOperatorConfigInformer) TypedScyllaOperatorConfigInformer {
+	if informer, ok := informer.(TypedScyllaOperatorConfigInformer); ok {
+		return informer
+	}
+	return &scyllaOperatorConfigTypedInformerAdapter{informer}
+}
+
+type scyllaOperatorConfigTypedInformerAdapter struct {
+	ScyllaOperatorConfigInformer
+}
+
+func (a *scyllaOperatorConfigTypedInformerAdapter) TypedInformer() ScyllaOperatorConfigIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaOperatorConfig](a.Informer())
+}
+
+// ToScyllaOperatorConfigIndexInformer converts an untyped informer into a ScyllaOperatorConfigIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaOperatorConfig. If that is not the case, calling type-safe methods of the returned
+// ScyllaOperatorConfigIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ScyllaOperatorConfigIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToScyllaOperatorConfigIndexInformer(informer cache.SharedIndexInformer) ScyllaOperatorConfigIndexInformer {
+	if informer, ok := informer.(ScyllaOperatorConfigIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaOperatorConfig](informer)
 }

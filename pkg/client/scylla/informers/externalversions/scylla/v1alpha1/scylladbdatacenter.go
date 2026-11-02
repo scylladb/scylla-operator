@@ -18,11 +18,39 @@ import (
 )
 
 // ScyllaDBDatacenterInformer provides access to a shared informer and lister for
-// ScyllaDBDatacenters.
+// ScyllaDBDatacenters. Prefer using the type-safe variant (see [TypedScyllaDBDatacenterInformer]).
 type ScyllaDBDatacenterInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.ScyllaDBDatacenterLister
 }
+
+// TypedScyllaDBDatacenterInformer provides access to a shared informer and lister for
+// ScyllaDBDatacenters, including the type-safe TypedInformer variant.
+// It is a superset of ScyllaDBDatacenterInformer.
+type TypedScyllaDBDatacenterInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ScyllaDBDatacenterIndexInformer
+	Lister() scyllav1alpha1.ScyllaDBDatacenterLister
+}
+
+// ScyllaDBDatacenterIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ScyllaDBDatacenterIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenter]
+
+// ScyllaDBDatacenterHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ScyllaDBDatacenter.
+type ScyllaDBDatacenterHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.ScyllaDBDatacenter]
+
+// ScyllaDBDatacenterDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ScyllaDBDatacenter.
+type ScyllaDBDatacenterDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.ScyllaDBDatacenter]
+
+// ScyllaDBDatacenterFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ScyllaDBDatacenter.
+type ScyllaDBDatacenterFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.ScyllaDBDatacenter]
+
+// ScyllaDBDatacenterIndexers is a specialization of [cache.TypedIndexers] for ScyllaDBDatacenter.
+type ScyllaDBDatacenterIndexers = cache.TypedIndexers[*apiscyllav1alpha1.ScyllaDBDatacenter]
+
+// DeletedScyllaDBDatacenter is a specialization of [cache.DeletedObject] for ScyllaDBDatacenter.
+type DeletedScyllaDBDatacenter = cache.DeletedObject[*apiscyllav1alpha1.ScyllaDBDatacenter]
 
 type scyllaDBDatacenterInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -33,25 +61,49 @@ type scyllaDBDatacenterInformer struct {
 // NewScyllaDBDatacenterInformer constructs a new informer for ScyllaDBDatacenter type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBDatacenterInformer]).
 func NewScyllaDBDatacenterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewScyllaDBDatacenterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedScyllaDBDatacenterInformer constructs a new informer for ScyllaDBDatacenter type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBDatacenterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBDatacenterIndexers) ScyllaDBDatacenterIndexInformer {
+	return NewTypedScyllaDBDatacenterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredScyllaDBDatacenterInformer constructs a new informer for ScyllaDBDatacenter type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredScyllaDBDatacenterInformer]).
 func NewFilteredScyllaDBDatacenterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewScyllaDBDatacenterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedScyllaDBDatacenterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredScyllaDBDatacenterInformer constructs a new informer for ScyllaDBDatacenter type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredScyllaDBDatacenterInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ScyllaDBDatacenterIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ScyllaDBDatacenterIndexInformer {
+	return NewTypedScyllaDBDatacenterInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewScyllaDBDatacenterInformerWithOptions constructs a new informer for ScyllaDBDatacenter type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedScyllaDBDatacenterInformerWithOptions]).
 func NewScyllaDBDatacenterInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedScyllaDBDatacenterInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedScyllaDBDatacenterInformerWithOptions constructs a new informer for ScyllaDBDatacenter type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedScyllaDBDatacenterInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ScyllaDBDatacenterIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "scylladbdatacenters"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenter](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -84,17 +136,57 @@ func NewScyllaDBDatacenterInformerWithOptions(client versioned.Interface, namesp
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *scyllaDBDatacenterInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewScyllaDBDatacenterInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedScyllaDBDatacenterInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *scyllaDBDatacenterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBDatacenter{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *scyllaDBDatacenterInformer) TypedInformer() ScyllaDBDatacenterIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenter](f.factory.InformerFor(&apiscyllav1alpha1.ScyllaDBDatacenter{}, f.defaultInformer))
 }
 
 func (f *scyllaDBDatacenterInformer) Lister() scyllav1alpha1.ScyllaDBDatacenterLister {
 	return scyllav1alpha1.NewScyllaDBDatacenterLister(f.Informer().GetIndexer())
+}
+
+// ToTypedScyllaDBDatacenterInformer converts an untyped informer into a TypedScyllaDBDatacenterInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBDatacenter. If that is not the case, calling type-safe methods of the returned
+// TypedScyllaDBDatacenterInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedScyllaDBDatacenterInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedScyllaDBDatacenterInformer(informer ScyllaDBDatacenterInformer) TypedScyllaDBDatacenterInformer {
+	if informer, ok := informer.(TypedScyllaDBDatacenterInformer); ok {
+		return informer
+	}
+	return &scyllaDBDatacenterTypedInformerAdapter{informer}
+}
+
+type scyllaDBDatacenterTypedInformerAdapter struct {
+	ScyllaDBDatacenterInformer
+}
+
+func (a *scyllaDBDatacenterTypedInformerAdapter) TypedInformer() ScyllaDBDatacenterIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenter](a.Informer())
+}
+
+// ToScyllaDBDatacenterIndexInformer converts an untyped informer into a ScyllaDBDatacenterIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ScyllaDBDatacenter. If that is not the case, calling type-safe methods of the returned
+// ScyllaDBDatacenterIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ScyllaDBDatacenterIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToScyllaDBDatacenterIndexInformer(informer cache.SharedIndexInformer) ScyllaDBDatacenterIndexInformer {
+	if informer, ok := informer.(ScyllaDBDatacenterIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.ScyllaDBDatacenter](informer)
 }

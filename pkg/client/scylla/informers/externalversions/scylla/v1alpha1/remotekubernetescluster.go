@@ -18,11 +18,39 @@ import (
 )
 
 // RemoteKubernetesClusterInformer provides access to a shared informer and lister for
-// RemoteKubernetesClusters.
+// RemoteKubernetesClusters. Prefer using the type-safe variant (see [TypedRemoteKubernetesClusterInformer]).
 type RemoteKubernetesClusterInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() scyllav1alpha1.RemoteKubernetesClusterLister
 }
+
+// TypedRemoteKubernetesClusterInformer provides access to a shared informer and lister for
+// RemoteKubernetesClusters, including the type-safe TypedInformer variant.
+// It is a superset of RemoteKubernetesClusterInformer.
+type TypedRemoteKubernetesClusterInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() RemoteKubernetesClusterIndexInformer
+	Lister() scyllav1alpha1.RemoteKubernetesClusterLister
+}
+
+// RemoteKubernetesClusterIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type RemoteKubernetesClusterIndexInformer cache.TypedSharedIndexInformer[*apiscyllav1alpha1.RemoteKubernetesCluster]
+
+// RemoteKubernetesClusterHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for RemoteKubernetesCluster.
+type RemoteKubernetesClusterHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiscyllav1alpha1.RemoteKubernetesCluster]
+
+// RemoteKubernetesClusterDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for RemoteKubernetesCluster.
+type RemoteKubernetesClusterDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiscyllav1alpha1.RemoteKubernetesCluster]
+
+// RemoteKubernetesClusterFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for RemoteKubernetesCluster.
+type RemoteKubernetesClusterFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiscyllav1alpha1.RemoteKubernetesCluster]
+
+// RemoteKubernetesClusterIndexers is a specialization of [cache.TypedIndexers] for RemoteKubernetesCluster.
+type RemoteKubernetesClusterIndexers = cache.TypedIndexers[*apiscyllav1alpha1.RemoteKubernetesCluster]
+
+// DeletedRemoteKubernetesCluster is a specialization of [cache.DeletedObject] for RemoteKubernetesCluster.
+type DeletedRemoteKubernetesCluster = cache.DeletedObject[*apiscyllav1alpha1.RemoteKubernetesCluster]
 
 type remoteKubernetesClusterInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -32,25 +60,49 @@ type remoteKubernetesClusterInformer struct {
 // NewRemoteKubernetesClusterInformer constructs a new informer for RemoteKubernetesCluster type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedRemoteKubernetesClusterInformer]).
 func NewRemoteKubernetesClusterInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewRemoteKubernetesClusterInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedRemoteKubernetesClusterInformer constructs a new informer for RemoteKubernetesCluster type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedRemoteKubernetesClusterInformer(client versioned.Interface, resyncPeriod time.Duration, indexers RemoteKubernetesClusterIndexers) RemoteKubernetesClusterIndexInformer {
+	return NewTypedRemoteKubernetesClusterInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredRemoteKubernetesClusterInformer constructs a new informer for RemoteKubernetesCluster type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredRemoteKubernetesClusterInformer]).
 func NewFilteredRemoteKubernetesClusterInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewRemoteKubernetesClusterInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedRemoteKubernetesClusterInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredRemoteKubernetesClusterInformer constructs a new informer for RemoteKubernetesCluster type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredRemoteKubernetesClusterInformer(client versioned.Interface, resyncPeriod time.Duration, indexers RemoteKubernetesClusterIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) RemoteKubernetesClusterIndexInformer {
+	return NewTypedRemoteKubernetesClusterInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewRemoteKubernetesClusterInformerWithOptions constructs a new informer for RemoteKubernetesCluster type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedRemoteKubernetesClusterInformerWithOptions]).
 func NewRemoteKubernetesClusterInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedRemoteKubernetesClusterInformerWithOptions(client, options)
+}
+
+// NewTypedRemoteKubernetesClusterInformerWithOptions constructs a new informer for RemoteKubernetesCluster type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedRemoteKubernetesClusterInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) RemoteKubernetesClusterIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "scylla.scylladb.com", Version: "v1alpha1", Resource: "remotekubernetesclusters"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteKubernetesCluster](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -83,17 +135,57 @@ func NewRemoteKubernetesClusterInformerWithOptions(client versioned.Interface, o
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *remoteKubernetesClusterInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewRemoteKubernetesClusterInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedRemoteKubernetesClusterInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *remoteKubernetesClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiscyllav1alpha1.RemoteKubernetesCluster{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *remoteKubernetesClusterInformer) TypedInformer() RemoteKubernetesClusterIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteKubernetesCluster](f.factory.InformerFor(&apiscyllav1alpha1.RemoteKubernetesCluster{}, f.defaultInformer))
 }
 
 func (f *remoteKubernetesClusterInformer) Lister() scyllav1alpha1.RemoteKubernetesClusterLister {
 	return scyllav1alpha1.NewRemoteKubernetesClusterLister(f.Informer().GetIndexer())
+}
+
+// ToTypedRemoteKubernetesClusterInformer converts an untyped informer into a TypedRemoteKubernetesClusterInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *RemoteKubernetesCluster. If that is not the case, calling type-safe methods of the returned
+// TypedRemoteKubernetesClusterInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedRemoteKubernetesClusterInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedRemoteKubernetesClusterInformer(informer RemoteKubernetesClusterInformer) TypedRemoteKubernetesClusterInformer {
+	if informer, ok := informer.(TypedRemoteKubernetesClusterInformer); ok {
+		return informer
+	}
+	return &remoteKubernetesClusterTypedInformerAdapter{informer}
+}
+
+type remoteKubernetesClusterTypedInformerAdapter struct {
+	RemoteKubernetesClusterInformer
+}
+
+func (a *remoteKubernetesClusterTypedInformerAdapter) TypedInformer() RemoteKubernetesClusterIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteKubernetesCluster](a.Informer())
+}
+
+// ToRemoteKubernetesClusterIndexInformer converts an untyped informer into a RemoteKubernetesClusterIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *RemoteKubernetesCluster. If that is not the case, calling type-safe methods of the returned
+// RemoteKubernetesClusterIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a RemoteKubernetesClusterIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToRemoteKubernetesClusterIndexInformer(informer cache.SharedIndexInformer) RemoteKubernetesClusterIndexInformer {
+	if informer, ok := informer.(RemoteKubernetesClusterIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiscyllav1alpha1.RemoteKubernetesCluster](informer)
 }

@@ -6,6 +6,7 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"strconv"
 
 	"github.com/go-openapi/errors"
@@ -32,6 +33,9 @@ type RestoreKeyspaceProgress struct {
 	// keyspace
 	Keyspace string `json:"keyspace,omitempty"`
 
+	// Union of restore methods used for restoring tables in this keyspace
+	Method []string `json:"method"`
+
 	// restored
 	Restored int64 `json:"restored,omitempty"`
 
@@ -51,6 +55,10 @@ func (m *RestoreKeyspaceProgress) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateCompletedAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateMethod(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -76,6 +84,43 @@ func (m *RestoreKeyspaceProgress) validateCompletedAt(formats strfmt.Registry) e
 
 	if err := validate.FormatOf("completed_at", "body", "date-time", m.CompletedAt.String(), formats); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+var restoreKeyspaceProgressMethodItemsEnum []interface{}
+
+func init() {
+	var res []string
+	if err := json.Unmarshal([]byte(`["rclone","native","tablet"]`), &res); err != nil {
+		panic(err)
+	}
+	for _, v := range res {
+		restoreKeyspaceProgressMethodItemsEnum = append(restoreKeyspaceProgressMethodItemsEnum, v)
+	}
+}
+
+func (m *RestoreKeyspaceProgress) validateMethodItemsEnum(path, location string, value string) error {
+	if err := validate.EnumCase(path, location, value, restoreKeyspaceProgressMethodItemsEnum, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *RestoreKeyspaceProgress) validateMethod(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.Method) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Method); i++ {
+
+		// value enum
+		if err := m.validateMethodItemsEnum("method"+"."+strconv.Itoa(i), "body", m.Method[i]); err != nil {
+			return err
+		}
+
 	}
 
 	return nil

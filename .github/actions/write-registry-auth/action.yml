@@ -1,8 +1,8 @@
 name: Write registry auth
 description: >-
-  Merges registry credentials into `~/.docker/config.json`, which buildx reads, and points `REGISTRY_AUTH_FILE`, which
-  skopeo reads, at it for the rest of the job. Call it once per credentials file. It depends on nothing outside its
-  directory, so it can be referenced remotely.
+  Merges registry credentials into `config.json` in `DOCKER_CONFIG`, or in `~/.docker` when it's unset, which buildx
+  reads, and points `REGISTRY_AUTH_FILE`, which skopeo reads, at it for the rest of the job. Call it once per
+  credentials file. It depends on nothing outside its directory, so it can be referenced remotely.
 
 inputs:
   auth-json:
@@ -34,8 +34,9 @@ runs:
 
       # containers-auth.json(5) shares the "auths" format with docker's config.json, so buildx picks it up as is.
       umask 077
-      mkdir -p ~/.docker
-      config=~/.docker/config.json
+      config_dir="${DOCKER_CONFIG:-${HOME}/.docker}"
+      mkdir -p "${config_dir}"
+      config="${config_dir}/config.json"
       if [[ ! -f "${config}" ]]; then
         echo '{}' > "${config}"
       fi

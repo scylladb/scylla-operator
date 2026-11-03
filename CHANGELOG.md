@@ -10,6 +10,15 @@
 - [1.19.2](#1192)
 - [Before 2026-03-11](#versions-released-before-2026-03-11)
 
+## Unreleased
+
+### Bug fixes
+
+- `ScyllaDBDatacenter` now mounts the ScyllaDB Manager Agent config Secret referenced in
+  `scyllaDBManagerAgent.customConfigSecretRef` of a rack or of `rackTemplate` when `rackTemplate` is set. Previously
+  the agents silently ran with the default config. `ScyllaCluster` wasn't affected.
+  [#3828](https://github.com/scylladb/scylla-operator/pull/3828)
+
 ## [1.23.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.23.0)
 
 Release date: 2026-10-26

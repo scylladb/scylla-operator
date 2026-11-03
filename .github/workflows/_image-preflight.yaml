@@ -43,10 +43,21 @@ jobs:
       with:
         persist-credentials: false
 
+    - name: Read the certification component
+      id: metadata
+      run: |
+        set -euExo pipefail
+        shopt -s inherit_errexit
+
+        source ./hack/lib/assets.sh
+        component_id="$( get-metadata '.operator.redHatCertificationImageComponentID' )"
+        echo "component-id=${component_id}" >> "${GITHUB_OUTPUT}"
+
     - name: Run preflight
-      env:
-        IMAGE_REPO_REF: ${{ inputs.image-repo-ref }}
-        IMAGE_TAG: ${{ inputs.image-tag }}
-        SUBMIT: ${{ inputs.submit }}
-        PFLT_PYXIS_API_TOKEN: ${{ secrets.pyxis-api-token }}
-      run: ./hack/.ci/release/certify-image.sh "${IMAGE_REPO_REF}" "${IMAGE_TAG}"
+      uses: ./.github/actions/certify-image
+      with:
+        image-repo-ref: ${{ inputs.image-repo-ref }}
+        image-tag: ${{ inputs.image-tag }}
+        component-id: ${{ steps.metadata.outputs.component-id }}
+        submit: ${{ inputs.submit }}
+        pyxis-api-token: ${{ secrets.pyxis-api-token }}

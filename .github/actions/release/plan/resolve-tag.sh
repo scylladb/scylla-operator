@@ -21,7 +21,8 @@ ref="${4}"
 dev_image_repo_ref="${5}"
 allow_any_ref="${6}"
 
-if [[ -z "$( git ls-remote --tags --refs "https://github.com/${repository}.git" "refs/tags/${tag}" )" ]]; then
+remote_tag="$( git ls-remote --tags --refs "https://github.com/${repository}.git" "refs/tags/${tag}" )"
+if [[ -z "${remote_tag}" ]]; then
   if [[ "${ref}" != "refs/heads/v${minor}" && "${allow_any_ref}" != "true" ]]; then
     echo "Error: Tag '${tag}' has to be created on branch 'v${minor}', not '${ref}'. If you're sure the tag belongs on '${ref}', dispatch the release again with 'allow-any-ref' set." >&2
     exit 1

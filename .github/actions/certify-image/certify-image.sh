@@ -8,7 +8,7 @@
 # Pyxis rejects the results for a digest that's already certified, but still adds the tag to it, so a rejected
 # submission counts as a success once the certified image of that digest has the tag in Pyxis.
 #
-# Usage: certify-image.sh <image_repo_ref> <image_tag>
+# Usage: certify-image.sh <image_repo_ref> <image_tag> <component_id>
 # Environment:
 #   PFLT_PYXIS_API_TOKEN  required, Red Hat Container API key, read by preflight. Without SUBMIT it only selects the
 #                         component's policy, which the default one differs from.
@@ -17,16 +17,20 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
-source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/assets.sh"
-
-if [[ "$#" -ne 2 ]]; then
-  echo -e "Invalid arguments.\nUsage: ${0} <image_repo_ref> <image_tag>" >&2
+if [[ "$#" -ne 3 ]]; then
+  echo -e "Invalid arguments.\nUsage: ${0} <image_repo_ref> <image_tag> <component_id>" >&2
   exit 1
 fi
 
 image_repo_ref="${1}"
 image_tag="${2}"
+component_id="${3}"
 submit="${SUBMIT:-false}"
+
+if [[ -z "${component_id}" ]]; then
+  echo "Error: component_id must not be empty." >&2
+  exit 1
+fi
 
 # The token is only ever expanded with the trace off, so the check expands it to a placeholder.
 if [[ -z "${PFLT_PYXIS_API_TOKEN:+set}" ]]; then
@@ -37,7 +41,6 @@ fi
 temp_dir="$( mktemp -d )"
 trap 'rm -rf "${temp_dir}"' EXIT
 
-component_id="$( get-metadata '.operator.redHatCertificationImageComponentID' )"
 export PFLT_ARTIFACTS="${temp_dir}"
 preflight_exit=0
 preflight check container "${image_repo_ref}:${image_tag}" --certification-component-id="${component_id}" --submit="${submit}" || preflight_exit="$?"

@@ -1,0 +1,26 @@
+name: Write registry auth
+description: >-
+  Merges registry credentials into `config.json` in `DOCKER_CONFIG`, or in `~/.docker` when it's unset, which buildx
+  reads, and points `REGISTRY_AUTH_FILE`, which skopeo reads, at it for the rest of the job, as `write-registry-auth.sh`
+  describes. Call it once per credentials file. It depends on nothing outside its directory, so it can be referenced
+  remotely.
+
+inputs:
+  auth-json:
+    description: >-
+      Contents of a containers-auth.json(5) file. Only its `auths` are merged into the existing ones, so calling the
+      action again adds credentials to more registries. Other fields, like `credHelpers`, are ignored.
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    env:
+      AUTH_JSON: ${{ inputs.auth-json }}
+    run: |
+      set -euEo pipefail
+      shopt -s inherit_errexit
+
+      config="$( "${GITHUB_ACTION_PATH}/write-registry-auth.sh" )"
+      echo "REGISTRY_AUTH_FILE=${config}" >> "${GITHUB_ENV}"

@@ -15,11 +15,11 @@ if [[ "$#" -lt 1 ]]; then
 fi
 
 # The process substitution below doesn't propagate a jq failure, so the input is validated on its own first.
-if ! jq -e 'type == "array" and all(.[]; type == "string")' <<< "${1}" > /dev/null; then
-  echo "Patterns ${1} are not a JSON list of strings." >&2
+if ! jq -ne --arg patterns "${1}" '$patterns | fromjson | type == "array" and all(.[]; type == "string" and (contains("\n") | not))' > /dev/null; then
+  echo "Patterns ${1} are not a JSON list of strings without line breaks." >&2
   exit 1
 fi
-mapfile -t patterns < <( jq -r '.[]' <<< "${1}" )
+mapfile -t patterns < <( jq -nr --arg patterns "${1}" '$patterns | fromjson | .[]' )
 ids=( "${@:2}" )
 
 # A pattern that matches no id would otherwise go unnoticed, so a renamed job would silently drop out of, or back into,

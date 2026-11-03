@@ -58,6 +58,8 @@ jobs:
         - id: helm-smoke
           suite: kind-smoke
           install-mode: helm
+        - id: multi-datacenter
+          suite: scylla-operator/conformance/multi-datacenter-parallel
     uses: ./.github/workflows/_e2e-kind.yaml
     with:
       name: ${{ matrix.id }}

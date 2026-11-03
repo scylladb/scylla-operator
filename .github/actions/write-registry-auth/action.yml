@@ -1,8 +1,9 @@
 name: Write registry auth
 description: >-
   Merges registry credentials into `config.json` in `DOCKER_CONFIG`, or in `~/.docker` when it's unset, which buildx
-  reads, and points `REGISTRY_AUTH_FILE`, which skopeo reads, at it for the rest of the job. Call it once per
-  credentials file. It depends on nothing outside its directory, so it can be referenced remotely.
+  reads, and points `REGISTRY_AUTH_FILE`, which skopeo reads, at it for the rest of the job, as `write-registry-auth.sh`
+  describes. Call it once per credentials file. It depends on nothing outside its directory, so it can be referenced
+  remotely.
 
 inputs:
   auth-json:
@@ -17,29 +18,9 @@ runs:
   - shell: bash
     env:
       AUTH_JSON: ${{ inputs.auth-json }}
-    # No xtrace, the auth is the credential.
     run: |
       set -euEo pipefail
       shopt -s inherit_errexit
 
-      if [[ -z "${AUTH_JSON//[[:space:]]/}" ]]; then
-        echo '::error::The registry auth is empty. GitHub does not pass secrets to runs of pull requests from forks. If this is a pull request from a fork, this is expected and needs no action from you: a maintainer will run the e2e suites for it.'
-        exit 1
-      fi
-
-      if ! jq -ne 'env.AUTH_JSON | fromjson | .auths | objects | length > 0' &> /dev/null; then
-        echo '::error::The registry auth is not a containers-auth.json(5) file with a non-empty "auths" object.'
-        exit 1
-      fi
-
-      # containers-auth.json(5) shares the "auths" format with docker's config.json, so buildx picks it up as is.
-      umask 077
-      config_dir="${DOCKER_CONFIG:-${HOME}/.docker}"
-      mkdir -p "${config_dir}"
-      config="${config_dir}/config.json"
-      if [[ ! -f "${config}" ]]; then
-        echo '{}' > "${config}"
-      fi
-      jq '.auths += (env.AUTH_JSON | fromjson | .auths)' "${config}" > "${config}.tmp"
-      mv "${config}.tmp" "${config}"
+      config="$( "${GITHUB_ACTION_PATH}/write-registry-auth.sh" )"
       echo "REGISTRY_AUTH_FILE=${config}" >> "${GITHUB_ENV}"

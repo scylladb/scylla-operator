@@ -22,11 +22,15 @@ inputs:
 runs:
   using: composite
   steps:
-  # The rolling tags are a space-separated list, split into arguments on purpose.
   - shell: bash
     env:
       SOURCE_IMAGE_REF: ${{ inputs.source-image-ref }}
       IMAGE_REPO_REF: ${{ inputs.image-repo-ref }}
       VERSION: ${{ inputs.version }}
       ROLLING_TAGS: ${{ inputs.rolling-tags }}
-    run: '"${GITHUB_ACTION_PATH}/promote-image.sh" "${SOURCE_IMAGE_REF}" "${IMAGE_REPO_REF}" "${VERSION}" ${ROLLING_TAGS}'
+    run: |
+      set -euExo pipefail
+      shopt -s inherit_errexit
+
+      read -ra rolling_tags <<< "${ROLLING_TAGS}"
+      "${GITHUB_ACTION_PATH}/promote-image.sh" "${SOURCE_IMAGE_REF}" "${IMAGE_REPO_REF}" "${VERSION}" "${rolling_tags[@]}"

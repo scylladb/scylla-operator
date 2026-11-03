@@ -43,6 +43,7 @@ import (
 
 const (
 	scyllaAgentConfigVolumeName              = "scylla-agent-config-volume"
+	scyllaAgentConfigDefaultSecretName       = "scylla-agent-config-secret"
 	scyllaManagedAgentConfigVolumeName       = "scylla-managed-agent-config-volume"
 	scyllaAgentAuthTokenVolumeName           = "scylla-agent-auth-token-volume"
 	scylladbServingCertsVolumeName           = "scylladb-serving-certs"
@@ -655,7 +656,7 @@ func StatefulSetForRack(rack scyllav1alpha1.RackSpec, sdc *scyllav1alpha1.Scylla
 											if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
 												return *rack.ScyllaDBManagerAgent.CustomConfigSecretRef
 											}
-											return "scylla-agent-config-secret"
+											return scyllaAgentConfigDefaultSecretName
 										}(),
 										Optional: &opt,
 									},
@@ -2301,7 +2302,15 @@ func applyRackTemplateOnRackSpec(rackTemplate *scyllav1alpha1.RackTemplate, rack
 							Requests: requests,
 						}
 					}(),
-					CustomConfigSecretRef: nil,
+					CustomConfigSecretRef: func() *string {
+						if rack.ScyllaDBManagerAgent != nil && rack.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+							return rack.ScyllaDBManagerAgent.CustomConfigSecretRef
+						}
+						if rackTemplate.ScyllaDBManagerAgent != nil && rackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef != nil {
+							return rackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef
+						}
+						return nil
+					}(),
 					Volumes: func() []corev1.Volume {
 						var volumes []corev1.Volume
 						if rackTemplate.ScyllaDBManagerAgent != nil {

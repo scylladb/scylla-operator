@@ -130,12 +130,6 @@ func setUpS3Credentials(ctx context.Context, coreClient corev1client.CoreV1Inter
 		agentConfigSecret, err = coreClient.Secrets(namespace).Create(ctx, agentConfigSecret, metav1.CreateOptions{})
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		// The ref goes on every rack, not on the rack template: the rack template's ref is not propagated to the racks.
-		for i := range sdc.Spec.Racks {
-			if sdc.Spec.Racks[i].ScyllaDBManagerAgent == nil {
-				sdc.Spec.Racks[i].ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{}
-			}
-			sdc.Spec.Racks[i].ScyllaDBManagerAgent.CustomConfigSecretRef = pointer.Ptr(agentConfigSecret.Name)
-		}
+		sdc.Spec.RackTemplate.ScyllaDBManagerAgent.CustomConfigSecretRef = pointer.Ptr(agentConfigSecret.Name)
 	}
 }

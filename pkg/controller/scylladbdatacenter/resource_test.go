@@ -863,7 +863,7 @@ func runTestStatefulSetForRack(t *testing.T) {
 									Name: "scylla-agent-config-volume",
 									VolumeSource: corev1.VolumeSource{
 										Secret: &corev1.SecretVolumeSource{
-											SecretName: "scylla-agent-config-secret",
+											SecretName: scyllaAgentConfigDefaultSecretName,
 											Optional:   pointer.Ptr(true),
 										},
 									},
@@ -1503,6 +1503,27 @@ exec scylla-manager-agent \
 	const scyllaContainerIndex = 0
 	const runBootstrapBarrierInitContainerIndex = 1
 
+	const rackAgentConfigSecretName = "rack-agent-config"
+	const rackTemplateAgentConfigSecretName = "rack-template-agent-config"
+
+	newRackWithAgentConfigSecretRef := func(secretName string) scyllav1alpha1.RackSpec {
+		r := newBasicRack()
+		r.ScyllaDBManagerAgent = &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+			CustomConfigSecretRef: pointer.Ptr(secretName),
+		}
+		return r
+	}
+
+	setAgentConfigSecretName := func(sts *appsv1.StatefulSet, secretName string) {
+		for i := range sts.Spec.Template.Spec.Volumes {
+			if sts.Spec.Template.Spec.Volumes[i].Name == scyllaAgentConfigVolumeName {
+				sts.Spec.Template.Spec.Volumes[i].Secret.SecretName = secretName
+				return
+			}
+		}
+		t.Fatalf("StatefulSet has no %q volume", scyllaAgentConfigVolumeName)
+	}
+
 	tt := []struct {
 		name                string
 		rack                scyllav1alpha1.RackSpec
@@ -2025,6 +2046,64 @@ exec scylla-manager-agent \
 					"scylla/rack":                  "rack",
 					"custom-pvc-label":             "custom-pvc-label-value",
 				}
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with ScyllaDB Manager Agent custom config Secret set on the rack and an empty rackTemplate set mounts the rack's Secret",
+			rack: newRackWithAgentConfigSecretRef(rackAgentConfigSecretName),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.Racks = []scyllav1alpha1.RackSpec{newRackWithAgentConfigSecretRef(rackAgentConfigSecretName)}
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{}
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				setAgentConfigSecretName(sts, rackAgentConfigSecretName)
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with ScyllaDB Manager Agent custom config Secret set on the rackTemplate mounts the rackTemplate's Secret",
+			rack: newBasicRack(),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+						CustomConfigSecretRef: pointer.Ptr(rackTemplateAgentConfigSecretName),
+					},
+				}
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				setAgentConfigSecretName(sts, rackTemplateAgentConfigSecretName)
+				return sts
+			}(),
+			expectedError: nil,
+		},
+		{
+			name: "new StatefulSet with ScyllaDB Manager Agent custom config Secret set on both the rack and the rackTemplate mounts the rack's Secret",
+			rack: newRackWithAgentConfigSecretRef(rackAgentConfigSecretName),
+			scyllaDBDatacenter: func() *scyllav1alpha1.ScyllaDBDatacenter {
+				sdc := newBasicScyllaDBDatacenter()
+				sdc.Spec.Racks = []scyllav1alpha1.RackSpec{newRackWithAgentConfigSecretRef(rackAgentConfigSecretName)}
+				sdc.Spec.RackTemplate = &scyllav1alpha1.RackTemplate{
+					ScyllaDBManagerAgent: &scyllav1alpha1.ScyllaDBManagerAgentTemplate{
+						CustomConfigSecretRef: pointer.Ptr(rackTemplateAgentConfigSecretName),
+					},
+				}
+				return sdc
+			}(),
+			existingStatefulSet: nil,
+			expectedStatefulSet: func() *appsv1.StatefulSet {
+				sts := newBasicStatefulSet()
+				setAgentConfigSecretName(sts, rackAgentConfigSecretName)
 				return sts
 			}(),
 			expectedError: nil,

@@ -5322,7 +5322,7 @@ object
      - Description
    * - customConfigSecretRef
      - string
-     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
+     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret. A reference set on a rack takes precedence over the one set in the rack template. The auth token propagated to ScyllaDB Manager is read only from the configuration effective for the first rack, so configurations referenced by all racks must specify the same auth_token.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.rackTemplate.scyllaDBManagerAgent.resources>`
      - object
      - resources specify requirements for the ScyllaDB Manager Agent container
@@ -11740,7 +11740,7 @@ object
      - Description
    * - customConfigSecretRef
      - string
-     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
+     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret. A reference set on a rack takes precedence over the one set in the rack template. The auth token propagated to ScyllaDB Manager is read only from the configuration effective for the first rack, so configurations referenced by all racks must specify the same auth_token.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.racks[].scyllaDBManagerAgent.resources>`
      - object
      - resources specify requirements for the ScyllaDB Manager Agent container
@@ -16846,7 +16846,7 @@ object
      - Description
    * - customConfigSecretRef
      - string
-     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
+     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret. A reference set on a rack takes precedence over the one set in the rack template. The auth token propagated to ScyllaDB Manager is read only from the configuration effective for the first rack, so configurations referenced by all racks must specify the same auth_token.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenterTemplate.scyllaDBManagerAgent.resources>`
      - object
      - resources specify requirements for the ScyllaDB Manager Agent container
@@ -24557,7 +24557,7 @@ object
      - Description
    * - customConfigSecretRef
      - string
-     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
+     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret. A reference set on a rack takes precedence over the one set in the rack template. The auth token propagated to ScyllaDB Manager is read only from the configuration effective for the first rack, so configurations referenced by all racks must specify the same auth_token.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].rackTemplate.scyllaDBManagerAgent.resources>`
      - object
      - resources specify requirements for the ScyllaDB Manager Agent container
@@ -30975,7 +30975,7 @@ object
      - Description
    * - customConfigSecretRef
      - string
-     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
+     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret. A reference set on a rack takes precedence over the one set in the rack template. The auth token propagated to ScyllaDB Manager is read only from the configuration effective for the first rack, so configurations referenced by all racks must specify the same auth_token.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].racks[].scyllaDBManagerAgent.resources>`
      - object
      - resources specify requirements for the ScyllaDB Manager Agent container
@@ -36081,7 +36081,7 @@ object
      - Description
    * - customConfigSecretRef
      - string
-     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret.
+     - customConfigSecretRef specifies a reference to custom ScyllaDB Manager Agent configuration stored as Secret. A reference set on a rack takes precedence over the one set in the rack template. The auth token propagated to ScyllaDB Manager is read only from the configuration effective for the first rack, so configurations referenced by all racks must specify the same auth_token.
    * - :ref:`resources<api-scylla.scylladb.com-scylladbclusters-v1alpha1-.spec.datacenters[].scyllaDBManagerAgent.resources>`
      - object
      - resources specify requirements for the ScyllaDB Manager Agent container

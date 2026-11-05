@@ -462,6 +462,11 @@ function run-e2e {
     e2e_command_args+=( "--focus=${SO_FOCUS}" )
   fi
 
+  # Experimental: collect the operator's reconcile traces, see SO_RECONCILE_TRACE in hack/lib/install.sh.
+  if [[ "${SO_RECONCILE_TRACE:-false}" == "true" ]]; then
+    e2e_command_args+=( "--reconcile-trace-port=${SO_RECONCILE_TRACE_PORT:-8095}" )
+  fi
+
   if [[ -n "${SCYLLADB_IMAGE_REF}" ]]; then
     e2e_command_args+=( "--scylladb-image-ref=${SCYLLADB_IMAGE_REF}" )
   fi

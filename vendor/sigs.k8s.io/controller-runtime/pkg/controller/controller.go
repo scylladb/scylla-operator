@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/internal/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/reconciletrace"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -133,6 +134,12 @@ type TypedOptions[request comparable] struct {
 	// ReconciliationTimeout is used as the timeout passed to the context of each Reconcile call.
 	// By default, there is no timeout.
 	ReconciliationTimeout time.Duration
+
+	// TraceRecorder, if set, records the controller's enqueues with their causes and its reconciles with their
+	// triggers and results. The context passed to Reconcile carries the reconcile, so that a client wrapped with
+	// reconciletrace.WrapClient attributes its calls to it.
+	// Defaults to nil, which records nothing.
+	TraceRecorder reconciletrace.Recorder
 }
 
 // DefaultFromConfig defaults the config from a config.Controller
@@ -303,6 +310,7 @@ func NewTypedUnmanaged[request comparable](name string, options TypedOptions[req
 		LeaderElected:           options.NeedLeaderElection,
 		EnableWarmup:            options.EnableWarmup,
 		ReconciliationTimeout:   options.ReconciliationTimeout,
+		TraceRecorder:           options.TraceRecorder,
 	}), nil
 }
 

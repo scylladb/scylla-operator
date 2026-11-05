@@ -36,7 +36,9 @@ import (
 	policyv1listers "k8s.io/client-go/listers/policy/v1"
 	rbacv1listers "k8s.io/client-go/listers/rbac/v1"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/reconciletrace"
 )
 
 // registerControllers wires every controller of the operator binary. The controllers not migrated to
@@ -81,9 +83,14 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 		return fmt.Errorf("can't get informers: %w", err)
 	}
 
+	var apiReader client.Reader = m.mgr.GetAPIReader()
+	if o.TraceRecorder != nil {
+		apiReader = reconciletrace.WrapReader(apiReader, o.TraceRecorder, reconciletrace.ClientOptions{Label: "apiReader"})
+	}
+
 	sdcc := scylladbdatacenter.NewController(
 		m.client,
-		m.mgr.GetAPIReader(),
+		apiReader,
 		m.mgr.GetEventRecorderFor("scylladbdatacenter-controller"),
 		o.OperatorImage,
 		o.CQLSIngressPort,
@@ -91,6 +98,7 @@ func (m *Manager) registerControllers(ctx context.Context) error {
 	)
 	err = sdcc.SetupWithManager(m.mgr, controller.Options{
 		MaxConcurrentReconciles: o.ConcurrentSyncs,
+		TraceRecorder:           o.TraceRecorder,
 	})
 	if err != nil {
 		return fmt.Errorf("can't set up scylladbdatacenter controller: %w", err)

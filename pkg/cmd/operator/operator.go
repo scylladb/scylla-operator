@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"slices"
 	"sync"
+	"time"
 
 	monitoringversionedclient "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	scyllav1 "github.com/scylladb/scylla-operator/pkg/api/scylla/v1"
@@ -29,6 +31,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconciletrace"
 )
 
 type OperatorOptions struct {
@@ -45,7 +48,17 @@ type OperatorOptions struct {
 	OperatorImage    string
 	CQLSIngressPort  int
 	CryptoKeyOptions CryptoKeyOptions
+
+	// ReconcileTraceDir and ReconcileTraceAddress drive an experiment: recording the reconcile trace of the
+	// controllers on controller-runtime for review in tests. Empty ReconcileTraceDir disables it.
+	ReconcileTraceDir     string
+	ReconcileTraceAddress string
+
+	reconcileTraceStore *reconciletrace.NamespacedFileStore
 }
+
+// reconcileTraceMaxBytesPerNamespace caps the trace of one namespace.
+const reconcileTraceMaxBytesPerNamespace = 128 << 20
 
 func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 	return &OperatorOptions{
@@ -57,6 +70,9 @@ func NewOperatorOptions(streams genericclioptions.IOStreams) *OperatorOptions {
 		OperatorImage:    "",
 		CQLSIngressPort:  0,
 		CryptoKeyOptions: DefaultCryptoKeyOptions(),
+
+		ReconcileTraceDir:     "",
+		ReconcileTraceAddress: ":8095",
 	}
 }
 
@@ -104,6 +120,16 @@ func (o *OperatorOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.OperatorImage, "image", "", o.OperatorImage, "Image of the operator used.")
 	cmd.Flags().IntVarP(&o.CQLSIngressPort, "cqls-ingress-port", "", o.CQLSIngressPort, "Port on which is the ingress controller listening for secure CQL connections.")
 	o.CryptoKeyOptions.AddFlags(cmd)
+
+	cmd.Flags().StringVarP(&o.ReconcileTraceDir, "reconcile-trace-dir", "", o.ReconcileTraceDir, "Experimental, for tests: directory to record the reconcile trace of the controllers on controller-runtime to, one JSON lines file per namespace. Empty disables recording.")
+	cmd.Flags().StringVarP(&o.ReconcileTraceAddress, "reconcile-trace-address", "", o.ReconcileTraceAddress, "Experimental, for tests: address serving the recorded reconcile traces under /reconcile-traces/, when --reconcile-trace-dir is set.")
+	// The flags drive an experiment and aren't part of the supported interface.
+	for _, name := range []string{"reconcile-trace-dir", "reconcile-trace-address"} {
+		err := cmd.Flags().MarkHidden(name)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func (o *OperatorOptions) Validate() error {
@@ -190,6 +216,14 @@ func (o *OperatorOptions) Execute(ctx context.Context, streams genericclioptions
 	// Lock names cannot be changed, because it may lead to two leaders during rolling upgrades.
 	const lockName = "scylla-operator-lock"
 
+	if len(o.ReconcileTraceDir) != 0 {
+		stop, err := o.startReconcileTraceServer(ctx)
+		if err != nil {
+			return err
+		}
+		defer stop()
+	}
+
 	return leaderelection.Run(
 		ctx,
 		cmd.Name(),
@@ -223,6 +257,12 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	}
 	defer keyGenerator.Close()
 
+	// A nil store must stay a nil interface, not a typed nil.
+	var traceRecorder reconciletrace.Recorder
+	if o.reconcileTraceStore != nil {
+		traceRecorder = o.reconcileTraceStore
+	}
+
 	cm, err := controllermanager.New(controllermanager.Options{
 		RestConfig:          o.RestConfig,
 		Logger:              klog.NewKlogr(),
@@ -235,6 +275,7 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 		CQLSIngressPort:     o.CQLSIngressPort,
 		ConcurrentSyncs:     o.ConcurrentSyncs,
 		ResyncPeriod:        resyncPeriod,
+		TraceRecorder:       traceRecorder,
 	})
 	if err != nil {
 		return fmt.Errorf("can't create controller manager: %w", err)
@@ -253,6 +294,46 @@ func (o *OperatorOptions) run(ctx context.Context, streams genericclioptions.IOS
 	})
 
 	return cm.Run(ctx)
+}
+
+// startReconcileTraceServer creates the reconcile trace store and serves it. Every replica serves, so that a
+// follower answers with no traces instead of refusing the connection; only the leader records.
+func (o *OperatorOptions) startReconcileTraceServer(ctx context.Context) (func(), error) {
+	store, err := reconciletrace.NewNamespacedFileStore(o.ReconcileTraceDir, reconcileTraceMaxBytesPerNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("can't create reconcile trace store: %w", err)
+	}
+	o.reconcileTraceStore = store
+
+	server := &http.Server{
+		Addr:              o.ReconcileTraceAddress,
+		Handler:           store.Handler("/reconcile-traces"),
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		klog.InfoS("Serving reconcile traces", "Address", o.ReconcileTraceAddress, "Directory", o.ReconcileTraceDir)
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			klog.ErrorS(err, "Reconcile trace server failed")
+		}
+	})
+
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		err := server.Shutdown(shutdownCtx)
+		if err != nil {
+			klog.ErrorS(err, "Can't shut down the reconcile trace server")
+		}
+		wg.Wait()
+
+		err = store.Close()
+		if err != nil {
+			klog.ErrorS(err, "Can't close the reconcile trace store")
+		}
+	}, nil
 }
 
 func listScyllaClustersWithNonRFC1123SubdomainTaskNames(ctx context.Context, scyllaV1Client scyllav1client.ScyllaV1Interface) ([]string, error) {

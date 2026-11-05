@@ -1660,7 +1660,7 @@ k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/third_party/forked/golang/btree
 k8s.io/utils/trace
-# sigs.k8s.io/controller-runtime v0.25.1
+# sigs.k8s.io/controller-runtime v0.25.1 => /home/grzegorzburzynski/Repos/controller-runtime-reconcile-trace
 ## explicit; go 1.26.0
 sigs.k8s.io/controller-runtime/pkg/builder
 sigs.k8s.io/controller-runtime/pkg/cache
@@ -1706,6 +1706,8 @@ sigs.k8s.io/controller-runtime/pkg/metrics
 sigs.k8s.io/controller-runtime/pkg/metrics/server
 sigs.k8s.io/controller-runtime/pkg/predicate
 sigs.k8s.io/controller-runtime/pkg/reconcile
+sigs.k8s.io/controller-runtime/pkg/reconciletrace
+sigs.k8s.io/controller-runtime/pkg/reconciletrace/critic
 sigs.k8s.io/controller-runtime/pkg/recorder
 sigs.k8s.io/controller-runtime/pkg/source
 sigs.k8s.io/controller-runtime/pkg/webhook
@@ -1832,3 +1834,4 @@ sigs.k8s.io/yaml/kyaml
 # github.com/gocql/gocql => github.com/scylladb/gocql v1.19.0
 # github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.94.1
 # github.com/prometheus-operator/prometheus-operator/pkg/client => github.com/prometheus-operator/prometheus-operator/pkg/client v0.94.1
+# sigs.k8s.io/controller-runtime => /home/grzegorzburzynski/Repos/controller-runtime-reconcile-trace

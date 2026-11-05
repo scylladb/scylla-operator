@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if .Title}}{{.Title}}{{else}}Reconcile review{{end}}</title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --panel-2: #f1f1ee; --text: #1d1d1b; --muted: #6b6b66; --border: #dedcd5;
+  --accent: #2f5f8f; --high: #b42318; --high-bg: #fde8e6; --medium: #a15c07; --medium-bg: #fdf0db;
+  --low: #3b6b3b; --low-bg: #e6f2e4; --pass: #3b6b3b; --fail: #b42318; --code-bg: #f4f3ef; --notable: #fff6d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615; --panel: #1f1f1d; --panel-2: #262624; --text: #e9e8e4; --muted: #a3a29c; --border: #3a3a36;
+    --accent: #8ab4e0; --high: #f97066; --high-bg: #3d1d1a; --medium: #f5b54a; --medium-bg: #3a2c12;
+    --low: #8fc78f; --low-bg: #1d3220; --pass: #8fc78f; --fail: #f97066; --code-bg: #1a1a18; --notable: #3a3418;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 16px; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
+.stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; min-width: 110px; }
+.stat b { display: block; font-size: 20px; }
+.stat span { color: var(--muted); font-size: 12px; }
+.toolbar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  background: var(--bg); padding: 8px 0; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.toolbar input[type=search] { flex: 1 1 260px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); }
+.toolbar button { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); cursor: pointer; }
+.toolbar label { color: var(--muted); font-size: 13px; }
+details { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); margin: 8px 0; }
+details > summary { cursor: pointer; padding: 10px 12px; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "▸"; color: var(--muted); width: 1em; }
+details[open] > summary::before { content: "▾"; }
+details > .body { padding: 0 14px 12px; }
+.group > summary .name { font-weight: 600; flex: 1 1 400px; overflow-wrap: anywhere; }
+.status { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; border: 1px solid currentColor; }
+.status.passed { color: var(--pass); } .status.failed { color: var(--fail); }
+.badge { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+.badge.high { color: var(--high); background: var(--high-bg); }
+.badge.medium { color: var(--medium); background: var(--medium-bg); }
+.badge.low { color: var(--low); background: var(--low-bg); }
+.badge.none { color: var(--muted); background: var(--panel-2); }
+.mini { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.mini.notable { color: var(--medium); }
+.notes { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+.episode { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; }
+.episode h3 { font-size: 15px; margin: 0 0 8px; overflow-wrap: anywhere; }
+table.signals { border-collapse: collapse; width: 100%; margin: 4px 0 10px; font-size: 13px; }
+table.signals td { border-top: 1px solid var(--border); padding: 4px 8px; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
+table.signals td:first-child { color: var(--muted); width: 260px; }
+table.signals tr.notable td { background: var(--notable); }
+.finding > summary .title { font-weight: 600; flex: 1 1 360px; }
+.finding .meta { color: var(--muted); font-size: 12px; }
+.finding p { margin: 6px 0; }
+pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; overflow-x: auto; font: 12px/1.45 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; margin: 6px 0; }
+code { font: 12px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; background: var(--code-bg); padding: 0 4px; border-radius: 4px; }
+.subtle { color: var(--muted); }
+.error { color: var(--fail); }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+<h1>{{if .Title}}{{.Title}}{{else}}Reconcile review{{end}}</h1>
+<p class="sub">{{if .Subtitle}}{{.Subtitle}} · {{end}}generated {{fmtTime .Generated}}</p>
+
+<div class="stats">
+  <div class="stat"><b>{{len .Groups}}</b><span>test cases{{if .Failed}}, {{.Failed}} failed{{end}}</span></div>
+  <div class="stat"><b>{{.Episodes}}</b><span>episodes, {{.Reviewed}} reviewed</span></div>
+  <div class="stat"><b>{{.Findings}}</b><span>findings</span></div>
+  <div class="stat"><b>{{sev .Severities "high"}} / {{sev .Severities "medium"}} / {{sev .Severities "low"}}</b><span>high / medium / low</span></div>
+  {{range .Categories}}<div class="stat"><b>{{.Count}}</b><span>{{.Name}}</span></div>{{end}}
+</div>
+
+<div class="toolbar">
+  <input type="search" id="filter" placeholder="Filter test cases by name">
+  <label><input type="checkbox" id="only-findings"> with findings only</label>
+  <label><input type="checkbox" id="only-failed"> failed only</label>
+  <button type="button" data-toggle="open">Expand all</button>
+  <button type="button" data-toggle="close">Collapse all</button>
+</div>
+
+{{range .Groups}}
+<details class="group" data-name="{{lower .Name}}" data-findings="{{.Findings}}" data-status="{{.Status}}">
+  <summary>
+    {{if .Status}}<span class="status {{.Status}}">{{.Status}}</span>{{end}}
+    <span class="name">{{.Name}}</span>
+    {{if .Reviewed}}
+      {{with sev .Severities "high"}}<span class="badge high">{{.}} high</span>{{end}}
+      {{with sev .Severities "medium"}}<span class="badge medium">{{.}} medium</span>{{end}}
+      {{with sev .Severities "low"}}<span class="badge low">{{.}} low</span>{{end}}
+      {{if not .Findings}}<span class="badge none">no findings</span>{{end}}
+    {{else}}<span class="badge none">signals only</span>{{end}}
+    <span class="mini">{{.Reconciles}} reconciles</span>
+    {{if .ReconcileErrors}}<span class="mini notable">{{.ReconcileErrors}} reconcile errors</span>{{end}}
+    {{if .NoOps}}<span class="mini notable">{{.NoOps}} no-op writes</span>{{end}}
+    {{if .Conflicts}}<span class="mini notable">{{.Conflicts}} conflicts</span>{{end}}
+    {{if .SelfIdle}}<span class="mini notable">{{.SelfIdle}} self-triggered idle</span>{{end}}
+  </summary>
+  <div class="body">
+    {{range .Notes}}<p class="notes">{{.}}</p>{{end}}
+    {{range .Errors}}<p class="error">Review failed: {{.}}</p>{{end}}
+    {{range .Reports}}
+    <section class="episode">
+      <h3>{{.Controller}} · {{.Request}}</h3>
+      <table class="signals">
+        {{range .Signals}}<tr{{if .Notable}} class="notable"{{end}}><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}
+      </table>
+      {{if .Reviewed}}
+        {{if not .Findings}}<p class="subtle">The model found nothing to report.</p>{{end}}
+        {{range .Findings}}
+        <details class="finding">
+          <summary>
+            <span class="badge {{.Severity}}">{{.Severity}}</span>
+            <span class="title">{{.Title}}</span>
+            <span class="meta">{{.Category}} · {{.Kind}}</span>
+          </summary>
+          <div class="body">
+            <p>{{.Explanation}}</p>
+            {{if .Suggestion}}<p><b>Suggestion:</b> {{.Suggestion}}</p>{{end}}
+            {{if .CodeReferences}}<p><b>Code:</b> {{range $i, $c := .CodeReferences}}{{if $i}}, {{end}}<code>{{$c}}</code>{{end}}</p>{{end}}
+            <p class="subtle">Evidence</p>
+            <pre>{{join .EvidenceLines "\n"}}</pre>
+          </div>
+        </details>
+        {{end}}
+        {{if .Rejected}}
+        <details>
+          <summary><span class="subtle">{{len .Rejected}} rejected findings (evidence not in the timeline)</span></summary>
+          <div class="body"><ul>{{range .Rejected}}<li>{{.Title}} <span class="subtle">(cited {{.Evidence}})</span></li>{{end}}</ul></div>
+        </details>
+        {{end}}
+      {{end}}
+      <details>
+        <summary><span class="subtle">Timeline ({{.Lines}} lines)</span></summary>
+        <div class="body"><pre>{{.Timeline.Text}}</pre></div>
+      </details>
+    </section>
+    {{end}}
+  </div>
+</details>
+{{end}}
+</main>
+<script>
+(function () {
+  var groups = Array.prototype.slice.call(document.querySelectorAll("details.group"));
+  var filter = document.getElementById("filter");
+  var onlyFindings = document.getElementById("only-findings");
+  var onlyFailed = document.getElementById("only-failed");
+  function apply() {
+    var q = filter.value.trim().toLowerCase();
+    groups.forEach(function (g) {
+      var show = (!q || g.dataset.name.indexOf(q) >= 0) &&
+        (!onlyFindings.checked || g.dataset.findings !== "0") &&
+        (!onlyFailed.checked || g.dataset.status === "failed");
+      g.classList.toggle("hidden", !show);
+    });
+  }
+  filter.addEventListener("input", apply);
+  onlyFindings.addEventListener("change", apply);
+  onlyFailed.addEventListener("change", apply);
+  document.querySelectorAll("[data-toggle]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var open = b.dataset.toggle === "open";
+      document.querySelectorAll("details.group:not(.hidden), details.group:not(.hidden) details.finding").forEach(function (d) { d.open = open; });
+    });
+  });
+})();
+</script>
+</body>
+</html>

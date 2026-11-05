@@ -115,6 +115,19 @@ function _install-operator-manifests() {
 
   deploy-cert-manager "${SOURCE_ROOT}"
 
+  # Experimental: SO_RECONCILE_TRACE=true has the operator record the reconcile trace of its controllers on
+  # controller-runtime and serve it on SO_RECONCILE_TRACE_PORT, for the e2e tests to collect.
+  reconcile_trace_patch=""
+  if [[ "${SO_RECONCILE_TRACE:-false}" == "true" ]]; then
+    reconcile_trace_patch="
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: \"--reconcile-trace-dir=/tmp/reconcile-traces\"
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: \"--reconcile-trace-address=:${SO_RECONCILE_TRACE_PORT:-8095}\""
+  fi
+
   mkdir -p "${ARTIFACTS_DEPLOY_DIR}"/operator
   cat > "${ARTIFACTS_DEPLOY_DIR}/operator/kustomization.yaml" << EOF
 resources:
@@ -168,7 +181,7 @@ patches:
       value: "--burst=${SO_BURST}"
     - op: add
       path: /spec/template/spec/containers/0/args/-
-      value: "--feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}"
+      value: "--feature-gates=${SCYLLA_OPERATOR_FEATURE_GATES}"${reconcile_trace_patch}
   target:
       group: apps
       version: v1

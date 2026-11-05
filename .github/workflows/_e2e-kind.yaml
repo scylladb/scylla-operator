@@ -33,6 +33,13 @@ on:
         required: false
         default: 90m
         type: string
+      record-reconcile-traces:
+        description: >-
+          Experimental. Has the operator record the reconcile trace of its controllers on controller-runtime, and every
+          test collect the traces of its namespaces into the artifacts, under e2e/cluster/reconcile-traces.
+        required: false
+        default: false
+        type: boolean
   # The dispatch runs a single suite with the parameters below. The triggers keep separate input blocks by design,
   # so the workflow_call inputs above are mirrored here; both feed the same `inputs` context.
   workflow_dispatch:
@@ -67,6 +74,13 @@ on:
         required: false
         default: 90m
         type: string
+      record-reconcile-traces:
+        description: >-
+          Experimental. Has the operator record the reconcile trace of its controllers on controller-runtime, and every
+          test collect the traces of its namespaces into the artifacts, under e2e/cluster/reconcile-traces.
+        required: false
+        default: false
+        type: boolean
 
 defaults:
   run:
@@ -131,6 +145,7 @@ jobs:
         SO_SCYLLACLUSTER_ENABLE_PARALLEL_NODE_OPERATIONS: ${{ inputs.enable-parallel-node-operations }}
         SO_E2E_PARALLELISM: ${{ inputs.parallelism }}
         SO_E2E_TIMEOUT: ${{ inputs.e2e-timeout }}
+        SO_RECONCILE_TRACE: ${{ inputs.record-reconcile-traces }}
       run: |
         set -euExo pipefail
         shopt -s inherit_errexit

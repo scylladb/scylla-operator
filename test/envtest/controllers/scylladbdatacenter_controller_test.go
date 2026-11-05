@@ -45,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/reconciletrace"
 )
 
 const (
@@ -1288,6 +1289,8 @@ type scyllaDBDatacenterControllerRunOptions struct {
 	controllerOptions []scylladbdatacenter.ControllerOption
 	// wrapTransport wraps the transport of the manager's rest config, e.g. to hold a watch stream.
 	wrapTransport transport.WrapperFunc
+	// traceRecorder records the controller's reconcile trace. Defaults to the recorder of reconcileTraceDirEnv.
+	traceRecorder reconciletrace.Recorder
 }
 
 // runScyllaDBDatacenterController runs the controller until the context is done.
@@ -1300,6 +1303,11 @@ func runScyllaDBDatacenterController(ctx context.Context, e *envtest.Environment
 // runScyllaDBDatacenterControllerWithOptions is runScyllaDBDatacenterController with the given options applied.
 func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.Environment, runOptions scyllaDBDatacenterControllerRunOptions) {
 	g.GinkgoHelper()
+
+	traceRecorder := runOptions.traceRecorder
+	if traceRecorder == nil {
+		traceRecorder = specTraceRecorderFromEnv()
+	}
 
 	// The controller runs under a controller-runtime manager like in the operator binary, reading through the
 	// manager's read-your-writes client. The cache watches all namespaces: every spec gets its own API server.
@@ -1336,9 +1344,15 @@ func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 
+	c, apiReader := mgr.GetClient(), mgr.GetAPIReader()
+	if traceRecorder != nil {
+		c = reconciletrace.WrapClient(c, traceRecorder, reconciletrace.ClientOptions{Label: "client", RecordBodies: true})
+		apiReader = reconciletrace.WrapReader(apiReader, traceRecorder, reconciletrace.ClientOptions{Label: "apiReader"})
+	}
+
 	sdcc := scylladbdatacenter.NewController(
-		ctrlclient.NewReadYourWritesClient(mgr.GetClient()),
-		mgr.GetAPIReader(),
+		ctrlclient.NewReadYourWritesClient(c),
+		apiReader,
 		mgr.GetEventRecorderFor("scylladbdatacenter-controller"),
 		envtestOperatorImage,
 		scylla.DefaultNativeTransportPort,
@@ -1347,6 +1361,7 @@ func runScyllaDBDatacenterControllerWithOptions(ctx context.Context, e *envtest.
 	)
 	err = sdcc.SetupWithManager(mgr, controller.Options{
 		MaxConcurrentReconciles: 1,
+		TraceRecorder:           traceRecorder,
 	})
 	o.Expect(err).NotTo(o.HaveOccurred())
 

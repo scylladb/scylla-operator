@@ -27,6 +27,7 @@ import (
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/reconciletrace"
 )
 
 // defaultReconciliationTimeout bounds every Reconcile of a controller registered with the manager that doesn't set
@@ -56,6 +57,10 @@ type Options struct {
 	// SkipControllerNameValidation lets several managers register the same controllers within one process, which
 	// controller-runtime refuses by default. Test suites starting a manager per spec need it.
 	SkipControllerNameValidation bool
+
+	// TraceRecorder, if set, records the reconcile trace of the controllers on controller-runtime: their enqueues,
+	// reconciles and client calls. It is an experiment for reviewing the controllers' behaviour in tests.
+	TraceRecorder reconciletrace.Recorder
 }
 
 // Manager owns the controller-runtime manager, and with it the single cache every controller of the operator
@@ -118,11 +123,16 @@ func New(options Options) (*Manager, error) {
 		return nil, fmt.Errorf("can't create controller-runtime manager: %w", err)
 	}
 
+	// The client is read-your-writes by the cache option set above; the trace wrapper only delegates.
+	var c client.Client = mgr.GetClient()
+	if options.TraceRecorder != nil {
+		c = reconciletrace.WrapClient(c, options.TraceRecorder, reconciletrace.ClientOptions{Label: "client", RecordBodies: true})
+	}
+
 	return &Manager{
 		options: options,
 		mgr:     mgr,
-		// The client is read-your-writes by the cache option set above.
-		client: ctrlclient.NewReadYourWritesClient(mgr.GetClient()),
+		client:  ctrlclient.NewReadYourWritesClient(c),
 	}, nil
 }
 

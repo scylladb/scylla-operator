@@ -28,6 +28,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/internal/log"
 
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconciletrace"
 )
 
 var log = logf.RuntimeLog.WithName("source").WithName("EventHandler")
@@ -59,6 +60,16 @@ type EventHandler[object any, request comparable] struct {
 	predicates []predicate.TypedPredicate[object]
 }
 
+// queueFor returns the queue to hand to the handler for one event. A queue that records a trace attributes the adds
+// made through it to the event, which newEvent describes; newEvent is only called for such a queue.
+func (e *EventHandler[object, request]) queueFor(newEvent func() reconciletrace.Event) workqueue.TypedRateLimitingInterface[request] {
+	if q, ok := e.queue.(reconciletrace.EventScopedQueue[request]); ok {
+		return q.ForEvent(newEvent())
+	}
+
+	return e.queue
+}
+
 // OnAdd creates CreateEvent and calls Create on EventHandler.
 func (e *EventHandler[object, request]) OnAdd(obj any, isInInitialList bool) {
 	c := event.TypedCreateEvent[object]{
@@ -83,7 +94,7 @@ func (e *EventHandler[object, request]) OnAdd(obj any, isInInitialList bool) {
 	// Invoke create handler
 	ctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
-	e.handler.Create(ctx, c, e.queue)
+	e.handler.Create(ctx, c, e.queueFor(func() reconciletrace.Event { return reconciletrace.NewCreateEvent(c.Object, isInInitialList) }))
 }
 
 // OnUpdate creates UpdateEvent and calls Update on EventHandler.
@@ -116,7 +127,7 @@ func (e *EventHandler[object, request]) OnUpdate(oldObj, newObj any) {
 	// Invoke update handler
 	ctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
-	e.handler.Update(ctx, u, e.queue)
+	e.handler.Update(ctx, u, e.queueFor(func() reconciletrace.Event { return reconciletrace.NewUpdateEvent(u.ObjectOld, u.ObjectNew) }))
 }
 
 // OnDelete creates DeleteEvent and calls Delete on EventHandler.
@@ -164,5 +175,5 @@ func (e *EventHandler[object, request]) OnDelete(obj any) {
 	// Invoke delete handler
 	ctx, cancel := context.WithCancel(e.ctx)
 	defer cancel()
-	e.handler.Delete(ctx, d, e.queue)
+	e.handler.Delete(ctx, d, e.queueFor(func() reconciletrace.Event { return reconciletrace.NewDeleteEvent(d.Object) }))
 }

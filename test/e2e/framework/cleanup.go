@@ -10,6 +10,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/gather/collect"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	"github.com/scylladb/scylla-operator/pkg/pointer"
+	"github.com/scylladb/scylla-operator/pkg/reconcilecritic"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -80,6 +81,40 @@ func (nc *namespaceCollector) Collect(ctx context.Context, artifactsDir string, 
 
 	err := DumpNamespace(ctx, nc.RestConfig, cacheddiscovery.NewMemCacheClient(nc.Client.Discovery()), nc.DynamicClient, nc.Client.CoreV1(), artifactsDir, nc.NamespaceName)
 	o.Expect(err).NotTo(o.HaveOccurred())
+
+	if TestContext.ReconcileTraces != nil {
+		collectReconcileTraces(ctx, nc.Client, *TestContext.ReconcileTraces, artifactsDir, nc.NamespaceName)
+	}
+}
+
+// collectReconcileTraces fetches the operator's reconcile trace of the namespace into the artifacts. It's an
+// experiment: a failure is logged and never fails the test.
+func collectReconcileTraces(ctx context.Context, client kubernetes.Interface, opts ReconcileTracesOptions, artifactsDir, namespace string) {
+	sr := g.CurrentSpecReport()
+	written, err := reconcilecritic.CollectTraces(
+		ctx,
+		client,
+		client.CoreV1().RESTClient(),
+		reconcilecritic.CollectOptions{
+			OperatorNamespace: opts.OperatorNamespace,
+			OperatorSelector:  opts.OperatorSelector,
+			Port:              opts.Port,
+		},
+		filepath.Join(artifactsDir, reconcilecritic.TracesDirName),
+		namespace,
+		reconcilecritic.TraceMeta{
+			TestName:        sr.FullText(),
+			Failed:          sr.Failed(),
+			Source:          "e2e",
+			ParallelProcess: sr.ParallelProcess,
+		},
+	)
+	if err != nil {
+		Warnf("Can't collect the reconcile traces of namespace %q: %v", namespace, err)
+	}
+	if len(written) != 0 {
+		Infof("Collected %d reconcile traces of namespace %q.", len(written), namespace)
+	}
 }
 
 type NamespaceCleanerCollector struct {

@@ -216,4 +216,7 @@ replace (
 	// Synchronization is performed automatically by the `make update-go-mod-replace` target, do not edit manually.
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring => github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.94.1
 	github.com/prometheus-operator/prometheus-operator/pkg/client => github.com/prometheus-operator/prometheus-operator/pkg/client v0.94.1
+
+	// Local experiment: controller-runtime v0.25.1 with the reconcile trace recorder and critic.
+	sigs.k8s.io/controller-runtime => /home/grzegorzburzynski/Repos/controller-runtime-reconcile-trace
 )

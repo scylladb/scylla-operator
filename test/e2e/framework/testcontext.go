@@ -73,4 +73,14 @@ type TestContextType struct {
 	ScyllaDBUpgradeFrom                string
 	WorkerClusterObjectStorageSettings map[string]ClusterObjectStorageSettings
 	ClusterObjectStorageSettings       *ClusterObjectStorageSettings
+	// ReconcileTraces, if set, has every test fetch the operator's reconcile traces of its namespaces into the
+	// artifacts. It is an experiment; the operator records only with --reconcile-trace-dir set.
+	ReconcileTraces *ReconcileTracesOptions
+}
+
+// ReconcileTracesOptions say where the operator serves its reconcile traces.
+type ReconcileTracesOptions struct {
+	OperatorNamespace string
+	OperatorSelector  string
+	Port              int
 }

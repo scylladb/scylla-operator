@@ -79,6 +79,12 @@ type TestFrameworkOptions struct {
 	ScyllaDBUpdateFrom          string
 	ScyllaDBUpgradeFrom         string
 	DryRun                      bool
+
+	// ReconcileTracePort, if not 0, has every test fetch the operator's reconcile traces of its namespaces from this
+	// port of the operator Pods. An experiment; see the operator's --reconcile-trace-dir.
+	ReconcileTracePort              int
+	ReconcileTraceOperatorNamespace string
+	ReconcileTraceOperatorSelector  string
 }
 
 func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent string) *TestFrameworkOptions {
@@ -101,6 +107,10 @@ func NewTestFrameworkOptions(streams genericclioptions.IOStreams, userAgent stri
 		ScyllaDBManagerAgentVersion: configassets.Project.Operator.ScyllaDBManagerAgentVersion,
 		ScyllaDBUpdateFrom:          configassets.Project.OperatorTests.ScyllaDBVersions.UpdateFrom,
 		ScyllaDBUpgradeFrom:         configassets.Project.OperatorTests.ScyllaDBVersions.UpgradeFrom,
+
+		ReconcileTracePort:              0,
+		ReconcileTraceOperatorNamespace: "scylla-operator",
+		ReconcileTraceOperatorSelector:  "app.kubernetes.io/name=scylla-operator",
 	}
 }
 
@@ -153,6 +163,9 @@ func (o *TestFrameworkOptions) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBManagerAgentVersion, "scylladb-manager-agent-version", "", o.ScyllaDBManagerAgentVersion, "Version of Scylla Manager Agent to use.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpdateFrom, "scylladb-update-from-version", "", o.ScyllaDBUpdateFrom, "Version of ScyllaDB to update from.")
 	cmd.PersistentFlags().StringVarP(&o.ScyllaDBUpgradeFrom, "scylladb-upgrade-from-version", "", o.ScyllaDBUpgradeFrom, "Version of ScyllaDB to upgrade from.")
+	cmd.PersistentFlags().IntVarP(&o.ReconcileTracePort, "reconcile-trace-port", "", o.ReconcileTracePort, "Experimental: port of the operator Pods serving the reconcile traces. When set, every test fetches the traces of its namespaces into the artifacts. 0 disables it.")
+	cmd.PersistentFlags().StringVarP(&o.ReconcileTraceOperatorNamespace, "reconcile-trace-operator-namespace", "", o.ReconcileTraceOperatorNamespace, "Experimental: namespace of the operator Pods serving the reconcile traces.")
+	cmd.PersistentFlags().StringVarP(&o.ReconcileTraceOperatorSelector, "reconcile-trace-operator-selector", "", o.ReconcileTraceOperatorSelector, "Experimental: label selector of the operator Pods serving the reconcile traces.")
 }
 
 func (o *TestFrameworkOptions) Validate(args []string) error {
@@ -304,6 +317,14 @@ func (o *TestFrameworkOptions) Complete(args []string) error {
 		ScyllaDBUpgradeFrom:                o.ScyllaDBUpgradeFrom,
 		ClusterObjectStorageSettings:       o.ClusterObjectStorageSettings,
 		WorkerClusterObjectStorageSettings: o.WorkerClusterObjectStorageSettings,
+	}
+
+	if o.ReconcileTracePort != 0 {
+		framework.TestContext.ReconcileTraces = &framework.ReconcileTracesOptions{
+			OperatorNamespace: o.ReconcileTraceOperatorNamespace,
+			OperatorSelector:  o.ReconcileTraceOperatorSelector,
+			Port:              o.ReconcileTracePort,
+		}
 	}
 
 	if o.IngressController != nil {

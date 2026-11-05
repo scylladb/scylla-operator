@@ -35,6 +35,7 @@ import (
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/internal/controller/metrics"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/reconciletrace"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -90,6 +91,9 @@ type Options[request comparable] struct {
 	// ReconciliationTimeout is used as the timeout passed to the context of each Reconcile call.
 	// By default, there is no timeout.
 	ReconciliationTimeout time.Duration
+
+	// TraceRecorder, if set, records the enqueues and reconciles of the controller.
+	TraceRecorder reconciletrace.Recorder
 }
 
 // Controller implements controller.Controller.
@@ -173,6 +177,12 @@ type Controller[request comparable] struct {
 	EnableWarmup *bool
 
 	ReconciliationTimeout time.Duration
+
+	// TraceRecorder, if set, records the enqueues and reconciles of the controller.
+	TraceRecorder reconciletrace.Recorder
+
+	// traceQueue wraps Queue when TraceRecorder is set.
+	traceQueue *reconciletrace.Queue[request]
 }
 
 // New returns a new Controller configured with the given options.
@@ -189,6 +199,7 @@ func New[request comparable](options Options[request]) *Controller[request] {
 		LeaderElected:           options.LeaderElected,
 		EnableWarmup:            options.EnableWarmup,
 		ReconciliationTimeout:   options.ReconciliationTimeout,
+		TraceRecorder:           options.TraceRecorder,
 	}
 }
 
@@ -343,6 +354,10 @@ func (c *Controller[request]) startEventSourcesAndQueueLocked(ctx context.Contex
 		} else {
 			c.Queue = &priorityQueueWrapper[request]{TypedRateLimitingInterface: queue}
 		}
+		if c.TraceRecorder != nil {
+			c.traceQueue = reconciletrace.NewQueue(c.Name, c.Queue, c.TraceRecorder)
+			c.Queue = c.traceQueue
+		}
 		go func() {
 			<-ctx.Done()
 			c.Queue.ShutDown()
@@ -474,11 +489,17 @@ func (c *Controller[request]) reconcileHandler(ctx context.Context, req request,
 	log = log.WithValues("reconcileID", reconcileID)
 	ctx = logf.IntoContext(ctx, log)
 	ctx = addReconcileID(ctx, reconcileID)
+	if c.traceQueue != nil {
+		ctx = c.traceQueue.RecordReconcileStart(ctx, req, string(reconcileID), priority)
+	}
 
 	// RunInformersAndControllers the syncHandler, passing it the Namespace/Name string of the
 	// resource to be synced.
 	log.V(5).Info("Reconciling")
 	result, err := c.Reconcile(ctx, req)
+	if c.traceQueue != nil {
+		c.traceQueue.RecordReconcileEnd(ctx, time.Since(reconcileStartTS), result, err)
+	}
 	if result.Priority != nil {
 		priority = *result.Priority
 	}
@@ -487,7 +508,7 @@ func (c *Controller[request]) reconcileHandler(ctx context.Context, req request,
 		if errors.Is(err, reconcile.TerminalError(nil)) {
 			ctrlmetrics.TerminalReconcileErrors.WithLabelValues(c.Name).Inc()
 		} else {
-			c.Queue.AddWithOpts(priorityqueue.AddOpts{RateLimited: true, Priority: new(priority)}, req)
+			c.requeue(ctx, reconciletrace.CauseTypeError, priorityqueue.AddOpts{RateLimited: true, Priority: new(priority)}, req)
 		}
 		ctrlmetrics.ReconcileErrors.WithLabelValues(c.Name).Inc()
 		ctrlmetrics.ReconcileTotal.WithLabelValues(c.Name, labelError).Inc()
@@ -502,11 +523,11 @@ func (c *Controller[request]) reconcileHandler(ctx context.Context, req request,
 		// We need to drive to stable reconcile loops before queuing due
 		// to result.RequestAfter
 		c.Queue.Forget(req)
-		c.Queue.AddWithOpts(priorityqueue.AddOpts{After: result.RequeueAfter, Priority: new(priority)}, req)
+		c.requeue(ctx, reconciletrace.CauseTypeRequeueAfter, priorityqueue.AddOpts{After: result.RequeueAfter, Priority: new(priority)}, req)
 		ctrlmetrics.ReconcileTotal.WithLabelValues(c.Name, labelRequeueAfter).Inc()
 	case result.Requeue: //nolint: staticcheck // We have to handle it until it is removed
 		log.V(5).Info("Reconcile done, requeueing")
-		c.Queue.AddWithOpts(priorityqueue.AddOpts{RateLimited: true, Priority: new(priority)}, req)
+		c.requeue(ctx, reconciletrace.CauseTypeRequeue, priorityqueue.AddOpts{RateLimited: true, Priority: new(priority)}, req)
 		ctrlmetrics.ReconcileTotal.WithLabelValues(c.Name, labelRequeue).Inc()
 	default:
 		log.V(5).Info("Reconcile successful")
@@ -515,6 +536,16 @@ func (c *Controller[request]) reconcileHandler(ctx context.Context, req request,
 		c.Queue.Forget(req)
 		ctrlmetrics.ReconcileTotal.WithLabelValues(c.Name, labelSuccess).Inc()
 	}
+}
+
+// requeue adds req back after a reconcile, recording cause when the controller records a trace.
+func (c *Controller[request]) requeue(ctx context.Context, cause reconciletrace.CauseType, opts priorityqueue.AddOpts, req request) {
+	if c.traceQueue != nil {
+		c.traceQueue.RequeueFromReconcile(ctx, cause, opts, req)
+		return
+	}
+
+	c.Queue.AddWithOpts(opts, req)
 }
 
 // GetLogger returns this controller's logger.

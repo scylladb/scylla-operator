@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import sys
 from datetime import date
 
@@ -164,6 +165,13 @@ linkcheck_ignore = [
     # Ignore anchor that works as expected in the browser (probably a matter of the JS page rendering).
     "https://www.scylladb.com/product/support/#enterprise-support",
 ]
+
+# Skip the URIs listed in the file, one per line. `make linkcheck` sets it to the URIs of the docs at
+# LINKCHECK_BASE_REF to only check the links added since then.
+_linkcheck_ignore_uris_file = os.environ.get("LINKCHECK_IGNORE_URIS_FILE")
+if _linkcheck_ignore_uris_file:
+    with open(_linkcheck_ignore_uris_file) as f:
+        linkcheck_ignore += [f"^{re.escape(uri)}$" for uri in f.read().splitlines() if uri]
 
 linkcheck_anchors_ignore_for_url = [
     "https://github.com/prometheus-operator/prometheus-operator/blob/e4c727291acc543dab531bc4aaf16637067c1b86/pkg/apis/monitoring/v1/.*",

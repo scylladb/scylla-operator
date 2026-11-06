@@ -2,6 +2,13 @@
 
 package managerclient
 
+// Restore method enumeration.
+const (
+	RestoreMethodRclone = "rclone"
+	RestoreMethodNative = "native"
+	RestoreMethodTablet = "tablet"
+)
+
 // Stage enumeration.
 const (
 	RestoreStageInit          = "INIT"

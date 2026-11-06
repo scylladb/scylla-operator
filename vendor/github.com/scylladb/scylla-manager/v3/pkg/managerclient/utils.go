@@ -153,6 +153,40 @@ func FormatRestoreProgress(size, restored, downloaded, failed int64) string {
 	return out
 }
 
+// FormatRestoreMethod returns comma separated list of restore methods
+// used for restoring given keyspace or table, or "-" if none is known.
+func FormatRestoreMethod(methods []string) string {
+	if len(methods) == 0 {
+		return "-"
+	}
+	return strings.Join(methods, ", ")
+}
+
+// FormatRestoreMethodProgress calculates percentage of success and failed restores.
+// Downloaded percentage is included only when rclone was the only used restore method,
+// as it's the only method reporting downloaded bytes. When used methods are unknown
+// (older SM server), it's included if any bytes were downloaded.
+func FormatRestoreMethodProgress(size, restored, downloaded, failed int64, methods []string) string {
+	var showDownloaded bool
+	switch {
+	case len(methods) == 0:
+		showDownloaded = downloaded > 0
+	case len(methods) == 1:
+		showDownloaded = methods[0] == RestoreMethodRclone
+	}
+	if showDownloaded {
+		return FormatRestoreProgress(size, restored, downloaded, failed)
+	}
+	if size == 0 {
+		return "100%"
+	}
+	out := fmt.Sprintf("%.f%%", math.Floor(float64(restored)*100/float64(size)))
+	if failed > 0 {
+		out += fmt.Sprintf(" / failed: %.f%%", math.Ceil(float64(failed)*100/float64(size)))
+	}
+	return out
+}
+
 // FormatSizeSuffix returns string printing size with a unit.
 func FormatSizeSuffix(b int64) string {
 	return sizesuffix.SizeSuffix(b).String()

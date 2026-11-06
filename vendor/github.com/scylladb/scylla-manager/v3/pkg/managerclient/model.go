@@ -1167,11 +1167,13 @@ End time:	{{ FormatTime .EndTime }}
 {{- end }}
 Duration:	{{ FormatDuration .StartTime .EndTime }}
 {{ end -}}
-{{ with .Progress }}Progress:	{{ if ne .Size 0 }}{{ FormatRestoreProgress .Size .Restored .Downloaded .Failed }}{{else}}-{{ end }}
+{{ with .Progress }}Progress:	{{ if ne .Size 0 }}{{ FormatRestoreMethodProgress .Size .Restored .Downloaded .Failed methods }}{{else}}-{{ end }}
 Snapshot Tag:	{{ .SnapshotTag }}
-Bandwidth:
+{{ if showBandwidth -}}
+Bandwidth (rclone restore only):
   - Download:    {{ avgDownload .Hosts }}
   - Load&stream: {{ avgStream .Hosts }}
+{{ end -}}
 {{ else }}Progress:	0%
 {{ end }}
 {{- if .Errors -}}
@@ -1183,14 +1185,16 @@ Errors:	{{ range .Errors }}
 
 func (rp RestoreProgress) addHeader(w io.Writer) error {
 	temp := template.Must(template.New("restore_progress").Funcs(template.FuncMap{
-		"isZero":                isZero,
-		"FormatTime":            FormatTime,
-		"FormatDuration":        FormatDuration,
-		"FormatError":           FormatError,
-		"FormatRestoreProgress": FormatRestoreProgress,
-		"status":                rp.status,
-		"avgDownload":           avgDownload,
-		"avgStream":             avgStream,
+		"isZero":                      isZero,
+		"FormatTime":                  FormatTime,
+		"FormatDuration":              FormatDuration,
+		"FormatError":                 FormatError,
+		"FormatRestoreMethodProgress": FormatRestoreMethodProgress,
+		"methods":                     rp.methods,
+		"showBandwidth":               rp.showBandwidth,
+		"status":                      rp.status,
+		"avgDownload":                 avgDownload,
+		"avgStream":                   avgStream,
 	}).Parse(restoreProgressTemplate))
 	return temp.Execute(w, rp)
 }
@@ -1206,6 +1210,33 @@ func (rp RestoreProgress) status() string {
 		s += " (" + stage + ")"
 	}
 	return s
+}
+
+// restoreMethodOrder defines the order in which methods are displayed.
+var restoreMethodOrder = []string{RestoreMethodTablet, RestoreMethodNative, RestoreMethodRclone}
+
+// methods returns the union of restore methods used across all keyspaces.
+// Empty result means that methods are unknown (older SM server or no progress yet).
+func (rp RestoreProgress) methods() []string {
+	var out []string
+	for _, ks := range rp.Progress.Keyspaces {
+		for _, m := range ks.Method {
+			if !slices.Contains(out, m) {
+				out = append(out, m)
+			}
+		}
+	}
+	slices.SortFunc(out, func(a, b string) int {
+		return slices.Index(restoreMethodOrder, a) - slices.Index(restoreMethodOrder, b)
+	})
+	return out
+}
+
+// showBandwidth returns true if download and load&stream bandwidth should be displayed.
+// It is reported only by rclone restore, so it's displayed when rclone was used
+// or when any bytes were downloaded (e.g. older SM server not reporting methods).
+func (rp RestoreProgress) showBandwidth() bool {
+	return rp.Progress.Downloaded > 0 || slices.Contains(rp.methods(), RestoreMethodRclone)
 }
 
 func avgDownload(hosts []*models.RestoreHostProgress) string {
@@ -1336,7 +1367,7 @@ func (rp RestoreProgress) postRestoreRepairProgress() RepairProgress {
 }
 
 func (rp RestoreProgress) addKeyspaceProgress(t *table.Table) {
-	t.AddRow("Keyspace", "Progress", "Size", "Success", "Downloaded", "Failed")
+	t.AddRow("Keyspace", "Progress", "Size", "Success", "Downloaded", "Failed", "Method")
 	t.AddSeparator()
 	for _, ks := range rp.Progress.Keyspaces {
 		if rp.hideKeyspace(ks.Keyspace) {
@@ -1344,13 +1375,14 @@ func (rp RestoreProgress) addKeyspaceProgress(t *table.Table) {
 		}
 		p := "-"
 		if len(ks.Tables) > 0 {
-			p = FormatRestoreProgress(ks.Size, ks.Restored, ks.Downloaded, ks.Failed)
+			p = FormatRestoreMethodProgress(ks.Size, ks.Restored, ks.Downloaded, ks.Failed, ks.Method)
 		}
 		t.AddRow(ks.Keyspace, p,
 			FormatSizeSuffix(ks.Size),
 			FormatSizeSuffix(ks.Restored),
 			FormatSizeSuffix(ks.Downloaded),
 			FormatSizeSuffix(ks.Failed),
+			FormatRestoreMethod(ks.Method),
 		)
 	}
 	t.SetColumnAlignment(termtables.AlignRight, 1, 2, 3, 4, 5)
@@ -1363,7 +1395,7 @@ func (rp RestoreProgress) addTableProgress(w io.Writer) error {
 		}
 		fmt.Fprintf(w, "\nKeyspace: %s\n", ks.Keyspace)
 
-		t := table.New("Table", "Progress", "Size", "Success", "Downloaded", "Failed", "Started at", "Completed at", "tombstone_gc mode")
+		t := table.New("Table", "Progress", "Size", "Success", "Downloaded", "Failed", "Method", "Started at", "Completed at", "tombstone_gc mode")
 		for i, tab := range ks.Tables {
 			if i > 0 {
 				t.AddSeparator()
@@ -1379,14 +1411,12 @@ func (rp RestoreProgress) addTableProgress(w io.Writer) error {
 			}
 			t.AddRow(
 				tab.Table,
-				FormatRestoreProgress(tab.Size,
-					tab.Restored,
-					tab.Downloaded,
-					tab.Failed),
+				FormatRestoreMethodProgress(tab.Size, tab.Restored, tab.Downloaded, tab.Failed, tab.Method),
 				FormatSizeSuffix(tab.Size),
 				FormatSizeSuffix(tab.Restored),
 				FormatSizeSuffix(tab.Downloaded),
 				FormatSizeSuffix(tab.Failed),
+				FormatRestoreMethod(tab.Method),
 				FormatTime(startedAt),
 				FormatTime(completedAt),
 				tab.TombstoneGc,
@@ -1401,7 +1431,12 @@ func (rp RestoreProgress) addTableProgress(w io.Writer) error {
 }
 
 func (rp RestoreProgress) addHostProgress(w io.Writer) error {
-	_, _ = fmt.Fprintf(w, "\nHosts info\n")
+	// Per host progress consists of download and load&stream
+	// bandwidth, which is reported only by rclone restore.
+	if !rp.showBandwidth() {
+		return nil
+	}
+	_, _ = fmt.Fprintf(w, "\nHosts info (rclone restore only)\n")
 	t := table.New("Host", "Shards", "Download bandwidth", "Download duration", "Load&stream bandwidth", "Load&stream duration")
 	for i, hp := range rp.Progress.Hosts {
 		if i > 0 {

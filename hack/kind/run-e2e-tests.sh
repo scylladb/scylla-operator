@@ -32,48 +32,14 @@ IN_CLUSTER_KUBECONFIG="$(mktemp --suffix ".kubeconfig")"
 kind get kubeconfig --name="${CLUSTER_NAME}" --internal > "${IN_CLUSTER_KUBECONFIG}"
 export IN_CLUSTER_KUBECONFIG
 
-source "${repo_root}/hack/kind/lib.sh"
-source "${repo_root}/hack/lib/kube.sh"
-source "${repo_root}/hack/.ci/lib/e2e.sh"
-source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
-
 # Per-worker copies of the kubeconfig and of the object storage credentials, used by the multi-datacenter suite only.
 worker_assets_dir=""
 
-# In the multi-datacenter suite every worker entry points at this very cluster through the internal kubeconfig, which
-# is not resolvable from the host. Emptying the array before gathering artifacts collects them once, for the only
-# cluster there is, instead of failing on a must-gather per worker entry. It is a no-op for the other suites.
-trap 'WORKER_KUBECONFIGS=(); gather-artifacts-on-exit; rm -rf "${KUBECONFIG}" "${IN_CLUSTER_KUBECONFIG}" ${worker_assets_dir:+"${worker_assets_dir}"}' EXIT
-trap gracefully-shutdown-e2es INT
-
-build-and-push-operator-image "${repo_root}" SO_IMAGE
-
-# Use 'standard' storage class that comes with KinD by default.
-SO_SCYLLACLUSTER_STORAGECLASS_NAME="standard"
-export SO_SCYLLACLUSTER_STORAGECLASS_NAME
-
-# Use 'io_uring' reactor backend which does not need as high fs.aio-max-nr sysctl setting as the default reactor.
-# We do not want to change sysctls on the host running the KinD cluster.
-SO_SCYLLACLUSTER_REACTOR_BACKEND="io_uring"
-export SO_SCYLLACLUSTER_REACTOR_BACKEND
+# Replaced with the full exit trap once the e2e library is sourced.
+trap 'rm -rf "${KUBECONFIG}" "${IN_CLUSTER_KUBECONFIG}" ${worker_assets_dir:+"${worker_assets_dir}"}' EXIT
 
 SO_SUITE="${SO_SUITE:-kind-fast}"
 export SO_SUITE
-
-SO_SCYLLACLUSTER_NODE_SERVICE_TYPE="Headless"
-export SO_SCYLLACLUSTER_NODE_SERVICE_TYPE
-
-SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE="PodIP"
-export SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE
-
-SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE="PodIP"
-export SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE
-
-SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-1h}"
-export SO_E2E_TIMEOUT
-
-ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
-export ARTIFACTS
 
 # Object storage for the backup/restore e2e tests comes from the MinIO instance deployed by cluster-setup.sh.
 # The single bucket settings and the per-worker ones are mutually exclusive in the tests binary, so the suite decides
@@ -92,26 +58,43 @@ case "${SO_SUITE}" in
   # Three worker entries, mirroring the CI multi-datacenter cluster set in hack/.ci/manifests/ci-clusters/gke-multi-dc.yaml.
   worker_cluster_keys=( "worker-1" "worker-2" "worker-3" )
 
+  worker_kubeconfigs=()
+  worker_object_storage_buckets=()
+  worker_s3_credentials_paths=()
+  worker_s3_agent_config_paths=()
+
   for worker_cluster_key in "${worker_cluster_keys[@]}"; do
     worker_kubeconfig="${worker_assets_dir}/${worker_cluster_key}.kubeconfig"
     # The e2e binary runs in a Pod, so worker clusters have to be reached through the internal kubeconfig.
     cp "${IN_CLUSTER_KUBECONFIG}" "${worker_kubeconfig}"
-    WORKER_KUBECONFIGS["${worker_cluster_key}"]="${worker_kubeconfig}"
+    worker_kubeconfigs+=( "${worker_cluster_key}=${worker_kubeconfig}" )
 
     worker_bucket="manager-multi-datacenter-tests-${worker_cluster_key}"
     kubectl -n minio exec deployment/minio -- mkdir -p "/data/${worker_bucket}"
-    WORKER_OBJECT_STORAGE_BUCKETS["${worker_cluster_key}"]="${worker_bucket}"
+    worker_object_storage_buckets+=( "${worker_cluster_key}=${worker_bucket}" )
 
     # It's the same MinIO instance for every entry, so the credentials and the agent config are shared. Only the file
     # names have to differ.
     worker_s3_credentials="${worker_assets_dir}/${worker_cluster_key}.credentials"
     cp "${repo_root}/hack/kind/minio/credentials" "${worker_s3_credentials}"
-    WORKER_S3_CREDENTIALS_PATHS["${worker_cluster_key}"]="${worker_s3_credentials}"
+    worker_s3_credentials_paths+=( "${worker_cluster_key}=${worker_s3_credentials}" )
 
     worker_s3_agent_config="${worker_assets_dir}/${worker_cluster_key}.agent-config.yaml"
     cp "${repo_root}/hack/kind/minio/agent-config.yaml" "${worker_s3_agent_config}"
-    WORKER_S3_AGENT_CONFIG_PATHS["${worker_cluster_key}"]="${worker_s3_agent_config}"
+    worker_s3_agent_config_paths+=( "${worker_cluster_key}=${worker_s3_agent_config}" )
   done
+
+  WORKER_KUBECONFIGS="$( IFS=','; echo "${worker_kubeconfigs[*]}" )"
+  export WORKER_KUBECONFIGS
+
+  WORKER_OBJECT_STORAGE_BUCKETS="$( IFS=','; echo "${worker_object_storage_buckets[*]}" )"
+  export WORKER_OBJECT_STORAGE_BUCKETS
+
+  WORKER_S3_CREDENTIALS_PATHS="$( IFS=','; echo "${worker_s3_credentials_paths[*]}" )"
+  export WORKER_S3_CREDENTIALS_PATHS
+
+  WORKER_S3_AGENT_CONFIG_PATHS="$( IFS=','; echo "${worker_s3_agent_config_paths[*]}" )"
+  export WORKER_S3_AGENT_CONFIG_PATHS
   ;;
 *)
   SO_S3_CREDENTIALS_PATH="${repo_root}/hack/kind/minio/credentials"
@@ -124,6 +107,43 @@ case "${SO_SUITE}" in
   kubectl -n minio exec deployment/minio -- mkdir -p "/data/${SO_BUCKET_NAME}"
   ;;
 esac
+
+source "${repo_root}/hack/kind/lib.sh"
+source "${repo_root}/hack/lib/kube.sh"
+source "${repo_root}/hack/.ci/lib/e2e.sh"
+source "${repo_root}/hack/.ci/run-e2e-shared.env.sh"
+
+# In the multi-datacenter suite every worker entry points at this very cluster through the internal kubeconfig, which
+# is not resolvable from the host. The artifacts are gathered once, for the only cluster there is, instead of through
+# gather-artifacts-on-exit, which would also run a must-gather per worker entry and fail on each.
+trap 'ec=$?; gather-artifacts "${ARTIFACTS}/must-gather/cluster"; cleanup-bg-jobs "${ec}"; rm -rf "${KUBECONFIG}" "${IN_CLUSTER_KUBECONFIG}" ${worker_assets_dir:+"${worker_assets_dir}"}' EXIT
+trap gracefully-shutdown-e2es INT
+
+build-and-push-operator-image "${repo_root}" SO_IMAGE
+
+# Use 'standard' storage class that comes with KinD by default.
+SO_SCYLLACLUSTER_STORAGECLASS_NAME="standard"
+export SO_SCYLLACLUSTER_STORAGECLASS_NAME
+
+# Use 'io_uring' reactor backend which does not need as high fs.aio-max-nr sysctl setting as the default reactor.
+# We do not want to change sysctls on the host running the KinD cluster.
+SO_SCYLLACLUSTER_REACTOR_BACKEND="io_uring"
+export SO_SCYLLACLUSTER_REACTOR_BACKEND
+
+SO_SCYLLACLUSTER_NODE_SERVICE_TYPE="Headless"
+export SO_SCYLLACLUSTER_NODE_SERVICE_TYPE
+
+SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE="PodIP"
+export SO_SCYLLACLUSTER_NODES_BROADCAST_ADDRESS_TYPE
+
+SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE="PodIP"
+export SO_SCYLLACLUSTER_CLIENTS_BROADCAST_ADDRESS_TYPE
+
+SO_E2E_TIMEOUT="${SO_E2E_TIMEOUT:-1h}"
+export SO_E2E_TIMEOUT
+
+ARTIFACTS="${ARTIFACTS:-$( mktemp -d )}"
+export ARTIFACTS
 
 apply-e2e-workarounds
 run-e2e

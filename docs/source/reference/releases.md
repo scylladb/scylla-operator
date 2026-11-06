@@ -228,3 +228,5 @@ The following environments are known **not to work correctly** at this time.
   - Suspected kernel/cgroups issue that breaks available memory detection for ScyllaDB
 :::
 :::
+
+[broken](https://github.com/scylladb/scylla-operator-does-not-exist-xyz)

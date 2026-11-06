@@ -37,6 +37,10 @@ func (scmc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	if scmc.onReconcile != nil {
+		scmc.onReconcile(types.NamespacedName{Namespace: namespace, Name: name})
+	}
+
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaCluster", "ScyllaCluster", klog.KRef(namespace, name), "startTime", startTime)
 	defer func() {

@@ -9,11 +9,16 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog/v2"
 )
 
 func (opc *Controller) sync(ctx context.Context) error {
+	if opc.onReconcile != nil {
+		opc.onReconcile(types.NamespacedName{Name: naming.SingletonName})
+	}
+
 	soc, socGetErr := opc.scyllaOperatorConfigLister.Get(naming.SingletonName)
 	if socGetErr != nil {
 		if !apierrors.IsNotFound(socGetErr) {

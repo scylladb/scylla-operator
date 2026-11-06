@@ -28,6 +28,10 @@ func (smtc *Controller) sync(ctx context.Context, key string) error {
 		return err
 	}
 
+	if smtc.onReconcile != nil {
+		smtc.onReconcile(types.NamespacedName{Namespace: namespace, Name: name})
+	}
+
 	startTime := time.Now()
 	klog.V(4).InfoS("Started syncing ScyllaDBManagerTask", "ScyllaDBManagerTask", klog.KRef(namespace, name), "startTime", startTime)
 	defer func() {

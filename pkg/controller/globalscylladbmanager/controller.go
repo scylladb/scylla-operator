@@ -13,6 +13,7 @@ import (
 	"github.com/scylladb/scylla-operator/pkg/controllertools"
 	"github.com/scylladb/scylla-operator/pkg/naming"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1informers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -34,6 +35,20 @@ type Controller struct {
 	scyllaDBManagerClusterRegistrationLister scyllav1alpha1listers.ScyllaDBManagerClusterRegistrationLister
 	scyllaDBDatacenterLister                 scyllav1alpha1listers.ScyllaDBDatacenterLister
 	namespaceLister                          corev1listers.NamespaceLister
+
+	// onReconcile, if set, is called with the observer's key at the start of each reconciliation.
+	// It is meant for testing only.
+	onReconcile func(types.NamespacedName)
+}
+
+type ControllerOption func(ctrl *Controller)
+
+// WithOnReconcile is meant for testing only: it sets a function the controller calls with the observer's key, its
+// name, at the start of each reconciliation, so that tests can tell which changes enqueue it.
+func WithOnReconcile(onReconcile func(types.NamespacedName)) ControllerOption {
+	return func(c *Controller) {
+		c.onReconcile = onReconcile
+	}
 }
 
 func NewController(
@@ -42,6 +57,7 @@ func NewController(
 	scyllaDBManagerClusterRegistrationInformer scyllav1alpha1informers.ScyllaDBManagerClusterRegistrationInformer,
 	scyllaDBDatacenterInformer scyllav1alpha1informers.ScyllaDBDatacenterInformer,
 	namespaceInformer corev1informers.NamespaceInformer,
+	options ...ControllerOption,
 ) (*Controller, error) {
 	gsmc := &Controller{
 		kubeClient:   kubeClient,
@@ -50,6 +66,10 @@ func NewController(
 		scyllaDBManagerClusterRegistrationLister: scyllaDBManagerClusterRegistrationInformer.Lister(),
 		scyllaDBDatacenterLister:                 scyllaDBDatacenterInformer.Lister(),
 		namespaceLister:                          namespaceInformer.Lister(),
+	}
+
+	for _, option := range options {
+		option(gsmc)
 	}
 
 	observer := controllertools.NewObserver(

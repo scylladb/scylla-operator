@@ -28,13 +28,22 @@ function kubectl_cp {
   done
 }
 
+# kubectl_retry retries a kubectl command until it succeeds or the timeout expires. Only use it for idempotent commands.
+# $1 - timeout
+# $@ - kubectl arguments
+function kubectl_retry {
+  local timeout="${1}"
+  shift
+  timeout --verbose "${timeout}" bash -c 'until kubectl "$@"; do sleep 1; done' kubectl_retry "$@"
+}
+
 # wait-for-object-creation awaits the creation of a Kubernetes object in a given namespace.
 # $1 - namespace
 # $2 - object kind/name (e.g., pod/name)
 # $3 - timeout (optional, defaults to 60s)
 function wait-for-object-creation {
   local timeout="${3:-60s}"
-  kubectl wait --timeout="${timeout}" --for=create -n="${1}" "${2}"
+  kubectl_retry "${timeout}" wait --timeout="${timeout}" --for=create -n="${1}" "${2}"
 }
 
 # $1 - namespace

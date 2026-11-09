@@ -30,7 +30,17 @@ function deploy-cert-manager() {
   # still has to sync the CA into the webhook's caBundle. Probe the real apiserver->webhook
   # path with a server-side dry-run until it works, so the first actual object can't hit
   # "x509: certificate signed by unknown authority".
-  timeout 5m bash -c "until kubectl create --dry-run=server -f=- <<< '{\"apiVersion\":\"cert-manager.io/v1\",\"kind\":\"Issuer\",\"metadata\":{\"name\":\"webhook-probe\",\"namespace\":\"cert-manager\"},\"spec\":{\"selfSigned\":{}}}'; do sleep 1; done"
+  mkdir -p "${ARTIFACTS_DEPLOY_DIR}"
+  cat >"${ARTIFACTS_DEPLOY_DIR}/cert-manager-webhook-probe.issuer.yaml" <<EOF
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: webhook-probe
+  namespace: cert-manager
+spec:
+  selfSigned: {}
+EOF
+  kubectl_retry 5m create --dry-run=server -f="${ARTIFACTS_DEPLOY_DIR}/cert-manager-webhook-probe.issuer.yaml"
 }
 
 # install-operator installs the Scylla Operator and its dependencies in the cluster through the specified method.

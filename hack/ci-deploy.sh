@@ -68,15 +68,16 @@ kubectl_create -n haproxy-ingress -f "${ARTIFACTS_DEPLOY_DIR}/haproxy-ingress.ya
 
 install-operator "$( realpath "$( dirname "${BASH_SOURCE[0]}" )/../" )"
 
-# Wait for operator and webhook server to roll out
+# Wait for operator and webhook server to roll out.
+# The waits are retried because connecting to the API server can transiently exceed kubectl's 10s TLS handshake timeout.
 wait-for-object-creation scylla-operator deployment.apps/scylla-operator 5m
-kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
+kubectl_retry 5m -n scylla-operator rollout status --timeout=5m deployment.apps/scylla-operator
 wait-for-object-creation scylla-operator deployment.apps/webhook-server 5m
-kubectl -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
+kubectl_retry 5m -n scylla-operator rollout status --timeout=5m deployment.apps/webhook-server
 
 # Manager needs scylla CRD registered
 wait-for-object-creation scylla-operator crd/scyllaclusters.scylla.scylladb.com 5m
-kubectl wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
+kubectl_retry 5m wait --for condition=established --timeout=5m crd/scyllaclusters.scylla.scylladb.com
 
 kubectl wait --for condition=established crd/scyllaoperatorconfigs.scylla.scylladb.com
 

@@ -7,6 +7,8 @@
 set -euExo pipefail
 shopt -s inherit_errexit
 
+source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
+
 # get-provisioned-cluster-kubeconfig extracts a provisioned cluster's kubeconfig from its Secret into a file and sanity
 # checks it.
 # $1 - path to the CI provisioners cluster kubeconfig
@@ -25,6 +27,6 @@ function get-provisioned-cluster-kubeconfig {
   kubectl --kubeconfig="${kubeconfig}" config set-context --current --namespace 'default-unexisting-namespace'
 
   # Sanity check. A freshly provisioned cluster's API can drop the first connections, so it gets a few attempts.
-  timeout --verbose 1m bash -c 'until kubectl --kubeconfig="${0}" version -o yaml; do sleep 5; done' "${kubeconfig}"
+  kubectl_retry 1m --kubeconfig="${kubeconfig}" version -o yaml
   kubectl --kubeconfig="${kubeconfig}" config view
 }

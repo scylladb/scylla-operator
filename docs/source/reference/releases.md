@@ -103,40 +103,23 @@ We support the latest 2 releases of ScyllaDB Operator to give everyone time to u
 Usually, only important bug fixes are eligible for being backported.
 This may depend on the situation and assessment of the maintainers.
 
-## CI/CD
-We use [Prow](https://prow.scylla-operator.scylladb.com/) for our CI/CD. Before we publish any image, it must pass the E2E suite.
+## Container images
 
-### Automated promotions
+Images are published to `docker.io/scylladb/scylla-operator` and `quay.io/scylladb/scylla-operator` with the following tags:
 
 :::{list-table}
-:widths: 30 15 55
+:widths: 30 70
 :header-rows: 1
 
-* - Git reference
-  - Type
-  - Container image
-* - **master**
-  - branch
-  - docker.io/scylladb/scylla-operator:**latest**
-* - **vX.Y**
-  - branch
-  - docker.io/scylladb/scylla-operator:**X.Y**
-* - **vX.Y.Z**
-  - tag
-  - docker.io/scylladb/scylla-operator:**X.Y.Z**
-* - **vX.Y.Z-alpha.N**
-  - tag
-  - docker.io/scylladb/scylla-operator:**X.Y.Z-alpha.N**
-* - **vX.Y.Z-beta.N**
-  - tag
-  - docker.io/scylladb/scylla-operator:**X.Y.Z-beta.N**
-* - **vX.Y.Z-rc.N**
-  - tag
-  - docker.io/scylladb/scylla-operator:**X.Y.Z-rc.N**
+* - Tag
+  - Points to
+* - `X.Y.Z`, `X.Y.Z-alpha.N`, `X.Y.Z-beta.N`, `X.Y.Z-rc.N`
+  - The release with that exact version, e.g. `1.23.0` or `1.23.0-rc.0`.
+* - `X.Y`
+  - The highest GA patch release of the `X.Y` minor.
+* - `latest`
+  - The highest GA release across all minors.
 :::
-
-### Generally available
-GA images aren't built from scratch but rather promoted from an existing release candidate. When we decide a release candidate has the acceptable quality and QA signs it off, the release candidate is promoted to become the GA release. This ensures that the GA image has exactly the same content and SHA as the tested release candidate.
 
 ## Support matrix
 
@@ -186,7 +169,7 @@ The following table lists the versions of third-party dependencies that ScyllaDB
 
 ### Architectures
 
-ScyllaDB Operator image is published as a manifest list to `docker.io/scylladb/scylla-operator:X.Y.Z` containing image build for `amd64` and `aarch64`.
+ScyllaDB Operator image is published as a manifest list containing image builds for `amd64` and `arm64`.
 
 ### Supported Kubernetes environments
 

@@ -6,6 +6,8 @@ PAPER ?=
 BUILDDIR ?= _build
 SOURCEDIR ?= source
 OS ?=
+LINKCHECK_BASE_REF ?=
+export LINKCHECK_BASE_REF
 
 
 # Internal variables.
@@ -63,8 +65,16 @@ dummy:
 	@echo "Build finished. Dummy builder generates no files."
 .PHONY: dummy
 
+# When LINKCHECK_BASE_REF is set, linkcheck skips the URIs that the docs at that ref already contain, so only the
+# links added since then are checked.
 linkcheck:
+ifeq ($(LINKCHECK_BASE_REF),)
 	$(SPHINXBUILD) -b linkcheck $(SOURCEDIR) $(BUILDDIR)/linkcheck
+else
+	@mkdir -p $(BUILDDIR)
+	$(UV) run python3 _utils/list_linkcheck_uris.py "$${LINKCHECK_BASE_REF}" $(SOURCEDIR) $(BUILDDIR)/linkcheck-base-uris.txt
+	LINKCHECK_IGNORE_URIS_FILE='$(abspath $(BUILDDIR)/linkcheck-base-uris.txt)' $(SPHINXBUILD) -b linkcheck $(SOURCEDIR) $(BUILDDIR)/linkcheck
+endif
 .PHONY: linkcheck
 
 multiversion:

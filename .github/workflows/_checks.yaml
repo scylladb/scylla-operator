@@ -221,7 +221,12 @@ jobs:
       - name: Set up env
         run: make -C docs setup
 
+      # Only the links a pull request adds are checked, so a link on an external site that breaks or starts blocking
+      # automated requests doesn't fail unrelated pull requests. The existing links are checked by
+      # verify-docs-multiversion.yaml.
       - name: Verify docs
+        env:
+          LINKCHECK_BASE_REF: origin/${{ github.base_ref }}
         run: make --warn-undefined-variables -C docs verify
 
   build-docs-multiversion:

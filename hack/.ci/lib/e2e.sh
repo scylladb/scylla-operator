@@ -9,52 +9,58 @@ shopt -s inherit_errexit
 source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/bash.sh"
 source "$( dirname "${BASH_SOURCE[0]}" )/../../lib/kube.sh"
 
-# WORKER_KUBECONFIGS is an associative array that maps worker cluster identifiers to their kubeconfig paths.
-# It is used in multi-datacenter setups. The control plane cluster is expected to be listed among the workers as well,
-# so that the specs can run a datacenter, with the object storage settings of its worker entry, next to ScyllaDB Manager.
-declare -A WORKER_KUBECONFIGS
+# The worker maps describe the clusters of a multi-datacenter setup. Each one comes in a WORKER_* environment variable as
+# `<cluster_identifier>=<value>,...`, the format of the corresponding `--worker-*` flag of scylla-operator-tests, and is
+# parsed into an associative array of the same name in lowercase when this file is sourced. The variables are the only
+# input; the arrays are internal and are overwritten on sourcing, so they can't be filled any other way.
+#
+# WORKER_KUBECONFIGS maps worker cluster identifiers to their kubeconfig paths. The control plane cluster is expected to
+# be listed among the workers as well, so that the specs can run a datacenter, with the object storage settings of its
+# worker entry, next to ScyllaDB Manager.
+#
+# WORKER_OBJECT_STORAGE_BUCKETS maps worker cluster identifiers to their object storage bucket names.
+#
+# WORKER_S3_CREDENTIALS_PATHS maps worker cluster identifiers to their S3 credentials file paths.
+#
+# WORKER_S3_AGENT_CONFIG_PATHS maps worker cluster identifiers to custom Scylla Manager Agent config files for their S3
+# buckets, e.g. an endpoint override for MinIO. It is optional.
+#
+# WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS maps worker cluster identifiers to their GCS service account credentials
+# file paths.
+#
+# Every file path entry must have a distinct basename within its map, which is used as the Secret key and to derive the
+# in-container path.
 
-# WORKER_OBJECT_STORAGE_BUCKETS is an associative array that maps worker cluster identifiers to their object storage
-# bucket names. It is used in multi-datacenter setups.
-declare -A WORKER_OBJECT_STORAGE_BUCKETS
-
-# WORKER_S3_CREDENTIALS_PATHS is an associative array that maps worker cluster identifiers to their S3 credentials
-# file paths. It is used in multi-datacenter setups.
-declare -A WORKER_S3_CREDENTIALS_PATHS
-
-# WORKER_S3_AGENT_CONFIG_PATHS is an associative array that maps worker cluster identifiers to custom Scylla Manager
-# Agent config files for their S3 buckets, e.g. an endpoint override for MinIO. It is optional and used in
-# multi-datacenter setups. Every entry must have a distinct basename, which is used as the Secret key and to derive
-# the in-container path.
-declare -A WORKER_S3_AGENT_CONFIG_PATHS
-
-# WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS is an associative array that maps worker cluster identifiers to their
-# GCS service account credentials file paths. It is used in multi-datacenter setups.
-declare -A WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS
-
-# Associative arrays can't cross a process boundary, so a caller that executes the run scripts instead of sourcing them
-# passes the worker maps serialized in WORKER_*_SERIALIZED as `<cluster_identifier>=<value>,...`, the format of the
-# corresponding `--worker-*` flags of scylla-operator-tests. The Prow multi-datacenter jobs source the scripts and fill
-# the arrays above directly instead.
-# TODO: once those jobs move to GHA, make the serialized form the only input under the WORKER_* names and the arrays
-# local. https://scylladb.atlassian.net/browse/OPERATOR-456
+# parse-worker-map parses a worker map passed in an environment variable into an associative array.
 # $1 - name of the associative array to fill
-# $2 - serialized map, possibly empty
+# $2 - name of the environment variable holding the map, possibly unset or empty
 function parse-worker-map {
   local -n map="${1}"
   local entries kv
-  IFS=',' read -r -a entries <<< "${2}"
+  IFS=',' read -r -a entries <<< "${!2:-}"
   for kv in "${entries[@]}"; do
     if [[ ! "${kv}" =~ ^[^=]+=.+$ ]]; then
-      echo "Invalid ${1} entry '${kv}', expected '<cluster_identifier>=<value>'" >&2
+      echo "Invalid ${2} entry '${kv}', expected '<cluster_identifier>=<value>'" >&2
       exit 2
     fi
     map["${kv%%=*}"]="${kv#*=}"
   done
 }
-parse-worker-map WORKER_KUBECONFIGS "${WORKER_KUBECONFIGS_SERIALIZED:-}"
-parse-worker-map WORKER_OBJECT_STORAGE_BUCKETS "${WORKER_OBJECT_STORAGE_BUCKETS_SERIALIZED:-}"
-parse-worker-map WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS "${WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS_SERIALIZED:-}"
+
+declare -gA worker_kubeconfigs=()
+parse-worker-map worker_kubeconfigs WORKER_KUBECONFIGS
+
+declare -gA worker_object_storage_buckets=()
+parse-worker-map worker_object_storage_buckets WORKER_OBJECT_STORAGE_BUCKETS
+
+declare -gA worker_s3_credentials_paths=()
+parse-worker-map worker_s3_credentials_paths WORKER_S3_CREDENTIALS_PATHS
+
+declare -gA worker_s3_agent_config_paths=()
+parse-worker-map worker_s3_agent_config_paths WORKER_S3_AGENT_CONFIG_PATHS
+
+declare -gA worker_gcs_service_account_credentials_paths=()
+parse-worker-map worker_gcs_service_account_credentials_paths WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS
 
 # KUBECONFIG is the kubeconfig file used to connect to the cluster.
 # In multi-datacenter setups, it is the control plane cluster kubeconfig.
@@ -65,7 +71,7 @@ fi
 
 # run-deploy-script-in-all-clusters runs the deployment script in all clusters.
 # In a single-datacenter setup, it deploys the operator stack in the only cluster using the KUBECONFIG environment variable.
-# In a multi-datacenter setup, it runs in the control plane cluster using the KUBECONFIG environment variable, and in all worker clusters using the WORKER_KUBECONFIGS associative array.
+# In a multi-datacenter setup, it runs in the control plane cluster using the KUBECONFIG environment variable, and in all worker clusters listed in WORKER_KUBECONFIGS.
 # $1 - deployment script path
 function run-deploy-script-in-all-clusters {
   if [ -z "${1+x}" ]; then
@@ -87,14 +93,14 @@ function run-deploy-script-in-all-clusters {
   timeout --foreground -v 10m "${1}" "${SO_IMAGE}" &
   ci_deploy_bg_pids=( $! )
 
-  for name in "${!WORKER_KUBECONFIGS[@]}"; do
-    if [[ "${WORKER_KUBECONFIGS[$name]}" == "${KUBECONFIG}" ]]; then
+  for name in "${!worker_kubeconfigs[@]}"; do
+    if [[ "${worker_kubeconfigs[$name]}" == "${KUBECONFIG}" ]]; then
       # Skip if the control plane cluster is also among the worker clusters.
       worker_as_control_plane="${name}"
       continue
     fi
 
-    KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" \
+    KUBECONFIG="${worker_kubeconfigs[$name]}" \
     ARTIFACTS_DEPLOY_DIR="${ARTIFACTS}/deploy/workers/${name}" \
     SO_DISABLE_SCYLLADB_MANAGER_DEPLOYMENT=true \
     timeout --foreground -v 10m "${1}" "${SO_IMAGE}" &
@@ -191,14 +197,14 @@ function gather-artifacts-on-exit {
   gather-artifacts "${ARTIFACTS}/must-gather/cluster" &
   gather_artifacts_bg_pids=( $! )
 
-  for name in "${!WORKER_KUBECONFIGS[@]}"; do
-    if [[ "${WORKER_KUBECONFIGS[$name]}" == "${KUBECONFIG}" ]]; then
+  for name in "${!worker_kubeconfigs[@]}"; do
+    if [[ "${worker_kubeconfigs[$name]}" == "${KUBECONFIG}" ]]; then
       # Skip if the control plane cluster is also among the worker clusters.
       worker_as_control_plane="${name}"
       continue
     fi
 
-    KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" gather-artifacts "${ARTIFACTS}/must-gather/workers/${name}" &
+    KUBECONFIG="${worker_kubeconfigs[$name]}" gather-artifacts "${ARTIFACTS}/must-gather/workers/${name}" &
     gather_artifacts_bg_pids+=( $! )
   done
 
@@ -222,13 +228,13 @@ function gracefully-shutdown-e2es {
 function apply-e2e-workarounds-in-all-clusters {
   apply-e2e-workarounds
 
-  for name in "${!WORKER_KUBECONFIGS[@]}"; do
-    if [[ "${WORKER_KUBECONFIGS[$name]}" == "${KUBECONFIG}" ]]; then
+  for name in "${!worker_kubeconfigs[@]}"; do
+    if [[ "${worker_kubeconfigs[$name]}" == "${KUBECONFIG}" ]]; then
       # Skip if the control plane cluster is also among the worker clusters.
       continue
     fi
 
-    KUBECONFIG="${WORKER_KUBECONFIGS[$name]}" apply-e2e-workarounds
+    KUBECONFIG="${worker_kubeconfigs[$name]}" apply-e2e-workarounds
   done
 }
 
@@ -312,12 +318,12 @@ function run-e2e {
   kubectl create -n=e2e secret generic kubeconfig --from-file=kubeconfig="${KUBECONFIG_SECRET_SOURCE}" --dry-run=client -o=yaml | kubectl_create -f=-
 
   # Create a Secret including _all_ workers' kubeconfigs (including the main cluster's kubeconfig if present in WORKER_KUBECONFIGS).
-  kubectl create -n=e2e secret generic worker-kubeconfigs ${WORKER_KUBECONFIGS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  kubectl create -n=e2e secret generic worker-kubeconfigs ${worker_kubeconfigs[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
   # Build a comma-separated string following a `<cluster_identifier>=<kubeconfig_path_in_container>` format expected by `--worker-kubeconfigs` flag.
   worker_kubeconfigs_in_container_paths=$(
     res=()
-    for key in "${!WORKER_KUBECONFIGS[@]}"; do
-      basename="${WORKER_KUBECONFIGS[$key]##*/}"
+    for key in "${!worker_kubeconfigs[@]}"; do
+      basename="${worker_kubeconfigs[$key]##*/}"
       in_container_path="${basename/#//var/run/secrets/worker-kubeconfigs/}"
       res+=( "${key}=${in_container_path}" )
     done
@@ -352,20 +358,20 @@ function run-e2e {
   # Build a comma-separated string following a `<cluster_identifier>=<bucket_name>` format expected by `--worker-object-storage-buckets` flag.
   worker_object_storage_buckets=$(
     res=()
-    for key in "${!WORKER_OBJECT_STORAGE_BUCKETS[@]}"; do
-      res+=( "${key}=${WORKER_OBJECT_STORAGE_BUCKETS[$key]}" )
+    for key in "${!worker_object_storage_buckets[@]}"; do
+      res+=( "${key}=${worker_object_storage_buckets[$key]}" )
     done
     IFS=','
     echo "${res[*]}"
   )
 
   # Create a Secret including workers' S3 credentials files.
-  kubectl create -n=e2e secret generic worker-s3-credentials ${WORKER_S3_CREDENTIALS_PATHS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  kubectl create -n=e2e secret generic worker-s3-credentials ${worker_s3_credentials_paths[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
   # Build a comma-separated string following a `<cluster_identifier>=<s3_credentials_path_in_container>` format expected by `--worker-s3-credentials-file-paths` flag.
   worker_gcs_sa_in_container_paths=$(
     res=()
-    for key in "${!WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS[@]}"; do
-      basename="${WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS[$key]##*/}"
+    for key in "${!worker_gcs_service_account_credentials_paths[@]}"; do
+      basename="${worker_gcs_service_account_credentials_paths[$key]##*/}"
       in_container_path="/var/run/secrets/worker-gcs-service-account-credentials/${basename}"
       res+=( "${key}=${in_container_path}" )
     done
@@ -374,12 +380,12 @@ function run-e2e {
   )
 
   # Create a Secret including workers' GCS service account credentials files.
-  kubectl create -n=e2e secret generic worker-gcs-service-account-credentials ${WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  kubectl create -n=e2e secret generic worker-gcs-service-account-credentials ${worker_gcs_service_account_credentials_paths[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
   # Build a comma-separated string following a `<cluster_identifier>=<gcs_service_account_path_in_container>` format expected by `--worker-gcs-service-account-key-paths` flag.
   worker_s3_credentials_in_container_paths=$(
     res=()
-    for key in "${!WORKER_S3_CREDENTIALS_PATHS[@]}"; do
-      basename="${WORKER_S3_CREDENTIALS_PATHS[$key]##*/}"
+    for key in "${!worker_s3_credentials_paths[@]}"; do
+      basename="${worker_s3_credentials_paths[$key]##*/}"
       in_container_path="/var/run/secrets/worker-s3-credentials/${basename}"
       res+=( "${key}=${in_container_path}" )
     done
@@ -388,12 +394,12 @@ function run-e2e {
   )
 
   # Create a Secret including workers' custom Scylla Manager Agent config files.
-  kubectl create -n=e2e secret generic worker-s3-agent-configs ${WORKER_S3_AGENT_CONFIG_PATHS[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
+  kubectl create -n=e2e secret generic worker-s3-agent-configs ${worker_s3_agent_config_paths[@]/#/--from-file=} --dry-run=client -o=yaml | kubectl_create -f=-
   # Build a comma-separated string following a `<cluster_identifier>=<agent_config_path_in_container>` format expected by `--worker-s3-agent-config-paths` flag.
   worker_s3_agent_configs_in_container_paths=$(
     res=()
-    for key in "${!WORKER_S3_AGENT_CONFIG_PATHS[@]}"; do
-      basename="${WORKER_S3_AGENT_CONFIG_PATHS[$key]##*/}"
+    for key in "${!worker_s3_agent_config_paths[@]}"; do
+      basename="${worker_s3_agent_config_paths[$key]##*/}"
       in_container_path="/var/run/secrets/worker-s3-agent-configs/${basename}"
       res+=( "${key}=${in_container_path}" )
     done

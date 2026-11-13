@@ -24,10 +24,10 @@ type RestoreKeyspaceProgress struct {
 	// Format: date-time
 	CompletedAt *strfmt.DateTime `json:"completed_at,omitempty"`
 
-	// This field is DEPRECATED. Total bytes downloaded from table (included in restored)
+	// This field is DEPRECATED. Total bytes downloaded from table (included in restored). Populated by the rclone restore method
 	Downloaded int64 `json:"downloaded,omitempty"`
 
-	// failed
+	// Total bytes that failed to be restored in this keyspace
 	Failed int64 `json:"failed,omitempty"`
 
 	// keyspace
@@ -36,7 +36,7 @@ type RestoreKeyspaceProgress struct {
 	// Union of restore methods used for restoring tables in this keyspace
 	Method []string `json:"method"`
 
-	// restored
+	// Total bytes restored in this keyspace
 	Restored int64 `json:"restored,omitempty"`
 
 	// size

@@ -23,13 +23,13 @@ type RestoreProgress struct {
 	// Format: date-time
 	CompletedAt *strfmt.DateTime `json:"completed_at,omitempty"`
 
-	// This field is DEPRECATED. Total bytes downloaded from table (included in restored)
+	// This field is DEPRECATED. Total bytes downloaded from table (included in restored). Populated by the rclone restore method
 	Downloaded int64 `json:"downloaded,omitempty"`
 
-	// failed
+	// Total bytes that failed to be restored
 	Failed int64 `json:"failed,omitempty"`
 
-	// hosts
+	// Per host progress. Not populated by the tablet restore method
 	Hosts []*RestoreHostProgress `json:"hosts"`
 
 	// keyspaces
@@ -38,7 +38,7 @@ type RestoreProgress struct {
 	// repair progress
 	RepairProgress *RepairProgress `json:"repair_progress,omitempty"`
 
-	// restored
+	// Total bytes restored
 	Restored int64 `json:"restored,omitempty"`
 
 	// size

@@ -40,6 +40,15 @@ function generate_pkg_operator_defaults() {
     return 1
   fi
 
+  # Extract the default Prometheus base image, which the operator uses for Prometheus objects that don't specify an image.
+  local prometheus_base_image
+  prometheus_base_image=$(echo "${defaults_content}" | sed -n 's/^[[:space:]]*DefaultPrometheusBaseImage[[:space:]]*=[[:space:]]*\("[^"]*"\).*$/\1/p')
+
+  if [[ -z "${prometheus_base_image}" ]]; then
+    echo "Error: Could not find DefaultPrometheusBaseImage in ${prometheus_operator_defaults_url}" >&2
+    return 1
+  fi
+
   mkdir -p "$(dirname "${output_file}")"
 
   cat > "${output_file}" << EOF
@@ -60,6 +69,10 @@ function generate_pkg_operator_defaults() {
 // limitations under the License.
 
 package operator
+
+// Extracted from ${prometheus_operator_defaults_url}.
+// DefaultPrometheusBaseImage is a base container registry address for the prometheus.
+const DefaultPrometheusBaseImage = ${prometheus_base_image}
 
 // Extracted from ${prometheus_operator_defaults_url}.
 // PrometheusCompatibilityMatrix is a slice of Prometheus versions that Prometheus Operator is compatible with.

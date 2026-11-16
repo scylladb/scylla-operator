@@ -30,10 +30,10 @@ func validateSemanticVersion(v string) error {
 	return validation.ValidateSemanticVersion(v, &field.Path{}).ToAggregate()
 }
 
-// validateMultiPlatformImage checks if the provided image is a multi-platform image.
+// validateMultiPlatformImage checks if the provided image is a multi-platform image that can be pulled on all supported platforms.
 func validateMultiPlatformImage(ctx context.Context) func(image string) error {
 	return func(image string) error {
-		return images.IsImageMultiPlatform(ctx, image)
+		return images.IsImageMultiPlatform(ctx, image, SupportedPlatforms)
 	}
 }
 
@@ -167,6 +167,8 @@ func TestProjectConfig(t *testing.T) {
 			testFn: composeValidators(
 				validateRequired,
 				validateSemanticVersion,
+				// prometheus-operator pulls Prometheus from its default base image, as we only set the version.
+				validateMultiPlatformVersionWithRepo(ctx, prometheusoperator.DefaultPrometheusBaseImage),
 			),
 		},
 		{

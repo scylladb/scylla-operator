@@ -20,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	apimachineryutilerrors "k8s.io/apimachinery/pkg/util/errors"
 	apimachineryutilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	apimachineryutilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -60,6 +61,21 @@ type Controller struct {
 
 	queue    workqueue.TypedRateLimitingInterface[string]
 	handlers *controllerhelpers.Handlers[*scyllav1alpha1.ScyllaDBManagerTask]
+
+	// onReconcile, if set, is called with the key of ScyllaDBManagerTask at the start of its reconciliation.
+	// It is meant for testing only.
+	onReconcile func(types.NamespacedName)
+}
+
+type ControllerOption func(ctrl *Controller)
+
+// WithOnReconcile is meant for testing only: it sets a function the controller calls with the key of
+// ScyllaDBManagerTask at the start of its reconciliation, so that tests can tell which changes enqueue which
+// ScyllaDBManagerTasks.
+func WithOnReconcile(onReconcile func(types.NamespacedName)) ControllerOption {
+	return func(c *Controller) {
+		c.onReconcile = onReconcile
+	}
 }
 
 func NewController(
@@ -67,6 +83,7 @@ func NewController(
 	scyllaClient scyllav1alpha1client.ScyllaV1alpha1Interface,
 	scyllaDBManagerTaskInformer scyllav1alpha1informers.ScyllaDBManagerTaskInformer,
 	scylladbManagerClusterRegistrationInformer scyllav1alpha1informers.ScyllaDBManagerClusterRegistrationInformer,
+	options ...ControllerOption,
 ) (*Controller, error) {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
@@ -92,6 +109,10 @@ func NewController(
 				Name: "scylladbmanagertask",
 			},
 		),
+	}
+
+	for _, option := range options {
+		option(smtc)
 	}
 
 	var err error

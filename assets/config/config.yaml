@@ -1,8 +1,8 @@
 operator:
   # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
-  scyllaDBVersion: "2026.3.5"
+  scyllaDBVersion: "2026.3.6"
   # renovate: datasource=docker depName=scylladb packageName=docker.io/scylladb/scylla versioning=semver
-  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2026.3.5@sha256:00e7bba5672ffb85a4c6dbee9f0d772628705e4551295de3776aca8d659468ed"
+  scyllaDBUtilsImage: "docker.io/scylladb/scylla:2026.3.6@sha256:56e4153c5de13c4a4d081804018c8ae034bd0ef19ee450930790779056dfd2d9"
   # renovate: datasource=docker depName=scylladb-node-exporter packageName=docker.io/scylladb/scylladb-node-exporter versioning=regex:^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)-(?<build>\d+)$
   scyllaDBNodeExporterImage: "docker.io/scylladb/scylladb-node-exporter:1.12.1-3@sha256:dfb517e296a679e13ac60c5afc63d9db6f0d4b7c73243100fe9acc61fe799d4e"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver

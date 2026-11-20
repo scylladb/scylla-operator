@@ -24,19 +24,19 @@ type RestoreTableProgress struct {
 	// Format: date-time
 	CompletedAt *strfmt.DateTime `json:"completed_at,omitempty"`
 
-	// This field is DEPRECATED. Total bytes downloaded from table (included in restored)
+	// This field is DEPRECATED. Total bytes downloaded from table (included in restored). Populated by the rclone restore method
 	Downloaded int64 `json:"downloaded,omitempty"`
 
 	// error
 	Error string `json:"error,omitempty"`
 
-	// failed
+	// Total bytes that failed to be restored in this table
 	Failed int64 `json:"failed,omitempty"`
 
 	// Restore method used for restoring this table. Multiple methods are used only in edge-case scenarios of restoring an old backup
 	Method []string `json:"method"`
 
-	// restored
+	// Total bytes restored in this table
 	Restored int64 `json:"restored,omitempty"`
 
 	// size

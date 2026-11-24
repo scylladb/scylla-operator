@@ -174,9 +174,9 @@ jobs:
         # test runner tolerates. More than one cluster means a multi-datacenter suite, which takes the maps as they
         # are; a single cluster takes the bare value of the only entry.
         if [[ "${KUBECONFIGS}" == *,* ]]; then
-          export WORKER_KUBECONFIGS_SERIALIZED="${KUBECONFIGS}"
-          export WORKER_OBJECT_STORAGE_BUCKETS_SERIALIZED="${BUCKET_NAMES}"
-          export WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS_SERIALIZED="${CREDENTIALS_PATHS}"
+          export WORKER_KUBECONFIGS="${KUBECONFIGS}"
+          export WORKER_OBJECT_STORAGE_BUCKETS="${BUCKET_NAMES}"
+          export WORKER_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATHS="${CREDENTIALS_PATHS}"
         else
           export SO_BUCKET_NAME="${BUCKET_NAMES#*=}"
           export SO_GCS_SERVICE_ACCOUNT_CREDENTIALS_PATH="${CREDENTIALS_PATHS#*=}"

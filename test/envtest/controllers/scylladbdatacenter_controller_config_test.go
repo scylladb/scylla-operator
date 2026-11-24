@@ -177,6 +177,24 @@ var _ = g.Describe("ScyllaDBDatacenter controller config plumbing", func() {
 
 		g.By("Waiting for the agent auth token Secret to carry the custom config token")
 		waitForAgentAuthToken(ctx, env, agentAuthTokenSecretName, customConfigToken)
+
+		// The controller doesn't update a StatefulSet that hasn't rolled out yet.
+		g.By("Marking the rack StatefulSet as rolled out")
+		rackStatefulSetName := naming.StatefulSetNameForRack(sdc.Spec.Racks[0], sdc)
+		markStatefulSetAsRolledOut(ctx, env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()), rackStatefulSetName)
+
+		g.By("Waiting for the rack StatefulSet to mount the custom agent config Secret")
+		o.Eventually(func(eo o.Gomega, ctx context.Context) {
+			sts, err := env.TypedKubeClient().AppsV1().StatefulSets(env.Namespace()).Get(ctx, rackStatefulSetName, metav1.GetOptions{})
+			eo.Expect(err).NotTo(o.HaveOccurred())
+			var mountedSecretNames []string
+			for _, v := range sts.Spec.Template.Spec.Volumes {
+				if v.Secret != nil {
+					mountedSecretNames = append(mountedSecretNames, v.Secret.SecretName)
+				}
+			}
+			eo.Expect(mountedSecretNames).To(o.ContainElement(customConfigSecret.Name))
+		}).WithContext(ctx).WithTimeout(scyllaDBDatacenterControllerDefaultEventuallyTimeout).WithPolling(100 * time.Millisecond).Should(o.Succeed())
 	})
 
 	g.It("should manage the CA, serving and client certificates with the CA bundles", func(ctx g.SpecContext) {

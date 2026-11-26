@@ -17,6 +17,10 @@
 package operator
 
 // Extracted from https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.95.2/pkg/operator/defaults.go.
+// DefaultPrometheusBaseImage is a base container registry address for the prometheus.
+const DefaultPrometheusBaseImage = "quay.io/prometheus/prometheus"
+
+// Extracted from https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/v0.95.2/pkg/operator/defaults.go.
 // PrometheusCompatibilityMatrix is a slice of Prometheus versions that Prometheus Operator is compatible with.
 var PrometheusCompatibilityMatrix = []string{
 	"v2.45.0",

@@ -19,6 +19,14 @@
   the agents silently ran with the default config. `ScyllaCluster` wasn't affected.
   [#3828](https://github.com/scylladb/scylla-operator/pull/3828)
 
+### Dependencies
+
+- Updated default ScyllaDB version (including `scyllaDBUtilsImage`) to `2026.4.0`.
+  [#3855](https://github.com/scylladb/scylla-operator/pull/3855)
+- Updated the embedded ScyllaDB Monitoring from `4.16.1` to `4.17.1`, adding the 2026.4 dashboards and moving the
+  bundled Grafana to `13.3.1` and Prometheus to `v3.16.0`.
+  [#3855](https://github.com/scylladb/scylla-operator/pull/3855)
+
 ## [1.23.0](https://github.com/scylladb/scylla-operator/releases/tag/v1.23.0)
 
 Release date: 2026-10-26

@@ -31,6 +31,11 @@ data:
     plugins = /var/lib/grafana/plugins
     provisioning = /var/run/configmaps/grafana-provisioning
 
+    [plugins]
+    # Grafana downloads a default set of plugins from grafana.com in the background after startup. None of them is
+    # needed (the Prometheus datasource ships in the image), and they fill up the data volume until the Pod is evicted.
+    preinstall_disabled = true
+
     [security]
     admin_user = $__file{/var/run/secrets/grafana-admin-credentials/username}
     admin_password = $__file{/var/run/secrets/grafana-admin-credentials/password}

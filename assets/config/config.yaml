@@ -6,9 +6,9 @@ operator:
   # renovate: datasource=docker depName=scylladb-node-exporter packageName=docker.io/scylladb/scylladb-node-exporter versioning=regex:^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)-(?<build>\d+)$
   scyllaDBNodeExporterImage: "docker.io/scylladb/scylladb-node-exporter:1.12.1-3@sha256:dfb517e296a679e13ac60c5afc63d9db6f0d4b7c73243100fe9acc61fe799d4e"
   # renovate: datasource=docker depName=scylla-manager packageName=docker.io/scylladb/scylla-manager versioning=semver
-  scyllaDBManagerVersion: "3.13.0@sha256:ff9242eb1bbb82ddddbefd20a3d41af8a0bb29419d38e5ad4538f075452cd17e"
+  scyllaDBManagerVersion: "3.14.0@sha256:b2b4ce0832746d01feae9c98ab03d960e27c111f56c3991247fd95491b900b70"
   # renovate: datasource=docker depName=scylla-manager-agent packageName=docker.io/scylladb/scylla-manager-agent versioning=semver
-  scyllaDBManagerAgentVersion: "3.13.0@sha256:30e676b83782e946b349a2677473a75eee2a8a2bd959ad4845322f87167ee1d4"
+  scyllaDBManagerAgentVersion: "3.14.0@sha256:6fcdf99d3b9c10d5d847bbf2dc93e9715e0350d17f363fc640bde1971637f373"
   bashToolsImage: "registry.access.redhat.com/ubi9/ubi:9.5-1745854298@sha256:f4ebd46d3ba96feb016d798009e1cc2404c3a4ebdac8b2479a2ac053e59f41b4"
   grafanaImage: "docker.io/grafana/grafana:13.2.2" # Generated from scylla-monitoring/versions.sh GRAFANA_VERSION.
   grafanaDefaultPlatformDashboard: "scylladb-2026.3/scylla-overview.2026.3.json"
